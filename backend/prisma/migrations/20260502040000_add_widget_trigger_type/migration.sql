@@ -1,0 +1,2 @@
+-- AlterEnum: add WIDGET_MESSAGE_RECEIVED to AutomationTriggerType
+ALTER TYPE "AutomationTriggerType" ADD VALUE IF NOT EXISTS 'WIDGET_MESSAGE_RECEIVED';

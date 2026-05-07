@@ -1,0 +1,13 @@
+export { CreateContactUseCase } from './create-contact.use-case';
+export { AutoCreateContactUseCase } from './auto-create-contact.use-case';
+export { GetContactUseCase } from './get-contact.use-case';
+export { ListContactsUseCase } from './list-contacts.use-case';
+export { UpdateContactUseCase } from './update-contact.use-case';
+export { DeleteContactUseCase } from './delete-contact.use-case';
+export { ChangeLeadStatusUseCase } from './change-lead-status.use-case';
+export { AssignContactUseCase } from './assign-contact.use-case';
+export { MergeContactsUseCase } from './merge-contacts.use-case';
+export { AddNoteUseCase } from './add-note.use-case';
+export { GetNotesUseCase } from './get-notes.use-case';
+export { AddTagUseCase, RemoveTagUseCase } from './manage-tags.use-case';
+export { GetContactHistoryUseCase } from './get-contact-history.use-case';

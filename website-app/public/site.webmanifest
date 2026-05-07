@@ -1,0 +1,22 @@
+{
+  "name": "Wazelo CRM",
+  "short_name": "Wazelo",
+  "description": "WhatsApp CRM for growing teams",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#131313",
+  "background_color": "#131313",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "apple touch icon"
+    }
+  ]
+}

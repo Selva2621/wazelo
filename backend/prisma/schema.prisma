@@ -1,0 +1,3265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum WhatsAppSessionStatus {
+  CONNECTING
+  CONNECTED
+  DISCONNECTED
+  RECONNECTING
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+  AUDIO
+  STICKER
+  LOCATION
+  CONTACT
+  INTERACTIVE
+}
+
+enum MessageStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  CONVERTED
+  CLOSED
+}
+
+enum ContactSource {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  EMAIL
+  MANUAL
+  IMPORT
+  API
+  // Lead Ads sources (Social Ads Integration)
+  FACEBOOK_LEAD_AD
+  INSTAGRAM_LEAD_AD
+  WHATSAPP_LEAD_AD
+  SHOPIFY
+}
+
+// ─────────────────────────────────────────────
+// MULTI-CHANNEL ENUMS (EPIC 16)
+// ─────────────────────────────────────────────
+
+enum ChannelType {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK_MESSENGER
+  EMAIL
+}
+
+enum ChannelStatus {
+  PENDING_SETUP
+  VERIFYING
+  ACTIVE
+  SUSPENDED
+  ERROR
+  DISCONNECTED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CampaignAudienceType {
+  ALL
+  FILTERED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+enum SequenceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum SequenceRecipientStatus {
+  ACTIVE        // progressing through steps
+  COMPLETED     // finished all steps
+  EXITED        // left via exit condition (replied, etc.)
+  PAUSED        // sequence paused
+}
+
+enum AuditAction {
+  // Auth actions
+  USER_REGISTERED
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFIED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  LOGOUT
+  SESSION_REVOKED
+  TOKEN_REFRESHED
+
+  // Org/User management actions (EPIC 2)
+  USER_INVITED
+  INVITATION_ACCEPTED
+  INVITATION_REVOKED
+  INVITATION_EXPIRED
+  USER_CREATED
+  USER_UPDATED
+  USER_DISABLED
+  USER_ENABLED
+  USER_DELETED
+  ROLE_CHANGED
+  ORG_SETTINGS_UPDATED
+
+  // WhatsApp session actions (EPIC 3)
+  WHATSAPP_QR_GENERATED
+  WHATSAPP_SESSION_CONNECTED
+  WHATSAPP_SESSION_DISCONNECTED
+  WHATSAPP_SESSION_RECONNECTING
+  WHATSAPP_SESSION_FORCE_DISCONNECTED
+  WHATSAPP_UNAUTHORIZED_ATTEMPT
+  WHATSAPP_MESSAGE_SENT
+  WHATSAPP_MESSAGE_FAILED
+
+  // Messaging Engine actions (EPIC 5)
+  MESSAGE_QUEUED
+  MESSAGE_PROCESSING
+  MESSAGE_DELIVERED
+  MESSAGE_READ
+  MESSAGE_RETRY
+  MESSAGE_DEAD_LETTERED
+  INCOMING_MESSAGE_RECEIVED
+  INCOMING_MESSAGE_DUPLICATE_IGNORED
+  RATE_LIMIT_EXCEEDED
+  CONVERSATION_CLOSED
+  CONVERSATION_ARCHIVED
+  CSAT_SURVEY_SENT
+
+  // Contact & Lead Management actions (EPIC 4)
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CONTACT_DELETED
+  CONTACT_MERGED
+  CONTACT_ASSIGNED
+  CONTACT_REASSIGNED
+  CONTACT_STATUS_CHANGED
+  CONTACT_NOTE_ADDED
+  CONTACT_TAG_ADDED
+  CONTACT_TAG_REMOVED
+  CONTACT_AUTO_CREATED
+
+  // Campaign Management actions (EPIC 6)
+  CAMPAIGN_CREATED
+  CAMPAIGN_UPDATED
+  CAMPAIGN_SCHEDULED
+  CAMPAIGN_STARTED
+  CAMPAIGN_PAUSED
+  CAMPAIGN_RESUMED
+  CAMPAIGN_COMPLETED
+  CAMPAIGN_FAILED
+  CAMPAIGN_CANCELLED
+
+  // Scheduling & Automation actions (EPIC 7)
+  SCHEDULED_MESSAGE_CREATED
+  SCHEDULED_MESSAGE_UPDATED
+  SCHEDULED_MESSAGE_CANCELLED
+  SCHEDULED_MESSAGE_EXECUTED
+  SCHEDULED_MESSAGE_FAILED
+  AUTOMATION_RULE_CREATED
+  AUTOMATION_RULE_UPDATED
+  AUTOMATION_RULE_ENABLED
+  AUTOMATION_RULE_DISABLED
+  AUTOMATION_RULE_DELETED
+  AUTOMATION_EXECUTED
+  AUTOMATION_FAILED
+
+  // RBAC & Access Control actions (EPIC 8)
+  PERMISSION_DENIED
+  PERMISSION_GRANTED
+  ROLE_PERMISSION_UPDATED
+  CROSS_TENANT_ACCESS_BLOCKED
+
+  // Subscription & Billing actions (EPIC 9)
+  PLAN_CREATED
+  PLAN_UPDATED
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPGRADED
+  SUBSCRIPTION_DOWNGRADE_SCHEDULED
+  SUBSCRIPTION_DOWNGRADE_APPLIED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_GRACE_PERIOD_ENTERED
+  SUBSCRIPTION_REACTIVATED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  PAYMENT_RETRY_SCHEDULED
+  PAYMENT_REFUNDED
+  INVOICE_GENERATED
+  USAGE_LIMIT_REACHED
+  USAGE_SOFT_LIMIT_WARNING
+  USAGE_COUNTER_RESET
+
+  // Notification actions (EPIC 11)
+  NOTIFICATION_PREFERENCE_UPDATED
+
+  // Chat Widget actions (Phase 4)
+  WIDGET_CONFIG_UPDATED
+
+  // Settings & Configuration actions (EPIC 12)
+  SETTING_UPDATED
+  SETTING_DELETED
+  FEATURE_FLAG_CREATED
+  FEATURE_FLAG_UPDATED
+  FEATURE_FLAG_DELETED
+  INTEGRATION_CONFIG_CREATED
+  INTEGRATION_CONFIG_UPDATED
+  INTEGRATION_CONFIG_DELETED
+  INTEGRATION_CONFIG_TESTED
+  WEBHOOK_CREATED
+  WEBHOOK_UPDATED
+  WEBHOOK_DELETED
+  WEBHOOK_TESTED
+
+  // Social Ads Lead Integration actions
+  LEAD_AD_RECEIVED
+  LEAD_AD_PROCESSED
+  LEAD_AD_FAILED
+  LEAD_AD_CONFIG_CREATED
+  LEAD_AD_CONFIG_UPDATED
+
+  // Multi-Channel Integration actions (EPIC 16)
+  CHANNEL_CREATED
+  CHANNEL_UPDATED
+  CHANNEL_VERIFIED
+  CHANNEL_SUSPENDED
+  CHANNEL_REACTIVATED
+  CHANNEL_DISCONNECTED
+  CHANNEL_DELETED
+  CHANNEL_ERROR
+
+  // SLA Tracking actions (EPIC 15)
+  SLA_POLICY_CREATED
+  SLA_POLICY_UPDATED
+  SLA_POLICY_DELETED
+  SLA_POLICY_ENABLED
+  SLA_POLICY_DISABLED
+  SLA_BREACH_DETECTED
+  SLA_BREACH_ACKNOWLEDGED
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULING & AUTOMATION ENUMS (EPIC 7)
+// ─────────────────────────────────────────────
+
+enum ScheduledMessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  CANCELLED
+  FAILED
+}
+
+enum AutomationTriggerType {
+  MESSAGE_RECEIVED
+  CONTACT_CREATED
+  LEAD_STATUS_CHANGED
+  TIME_BASED
+  NO_REPLY
+  LEAD_AD_RECEIVED
+  SHOPIFY_ORDER_CREATED
+  SHOPIFY_ORDER_FULFILLED
+  SHOPIFY_CART_ABANDONED
+  WIDGET_MESSAGE_RECEIVED
+}
+
+enum AutomationConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  IN
+  NOT_IN
+}
+
+enum AutomationActionType {
+  SEND_MESSAGE
+  ASSIGN_CONTACT
+  ADD_TAG
+  UPDATE_STATUS
+}
+
+enum AutomationRuleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AutomationExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+// ─────────────────────────────────────────────
+// SUBSCRIPTION & BILLING ENUMS (EPIC 9)
+// ─────────────────────────────────────────────
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum UsageMetricType {
+  MESSAGES_SENT
+  ACTIVE_USERS
+  WHATSAPP_SESSIONS
+  CAMPAIGN_EXECUTIONS
+  API_CALLS
+  AI_CREDITS
+  MESSAGE_TEMPLATES
+}
+
+enum PlanType {
+  CRM
+  DEVELOPER
+}
+
+enum OrgType {
+  CRM
+  DEVELOPER
+}
+
+// ─────────────────────────────────────────────
+// ORGANIZATION
+// ─────────────────────────────────────────────
+
+model Organization {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(255)
+  slug      String    @unique @db.VarChar(255)
+  timezone    String    @default("UTC") @db.VarChar(100)
+  orgType     OrgType   @default(CRM) @map("org_type")
+  branding    Json?     @db.JsonB
+  industry    String?   @db.VarChar(100)
+  description String?   @db.VarChar(2000)
+  website     String?   @db.VarChar(500)
+  trialUsedAt DateTime? @map("trial_used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users                   User[]
+  invitations             Invitation[]
+  auditLogs               AuditLog[]
+  whatsappSessions        WhatsAppSession[]
+  messages                Message[]
+  contacts                Contact[]
+  conversations           Conversation[]
+  deadLetterMessages      DeadLetterMessage[]
+  campaigns               Campaign[]
+  scheduledMessages       ScheduledMessage[]
+  automationRules         AutomationRule[]
+  rolePermissions         RolePermission[]
+  subscriptions           Subscription[]
+  usageRecords            UsageRecord[]
+  payments                Payment[]
+  invoices                Invoice[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  settings                Setting[]
+  featureFlags            FeatureFlag[]
+  integrationConfigs      IntegrationConfig[]
+  webhooks                Webhook[]
+  teams                   Team[]
+  analyticsMessageDaily   AnalyticsMessageDaily[]
+  analyticsMessageHourly  AnalyticsMessageHourly[]
+  analyticsResponseTime   AnalyticsResponseTime[]
+  analyticsConversionDaily AnalyticsConversionDaily[]
+  analyticsCampaignSummary AnalyticsCampaignSummary[]
+  slaPolicies              SlaPolicy[]
+  slaTrackings             SlaTracking[]
+  slaBreachLogs            SlaBreachLog[]
+  channels                 Channel[]
+  leadAdEntries            LeadAdEntry[]
+  leadAdsConfig            LeadAdsConfig?
+  cannedResponses          CannedResponse[]
+  messageTemplates         MessageTemplate[]
+  csatSurveys              CsatSurvey[]
+  pipelines                Pipeline[]
+  deals                    Deal[]
+  aiConversationSummaries  AiConversationSummary[]
+  chatbotFlows             ChatbotFlow[]
+  chatbotSessions          ChatbotSession[]
+  leadScoringRules         LeadScoringRule[]
+  campaignSequences        CampaignSequence[]
+  widgetConfig             WidgetConfig?
+  widgetSessions           WidgetSession[]
+  widgetMessages           WidgetMessage[]
+  kbCategories             KbCategory[]
+  kbArticles               KbArticle[]
+  customFieldDefinitions   CustomFieldDefinition[]
+  apiKeys                  ApiKey[]
+  kbDocuments              KbDocument[]
+  sequenceTemplates        SequenceTemplate[]
+  products                 Product[]
+  productCategories        ProductCategory[]
+  helpTickets              HelpTicket[]
+  aiMemory                 OrgAiMemory?
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
+model User {
+  id                  String     @id @default(uuid()) @db.Uuid
+  orgId               String     @map("org_id") @db.Uuid
+  email               String     @unique @db.VarChar(320)
+  passwordHash        String     @map("password_hash") @db.VarChar(255)
+  firstName           String     @map("first_name") @db.VarChar(100)
+  lastName            String     @map("last_name") @db.VarChar(100)
+  role                UserRole   @default(EMPLOYEE)
+  status              UserStatus @default(PENDING_VERIFICATION)
+  failedLoginAttempts Int        @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?  @map("locked_until")
+  lastLoginAt         DateTime?  @map("last_login_at")
+  emailVerifiedAt     DateTime?  @map("email_verified_at")
+  isOnline            Boolean    @default(false) @map("is_online")
+  lastSeenAt          DateTime?  @map("last_seen_at")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  deletedAt           DateTime?  @map("deleted_at")
+
+  organization            Organization             @relation(fields: [orgId], references: [id])
+  sessions                Session[]
+  verificationTokens      VerificationToken[]
+  auditLogs               AuditLog[]
+  whatsappSessions        WhatsAppSession[]
+  ownedContacts           Contact[]                @relation("ContactOwner")
+  createdCampaigns        Campaign[]               @relation("CampaignCreator")
+  createdSequences        CampaignSequence[]       @relation("SequenceCreator")
+  authoredArticles        KbArticle[]              @relation("ArticleAuthor")
+  uploadedDocuments       KbDocument[]             @relation("DocumentUploader")
+  createdApiKeys          ApiKey[]                 @relation("ApiKeyCreator")
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  managedTeams            Team[]                   @relation("TeamManager")
+  teamMembers             TeamMember[]
+  createdSlaPolicies      SlaPolicy[]              @relation("SlaPolicyCreator")
+  twoFactor               UserTwoFactor?
+  assignedDeals           Deal[]                   @relation("DealAssignee")
+  helpTickets             HelpTicket[]
+  ticketReplies           TicketReply[]            @relation("TicketReplyUser")
+
+  @@unique([email, deletedAt], name: "unique_email_active")
+  @@index([orgId])
+  @@index([email])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([orgId, role, deletedAt])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// INVITATION
+// ─────────────────────────────────────────────
+
+model Invitation {
+  id          String           @id @default(uuid()) @db.Uuid
+  orgId       String           @map("org_id") @db.Uuid
+  email       String           @db.VarChar(320)
+  role        UserRole         @default(EMPLOYEE)
+  token       String           @unique @db.VarChar(255)
+  status      InvitationStatus @default(PENDING)
+  invitedById String           @map("invited_by_id") @db.Uuid
+  expiresAt   DateTime         @map("expires_at")
+  acceptedAt  DateTime?        @map("accepted_at")
+  revokedAt   DateTime?        @map("revoked_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, email, status], name: "unique_pending_invite")
+  @@index([token])
+  @@index([orgId])
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("invitations")
+}
+
+// ─────────────────────────────────────────────
+// SESSION (Refresh Tokens)
+// ─────────────────────────────────────────────
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  refreshToken String    @unique @map("refresh_token") @db.VarChar(512)
+  userAgent    String?   @map("user_agent") @db.VarChar(512)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([orgId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────
+// VERIFICATION TOKEN (Email Verify + Password Reset)
+// ─────────────────────────────────────────────
+
+model VerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique @db.VarChar(255)
+  type      TokenType
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([token])
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  orgId      String?     @map("org_id") @db.Uuid
+  userId     String?     @map("user_id") @db.Uuid
+  action     AuditAction
+  targetType String?     @map("target_type") @db.VarChar(100)
+  targetId   String?     @map("target_id") @db.VarChar(255)
+  metadata   Json?       @db.JsonB
+  ipAddress  String?     @map("ip_address") @db.VarChar(45)
+  userAgent  String?     @map("user_agent") @db.VarChar(512)
+  traceId    String?     @map("trace_id") @db.VarChar(64)
+  source     String?     @db.VarChar(50) // "api", "worker", "automation", "system"
+  duration   Int?        @db.Integer // request duration in ms
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([traceId])
+  @@index([orgId, action, createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// SYSTEM METRIC SNAPSHOT (EPIC 10 — Metrics & Monitoring)
+// ─────────────────────────────────────────────
+
+model SystemMetricSnapshot {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String?  @map("org_id") @db.Uuid
+  metric    String   @db.VarChar(100) // e.g. "api_latency", "queue_depth", "error_rate"
+  value     Float
+  tags      Json?    @db.JsonB // { endpoint: "/contacts", method: "GET", statusCode: 200 }
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([metric, createdAt])
+  @@index([orgId, metric, createdAt])
+  @@index([createdAt])
+  @@map("system_metric_snapshots")
+}
+
+// ─────────────────────────────────────────────
+// ALERT RULE (EPIC 10 — Error Tracking & Alerting)
+// ─────────────────────────────────────────────
+
+model AlertRule {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @db.VarChar(255)
+  metric          String    @db.VarChar(100)
+  condition       String    @db.VarChar(20) // "gt", "lt", "gte", "lte", "eq"
+  threshold       Float
+  windowSeconds   Int       @map("window_seconds")
+  channels        Json      @db.JsonB // ["email", "webhook"]
+  channelConfig   Json      @map("channel_config") @db.JsonB
+  enabled         Boolean   @default(true)
+  cooldownSeconds Int       @default(300) @map("cooldown_seconds")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  alerts AlertEvent[]
+
+  @@index([metric, enabled])
+  @@index([enabled])
+  @@map("alert_rules")
+}
+
+// ─────────────────────────────────────────────
+// ALERT EVENT (EPIC 10 — Alert History)
+// ─────────────────────────────────────────────
+
+model AlertEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  alertRuleId String   @map("alert_rule_id") @db.Uuid
+  metric      String   @db.VarChar(100)
+  value       Float
+  threshold   Float
+  message     String   @db.Text
+  channels    Json     @db.JsonB
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  alertRule AlertRule @relation(fields: [alertRuleId], references: [id])
+
+  @@index([alertRuleId])
+  @@index([metric, createdAt])
+  @@index([createdAt])
+  @@map("alert_events")
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP SESSION (EPIC 3)
+// ─────────────────────────────────────────────
+
+model WhatsAppSession {
+  id              String                @id @default(uuid()) @db.Uuid
+  orgId           String                @map("org_id") @db.Uuid
+  userId          String                @map("user_id") @db.Uuid
+  phoneNumber     String?               @map("phone_number") @db.VarChar(20)
+  status          WhatsAppSessionStatus @default(CONNECTING)
+  encryptedCreds  String?               @map("encrypted_creds") @db.Text
+  lastActiveAt    DateTime?             @map("last_active_at")
+  lastHeartbeatAt DateTime?             @map("last_heartbeat_at")
+  reconnectCount  Int                   @default(0) @map("reconnect_count")
+  idempotencyKey  String?               @unique @map("idempotency_key") @db.VarChar(255)
+  disconnectedAt  DateTime?             @map("disconnected_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  deletedAt       DateTime?             @map("deleted_at")
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  user         User              @relation(fields: [userId], references: [id])
+  messages     Message[]
+  authKeys     WhatsAppAuthKey[]
+  campaigns    Campaign[]
+  sequences    CampaignSequence[]
+
+  @@unique([userId, deletedAt], name: "unique_active_session_per_user")
+  @@index([orgId])
+  @@index([userId])
+  @@index([status])
+  @@index([orgId, status])
+  @@index([lastHeartbeatAt])
+  @@index([deletedAt])
+  @@map("whatsapp_sessions")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGE (EPIC 3)
+// ─────────────────────────────────────────────
+
+model Message {
+  id                String           @id @default(uuid()) @db.Uuid
+  orgId             String           @map("org_id") @db.Uuid
+  sessionId         String?          @map("session_id") @db.Uuid
+  conversationId    String?          @map("conversation_id") @db.Uuid
+  whatsappMessageId String?          @unique @map("whatsapp_message_id") @db.VarChar(255)
+  direction         MessageDirection
+  type              MessageType      @default(TEXT)
+  status            MessageStatus    @default(QUEUED)
+  contactPhone      String           @map("contact_phone") @db.VarChar(20)
+  contactName       String?          @map("contact_name") @db.VarChar(255)
+  body              String?          @db.Text
+  mediaUrl          String?          @map("media_url") @db.Text
+  mediaMimeType     String?          @map("media_mime_type") @db.VarChar(100)
+  mediaSize         Int?             @map("media_size")
+  metadata          Json?            @db.JsonB
+  interactivePayload Json?           @map("interactive_payload") @db.JsonB
+  idempotencyKey    String?          @unique @map("idempotency_key") @db.VarChar(255)
+  priority          Int              @default(0)
+  retryCount        Int              @default(0) @map("retry_count")
+  maxRetries        Int              @default(3) @map("max_retries")
+  nextRetryAt       DateTime?        @map("next_retry_at")
+  failedReason      String?          @map("failed_reason") @db.Text
+  processingAt      DateTime?        @map("processing_at")
+  sentAt            DateTime?        @map("sent_at")
+  deliveredAt       DateTime?        @map("delivered_at")
+  readAt            DateTime?        @map("read_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  deletedAt         DateTime?        @map("deleted_at")
+
+  // EPIC 16 — Multi-Channel fields
+  channelId         String?          @map("channel_id") @db.Uuid
+  channelType       ChannelType?     @map("channel_type")
+  externalMessageId String?          @unique @map("external_message_id") @db.VarChar(255)
+  channelPayload    Json?            @map("channel_payload") @db.JsonB
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  session           WhatsAppSession?   @relation(fields: [sessionId], references: [id])
+  conversation      Conversation?      @relation(fields: [conversationId], references: [id])
+  channel           Channel?           @relation(fields: [channelId], references: [id])
+  events            MessageEvent[]
+  campaignRecipient CampaignRecipient?
+
+  @@index([orgId])
+  @@index([sessionId])
+  @@index([conversationId])
+  @@index([contactPhone])
+  @@index([orgId, contactPhone])
+  @@index([status])
+  @@index([direction])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@index([deletedAt])
+  @@index([sessionId, contactPhone, createdAt])
+  @@index([status, nextRetryAt])
+  @@index([orgId, status, direction])
+  @@index([channelId])
+  @@index([channelType])
+  @@index([orgId, channelId, createdAt])
+  @@index([externalMessageId])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP AUTH KEY (EPIC 3 — Baileys Signal Protocol Keys)
+// ─────────────────────────────────────────────
+
+model WhatsAppAuthKey {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  keyType   String   @map("key_type") @db.VarChar(100)
+  keyId     String   @map("key_id") @db.VarChar(255)
+  keyData   String   @map("key_data") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  session WhatsAppSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, keyType, keyId], name: "unique_key_per_session")
+  @@index([sessionId])
+  @@index([sessionId, keyType])
+  @@map("whatsapp_auth_keys")
+}
+
+// ─────────────────────────────────────────────
+// CHANNEL (EPIC 16 — Multi-Channel Integration)
+// ─────────────────────────────────────────────
+
+model Channel {
+  id              String        @id @default(uuid()) @db.Uuid
+  orgId           String        @map("org_id") @db.Uuid
+  type            ChannelType
+  name            String        @db.VarChar(255)
+  status          ChannelStatus @default(PENDING_SETUP)
+
+  // Provider-specific identifiers
+  externalId      String?       @map("external_id") @db.VarChar(255)
+  externalHandle  String?       @map("external_handle") @db.VarChar(255)
+
+  // Encrypted credentials (AES-256-GCM)
+  encryptedConfig String?       @map("encrypted_config") @db.Text
+
+  // Channel capabilities (JSON array of supported features)
+  capabilities    Json          @default("[]") @db.JsonB
+
+  // Rate limiting
+  rateLimitPerMin Int           @default(60) @map("rate_limit_per_min")
+  rateLimitBurst  Int           @default(120) @map("rate_limit_burst")
+
+  // Webhook registration
+  webhookId       String?       @map("webhook_id") @db.VarChar(255)
+  webhookSecret   String?       @map("webhook_secret") @db.VarChar(255)
+
+  // Migration: link to legacy WhatsAppSession if migrated
+  legacySessionId String?       @unique @map("legacy_session_id") @db.Uuid
+
+  createdById     String        @map("created_by_id") @db.Uuid
+  verifiedAt      DateTime?     @map("verified_at")
+  suspendedAt     DateTime?     @map("suspended_at")
+  suspendReason   String?       @map("suspend_reason") @db.VarChar(500)
+  lastActiveAt    DateTime?     @map("last_active_at")
+  lastErrorAt     DateTime?     @map("last_error_at")
+  lastError       String?       @map("last_error") @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  organization    Organization  @relation(fields: [orgId], references: [id])
+  messages        Message[]
+  conversations   Conversation[]
+  rateLimits      ChannelRateLimit[]
+
+  @@unique([orgId, type, externalHandle, deletedAt], name: "unique_channel_handle_per_org")
+  @@index([orgId])
+  @@index([orgId, type])
+  @@index([type, status])
+  @@index([status])
+  @@index([externalId])
+  @@index([externalHandle])
+  @@index([lastActiveAt])
+  @@index([deletedAt])
+  @@map("channels")
+}
+
+// ─────────────────────────────────────────────
+// CHANNEL RATE LIMIT (EPIC 16 — Database-backed rate limiter)
+// ─────────────────────────────────────────────
+
+model ChannelRateLimit {
+  id          String   @id @default(uuid()) @db.Uuid
+  channelId   String   @map("channel_id") @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  windowStart DateTime @map("window_start")
+  count       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  channel     Channel  @relation(fields: [channelId], references: [id])
+
+  @@unique([channelId, windowStart], name: "unique_rate_window")
+  @@index([channelId, windowStart])
+  @@index([orgId])
+  @@map("channel_rate_limits")
+}
+
+// ─────────────────────────────────────────────
+// CONTACT (EPIC 4 — Contact & Lead Management)
+// ─────────────────────────────────────────────
+
+model Contact {
+  id           String        @id @default(uuid()) @db.Uuid
+  orgId        String        @map("org_id") @db.Uuid
+  phoneNumber  String        @map("phone_number") @db.VarChar(20)
+  name         String?       @db.VarChar(255)
+  email        String?       @db.VarChar(320)
+  avatarUrl    String?       @map("avatar_url") @db.VarChar(2048)
+  source       ContactSource @default(WHATSAPP)
+  leadStatus   LeadStatus    @default(NEW) @map("lead_status")
+  ownerId      String        @map("owner_id") @db.Uuid
+  sessionId    String?       @map("session_id") @db.Uuid
+  metadata     Json?         @db.JsonB
+  leadScore    Int           @default(0) @map("lead_score")
+  scoreUpdatedAt DateTime?   @map("score_updated_at")
+  mergedIntoId String?       @map("merged_into_id") @db.Uuid
+  optedOut     Boolean       @default(false) @map("opted_out")
+  optedOutAt   DateTime?     @map("opted_out_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  deletedAt    DateTime?     @map("deleted_at")
+
+  organization       Organization           @relation(fields: [orgId], references: [id])
+  owner              User                   @relation("ContactOwner", fields: [ownerId], references: [id])
+  mergedInto         Contact?               @relation("ContactMerge", fields: [mergedIntoId], references: [id])
+  mergedContacts     Contact[]              @relation("ContactMerge")
+  statusHistory      ContactStatusHistory[]
+  ownerHistory       ContactOwnerHistory[]
+  contactTags        ContactTag[]
+  notes              ContactNote[]
+  campaignRecipients CampaignRecipient[]
+  deals              Deal[]
+  scoreHistory       ContactScoreHistory[]
+  sequenceRecipients SequenceRecipient[]
+  consentRecords     ConsentRecord[]
+  dataRequests       DataRequest[]
+  contactProducts    ContactProduct[]
+
+  // Partial unique index managed via raw SQL migration:
+  // CREATE UNIQUE INDEX contacts_org_phone_active_unique ON contacts (org_id, phone_number) WHERE deleted_at IS NULL
+  @@index([orgId])
+  @@index([phoneNumber])
+  @@index([orgId, phoneNumber])
+  @@index([ownerId])
+  @@index([orgId, ownerId])
+  @@index([leadStatus])
+  @@index([orgId, leadStatus])
+  @@index([source])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@index([deletedAt])
+  @@index([mergedIntoId])
+  @@index([orgId, name])
+  @@index([orgId, leadScore])
+  @@map("contacts")
+}
+
+// ─────────────────────────────────────────────
+// CONTACT STATUS HISTORY (EPIC 4)
+// ─────────────────────────────────────────────
+
+model ContactStatusHistory {
+  id             String      @id @default(uuid()) @db.Uuid
+  contactId      String      @map("contact_id") @db.Uuid
+  orgId          String      @map("org_id") @db.Uuid
+  previousStatus LeadStatus? @map("previous_status")
+  newStatus      LeadStatus  @map("new_status")
+  changedById    String      @map("changed_by_id") @db.Uuid
+  reason         String?     @db.VarChar(500)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([orgId])
+  @@index([contactId, createdAt])
+  @@map("contact_status_history")
+}
+
+// ─────────────────────────────────────────────
+// CONTACT OWNER HISTORY (EPIC 4)
+// ─────────────────────────────────────────────
+
+model ContactOwnerHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  contactId       String   @map("contact_id") @db.Uuid
+  orgId           String   @map("org_id") @db.Uuid
+  previousOwnerId String?  @map("previous_owner_id") @db.Uuid
+  newOwnerId      String   @map("new_owner_id") @db.Uuid
+  assignedById    String   @map("assigned_by_id") @db.Uuid
+  reason          String?  @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([orgId])
+  @@index([contactId, createdAt])
+  @@map("contact_owner_history")
+}
+
+// ─────────────────────────────────────────────
+// TAG (EPIC 4 — org-scoped reusable tags)
+// ─────────────────────────────────────────────
+
+model Tag {
+  id        String    @id @default(uuid()) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  name      String    @db.VarChar(100)
+  color     String?   @db.VarChar(7)
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  contactTags ContactTag[]
+
+  @@unique([orgId, name, deletedAt], name: "unique_tag_name_per_org")
+  @@index([orgId])
+  @@index([deletedAt])
+  @@map("tags")
+}
+
+// ─────────────────────────────────────────────
+// CONTACT TAG (EPIC 4 — many-to-many)
+// ─────────────────────────────────────────────
+
+model ContactTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  contactId String   @map("contact_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  addedById String   @map("added_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+  tag     Tag     @relation(fields: [tagId], references: [id])
+
+  @@unique([contactId, tagId], name: "unique_contact_tag")
+  @@index([contactId])
+  @@index([tagId])
+  @@index([orgId])
+  @@map("contact_tags")
+}
+
+// ─────────────────────────────────────────────
+// CONTACT NOTE (EPIC 4)
+// ─────────────────────────────────────────────
+
+model ContactNote {
+  id        String    @id @default(uuid()) @db.Uuid
+  contactId String    @map("contact_id") @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  content   String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([orgId])
+  @@index([contactId, createdAt])
+  @@index([deletedAt])
+  @@map("contact_notes")
+}
+
+// ─────────────────────────────────────────────
+// CONVERSATION (EPIC 5 — Messaging Engine)
+// ─────────────────────────────────────────────
+
+model Conversation {
+  id                String             @id @default(uuid()) @db.Uuid
+  orgId             String             @map("org_id") @db.Uuid
+  sessionId         String?            @map("session_id") @db.Uuid
+  contactId         String?            @map("contact_id") @db.Uuid
+  contactPhone      String             @map("contact_phone") @db.VarChar(20)
+  status            ConversationStatus @default(OPEN)
+  lastMessageAt     DateTime?          @map("last_message_at")
+  lastMessageBody   String?            @map("last_message_body") @db.Text
+  unreadCount       Int                @default(0) @map("unread_count")
+  assignedToId      String?            @map("assigned_to_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  // EPIC 16 — Multi-Channel fields
+  channelId         String?            @map("channel_id") @db.Uuid
+  channelType       ChannelType?       @map("channel_type")
+  contactIdentifier String?            @map("contact_identifier") @db.VarChar(255)
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  channel      Channel?     @relation(fields: [channelId], references: [id])
+  messages     Message[]
+
+  @@unique([orgId, sessionId, contactPhone], name: "unique_conversation_per_contact_session")
+  @@unique([orgId, channelId, contactIdentifier], name: "unique_conversation_per_contact_channel")
+  @@index([orgId])
+  @@index([sessionId])
+  @@index([contactPhone])
+  @@index([orgId, status])
+  @@index([lastMessageAt])
+  @@index([orgId, lastMessageAt])
+  @@index([assignedToId])
+  @@index([deletedAt])
+  @@index([channelId])
+  @@index([channelType])
+  @@index([orgId, channelType, status])
+  @@map("conversations")
+}
+
+model ConversationLabel {
+  id              String   @id @default(uuid()) @db.Uuid
+  orgId           String   @map("org_id") @db.Uuid
+  conversationId  String   @map("conversation_id") @db.Uuid
+  name            String   @db.VarChar(50)
+  color           String?  @db.VarChar(7)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([conversationId, name], name: "unique_label_per_conversation")
+  @@index([orgId])
+  @@index([conversationId])
+  @@map("conversation_labels")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGE EVENT (EPIC 5 — Status Tracking Audit)
+// ─────────────────────────────────────────────
+
+model MessageEvent {
+  id        String        @id @default(uuid()) @db.Uuid
+  messageId String        @map("message_id") @db.Uuid
+  orgId     String        @map("org_id") @db.Uuid
+  status    MessageStatus
+  error     String?       @db.Text
+  metadata  Json?         @db.JsonB
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id])
+
+  @@index([messageId])
+  @@index([messageId, createdAt])
+  @@index([orgId])
+  @@map("message_events")
+}
+
+// ─────────────────────────────────────────────
+// DEAD LETTER MESSAGE (EPIC 5 — Permanent Failures)
+// ─────────────────────────────────────────────
+
+model DeadLetterMessage {
+  id                String      @id @default(uuid()) @db.Uuid
+  orgId             String      @map("org_id") @db.Uuid
+  originalMessageId String      @map("original_message_id") @db.Uuid
+  sessionId         String?     @map("session_id") @db.Uuid
+  channelId         String?     @map("channel_id") @db.Uuid
+  queueName         String?     @map("queue_name") @db.VarChar(100)
+  contactPhone      String      @map("contact_phone") @db.VarChar(20)
+  type              MessageType
+  body              String?     @db.Text
+  mediaUrl          String?     @map("media_url") @db.VarChar(2048)
+  failedReason      String      @map("failed_reason") @db.Text
+  retryCount        Int         @map("retry_count")
+  lastJobId         String?     @map("last_job_id") @db.VarChar(255)
+  metadata          Json?       @db.JsonB
+  reprocessedAt     DateTime?   @map("reprocessed_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([originalMessageId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([reprocessedAt])
+  @@index([orgId, reprocessedAt])
+  @@map("dead_letter_messages")
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGN (EPIC 6 — Campaign Management)
+// ─────────────────────────────────────────────
+
+model Campaign {
+  id              String               @id @default(uuid()) @db.Uuid
+  orgId           String               @map("org_id") @db.Uuid
+  sessionId       String               @map("session_id") @db.Uuid
+  name            String               @db.VarChar(255)
+  description     String?              @db.Text
+  messageType     MessageType          @default(TEXT) @map("message_type")
+  messageBody     String?              @map("message_body") @db.Text
+  mediaUrl        String?              @map("media_url") @db.VarChar(2048)
+  mediaMimeType   String?              @map("media_mime_type") @db.VarChar(100)
+  audienceType    CampaignAudienceType @default(ALL) @map("audience_type")
+  audienceFilters Json?                @map("audience_filters") @db.JsonB
+  status          CampaignStatus       @default(DRAFT)
+  scheduledAt     DateTime?            @map("scheduled_at")
+  timezone        String               @default("UTC") @db.VarChar(100)
+  startedAt       DateTime?            @map("started_at")
+  completedAt     DateTime?            @map("completed_at")
+  totalRecipients Int                  @default(0) @map("total_recipients")
+  sentCount       Int                  @default(0) @map("sent_count")
+  deliveredCount  Int                  @default(0) @map("delivered_count")
+  failedCount     Int                  @default(0) @map("failed_count")
+  readCount       Int                  @default(0) @map("read_count")
+  createdById     String               @map("created_by_id") @db.Uuid
+  idempotencyKey  String?              @unique @map("idempotency_key") @db.VarChar(255)
+  metadata        Json?                @db.JsonB
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  deletedAt       DateTime?            @map("deleted_at")
+
+  productId   String?   @map("product_id") @db.Uuid
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  session      WhatsAppSession     @relation(fields: [sessionId], references: [id])
+  createdBy    User                @relation("CampaignCreator", fields: [createdById], references: [id])
+  product      Product?            @relation("CampaignProduct", fields: [productId], references: [id])
+  recipients   CampaignRecipient[]
+  events       CampaignEvent[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([orgId, createdAt])
+  @@index([createdById])
+  @@index([productId])
+  @@index([deletedAt])
+  @@map("campaigns")
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGN RECIPIENT (EPIC 6)
+// ─────────────────────────────────────────────
+
+model CampaignRecipient {
+  id           String                  @id @default(uuid()) @db.Uuid
+  campaignId   String                  @map("campaign_id") @db.Uuid
+  orgId        String                  @map("org_id") @db.Uuid
+  contactId    String                  @map("contact_id") @db.Uuid
+  contactPhone String                  @map("contact_phone") @db.VarChar(20)
+  messageId    String?                 @unique @map("message_id") @db.Uuid
+  status       CampaignRecipientStatus @default(PENDING)
+  failedReason String?                 @map("failed_reason") @db.Text
+  processedAt  DateTime?               @map("processed_at")
+  batchNumber  Int                     @map("batch_number")
+  createdAt    DateTime                @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  contact  Contact  @relation(fields: [contactId], references: [id])
+  message  Message? @relation(fields: [messageId], references: [id])
+
+  @@unique([campaignId, contactId], name: "unique_recipient_per_campaign")
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@index([campaignId, batchNumber])
+  @@index([messageId])
+  @@index([orgId])
+  @@map("campaign_recipients")
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGN EVENT (EPIC 6 — Status Audit Trail)
+// ─────────────────────────────────────────────
+
+model CampaignEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  campaignId     String          @map("campaign_id") @db.Uuid
+  orgId          String          @map("org_id") @db.Uuid
+  previousStatus CampaignStatus? @map("previous_status")
+  newStatus      CampaignStatus  @map("new_status")
+  triggeredById  String?         @map("triggered_by_id") @db.Uuid
+  metadata       Json?           @db.JsonB
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@index([campaignId])
+  @@index([campaignId, createdAt])
+  @@index([orgId])
+  @@map("campaign_events")
+}
+
+// ─────────────────────────────────────────────
+// DRIP CAMPAIGN SEQUENCES (Phase 3)
+// ─────────────────────────────────────────────
+
+model CampaignSequence {
+  id              String         @id @default(uuid()) @db.Uuid
+  orgId           String         @map("org_id") @db.Uuid
+  sessionId       String         @map("session_id") @db.Uuid
+  name            String         @db.VarChar(255)
+  description     String?        @db.Text
+  status          SequenceStatus @default(DRAFT)
+  audienceType    CampaignAudienceType @default(FILTERED) @map("audience_type")
+  audienceFilters Json?          @map("audience_filters") @db.JsonB
+  exitOnReply     Boolean        @default(true) @map("exit_on_reply")
+  createdById     String         @map("created_by_id") @db.Uuid
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  totalRecipients Int            @default(0) @map("total_recipients")
+  completedCount  Int            @default(0) @map("completed_count")
+  exitedCount     Int            @default(0) @map("exited_count")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  organization Organization             @relation(fields: [orgId], references: [id])
+  session      WhatsAppSession          @relation(fields: [sessionId], references: [id])
+  createdBy    User                     @relation("SequenceCreator", fields: [createdById], references: [id])
+  steps        CampaignSequenceStep[]
+  recipients   SequenceRecipient[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([deletedAt])
+  @@map("campaign_sequences")
+}
+
+model CampaignSequenceStep {
+  id            String      @id @default(uuid()) @db.Uuid
+  sequenceId    String      @map("sequence_id") @db.Uuid
+  orgId         String      @map("org_id") @db.Uuid
+  stepOrder     Int         @map("step_order")
+  name          String?     @db.VarChar(255)
+  messageType   MessageType @default(TEXT) @map("message_type")
+  messageBody   String?     @map("message_body") @db.Text
+  mediaUrl      String?     @map("media_url") @db.VarChar(2048)
+  mediaMimeType String?     @map("media_mime_type") @db.VarChar(100)
+  delayMinutes  Int         @default(1440) @map("delay_minutes") // delay from previous step (default 24h)
+  conditions    Json?       @db.JsonB // Array<{ keyword: string; goToStepOrder: number }>
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  sequence     CampaignSequence       @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  recipientSteps SequenceRecipientStep[]
+
+  @@unique([sequenceId, stepOrder])
+  @@index([sequenceId])
+  @@map("campaign_sequence_steps")
+}
+
+model SequenceRecipient {
+  id            String                  @id @default(uuid()) @db.Uuid
+  sequenceId    String                  @map("sequence_id") @db.Uuid
+  orgId         String                  @map("org_id") @db.Uuid
+  contactId     String                  @map("contact_id") @db.Uuid
+  contactPhone  String                  @map("contact_phone") @db.VarChar(20)
+  status        SequenceRecipientStatus @default(ACTIVE)
+  currentStep   Int                     @default(0) @map("current_step") // index of last completed step
+  nextStepAt    DateTime?               @map("next_step_at") // when next step should fire
+  exitReason    String?                 @map("exit_reason") @db.VarChar(255)
+  enrolledAt    DateTime                @default(now()) @map("enrolled_at")
+  completedAt   DateTime?               @map("completed_at")
+  createdAt     DateTime                @default(now()) @map("created_at")
+
+  sequence CampaignSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contact  Contact          @relation(fields: [contactId], references: [id])
+  steps    SequenceRecipientStep[]
+
+  @@unique([sequenceId, contactId])
+  @@index([sequenceId, status])
+  @@index([status, nextStepAt])
+  @@index([orgId])
+  @@index([contactId])
+  @@map("sequence_recipients")
+}
+
+model SequenceRecipientStep {
+  id           String    @id @default(uuid()) @db.Uuid
+  recipientId  String    @map("recipient_id") @db.Uuid
+  stepId       String    @map("step_id") @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  messageId    String?   @map("message_id") @db.Uuid // FK to Message
+  status       CampaignRecipientStatus @default(PENDING)
+  scheduledAt  DateTime  @map("scheduled_at")
+  processedAt  DateTime? @map("processed_at")
+  failedReason String?   @map("failed_reason") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  recipient SequenceRecipient    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  step      CampaignSequenceStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, stepId])
+  @@index([status, scheduledAt])
+  @@index([orgId])
+  @@map("sequence_recipient_steps")
+}
+
+model SequenceTemplate {
+  id            String      @id @default(uuid()) @db.Uuid
+  orgId         String      @map("org_id") @db.Uuid
+  name          String      @db.VarChar(255)
+  category      String?     @db.VarChar(100)
+  messageType   MessageType @default(TEXT) @map("message_type")
+  messageBody   String?     @map("message_body") @db.Text
+  mediaUrl      String?     @map("media_url") @db.VarChar(2048)
+  mediaMimeType String?     @map("media_mime_type") @db.VarChar(100)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  deletedAt     DateTime?   @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, category])
+  @@map("sequence_templates")
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULED MESSAGE (EPIC 7 — Message Scheduling)
+// ─────────────────────────────────────────────
+
+model ScheduledMessage {
+  id             String                 @id @default(uuid()) @db.Uuid
+  orgId          String                 @map("org_id") @db.Uuid
+  sessionId      String                 @map("session_id") @db.Uuid
+  contactPhone   String                 @map("contact_phone") @db.VarChar(20)
+  messageType    MessageType            @default(TEXT) @map("message_type")
+  messageBody    String?                @map("message_body") @db.Text
+  mediaUrl       String?                @map("media_url") @db.VarChar(2048)
+  mediaMimeType  String?                @map("media_mime_type") @db.VarChar(100)
+  status         ScheduledMessageStatus @default(PENDING)
+  scheduledAt    DateTime               @map("scheduled_at")
+  timezone       String                 @default("UTC") @db.VarChar(100)
+  sentMessageId  String?                @unique @map("sent_message_id") @db.Uuid
+  failedReason   String?                @map("failed_reason") @db.Text
+  retryCount     Int                    @default(0) @map("retry_count")
+  maxRetries     Int                    @default(3) @map("max_retries")
+  pgBossJobId    String?                @map("pg_boss_job_id") @db.VarChar(255)
+  idempotencyKey String?                @unique @map("idempotency_key") @db.VarChar(255)
+  createdById    String                 @map("created_by_id") @db.Uuid
+  metadata       Json?                  @db.JsonB
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  deletedAt      DateTime?              @map("deleted_at")
+
+  productId   String?   @map("product_id") @db.Uuid
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  product      Product?     @relation("ScheduledMessageProduct", fields: [productId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([status, scheduledAt])
+  @@index([sessionId])
+  @@index([createdById])
+  @@index([scheduledAt])
+  @@index([productId])
+  @@index([deletedAt])
+  @@map("scheduled_messages")
+}
+
+// ─────────────────────────────────────────────
+// AUTOMATION RULE (EPIC 7 — Automation Engine)
+// ─────────────────────────────────────────────
+
+model AutomationRule {
+  id                      String                @id @default(uuid()) @db.Uuid
+  orgId                   String                @map("org_id") @db.Uuid
+  name                    String                @db.VarChar(255)
+  description             String?               @db.Text
+  triggerType             AutomationTriggerType @map("trigger_type")
+  triggerConfig           Json                  @map("trigger_config") @db.JsonB
+  conditions              Json?                 @db.JsonB
+  status                  AutomationRuleStatus  @default(ACTIVE)
+  priority                Int                   @default(0)
+  maxExecutionsPerContact Int                   @default(0) @map("max_executions_per_contact")
+  cooldownSeconds         Int                   @default(0) @map("cooldown_seconds")
+  loopPreventionKey       String?               @map("loop_prevention_key") @db.VarChar(255)
+  createdById             String                @map("created_by_id") @db.Uuid
+  metadata                Json?                 @db.JsonB
+  lastTriggeredAt         DateTime?             @map("last_triggered_at")
+  executionCount          Int                   @default(0) @map("execution_count")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  deletedAt               DateTime?             @map("deleted_at")
+
+  productId   String?   @map("product_id") @db.Uuid
+
+  organization Organization             @relation(fields: [orgId], references: [id])
+  product      Product?                 @relation("AutomationRuleProduct", fields: [productId], references: [id])
+  actions      AutomationAction[]
+  executions   AutomationExecutionLog[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([orgId, triggerType, status])
+  @@index([status])
+  @@index([triggerType])
+  @@index([createdById])
+  @@index([productId])
+  @@index([deletedAt])
+  @@map("automation_rules")
+}
+
+// ─────────────────────────────────────────────
+// AUTOMATION ACTION (EPIC 7 — Rule Actions)
+// ─────────────────────────────────────────────
+
+model AutomationAction {
+  id           String               @id @default(uuid()) @db.Uuid
+  ruleId       String               @map("rule_id") @db.Uuid
+  orgId        String               @map("org_id") @db.Uuid
+  actionType   AutomationActionType @map("action_type")
+  actionConfig Json                 @map("action_config") @db.JsonB
+  orderIndex   Int                  @default(0) @map("order_index")
+  delaySeconds Int                  @default(0) @map("delay_seconds")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([ruleId, orderIndex])
+  @@index([orgId])
+  @@map("automation_actions")
+}
+
+// ─────────────────────────────────────────────
+// AUTOMATION EXECUTION LOG (EPIC 7 — Execution Tracking)
+// ─────────────────────────────────────────────
+
+model AutomationExecutionLog {
+  id               String                    @id @default(uuid()) @db.Uuid
+  ruleId           String                    @map("rule_id") @db.Uuid
+  orgId            String                    @map("org_id") @db.Uuid
+  contactId        String?                   @map("contact_id") @db.Uuid
+  triggerEventType String                    @map("trigger_event_type") @db.VarChar(100)
+  triggerPayload   Json                      @map("trigger_payload") @db.JsonB
+  status           AutomationExecutionStatus @default(PENDING)
+  actionResults    Json?                     @map("action_results") @db.JsonB
+  error            String?                   @db.Text
+  idempotencyKey   String?                   @unique @map("idempotency_key") @db.VarChar(255)
+  startedAt        DateTime?                 @map("started_at")
+  completedAt      DateTime?                 @map("completed_at")
+  retryCount       Int                       @default(0) @map("retry_count")
+  executionTimeMs  Int?                      @map("execution_time_ms")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId])
+  @@index([ruleId, status])
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([orgId, createdAt])
+  @@index([contactId])
+  @@index([ruleId, contactId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("automation_execution_logs")
+}
+
+// ─────────────────────────────────────────────
+// PERMISSION (EPIC 8 — RBAC & Access Control)
+// ─────────────────────────────────────────────
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  resource    String   @db.VarChar(100) // e.g. "contacts", "campaigns"
+  action      String   @db.VarChar(100) // e.g. "read", "create", "delete"
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action], name: "unique_permission")
+  @@index([resource])
+  @@map("permissions")
+}
+
+// ─────────────────────────────────────────────
+// ROLE PERMISSION (EPIC 8 — Role → Permission mapping)
+// ─────────────────────────────────────────────
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  role         UserRole
+  permissionId String   @map("permission_id") @db.Uuid
+  grantedById  String?  @map("granted_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, role, permissionId], name: "unique_role_permission_per_org")
+  @@index([orgId])
+  @@index([orgId, role])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ─────────────────────────────────────────────
+// PLAN (EPIC 9 — Subscription Plan Definitions)
+// ─────────────────────────────────────────────
+
+model Plan {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String       @db.VarChar(100) // Free, Starter, Pro, Enterprise
+  slug         String       @db.VarChar(100) // free, starter, pro, enterprise
+  description  String?      @db.Text
+  planType     PlanType     @default(CRM) @map("plan_type")
+  billingCycle BillingCycle @map("billing_cycle")
+  priceInCents Int          @map("price_in_cents") // Store in cents to avoid float issues
+  currency     String       @default("USD") @db.VarChar(3)
+  version      Int          @default(1)
+  isActive     Boolean      @default(true) @map("is_active")
+  isDefault    Boolean      @default(false) @map("is_default") // The plan assigned on org creation
+  trialDays    Int          @default(0) @map("trial_days")
+  sortOrder    Int          @default(0) @map("sort_order")
+
+  // ── Hard Limits ──
+  maxUsers             Int @default(1) @map("max_users")
+  maxWhatsappSessions  Int @default(1) @map("max_whatsapp_sessions")
+  maxMessagesPerMonth  Int @default(1000) @map("max_messages_per_month")
+  maxCampaignsPerMonth Int @default(0) @map("max_campaigns_per_month")
+
+  // ── Trial Limits (override during TRIAL period; NULL = use plan limit) ──
+  trialMaxUsers             Int? @map("trial_max_users")
+  trialMaxWhatsappSessions  Int? @map("trial_max_whatsapp_sessions")
+  trialMaxMessagesPerMonth  Int? @map("trial_max_messages_per_month")
+  trialMaxCampaignsPerMonth Int? @map("trial_max_campaigns_per_month")
+
+  // ── Feature Flags ──
+  campaignsEnabled  Boolean @default(false) @map("campaigns_enabled")
+  automationEnabled Boolean @default(false) @map("automation_enabled")
+  apiEnabled        Boolean @default(false) @map("api_enabled")
+
+  // ── API Limits ──
+  maxApiCallsPerMonth  Int     @default(0)     @map("max_api_calls_per_month")
+
+  // ── AI Credits ──
+  aiCreditsPerMonth    Int     @default(0)     @map("ai_credits_per_month")
+  aiEnabled            Boolean @default(false) @map("ai_enabled")
+
+  // ── Message Templates ──
+  maxMessageTemplates  Int     @default(10)    @map("max_message_templates")
+
+  // ── Shopify Integration ──
+  shopifyEnabled       Boolean @default(false) @map("shopify_enabled")
+  maxShopifyStores     Int     @default(0)     @map("max_shopify_stores")
+
+  // ── Soft Limit Thresholds (percentage, e.g. 80 = 80%) ──
+  softLimitPercent Int @default(80) @map("soft_limit_percent")
+
+  // ── Grace Period (days after expiry before feature lockout) ──
+  gracePeriodDays Int @default(3) @map("grace_period_days")
+
+  metadata  Json?     @db.JsonB
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  subscriptions Subscription[]
+
+  @@unique([slug, billingCycle, version], name: "unique_plan_version")
+  @@index([isActive])
+  @@index([slug])
+  @@index([deletedAt])
+  @@index([isActive, sortOrder])
+  @@map("plans")
+}
+
+// ─────────────────────────────────────────────
+// SUBSCRIPTION (EPIC 9 — Org → Plan binding)
+// ─────────────────────────────────────────────
+
+model Subscription {
+  id           String             @id @default(uuid()) @db.Uuid
+  orgId        String             @map("org_id") @db.Uuid
+  planId       String             @map("plan_id") @db.Uuid
+  status       SubscriptionStatus @default(TRIAL)
+  billingCycle BillingCycle       @map("billing_cycle")
+  priceInCents Int                @map("price_in_cents") // Locked at subscribe time
+  currency     String             @default("USD") @db.VarChar(3)
+
+  // ── Lifecycle dates ──
+  trialEndsAt        DateTime? @map("trial_ends_at")
+  currentPeriodStart DateTime  @map("current_period_start")
+  currentPeriodEnd   DateTime  @map("current_period_end")
+  graceEndsAt        DateTime? @map("grace_ends_at")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelReason       String?   @map("cancel_reason") @db.VarChar(500)
+
+  // ── Downgrade scheduling ──
+  scheduledPlanId   String?   @map("scheduled_plan_id") @db.Uuid
+  scheduledChangeAt DateTime? @map("scheduled_change_at")
+
+  // ── External payment gateway ──
+  externalId         String? @unique @map("external_id") @db.VarChar(255) // Stripe subscription ID
+  externalCustomerId String? @map("external_customer_id") @db.VarChar(255)
+
+  idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(255)
+  metadata       Json?    @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  plan         Plan         @relation(fields: [planId], references: [id])
+  payments     Payment[]
+  invoices     Invoice[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([status])
+  @@index([planId])
+  @@index([currentPeriodEnd])
+  @@index([trialEndsAt])
+  @@index([graceEndsAt])
+  @@index([scheduledChangeAt])
+  @@index([externalId])
+  @@map("subscriptions")
+}
+
+// ─────────────────────────────────────────────
+// USAGE RECORD (EPIC 9 — Per-cycle usage counters)
+// ─────────────────────────────────────────────
+
+model UsageRecord {
+  id              String          @id @default(uuid()) @db.Uuid
+  orgId           String          @map("org_id") @db.Uuid
+  metricType      UsageMetricType @map("metric_type")
+  periodStart     DateTime        @map("period_start")
+  periodEnd       DateTime        @map("period_end")
+  currentValue    Int             @default(0) @map("current_value")
+  limitValue      Int             @map("limit_value") // Snapshot of plan limit at period start
+  lastIncrementAt DateTime?       @map("last_increment_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, metricType, periodStart], name: "unique_usage_per_org_metric_period")
+  @@index([orgId])
+  @@index([orgId, metricType])
+  @@index([orgId, periodEnd])
+  @@index([periodEnd])
+  @@map("usage_records")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENT (EPIC 9 — Payment transactions)
+// ─────────────────────────────────────────────
+
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  orgId          String        @map("org_id") @db.Uuid
+  subscriptionId String        @map("subscription_id") @db.Uuid
+  amountInCents  Int           @map("amount_in_cents")
+  currency       String        @default("USD") @db.VarChar(3)
+  status         PaymentStatus @default(PENDING)
+  externalId     String?       @unique @map("external_id") @db.VarChar(255) // Stripe payment intent ID
+  paymentMethod  String?       @map("payment_method") @db.VarChar(50) // card, upi, etc.
+  failedReason   String?       @map("failed_reason") @db.Text
+  retryCount     Int           @default(0) @map("retry_count")
+  maxRetries     Int           @default(3) @map("max_retries")
+  nextRetryAt    DateTime?     @map("next_retry_at")
+  idempotencyKey String?       @unique @map("idempotency_key") @db.VarChar(255)
+  metadata       Json?         @db.JsonB
+  paidAt         DateTime?     @map("paid_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  invoice      Invoice?
+
+  @@index([orgId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([externalId])
+  @@index([status, nextRetryAt])
+  @@index([orgId, createdAt])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// INVOICE (EPIC 9 — Invoice records)
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  orgId          String        @map("org_id") @db.Uuid
+  subscriptionId String        @map("subscription_id") @db.Uuid
+  paymentId      String?       @unique @map("payment_id") @db.Uuid
+  invoiceNumber  String        @unique @map("invoice_number") @db.VarChar(50)
+  amountInCents  Int           @map("amount_in_cents")
+  currency       String        @default("USD") @db.VarChar(3)
+  status         InvoiceStatus @default(DRAFT)
+  periodStart    DateTime      @map("period_start")
+  periodEnd      DateTime      @map("period_end")
+  lineItems      Json          @map("line_items") @db.JsonB // [{description, amount, quantity}]
+  pdfUrl         String?       @map("pdf_url") @db.VarChar(2048)
+  externalId     String?       @unique @map("external_id") @db.VarChar(255)
+  dueDate        DateTime      @map("due_date")
+  paidAt         DateTime?     @map("paid_at")
+  metadata       Json?         @db.JsonB
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  payment      Payment?     @relation(fields: [paymentId], references: [id])
+
+  @@index([orgId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([orgId, createdAt])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// ─────────────────────────────────────────────
+// SUBSCRIPTION EVENT (EPIC 9 — Subscription lifecycle audit)
+// ─────────────────────────────────────────────
+
+model SubscriptionEvent {
+  id             String              @id @default(uuid()) @db.Uuid
+  orgId          String              @map("org_id") @db.Uuid
+  subscriptionId String              @map("subscription_id") @db.Uuid
+  previousStatus SubscriptionStatus? @map("previous_status")
+  newStatus      SubscriptionStatus  @map("new_status")
+  previousPlanId String?             @map("previous_plan_id") @db.Uuid
+  newPlanId      String?             @map("new_plan_id") @db.Uuid
+  triggeredById  String?             @map("triggered_by_id") @db.Uuid
+  reason         String?             @db.VarChar(500)
+  metadata       Json?               @db.JsonB
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@index([subscriptionId])
+  @@index([subscriptionId, createdAt])
+  @@index([orgId])
+  @@map("subscription_events")
+}
+
+// ─────────────────────────────────────────────
+// EPIC 11 — Notifications & Alerts
+// ─────────────────────────────────────────────
+
+enum NotificationType {
+  MESSAGE_RECEIVED
+  CONTACT_ASSIGNED
+  CONTACT_REASSIGNED
+  CAMPAIGN_COMPLETED
+  CAMPAIGN_FAILED
+  AUTOMATION_EXECUTED
+  AUTOMATION_FAILED
+  WHATSAPP_SESSION_DISCONNECTED
+  PAYMENT_FAILED
+  USAGE_LIMIT_WARNING
+  USAGE_LIMIT_REACHED
+  SUBSCRIPTION_EXPIRING
+  SYSTEM_ALERT
+  SLA_BREACH
+  TICKET_REPLY
+  TICKET_RESOLVED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  BILLING
+  TECHNICAL
+  GENERAL
+  FEATURE_REQUEST
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+model Notification {
+  id             String               @id @default(uuid()) @db.Uuid
+  orgId          String               @map("org_id") @db.Uuid
+  userId         String               @map("user_id") @db.Uuid
+  type           NotificationType
+  priority       NotificationPriority @default(NORMAL)
+  title          String               @db.VarChar(255)
+  body           String               @db.VarChar(1000)
+  data           Json?                @db.JsonB
+  isRead         Boolean              @default(false) @map("is_read")
+  readAt         DateTime?            @map("read_at")
+  channel        NotificationChannel  @default(IN_APP)
+  groupKey       String?              @map("group_key") @db.VarChar(255)
+  idempotencyKey String?              @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  org  Organization @relation(fields: [orgId], references: [id])
+  user User         @relation(fields: [userId], references: [id])
+
+  @@unique([idempotencyKey], name: "unique_notification_idempotency")
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([orgId, userId, createdAt(sort: Desc)])
+  @@index([userId, type, createdAt(sort: Desc)])
+  @@index([groupKey])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id               String           @id @default(uuid()) @db.Uuid
+  orgId            String           @map("org_id") @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  notificationType NotificationType @map("notification_type")
+  inAppEnabled     Boolean          @default(true) @map("in_app_enabled")
+  emailEnabled     Boolean          @default(true) @map("email_enabled")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  org  Organization @relation(fields: [orgId], references: [id])
+  user User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, notificationType], name: "unique_user_notification_pref")
+  @@index([orgId, userId])
+  @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────
+// EPIC 12 — Settings & Configuration (System Control Layer)
+// ─────────────────────────────────────────────
+
+enum SettingScope {
+  SYSTEM
+  PLAN
+  ORG
+}
+
+enum IntegrationProvider {
+  SMTP
+  SENDGRID
+  STRIPE
+  RAZORPAY
+  CUSTOM_WEBHOOK
+  SHOPIFY
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum WebhookEventType {
+  MESSAGE_RECEIVED
+  MESSAGE_SENT
+  MESSAGE_DELIVERED
+  MESSAGE_FAILED
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CAMPAIGN_COMPLETED
+  CAMPAIGN_FAILED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  SUBSCRIPTION_CHANGED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+// ─────────────────────────────────────────────
+// SETTING (EPIC 12 — Key-Value Configuration Store)
+// ─────────────────────────────────────────────
+
+model Setting {
+  id          String       @id @default(uuid()) @db.Uuid
+  orgId       String?      @map("org_id") @db.Uuid
+  scope       SettingScope @default(ORG)
+  category    String       @db.VarChar(100) // "whatsapp", "messaging", "branding", "general"
+  key         String       @db.VarChar(255) // "message_delay_ms", "retry_limit", "auto_reconnect"
+  value       Json         @db.JsonB // Flexible typed values
+  valueType   String       @map("value_type") @db.VarChar(20) // "string", "number", "boolean", "json"
+  description String?      @db.VarChar(500)
+  isSecret    Boolean      @default(false) @map("is_secret") // Mask in API responses
+  version     Int          @default(1) // Optimistic concurrency control
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, scope, category, key], name: "unique_setting_per_scope")
+  @@index([orgId])
+  @@index([scope])
+  @@index([category])
+  @@index([orgId, category])
+  @@index([scope, category, key])
+  @@index([deletedAt])
+  @@map("settings")
+}
+
+// ─────────────────────────────────────────────
+// FEATURE FLAG (EPIC 12 — Dynamic Feature Control)
+// ─────────────────────────────────────────────
+
+model FeatureFlag {
+  id          String       @id @default(uuid()) @db.Uuid
+  orgId       String?      @map("org_id") @db.Uuid
+  scope       SettingScope @default(ORG)
+  featureKey  String       @map("feature_key") @db.VarChar(100) // "campaigns", "automation", "advanced_analytics"
+  enabled     Boolean      @default(false)
+  metadata    Json?        @db.JsonB // Extra config: rollout %, plan tiers, etc.
+  description String?      @db.VarChar(500)
+  expiresAt   DateTime?    @map("expires_at") // Auto-disable after date
+  version     Int          @default(1)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, scope, featureKey], name: "unique_feature_flag_per_scope")
+  @@index([orgId])
+  @@index([scope])
+  @@index([featureKey])
+  @@index([orgId, featureKey])
+  @@index([scope, featureKey])
+  @@index([enabled])
+  @@index([expiresAt])
+  @@index([deletedAt])
+  @@map("feature_flags")
+}
+
+// ─────────────────────────────────────────────
+// INTEGRATION CONFIG (EPIC 12 — External Service Connections)
+// ─────────────────────────────────────────────
+
+model IntegrationConfig {
+  id             String              @id @default(uuid()) @db.Uuid
+  orgId          String              @map("org_id") @db.Uuid
+  provider       IntegrationProvider
+  displayName    String              @map("display_name") @db.VarChar(255)
+  credentials    String              @db.Text // AES-256-GCM encrypted JSON
+  configuration  Json?               @db.JsonB // Non-secret config (e.g. sender name, region)
+  status         IntegrationStatus   @default(INACTIVE)
+  lastTestedAt   DateTime?           @map("last_tested_at")
+  lastError      String?             @map("last_error") @db.Text
+  version        Int                 @default(1)
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  deletedAt      DateTime?           @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, provider], name: "unique_integration_per_org_provider")
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([provider])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("integration_configs")
+}
+
+// ─────────────────────────────────────────────
+// WEBHOOK (EPIC 12 — Webhook Endpoints)
+// ─────────────────────────────────────────────
+
+model Webhook {
+  id             String   @id @default(uuid()) @db.Uuid
+  orgId          String   @map("org_id") @db.Uuid
+  url            String   @db.VarChar(2048)
+  secret         String   @db.VarChar(255) // HMAC signing secret
+  description    String?  @db.VarChar(500)
+  events         Json     @db.JsonB // WebhookEventType[]
+  headers        Json?    @db.JsonB // Custom headers { "X-Custom": "value" }
+  enabled        Boolean  @default(true)
+  maxRetries     Int      @default(3) @map("max_retries")
+  timeoutMs      Int      @default(10000) @map("timeout_ms")
+  lastDeliveryAt DateTime? @map("last_delivery_at")
+  failureCount   Int      @default(0) @map("failure_count") // Consecutive failures
+  disabledAt     DateTime? @map("disabled_at") // Auto-disabled after too many failures
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization       @relation(fields: [orgId], references: [id])
+  deliveries   WebhookDelivery[]
+
+  @@index([orgId])
+  @@index([orgId, enabled])
+  @@index([enabled])
+  @@index([deletedAt])
+  @@map("webhooks")
+}
+
+// ─────────────────────────────────────────────
+// WEBHOOK DELIVERY (EPIC 12 — Delivery Audit Log)
+// ─────────────────────────────────────────────
+
+model WebhookDelivery {
+  id             String                @id @default(uuid()) @db.Uuid
+  webhookId      String                @map("webhook_id") @db.Uuid
+  orgId          String                @map("org_id") @db.Uuid
+  eventType      String                @map("event_type") @db.VarChar(50)
+  payload        Json                  @db.JsonB
+  status         WebhookDeliveryStatus @default(PENDING)
+  httpStatus     Int?                  @map("http_status")
+  responseBody   String?               @map("response_body") @db.Text
+  error          String?               @db.Text
+  retryCount     Int                   @default(0) @map("retry_count")
+  maxRetries     Int                   @default(3) @map("max_retries")
+  nextRetryAt    DateTime?             @map("next_retry_at")
+  idempotencyKey String?               @unique @map("idempotency_key") @db.VarChar(255)
+  duration       Int?                  @db.Integer // Response time in ms
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id])
+
+  @@index([webhookId])
+  @@index([webhookId, createdAt])
+  @@index([orgId])
+  @@index([status])
+  @@index([status, nextRetryAt])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@map("webhook_deliveries")
+}
+
+// ─────────────────────────────────────────────
+// TEAMS
+// ─────────────────────────────────────────────
+
+model Team {
+  id        String    @id @default(uuid()) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  name      String    @db.VarChar(255)
+  managerId String    @map("manager_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  manager      User         @relation("TeamManager", fields: [managerId], references: [id])
+  members      TeamMember[]
+
+  @@unique([orgId, name, deletedAt], name: "unique_team_name_per_org")
+  @@index([orgId])
+  @@index([managerId])
+  @@index([deletedAt])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId], name: "unique_member_per_team")
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// ─────────────────────────────────────────────
+// CANNED RESPONSES (Quick Replies)
+// ─────────────────────────────────────────────
+
+model CannedResponse {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  title       String   @db.VarChar(100)
+  content     String   @db.Text
+  shortcut    String?  @db.VarChar(50)
+  category    String?  @db.VarChar(100)
+  createdById String   @map("created_by_id") @db.Uuid
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, shortcut, deletedAt], name: "unique_shortcut_per_org")
+  @@index([orgId])
+  @@index([orgId, category])
+  @@index([deletedAt])
+  @@map("canned_responses")
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP MESSAGE TEMPLATES
+// ─────────────────────────────────────────────
+
+model MessageTemplate {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orgId               String   @map("org_id") @db.Uuid
+  channelId           String?  @map("channel_id") @db.Uuid
+  name                String   @db.VarChar(255)
+  language            String   @default("en") @db.VarChar(10)
+  category            String?  @db.VarChar(50)
+  status              String   @default("PENDING") @db.VarChar(20)
+  whatsappTemplateId  String?  @map("whatsapp_template_id") @db.VarChar(255)
+  components          Json     @default("[]") @db.JsonB
+  exampleValues       Json?    @map("example_values") @db.JsonB
+  lastSyncedAt        DateTime? @map("last_synced_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, name, language, deletedAt], name: "unique_template_per_org")
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([channelId])
+  @@index([deletedAt])
+  @@map("message_templates")
+}
+
+// ─────────────────────────────────────────────
+// SOCIAL ADS LEAD INTEGRATION
+// ─────────────────────────────────────────────
+
+model LeadAdEntry {
+  id              String    @id @default(uuid()) @db.Uuid
+  orgId           String    @map("org_id") @db.Uuid
+  leadgenId       String    @map("leadgen_id") @db.VarChar(255)
+  pageId          String    @map("page_id") @db.VarChar(255)
+  formId          String?   @map("form_id") @db.VarChar(255)
+  adId            String?   @map("ad_id") @db.VarChar(255)
+  adName          String?   @map("ad_name") @db.VarChar(500)
+  campaignId      String?   @map("campaign_id") @db.VarChar(255)
+  campaignName    String?   @map("campaign_name") @db.VarChar(500)
+  platform        String    @db.VarChar(50)
+  leadData        Json      @map("lead_data") @db.JsonB
+  contactId       String?   @map("contact_id") @db.Uuid
+  status          String    @default("PENDING") @db.VarChar(20)
+  errorMessage    String?   @map("error_message") @db.Text
+  processedAt     DateTime? @map("processed_at")
+  rawWebhookData  Json?     @map("raw_webhook_data") @db.JsonB
+  channelId       String?   @map("channel_id") @db.Uuid
+  retryCount      Int       @default(0) @map("retry_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, leadgenId], name: "unique_lead_per_org")
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([pageId])
+  @@index([orgId, platform])
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@map("lead_ad_entries")
+}
+
+model LeadAdsConfig {
+  id                 String    @id @default(uuid()) @db.Uuid
+  orgId              String    @unique @map("org_id") @db.Uuid
+  encryptedAppSecret String?   @map("encrypted_app_secret") @db.Text
+  webhookVerifyToken String?   @map("webhook_verify_token") @db.VarChar(255)
+  isConfigured       Boolean   @default(false) @map("is_configured")
+  lastVerifiedAt     DateTime? @map("last_verified_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("lead_ads_configs")
+}
+
+// ─────────────────────────────────────────────
+// EPIC 13 — ANALYTICS & REPORTING
+// ─────────────────────────────────────────────
+
+model AnalyticsMessageDaily {
+  id             String    @id @default(uuid()) @db.Uuid
+  orgId          String    @map("org_id") @db.Uuid
+  userId         String?   @map("user_id") @db.Uuid
+  date           DateTime  @db.Date
+  inboundCount   Int       @default(0) @map("inbound_count")
+  outboundCount  Int       @default(0) @map("outbound_count")
+  sentCount      Int       @default(0) @map("sent_count")
+  deliveredCount Int       @default(0) @map("delivered_count")
+  readCount      Int       @default(0) @map("read_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, userId, date], name: "unique_message_daily_org_user_date")
+  @@index([orgId, date])
+  @@index([orgId, userId, date])
+  @@map("analytics_message_daily")
+}
+
+model AnalyticsMessageHourly {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  hour          DateTime @db.Timestamptz()
+  inboundCount  Int      @default(0) @map("inbound_count")
+  outboundCount Int      @default(0) @map("outbound_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, hour], name: "unique_message_hourly_org_hour")
+  @@index([orgId, hour])
+  @@map("analytics_message_hourly")
+}
+
+model AnalyticsResponseTime {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orgId               String   @map("org_id") @db.Uuid
+  userId              String?  @map("user_id") @db.Uuid
+  date                DateTime @db.Date
+  totalResponseTimeMs BigInt   @default(0) @map("total_response_time_ms")
+  responseCount       Int      @default(0) @map("response_count")
+  minResponseTimeMs   Int?     @map("min_response_time_ms")
+  maxResponseTimeMs   Int?     @map("max_response_time_ms")
+  p50ResponseTimeMs   Int?     @map("p50_response_time_ms")
+  p95ResponseTimeMs   Int?     @map("p95_response_time_ms")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, userId, date], name: "unique_response_time_org_user_date")
+  @@index([orgId, date])
+  @@index([orgId, userId, date])
+  @@map("analytics_response_time")
+}
+
+model AnalyticsConversionDaily {
+  id              String   @id @default(uuid()) @db.Uuid
+  orgId           String   @map("org_id") @db.Uuid
+  date            DateTime @db.Date
+  newCount        Int      @default(0) @map("new_count")
+  contactedCount  Int      @default(0) @map("contacted_count")
+  interestedCount Int      @default(0) @map("interested_count")
+  convertedCount  Int      @default(0) @map("converted_count")
+  closedCount     Int      @default(0) @map("closed_count")
+  transitionsJson Json     @default("{}") @map("transitions_json") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, date], name: "unique_conversion_daily_org_date")
+  @@index([orgId, date])
+  @@map("analytics_conversion_daily")
+}
+
+model AnalyticsCampaignSummary {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orgId              String   @map("org_id") @db.Uuid
+  date               DateTime @db.Date
+  totalCampaigns     Int      @default(0) @map("total_campaigns")
+  completedCampaigns Int      @default(0) @map("completed_campaigns")
+  totalRecipients    Int      @default(0) @map("total_recipients")
+  totalSent          Int      @default(0) @map("total_sent")
+  totalDelivered     Int      @default(0) @map("total_delivered")
+  totalFailed        Int      @default(0) @map("total_failed")
+  totalRead          Int      @default(0) @map("total_read")
+  avgDeliveryRatePct Float    @default(0) @map("avg_delivery_rate_pct")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, date], name: "unique_campaign_summary_org_date")
+  @@index([orgId, date])
+  @@map("analytics_campaign_summary")
+}
+
+// ─────────────────────────────────────────────
+// EPIC 15 — SLA TRACKING & TEAM PERFORMANCE
+// ─────────────────────────────────────────────
+
+enum SlaMetricType {
+  FIRST_RESPONSE_TIME
+  AVG_RESPONSE_TIME
+  RESOLUTION_TIME
+}
+
+enum SlaPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum SlaBreachStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model SlaPolicy {
+  id                 String        @id @default(uuid()) @db.Uuid
+  orgId              String        @map("org_id") @db.Uuid
+  name               String        @db.VarChar(255)
+  description        String?       @db.VarChar(1000)
+  metricType         SlaMetricType @map("metric_type")
+  priority           SlaPriority   @default(NORMAL)
+  thresholdMs        Int           @map("threshold_ms")
+  warningThresholdMs Int?          @map("warning_threshold_ms")
+  isActive           Boolean       @default(true) @map("is_active")
+  businessHoursOnly  Boolean       @default(false) @map("business_hours_only")
+  businessHoursStart Int?          @map("business_hours_start") // 0-23
+  businessHoursEnd   Int?          @map("business_hours_end")   // 0-23
+  businessDays       Json?         @map("business_days") @db.JsonB // [1,2,3,4,5]
+  timezone           String?       @db.VarChar(50) // e.g. "America/New_York"
+  notifyOnWarning    Boolean       @default(true) @map("notify_on_warning")
+  notifyOnBreach     Boolean       @default(true) @map("notify_on_breach")
+  notifyUserIds      Json?         @map("notify_user_ids") @db.JsonB // string[] of user IDs to notify
+  escalationPolicy   Json?         @map("escalation_policy") @db.JsonB // { levels: [{ delayMs, userIds }] }
+  createdById        String        @map("created_by_id") @db.Uuid
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  deletedAt          DateTime?     @map("deleted_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  createdBy    User          @relation("SlaPolicyCreator", fields: [createdById], references: [id])
+  trackings    SlaTracking[]
+  breaches     SlaBreachLog[]
+
+  @@unique([orgId, name, deletedAt], name: "unique_sla_policy_name_per_org")
+  @@index([orgId])
+  @@index([orgId, isActive])
+  @@index([orgId, metricType])
+  @@index([deletedAt])
+  @@map("sla_policies")
+}
+
+model SlaTracking {
+  id               String    @id @default(uuid()) @db.Uuid
+  orgId            String    @map("org_id") @db.Uuid
+  policyId         String    @map("policy_id") @db.Uuid
+  conversationId   String    @map("conversation_id") @db.Uuid
+  assignedUserId   String?   @map("assigned_user_id") @db.Uuid
+  startedAt        DateTime  @map("started_at")
+  respondedAt      DateTime? @map("responded_at")
+  resolvedAt       DateTime? @map("resolved_at")
+  deadlineAt       DateTime  @map("deadline_at")
+  warningAt        DateTime? @map("warning_at")
+  elapsedMs        Int?      @map("elapsed_ms")
+  isBreached       Boolean   @default(false) @map("is_breached")
+  isWarning        Boolean   @default(false) @map("is_warning")
+  pausedAt         DateTime? @map("paused_at")
+  pausedDurationMs Int       @default(0) @map("paused_duration_ms")
+  idempotencyKey   String    @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  policy       SlaPolicy    @relation(fields: [policyId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, policyId])
+  @@index([orgId, isBreached])
+  @@index([orgId, conversationId])
+  @@index([deadlineAt])
+  @@index([assignedUserId])
+  @@index([orgId, assignedUserId, isBreached])
+  @@map("sla_trackings")
+}
+
+model SlaBreachLog {
+  id             String          @id @default(uuid()) @db.Uuid
+  orgId          String          @map("org_id") @db.Uuid
+  policyId       String          @map("policy_id") @db.Uuid
+  conversationId String          @map("conversation_id") @db.Uuid
+  assignedUserId String?         @map("assigned_user_id") @db.Uuid
+  metricType     SlaMetricType   @map("metric_type")
+  thresholdMs    Int             @map("threshold_ms")
+  actualMs       Int             @map("actual_ms")
+  status         SlaBreachStatus @default(ACTIVE)
+  acknowledgedBy String?         @map("acknowledged_by") @db.Uuid
+  acknowledgedAt DateTime?       @map("acknowledged_at")
+  resolvedAt     DateTime?       @map("resolved_at")
+  idempotencyKey String          @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  policy       SlaPolicy    @relation(fields: [policyId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([orgId, policyId])
+  @@index([orgId, assignedUserId])
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@map("sla_breach_logs")
+}
+
+// ─────────────────────────────────────────────
+// CSAT SURVEYS
+// ─────────────────────────────────────────────
+
+model CsatSurvey {
+  id              String    @id @default(uuid()) @db.Uuid
+  orgId           String    @map("org_id") @db.Uuid
+  conversationId  String    @map("conversation_id") @db.Uuid
+  contactPhone    String    @map("contact_phone") @db.VarChar(20)
+  agentId         String    @map("agent_id") @db.Uuid
+  rating          Int?                                            // 1-5 stars
+  comment         String?   @db.Text
+  sentAt          DateTime  @default(now()) @map("sent_at")
+  respondedAt     DateTime? @map("responded_at")
+  channelType     String?   @map("channel_type") @db.VarChar(50)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  productId       String?   @map("product_id") @db.Uuid
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  product      Product?     @relation(fields: [productId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, agentId])
+  @@index([orgId, sentAt])
+  @@unique([conversationId], name: "unique_survey_per_conversation")
+  @@map("csat_surveys")
+}
+
+// ─────────────────────────────────────────────
+// CHATBOT FLOW BUILDER
+// ─────────────────────────────────────────────
+
+model ChatbotFlow {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  trigger     Json      @db.JsonB // { type: "KEYWORD"|"FIRST_MESSAGE"|"BUTTON_REPLY", value: string }
+  isActive       Boolean   @default(false) @map("is_active")
+  aiEnabled         Boolean   @default(false) @map("ai_enabled")
+  aiSystemPrompt    String?   @map("ai_system_prompt") @db.Text
+  useKnowledgeBase  Boolean   @default(false) @map("use_knowledge_base")
+  productIds        Json?     @map("product_ids") @db.JsonB // string[] of product UUIDs
+  version           Int       @default(1)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  nodes        ChatbotNode[]
+  sessions     ChatbotSession[]
+
+  @@index([orgId])
+  @@index([orgId, isActive])
+  @@map("chatbot_flows")
+}
+
+model ChatbotNode {
+  id        String @id @default(uuid()) @db.Uuid
+  flowId    String @map("flow_id") @db.Uuid
+  type      String @db.VarChar(50) // SEND_MESSAGE, ASK_QUESTION, CONDITION, DELAY, ASSIGN_AGENT, SET_TAG, API_CALL
+  data      Json   @db.JsonB       // node-specific config
+  position  Json   @db.JsonB       // { x, y } for canvas
+  nextNodes Json   @db.JsonB       // [{ condition?: string, nodeId: string }]
+
+  flow ChatbotFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@index([flowId])
+  @@map("chatbot_nodes")
+}
+
+enum ChatbotSessionStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+  HANDED_OFF
+}
+
+model ChatbotSession {
+  id              String               @id @default(uuid()) @db.Uuid
+  flowId          String               @map("flow_id") @db.Uuid
+  orgId           String               @map("org_id") @db.Uuid
+  contactId       String               @map("contact_id") @db.Uuid
+  conversationId  String               @map("conversation_id") @db.Uuid
+  currentNodeId   String?              @map("current_node_id") @db.Uuid
+  variables       Json                 @default("{}") @db.JsonB
+  status          ChatbotSessionStatus @default(ACTIVE)
+  startedAt       DateTime             @default(now()) @map("started_at")
+  completedAt     DateTime?            @map("completed_at")
+
+  flow         ChatbotFlow  @relation(fields: [flowId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, conversationId])
+  @@index([orgId, status])
+  @@map("chatbot_sessions")
+}
+
+// ─────────────────────────────────────────────
+// AI INTEGRATION
+// ─────────────────────────────────────────────
+
+model AiConversationSummary {
+  id              String   @id @default(uuid()) @db.Uuid
+  conversationId  String   @unique @map("conversation_id") @db.Uuid
+  orgId           String   @map("org_id") @db.Uuid
+  summary         String   @db.Text
+  keyTopics       String[] @map("key_topics")
+  sentiment       String?  @db.VarChar(20) // POSITIVE, NEUTRAL, NEGATIVE
+  generatedAt     DateTime @default(now()) @map("generated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@map("ai_conversation_summaries")
+}
+
+// ─────────────────────────────────────────────
+// LEAD SCORING (Phase 2)
+// ─────────────────────────────────────────────
+
+model LeadScoringRule {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?  @db.Text
+  signal        String   @db.VarChar(100) // e.g. "message_received", "status_changed", "note_added", "tag_added", "source"
+  condition     Json?    @db.JsonB        // optional filter e.g. {"source":"FACEBOOK_LEAD_AD"} or {"toStatus":"INTERESTED"}
+  points        Int                       // positive or negative
+  maxPerContact Int      @default(0) @map("max_per_contact") // 0 = unlimited
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, signal])
+  @@map("lead_scoring_rules")
+}
+
+model ContactScoreHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  contactId     String   @map("contact_id") @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  previousScore Int      @map("previous_score")
+  newScore      Int      @map("new_score")
+  delta         Int      // points added/removed
+  reason        String   @db.VarChar(500) // human-readable reason
+  ruleId        String?  @map("rule_id") @db.Uuid // optional link to scoring rule
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([orgId])
+  @@index([contactId, createdAt])
+  @@map("contact_score_history")
+}
+
+// ─────────────────────────────────────────────
+// PIPELINE & DEAL MANAGEMENT
+// ─────────────────────────────────────────────
+
+model Pipeline {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  stages       PipelineStage[]
+  deals        Deal[]
+
+  @@index([orgId])
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id          String   @id @default(uuid()) @db.Uuid
+  pipelineId  String   @map("pipeline_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  order       Int
+  color       String?  @db.VarChar(20)
+  isWonStage  Boolean  @default(false) @map("is_won_stage")
+  isLostStage Boolean  @default(false) @map("is_lost_stage")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals    Deal[]
+
+  @@index([pipelineId, order])
+  @@map("pipeline_stages")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model Deal {
+  id            String     @id @default(uuid()) @db.Uuid
+  orgId         String     @map("org_id") @db.Uuid
+  pipelineId    String     @map("pipeline_id") @db.Uuid
+  stageId       String     @map("stage_id") @db.Uuid
+  contactId     String     @map("contact_id") @db.Uuid
+  assignedToId  String?    @map("assigned_to_id") @db.Uuid
+  title         String     @db.VarChar(500)
+  value         Decimal?   @db.Decimal(15, 2)
+  currency      String     @default("INR") @db.VarChar(3)
+  status        DealStatus @default(OPEN)
+  expectedClose DateTime?  @map("expected_close")
+  closedAt      DateTime?  @map("closed_at")
+  notes         String?    @db.Text
+  aiScore       Int?       @map("ai_score")
+  aiScoreReason String?    @map("ai_score_reason") @db.VarChar(500)
+  aiScoredAt    DateTime?  @map("ai_scored_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  deletedAt     DateTime?  @map("deleted_at")
+
+  organization  Organization  @relation(fields: [orgId], references: [id])
+  pipeline      Pipeline      @relation(fields: [pipelineId], references: [id])
+  stage         PipelineStage @relation(fields: [stageId], references: [id])
+  contact       Contact       @relation(fields: [contactId], references: [id])
+  productId     String?       @map("product_id") @db.Uuid
+  assignedTo    User?         @relation("DealAssignee", fields: [assignedToId], references: [id])
+  product       Product?      @relation(fields: [productId], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, pipelineId])
+  @@index([orgId, stageId])
+  @@index([orgId, assignedToId])
+  @@index([orgId, status])
+  @@map("deals")
+}
+
+// ─────────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────────
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  name        String    @db.VarChar(100)
+  description String?   @db.VarChar(500)
+  color       String?   @db.VarChar(7)
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  parentId    String?   @map("parent_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  parent       ProductCategory?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children     ProductCategory[] @relation("CategoryParent")
+  products     Product[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@index([parentId])
+  @@map("product_categories")
+}
+
+model Product {
+  id          String        @id @default(uuid()) @db.Uuid
+  orgId       String        @map("org_id") @db.Uuid
+  name        String        @db.VarChar(255)
+  description String?       @db.Text
+  price       Decimal?      @db.Decimal(10, 2)
+  currency    String?       @default("INR") @db.VarChar(10)
+  sku         String?       @db.VarChar(100)
+  imageUrl    String?       @map("image_url") @db.VarChar(2048)
+  categoryId  String?       @map("category_id") @db.Uuid
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  category          ProductCategory?   @relation(fields: [categoryId], references: [id])
+  contactProducts   ContactProduct[]
+  deals             Deal[]
+  csatSurveys       CsatSurvey[]
+  articleProducts   ArticleProduct[]
+  campaigns         Campaign[]         @relation("CampaignProduct")
+  scheduledMessages ScheduledMessage[] @relation("ScheduledMessageProduct")
+  automationRules   AutomationRule[]   @relation("AutomationRuleProduct")
+
+  @@unique([orgId, name, deletedAt])
+  @@index([orgId])
+  @@map("products")
+}
+
+model ContactProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  contactId String   @map("contact_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([contactId, productId])
+  @@index([contactId])
+  @@index([productId])
+  @@map("contact_products")
+}
+
+// ─────────────────────────────────────────────
+// TWO-FACTOR AUTHENTICATION
+// ─────────────────────────────────────────────
+
+model UserTwoFactor {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  encryptedSecret String    @map("encrypted_secret") @db.Text
+  backupCodes     String[]  @map("backup_codes")                  // hashed codes
+  enabledAt       DateTime  @default(now()) @map("enabled_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_two_factors")
+}
+
+// ─────────────────────────────────────────────
+// CHAT WIDGET (Phase 4)
+// ─────────────────────────────────────────────
+
+model WidgetConfig {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orgId               String   @unique @map("org_id") @db.Uuid
+  enabled             Boolean  @default(false)
+  position            String   @default("bottom-right") @db.VarChar(20) // bottom-right, bottom-left, bottom-center
+  primaryColor        String   @default("#6366f1") @map("primary_color") @db.VarChar(20)
+  welcomeMessage      String   @default("Hi! How can we help you?") @map("welcome_message") @db.VarChar(500)
+  placeholder         String   @default("Type a message...") @db.VarChar(255)
+  companyName         String?  @map("company_name") @db.VarChar(255)
+  avatarUrl           String?  @map("avatar_url") @db.VarChar(2048)
+  whatsappNumber      String?  @map("whatsapp_number") @db.VarChar(20) // pre-filled WhatsApp click-to-chat number
+  preChatFormEnabled  Boolean  @default(false) @map("pre_chat_form_enabled")
+  aiAssistantEnabled  Boolean  @default(false) @map("ai_assistant_enabled")
+  aiSystemPrompt      String?  @map("ai_system_prompt") @db.VarChar(2000)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("widget_configs")
+}
+
+model WidgetSession {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  visitorId     String   @map("visitor_id") @db.VarChar(64)
+  visitorName   String?  @map("visitor_name") @db.VarChar(255)
+  visitorPhone  String?  @map("visitor_phone") @db.VarChar(20)
+  visitorEmail  String?  @map("visitor_email") @db.VarChar(320)
+  pageUrl       String?  @map("page_url") @db.VarChar(2048)
+  userAgent     String?  @map("user_agent") @db.VarChar(512)
+  status        String   @default("open") @db.VarChar(20) // open | closed
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  messages     WidgetMessage[]
+
+  @@unique([orgId, visitorId], name: "unique_visitor_per_org")
+  @@index([orgId])
+  @@map("widget_sessions")
+}
+
+model WidgetMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  sender    String   @db.VarChar(10) // "visitor" | "agent"
+  body      String   @db.VarChar(4096)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session      WidgetSession @relation(fields: [sessionId], references: [id])
+  organization Organization  @relation(fields: [orgId], references: [id])
+
+  @@index([sessionId])
+  @@index([orgId])
+  @@map("widget_messages")
+}
+
+// ─────────────────────────────────────────────
+// GDPR CONSENT TRACKING (Phase 5)
+// ─────────────────────────────────────────────
+
+model ConsentRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  contactId    String   @map("contact_id") @db.Uuid
+  consentType  String   @map("consent_type") @db.VarChar(100) // e.g. "marketing", "messaging", "data_processing"
+  granted      Boolean
+  source       String   @db.VarChar(100) // e.g. "whatsapp_optin", "web_form", "manual", "import"
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  metadata     Json?    @db.JsonB
+  grantedAt    DateTime @default(now()) @map("granted_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([orgId])
+  @@index([orgId, consentType])
+  @@index([contactId, consentType])
+  @@map("consent_records")
+}
+
+model DataRequest {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  contactId    String   @map("contact_id") @db.Uuid
+  requestType  String   @map("request_type") @db.VarChar(50) // "export" or "erasure"
+  status       String   @default("pending") @db.VarChar(20) // pending, processing, completed, failed
+  requestedById String  @map("requested_by_id") @db.Uuid
+  completedAt  DateTime? @map("completed_at")
+  resultUrl    String?  @map("result_url") @db.VarChar(2048) // S3 URL for export file
+  metadata     Json?    @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([orgId])
+  @@index([contactId])
+  @@index([orgId, status])
+  @@map("data_requests")
+}
+
+// ─────────────────────────────────────────────
+// KNOWLEDGE BASE (Phase 5)
+// ─────────────────────────────────────────────
+
+model KbCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  slug        String   @db.VarChar(255)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  articles     KbArticle[]
+
+  @@unique([orgId, slug])
+  @@index([orgId])
+  @@map("kb_categories")
+}
+
+model KbArticle {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  categoryId  String?   @map("category_id") @db.Uuid
+  title       String    @db.VarChar(500)
+  slug        String    @db.VarChar(500)
+  body        String    @db.Text // markdown content
+  isPublished Boolean   @default(false) @map("is_published")
+  isInternal  Boolean   @default(false) @map("is_internal") // internal-only (team KB)
+  authorId    String    @map("author_id") @db.Uuid
+  viewCount   Int       @default(0) @map("view_count")
+  helpfulCount Int      @default(0) @map("helpful_count")
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  organization    Organization     @relation(fields: [orgId], references: [id])
+  category        KbCategory?      @relation(fields: [categoryId], references: [id])
+  author          User             @relation("ArticleAuthor", fields: [authorId], references: [id])
+  articleProducts ArticleProduct[]
+
+  @@unique([orgId, slug])
+  @@index([orgId])
+  @@index([orgId, isPublished])
+  @@index([categoryId])
+  @@index([deletedAt])
+  @@map("kb_articles")
+}
+
+model ArticleProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  article KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  product Product   @relation(fields: [productId], references: [id])
+
+  @@unique([articleId, productId])
+  @@index([articleId])
+  @@index([productId])
+  @@map("article_products")
+}
+
+model KbDocument {
+  id            String    @id @default(uuid()) @db.Uuid
+  orgId         String    @map("org_id") @db.Uuid
+  flowId        String?   @map("flow_id") @db.Uuid  // Link to chatbot flow (optional)
+  title         String    @db.VarChar(255)
+  filename      String    @db.VarChar(255)
+  fileUrl       String    @map("file_url") @db.Text
+  contentType   String    @map("content_type") @db.VarChar(100)
+  fileSize      Int       @map("file_size")
+  extractedText String?   @map("extracted_text") @db.Text
+  status        String    @default("PROCESSING") @db.VarChar(20) // PROCESSING, READY, FAILED
+  uploadedById  String    @map("uploaded_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([orgId])
+  @@index([orgId, flowId])
+  @@index([orgId, status])
+  @@map("kb_documents")
+}
+
+// ─────────────────────────────────────────────
+// CUSTOM FIELDS (Phase 7)
+// ─────────────────────────────────────────────
+
+model CustomFieldDefinition {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  entity       String   @db.VarChar(50) // "contact", "deal", "conversation"
+  fieldName    String   @map("field_name") @db.VarChar(100)
+  fieldLabel   String   @map("field_label") @db.VarChar(255)
+  fieldType    String   @map("field_type") @db.VarChar(30) // text, number, date, select, multiselect, boolean, url, email, phone
+  options      Json?    @db.JsonB // For select/multiselect: ["option1", "option2"]
+  isRequired   Boolean  @default(false) @map("is_required")
+  defaultValue String?  @map("default_value") @db.VarChar(1000)
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  values       CustomFieldValue[]
+
+  @@unique([orgId, entity, fieldName])
+  @@index([orgId, entity])
+  @@map("custom_field_definitions")
+}
+
+model CustomFieldValue {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  fieldId      String   @map("field_id") @db.Uuid
+  entityId     String   @map("entity_id") @db.Uuid // contactId, dealId, etc.
+  value        String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  field CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, entityId])
+  @@index([orgId, entityId])
+  @@index([fieldId])
+  @@map("custom_field_values")
+}
+
+// ─────────────────────────────────────────────
+// DEVELOPER API KEYS (Phase 7)
+// ─────────────────────────────────────────────
+
+model ApiKey {
+  id           String    @id @default(uuid()) @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  name         String    @db.VarChar(255)
+  keyHash      String    @unique @map("key_hash") @db.VarChar(255) // SHA-256 hash of key
+  keyPrefix    String    @map("key_prefix") @db.VarChar(12) // First 8 chars for display (e.g. "crm_sk_a1b2...")
+  scopes       String[]  @default(["read"]) // "read", "write", "contacts", "messages", "campaigns"
+  expiresAt    DateTime? @map("expires_at")
+  lastUsedAt   DateTime? @map("last_used_at")
+  lastUsedIp   String?   @map("last_used_ip") @db.VarChar(45)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdById  String    @map("created_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  revokedAt    DateTime? @map("revoked_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  createdBy    User         @relation("ApiKeyCreator", fields: [createdById], references: [id])
+
+  @@index([orgId])
+  @@index([keyHash])
+  @@index([orgId, isActive])
+  @@map("api_keys")
+}
+
+// ─────────────────────────────────────────────
+// SUPER ADMIN
+// ─────────────────────────────────────────────
+
+model SuperAdmin {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique @db.VarChar(320)
+  passwordHash String        @map("password_hash") @db.VarChar(255)
+  name         String        @db.VarChar(255)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  ticketReplies TicketReply[]
+
+  @@map("super_admins")
+}
+
+// ─────────────────────────────────────────────
+// HELP TICKETS
+// ─────────────────────────────────────────────
+
+model HelpTicket {
+  id          String         @id @default(uuid()) @db.Uuid
+  orgId       String         @map("org_id") @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  title       String         @db.VarChar(255)
+  description String         @db.Text
+  category    TicketCategory
+  priority    TicketPriority @default(MEDIUM)
+  status        TicketStatus   @default(OPEN)
+  attachmentUrl String?        @map("attachment_url") @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  closedAt      DateTime?      @map("closed_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  replies      TicketReply[]
+
+  @@index([orgId, status])
+  @@index([status, createdAt])
+  @@map("help_tickets")
+}
+
+model TicketReply {
+  id           String      @id @default(uuid()) @db.Uuid
+  ticketId     String      @map("ticket_id") @db.Uuid
+  body         String      @db.Text
+  userId       String?     @map("user_id") @db.Uuid
+  superAdminId String?     @map("super_admin_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  ticket       HelpTicket  @relation(fields: [ticketId], references: [id])
+  user         User?       @relation("TicketReplyUser", fields: [userId], references: [id])
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_replies")
+}
+
+// ─────────────────────────────────────────────
+// ORG AI MEMORY — Living business context for AI
+// ─────────────────────────────────────────────
+
+model OrgAiMemory {
+  id               String    @id @default(uuid()) @db.Uuid
+  orgId            String    @unique @map("org_id") @db.Uuid
+  businessName     String?   @map("business_name") @db.VarChar(255)
+  industry         String?   @db.VarChar(100)
+  description      String?   @db.VarChar(2000)
+  website          String?   @db.VarChar(500)
+  productsJson     String?   @map("products_json") @db.Text
+  kbSummary        String?   @map("kb_summary") @db.Text
+  shopifyStore     String?   @map("shopify_store") @db.VarChar(255)
+  customContext    String?   @map("custom_context") @db.VarChar(2000)
+  documentText     String?   @map("document_text") @db.Text
+  documentName     String?   @map("document_name") @db.VarChar(255)
+  builtAt          DateTime? @map("built_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_ai_memories")
+}
+

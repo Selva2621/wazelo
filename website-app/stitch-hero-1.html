@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wazelo CRM - Close Deals on WhatsApp</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;900&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#673d17",
+                    "on-primary": "#4d2600",
+                    "on-background": "#e2e2eb",
+                    "outline": "#a38c7c",
+                    "tertiary-container": "#0297e8",
+                    "primary-fixed": "#ffdcc3",
+                    "on-tertiary-fixed": "#001d32",
+                    "on-surface-variant": "#dbc2b0",
+                    "on-secondary-container": "#e4a97a",
+                    "on-surface": "#e2e2eb",
+                    "surface-variant": "#33343b",
+                    "surface-dim": "#111319",
+                    "inverse-primary": "#904d00",
+                    "on-primary-fixed": "#2f1500",
+                    "secondary-fixed": "#ffdcc3",
+                    "inverse-surface": "#e2e2eb",
+                    "inverse-on-surface": "#2e3037",
+                    "surface-container-low": "#191b22",
+                    "primary": "#ffb77d",
+                    "surface-container-highest": "#33343b",
+                    "surface-bright": "#373940",
+                    "secondary-container": "#673d17",
+                    "on-error": "#690005",
+                    "on-error-container": "#ffdad6",
+                    "tertiary": "#96ccff",
+                    "on-tertiary-container": "#002c48",
+                    "on-secondary": "#4c2703",
+                    "secondary": "#f7ba8a",
+                    "on-primary-container": "#432100",
+                    "background": "#111319",
+                    "surface-tint": "#ffb77d",
+                    "secondary-fixed-dim": "#f7ba8a",
+                    "on-tertiary-fixed-variant": "#004a75",
+                    "primary-fixed-dim": "#ffb77d",
+                    "on-tertiary": "#003353",
+                    "primary-container": "#d97707",
+                    "error": "#ffb4ab",
+                    "surface-container-lowest": "#0c0e14",
+                    "on-secondary-fixed": "#2f1500",
+                    "surface-container-high": "#282a30",
+                    "surface-container": "#1e1f26",
+                    "tertiary-fixed": "#cee5ff",
+                    "surface": "#111319",
+                    "outline-variant": "#554336",
+                    "on-primary-fixed-variant": "#6e3900",
+                    "tertiary-fixed-dim": "#96ccff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": [
+                            "Epilogue"
+                    ],
+                    "body": [
+                            "Manrope"
+                    ],
+                    "label": [
+                            "Manrope"
+                    ]
+            }
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body antialiased selection:bg-primary/30 selection:text-primary overflow-x-hidden">
+<!-- TopNavBar (Shared Component JSON Literal Transcription) -->
+<header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-2 w-full hidden md:flex pointer-events-none">
+<div class="bg-zinc-900/60 backdrop-blur-2xl rounded-full mt-6 mx-auto max-w-fit md:min-w-[800px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-between items-center px-6 py-3 w-full pointer-events-auto">
+<!-- Brand -->
+<div class="text-xl font-black text-zinc-100 flex items-center gap-2 font-epilogue uppercase tracking-tighter">
+<span class="material-symbols-outlined text-amber-600" style="font-variation-settings: 'FILL' 1;">speed</span>
+                Wazelo CRM
+            </div>
+<!-- Navigation Links -->
+<nav class="flex items-center gap-8">
+<a class="font-epilogue font-black uppercase tracking-tighter text-amber-500 border-b-2 border-amber-500 pb-1 text-sm" href="#">Platform</a>
+<a class="font-epilogue font-black uppercase tracking-tighter text-zinc-400 font-medium hover:text-zinc-100 hover:scale-105 hover:bg-zinc-800/40 transition-all duration-300 px-3 py-1 rounded-full text-sm" href="#">Solutions</a>
+<a class="font-epilogue font-black uppercase tracking-tighter text-zinc-400 font-medium hover:text-zinc-100 hover:scale-105 hover:bg-zinc-800/40 transition-all duration-300 px-3 py-1 rounded-full text-sm" href="#">Performance</a>
+<a class="font-epilogue font-black uppercase tracking-tighter text-zinc-400 font-medium hover:text-zinc-100 hover:scale-105 hover:bg-zinc-800/40 transition-all duration-300 px-3 py-1 rounded-full text-sm" href="#">Pricing</a>
+</nav>
+<!-- Trailing Action -->
+<button class="bg-surface-container-high text-amber-600 font-epilogue font-black uppercase tracking-tighter text-sm px-6 py-2 rounded-full scale-102 transition-transform duration-200 active:scale-95 hover:bg-zinc-800/40 flex items-center gap-2">
+                Start Free Trial
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</header>
+<!-- Mobile TopNavBar Shell Fallback -->
+<header class="md:hidden fixed top-0 left-0 right-0 z-50 p-4 bg-background/80 backdrop-blur-xl border-b border-outline-variant/10 flex justify-between items-center">
+<div class="text-xl font-black text-on-surface flex items-center gap-2 font-headline uppercase tracking-tighter">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">speed</span>
+            Wazelo
+        </div>
+<button class="text-on-surface">
+<span class="material-symbols-outlined text-3xl">menu</span>
+</button>
+</header>
+<!-- Hero Section -->
+<main class="relative min-h-screen flex items-center pt-32 pb-24 overflow-hidden">
+<!-- Cinematic Background Glow -->
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/15 blur-[120px] rounded-full pointer-events-none transform translate-x-1/4"></div>
+<div class="absolute left-0 bottom-0 w-[600px] h-[600px] bg-tertiary-container/5 blur-[100px] rounded-full pointer-events-none transform -translate-x-1/2 translate-y-1/2"></div>
+<div class="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-16 items-center relative z-10">
+<!-- Left: Typography & Actions -->
+<div class="flex flex-col z-20 mt-12 lg:mt-0">
+<div class="inline-flex items-center gap-2 bg-surface-container-low px-4 py-1.5 rounded-full mb-8 max-w-fit outline outline-1 outline-outline-variant/20">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label text-sm font-semibold tracking-wide text-on-surface-variant uppercase">Wazelo CRM for WhatsApp</span>
+</div>
+<h1 class="font-headline font-black text-[4rem] lg:text-[6.5rem] leading-[0.85] uppercase tracking-[-0.04em] text-on-surface mb-8 max-w-2xl drop-shadow-2xl">
+                    CLOSE DEALS<br/>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">ON WHATSAPP</span>
+</h1>
+<p class="font-body text-xl lg:text-2xl text-on-surface-variant leading-relaxed mb-10 max-w-xl font-medium">
+                    The all-in-one CRM built for WhatsApp — shared inbox, campaigns, automation, and analytics.
+                </p>
+<div class="flex flex-col sm:flex-row items-center gap-4 mb-8">
+<button class="w-full sm:w-auto bg-primary text-on-primary rounded-full px-10 py-5 font-label font-bold text-lg tracking-wide hover:scale-[1.02] hover:shadow-[0_0_0_4px_theme(colors.primary-container)] transition-all duration-300 flex justify-center items-center gap-3">
+                        Start Free Trial
+                        <span class="material-symbols-outlined">arrow_right_alt</span>
+</button>
+<button class="w-full sm:w-auto bg-surface-variant/40 outline outline-1 outline-outline-variant/30 text-on-surface rounded-full px-10 py-5 font-label font-bold text-lg tracking-wide hover:scale-[1.02] hover:bg-surface-variant/60 transition-all duration-300 backdrop-blur-xl flex justify-center items-center">
+                        See Features
+                    </button>
+</div>
+<div class="flex items-center gap-2 text-sm text-on-surface-variant font-medium font-label">
+<span class="material-symbols-outlined text-base text-primary">verified_user</span>
+                    14-day free trial · No credit card · Cancel anytime
+                </div>
+</div>
+<!-- Right: UI Mockup -->
+<div class="relative w-full aspect-square lg:aspect-[4/3] z-10 perspective-1000">
+<!-- Outer Browser Chrome -->
+<div class="absolute inset-0 bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] outline outline-1 outline-outline-variant/20 flex flex-col transform lg:-rotate-y-12 lg:rotate-x-6 transition-transform duration-700 hover:rotate-0">
+<!-- Browser Header -->
+<div class="h-10 bg-surface-container-high flex items-center px-4 gap-2">
+<div class="flex gap-2">
+<div class="w-3 h-3 rounded-full bg-outline-variant/40"></div>
+<div class="w-3 h-3 rounded-full bg-outline-variant/40"></div>
+<div class="w-3 h-3 rounded-full bg-outline-variant/40"></div>
+</div>
+<div class="mx-auto bg-surface-container-lowest px-24 py-1 rounded-full text-xs text-on-surface-variant/50 font-label flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">lock</span> app.wazelo.com
+                        </div>
+</div>
+<!-- App UI -->
+<div class="flex-1 flex overflow-hidden bg-surface">
+<!-- Sidebar Navigation -->
+<div class="w-16 bg-surface-container flex flex-col items-center py-6 gap-8">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary mb-4">
+<span class="material-symbols-outlined font-bold text-xl">speed</span>
+</div>
+<button class="text-primary bg-primary/10 p-3 rounded-xl"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">forum</span></button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-3"><span class="material-symbols-outlined">group</span></button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-3"><span class="material-symbols-outlined">campaign</span></button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-3"><span class="material-symbols-outlined">bar_chart</span></button>
+<div class="mt-auto">
+<img alt="User Avatar" class="w-10 h-10 rounded-full object-cover outline outline-2 outline-primary" data-alt="professional headshot of a young woman against a neutral dark grey studio background with soft dramatic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVeUcr8nm1ArITSa6rpHMZ0kA4AYKvOj8bZKxjJrL9DG26Twx-NPGRXe3DoUy5jdWBkwzopqG-UsId-vic8DC4LsOn1P2tRKm89xrVVbGcJ8wpM8cX4s9qFzpq6cLB0xqVDx4dNS5XJxqJC908B_07uD0c9GMGErCYrm6pXAm7M_QFneEMwLnBHdNu_PsypR5izYZfDKSh_tt0on3GcRWMKFTrBRggWfGt1_I-kKgHMcbUfyCeQhQY6vi37M540iOc1Ga-cjpOSIM"/>
+</div>
+</div>
+<!-- Inbox List -->
+<div class="w-72 bg-surface-container-low flex flex-col">
+<div class="p-6 pb-4">
+<h2 class="font-headline font-bold text-xl text-on-surface mb-4">Shared Inbox</h2>
+<div class="bg-surface-container-highest rounded-full px-4 py-2.5 flex items-center gap-2 text-on-surface-variant text-sm">
+<span class="material-symbols-outlined text-lg">search</span>
+                                    Search conversations...
+                                </div>
+</div>
+<div class="flex-1 overflow-hidden flex flex-col gap-1 px-3">
+<!-- Active Chat Item -->
+<div class="bg-surface-container-high rounded-xl p-3 flex gap-3 cursor-pointer relative overflow-hidden">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full"></div>
+<div class="w-12 h-12 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold font-headline shrink-0">
+                                        AC
+                                    </div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-bold text-on-surface text-sm truncate">Acme Corp Sales</span>
+<span class="text-xs text-primary font-medium">10:42 AM</span>
+</div>
+<p class="text-xs text-on-surface-variant truncate">Let's proceed with the enterprise plan. Send over the details.</p>
+</div>
+</div>
+<!-- Inactive Chat Items -->
+<div class="p-3 flex gap-3 cursor-pointer opacity-70 hover:opacity-100 hover:bg-surface-container rounded-xl transition-colors">
+<div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold font-headline shrink-0">
+                                        JS
+                                    </div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-bold text-on-surface text-sm truncate">John Smith</span>
+<span class="text-xs text-on-surface-variant">Yesterday</span>
+</div>
+<p class="text-xs text-on-surface-variant truncate">Thanks for the quick support!</p>
+</div>
+</div>
+<div class="p-3 flex gap-3 cursor-pointer opacity-70 hover:opacity-100 hover:bg-surface-container rounded-xl transition-colors">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center font-bold font-headline shrink-0">
+                                        TR
+                                    </div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-bold text-on-surface text-sm truncate">TechNova Leads</span>
+<span class="text-xs text-on-surface-variant">Mon</span>
+</div>
+<p class="text-xs text-on-surface-variant truncate">Can we schedule a demo for next week?</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Chat Area -->
+<div class="flex-1 flex flex-col bg-surface relative">
+<!-- Background Texture -->
+<div class="absolute inset-0 opacity-5" style="background-image: radial-gradient(circle at 2px 2px, theme(colors.outline-variant) 1px, transparent 0); background-size: 24px 24px;"></div>
+<!-- Chat Header -->
+<div class="h-20 bg-surface/80 backdrop-blur-md px-6 flex items-center justify-between z-10 border-b border-surface-container">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold font-headline">AC</div>
+<div>
+<h3 class="font-bold text-on-surface">Acme Corp Sales</h3>
+<span class="text-xs text-primary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                            Online
+                                        </span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-colors"><span class="material-symbols-outlined text-lg">call</span></button>
+<button class="w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-colors"><span class="material-symbols-outlined text-lg">more_vert</span></button>
+</div>
+</div>
+<!-- Messages Area -->
+<div class="flex-1 p-6 flex flex-col gap-6 justify-end z-10 pb-4">
+<!-- Received Message -->
+<div class="flex gap-4 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold font-headline text-xs shrink-0 mt-auto">AC</div>
+<div class="bg-surface-container p-4 rounded-2xl rounded-bl-none text-sm text-on-surface leading-relaxed shadow-sm">
+                                        We loved the product demo yesterday. The team is really impressed with the WhatsApp integration capabilities.
+                                    </div>
+</div>
+<!-- Sent Message -->
+<div class="flex gap-4 max-w-[85%] self-end flex-row-reverse">
+<div class="bg-primary-container text-on-primary-container p-4 rounded-2xl rounded-br-none text-sm leading-relaxed shadow-sm">
+                                        That's great to hear! Our enterprise plan includes priority support and unlimited campaign blasts. Would you like me to send over the proposal?
+                                    </div>
+</div>
+<!-- Received Message -->
+<div class="flex gap-4 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold font-headline text-xs shrink-0 mt-auto">AC</div>
+<div class="bg-surface-container p-4 rounded-2xl rounded-bl-none text-sm text-on-surface leading-relaxed shadow-sm flex flex-col gap-2">
+                                        Let's proceed with the enterprise plan. Send over the details.
+                                        <div class="flex items-center gap-1 text-xs text-on-surface-variant mt-1">
+                                            10:42 AM
+                                        </div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 z-10 bg-surface/90 backdrop-blur-md">
+<div class="bg-surface-container-lowest rounded-full p-2 flex items-center gap-2 shadow-sm outline outline-1 outline-outline-variant/20 focus-within:outline-primary/50 transition-all">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0"><span class="material-symbols-outlined">attach_file</span></button>
+<input class="flex-1 bg-transparent border-none text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 text-sm py-2" placeholder="Type a message..." type="text"/>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:scale-105 transition-transform shrink-0 shadow-md"><span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">send</span></button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Elements (Glassmorphism) -->
+<div class="absolute -right-8 top-20 bg-surface-variant/60 backdrop-blur-2xl p-4 rounded-2xl outline outline-1 outline-outline-variant/20 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-center gap-4 z-20 animate-pulse" style="animation-duration: 4s;">
+<div class="w-12 h-12 rounded-full bg-[#25D366]/20 flex items-center justify-center text-[#25D366]">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<div class="text-sm font-bold text-on-surface font-headline">Deal Closed</div>
+<div class="text-xs text-on-surface-variant">$12,500 MRR via WhatsApp</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
