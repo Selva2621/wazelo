@@ -157,10 +157,10 @@ export class AuthController {
       this.getIp(req),
       this.getUa(req),
     );
-    // Rotate the refresh token cookie
-    this.setRefreshCookie(res, result.refreshToken);
-    // Return only accessToken + expiresIn — never expose refreshToken
-    const { refreshToken: _, ...jsonBody } = result;
+    // Rotate the refresh token cookie — preserve original rememberMe setting
+    this.setRefreshCookie(res, result.refreshToken, result.rememberMe);
+    // Return only accessToken + expiresIn — never expose refreshToken or rememberMe
+    const { refreshToken: _, rememberMe: __, ...jsonBody } = result;
     return jsonBody;
   }
 

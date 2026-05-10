@@ -11,6 +11,7 @@ export class SessionRepository {
     orgId: string;
     refreshToken: string;
     expiresAt: Date;
+    rememberMe?: boolean;
     userAgent?: string;
     ipAddress?: string;
   }): Promise<Session> {

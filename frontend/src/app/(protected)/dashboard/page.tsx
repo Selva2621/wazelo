@@ -6,7 +6,6 @@ import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useDashboardAnalytics, useTeamPerformance } from "@/hooks/use-analytics";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { ProductFilterSelect } from "@/components/ui/product-filter-select";
 import { AnalyticsKpiCards } from "@/components/analytics/analytics-kpi-cards";
@@ -16,6 +15,7 @@ import { ConversionFunnel } from "@/components/analytics/conversion-funnel";
 import { PeakHoursChart } from "@/components/analytics/peak-hours-chart";
 import { TeamPerformanceTable } from "@/components/analytics/team-performance-table";
 import { CampaignSummaryCards } from "@/components/analytics/campaign-summary-cards";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 export default function DashboardPage() {
@@ -37,12 +37,6 @@ export default function DashboardPage() {
   const { data, isLoading, isError, refetch } = useDashboardAnalytics(params);
   const { data: teamData } = useTeamPerformance(isManager ? params : undefined);
 
-  const isEmpty =
-    data &&
-    data.messageVolume.totals.total === 0 &&
-    data.responseTime.overall.totalResponses === 0 &&
-    (data.conversionFunnel?.snapshot?.total ?? 0) === 0 &&
-    data.campaignSummary.totals.totalCampaigns === 0;
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
@@ -60,6 +54,8 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+        <SetupChecklist />
+
         {isLoading && (
           <div className="flex items-center justify-center py-20">
             <Spinner size="lg" />
@@ -80,15 +76,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {isEmpty && (
-          <EmptyState
-            icon={<BarChart3 className="h-12 w-12" />}
-            title="No analytics data yet"
-            description="Start sending messages and your analytics will appear here."
-          />
-        )}
-
-        {data && !isEmpty && (
+        {data && (
           <>
             {/* KPI Cards */}
             <AnalyticsKpiCards data={data} isManager={isManager} />
