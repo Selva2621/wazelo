@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Flame, LayoutDashboard, Building2, CreditCard,
-  LifeBuoy, LogOut, Package,
+  LifeBuoy, LogOut, Package, Activity,
 } from "lucide-react";
 import { useSuperAdminAuthStore, getCookie } from "@/stores/super-admin-auth-store";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/super-admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
   { href: "/super-admin/plans", icon: Package, label: "Plans" },
   { href: "/super-admin/tickets", icon: LifeBuoy, label: "Help Tickets" },
+  { href: "/admin/observability", icon: Activity, label: "Observability" },
 ];
 
 export default function SuperAdminLayout({ children }: { children: ReactNode }) {

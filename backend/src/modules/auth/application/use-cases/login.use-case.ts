@@ -127,6 +127,7 @@ export class LoginUseCase {
       orgId: user.orgId,
       refreshToken: tokenPair.refreshToken,
       expiresAt: this.tokenService.getRefreshExpiryDate(rememberMe),
+      rememberMe,
       userAgent,
       ipAddress,
     });
