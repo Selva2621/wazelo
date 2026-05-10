@@ -165,14 +165,14 @@ export function Header() {
 
                 {/* Menu items */}
                 <div className="py-1">
-                  <a
+                  <Link
                     href="/settings/profile"
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-on-surface hover:bg-surface-container transition-colors"
                   >
                     <User className="h-4 w-4 text-on-surface-variant/60" />
                     My Profile
-                  </a>
+                  </Link>
                   <Link
                     href="/settings/billing"
                     onClick={() => setMenuOpen(false)}

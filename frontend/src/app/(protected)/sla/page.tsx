@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck, Settings2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -48,6 +49,7 @@ function periodToDates(period: AnalyticsPeriod) {
 
 export default function SlaPage() {
   usePageTitle("SLA Tracking");
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [period, setPeriod] = useState<AnalyticsPeriod>("week");
   const [breachPage, setBreachPage] = useState(1);
@@ -158,7 +160,7 @@ export default function SlaPage() {
                 : "Policies are active. SLA data will appear once conversations come in."
             }
             actionLabel={(policies?.length ?? 0) === 0 && isAdmin ? "Create SLA Policy" : undefined}
-            onAction={(policies?.length ?? 0) === 0 && isAdmin ? () => window.location.href = "/settings?tab=sla" : undefined}
+            onAction={(policies?.length ?? 0) === 0 && isAdmin ? () => router.push("/settings?tab=sla") : undefined}
           />
         )}
 

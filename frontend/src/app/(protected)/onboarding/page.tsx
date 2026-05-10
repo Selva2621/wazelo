@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -536,9 +537,9 @@ export default function OnboardingPage() {
 
         <p className="text-center text-xs text-on-surface-variant mt-4">
           Already have an account?{" "}
-          <a href="/auth/login" className="text-primary hover:underline">
+          <Link href="/auth/login" className="text-primary hover:underline">
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>

@@ -31,6 +31,7 @@ import {
   LifeBuoy,
   Globe,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./nav-item";
 import { Avatar } from "@/components/ui/avatar";
@@ -279,7 +280,7 @@ export function Sidebar() {
         )}
       >
         {/* User info — click to open profile */}
-        <a
+        <Link
           href="/settings/profile"
           className={cn(
             "flex items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-surface-container transition-colors cursor-pointer",
@@ -298,7 +299,7 @@ export function Sidebar() {
               </Badge>
             </div>
           )}
-        </a>
+        </Link>
 
         {/* Actions */}
         <div
