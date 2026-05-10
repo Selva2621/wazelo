@@ -12,7 +12,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
-  Flame,
   Wifi,
   Shield,
   FileText,
@@ -176,7 +175,7 @@ export function Sidebar() {
           collapsed ? "justify-center px-0" : "gap-2",
         )}
       >
-        <Flame className="h-6 w-6 text-primary shrink-0" />
+        <img src="/logo/logo.png" alt="Wazelo" className="h-7 w-7 shrink-0 object-contain" style={{ mixBlendMode: "screen" }} />
         {!collapsed && (
           <span className="text-[16px] font-bold text-on-surface tracking-tight">
             Waze<span className="text-primary">lo</span>

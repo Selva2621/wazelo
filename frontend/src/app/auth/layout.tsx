@@ -155,9 +155,7 @@ function BrandPanel() {
         transition: "all 0.6s ease",
         display: "flex", alignItems: "center", gap: 10,
       }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#d97706,#f59e0b)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <MessageSquare style={{ width: 18, height: 18, color: "#1a1d27" }} />
-        </div>
+        <img src="/logo/logo.png" alt="Wazelo" style={{ width: 40, height: 40, objectFit: "contain" }} />
         <span style={{ fontSize: 18, fontWeight: 800, color: "rgba(232,234,237,0.95)", letterSpacing: "-0.02em" }}>
           Wazelo <span style={{ color: "#d97706" }}>CRM</span>
         </span>
@@ -266,9 +264,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex lg:hidden" style={{
           alignItems: "center", gap: 8, marginBottom: 32,
         }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#d97706,#f59e0b)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <MessageSquare style={{ width: 14, height: 14, color: "#1a1d27" }} />
-          </div>
+          <img src="/logo/logo.png" alt="Wazelo" style={{ width: 30, height: 30, objectFit: "contain", mixBlendMode: "multiply" }} />
           <span style={{ fontSize: 17, fontWeight: 800, color: "var(--on-surface)", letterSpacing: "-0.02em" }}>
             Wazelo <span style={{ color: "var(--primary)" }}>CRM</span>
           </span>

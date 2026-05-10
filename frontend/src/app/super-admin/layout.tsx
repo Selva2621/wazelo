@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Flame, LayoutDashboard, Building2, CreditCard,
+  LayoutDashboard, Building2, CreditCard,
   LifeBuoy, LogOut, Package, Activity,
 } from "lucide-react";
 import { useSuperAdminAuthStore, getCookie } from "@/stores/super-admin-auth-store";
@@ -60,7 +60,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
       {/* Sidebar */}
       <aside className="w-56 flex flex-col bg-surface-container-lowest border-r border-outline-variant">
         <div className="flex items-center gap-2 px-4 h-14 border-b border-outline-variant">
-          <Flame className="h-5 w-5 text-primary shrink-0" />
+          <img src="/logo/logo.png" alt="Wazelo" className="h-6 w-6 object-contain shrink-0" style={{ mixBlendMode: "screen" }} />
           <span className="font-bold text-sm text-on-surface">
             Wazelo <span className="text-primary">Admin</span>
           </span>
