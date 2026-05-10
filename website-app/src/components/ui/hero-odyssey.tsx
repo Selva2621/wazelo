@@ -330,7 +330,7 @@ export const HeroSection: React.FC = () => {
               custom={3} variants={fade} initial="hidden" animate="show"
               style={{ fontSize: "clamp(13px, 3vw, 15px)", color: "rgba(255,255,255,0.5)", lineHeight: 1.65, margin: "0 0 24px", maxWidth: 480 }}
             >
-              Shared inbox, bulk campaigns, automation &amp; AI chatbot — all on the official WhatsApp Business API. From ₹499/mo.
+              The best WhatsApp CRM for Indian businesses. Shared inbox, bulk campaigns, automation &amp; AI chatbot — on the official WhatsApp Business API. From ₹499/mo.
             </motion.p>
 
             {/* CTAs */}

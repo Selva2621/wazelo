@@ -11,7 +11,7 @@ const organizationSchema = {
   url: "https://wazelo.in",
   logo: {
     "@type": "ImageObject",
-    url: "https://wazelo.in/logo/logo.jpeg",
+    url: "https://wazelo.in/logo/logo.png",
     width: 180,
     height: 180,
   },
@@ -231,7 +231,7 @@ export const metadata: Metadata = {
     default: "Wazelo CRM — Best WhatsApp CRM for Indian Businesses",
   },
   description:
-    "Wazelo CRM: Best WhatsApp CRM for Indian businesses. Shared team inbox, bulk campaigns, no-code automation, AI chatbot & analytics. Starts ₹499/mo. 14-day free trial.",
+    "Best WhatsApp CRM for Indian businesses. Shared inbox, bulk campaigns, automation & AI chatbot. Starts ₹499/mo. 14-day free trial.",
   keywords: [
     // ── Primary high-intent ──────────────────────────────────────────────────
     "WhatsApp CRM",
@@ -358,9 +358,9 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
   icons: {
-    icon: [{ url: "/favicon.ico", sizes: "any" }],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "/favicon.ico",
+    icon: [{ url: "/logo/logo.png", sizes: "any" }],
+    apple: [{ url: "/logo/logo.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/logo/logo.png",
   },
   manifest: "/site.webmanifest",
   robots: {
@@ -385,12 +385,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800;900&family=Manrope:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="preload"
+          as="style"
+          href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800;900&family=Manrope:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400&display=swap"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800;900&family=Manrope:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400&display=swap"
           rel="stylesheet"
         />
         <style>{`

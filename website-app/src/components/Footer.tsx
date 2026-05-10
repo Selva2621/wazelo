@@ -24,7 +24,7 @@ export default function Footer() {
         }}>
           <div style={{ gridColumn: (mobile || tablet) ? "1 / -1" : "auto" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <Image src="/logo/logo.jpeg" alt="Wazelo CRM" width={32} height={32} style={{ height: 32, width: 32, objectFit: "contain", mixBlendMode: "screen" }} />
+              <Image src="/logo/logo.png" alt="Wazelo CRM" width={32} height={32} style={{ height: 32, width: 32, objectFit: "contain", mixBlendMode: "screen" }} />
               <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: "-0.03em", color: "#e5e2e1", fontFamily: "'Inter', sans-serif" }}>
                 Wazelo <span style={{ color: "#ffb77d" }}>CRM</span>
               </span>

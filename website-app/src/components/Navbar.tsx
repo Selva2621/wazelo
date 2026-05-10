@@ -70,7 +70,7 @@ export default function Navbar({ activePage }: NavbarProps) {
         {/* Logo */}
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           <Image
-            src="/logo/logo.jpeg"
+            src="/logo/logo.png"
             alt="Wazelo CRM"
             width={36}
             height={36}
