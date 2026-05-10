@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { MailtrapTransport } from 'mailtrap';
 import {
   buildLayout,
   buildButton,
@@ -19,27 +20,26 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter;
   private readonly frontendUrl: string;
+  private readonly sender: { name: string; address: string };
 
   constructor(private readonly configService: ConfigService) {
-    const port = this.configService.get<number>('email.port');
-    const user = this.configService.get<string>('email.user');
-    const pass = this.configService.get<string>('email.pass');
     this.frontendUrl =
       this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
 
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('email.host'),
-      port,
-      secure: port === 465,
-      ...(user && pass ? { auth: { user, pass } } : {}),
-    });
+    const token = this.configService.getOrThrow<string>('email.mailtrapToken');
+
+    this.transporter = nodemailer.createTransport(MailtrapTransport({ token }));
+
+    this.sender = {
+      address: this.configService.get<string>('email.fromAddress') || 'hello@wazelo.in',
+      name: this.configService.get<string>('email.fromName') || 'Wazelo CRM',
+    };
   }
 
   async send(payload: EmailPayload): Promise<void> {
-    const from = this.configService.get<string>('email.from');
     try {
       await this.transporter.sendMail({
-        from,
+        from: this.sender,
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
