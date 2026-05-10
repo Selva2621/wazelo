@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { Plus, Megaphone } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -101,9 +102,9 @@ export default function CampaignsPage() {
           <Megaphone className="h-4 w-4 shrink-0 text-amber-600" />
           <span>
             <strong>Campaigns</strong> are not included in your current plan.{" "}
-            <a href="/settings/billing" className="underline font-medium hover:text-amber-900">
+            <Link href="/settings/billing" className="underline font-medium hover:text-amber-900">
               Upgrade to Growth or higher
-            </a>{" "}
+            </Link>{" "}
             to unlock this feature.
           </span>
         </div>

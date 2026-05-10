@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { RefreshCw, Target, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,11 +135,11 @@ export function LeadAdsEntryTable({
                   <div className="flex items-center justify-end gap-1">
                     {entry.contactId && (
                       <Tooltip content="View contact" side="left">
-                        <a href={`/contacts?id=${entry.contactId}`}>
+                        <Link href={`/contacts?id=${entry.contactId}`}>
                           <Button variant="ghost" size="sm">
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
-                        </a>
+                        </Link>
                       </Tooltip>
                     )}
                     {entry.status === "FAILED" && onRetry && (

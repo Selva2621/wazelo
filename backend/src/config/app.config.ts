@@ -16,11 +16,9 @@ export const jwtConfig = registerAs('jwt', () => ({
 }));
 
 export const emailConfig = registerAs('email', () => ({
-  host: process.env.SMTP_HOST || 'localhost',
-  port: parseInt(process.env.SMTP_PORT || '1025', 10),
-  user: process.env.SMTP_USER || '',
-  pass: process.env.SMTP_PASS || '',
-  from: process.env.SMTP_FROM || 'noreply@wazelo.in',
+  mailtrapToken: process.env.MAILTRAP_TOKEN,
+  fromAddress: process.env.EMAIL_FROM_ADDRESS || 'hello@wazelo.in',
+  fromName: process.env.EMAIL_FROM_NAME || 'Wazelo CRM',
 }));
 
 export const authConfig = registerAs('auth', () => ({

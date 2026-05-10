@@ -13,6 +13,7 @@ export interface RefreshTokenResult {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  rememberMe: boolean;
   user: {
     id: string;
     email: string;
@@ -64,23 +65,27 @@ export class RefreshTokenUseCase {
       throw new UnauthorizedException('Account is not active');
     }
 
+    // Preserve rememberMe from the original session
+    const rememberMe = session.rememberMe ?? false;
+
     // Revoke old session (token rotation — each refresh token is single-use)
     await this.sessionRepository.revokeSession(session.id);
 
-    // Generate new token pair
+    // Generate new token pair — preserve rememberMe expiry
     const tokenPair: TokenPair = await this.tokenService.generateTokenPair({
       sub: user.id,
       orgId: user.orgId,
       role: user.role,
       email: user.email,
-    });
+    }, rememberMe);
 
-    // Create new session
+    // Create new session — carry over rememberMe
     await this.sessionRepository.create({
       userId: user.id,
       orgId: user.orgId,
       refreshToken: tokenPair.refreshToken,
-      expiresAt: this.tokenService.getRefreshExpiryDate(),
+      expiresAt: this.tokenService.getRefreshExpiryDate(rememberMe),
+      rememberMe,
       userAgent,
       ipAddress,
     });
@@ -100,6 +105,7 @@ export class RefreshTokenUseCase {
       accessToken: tokenPair.accessToken,
       refreshToken: tokenPair.refreshToken,
       expiresIn: tokenPair.expiresIn,
+      rememberMe,
       user: {
         id: user.id,
         email: user.email,

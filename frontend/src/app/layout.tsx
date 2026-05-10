@@ -11,8 +11,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Wazelo CRM",
+  title: {
+    default: "Wazelo CRM",
+    template: "%s | Wazelo CRM",
+  },
   description: "WhatsApp CRM for Growing Teams — Leads, Inbox, Campaigns & Automation",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

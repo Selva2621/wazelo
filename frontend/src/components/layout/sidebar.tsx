@@ -12,12 +12,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
-  Flame,
   Wifi,
   Shield,
   FileText,
   CreditCard,
-  Activity,
+
   ShieldCheck,
   Radio,
   Target,
@@ -31,6 +30,7 @@ import {
   LifeBuoy,
   Globe,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./nav-item";
 import { Avatar } from "@/components/ui/avatar";
@@ -77,9 +77,10 @@ const navGroups: NavGroup[] = [
     label: "Sales",
     items: [
       { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts" },
-      { href: "/deals", icon: <Kanban className="h-5 w-5" />, label: "Deals", roles: ["ADMIN", "MANAGER"] },
-      { href: "/lead-scoring", icon: <TrendingUp className="h-5 w-5" />, label: "Lead Scoring", roles: ["ADMIN", "MANAGER"] },
-      { href: "/lead-ads", icon: <Target className="h-5 w-5" />, label: "Lead Ads", roles: ["ADMIN", "MANAGER"] },
+      { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
+      // { href: "/deals", icon: <Kanban className="h-5 w-5" />, label: "Deals", roles: ["ADMIN", "MANAGER"] },
+      // { href: "/lead-scoring", icon: <TrendingUp className="h-5 w-5" />, label: "Lead Scoring", roles: ["ADMIN", "MANAGER"] },
+      // { href: "/lead-ads", icon: <Target className="h-5 w-5" />, label: "Lead Ads", roles: ["ADMIN", "MANAGER"] },
     ],
   },
   {
@@ -88,7 +89,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/campaigns", icon: <Megaphone className="h-5 w-5" />, label: "Campaigns", feature: "campaigns" },
       { href: "/sequences", icon: <Workflow className="h-5 w-5" />, label: "Sequences", feature: "campaigns" },
-      { href: "/scheduler", icon: <Clock className="h-5 w-5" />, label: "Scheduler" },
+      // { href: "/scheduler", icon: <Clock className="h-5 w-5" />, label: "Scheduler" },
       { href: "/settings/templates", icon: <FileText className="h-5 w-5" />, label: "Templates", roles: ["ADMIN", "MANAGER"] },
     ],
   },
@@ -98,6 +99,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/automation", icon: <Zap className="h-5 w-5" />, label: "Automation", feature: "automation" },
       { href: "/chatbot", icon: <Bot className="h-5 w-5" />, label: "Chatbot" },
+      { href: "/settings/chat-widget", icon: <Globe className="h-5 w-5" />, label: "Chat Widget", roles: ["ADMIN"] },
     ],
   },
   {
@@ -105,19 +107,17 @@ const navGroups: NavGroup[] = [
     roles: ["ADMIN", "MANAGER"],
     items: [
       { href: "/csat", icon: <Star className="h-5 w-5" />, label: "CSAT" },
-      { href: "/sla", icon: <ShieldCheck className="h-5 w-5" />, label: "SLA Tracking" },
-      { href: "/knowledge-base", icon: <BookOpen className="h-5 w-5" />, label: "Knowledge Base" },
+      // { href: "/sla", icon: <ShieldCheck className="h-5 w-5" />, label: "SLA Tracking" },
+      // { href: "/knowledge-base", icon: <BookOpen className="h-5 w-5" />, label: "Knowledge Base" },
     ],
   },
   {
     label: "Settings",
     items: [
       { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"] },
-      { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
-      { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
+      // { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
       { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"] },
       { href: "/settings/whatsapp", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp", roles: ["EMPLOYEE", "MANAGER"] },
-      { href: "/settings/chat-widget", icon: <Globe className="h-5 w-5" />, label: "Chat Widget", roles: ["ADMIN"] },
     ],
   },
   {
@@ -135,7 +135,6 @@ const adminNavItems = [
   { href: "/admin/roles-permissions", icon: <Shield className="h-5 w-5" />, label: "Permissions" },
   { href: "/admin/audit-logs", icon: <FileText className="h-5 w-5" />, label: "Audit Logs" },
   { href: "/admin/gdpr", icon: <ShieldCheck className="h-5 w-5" />, label: "GDPR" },
-  { href: "/admin/observability", icon: <Activity className="h-5 w-5" />, label: "Observability" },
 ];
 
 const managerNavItems = [
@@ -176,7 +175,7 @@ export function Sidebar() {
           collapsed ? "justify-center px-0" : "gap-2",
         )}
       >
-        <Flame className="h-6 w-6 text-primary shrink-0" />
+        <img src="/logo/logo.png" alt="Wazelo" className="h-7 w-7 shrink-0 object-contain" style={{ mixBlendMode: "screen" }} />
         {!collapsed && (
           <span className="text-[16px] font-bold text-on-surface tracking-tight">
             Waze<span className="text-primary">lo</span>
@@ -280,7 +279,7 @@ export function Sidebar() {
         )}
       >
         {/* User info — click to open profile */}
-        <a
+        <Link
           href="/settings/profile"
           className={cn(
             "flex items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-surface-container transition-colors cursor-pointer",
@@ -299,7 +298,7 @@ export function Sidebar() {
               </Badge>
             </div>
           )}
-        </a>
+        </Link>
 
         {/* Actions */}
         <div
