@@ -5,9 +5,14 @@ import {
   MinLength,
   Matches,
   IsObject,
+  IsEnum,
 } from 'class-validator';
+import { OrgType } from '@prisma/client';
 
 export class UpdateOrgSettingsDto {
+  @IsOptional()
+  @IsEnum(OrgType)
+  orgType?: OrgType;
   @IsOptional()
   @IsString()
   @MinLength(1)

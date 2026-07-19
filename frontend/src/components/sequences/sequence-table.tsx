@@ -162,7 +162,7 @@ export function SequenceTable({
                       <RotateCcw className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {["DRAFT", "ACTIVE", "PAUSED"].includes(seq.status) && onCancel && (
+                  {["ACTIVE", "PAUSED"].includes(seq.status) && onCancel && (
                     <button
                       onClick={() => onCancel(seq.id)}
                       className="p-1 rounded text-error hover:bg-error/10 transition-colors"
@@ -182,7 +182,11 @@ export function SequenceTable({
                   )}
                   {seq.status === "DRAFT" && onDelete && (
                     <button
-                      onClick={() => onDelete(seq.id)}
+                      onClick={() => {
+                        if (confirm(`Delete sequence "${seq.name}"? This cannot be undone.`)) {
+                          onDelete(seq.id);
+                        }
+                      }}
                       className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
                       title="Delete"
                     >

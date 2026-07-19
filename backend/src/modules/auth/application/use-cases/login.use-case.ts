@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserStatus } from '@prisma/client';
 import { LoginDto } from '../dto/login.dto';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
+import { OrgRepository } from '@/modules/org/infrastructure/repositories/org.repository';
 import { PasswordService } from '../../domain/services/password.service';
 import { TokenService, TokenPair } from '../../domain/services/token.service';
 import { SessionRepository } from '../../infrastructure/repositories/session.repository';
@@ -26,6 +27,7 @@ export interface LoginResult {
     lastName: string;
     role: string;
     orgId: string;
+    orgType?: string;
   };
 }
 
@@ -35,6 +37,7 @@ export class LoginUseCase {
 
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly orgRepository: OrgRepository,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionRepository: SessionRepository,
@@ -111,6 +114,9 @@ export class LoginUseCase {
     await this.userRepository.resetFailedAttempts(user.id);
     await this.userRepository.updateLastLogin(user.id);
 
+    // Fetch org to include orgType in response
+    const org = await this.orgRepository.findById(user.orgId);
+
     const rememberMe = dto.rememberMe ?? false;
 
     // Generate token pair
@@ -160,6 +166,7 @@ export class LoginUseCase {
         lastName: user.lastName,
         role: user.role,
         orgId: user.orgId,
+        orgType: org?.orgType,
       },
     };
   }

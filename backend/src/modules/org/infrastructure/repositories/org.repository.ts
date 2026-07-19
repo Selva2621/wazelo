@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { Organization, Prisma } from '@prisma/client';
+import { Organization, OrgType, Prisma } from '@prisma/client';
 
 export interface UpdateOrgSettingsInput {
   name?: string;
@@ -10,6 +10,7 @@ export interface UpdateOrgSettingsInput {
   industry?: string;
   description?: string;
   website?: string;
+  orgType?: OrgType;
 }
 
 @Injectable()
@@ -53,6 +54,7 @@ export class OrgRepository {
         ...(data.industry !== undefined && { industry: data.industry }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.website !== undefined && { website: data.website }),
+        ...(data.orgType !== undefined && { orgType: data.orgType }),
       },
     });
   }

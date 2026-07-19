@@ -58,6 +58,9 @@ import { ProcessChannelInboundWorker } from './channel/process-channel-inbound.w
 // Shopify Integration workers
 import { ShopifyWebhookWorker } from './shopify/shopify-webhook.worker';
 import { ShopifyModule } from '@/modules/shopify/shopify.module';
+// Lead Scraper workers
+import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
+import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 
 @Module({
   imports: [
@@ -78,6 +81,7 @@ import { ShopifyModule } from '@/modules/shopify/shopify.module';
     LeadAdsModule,
     SequencesModule,
     ShopifyModule,
+    LeadScraperModule,
   ],
   providers: [
     SendEmailWorker,
@@ -124,6 +128,8 @@ import { ShopifyModule } from '@/modules/shopify/shopify.module';
     SequenceStepWorker,
     // Shopify Integration workers
     ShopifyWebhookWorker,
+    // Lead Scraper workers
+    LeadScraperWorker,
   ],
 })
 export class JobsModule {}

@@ -67,6 +67,11 @@ export class UpdateOrgSettingsUseCase {
       changes.website = { from: org.website, to: dto.website };
     }
 
+    if (dto.orgType !== undefined && dto.orgType !== org.orgType) {
+      updateData.orgType = dto.orgType;
+      changes.orgType = { from: org.orgType, to: dto.orgType };
+    }
+
     // No changes detected
     if (Object.keys(updateData).length === 0) {
       return org;

@@ -7,9 +7,13 @@ import { authApi } from "@/lib/api/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { AppShell } from "@/components/layout/app-shell";
 import { useSubscription } from "@/hooks/use-billing";
+import { useOrgSettings } from "@/hooks/use-settings";
 
 // Pages exempt from subscription gate
 const SUBSCRIPTION_EXEMPT = ["/onboarding", "/settings/billing"];
+
+// Pages exempt from org-type gate
+const ORG_TYPE_EXEMPT = ["/onboarding"];
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -19,6 +23,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { data: subscriptionData, isLoading: subLoading, isError: subError } = useSubscription({
     enabled: isAuthenticated,
   });
+  const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
   const expiresAt = useAuthStore((s) => s.expiresAt);
   const setTokens = useAuthStore((s) => s.setTokens);
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -29,6 +34,9 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   // Tracks whether the initial session-check attempt has completed
   const [sessionChecked, setSessionChecked] = useState(false);
 
+  // Guard against React StrictMode double-invoke: only one refresh call per mount
+  const refreshCalledRef = useRef(false);
+
   // On mount: always attempt silent refresh — backend is sole authority.
   // No client-side cookie gate: the httpOnly refresh token cookie is the only signal.
   useEffect(() => {
@@ -38,24 +46,21 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Abort flag: prevents stale response from being applied if component unmounts
-    // mid-flight (e.g. React dev tools, fast navigation away)
-    let cancelled = false;
+    // Prevent duplicate refresh calls (React StrictMode fires effects twice in dev).
+    // Token rotation means a second call with the already-rotated cookie → 401 → logout.
+    if (refreshCalledRef.current) return;
+    refreshCalledRef.current = true;
 
     authApi
       .refreshToken()
       .then((data) => {
-        if (cancelled) return;
         setTokens(data);
         setSessionChecked(true);
       })
       .catch(() => {
-        if (cancelled) return;
         clearAuth();
         setSessionChecked(true);
       });
-
-    return () => { cancelled = true; };
   // Run once on mount only
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -70,6 +75,18 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
       router.replace("/auth/login");
     }
   }, [sessionChecked, isAuthenticated, router]);
+
+  // Org-type gate: redirect to /onboarding/type if org type is still the DB default ("CRM").
+  // This fires for new users on TRIAL who skip /onboarding entirely.
+  useEffect(() => {
+    if (!isAuthenticated || orgLoading || orgSettings === undefined) return;
+    const exempt = ORG_TYPE_EXEMPT.some((p) => pathname.startsWith(p));
+    if (exempt) return;
+    const orgType = orgSettings?.orgType;
+    if (!orgType || orgType === "CRM") {
+      router.replace("/onboarding/type");
+    }
+  }, [isAuthenticated, orgLoading, orgSettings, pathname, router]);
 
   // Subscription gate: redirect to onboarding if no active/trial subscription.
   // Skip on query error (e.g. backend down) — don't penalise user for infra issues.
@@ -122,6 +139,11 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) return null;
+
+  // Onboarding pages are full-screen — no sidebar or header
+  if (pathname.startsWith("/onboarding")) {
+    return <>{children}</>;
+  }
 
   return (
     <AppShell>

@@ -4,6 +4,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
+import { OrgRepository } from '@/modules/org/infrastructure/repositories/org.repository';
 import { SessionRepository } from '../../infrastructure/repositories/session.repository';
 import { TokenService, TokenPair } from '../../domain/services/token.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
@@ -21,6 +22,7 @@ export interface RefreshTokenResult {
     lastName: string;
     role: string;
     orgId: string;
+    orgType?: string;
   };
 }
 
@@ -30,6 +32,7 @@ export class RefreshTokenUseCase {
 
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly orgRepository: OrgRepository,
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
     private readonly auditService: AuditService,
@@ -64,6 +67,9 @@ export class RefreshTokenUseCase {
       await this.sessionRepository.revokeSession(session.id);
       throw new UnauthorizedException('Account is not active');
     }
+
+    // Fetch org to include orgType in response
+    const org = await this.orgRepository.findById(user.orgId);
 
     // Preserve rememberMe from the original session
     const rememberMe = session.rememberMe ?? false;
@@ -113,6 +119,7 @@ export class RefreshTokenUseCase {
         lastName: user.lastName,
         role: user.role,
         orgId: user.orgId,
+        orgType: org?.orgType,
       },
     };
   }

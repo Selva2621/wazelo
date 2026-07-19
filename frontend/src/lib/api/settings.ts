@@ -36,6 +36,7 @@ export const settingsApi = {
         industry: d.industry ?? "",
         description: d.description ?? "",
         website: d.website ?? "",
+        orgType: d.orgType,
         brandColors: d.branding?.brandColors,
         updatedAt: d.updatedAt,
       } as OrgSettings;
@@ -49,6 +50,7 @@ export const settingsApi = {
         industry: data.industry,
         description: data.description,
         website: data.website,
+        ...(data.orgType !== undefined && { orgType: data.orgType }),
         branding: {
           ...(data.language ? { language: data.language } : {}),
           ...(data.brandColors ? { brandColors: data.brandColors } : {}),

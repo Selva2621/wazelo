@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, ChevronRight, Users, MessageSquare, Zap, Bot, Code2,
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { usePlans, useSubscribeToPlan, useCreateOrder, useVerifyPayment, useSubscription } from "@/hooks/use-billing";
 import { useAuthStore } from "@/stores/auth-store";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
 import type { Plan, BillingCycle } from "@/lib/types/billing";
 
@@ -180,11 +181,13 @@ function PlanCard({
   selected,
   yearly,
   onSelect,
+  recommended,
 }: {
   plan: Plan;
   selected: boolean;
   yearly: boolean;
   onSelect: () => void;
+  recommended?: boolean;
 }) {
   const perMonth = yearly
     ? Math.round(plan.priceInCents / 12)
@@ -201,7 +204,14 @@ function PlanCard({
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="font-semibold text-on-surface">{plan.name}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-on-surface">{plan.name}</span>
+            {recommended && (
+              <span className="bg-primary/10 text-primary text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                Best for Freelancers
+              </span>
+            )}
+          </div>
           <div className="text-xs text-on-surface-variant mt-0.5">{plan.description}</div>
         </div>
         <div className="text-right flex-shrink-0 ml-3">
@@ -235,6 +245,7 @@ function ChoosePlanStep({
   onYearlyToggle,
   onNext,
   onBack,
+  isFreelancer,
 }: {
   plans: Plan[];
   selectedId: string | null;
@@ -243,6 +254,7 @@ function ChoosePlanStep({
   onYearlyToggle: () => void;
   onNext: () => void;
   onBack: () => void;
+  isFreelancer?: boolean;
 }) {
   const cycle: BillingCycle = yearly ? "YEARLY" : "MONTHLY";
   // Filter out free-trial plan — it's only auto-assigned on signup
@@ -282,6 +294,7 @@ function ChoosePlanStep({
             selected={selectedId === plan.id}
             yearly={yearly}
             onSelect={() => onSelect(plan.id)}
+            recommended={isFreelancer && plan.slug.startsWith("solo-")}
           />
         ))}
       </div>
@@ -394,9 +407,19 @@ export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: subData, isLoading: subLoading } = useSubscription();
+  const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
   const { data: plans, isLoading: plansLoading } = usePlans();
   const createOrder = useCreateOrder();
   const verifyPayment = useVerifyPayment();
+
+  // Redirect to type selector if org type not yet explicitly chosen.
+  // orgType defaults to "CRM" in the DB — treat "CRM" as "not yet chosen".
+  useEffect(() => {
+    if (orgLoading) return;
+    if (!orgSettings?.orgType || orgSettings.orgType === "CRM") {
+      router.replace("/onboarding/type");
+    }
+  }, [orgLoading, orgSettings?.orgType, router]);
 
   const [step, setStep] = useState(0);
   const [yearly, setYearly] = useState(false);
@@ -523,6 +546,7 @@ export default function OnboardingPage() {
               }}
               onNext={() => selectedPlanId && setStep(2)}
               onBack={() => setStep(0)}
+              isFreelancer={orgSettings?.orgType === "FREELANCER"}
             />
           ) : selectedPlan ? (
             <ConfirmStep

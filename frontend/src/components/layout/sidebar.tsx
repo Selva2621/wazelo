@@ -16,7 +16,6 @@ import {
   Shield,
   FileText,
   CreditCard,
-
   ShieldCheck,
   Radio,
   Target,
@@ -29,6 +28,7 @@ import {
   Package,
   LifeBuoy,
   Globe,
+  ScanSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-billing";
+import { useOrgSettings } from "@/hooks/use-settings";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
@@ -57,6 +58,8 @@ interface NavGroup {
   label: string;
   /** If set, entire group is hidden unless user has one of these roles. */
   roles?: Role[];
+  /** If true, group is hidden for FREELANCER org type. */
+  hideForFreelancer?: boolean;
   items: NavItemDef[];
 }
 
@@ -77,6 +80,8 @@ const navGroups: NavGroup[] = [
     label: "Sales",
     items: [
       { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts" },
+      { href: "/leads/scraper", icon: <ScanSearch className="h-5 w-5" />, label: "Lead Scraper" },
+      { href: "/leads/pipeline", icon: <Kanban className="h-5 w-5" />, label: "Lead Pipeline" },
       { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
       // { href: "/deals", icon: <Kanban className="h-5 w-5" />, label: "Deals", roles: ["ADMIN", "MANAGER"] },
       // { href: "/lead-scoring", icon: <TrendingUp className="h-5 w-5" />, label: "Lead Scoring", roles: ["ADMIN", "MANAGER"] },
@@ -86,6 +91,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Marketing",
     roles: ["ADMIN", "MANAGER"],
+    hideForFreelancer: true,
     items: [
       { href: "/campaigns", icon: <Megaphone className="h-5 w-5" />, label: "Campaigns", feature: "campaigns" },
       { href: "/sequences", icon: <Workflow className="h-5 w-5" />, label: "Sequences", feature: "campaigns" },
@@ -96,6 +102,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Automation",
     roles: ["ADMIN", "MANAGER"],
+    hideForFreelancer: true,
     items: [
       { href: "/automation", icon: <Zap className="h-5 w-5" />, label: "Automation", feature: "automation" },
       { href: "/chatbot", icon: <Bot className="h-5 w-5" />, label: "Chatbot" },
@@ -105,6 +112,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Service",
     roles: ["ADMIN", "MANAGER"],
+    hideForFreelancer: true,
     items: [
       { href: "/csat", icon: <Star className="h-5 w-5" />, label: "CSAT" },
       // { href: "/sla", icon: <ShieldCheck className="h-5 w-5" />, label: "SLA Tracking" },
@@ -147,7 +155,9 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const { data: subData } = useSubscription();
+  const { data: orgSettings } = useOrgSettings();
   const plan = subData?.subscription?.plan;
+  const isFreelancer = orgSettings?.orgType === "FREELANCER";
 
   const userName = user
     ? `${user.firstName} ${user.lastName}`
@@ -186,11 +196,25 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-2">
         {navGroups.map((group) => {
+          // Hide group for freelancer mode
+          if (isFreelancer && group.hideForFreelancer) return null;
           // Hide group if user doesn't have required role
           if (group.roles && !group.roles.includes(user?.role as Role)) return null;
 
+          // For freelancers, redirect Dashboard to the freelancer view
+          const resolvedGroup = isFreelancer
+            ? {
+                ...group,
+                items: group.items.map((item) =>
+                  item.href === "/dashboard"
+                    ? { ...item, href: "/dashboard/freelancer" }
+                    : item,
+                ),
+              }
+            : group;
+
           // Filter items by role and feature
-          const visibleItems = group.items
+          const visibleItems = resolvedGroup.items
             .filter((item) => !item.roles || item.roles.includes(user?.role as Role))
             .filter((item) => isFeatureAllowed(item.feature));
 
@@ -247,7 +271,7 @@ export function Sidebar() {
         )}
 
         {/* Admin section */}
-        {user?.role === "ADMIN" && (
+        {user?.role === "ADMIN" && !isFreelancer && (
           <div className="mb-1">
             {!collapsed ? (
               <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/50 px-2 pt-3 pb-1 block">

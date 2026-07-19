@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Users, GitMerge, Upload, Download } from "lucide-react";
+import { Plus, Users, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
 import { useContactsStore } from "@/stores/contacts-store";
@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ContactFilters } from "@/components/contacts/contact-filters";
 import { ContactsTable } from "@/components/contacts/contacts-table";
+import { ContactKanbanBoard } from "@/components/contacts/contact-kanban-board";
 import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
@@ -34,6 +35,7 @@ export default function ContactsPage() {
   const [showMerge, setShowMerge] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
+  const [view, setView] = useState<"list" | "kanban">("list");
 
   const exportContacts = useExportContacts();
 
@@ -142,6 +144,31 @@ export default function ContactsPage() {
             >
               <GitMerge className="h-4 w-4" />
             </Button>
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-outline-variant/20 p-0.5 gap-0.5">
+              <button
+                onClick={() => setView("list")}
+                title="List view"
+                className={`p-1.5 rounded-md transition-colors ${
+                  view === "list"
+                    ? "bg-primary/15 text-primary"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                }`}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setView("kanban")}
+                title="Kanban view"
+                className={`p-1.5 rounded-md transition-colors ${
+                  view === "kanban"
+                    ? "bg-primary/15 text-primary"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                }`}
+              >
+                <Kanban className="h-4 w-4" />
+              </button>
+            </div>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" />
               New Contact
@@ -160,19 +187,23 @@ export default function ContactsPage() {
         <ContactFilters />
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-y-auto">
-        <ContactsTable
-          contacts={data?.contacts ?? []}
-          total={data?.total ?? 0}
-          take={TAKE}
-          skip={page * TAKE}
-          isLoading={isLoading}
-          onRowClick={openContactDetail}
-          onPageChange={setPage}
-          onCreateClick={() => setShowCreate(true)}
-        />
-      </div>
+      {/* Content */}
+      {view === "kanban" ? (
+        <ContactKanbanBoard />
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <ContactsTable
+            contacts={data?.contacts ?? []}
+            total={data?.total ?? 0}
+            take={TAKE}
+            skip={page * TAKE}
+            isLoading={isLoading}
+            onRowClick={openContactDetail}
+            onPageChange={setPage}
+            onCreateClick={() => setShowCreate(true)}
+          />
+        </div>
+      )}
 
       {/* Detail Drawer */}
       <ContactDetailDrawer

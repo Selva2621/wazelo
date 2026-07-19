@@ -96,6 +96,8 @@ enum ContactSource {
   INSTAGRAM_LEAD_AD
   WHATSAPP_LEAD_AD
   SHOPIFY
+  // Lead Scraper
+  WEB_SCRAPE
 }
 
 // ─────────────────────────────────────────────
@@ -427,6 +429,8 @@ enum PlanType {
 enum OrgType {
   CRM
   DEVELOPER
+  TEAM
+  FREELANCER
 }
 
 // ─────────────────────────────────────────────
@@ -482,6 +486,7 @@ model Organization {
   channels                 Channel[]
   leadAdEntries            LeadAdEntry[]
   leadAdsConfig            LeadAdsConfig?
+  scrapeRuns               ScrapeRun[]
   cannedResponses          CannedResponse[]
   messageTemplates         MessageTemplate[]
   csatSurveys              CsatSurvey[]
@@ -554,6 +559,7 @@ model User {
   assignedDeals           Deal[]                   @relation("DealAssignee")
   helpTickets             HelpTicket[]
   ticketReplies           TicketReply[]            @relation("TicketReplyUser")
+  scrapeRuns              ScrapeRun[]              @relation("ScrapeRunCreatedBy")
 
   @@unique([email, deletedAt], name: "unique_email_active")
   @@index([orgId])
@@ -2337,6 +2343,85 @@ model LeadAdsConfig {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@map("lead_ads_configs")
+}
+
+// ─────────────────────────────────────────────
+// LEAD SCRAPER (Freelancer web scraping)
+// ─────────────────────────────────────────────
+
+enum ScrapeRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ScrapeSource {
+  GOOGLE_MAPS
+  UPWORK_JOBS
+  FREELANCER_IN
+  TRUELANCER
+  LINKEDIN_JOBS
+}
+
+model ScrapeRun {
+  id             String          @id @default(uuid()) @db.Uuid
+  orgId          String          @map("org_id") @db.Uuid
+  source         ScrapeSource
+  keywords       String          @db.VarChar(500)
+  location       String?         @db.VarChar(255)
+  maxResults     Int             @default(50) @map("max_results")
+  status         ScrapeRunStatus @default(PENDING)
+  resultCount    Int             @default(0) @map("result_count")
+  importedCount  Int             @default(0) @map("imported_count")
+  skippedCount   Int             @default(0) @map("skipped_count")
+  errorMessage   String?         @map("error_message") @db.Text
+  completedAt    DateTime?       @map("completed_at")
+  createdById    String          @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  createdBy    User         @relation("ScrapeRunCreatedBy", fields: [createdById], references: [id])
+  results      ScrapeResult[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([orgId, createdAt])
+  @@map("scrape_runs")
+}
+
+model ScrapeResult {
+  id          String   @id @default(uuid()) @db.Uuid
+  scrapeRunId String   @map("scrape_run_id") @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String?  @db.VarChar(500)
+  phone       String?  @db.VarChar(50)
+  email       String?  @db.VarChar(255)
+  company     String?  @db.VarChar(500)
+  jobTitle    String?  @map("job_title") @db.VarChar(500)
+  location    String?  @db.VarChar(500)
+  address     String?  @db.VarChar(1000)
+  website     String?  @db.VarChar(500)
+  budget      String?  @db.VarChar(100)
+  skills      String[]
+  rating      Float?
+  reviewCount Int?     @map("review_count")
+  category     String?  @db.VarChar(200)
+  description  String?  @db.VarChar(2000)
+  openingHours String?  @map("opening_hours") @db.VarChar(500)
+  socialLinks  String[] @map("social_links")
+  sourceUrl    String   @map("source_url") @db.VarChar(2000)
+  imported    Boolean  @default(false)
+  contactId   String?  @map("contact_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  scrapeRun ScrapeRun @relation(fields: [scrapeRunId], references: [id], onDelete: Cascade)
+
+  @@index([scrapeRunId])
+  @@index([orgId])
+  @@index([scrapeRunId, imported])
+  @@map("scrape_results")
 }
 
 // ─────────────────────────────────────────────

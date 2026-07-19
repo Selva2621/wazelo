@@ -659,6 +659,7 @@ export function InboxView({
                 assignConversation.mutate({ conversationId: selectedId, assignedToId });
               }
             }}
+            conversationId={selectedId ?? undefined}
           />
         </div>
       )}

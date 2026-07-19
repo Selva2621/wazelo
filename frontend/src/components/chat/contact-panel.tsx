@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck } from "lucide-react";
+import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck, FileText } from "lucide-react";
+import { SendProposalModal } from "./send-proposal-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,8 @@ interface ContactPanelProps {
   canAssign?: boolean;
   isAssigning?: boolean;
   onAssign?: (assignedToId: string | null) => void;
+  /** Conversation id used for quick actions like Send Proposal */
+  conversationId?: string;
 }
 
 const LEAD_STATUSES: { value: LeadStatus; label: string; dot: string }[] = [
@@ -65,9 +68,11 @@ export function ContactPanel({
   canAssign = false,
   isAssigning = false,
   onAssign,
+  conversationId,
 }: ContactPanelProps) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [showProposal, setShowProposal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const assignDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -254,6 +259,27 @@ export function ContactPanel({
           )}
         </div>
 
+        {/* Quick Actions */}
+        {conversationId && (
+          <div>
+            <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+              Quick Actions
+            </span>
+            <div className="mt-1.5 flex flex-col gap-2">
+              <button
+                onClick={() => setShowProposal(true)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-[13px] font-medium",
+                  "border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/50",
+                )}
+              >
+                <FileText className="h-4 w-4 text-on-surface-variant shrink-0" />
+                Send Proposal
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Details */}
         <div className="space-y-3">
           <DetailRow icon={<Phone className="h-4 w-4" />} label="Phone" value={contact.phone} />
@@ -299,6 +325,16 @@ export function ContactPanel({
           </div>
         )}
       </div>
+
+      {/* Send Proposal Modal */}
+      {showProposal && conversationId && (
+        <SendProposalModal
+          conversationId={conversationId}
+          contactPhone={contact.phone}
+          contactName={contact.name}
+          onClose={() => setShowProposal(false)}
+        />
+      )}
     </div>
   );
 }

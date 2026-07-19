@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "OrgType" ADD VALUE 'TEAM';
+ALTER TYPE "OrgType" ADD VALUE 'FREELANCER';

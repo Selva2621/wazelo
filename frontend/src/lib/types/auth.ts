@@ -1,3 +1,5 @@
+export type OrgType = "CRM" | "DEVELOPER" | "TEAM" | "FREELANCER";
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -5,6 +7,7 @@ export interface AuthUser {
   lastName: string;
   role: "ADMIN" | "MANAGER" | "EMPLOYEE";
   orgId: string;
+  orgType?: OrgType;
 }
 
 export interface LoginResponse {

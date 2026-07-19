@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BarChart3 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { useDashboardAnalytics, useTeamPerformance } from "@/hooks/use-analytics";
 import { Spinner } from "@/components/ui/spinner";
 import { PeriodSelector } from "@/components/analytics/period-selector";
@@ -20,8 +22,18 @@ import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 export default function DashboardPage() {
   usePageTitle("Analytics");
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
   const [period, setPeriod] = useState<AnalyticsPeriod>("week");
+
+  // Redirect freelancers to their dedicated dashboard
+  useEffect(() => {
+    if (orgLoading) return;
+    if (orgSettings?.orgType === "FREELANCER") {
+      router.replace("/dashboard/freelancer");
+    }
+  }, [orgLoading, orgSettings?.orgType, router]);
 
   const role = user?.role ?? "EMPLOYEE";
   const isManager = role === "ADMIN" || role === "MANAGER";

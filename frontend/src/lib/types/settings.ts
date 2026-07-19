@@ -1,5 +1,7 @@
 // ─── Organization Settings ───
 
+export type OrgType = "CRM" | "DEVELOPER" | "TEAM" | "FREELANCER";
+
 export interface OrgSettings {
   id: string;
   orgId: string;
@@ -10,6 +12,7 @@ export interface OrgSettings {
   industry?: string;
   description?: string;
   website?: string;
+  orgType?: OrgType;
   brandColors?: {
     primary?: string;
     secondary?: string;
@@ -25,6 +28,7 @@ export interface UpdateOrgSettingsRequest {
   industry?: string;
   description?: string;
   website?: string;
+  orgType?: OrgType;
   brandColors?: {
     primary?: string;
     secondary?: string;

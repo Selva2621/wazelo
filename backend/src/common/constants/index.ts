@@ -79,6 +79,8 @@ export const QUEUE_NAMES = {
   DEVELOPER_WEBHOOK_DELIVER: 'developer-webhook-deliver',
   // Shopify integration queues
   PROCESS_SHOPIFY_WEBHOOK: 'process-shopify-webhook',
+  // Lead Scraper queues
+  SCRAPE_LEADS: 'scrape-leads',
 } as const;
 
 export const EVENT_NAMES = {

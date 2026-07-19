@@ -121,6 +121,22 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     return this.connections.has(sessionId);
   }
 
+  /**
+   * Check whether a phone number is registered on WhatsApp.
+   * Returns true/false, or null if no active Baileys session exists for this sessionId.
+   */
+  async checkWhatsApp(sessionId: string, phone: string): Promise<boolean | null> {
+    const sock = this.connections.get(sessionId);
+    if (!sock) return null;
+    try {
+      const results = await sock.onWhatsApp(phone);
+      return results?.[0]?.exists ?? false;
+    } catch (err) {
+      this.logger.warn(`checkWhatsApp failed for ${phone}: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   async destroyConnection(
     sessionId: string,
     logout: boolean = false,

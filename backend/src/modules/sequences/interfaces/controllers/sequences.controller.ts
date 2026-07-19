@@ -287,6 +287,13 @@ export class SequencesController {
       totalRecipients: audience.total,
     });
 
+    // Kick off the step-check worker immediately
+    await this.queueService.publishOnce(
+      QUEUE_NAMES.SEQUENCE_STEP_CHECK,
+      { sequenceId: id, orgId },
+      `seq-check-${id}`,
+    );
+
     return this.repo.findByIdAndOrg(id, orgId);
   }
 
