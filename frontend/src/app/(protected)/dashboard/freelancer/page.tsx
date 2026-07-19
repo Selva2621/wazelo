@@ -100,20 +100,18 @@ export default function FreelancerDashboard() {
   }, [isLoading, orgSettings?.orgType, router]);
 
   // Pipeline counts per lead status
-  const { data: inquiryData }  = useContacts({ leadStatus: "NEW",        take: 1 });
+  const { data: inquiryData }   = useContacts({ leadStatus: "NEW",        take: 1 });
   const { data: discoveryData } = useContacts({ leadStatus: "CONTACTED",  take: 1 });
-  const { data: proposalData }  = useContacts({ leadStatus: "QUALIFIED",  take: 1 });
-  const { data: contractData }  = useContacts({ leadStatus: "NEGOTIATION", take: 1 });
-  const { data: activeData }    = useContacts({ leadStatus: "CONVERTED",   take: 1 });
-  const { data: completedData } = useContacts({ leadStatus: "CLOSED_WON",  take: 1 });
+  const { data: proposalData }  = useContacts({ leadStatus: "INTERESTED", take: 1 });
+  const { data: activeData }    = useContacts({ leadStatus: "CONVERTED",  take: 1 });
+  const { data: completedData } = useContacts({ leadStatus: "CLOSED",     take: 1 });
 
   const inquiryCount   = inquiryData?.total   ?? 0;
   const discoveryCount = discoveryData?.total  ?? 0;
   const proposalCount  = proposalData?.total   ?? 0;
-  const contractCount  = contractData?.total   ?? 0;
   const activeCount    = activeData?.total     ?? 0;
   const completedCount = completedData?.total  ?? 0;
-  const totalLeads = inquiryCount + discoveryCount + proposalCount + contractCount + activeCount + completedCount;
+  const totalLeads = inquiryCount + discoveryCount + proposalCount + activeCount + completedCount;
 
   const firstName = user?.firstName ?? "there";
 
@@ -179,12 +177,11 @@ export default function FreelancerDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            <PipelineBar label="Inquiry"           count={inquiryCount}   color="bg-blue-400" />
-            <PipelineBar label="Discovery"         count={discoveryCount} color="bg-violet-400" />
-            <PipelineBar label="Proposal Sent"     count={proposalCount}  color="bg-amber-400" />
-            <PipelineBar label="Contract & Deposit" count={contractCount} color="bg-orange-400" />
-            <PipelineBar label="Active Project"    count={activeCount}    color="bg-emerald-400" />
-            <PipelineBar label="Completed"         count={completedCount} color="bg-green-500" />
+            <PipelineBar label="New"           count={inquiryCount}   color="bg-blue-400" />
+            <PipelineBar label="Contacted"     count={discoveryCount} color="bg-violet-400" />
+            <PipelineBar label="Interested"    count={proposalCount}  color="bg-amber-400" />
+            <PipelineBar label="Converted"     count={activeCount}    color="bg-emerald-400" />
+            <PipelineBar label="Closed"        count={completedCount} color="bg-green-500" />
           </div>
         </div>
 
