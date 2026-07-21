@@ -166,8 +166,127 @@ export class BillingController {
       throw new BadRequestException('Payment verification failed: invalid signature');
     }
 
-    // Check if the org already has a trial subscription — if so, activate it
+    // Check if the org already has an existing subscription
     const existing = await this.subscriptionRepo.findActiveByOrg(user.orgId);
+
+    // If an ACTIVE subscription exists, handle renewal or plan change
+    if (existing && existing.status === SubscriptionStatus.ACTIVE) {
+      const plan = await this.planRepo.findById(dto.planId);
+      if (!plan) throw new NotFoundException('Plan not found');
+
+      if (existing.planId === dto.planId) {
+        // Same plan — treat as manual renewal: extend billing period by one cycle
+        const now = new Date();
+        const newPeriodStart = now;
+        const newPeriodEnd = new Date(now);
+        if (plan.billingCycle === 'YEARLY') {
+          newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+        } else {
+          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+        }
+
+        const renewed = await this.subscriptionRepo.transitionStatus(
+          existing.id,
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.ACTIVE,
+          { currentPeriodStart: newPeriodStart, currentPeriodEnd: newPeriodEnd },
+        );
+
+        await this.subscriptionRepo.recordEvent({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          previousStatus: SubscriptionStatus.ACTIVE,
+          newStatus: SubscriptionStatus.ACTIVE,
+          triggeredById: user.sub,
+          metadata: { type: 'renewal', razorpayPaymentId: dto.razorpayPaymentId, orderId: dto.orderId },
+        });
+
+        const payment = await this.paymentRepo.createPayment({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          amountInCents: plan.priceInCents,
+          currency: plan.currency,
+          externalId: dto.razorpayPaymentId,
+          paymentMethod: 'razorpay',
+          idempotencyKey: dto.idempotencyKey || `rzp-renew-${dto.razorpayPaymentId}`,
+        });
+        await this.paymentRepo.transitionPaymentStatus(payment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
+
+        const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+        const invoice = await this.paymentRepo.createInvoice({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          paymentId: payment.id,
+          invoiceNumber,
+          amountInCents: plan.priceInCents,
+          currency: plan.currency,
+          periodStart: newPeriodStart,
+          periodEnd: newPeriodEnd,
+          lineItems: [{ description: `${plan.name} — ${plan.billingCycle} (Renewal)`, amount: plan.priceInCents, currency: plan.currency }],
+          dueDate: now,
+        });
+        await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
+
+        await this.usageRepo.resetUsageForOrg(
+          user.orgId,
+          newPeriodStart,
+          newPeriodEnd,
+          {
+            [UsageMetricType.MESSAGES_SENT]: plan.maxMessagesPerMonth,
+            [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
+            [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
+            [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
+            [UsageMetricType.API_CALLS]: plan.maxMessagesPerMonth,
+            [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
+            [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
+          },
+        );
+
+        return { subscription: renewed, type: 'renewal', deduplicated: false };
+      }
+
+      // Different plan — upgrade or downgrade, both go through Razorpay payment
+      const isUpgrade = plan.priceInCents > existing.priceInCents;
+      const planChangeType = isUpgrade ? 'Upgrade' : 'Downgrade';
+      const now = new Date();
+
+      // Record payment + invoice for all plan changes via Razorpay
+      const planChangePayment = await this.paymentRepo.createPayment({
+        orgId: user.orgId,
+        subscriptionId: existing.id,
+        amountInCents: plan.priceInCents,
+        currency: plan.currency,
+        externalId: dto.razorpayPaymentId,
+        paymentMethod: 'razorpay',
+        idempotencyKey: dto.idempotencyKey || `rzp-${planChangeType.toLowerCase()}-${dto.razorpayPaymentId}`,
+      });
+      await this.paymentRepo.transitionPaymentStatus(planChangePayment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
+
+      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+      const planChangeInvoice = await this.paymentRepo.createInvoice({
+        orgId: user.orgId,
+        subscriptionId: existing.id,
+        paymentId: planChangePayment.id,
+        invoiceNumber,
+        amountInCents: plan.priceInCents,
+        currency: plan.currency,
+        periodStart: existing.currentPeriodStart,
+        periodEnd: existing.currentPeriodEnd,
+        lineItems: [{ description: `${plan.name} — ${plan.billingCycle} (${planChangeType})`, amount: plan.priceInCents, currency: plan.currency }],
+        dueDate: now,
+      });
+      await this.paymentRepo.transitionInvoiceStatus(planChangeInvoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
+
+      return this.changePlanUseCase.execute(
+        user.orgId,
+        user.sub,
+        { newPlanId: dto.planId, idempotencyKey: dto.idempotencyKey },
+        this.extractIp(req),
+        this.extractUserAgent(req),
+      );
+    }
+
+    // If a TRIAL subscription exists, activate it with this payment
     if (existing && existing.status === SubscriptionStatus.TRIAL) {
       // Transition trial → active on payment
       const plan = await this.planRepo.findById(dto.planId);

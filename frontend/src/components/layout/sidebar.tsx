@@ -91,7 +91,6 @@ const navGroups: NavGroup[] = [
   {
     label: "Marketing",
     roles: ["ADMIN", "MANAGER"],
-    hideForFreelancer: true,
     items: [
       { href: "/campaigns", icon: <Megaphone className="h-5 w-5" />, label: "Campaigns", feature: "campaigns" },
       { href: "/sequences", icon: <Workflow className="h-5 w-5" />, label: "Sequences", feature: "campaigns" },

@@ -30,6 +30,8 @@ export class TokenService {
 
   async generateTokenPair(payload: JwtPayload, rememberMe = false): Promise<TokenPair> {
     const refreshExpiry: StringValue = rememberMe ? '30d' : '1d';
+    // jti guarantees uniqueness even when two tokens are signed in the same second
+    const jti = randomBytes(16).toString('hex');
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
@@ -37,7 +39,7 @@ export class TokenService {
         { secret: this.accessSecret, expiresIn: this.accessExpiry },
       ),
       this.jwtService.signAsync(
-        { sub: payload.sub, orgId: payload.orgId, type: 'refresh' },
+        { sub: payload.sub, orgId: payload.orgId, type: 'refresh', jti },
         { secret: this.refreshSecret, expiresIn: refreshExpiry },
       ),
     ]);

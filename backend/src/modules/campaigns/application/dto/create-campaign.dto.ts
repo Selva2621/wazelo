@@ -7,6 +7,8 @@ import {
   IsDateString,
   IsUrl,
   IsArray,
+  IsBoolean,
+  IsNumber,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -43,6 +45,26 @@ export class AudienceFiltersDto {
   @IsArray()
   @IsUUID('4', { each: true })
   teamIds?: string[];
+
+  @IsOptional()
+  @IsUUID('4')
+  scrapeRunId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  hasPhone?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hasWebsite?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  minRating?: number;
+
+  @IsOptional()
+  @IsString()
+  dateAdded?: 'last_7d' | 'last_30d' | 'last_90d';
 }
 
 export class CreateCampaignDto {

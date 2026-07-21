@@ -151,6 +151,8 @@ export default function BillingPage() {
   const [showYearly, setShowYearly] = useState(false);
   // Plan change error (must be declared before any early returns)
   const [planChangeError, setPlanChangeError] = useState<string | null>(null);
+  // Cancel confirmation modal
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (user?.role !== "ADMIN") {
     return (
@@ -186,76 +188,98 @@ export default function BillingPage() {
       subscription.status,
     );
 
+  const openRazorpay = async (plan: Plan) => {
+    setPlanChangeError(null);
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      setPlanChangeError("Failed to load payment gateway. Check your connection.");
+      return;
+    }
+    createOrder.mutate(plan.id, {
+      onSuccess: (order) => {
+        const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+        if (!razorpayKey) {
+          setPlanChangeError("Payment gateway not configured (missing key). Contact support.");
+          return;
+        }
+        const options = {
+          key: razorpayKey,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Wazelo CRM",
+          description: `Subscribe to ${order.planName}`,
+          order_id: order.orderId,
+          handler: (response: any) => {
+            verifyPayment.mutate(
+              {
+                planId: plan.id,
+                orderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                idempotencyKey: `billing-${user?.orgId ?? ""}-${plan.id}-${Date.now()}`,
+              },
+              {
+                onError: (err: any) => {
+                  setPlanChangeError(err?.message ?? "Payment verification failed.");
+                },
+              },
+            );
+          },
+          prefill: {
+            name: user ? `${user.firstName} ${user.lastName}` : "",
+            email: user?.email ?? "",
+          },
+          theme: { color: "#6366F1" },
+          modal: { ondismiss: () => setPlanChangeError("Payment cancelled. Try again.") },
+        };
+        new (window as any).Razorpay(options).open();
+      },
+      onError: (err: any) => {
+        setPlanChangeError(err?.message ?? "Failed to create payment order.");
+      },
+    });
+  };
+
   const handlePlanAction = async (plan: Plan) => {
     if (!isAdmin) return;
 
-    // No subscription OR on trial — both require Razorpay payment for paid plans
-    const needsPayment =
-      (!subscription || subscription.status === "TRIAL") && plan.priceInCents > 0;
+    const currentPrice = subscription?.plan.priceInCents ?? 0;
+    const isUpgrading = plan.priceInCents > currentPrice;
+    const isDowngrading = plan.priceInCents < currentPrice;
 
-    if (needsPayment) {
-      setPlanChangeError(null);
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        setPlanChangeError("Failed to load payment gateway. Check your connection.");
-        return;
-      }
-      createOrder.mutate(plan.id, {
-        onSuccess: (order) => {
-          const options = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: order.amount,
-            currency: order.currency,
-            name: "Wazelo CRM",
-            description: subscription?.plan.id === plan.id
-              ? `Activate ${order.planName} Plan`
-              : `Subscribe to ${order.planName}`,
-            order_id: order.orderId,
-            handler: (response: any) => {
-              verifyPayment.mutate(
-                {
-                  planId: plan.id,
-                  orderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  signature: response.razorpay_signature,
-                  idempotencyKey: `billing-${user?.orgId ?? ""}-${plan.id}`,
-                },
-                {
-                  onError: (err: any) => {
-                    setPlanChangeError(err?.response?.data?.message ?? "Payment verification failed.");
-                  },
-                },
-              );
-            },
-            prefill: {
-              name: user ? `${user.firstName} ${user.lastName}` : "",
-              email: user?.email ?? "",
-            },
-            theme: { color: "#6366F1" },
-            modal: { ondismiss: () => setPlanChangeError("Payment cancelled. Try again.") },
-          };
-          new (window as any).Razorpay(options).open();
-        },
-        onError: (err: any) => {
-          setPlanChangeError(err?.response?.data?.message ?? "Failed to create payment order.");
-        },
-      });
-      return;
-    }
-
-    // No subscription + free plan (edge case) — direct subscribe
+    // No subscription — needs payment for paid plans
     if (!subscription) {
-      subscribeMutation.mutate(plan.id);
+      if (plan.priceInCents > 0) {
+        await openRazorpay(plan);
+      } else {
+        subscribeMutation.mutate(plan.id);
+      }
       return;
     }
 
-    // Active subscription — show upgrade/downgrade confirm modal
-    setConfirmPlan(plan);
+    // On trial — always needs payment to activate
+    if (subscription.status === "TRIAL" && plan.priceInCents > 0) {
+      await openRazorpay(plan);
+      return;
+    }
+
+    // Active subscription + upgrading — needs payment
+    if (subscription.status === "ACTIVE" && isUpgrading) {
+      await openRazorpay(plan);
+      return;
+    }
+
+    // Active subscription + downgrading — requires payment for new plan
+    if (subscription.status === "ACTIVE" && isDowngrading) {
+      await openRazorpay(plan);
+      return;
+    }
   };
 
   const handleConfirmChange = () => {
     if (!confirmPlan) return;
     setPlanChangeError(null);
+    // Only downgrades reach here — no payment required
     changePlanMutation.mutate(confirmPlan.id, {
       onSuccess: () => setConfirmPlan(null),
       onError: (err: any) => {
@@ -331,13 +355,40 @@ export default function BillingPage() {
                     Trial ends {formatDate(subscription.trialEndsAt)}
                   </p>
                 )}
-                {subscription.scheduledPlanId && subscription.scheduledChangeAt && (
-                  <p className="text-[12px] text-warning mt-1 flex items-center gap-1.5">
-                    <ArrowDownCircle className="h-3.5 w-3.5" />
-                    Downgrade scheduled for{" "}
-                    {formatDate(subscription.scheduledChangeAt)}
-                  </p>
-                )}
+                {subscription.scheduledPlanId && subscription.scheduledChangeAt && (() => {
+                  const scheduledPayment = payments?.data?.find((p) => p.status === "SUCCEEDED");
+                  return (
+                    <div className="mt-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 space-y-1.5">
+                      <p className="text-[12px] text-warning flex items-center gap-1.5 font-medium">
+                        <ArrowDownCircle className="h-3.5 w-3.5 shrink-0" />
+                        Plan change scheduled for {formatDate(subscription.scheduledChangeAt)}
+                      </p>
+                      {subscription.scheduledPlan && (
+                        <div className="pl-5 flex items-center gap-2 flex-wrap">
+                          <span className="text-[12px] text-on-surface-variant">
+                            Switching to{" "}
+                            <span className="font-semibold text-on-surface">
+                              {subscription.scheduledPlan.name}
+                            </span>
+                          </span>
+                          <span className="text-[12px] font-semibold text-primary">
+                            ₹{(subscription.scheduledPlan.priceInCents / 100).toLocaleString("en-IN")}
+                            /{subscription.scheduledPlan.billingCycle === "MONTHLY" ? "mo" : "yr"}
+                          </span>
+                        </div>
+                      )}
+                      {scheduledPayment && (
+                        <div className="pl-5 flex items-center gap-1.5">
+                          <Check className="h-3 w-3 text-success shrink-0" />
+                          <span className="text-[11px] text-success font-medium">
+                            Payment of ₹{(scheduledPayment.amountInCents / 100).toLocaleString("en-IN")} received on{" "}
+                            {formatDate(scheduledPayment.createdAt)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2">
                 {canReactivate && (
@@ -368,11 +419,11 @@ export default function BillingPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => cancelMutation.mutate(undefined)}
+                    onClick={() => setShowCancelConfirm(true)}
                     disabled={cancelMutation.isPending}
                     className="text-error hover:text-error"
                   >
-                    {cancelMutation.isPending ? "Cancelling..." : "Cancel Plan"}
+                    Cancel Plan
                   </Button>
                 )}
               </div>
@@ -497,8 +548,15 @@ export default function BillingPage() {
               </div>
             </div>
             {(() => {
+              const isFreelancerOrg = user?.orgType === "FREELANCER";
               const sortedVisiblePlans = plans
-                .filter((p) => p.isActive && p.slug !== "free-trial" && p.billingCycle === (showYearly ? "YEARLY" : "MONTHLY"))
+                .filter((p) => {
+                  if (!p.isActive || p.slug === "free-trial") return false;
+                  if (p.billingCycle !== (showYearly ? "YEARLY" : "MONTHLY")) return false;
+                  const isSoloPlan = p.slug.startsWith("solo-");
+                  // Freelancer orgs see only Solo plans; all other orgs see non-Solo plans
+                  return isFreelancerOrg ? isSoloPlan : !isSoloPlan;
+                })
                 .sort((a, b) => a.sortOrder - b.sortOrder);
               const popularIndex = Math.floor(sortedVisiblePlans.length / 2);
               return (
@@ -730,6 +788,50 @@ export default function BillingPage() {
           user={user}
           onClose={() => setSelectedInvoiceId(null)}
         />
+      )}
+
+      {/* Cancel plan confirm modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl border border-outline-variant shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-error/10 p-2 shrink-0">
+                <AlertTriangle className="h-5 w-5 text-error" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-on-surface">
+                  Cancel {subscription?.plan.name}?
+                </h3>
+                <p className="text-[13px] text-on-surface-variant mt-1">
+                  Your plan will remain active until the end of the current billing period. After that, access will be restricted.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={cancelMutation.isPending}
+              >
+                Keep Plan
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  cancelMutation.mutate(undefined, {
+                    onSuccess: () => setShowCancelConfirm(false),
+                  });
+                }}
+                loading={cancelMutation.isPending}
+                className="bg-error hover:bg-error/90 text-white"
+              >
+                Yes, Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

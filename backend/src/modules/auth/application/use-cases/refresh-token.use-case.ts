@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
 import { OrgRepository } from '@/modules/org/infrastructure/repositories/org.repository';
 import { SessionRepository } from '../../infrastructure/repositories/session.repository';
@@ -86,15 +87,24 @@ export class RefreshTokenUseCase {
     }, rememberMe);
 
     // Create new session — carry over rememberMe
-    await this.sessionRepository.create({
-      userId: user.id,
-      orgId: user.orgId,
-      refreshToken: tokenPair.refreshToken,
-      expiresAt: this.tokenService.getRefreshExpiryDate(rememberMe),
-      rememberMe,
-      userAgent,
-      ipAddress,
-    });
+    // Guard against the rare race where two concurrent refreshes produce the same token
+    try {
+      await this.sessionRepository.create({
+        userId: user.id,
+        orgId: user.orgId,
+        refreshToken: tokenPair.refreshToken,
+        expiresAt: this.tokenService.getRefreshExpiryDate(rememberMe),
+        rememberMe,
+        userAgent,
+        ipAddress,
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        // Another concurrent request already created a session with this token — treat as invalid
+        throw new UnauthorizedException('Token conflict, please retry');
+      }
+      throw err;
+    }
 
     // Audit log
     await this.auditService.log({

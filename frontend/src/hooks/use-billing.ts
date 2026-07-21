@@ -142,7 +142,8 @@ export function useVerifyPayment() {
     mutationFn: (data: Parameters<typeof billingApi.verifyPayment>[0]) =>
       billingApi.verifyPayment(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: billingKeys.all });
+      // refetchType: 'all' forces immediate refetch so the upgraded plan shows instantly
+      queryClient.invalidateQueries({ queryKey: billingKeys.all, refetchType: 'all' });
     },
   });
 }

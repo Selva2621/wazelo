@@ -16,6 +16,7 @@ import { EVENT_NAMES } from '@/common/constants';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import {
   AuditAction,
+  InvoiceStatus,
   SubscriptionStatus,
   UsageMetricType,
 } from '@prisma/client';
@@ -117,7 +118,7 @@ export class SubscribeUseCase {
       idempotencyKey: dto.idempotencyKey,
     });
 
-    // 6b. Record payment for paid plans (now we have the subscription ID)
+    // 6b. Record payment + invoice for paid plans (now we have the subscription ID)
     if (dto.razorpayPaymentId && initialStatus === SubscriptionStatus.ACTIVE && !hasTrial && !isFree) {
       const payment = await this.paymentRepo.createPayment({
         orgId,
@@ -129,6 +130,21 @@ export class SubscribeUseCase {
         idempotencyKey: `subscribe-${dto.idempotencyKey || `${orgId}-${dto.planId}-${Date.now()}`}`,
       });
       await this.paymentRepo.transitionPaymentStatus(payment.id, 'PENDING', 'SUCCEEDED');
+
+      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+      const invoice = await this.paymentRepo.createInvoice({
+        orgId,
+        subscriptionId: subscription.id,
+        paymentId: payment.id,
+        invoiceNumber,
+        amountInCents: plan.priceInCents,
+        currency: plan.currency,
+        periodStart,
+        periodEnd,
+        lineItems: [{ description: `${plan.name} — ${plan.billingCycle}`, amount: plan.priceInCents, currency: plan.currency }],
+        dueDate: now,
+      });
+      await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
     }
 
     // 6c. Mark trial as used for this org (one trial per org lifetime)

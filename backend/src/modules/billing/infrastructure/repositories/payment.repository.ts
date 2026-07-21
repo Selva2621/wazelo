@@ -175,6 +175,8 @@ export class PaymentRepository {
   ): Promise<{ invoices: Invoice[]; total: number }> {
     const where: Prisma.InvoiceWhereInput = {
       orgId,
+      // Exclude zero-amount DRAFT invoices (free-trial signup noise)
+      NOT: { status: 'DRAFT', amountInCents: 0 },
       ...(options.status && { status: options.status }),
     };
 

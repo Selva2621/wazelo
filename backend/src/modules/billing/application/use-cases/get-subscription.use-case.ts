@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
+import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
 import { UsageMetricType } from '@prisma/client';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class GetSubscriptionUseCase {
   constructor(
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly usageRepo: UsageRepository,
+    private readonly planRepo: PlanRepository,
   ) {}
 
   async execute(orgId: string) {
@@ -79,6 +81,25 @@ export class GetSubscriptionUseCase {
         : 0;
     }
 
+    // Fetch scheduled plan details if a plan change is pending
+    let scheduledPlan: {
+      id: string; name: string; slug: string;
+      billingCycle: string; priceInCents: number; currency: string;
+    } | null = null;
+    if (subscription.scheduledPlanId) {
+      const sp = await this.planRepo.findById(subscription.scheduledPlanId);
+      if (sp) {
+        scheduledPlan = {
+          id: sp.id,
+          name: sp.name,
+          slug: sp.slug,
+          billingCycle: sp.billingCycle,
+          priceInCents: sp.priceInCents,
+          currency: sp.currency,
+        };
+      }
+    }
+
     return {
       subscription: {
         id: subscription.id,
@@ -110,6 +131,7 @@ export class GetSubscriptionUseCase {
         cancelledAt: subscription.cancelledAt,
         scheduledPlanId: subscription.scheduledPlanId,
         scheduledChangeAt: subscription.scheduledChangeAt,
+        scheduledPlan,
       },
       usage,
     };

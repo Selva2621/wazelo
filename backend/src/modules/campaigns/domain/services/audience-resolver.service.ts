@@ -9,6 +9,11 @@ export interface AudienceFilters {
   sources?: string[];
   productIds?: string[];
   teamIds?: string[];
+  scrapeRunId?: string;
+  hasPhone?: boolean;
+  hasWebsite?: boolean;
+  minRating?: number;
+  dateAdded?: 'last_7d' | 'last_30d' | 'last_90d';
 }
 
 export interface ResolvedContact {
@@ -44,7 +49,7 @@ export class AudienceResolverService {
     filters?: AudienceFilters,
   ): Promise<AudienceResult> {
     if (filters) await this.resolveTeamIds(filters);
-    const where = this.buildWhereClause(orgId, audienceType, filters);
+    const where = await this.buildWhereClause(orgId, audienceType, filters);
 
     const contacts: ResolvedContact[] = [];
     const seenPhones = new Set<string>();
@@ -108,15 +113,15 @@ export class AudienceResolverService {
     filters?: AudienceFilters,
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
-    const where = this.buildWhereClause(orgId, audienceType, filters);
+    const where = await this.buildWhereClause(orgId, audienceType, filters);
     return this.prisma.contact.count({ where });
   }
 
-  private buildWhereClause(
+  private async buildWhereClause(
     orgId: string,
     audienceType: CampaignAudienceType,
     filters?: AudienceFilters,
-  ): Prisma.ContactWhereInput {
+  ): Promise<Prisma.ContactWhereInput> {
     const where: Prisma.ContactWhereInput = {
       orgId,
       deletedAt: null,
@@ -147,6 +152,65 @@ export class AudienceResolverService {
         where.contactProducts = {
           some: { productId: { in: filters.productIds } },
         };
+      }
+
+      if (filters.scrapeRunId) {
+        // Target only contacts imported from a specific scrape run
+        const imported = await this.prisma.scrapeResult.findMany({
+          where: { scrapeRunId: filters.scrapeRunId, contactId: { not: null } },
+          select: { contactId: true },
+        });
+        const contactIds = imported.map((r) => r.contactId as string);
+        where.id = { in: contactIds };
+      }
+
+      // hasPhone filter
+      if (filters.hasPhone === true) {
+        where.phoneNumber = { not: '' };
+      } else if (filters.hasPhone === false) {
+        where.phoneNumber = '';
+      }
+
+      // hasWebsite filter — website lives on ScrapeResult, not Contact
+      if (filters.hasWebsite !== undefined) {
+        const websiteResults = await this.prisma.scrapeResult.findMany({
+          where: {
+            contactId: { not: null },
+            website: filters.hasWebsite ? { not: null } : null,
+          },
+          select: { contactId: true },
+        });
+        const websiteContactIds = websiteResults.map((r) => r.contactId as string);
+        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
+          where.id = { in: (where.id.in as string[]).filter((id) => websiteContactIds.includes(id)) };
+        } else {
+          where.id = { in: websiteContactIds };
+        }
+      }
+
+      // dateAdded filter
+      if (filters.dateAdded) {
+        const days = filters.dateAdded === 'last_7d' ? 7 : filters.dateAdded === 'last_30d' ? 30 : 90;
+        where.createdAt = { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
+      }
+
+      // minRating filter — only works with scrapeRunId (subquery on ScrapeResult)
+      if (filters.minRating && filters.scrapeRunId) {
+        const ratedResults = await this.prisma.scrapeResult.findMany({
+          where: {
+            scrapeRunId: filters.scrapeRunId,
+            contactId: { not: null },
+            rating: { gte: filters.minRating },
+          },
+          select: { contactId: true },
+        });
+        const ratedContactIds = ratedResults.map((r) => r.contactId as string);
+        // Intersect with existing id filter if present
+        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
+          where.id = { in: (where.id.in as string[]).filter((id) => ratedContactIds.includes(id)) };
+        } else {
+          where.id = { in: ratedContactIds };
+        }
       }
     }
 
