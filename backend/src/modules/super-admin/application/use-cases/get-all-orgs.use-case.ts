@@ -1,77 +1,57 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@/infrastructure/database/prisma.service';
+import {
+  PlatformRepository,
+  LIVE_SUBSCRIPTION_STATUSES,
+} from '../../infrastructure/repositories/platform.repository';
 
 export interface GetAllOrgsInput {
   page?: number;
   limit?: number;
   search?: string;
+  /** A SubscriptionStatus, or 'NONE' for orgs that never subscribed */
   status?: string;
 }
 
 @Injectable()
 export class GetAllOrgsUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly platformRepo: PlatformRepository) {}
 
   async execute(input: GetAllOrgsInput) {
-    const page = input.page ?? 1;
-    const limit = Math.min(input.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const page = Math.max(input.page ?? 1, 1);
+    const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
 
-    const where: any = { deletedAt: null };
-    if (input.search) {
-      where.OR = [
-        { name: { contains: input.search, mode: 'insensitive' } },
-        { slug: { contains: input.search, mode: 'insensitive' } },
-      ];
-    }
-
-    const [orgs, total] = await Promise.all([
-      this.prisma.organization.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: { select: { users: { where: { deletedAt: null } } } },
-          subscriptions: {
-            where: {
-              status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE', 'GRACE_PERIOD'] as any },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            include: { plan: true },
-          },
-        },
-      }),
-      this.prisma.organization.count({ where }),
-    ]);
-
-    // Filter by subscription status if requested
-    let filtered = orgs;
-    if (input.status) {
-      filtered = orgs.filter(
-        (o) => o.subscriptions[0]?.status === input.status || (!o.subscriptions[0] && input.status === 'NONE'),
-      );
-    }
+    const { orgs, total } = await this.platformRepo.findOrgs({
+      skip: (page - 1) * limit,
+      take: limit,
+      search: input.search,
+      status: input.status,
+    });
 
     return {
-      orgs: filtered.map((o) => ({
-        id: o.id,
-        name: o.name,
-        slug: o.slug,
-        orgType: o.orgType,
-        createdAt: o.createdAt,
-        userCount: o._count.users,
-        subscription: o.subscriptions[0]
-          ? {
-              status: o.subscriptions[0].status,
-              planName: o.subscriptions[0].plan?.name ?? null,
-              billingCycle: o.subscriptions[0].billingCycle,
-              currentPeriodEnd: o.subscriptions[0].currentPeriodEnd,
-              priceInCents: o.subscriptions[0].priceInCents,
-            }
-          : null,
-      })),
+      orgs: orgs.map((o) => {
+        // Current subscription: a live one if any, else the most recent
+        const sub =
+          o.subscriptions.find((s) => LIVE_SUBSCRIPTION_STATUSES.includes(s.status)) ?? o.subscriptions[0];
+        return {
+          id: o.id,
+          name: o.name,
+          slug: o.slug,
+          orgType: o.orgType,
+          status: o.status,
+          createdAt: o.createdAt,
+          userCount: o._count.users,
+          subscription: sub
+            ? {
+                status: sub.status,
+                planName: sub.plan?.name ?? null,
+                billingCycle: sub.billingCycle,
+                currentPeriodEnd: sub.currentPeriodEnd,
+                priceInCents: sub.priceInCents,
+                currency: sub.currency,
+              }
+            : null,
+        };
+      }),
       total,
       page,
       limit,

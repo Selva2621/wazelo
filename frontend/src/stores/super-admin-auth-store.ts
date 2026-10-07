@@ -2,24 +2,33 @@
 
 import { create } from "zustand";
 
-interface SuperAdminInfo {
+export interface SuperAdminInfo {
   id: string;
   name: string;
   email: string;
+  twoFactorEnabled: boolean;
+  lastLoginAt: string | null;
 }
 
 interface SuperAdminAuthState {
   superAdmin: SuperAdminInfo | null;
+  /** Kept in memory only — the refresh token lives in an HttpOnly cookie. */
   accessToken: string | null;
   setAuth: (superAdmin: SuperAdminInfo, accessToken: string) => void;
+  setProfile: (superAdmin: SuperAdminInfo) => void;
   clearAuth: () => void;
 }
 
-function setCookie(name: string, value: string, days = 1) {
+/**
+ * Non-sensitive marker read by proxy.ts to route between login and the portal.
+ * It grants nothing: every API call still needs a valid access token.
+ */
+const SESSION_MARKER = "hasSuperAdminSession";
+
+function setMarkerCookie() {
   if (typeof document === "undefined") return;
-  if (!value || value === "undefined" || value === "null") return;
-  const expires = new Date(Date.now() + days * 86400000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+  const expires = new Date(Date.now() + 86400000).toUTCString(); // matches the 1d refresh token
+  document.cookie = `${SESSION_MARKER}=1; expires=${expires}; path=/; SameSite=Strict`;
 }
 
 function deleteCookie(name: string) {
@@ -27,35 +36,23 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict`;
 }
 
-export function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  if (!match) return null;
-  const value = decodeURIComponent(match[1]);
-  // Guard against stale "undefined"/"null" string values from previous broken sessions
-  if (!value || value === "undefined" || value === "null") return null;
-  return value;
-}
+// Remove the JS-readable access token cookie left by older builds
+deleteCookie("sa_token");
 
 export const useSuperAdminAuthStore = create<SuperAdminAuthState>()((set) => ({
   superAdmin: null,
   accessToken: null,
   setAuth: (superAdmin, accessToken) => {
-    // Sync to cookie so it survives page refresh / cross-tab
-    setCookie("sa_token", accessToken, 1);
-    setCookie("hasSuperAdminSession", "1", 1);
+    setMarkerCookie();
     set({ superAdmin, accessToken });
   },
+  setProfile: (superAdmin) => set({ superAdmin }),
   clearAuth: () => {
-    deleteCookie("sa_token");
-    deleteCookie("hasSuperAdminSession");
+    deleteCookie(SESSION_MARKER);
     set({ superAdmin: null, accessToken: null });
   },
 }));
 
-// Cookie is synchronously readable; store initializes from null on page refresh
 export function getSuperAdminToken(): string | null {
-  const fromCookie = getCookie("sa_token");
-  if (fromCookie) return fromCookie;
   return useSuperAdminAuthStore.getState().accessToken;
 }

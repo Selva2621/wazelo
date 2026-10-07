@@ -34,6 +34,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | object = 'Internal server error';
     let errors: object | undefined;
+    // Machine-readable code (e.g. USAGE_LIMIT_EXCEEDED, ORG_SUSPENDED) the frontend branches on
+    let errorCode: string | undefined;
+    let details: object | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -45,6 +48,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const body = responseBody as Record<string, unknown>;
         message = (body.message as string | object) || message;
         errors = body.errors as object | undefined;
+        // Only UPPER_SNAKE codes — not Nest's default labels like "Forbidden"
+        if (typeof body.error === 'string' && /^[A-Z][A-Z0-9_]+$/.test(body.error)) {
+          errorCode = body.error;
+        }
+        if (body.details && typeof body.details === 'object') {
+          details = body.details as object;
+        }
       }
     }
 
@@ -93,6 +103,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       ...(errors && { errors }),
+      ...(errorCode && { error: errorCode }),
+      ...(details && { details }),
       traceId,
       timestamp: new Date().toISOString(),
       path: request.url,

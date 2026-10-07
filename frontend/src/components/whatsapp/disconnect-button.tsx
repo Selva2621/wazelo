@@ -16,7 +16,7 @@ export function DisconnectButton({ onDisconnect, loading, className }: Disconnec
   if (confirming) {
     return (
       <div className={className}>
-        <p className="text-[13px] text-on-surface-variant mb-2">
+        <p className="text-body text-on-surface-variant mb-2">
           Are you sure? This will end your WhatsApp session.
         </p>
         <div className="flex items-center gap-2">

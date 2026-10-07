@@ -56,26 +56,26 @@ export function ConversationSummaryPanel({ conversationId }: ConversationSummary
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-[12px] font-semibold text-primary">AI Summary</span>
+          <span className="text-label font-semibold text-primary">AI Summary</span>
         </div>
-        <button onClick={() => setShowPanel(false)} className="text-on-surface-variant/40 hover:text-on-surface-variant">
+        <button aria-label="Close summary" onClick={() => setShowPanel(false)} className="text-on-surface-variant/40 hover:text-on-surface-variant">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {summary && (
         <>
-          <p className="text-[13px] text-on-surface leading-relaxed">{summary.summary}</p>
+          <p className="text-body text-on-surface leading-relaxed">{summary.summary}</p>
 
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             {summary.sentiment && (
-              <Badge variant="muted" className="text-[10px]">
+              <Badge variant="muted" className="text-caption">
                 {sentimentIcon[summary.sentiment]}
                 <span className="ml-1">{summary.sentiment}</span>
               </Badge>
             )}
             {summary.keyTopics.map((topic) => (
-              <Badge key={topic} variant="default" className="text-[10px]">
+              <Badge key={topic} variant="default" className="text-caption">
                 {topic}
               </Badge>
             ))}

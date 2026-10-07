@@ -20,7 +20,7 @@ export function LeadAdsPlatformBreakdown({ analytics }: LeadAdsPlatformBreakdown
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+      <h3 className="text-body font-medium text-on-surface-variant mb-4">
         Platform Breakdown
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -36,11 +36,11 @@ export function LeadAdsPlatformBreakdown({ analytics }: LeadAdsPlatformBreakdown
             >
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`h-4 w-4 ${config.color}`} />
-                <span className="text-[12px] font-medium text-on-surface capitalize">
+                <span className="text-label font-medium text-on-surface capitalize">
                   {p.platform}
                 </span>
               </div>
-              <p className="text-[20px] font-semibold text-on-surface tabular-nums">
+              <p className="text-title font-semibold text-on-surface tabular-nums">
                 {p.count.toLocaleString()}
               </p>
               <div className="flex items-center gap-2 mt-1.5">
@@ -53,7 +53,7 @@ export function LeadAdsPlatformBreakdown({ analytics }: LeadAdsPlatformBreakdown
                     }}
                   />
                 </div>
-                <span className="text-[11px] text-on-surface-variant tabular-nums">
+                <span className="text-caption text-on-surface-variant tabular-nums">
                   {pct}%
                 </span>
               </div>

@@ -88,7 +88,7 @@ export function CampaignsTable({
   return (
     <div>
       {/* Header */}
-      <div className="grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-[11px] font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
         <span>Campaign</span>
         <span>Status</span>
         <span>Recipients</span>
@@ -107,11 +107,11 @@ export function CampaignsTable({
         >
           {/* Name + Description */}
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-on-surface truncate">
+            <p className="text-body font-medium text-on-surface truncate">
               {campaign.name}
             </p>
             {campaign.description && (
-              <p className="text-[11px] text-on-surface-variant/60 truncate">
+              <p className="text-caption text-on-surface-variant/60 truncate">
                 {campaign.description}
               </p>
             )}
@@ -126,7 +126,7 @@ export function CampaignsTable({
           </div>
 
           {/* Recipients */}
-          <span className="text-[12px] text-on-surface-variant tabular-nums">
+          <span className="text-label text-on-surface-variant tabular-nums">
             {campaign.totalRecipients.toLocaleString()}
           </span>
 
@@ -138,7 +138,7 @@ export function CampaignsTable({
 
           {/* Delivery Rate */}
           <span
-            className={`text-[12px] tabular-nums ${
+            className={`text-label tabular-nums ${
               campaign.sentCount > 0 ? "text-success" : "text-on-surface-variant/40"
             }`}
           >
@@ -146,7 +146,7 @@ export function CampaignsTable({
           </span>
 
           {/* Created */}
-          <span className="text-[11px] text-on-surface-variant/60">
+          <span className="text-caption text-on-surface-variant/60">
             {timeAgo(campaign.createdAt)}
           </span>
 
@@ -163,7 +163,7 @@ export function CampaignsTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-[12px] text-on-surface-variant/60">
+          <p className="text-label text-on-surface-variant/60">
             {skip + 1}–{Math.min(skip + take, total)} of {total}
           </p>
           <div className="flex gap-1.5">

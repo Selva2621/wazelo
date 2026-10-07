@@ -88,10 +88,10 @@ export default function WhatsAppSettingsPage() {
             <MessageCircle className="h-5 w-5 text-[#25D366]" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-on-surface">
+            <h2 className="text-title font-semibold text-on-surface">
               WhatsApp Connection
             </h2>
-            <p className="text-[13px] text-on-surface-variant">
+            <p className="text-body text-on-surface-variant">
               Link your WhatsApp account to send and receive messages
             </p>
           </div>
@@ -109,10 +109,10 @@ export default function WhatsAppSettingsPage() {
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface-container">
               <Smartphone className="h-10 w-10 text-on-surface-variant" />
             </div>
-            <h3 className="text-[16px] font-medium text-on-surface mb-2">
+            <h3 className="text-title-sm font-medium text-on-surface mb-2">
               No WhatsApp session
             </h3>
-            <p className="text-[13px] text-on-surface-variant max-w-[360px] mb-6">
+            <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
               Connect your WhatsApp account by scanning a QR code with your phone.
             </p>
             <Button
@@ -137,7 +137,7 @@ export default function WhatsAppSettingsPage() {
 
             {/* Instructions */}
             <div className="mt-8 w-full space-y-3">
-              <p className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider mb-3">
+              <p className="text-body font-medium text-on-surface-variant uppercase tracking-wider mb-3">
                 How to connect
               </p>
               {[
@@ -146,10 +146,10 @@ export default function WhatsAppSettingsPage() {
                 { step: "3", text: "Tap 'Link a Device' and scan the QR code" },
               ].map((item) => (
                 <div key={item.step} className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[12px] font-semibold text-primary">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-label font-semibold text-primary">
                     {item.step}
                   </span>
-                  <span className="text-[13px] text-on-surface-variant">
+                  <span className="text-body text-on-surface-variant">
                     {item.text}
                   </span>
                 </div>
@@ -157,7 +157,7 @@ export default function WhatsAppSettingsPage() {
             </div>
 
             {!qrCode && !refreshQr.isPending && (
-              <p className="mt-6 text-[13px] text-on-surface-variant animate-pulse">
+              <p className="mt-6 text-body text-on-surface-variant animate-pulse">
                 Waiting for QR code...
               </p>
             )}
@@ -170,17 +170,17 @@ export default function WhatsAppSettingsPage() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-container">
               <CheckCircle2 className="h-8 w-8 text-success" />
             </div>
-            <h3 className="text-[18px] font-semibold text-on-surface mb-1">
+            <h3 className="text-title font-semibold text-on-surface mb-1">
               WhatsApp Connected
             </h3>
             {session.phoneNumber && (
-              <p className="text-[15px] font-medium text-on-surface mb-2">
+              <p className="text-body-lg font-medium text-on-surface mb-2">
                 {session.phoneNumber}
               </p>
             )}
             <SessionStatusBadge status="CONNECTED" className="mb-4" />
 
-            <div className="text-[12px] text-on-surface-variant space-y-1 mb-6">
+            <div className="text-label text-on-surface-variant space-y-1 mb-6">
               <p>
                 Connected since{" "}
                 {new Date(session.createdAt).toLocaleDateString("en-US", {
@@ -223,10 +223,10 @@ export default function WhatsAppSettingsPage() {
         {status === "reconnecting" && (
           <div className="flex flex-col items-center py-8 text-center">
             <Spinner size="lg" className="text-primary mb-4" />
-            <h3 className="text-[16px] font-medium text-on-surface mb-1">
+            <h3 className="text-title-sm font-medium text-on-surface mb-1">
               Reconnecting...
             </h3>
-            <p className="text-[13px] text-on-surface-variant">
+            <p className="text-body text-on-surface-variant">
               Attempting to restore your WhatsApp session
             </p>
           </div>
@@ -238,17 +238,17 @@ export default function WhatsAppSettingsPage() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
               <WifiOff className="h-8 w-8 text-error" />
             </div>
-            <h3 className="text-[16px] font-medium text-on-surface mb-2">
+            <h3 className="text-title-sm font-medium text-on-surface mb-2">
               Session Disconnected
             </h3>
             {session?.phoneNumber && (
-              <p className="text-[14px] font-medium text-on-surface mb-1">
+              <p className="text-body-lg font-medium text-on-surface mb-1">
                 {session.phoneNumber}
               </p>
             )}
             {session?.hasCreds ? (
               <>
-                <p className="text-[13px] text-on-surface-variant max-w-[360px] mb-6">
+                <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
                   Your session was disconnected. Click Reconnect to restore it — no QR scan needed.
                 </p>
                 <div className="flex items-center gap-3">
@@ -271,7 +271,7 @@ export default function WhatsAppSettingsPage() {
               </>
             ) : (
               <>
-                <p className="text-[13px] text-on-surface-variant max-w-[360px] mb-6">
+                <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
                   Your session was logged out from WhatsApp. Scan a new QR code to reconnect.
                 </p>
                 <Button

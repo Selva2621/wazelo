@@ -9,8 +9,6 @@ import {
   Clock,
   Zap,
   Settings,
-  ChevronsLeft,
-  ChevronsRight,
   LogOut,
   Wifi,
   Shield,
@@ -31,15 +29,17 @@ import {
   ScanSearch,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./nav-item";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/stores/ui-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { IconButton } from "@/components/ui/icon-button";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
@@ -148,9 +148,24 @@ const managerNavItems = [
   { href: "/team", icon: <UsersRound className="h-5 w-5" />, label: "My Team" },
 ];
 
+function NavSection({ label, items }: { label: string; items: Pick<NavItemDef, "href" | "icon" | "label">[] }) {
+  return (
+    <div className="pt-3">
+      <p className="side-label truncate px-4 pb-1 text-label text-on-surface-variant">{label}</p>
+      <ul className="pl-2.5">
+        {items.map((item) => (
+          <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const mobileOpen = useUIStore((s) => s.mobileSidebarOpen);
+  const setMobileOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const { data: subData } = useSubscription();
@@ -158,9 +173,19 @@ export function Sidebar() {
   const plan = subData?.subscription?.plan;
   const isFreelancer = orgSettings?.orgType === "FREELANCER";
 
-  const userName = user
-    ? `${user.firstName} ${user.lastName}`
-    : "User";
+  const userName = user ? `${user.firstName} ${user.lastName}` : "User";
+
+  // Close the off-canvas drawer on navigation and on Escape.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, setMobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMobileOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen, setMobileOpen]);
 
   function isFeatureAllowed(feature?: "campaigns" | "automation"): boolean {
     if (!feature) return true;
@@ -172,184 +197,78 @@ export function Sidebar() {
 
   return (
     <aside
+      id="app-sidebar"
+      aria-label="Main navigation"
+      data-collapsed={collapsed}
+      data-open={mobileOpen}
       className={cn(
-        "fixed left-0 top-0 z-30 flex h-screen flex-col bg-surface-container-lowest transition-[width] duration-200 ease-in-out",
-        collapsed ? "w-[var(--sidebar-collapsed)]" : "w-[var(--sidebar-width)]",
+        "app-sidebar fixed left-0 top-0 z-40 flex h-dvh w-[var(--sidebar-width)] flex-col overflow-hidden bg-sidebar",
+        "transition-[width,translate,box-shadow] duration-200 ease-standard",
+        "max-lg:-translate-x-full max-lg:data-[open=true]:translate-x-0 max-lg:data-[open=true]:shadow-modal",
       )}
     >
       {/* Brand */}
-      <div
-        className={cn(
-          "flex items-center h-[var(--header-height)] shrink-0 px-4",
-          collapsed ? "justify-center px-0" : "gap-2",
-        )}
+      <Link
+        href={isFreelancer ? "/dashboard/freelancer" : "/dashboard"}
+        className="flex h-[var(--header-height)] shrink-0 items-center gap-2.5 px-[22px] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
       >
-        <img src="/logo/logo.png" alt="Wazelo" className="h-7 w-7 shrink-0 object-contain" style={{ mixBlendMode: "screen" }} />
-        {!collapsed && (
-          <span className="text-[16px] font-bold text-on-surface tracking-tight">
-            Waze<span className="text-primary">lo</span>
-          </span>
-        )}
-      </div>
+        <img src="/logo/logo.png" alt="" className="size-7 shrink-0 object-contain" />
+        <span className="side-label text-title-sm font-semibold tracking-tight text-on-surface">
+          Waze<span className="text-primary-container">lo</span>
+        </span>
+      </Link>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
+      <nav className="side-scroll flex-1 overflow-y-auto overflow-x-hidden pb-4">
         {navGroups.map((group) => {
-          // Hide group for freelancer mode
           if (isFreelancer && group.hideForFreelancer) return null;
-          // Hide group if user doesn't have required role
           if (group.roles && !group.roles.includes(user?.role as Role)) return null;
 
-          // For freelancers, redirect Dashboard to the freelancer view
-          const resolvedGroup = isFreelancer
-            ? {
-                ...group,
-                items: group.items.map((item) =>
-                  item.href === "/dashboard"
-                    ? { ...item, href: "/dashboard/freelancer" }
-                    : item,
-                ),
-              }
-            : group;
-
-          // Filter items by role and feature
-          const visibleItems = resolvedGroup.items
+          // Freelancers get their own dashboard view
+          const items = group.items
+            .map((item) =>
+              isFreelancer && item.href === "/dashboard" ? { ...item, href: "/dashboard/freelancer" } : item,
+            )
             .filter((item) => !item.roles || item.roles.includes(user?.role as Role))
             .filter((item) => isFeatureAllowed(item.feature));
 
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={group.label} className="mb-1">
-              {/* Group header */}
-              {!collapsed ? (
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/50 px-2 pt-3 pb-1 block">
-                  {group.label}
-                </span>
-              ) : (
-                <div className="my-2 mx-1 border-t border-outline-variant/15" />
-              )}
-              <div className="space-y-1">
-                {visibleItems.map((item) => (
-                  <NavItem
-                    key={item.href}
-                    href={item.href}
-                    icon={item.icon}
-                    label={item.label}
-                    count={undefined}
-                    collapsed={collapsed}
-                  />
-                ))}
-              </div>
-            </div>
-          );
+          if (items.length === 0) return null;
+          return <NavSection key={group.label} label={group.label} items={items} />;
         })}
 
-        {/* Manager section */}
-        {user?.role === "MANAGER" && (
-          <div className="mb-1">
-            {!collapsed ? (
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/50 px-2 pt-3 pb-1 block">
-                Team
-              </span>
-            ) : (
-              <div className="my-2 mx-1 border-t border-outline-variant/15" />
-            )}
-            <div className="space-y-1">
-              {managerNavItems.map((item) => (
-                <NavItem
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Admin section */}
-        {user?.role === "ADMIN" && !isFreelancer && (
-          <div className="mb-1">
-            {!collapsed ? (
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/50 px-2 pt-3 pb-1 block">
-                Admin
-              </span>
-            ) : (
-              <div className="my-2 mx-1 border-t border-outline-variant/15" />
-            )}
-            <div className="space-y-1">
-              {adminNavItems.map((item) => (
-                <NavItem
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {user?.role === "MANAGER" && <NavSection label="Team" items={managerNavItems} />}
+        {user?.role === "ADMIN" && !isFreelancer && <NavSection label="Admin" items={adminNavItems} />}
       </nav>
 
-      {/* Bottom section */}
-      <div
-        className={cn(
-          "shrink-0 border-t border-outline-variant/15 px-3 py-3 space-y-2",
-          collapsed && "px-1",
-        )}
-      >
-        {/* User info — click to open profile */}
-        <Link
-          href="/settings/profile"
-          className={cn(
-            "flex items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-surface-container transition-colors cursor-pointer",
-            collapsed && "justify-center px-0",
-          )}
-          title="Edit profile"
-        >
-          <Avatar name={userName} size="sm" />
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-on-surface truncate">
-                {userName}
-              </p>
-              <Badge variant="primary" className="mt-0.5">
-                {user?.role ?? "User"}
-              </Badge>
-            </div>
-          )}
-        </Link>
-
-        {/* Actions */}
-        <div
-          className={cn(
-            "flex items-center gap-1",
-            collapsed ? "flex-col" : "justify-between px-2",
-          )}
-        >
-          <button
+      {/* Account */}
+      <div className="shrink-0 border-t border-outline-variant p-3">
+        <div className="flex items-center gap-1">
+          <Link
+            href="/settings/profile"
+            title="Edit profile"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1.5 transition-colors duration-120 ease-standard hover:bg-surface-container-low outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Avatar name={userName} size="sm" className="ml-0.5" />
+            <span className="side-label min-w-0 flex-1">
+              <span className="block truncate text-body font-medium text-on-surface">{userName}</span>
+              <span className="block truncate text-caption font-normal text-on-surface-variant">
+                {user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : "User"}
+              </span>
+            </span>
+          </Link>
+          <IconButton
+            size="sm"
+            variant="danger"
+            className="side-label"
             onClick={() => logout.mutate()}
-            className="text-on-surface-variant hover:text-error transition-colors p-1.5 rounded-lg"
             title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
-          </button>
-          <button
-            onClick={toggleSidebar}
-            className="text-on-surface-variant hover:text-on-surface transition-colors p-1.5 rounded-lg"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronsRight className="h-4 w-4" />
-            ) : (
-              <ChevronsLeft className="h-4 w-4" />
-            )}
-          </button>
+          </IconButton>
         </div>
       </div>
     </aside>
   );
 }
+

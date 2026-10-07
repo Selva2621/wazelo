@@ -49,7 +49,7 @@ export function MessageThread({ messages }: MessageThreadProps) {
           <div key={msg.id}>
             {showDate && (
               <div className="flex items-center justify-center py-3">
-                <span className="text-[11px] font-medium text-on-surface-variant/60 bg-surface-container rounded-full px-3 py-1">
+                <span className="text-caption font-medium text-on-surface-variant/60 bg-surface-container rounded-full px-3 py-1">
                   {formatDateDivider(msg.createdAt)}
                 </span>
               </div>

@@ -29,13 +29,13 @@ export function TeamPerformanceTable({ data }: TeamPerformanceTableProps) {
   const sorted = [...data.users].sort((a, b) => b.messagesSent - a.messagesSent);
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+    <div className="rounded-xl bg-surface-container-lowest p-5">
+      <h3 className="text-title-sm font-semibold text-on-surface mb-4">
         Team Performance
       </h3>
 
       {sorted.length === 0 ? (
-        <div className="py-8 text-center text-[13px] text-on-surface-variant/40">
+        <div className="py-8 text-center text-body text-on-surface-variant">
           No team data available
         </div>
       ) : (

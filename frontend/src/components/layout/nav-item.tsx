@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CountBadge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useUIStore } from "@/stores/ui-store";
 import type { ReactNode } from "react";
 
 interface NavItemProps {
@@ -12,60 +13,65 @@ interface NavItemProps {
   icon: ReactNode;
   label: string;
   count?: number;
-  collapsed?: boolean;
 }
 
-export function NavItem({
-  href,
-  icon,
-  label,
-  count,
-  collapsed,
-}: NavItemProps) {
+/**
+ * Sidebar row: a rounded pill inside the floating rail. In the collapsed rail the label is
+ * hidden, so the icon gets a tooltip (the rail itself never expands on hover; only the
+ * header toggle opens it).
+ */
+export function NavItem({ href, icon, label, count }: NavItemProps) {
   const pathname = usePathname();
+  const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const isActive = pathname === href || pathname.startsWith(href + "/");
+  const hasCount = count !== undefined && count > 0;
 
-  const content = (
+  const link = (
     <Link
       href={href}
+      aria-current={isActive ? "page" : undefined}
+      // The visible label is display:none in the collapsed rail, which also hides it from
+      // assistive tech; keep an explicit name.
+      aria-label={label}
       className={cn(
-        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-colors relative",
+        "group relative z-[1] flex h-12 flex-1 items-center pr-3 text-body transition-colors duration-120 ease-standard",
+        "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
         isActive
-          ? "bg-primary/10 text-primary"
-          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
-        collapsed && "justify-center px-0",
+          ? collapsed
+            ? "mr-2.5 rounded-xl bg-surface font-medium text-on-surface"
+            : // Expanded: page-coloured tab running to the rail's edge, fused into the content
+              // (inverted corners from `.side-tab` in globals.css)
+              "rounded-l-2xl bg-surface font-medium text-on-surface"
+          : "mr-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
       )}
     >
-      {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
-      )}
-      <span className={cn("shrink-0", collapsed ? "ml-0" : "ml-1")}>
+      <span
+        className={cn(
+          "relative mx-2 grid size-9 shrink-0 place-items-center rounded-[10px] transition-colors duration-120 ease-standard [&_svg]:size-[18px]",
+          isActive
+            ? "bg-primary text-on-primary"
+            : "bg-surface-container-low group-hover:bg-surface-container",
+        )}
+      >
         {icon}
+        {hasCount && (
+          <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-primary ring-2 ring-sidebar" />
+        )}
       </span>
-      {!collapsed && (
-        <>
-          <span className="flex-1 truncate">{label}</span>
-          {count !== undefined && count > 0 && <CountBadge count={count} />}
-        </>
-      )}
+      <span className="side-label flex-1 truncate">{label}</span>
+      {hasCount && <CountBadge count={count} className="side-label" />}
     </Link>
   );
 
-  if (collapsed) {
-    return (
-      <Tooltip content={label} side="right">
-        <div className="relative">
-          {content}
-          {count !== undefined && count > 0 && (
-            <CountBadge
-              count={count}
-              className="absolute -top-1 -right-1 scale-90"
-            />
-          )}
-        </div>
-      </Tooltip>
-    );
-  }
-
-  return content;
+  return (
+    <li className="side-tab" data-active={isActive}>
+      {collapsed ? (
+        <Tooltip content={label} side="right" className="flex w-full">
+          {link}
+        </Tooltip>
+      ) : (
+        link
+      )}
+    </li>
+  );
 }

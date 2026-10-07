@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/use-billing";
+import { IconButton } from "@/components/ui/icon-button";
 
 type BannerLevel = "soft" | "hard" | null;
 
@@ -65,13 +66,13 @@ export function UsageLimitBanner({
         role="alert"
       >
         <ShieldOff className="h-4.5 w-4.5 text-error shrink-0" />
-        <p className="flex-1 text-[13px] text-error leading-snug">
+        <p className="flex-1 text-body text-error leading-snug">
           You&apos;ve reached your {label} limit ({entry.current.toLocaleString()}/
           {entry.limit.toLocaleString()}). Upgrade your plan to continue.
         </p>
         <Link
           href="/settings/billing"
-          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-error/15 px-3 py-1.5 text-[12px] font-medium text-error hover:bg-error/25 transition-colors"
+          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-error/15 px-3 py-1.5 text-label font-medium text-error hover:bg-error/25 transition-colors"
         >
           <ArrowUpCircle className="h-3.5 w-3.5" />
           Upgrade Plan
@@ -90,25 +91,25 @@ export function UsageLimitBanner({
       role="alert"
     >
       <AlertTriangle className="h-4.5 w-4.5 text-warning shrink-0" />
-      <p className="flex-1 text-[13px] text-warning leading-snug">
+      <p className="flex-1 text-body text-warning leading-snug">
         You&apos;ve used {pct.toFixed(0)}% of your {label} (
         {entry.current.toLocaleString()}/{entry.limit.toLocaleString()}).
         Consider upgrading.
       </p>
       <Link
         href="/settings/billing"
-        className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-warning/10 px-3 py-1.5 text-[12px] font-medium text-warning hover:bg-warning/20 transition-colors"
+        className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-warning/10 px-3 py-1.5 text-label font-medium text-warning hover:bg-warning/20 transition-colors"
       >
         <ArrowUpCircle className="h-3.5 w-3.5" />
         Upgrade Plan
       </Link>
-      <button
+      <IconButton size="xs"
         onClick={() => setDismissed(true)}
-        className="p-1 rounded text-warning/60 hover:text-warning transition-colors shrink-0"
+        className="text-warning/60 hover:text-warning"
         aria-label="Dismiss warning"
       >
         <X className="h-3.5 w-3.5" />
-      </button>
+      </IconButton>
     </div>
   );
 }

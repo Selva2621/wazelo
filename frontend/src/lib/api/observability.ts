@@ -1,4 +1,4 @@
-import apiClient from "./client";
+import superAdminClient from "./super-admin-client";
 import type {
   HealthCheck,
   QueueHealth,
@@ -15,17 +15,21 @@ import type {
   QueryErrorsParams,
 } from "@/lib/types/observability";
 
+// Platform-wide health data — served only to super admins (/super-admin/system).
+// superAdminClient does not unwrap the { success, data } envelope, hence r.data.data.
+const BASE = "/super-admin/system";
+
 export const observabilityApi = {
   // ─── Health ───
 
   getHealth: () =>
-    apiClient.get<HealthCheck>("/observability/health").then((r) => r.data),
+    superAdminClient.get<{ data: HealthCheck }>(`${BASE}/health`).then((r) => r.data.data),
 
   getQueueHealth: async (): Promise<QueueHealth[]> => {
-    const r = await apiClient.get<
-      Record<string, { depth: number; status: string }>
-    >("/observability/health/queues");
-    return Object.entries(r.data).map(([name, info]) => ({
+    const r = await superAdminClient.get<{
+      data: Record<string, { depth: number; status: string }>;
+    }>(`${BASE}/health/queues`);
+    return Object.entries(r.data.data).map(([name, info]) => ({
       name,
       active: 0,
       waiting: info.depth,
@@ -37,39 +41,39 @@ export const observabilityApi = {
   // ─── Metrics ───
 
   getMetrics: (params?: QueryMetricsParams) =>
-    apiClient
-      .get<AggregatedMetric[]>("/observability/metrics", { params })
-      .then((r) => r.data),
+    superAdminClient
+      .get<{ data: AggregatedMetric[] }>(`${BASE}/metrics`, { params })
+      .then((r) => r.data.data),
 
   getTimeSeries: (params: QueryTimeSeriesParams) =>
-    apiClient
-      .get<TimeSeriesPoint[]>("/observability/metrics/timeseries", { params })
-      .then((r) => r.data),
+    superAdminClient
+      .get<{ data: TimeSeriesPoint[] }>(`${BASE}/metrics/timeseries`, { params })
+      .then((r) => r.data.data),
 
   getLatestMetrics: () =>
-    apiClient
-      .get<MetricSnapshot[]>("/observability/metrics/latest")
-      .then((r) => r.data),
+    superAdminClient
+      .get<{ data: MetricSnapshot[] }>(`${BASE}/metrics/latest`)
+      .then((r) => r.data.data),
 
   // ─── Alerts ───
 
   listAlertRules: () =>
-    apiClient.get<AlertRule[]>("/observability/alerts/rules").then((r) => r.data),
+    superAdminClient.get<{ data: AlertRule[] }>(`${BASE}/alerts/rules`).then((r) => r.data.data),
 
   createAlertRule: (data: CreateAlertRuleRequest) =>
-    apiClient
-      .post<AlertRule>("/observability/alerts/rules", data)
-      .then((r) => r.data),
+    superAdminClient
+      .post<{ data: AlertRule }>(`${BASE}/alerts/rules`, data)
+      .then((r) => r.data.data),
 
   getAlertHistory: (params?: QueryAlertsParams) =>
-    apiClient
-      .get<AlertListResponse>("/observability/alerts/history", { params })
-      .then((r) => r.data),
+    superAdminClient
+      .get<{ data: AlertListResponse }>(`${BASE}/alerts/history`, { params })
+      .then((r) => r.data.data),
 
   // ─── Errors ───
 
   getErrors: (params?: QueryErrorsParams) =>
-    apiClient
-      .get<ErrorGroup[]>("/observability/errors", { params })
-      .then((r) => r.data),
+    superAdminClient
+      .get<{ data: ErrorGroup[] }>(`${BASE}/errors`, { params })
+      .then((r) => r.data.data),
 };

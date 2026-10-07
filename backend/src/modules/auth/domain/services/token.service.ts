@@ -51,16 +51,18 @@ export class TokenService {
     };
   }
 
+  /** Access token only — for the refresh grace path, where no new refresh token is issued. */
+  async generateAccessToken(payload: JwtPayload): Promise<{ accessToken: string; expiresIn: number }> {
+    const accessToken = await this.jwtService.signAsync(
+      { sub: payload.sub, orgId: payload.orgId, role: payload.role, email: payload.email },
+      { secret: this.accessSecret, expiresIn: this.accessExpiry },
+    );
+    return { accessToken, expiresIn: this.parseExpiryToSeconds(this.accessExpiry) };
+  }
+
   async verifyAccessToken(token: string): Promise<JwtPayload> {
     return this.jwtService.verifyAsync<JwtPayload>(token, {
       secret: this.accessSecret,
-    });
-  }
-
-  async verifySuperAdminToken(token: string): Promise<JwtPayload> {
-    const superAdminSecret = this.configService.getOrThrow<string>('jwt.superAdminSecret');
-    return this.jwtService.verifyAsync<JwtPayload>(token, {
-      secret: superAdminSecret,
     });
   }
 

@@ -47,8 +47,8 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
       <div className="w-full max-w-3xl mx-auto p-6 space-y-4">
         {/* Header */}
         <div>
-          <h2 className="text-[20px] font-semibold text-on-surface">Inbox</h2>
-          <p className="text-[13px] text-on-surface-variant mt-1">
+          <h2 className="text-title font-semibold text-on-surface">Inbox</h2>
+          <p className="text-body text-on-surface-variant mt-1">
             {role === "ADMIN"
               ? "Select a user or team to view their conversations"
               : "Select a team member to view their conversations"}
@@ -61,7 +61,7 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
             <button
               onClick={() => setViewMode("users")}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body font-medium transition-colors",
                 viewMode === "users"
                   ? "bg-primary text-on-primary"
                   : "text-on-surface-variant hover:text-on-surface",
@@ -73,7 +73,7 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
             <button
               onClick={() => setViewMode("teams")}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body font-medium transition-colors",
                 viewMode === "teams"
                   ? "bg-primary text-on-primary"
                   : "text-on-surface-variant hover:text-on-surface",
@@ -93,7 +93,7 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface text-[13px] placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface text-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
           />
         </div>
 
@@ -169,14 +169,14 @@ function UserRow({
       <Avatar name={name} size="sm" />
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-medium text-on-surface truncate">
+          <span className="text-body-lg font-medium text-on-surface truncate">
             {name}
           </span>
           {isSelf && (
-            <span className="text-[11px] text-on-surface-variant">(you)</span>
+            <span className="text-caption text-on-surface-variant">(you)</span>
           )}
         </div>
-        <span className="text-[12px] text-on-surface-variant truncate block">
+        <span className="text-label text-on-surface-variant truncate block">
           {user.email}
         </span>
       </div>
@@ -224,8 +224,8 @@ function TeamSection({
       >
         <UsersRound className="h-5 w-5 text-primary" />
         <div className="flex-1 text-left">
-          <span className="text-[14px] font-medium text-on-surface">{team.name}</span>
-          <span className="text-[12px] text-on-surface-variant ml-2">
+          <span className="text-body-lg font-medium text-on-surface">{team.name}</span>
+          <span className="text-label text-on-surface-variant ml-2">
             {team.members.length} member{team.members.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -254,14 +254,14 @@ function TeamSection({
               size="sm"
             />
             <div className="flex-1 min-w-0 text-left">
-              <span className="text-[13px] font-medium text-on-surface truncate block">
+              <span className="text-body font-medium text-on-surface truncate block">
                 {team.manager.firstName} {team.manager.lastName}
                 {team.manager.id === currentUserId && (
                   <span className="text-on-surface-variant ml-1">(you)</span>
                 )}
               </span>
             </div>
-            <Badge variant="warning" className="shrink-0 text-[10px]">
+            <Badge variant="warning" className="shrink-0 text-caption">
               Manager
             </Badge>
             <ChevronRight className="h-3.5 w-3.5 text-on-surface-variant/30 group-hover:text-on-surface-variant transition-colors shrink-0" />
@@ -284,7 +284,7 @@ function TeamSection({
                 size="sm"
               />
               <div className="flex-1 min-w-0 text-left">
-                <span className="text-[13px] text-on-surface truncate block">
+                <span className="text-body text-on-surface truncate block">
                   {member.user.firstName} {member.user.lastName}
                   {member.user.id === currentUserId && (
                     <span className="text-on-surface-variant ml-1">(you)</span>
@@ -304,7 +304,7 @@ function EmptyMessage({ text }: { text: string }) {
   return (
     <div className="text-center py-12">
       <Users className="h-10 w-10 text-on-surface-variant/30 mx-auto mb-3" />
-      <p className="text-[13px] text-on-surface-variant">{text}</p>
+      <p className="text-body text-on-surface-variant">{text}</p>
     </div>
   );
 }

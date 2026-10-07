@@ -28,17 +28,17 @@ export function ResponseTimeChart({ series, period }: ResponseTimeChartProps) {
   const maxMs = Math.max(...series.map((s) => s.avgResponseTimeMs), 1);
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+    <div className="rounded-xl bg-surface-container-lowest p-5">
+      <h3 className="text-title-sm font-semibold text-on-surface mb-4">
         Response Time
       </h3>
 
       {series.length === 0 ? (
-        <div className="h-40 flex items-center justify-center text-[13px] text-on-surface-variant/40">
+        <div className="h-40 flex items-center justify-center text-body text-on-surface-variant">
           No data for this period
         </div>
       ) : (
-        <div className="flex items-end gap-1 h-40">
+        <div className="flex items-stretch gap-1 h-40">
           {series.map((point) => {
             const pct = (point.avgResponseTimeMs / maxMs) * 100;
             return (
@@ -46,7 +46,7 @@ export function ResponseTimeChart({ series, period }: ResponseTimeChartProps) {
                 key={point.date}
                 className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative"
               >
-                <div className="w-full flex flex-col items-stretch justify-end h-full">
+                <div className="w-full flex flex-col items-stretch justify-end flex-1 min-h-0">
                   <div className="flex-1" />
                   <div
                     className="w-full bg-success rounded-t transition-all"
@@ -54,20 +54,20 @@ export function ResponseTimeChart({ series, period }: ResponseTimeChartProps) {
                   />
                 </div>
                 {/* Hover tooltip */}
-                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-2 rounded-lg shadow-lg text-[11px] text-on-surface whitespace-nowrap z-10">
+                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-2 rounded-lg shadow-lg text-caption text-on-surface whitespace-nowrap z-10">
                   <div>Avg: {formatMs(point.avgResponseTimeMs)}</div>
                   {point.p50ResponseTimeMs !== null && (
-                    <div className="text-on-surface-variant/60">
+                    <div className="text-on-surface-variant">
                       P50: {formatMs(point.p50ResponseTimeMs)}
                     </div>
                   )}
                   {point.p95ResponseTimeMs !== null && (
-                    <div className="text-on-surface-variant/60">
+                    <div className="text-on-surface-variant">
                       P95: {formatMs(point.p95ResponseTimeMs)}
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] text-on-surface-variant/50 truncate w-full text-center">
+                <span className="text-caption text-on-surface-variant truncate w-full text-center">
                   {formatDateLabel(point.date, period)}
                 </span>
               </div>

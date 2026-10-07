@@ -65,13 +65,13 @@ export function ChannelList({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-semibold text-on-surface truncate">
+                  <h4 className="text-body-lg font-semibold text-on-surface truncate">
                     {channel.name}
                   </h4>
                   <ChannelStatusBadge status={channel.status} />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-label text-on-surface-variant">
                   <span>{CHANNEL_TYPE_LABELS[channel.type]}</span>
                   {channel.externalHandle && (
                     <span className="font-mono">{channel.externalHandle}</span>
@@ -81,13 +81,13 @@ export function ChannelList({
                 </div>
 
                 {channel.lastError && (
-                  <p className="text-xs text-error mt-1.5 line-clamp-1">
+                  <p className="text-label text-error mt-1.5 line-clamp-1">
                     Error: {channel.lastError}
                   </p>
                 )}
 
                 {channel.suspendReason && channel.status === "SUSPENDED" && (
-                  <p className="text-xs text-warning mt-1.5 line-clamp-1">
+                  <p className="text-label text-warning mt-1.5 line-clamp-1">
                     Suspended: {channel.suspendReason}
                   </p>
                 )}

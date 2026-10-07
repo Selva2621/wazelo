@@ -65,8 +65,8 @@ export default function ManagerTeamPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-[20px] font-bold text-on-surface">My Team</h1>
-        <p className="text-[13px] text-on-surface-variant mt-0.5">
+        <h1 className="text-title font-semibold text-on-surface">My Team</h1>
+        <p className="text-body text-on-surface-variant mt-0.5">
           View and manage your team members&apos; WhatsApp inboxes
         </p>
       </div>
@@ -95,10 +95,10 @@ export default function ManagerTeamPage() {
                         size="sm"
                       />
                       <div>
-                        <p className="text-[14px] font-medium text-on-surface">
+                        <p className="text-body-lg font-medium text-on-surface">
                           {member.user.firstName} {member.user.lastName}
                         </p>
-                        <p className="text-[12px] text-on-surface-variant">
+                        <p className="text-label text-on-surface-variant">
                           {member.user.email}
                         </p>
                       </div>

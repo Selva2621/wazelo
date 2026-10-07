@@ -19,6 +19,8 @@ import type {
   AutomationTriggerType,
   AutomationActionType,
 } from "@/lib/types/automation";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface CreateAutomationRuleModalProps {
   open: boolean;
@@ -69,7 +71,7 @@ interface ActionConfigFieldsProps {
 }
 
 function ActionConfigFields({ idx, actionType, register, setValue, getValues }: ActionConfigFieldsProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   function insertVar(variable: string) {
     const field = `actions.${idx}.actionConfig.messageBody` as const;
@@ -88,7 +90,7 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
             placeholder="e.g. sess_xxxxxxxxxx"
             className={inputCls}
           />
-          <p className="text-[11px] text-on-surface-variant/50 mt-1">
+          <p className="text-caption text-on-surface-variant/50 mt-1">
             Leave blank to use the contact's active session automatically.
           </p>
         </div>
@@ -109,13 +111,13 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
                 key={chip.value}
                 type="button"
                 onClick={() => insertVar(chip.value)}
-                className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-mono hover:bg-primary/20 transition-colors"
+                className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-caption font-mono hover:bg-primary/20 transition-colors"
               >
                 {chip.label}
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-on-surface-variant/50 mt-1">
+          <p className="text-caption text-on-surface-variant/50 mt-1">
             Click chips to insert variables. Unknown variables are left as-is.
           </p>
         </div>
@@ -259,29 +261,27 @@ export function CreateAutomationRuleModal({
     });
   }
 
-  if (!open) return null;
-
   const isShopifyTrigger = triggerType === "SHOPIFY_ORDER_CREATED" || triggerType === "SHOPIFY_ORDER_FULFILLED";
   const isCartTrigger = triggerType === "SHOPIFY_CART_ABANDONED";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl mx-4 max-h-[85vh] bg-surface-container rounded-2xl shadow-xl flex flex-col">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      aria-label="Create Automation Rule"
+      className="max-w-2xl max-h-[85vh] bg-surface-container flex flex-col overflow-hidden"
+    >
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15 shrink-0">
-          <h2 className="text-[16px] font-semibold text-on-surface">
+          <h2 className="text-title-sm font-semibold text-on-surface">
             Create Automation Rule
           </h2>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={handleClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Form */}
@@ -291,35 +291,33 @@ export function CreateAutomationRuleModal({
         >
           {/* AI Generate Panel */}
           {!showAiPanel ? (
-            <button
+            <Button variant="secondary" size="lg"
               type="button"
               onClick={() => {
                 setShowAiPanel(true);
                 setTimeout(() => promptRef.current?.focus(), 50);
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-primary/20 bg-primary/5 text-[13px] text-primary hover:bg-primary/10 hover:border-primary/30 transition-colors"
+              className="w-full border-dashed border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/30"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Generate rule with AI
-            </button>
+            </Button>
           ) : (
             <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span className="text-[12px] font-semibold uppercase tracking-wide">Generate with AI</span>
+                  <span className="text-label font-semibold uppercase tracking-wide">Generate with AI</span>
                 </div>
-                <button
+                <IconButton size="xs"
                   type="button"
-                  onClick={() => { setShowAiPanel(false); setAiPrompt(""); }}
-                  className="p-1 rounded text-on-surface-variant/40 hover:text-on-surface transition-colors"
-                >
+                  onClick={() => { setShowAiPanel(false); setAiPrompt(""); }} aria-label="Close">
                   <X className="h-3.5 w-3.5" />
-                </button>
+                </IconButton>
               </div>
 
               <div>
-                <Label className="text-[12px]">Describe what you want to automate</Label>
+                <Label className="text-label">Describe what you want to automate</Label>
                 <textarea
                   ref={promptRef}
                   rows={3}
@@ -333,9 +331,9 @@ export function CreateAutomationRuleModal({
                     "e.g. Follow up 1 hour after no reply with a gentle reminder\n" +
                     "e.g. When a new contact is created, tag them as 'new-lead' and update status to CONTACTED"
                   }
-                  className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
-                <p className="text-[11px] text-on-surface-variant/50 mt-1">
+                <p className="text-caption text-on-surface-variant/50 mt-1">
                   Press ⌘Enter to generate. The form will be filled automatically — you can review and edit before saving.
                 </p>
               </div>
@@ -382,7 +380,7 @@ export function CreateAutomationRuleModal({
               rows={2}
               placeholder="Optional description..."
               {...register("description")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -392,7 +390,7 @@ export function CreateAutomationRuleModal({
             <select
               id="triggerType"
               {...register("triggerType")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <optgroup label="General">
                 {TRIGGER_TYPES.filter((t) => !t.group).map((t) => (
@@ -409,7 +407,7 @@ export function CreateAutomationRuleModal({
 
           {/* Trigger Config — contextual fields */}
           <div className="rounded-xl border border-outline-variant/15 p-4 space-y-3">
-            <p className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Trigger Configuration
             </p>
 
@@ -469,7 +467,7 @@ export function CreateAutomationRuleModal({
             )}
 
             {triggerType === "CONTACT_CREATED" && (
-              <p className="text-[12px] text-on-surface-variant/60">
+              <p className="text-label text-on-surface-variant/60">
                 Triggers when any new contact is created.
               </p>
             )}
@@ -484,7 +482,7 @@ export function CreateAutomationRuleModal({
                     {...register("triggerConfig.messageKeyword")}
                   />
                 </div>
-                <p className="text-[12px] text-on-surface-variant/60">
+                <p className="text-label text-on-surface-variant/60">
                   Triggers when a visitor sends a message via your chat widget.
                 </p>
               </div>
@@ -518,7 +516,7 @@ export function CreateAutomationRuleModal({
           {/* Actions */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+              <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
                 Actions ({actionFields.length})
               </p>
               <Button
@@ -547,17 +545,15 @@ export function CreateAutomationRuleModal({
                   className="rounded-xl border border-outline-variant/15 p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-on-surface-variant">
+                    <span className="text-label font-medium text-on-surface-variant">
                       Action {idx + 1}
                     </span>
                     {actionFields.length > 1 && (
-                      <button
+                      <IconButton size="xs" variant="danger"
                         type="button"
-                        onClick={() => removeAction(idx)}
-                        className="p-1 rounded text-on-surface-variant/40 hover:text-error transition-colors"
-                      >
+                        onClick={() => removeAction(idx)} aria-label="Delete">
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </IconButton>
                     )}
                   </div>
 
@@ -565,7 +561,7 @@ export function CreateAutomationRuleModal({
                     <Label>Action Type</Label>
                     <select
                       {...register(`actions.${idx}.actionType`)}
-                      className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
                       {ACTION_TYPES.map((a) => (
                         <option key={a.value} value={a.value}>
@@ -597,13 +593,13 @@ export function CreateAutomationRuleModal({
             })}
 
             {errors.actions?.message && (
-              <p className="text-[12px] text-error">{errors.actions.message}</p>
+              <p className="text-label text-error">{errors.actions.message}</p>
             )}
           </div>
 
           {/* Advanced Settings */}
           <div className="rounded-xl border border-outline-variant/15 p-4 space-y-3">
-            <p className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Advanced Settings
             </p>
             <div className="grid grid-cols-3 gap-3">
@@ -654,7 +650,8 @@ export function CreateAutomationRuleModal({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

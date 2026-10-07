@@ -5,6 +5,8 @@ import { X, Send, MessageSquare } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { messagesApi } from "@/lib/api/messages";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface SendMessageModalProps {
   open: boolean;
@@ -38,8 +40,6 @@ export function SendMessageModal({
     },
   });
 
-  if (!open) return null;
-
   const MAX_LENGTH = 4096;
 
   function handleSend() {
@@ -49,33 +49,25 @@ export function SendMessageModal({
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-2xl p-6 space-y-4">
+    <Modal open={open} onClose={onClose} className="max-w-md p-6 space-y-4">
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            <h2 className="text-[15px] font-semibold text-on-surface">
+            <h2 className="text-body-lg font-semibold text-on-surface">
               Send Message
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Contact info */}
-        <div className="px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-[13px]">
+        <div className="px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body">
           <span className="text-on-surface-variant/60">To: </span>
           <span className="text-on-surface font-medium">{contactName}</span>
           <span className="text-on-surface-variant/60 ml-2">{phoneNumber}</span>
@@ -92,22 +84,22 @@ export function SendMessageModal({
             placeholder="Type your message..."
             rows={4}
             autoFocus
-            className="w-full rounded-xl bg-surface-container-low px-3 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15 resize-none"
+            className="w-full rounded-xl bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15 resize-none"
           />
           <div className="flex items-center justify-between mt-1">
-            <p className="text-[11px] text-on-surface-variant/40">Ctrl+Enter to send</p>
-            <p className={`text-[11px] tabular-nums ${message.length > MAX_LENGTH ? "text-error" : "text-on-surface-variant/40"}`}>
+            <p className="text-caption text-on-surface-variant/40">Ctrl+Enter to send</p>
+            <p className={`text-caption tabular-nums ${message.length > MAX_LENGTH ? "text-error" : "text-on-surface-variant/40"}`}>
               {message.length} / {MAX_LENGTH.toLocaleString()}
             </p>
           </div>
           {message.length > MAX_LENGTH && (
-            <p className="text-[11px] text-error mt-1">Message is too long.</p>
+            <p className="text-caption text-error mt-1">Message is too long.</p>
           )}
         </div>
 
         {/* Error */}
         {sendMessage.isError && (
-          <p className="text-[12px] text-error">
+          <p className="text-label text-error">
             Failed to send message. Make sure WhatsApp is connected.
           </p>
         )}
@@ -127,7 +119,8 @@ export function SendMessageModal({
             Send
           </Button>
         </div>
-      </div>
-    </>
+      </>
+      )}
+    </Modal>
   );
 }

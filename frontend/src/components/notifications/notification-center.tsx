@@ -36,6 +36,7 @@ import type {
   NotificationType,
   NotificationPriority,
 } from "@/lib/types/notifications";
+import { IconButton } from "@/components/ui/icon-button";
 
 const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
   MESSAGE_RECEIVED: MessageSquare,
@@ -142,33 +143,40 @@ export function NotificationCenter() {
           setIsOpen(!isOpen);
           if (!isOpen) refetch();
         }}
-        className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
-        aria-label="Notifications"
+        className="relative grid size-10 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors duration-120 ease-standard hover:bg-surface-container hover:text-on-surface"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={isOpen}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-[18px] w-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center px-1">
+          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-caption font-semibold tabular-nums text-on-error ring-2 ring-surface">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
 
       {/* Backdrop */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/20 transition-opacity" />
-      )}
+      {/* Fades with the panel's slide instead of popping */}
+      <div
+        aria-hidden
+        className={`fixed inset-0 z-40 bg-scrim transition-[opacity,visibility] duration-300 ease-standard ${
+          isOpen ? "visible opacity-100" : "invisible opacity-0"
+        }`}
+      />
 
+      {/* Clipping layer: keeps the closed panel from widening the page */}
+      <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
       {/* Slide-over Panel */}
       <div
         ref={panelRef}
-        className={`fixed top-0 right-0 z-50 h-full w-[400px] max-w-[90vw] bg-surface border-l border-outline-variant/15 shadow-2xl transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
+        className={`pointer-events-auto absolute right-0 top-0 h-full w-[400px] max-w-[90vw] bg-surface border-l border-outline-variant/15 shadow-modal transition-[transform,visibility] duration-300 ease-standard ${
+          isOpen ? "visible translate-x-0" : "invisible translate-x-full"
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/15">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-on-surface">
+            <h2 className="text-title-sm font-semibold text-on-surface">
               Notifications
             </h2>
             {unreadCount > 0 && (
@@ -187,12 +195,10 @@ export function NotificationCenter() {
                 <CheckCheck className="h-4 w-4" />
               </Button>
             )}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
+            <IconButton size="sm"
+              onClick={() => setIsOpen(false)} aria-label="Close">
               <X className="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
@@ -202,7 +208,7 @@ export function NotificationCenter() {
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`px-3 py-1 rounded-md text-[12px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-md text-label font-medium transition-colors ${
                 filter === tab
                   ? "bg-primary/10 text-primary"
                   : "text-on-surface-variant hover:text-on-surface"
@@ -222,12 +228,12 @@ export function NotificationCenter() {
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-5">
               <Bell className="h-10 w-10 text-on-surface-variant/30 mb-3" />
-              <p className="text-[13px] text-on-surface-variant">
+              <p className="text-body text-on-surface-variant">
                 {filter === "unread"
                   ? "No unread notifications"
                   : "No notifications yet"}
               </p>
-              <p className="text-[11px] text-on-surface-variant/50 mt-1">
+              <p className="text-caption text-on-surface-variant/50 mt-1">
                 We&apos;ll notify you when something happens
               </p>
             </div>
@@ -244,6 +250,7 @@ export function NotificationCenter() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </>
   );
@@ -285,7 +292,7 @@ function NotificationItem({
         {/* Content */}
         <div className="min-w-0 flex-1">
           <p
-            className={`text-[13px] leading-snug ${
+            className={`text-body leading-snug ${
               notification.isRead
                 ? "text-on-surface-variant"
                 : "text-on-surface font-medium"
@@ -293,10 +300,10 @@ function NotificationItem({
           >
             {notification.title}
           </p>
-          <p className="text-[12px] text-on-surface-variant/60 mt-0.5 line-clamp-2">
+          <p className="text-label text-on-surface-variant/60 mt-0.5 line-clamp-2">
             {notification.body}
           </p>
-          <p className="text-[10px] text-on-surface-variant/40 mt-1">
+          <p className="text-caption text-on-surface-variant/40 mt-1">
             {timeAgo(notification.createdAt)}
           </p>
         </div>
@@ -304,27 +311,25 @@ function NotificationItem({
         {/* Actions */}
         <div className="shrink-0 flex items-start gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {!notification.isRead && (
-            <button
+            <IconButton size="xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onMarkRead();
               }}
-              className="p-1 rounded text-on-surface-variant/50 hover:text-primary hover:bg-primary/10 transition-colors"
-              title="Mark as read"
-            >
+              className="hover:text-primary hover:bg-primary/10"
+              title="Mark as read" aria-label="Mark as read">
               <Check className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           )}
-          <button
+          <IconButton size="xs" variant="danger"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="p-1 rounded text-on-surface-variant/50 hover:text-error hover:bg-error/10 transition-colors"
-            title="Delete"
-          >
+           
+            title="Delete" aria-label="Delete">
             <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>

@@ -92,6 +92,14 @@ export class PlanRepository {
     });
   }
 
+  /** Every non-deleted plan, active or not — for the super admin plan list. */
+  async findAllForAdmin(): Promise<Plan[]> {
+    return this.prisma.plan.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { slug: 'asc' }, { billingCycle: 'asc' }, { version: 'desc' }],
+    });
+  }
+
   async findDefault(): Promise<Plan | null> {
     return this.prisma.plan.findFirst({
       where: { isDefault: true, isActive: true, deletedAt: null },
@@ -112,6 +120,13 @@ export class PlanRepository {
         ...(data.maxCampaignsPerMonth !== undefined && { maxCampaignsPerMonth: data.maxCampaignsPerMonth }),
         ...(data.campaignsEnabled !== undefined && { campaignsEnabled: data.campaignsEnabled }),
         ...(data.automationEnabled !== undefined && { automationEnabled: data.automationEnabled }),
+        ...(data.apiEnabled !== undefined && { apiEnabled: data.apiEnabled }),
+        ...(data.maxApiCallsPerMonth !== undefined && { maxApiCallsPerMonth: data.maxApiCallsPerMonth }),
+        ...(data.aiEnabled !== undefined && { aiEnabled: data.aiEnabled }),
+        ...(data.aiCreditsPerMonth !== undefined && { aiCreditsPerMonth: data.aiCreditsPerMonth }),
+        ...(data.maxMessageTemplates !== undefined && { maxMessageTemplates: data.maxMessageTemplates }),
+        ...(data.shopifyEnabled !== undefined && { shopifyEnabled: data.shopifyEnabled }),
+        ...(data.maxShopifyStores !== undefined && { maxShopifyStores: data.maxShopifyStores }),
         ...(data.softLimitPercent !== undefined && { softLimitPercent: data.softLimitPercent }),
         ...(data.gracePeriodDays !== undefined && { gracePeriodDays: data.gracePeriodDays }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),

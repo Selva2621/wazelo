@@ -44,11 +44,11 @@ export function ProductSelectField({
   const noProducts  = !isLoading && filtered.length === 0;
 
   const selectCls =
-    "w-full rounded-xl bg-surface-container-low px-4 py-3 text-[13px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+    "h-10 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-body-lg text-on-surface outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30";
 
   return (
     <div className={className}>
-      <p className="text-[12px] font-medium text-on-surface-variant mb-1">
+      <p className="text-label font-medium text-on-surface-variant mb-1">
         {label}
         {optional && (
           <span className="ml-1 font-normal text-on-surface-variant/50">
@@ -82,10 +82,10 @@ export function ProductSelectField({
         <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-3.5 flex items-start gap-3">
           <Package className="h-4 w-4 text-on-surface-variant shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-on-surface">
+            <p className="text-body font-medium text-on-surface">
               No products yet
             </p>
-            <p className="text-[11px] text-on-surface-variant/60 mt-0.5">
+            <p className="text-caption text-on-surface-variant/60 mt-0.5">
               Create at least one product to link it here.
             </p>
             <button
@@ -94,7 +94,7 @@ export function ProductSelectField({
                 onBeforeRedirect?.();
                 router.push("/settings/products");
               }}
-              className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
             >
               Go to Products
               <ArrowRight className="h-3 w-3" />

@@ -92,8 +92,8 @@ export function QrCodeDisplay({
             <Spinner size="lg" className="text-primary" />
           ) : (
             <div className="flex flex-col items-center gap-3 text-center">
-              <QrCode className="h-12 w-12 text-gray-400" />
-              <p className="text-[13px] text-gray-500">
+              <QrCode className="h-12 w-12 text-on-surface-variant" />
+              <p className="text-body text-on-surface-variant">
                 {expired ? "QR code expired" : "Waiting for QR code..."}
               </p>
             </div>
@@ -103,7 +103,7 @@ export function QrCodeDisplay({
 
       {/* Timer text */}
       {qrCode && !expired && (
-        <p className="text-[13px] text-on-surface-variant">
+        <p className="text-body text-on-surface-variant">
           Expires in <span className="font-medium text-on-surface">{secondsLeft}s</span>
         </p>
       )}

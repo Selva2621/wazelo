@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScheduledMessageStatusBadge } from "./scheduled-message-status-badge";
 import type { ScheduledMessage } from "@/lib/types/scheduler";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface ScheduledMessagesTableProps {
   messages: ScheduledMessage[];
@@ -85,7 +86,7 @@ export function ScheduledMessagesTable({
   return (
     <div>
       {/* Header */}
-      <div className="grid grid-cols-[1fr_100px_80px_160px_60px] gap-2 px-4 py-2.5 text-[11px] font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="grid grid-cols-[1fr_100px_80px_160px_60px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
         <span>Message</span>
         <span>Contact</span>
         <span>Status</span>
@@ -101,16 +102,16 @@ export function ScheduledMessagesTable({
         >
           {/* Message preview */}
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-on-surface truncate">
+            <p className="text-body font-medium text-on-surface truncate">
               {truncateBody(msg.messageBody)}
             </p>
-            <p className="text-[11px] text-on-surface-variant/60">
+            <p className="text-caption text-on-surface-variant/60">
               {msg.messageType}
             </p>
           </div>
 
           {/* Contact phone */}
-          <span className="text-[12px] text-on-surface-variant truncate">
+          <span className="text-label text-on-surface-variant truncate">
             {msg.contactPhone}
           </span>
 
@@ -120,21 +121,20 @@ export function ScheduledMessagesTable({
           </div>
 
           {/* Scheduled at */}
-          <span className="text-[12px] text-on-surface-variant tabular-nums">
+          <span className="text-label text-on-surface-variant tabular-nums">
             {formatScheduledAt(msg.scheduledAt, msg.timezone)}
           </span>
 
           {/* Cancel action */}
           <div className="flex justify-center">
             {msg.status === "PENDING" && (
-              <button
+              <IconButton size="sm" variant="danger"
                 onClick={() => onCancel(msg.id)}
                 disabled={isCancelling}
-                className="p-1.5 rounded-lg text-on-surface-variant/40 hover:text-error hover:bg-error/10 transition-colors disabled:opacity-50"
-                title="Cancel message"
-              >
+               
+                title="Cancel message" aria-label="Cancel message">
                 <X className="h-4 w-4" />
-              </button>
+              </IconButton>
             )}
           </div>
         </div>
@@ -143,7 +143,7 @@ export function ScheduledMessagesTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-[12px] text-on-surface-variant/60">
+          <p className="text-label text-on-surface-variant/60">
             {skip + 1}–{Math.min(skip + take, total)} of {total}
           </p>
           <div className="flex gap-1.5">

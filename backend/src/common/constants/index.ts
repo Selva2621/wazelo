@@ -81,6 +81,8 @@ export const QUEUE_NAMES = {
   PROCESS_SHOPIFY_WEBHOOK: 'process-shopify-webhook',
   // Lead Scraper queues
   SCRAPE_LEADS: 'scrape-leads',
+  // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
+  ORG_ONBOARDING: 'org-onboarding',
 } as const;
 
 export const EVENT_NAMES = {
@@ -103,6 +105,9 @@ export const EVENT_NAMES = {
   USER_ENABLED: 'org.user_enabled',
   USER_DELETED: 'org.user_deleted',
   ROLE_CHANGED: 'org.role_changed',
+  // Super admin org suspension
+  ORG_SUSPENDED: 'org.suspended',
+  ORG_REACTIVATED: 'org.reactivated',
   ORG_SETTINGS_UPDATED: 'org.settings_updated',
 
   // WhatsApp session events (EPIC 3)

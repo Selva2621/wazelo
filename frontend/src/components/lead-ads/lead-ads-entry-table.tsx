@@ -71,9 +71,9 @@ export function LeadAdsEntryTable({
   return (
     <div>
       <div className="px-5 py-3 border-b border-outline-variant/10">
-        <h3 className="text-[13px] font-medium text-on-surface-variant">
+        <h3 className="text-body font-medium text-on-surface-variant">
           Lead Entries
-          <span className="ml-2 text-[11px] text-on-surface-variant/50">
+          <span className="ml-2 text-caption text-on-surface-variant/50">
             {entries.length} result{entries.length !== 1 ? "s" : ""}
           </span>
         </h3>
@@ -99,19 +99,19 @@ export function LeadAdsEntryTable({
                   <LeadAdSourceBadge platform={entry.platform} />
                 </TableCell>
                 <TableCell>
-                  <p className="text-[13px] font-medium text-on-surface">
+                  <p className="text-body font-medium text-on-surface">
                     {contact.name}
                   </p>
-                  <p className="text-[11px] text-on-surface-variant/60">
+                  <p className="text-caption text-on-surface-variant/60">
                     {contact.phone !== "—" ? contact.phone : contact.email}
                   </p>
                 </TableCell>
                 <TableCell>
-                  <p className="text-[13px] text-on-surface truncate max-w-[200px]">
+                  <p className="text-body text-on-surface truncate max-w-[200px]">
                     {entry.campaignName || "—"}
                   </p>
                   {entry.adName && (
-                    <p className="text-[11px] text-on-surface-variant/60 truncate max-w-[200px]">
+                    <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
                       {entry.adName}
                     </p>
                   )}
@@ -122,13 +122,13 @@ export function LeadAdsEntryTable({
                   </Badge>
                   {entry.errorMessage && (
                     <Tooltip content={entry.errorMessage} side="bottom">
-                      <p className="text-[11px] text-error mt-1 truncate max-w-[160px] cursor-help">
+                      <p className="text-caption text-error mt-1 truncate max-w-[160px] cursor-help">
                         {entry.errorMessage}
                       </p>
                     </Tooltip>
                   )}
                 </TableCell>
-                <TableCell className="text-[12px] text-on-surface-variant">
+                <TableCell className="text-label text-on-surface-variant">
                   {formatTimeAgo(entry.createdAt)}
                 </TableCell>
                 <TableCell align="right">

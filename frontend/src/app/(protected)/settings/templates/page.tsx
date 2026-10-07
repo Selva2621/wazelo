@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import {
   Table,
   TableHeader,
@@ -27,6 +28,7 @@ import {
 import { useProducts } from "@/hooks/use-products";
 import { listFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import type { MessageTemplate } from "@/lib/types/templates";
+import { IconButton } from "@/components/ui/icon-button";
 
 const CATEGORIES = ["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const;
 
@@ -230,11 +232,11 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />
             Message Templates
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <p className="text-body text-on-surface-variant mt-0.5">
             Create reusable message templates for campaigns and quick replies
           </p>
         </div>
@@ -252,7 +254,7 @@ export default function TemplatesPage() {
       {showForm && (
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container overflow-hidden">
           <div className="px-5 py-4 border-b border-outline-variant/10">
-            <h3 className="text-[14px] font-semibold text-on-surface">
+            <h3 className="text-body-lg font-semibold text-on-surface">
               {editId ? "Edit Template" : "Create Template"}
             </h3>
           </div>
@@ -265,14 +267,14 @@ export default function TemplatesPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Template name * (e.g. welcome_offer)"
                 autoFocus
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
 
               <div className="grid grid-cols-2 gap-3">
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c || "No category"}</option>
@@ -282,7 +284,7 @@ export default function TemplatesPage() {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                 >
                   {LANGUAGES.map((l) => (
                     <option key={l.value} value={l.value}>{l.label}</option>
@@ -292,7 +294,7 @@ export default function TemplatesPage() {
 
               {/* Body textarea with drag-drop */}
               <div>
-                <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">
+                <p className="text-caption font-medium text-on-surface-variant mb-1.5">
                   Message Body *
                   <span className="ml-2 font-normal opacity-60">— drag fields from the right panel to insert</span>
                 </p>
@@ -310,21 +312,21 @@ export default function TemplatesPage() {
                     const variable = e.dataTransfer.getData("text/plain");
                     if (variable) insertAtCursor(variable);
                   }}
-                  className={`w-full rounded-lg border px-3 py-2.5 text-[13px] text-on-surface focus:outline-none focus:ring-1 resize-none transition-colors ${
+                  className={`w-full rounded-lg border px-3 py-2.5 text-body text-on-surface focus:outline-none focus:ring-1 resize-none transition-colors ${
                     isDragOver
                       ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                       : "border-outline-variant/20 bg-surface focus:border-primary focus:ring-primary/30"
                   }`}
                 />
                 <div className="flex justify-end mt-1">
-                  <p className="text-[11px] text-on-surface-variant/50 tabular-nums">
+                  <p className="text-caption text-on-surface-variant/50 tabular-nums">
                     {body.length} / 4,096
                   </p>
                 </div>
               </div>
 
               {formError && (
-                <p className="text-[12px] text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
+                <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
                   {formError}
                 </p>
               )}
@@ -350,7 +352,7 @@ export default function TemplatesPage() {
               <div className="p-4">
                 <div className="flex items-center gap-1.5 mb-3">
                   <User className="h-3.5 w-3.5 text-primary" />
-                  <p className="text-[11px] font-semibold text-on-surface uppercase tracking-wide">
+                  <p className="text-caption font-semibold text-on-surface uppercase tracking-wide">
                     Contact Fields
                   </p>
                 </div>
@@ -367,11 +369,11 @@ export default function TemplatesPage() {
                         }}
                         onClick={() => insertAtCursor(variable)}
                         title={`Insert ${variable}`}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface border border-outline-variant/20 text-[11px] text-on-surface-variant cursor-grab active:cursor-grabbing hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors select-none"
+                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface border border-outline-variant/20 text-caption text-on-surface-variant cursor-grab active:cursor-grabbing hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors select-none"
                       >
                         <GripVertical className="h-3 w-3 opacity-40 shrink-0" />
                         <span className="font-medium">{field.fieldLabel}</span>
-                        <span className="opacity-40 font-mono text-[10px]">{`{{${field.fieldName}}}`}</span>
+                        <span className="opacity-40 font-mono text-caption">{`{{${field.fieldName}}}`}</span>
                       </div>
                     );
                   })}
@@ -383,11 +385,11 @@ export default function TemplatesPage() {
                 <div className="p-4">
                   <div className="flex items-center gap-1.5 mb-3">
                     <Package className="h-3.5 w-3.5 text-primary" />
-                    <p className="text-[11px] font-semibold text-on-surface uppercase tracking-wide">
+                    <p className="text-caption font-semibold text-on-surface uppercase tracking-wide">
                       Link to Product
                     </p>
                   </div>
-                  <p className="text-[11px] text-on-surface-variant/60 mb-2">
+                  <p className="text-caption text-on-surface-variant/60 mb-2">
                     Group this template under a product
                   </p>
                   <div className="space-y-1">
@@ -395,13 +397,13 @@ export default function TemplatesPage() {
                     <button
                       type="button"
                       onClick={() => setProductId("")}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-left transition-colors border ${
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border ${
                         !productId
                           ? "border-primary/40 bg-primary/5 text-primary font-medium"
                           : "border-transparent text-on-surface-variant hover:bg-surface"
                       }`}
                     >
-                      <span className="text-[10px] opacity-60">—</span>
+                      <span className="text-caption opacity-60">—</span>
                       No product
                     </button>
                     {products
@@ -411,7 +413,7 @@ export default function TemplatesPage() {
                           key={p.id}
                           type="button"
                           onClick={() => setProductId(p.id === productId ? "" : p.id)}
-                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-left transition-colors border ${
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border ${
                             productId === p.id
                               ? "border-primary/40 bg-primary/5 text-primary font-medium"
                               : "border-transparent text-on-surface-variant hover:bg-surface"
@@ -442,19 +444,19 @@ export default function TemplatesPage() {
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
                     categoryFilter === cat
                       ? cat === "SHOPIFY"
-                        ? "bg-emerald-500/15 text-emerald-700"
+                        ? "bg-success/15 text-success"
                         : "bg-primary/10 text-primary"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
                   }`}
                 >
                   {cat === "SHOPIFY" && <ShoppingBag className="h-3 w-3" />}
                   {label}
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  <span className={`text-caption px-1.5 py-0.5 rounded-full ${
                     categoryFilter === cat
-                      ? cat === "SHOPIFY" ? "bg-emerald-500/20 text-emerald-700" : "bg-primary/15 text-primary"
+                      ? cat === "SHOPIFY" ? "bg-success/20 text-success" : "bg-primary/15 text-primary"
                       : "bg-outline-variant/15 text-on-surface-variant/60"
                   }`}>
                     {count}
@@ -471,7 +473,7 @@ export default function TemplatesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search templates..."
-              className="flex-1 bg-transparent text-[13px] text-on-surface outline-none placeholder:text-on-surface-variant/40"
+              className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
             />
           </div>
         </div>
@@ -504,18 +506,18 @@ export default function TemplatesPage() {
                   <TableRow key={tpl.id}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isShopify ? "bg-emerald-500/10" : "bg-primary/10"}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isShopify ? "bg-success/10" : "bg-primary/10"}`}>
                           {isShopify
-                            ? <ShopifyIcon className="h-4 w-4 text-emerald-600" />
+                            ? <ShopifyIcon className="h-4 w-4 text-success" />
                             : <FileText className="h-4 w-4 text-primary" />
                           }
                         </div>
                         <div>
-                          <span className="text-[13px] font-medium text-on-surface">
+                          <span className="text-body font-medium text-on-surface">
                             {tpl.name}
                           </span>
                           {isShopify && (
-                            <p className="text-[11px] text-emerald-600/70 leading-none mt-0.5">
+                            <p className="text-caption text-success/70 leading-none mt-0.5">
                               {shopifyType ? SHOPIFY_TEMPLATE_TYPES[shopifyType] ?? shopifyType : "Shopify"}
                             </p>
                           )}
@@ -525,37 +527,37 @@ export default function TemplatesPage() {
 
                     <TableCell>
                       {linkedProductName ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container text-[11px] text-on-surface-variant border border-outline-variant/15">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container text-caption text-on-surface-variant border border-outline-variant/15">
                           <Package className="h-3 w-3 opacity-60" />
                           {linkedProductName}
                         </span>
                       ) : (
-                        <span className="text-[12px] text-on-surface-variant/40">—</span>
+                        <span className="text-label text-on-surface-variant/40">—</span>
                       )}
                     </TableCell>
 
                     <TableCell>
                       {isShopify ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[11px] font-medium text-emerald-700 border border-emerald-500/20">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-caption font-medium text-success border border-success/20">
                           <ShoppingBag className="h-3 w-3" />
                           Shopify
                         </span>
                       ) : (
-                        <span className="text-[12px] text-on-surface-variant">
+                        <span className="text-label text-on-surface-variant">
                           {tpl.category || "—"}
                         </span>
                       )}
                     </TableCell>
 
-                    <TableCell className="text-[12px] text-on-surface-variant uppercase">
+                    <TableCell className="text-label text-on-surface-variant uppercase">
                       {tpl.language}
                     </TableCell>
 
-                    <TableCell className="text-[12px] text-on-surface-variant truncate max-w-[240px]">
+                    <TableCell className="text-label text-on-surface-variant truncate max-w-[240px]">
                       {bodyText || "—"}
                     </TableCell>
 
-                    <TableCell className="text-[12px] text-on-surface-variant">
+                    <TableCell className="text-label text-on-surface-variant">
                       {new Date(tpl.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -565,13 +567,12 @@ export default function TemplatesPage() {
 
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <button
+                        <IconButton size="xs"
                           onClick={() => startEdit(tpl)}
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Edit"
-                        >
+                          className="hover:text-primary hover:bg-primary/10"
+                          title="Edit" aria-label="Edit">
                           <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                        </IconButton>
                         {isShopify ? (
                           <span
                             title="System template — cannot be deleted"
@@ -580,13 +581,12 @@ export default function TemplatesPage() {
                             <Lock className="h-3.5 w-3.5" />
                           </span>
                         ) : (
-                          <button
+                          <IconButton size="xs" variant="danger"
                             onClick={() => setDeleteTarget(tpl)}
-                            className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                            title="Delete"
-                          >
+                           
+                            title="Delete" aria-label="Delete">
                             <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          </IconButton>
                         )}
                       </div>
                     </TableCell>
@@ -597,7 +597,7 @@ export default function TemplatesPage() {
           </Table>
         </div>
       ) : templates && templates.length > 0 && search ? (
-        <p className="text-[13px] text-on-surface-variant/50 text-center py-8">
+        <p className="text-body text-on-surface-variant/50 text-center py-8">
           No templates match "{search}"
         </p>
       ) : (
@@ -613,25 +613,29 @@ export default function TemplatesPage() {
       )}
 
       {/* AI Generate Modal */}
-      {showAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-outline-variant/15 bg-surface shadow-xl">
+      <Modal
+        open={showAiModal}
+        onClose={() => { setShowAiModal(false); setAiPrompt(""); }}
+        dismissible={!generateTemplate.isPending}
+        aria-labelledby="ai-template-modal-title"
+        className="max-w-md border border-outline-variant/15 bg-surface"
+      >
+        {() => (
+          <>
             <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="text-[14px] font-semibold text-on-surface">Generate Template with AI</h3>
+                <h3 id="ai-template-modal-title" className="text-body-lg font-semibold text-on-surface">Generate Template with AI</h3>
               </div>
-              <button
-                onClick={() => { setShowAiModal(false); setAiPrompt(""); }}
-                className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
-              >
+              <IconButton size="xs"
+                onClick={() => { setShowAiModal(false); setAiPrompt(""); }} aria-label="Close">
                 <X className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
 
             <div className="p-5 space-y-3">
               <div>
-                <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">
+                <p className="text-caption font-medium text-on-surface-variant mb-1.5">
                   Describe the template you want *
                 </p>
                 <textarea
@@ -640,17 +644,17 @@ export default function TemplatesPage() {
                   placeholder="e.g. Welcome a new customer after signup and offer a 10% discount"
                   rows={3}
                   autoFocus
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">Category</p>
+                  <p className="text-caption font-medium text-on-surface-variant mb-1.5">Category</p>
                   <select
                     value={aiCategory}
                     onChange={(e) => setAiCategory(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c || "No category"}</option>
@@ -658,11 +662,11 @@ export default function TemplatesPage() {
                   </select>
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">Language</p>
+                  <p className="text-caption font-medium text-on-surface-variant mb-1.5">Language</p>
                   <select
                     value={aiLanguage}
                     onChange={(e) => setAiLanguage(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                   >
                     {LANGUAGES.map((l) => (
                       <option key={l.value} value={l.value}>{l.label}</option>
@@ -671,7 +675,7 @@ export default function TemplatesPage() {
                 </div>
               </div>
 
-              <p className="text-[11px] text-on-surface-variant/50">
+              <p className="text-caption text-on-surface-variant/50">
                 AI will generate a name and body. You can review and edit before saving.
               </p>
             </div>
@@ -690,9 +694,9 @@ export default function TemplatesPage() {
                 {generateTemplate.isPending ? "Generating..." : "Generate"}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* Delete confirmation */}
       <ConfirmDialog

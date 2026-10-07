@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import type { Team } from "@/lib/types/teams";
 import { PAGE_SIZE } from "@/lib/constants";
+import { IconButton } from "@/components/ui/icon-button";
 
 export default function AdminTeamsPage() {
   usePageTitle("Teams");
@@ -115,8 +116,8 @@ export default function AdminTeamsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[20px] font-bold text-on-surface">Teams</h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <h1 className="text-title font-semibold text-on-surface">Teams</h1>
+          <p className="text-body text-on-surface-variant mt-0.5">
             Manage your organization&apos;s teams and members
           </p>
         </div>
@@ -130,38 +131,36 @@ export default function AdminTeamsPage() {
       {showCreate && (
         <div className="rounded-xl border border-outline-variant/15 p-5 space-y-4 bg-surface-container/30">
           <div className="flex items-center justify-between">
-            <h3 className="text-[15px] font-semibold text-on-surface">New Team</h3>
-            <button
-              onClick={closeCreate}
-              className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-            >
+            <h3 className="text-body-lg font-semibold text-on-surface">New Team</h3>
+            <IconButton size="xs"
+              onClick={closeCreate} aria-label="Close">
               <X className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
 
           {createError && (
-            <div className="rounded-lg bg-error/10 border border-error/20 px-3 py-2 text-[13px] text-error">
+            <div className="rounded-lg bg-error/10 border border-error/20 px-3 py-2 text-body text-error">
               {createError}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">Team Name</label>
+              <label className="text-label font-medium text-on-surface-variant">Team Name</label>
               <input
                 type="text"
                 placeholder="e.g. Support Team"
                 value={newTeamName}
                 onChange={(e) => { setNewTeamName(e.target.value); setCreateError(""); }}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">Manager</label>
+              <label className="text-label font-medium text-on-surface-variant">Manager</label>
               <select
                 value={newTeamManagerId}
                 onChange={(e) => { setNewTeamManagerId(e.target.value); setCreateError(""); }}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">Select manager</option>
                 {managers.map((u) => (
@@ -232,7 +231,7 @@ export default function AdminTeamsPage() {
                     className="cursor-pointer"
                   >
                     <TableCell>
-                      <span className="text-[14px] font-medium text-on-surface">
+                      <span className="text-body-lg font-medium text-on-surface">
                         {team.name}
                       </span>
                     </TableCell>
@@ -243,10 +242,10 @@ export default function AdminTeamsPage() {
                           size="sm"
                         />
                         <div>
-                          <p className="text-[13px] text-on-surface">
+                          <p className="text-body text-on-surface">
                             {team.manager.firstName} {team.manager.lastName}
                           </p>
-                          <p className="text-[11px] text-on-surface-variant">{team.manager.role}</p>
+                          <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -256,7 +255,7 @@ export default function AdminTeamsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[12px] text-on-surface-variant">
+                      <span className="text-label text-on-surface-variant">
                         {new Date(team.createdAt).toLocaleDateString()}
                       </span>
                     </TableCell>
@@ -265,20 +264,18 @@ export default function AdminTeamsPage() {
                         className="flex items-center justify-end gap-1"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
+                        <IconButton size="xs"
                           onClick={() => router.push(`/admin/teams/${team.id}`)}
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="View / Edit team"
-                        >
+                          className="hover:text-primary hover:bg-primary/10"
+                          title="View / Edit team" aria-label="View / Edit team">
                           <Eye className="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </IconButton>
+                        <IconButton size="xs" variant="danger"
                           onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                          title="Delete team"
-                        >
+                         
+                          title="Delete team" aria-label="Delete team">
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </IconButton>
                       </div>
                     </TableCell>
                   </TableRow>

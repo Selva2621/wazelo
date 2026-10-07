@@ -15,7 +15,7 @@ export function LeadAdsTopCampaigns({ analytics }: LeadAdsTopCampaignsProps) {
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+      <h3 className="text-body font-medium text-on-surface-variant mb-4">
         Top Campaigns
       </h3>
       <div className="space-y-3">
@@ -26,11 +26,11 @@ export function LeadAdsTopCampaigns({ analytics }: LeadAdsTopCampaignsProps) {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Megaphone className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
-                  <span className="text-[13px] text-on-surface truncate">
+                  <span className="text-body text-on-surface truncate">
                     {c.campaignName}
                   </span>
                 </div>
-                <span className="text-[13px] font-semibold text-primary tabular-nums ml-3">
+                <span className="text-body font-semibold text-primary tabular-nums ml-3">
                   {c.count}
                 </span>
               </div>

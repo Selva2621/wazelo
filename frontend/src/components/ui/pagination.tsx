@@ -41,7 +41,7 @@ export function Pagination({
         className,
       )}
     >
-      <span className="text-[12px] text-on-surface-variant tabular-nums">
+      <span className="text-label text-on-surface-variant tabular-nums">
         Page {page} of {totalPages}
         <span className="text-on-surface-variant/50 ml-1">
           ({total.toLocaleString()} total)
@@ -64,7 +64,7 @@ export function Pagination({
           p === "..." ? (
             <span
               key={`ellipsis-${idx}`}
-              className="px-1 text-[12px] text-on-surface-variant/40"
+              className="px-1 text-label text-on-surface-variant/40"
             >
               ...
             </span>
@@ -73,7 +73,7 @@ export function Pagination({
               key={p}
               onClick={() => onPageChange(p)}
               className={cn(
-                "min-w-[28px] h-7 rounded-lg text-[12px] font-medium transition-colors tabular-nums",
+                "min-w-[28px] h-7 rounded-lg text-label font-medium transition-colors tabular-nums",
                 p === page
                   ? "bg-primary/10 text-primary"
                   : "text-on-surface-variant hover:bg-surface-container",

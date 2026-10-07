@@ -58,7 +58,7 @@ function StatusTimeline({ contactId }: { contactId: string }) {
 
   if (!data || data.length === 0) {
     return (
-      <p className="text-center text-[13px] text-on-surface-variant/50 py-4">
+      <p className="text-center text-body text-on-surface-variant/50 py-4">
         No status changes
       </p>
     );
@@ -81,11 +81,11 @@ function StatusTimeline({ contactId }: { contactId: string }) {
               <LeadStatusBadge status={entry.newStatus as LeadStatus} />
             </div>
             {entry.reason && (
-              <p className="mt-1 text-[12px] text-on-surface-variant">
+              <p className="mt-1 text-label text-on-surface-variant">
                 {entry.reason}
               </p>
             )}
-            <p className="mt-0.5 text-[11px] text-on-surface-variant/50">
+            <p className="mt-0.5 text-caption text-on-surface-variant/50">
               {timeAgo(entry.createdAt)}
             </p>
           </div>
@@ -108,7 +108,7 @@ function OwnerTimeline({ contactId }: { contactId: string }) {
 
   if (!data || data.length === 0) {
     return (
-      <p className="text-center text-[13px] text-on-surface-variant/50 py-4">
+      <p className="text-center text-body text-on-surface-variant/50 py-4">
         No owner changes
       </p>
     );
@@ -121,15 +121,15 @@ function OwnerTimeline({ contactId }: { contactId: string }) {
         <div key={entry.id} className="relative flex gap-3 py-2">
           <div className="relative z-10 mt-1.5 h-3.5 w-3.5 rounded-full border-2 border-primary bg-surface-container-lowest shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-on-surface">
+            <p className="text-body text-on-surface">
               {entry.previousOwnerId ? "Reassigned" : "Assigned"}
             </p>
             {entry.reason && (
-              <p className="mt-0.5 text-[12px] text-on-surface-variant">
+              <p className="mt-0.5 text-label text-on-surface-variant">
                 {entry.reason}
               </p>
             )}
-            <p className="mt-0.5 text-[11px] text-on-surface-variant/50">
+            <p className="mt-0.5 text-caption text-on-surface-variant/50">
               {timeAgo(entry.createdAt)}
             </p>
           </div>

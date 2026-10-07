@@ -23,7 +23,7 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
   const { data: recipientsData, isLoading: recipientsLoading } = useSequenceRecipients(sequenceId);
 
   if (isLoading) return <div className="flex justify-center py-8"><Spinner size="lg" /></div>;
-  if (!data) return <p className="text-[12px] text-on-surface-variant/50 py-4">No analytics data available.</p>;
+  if (!data) return <p className="text-label text-on-surface-variant/50 py-4">No analytics data available.</p>;
 
   const maxReached = Math.max(...data.stepFunnel.map((s) => s.reached), 1);
 
@@ -32,23 +32,23 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={Users} label="Total Recipients" value={data.totalRecipients} color="text-primary" />
-        <StatCard icon={Activity} label="Active" value={data.activeCount} color="text-green-500" />
-        <StatCard icon={CheckCircle2} label="Completed" value={data.completedCount} color="text-blue-500" />
-        <StatCard icon={LogOut} label="Exited" value={data.exitedCount} color="text-orange-500" />
+        <StatCard icon={Activity} label="Active" value={data.activeCount} color="text-success" />
+        <StatCard icon={CheckCircle2} label="Completed" value={data.completedCount} color="text-info" />
+        <StatCard icon={LogOut} label="Exited" value={data.exitedCount} color="text-warning" />
       </div>
 
       {/* Reply Rate + Avg Completion Time */}
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface-container border border-outline-variant/10">
-          <MessageSquare className="h-4 w-4 text-blue-500" />
-          <span className="text-[12px] text-on-surface-variant">Reply rate:</span>
-          <span className="text-[13px] font-medium text-on-surface">{data.replyRate}%</span>
+          <MessageSquare className="h-4 w-4 text-info" />
+          <span className="text-label text-on-surface-variant">Reply rate:</span>
+          <span className="text-body font-medium text-on-surface">{data.replyRate}%</span>
         </div>
         {data.avgCompletionHours !== null && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface-container border border-outline-variant/10">
             <Clock className="h-4 w-4 text-on-surface-variant/50" />
-            <span className="text-[12px] text-on-surface-variant">Avg. completion time:</span>
-            <span className="text-[13px] font-medium text-on-surface">
+            <span className="text-label text-on-surface-variant">Avg. completion time:</span>
+            <span className="text-body font-medium text-on-surface">
               {data.avgCompletionHours < 24
                 ? `${data.avgCompletionHours}h`
                 : `${Math.round((data.avgCompletionHours / 24) * 10) / 10} days`}
@@ -60,11 +60,11 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
       {/* Step Funnel */}
       {data.stepFunnel.length > 0 && (
         <div>
-          <h3 className="text-[12px] font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Step Funnel</h3>
+          <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Step Funnel</h3>
           <div className="space-y-2">
             {data.stepFunnel.map((step) => (
               <div key={step.stepOrder} className="space-y-1">
-                <div className="flex items-center justify-between text-[12px]">
+                <div className="flex items-center justify-between text-label">
                   <span className="text-on-surface-variant">
                     <span className="font-medium text-on-surface/70 mr-1.5">Step {step.stepOrder + 1}</span>
                     {step.name || `Step ${step.stepOrder + 1}`}
@@ -86,12 +86,12 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
       {/* Exit Reasons */}
       {data.exitReasons.length > 0 && (
         <div>
-          <h3 className="text-[12px] font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Exit Reasons</h3>
+          <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Exit Reasons</h3>
           <div className="space-y-1.5">
             {data.exitReasons.map((er) => (
               <div key={er.reason} className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10">
-                <span className="text-[12px] text-on-surface-variant">{er.reason}</span>
-                <span className="text-[13px] font-medium text-on-surface">{er.count}</span>
+                <span className="text-label text-on-surface-variant">{er.reason}</span>
+                <span className="text-body font-medium text-on-surface">{er.count}</span>
               </div>
             ))}
           </div>
@@ -100,40 +100,40 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
 
       {/* Recipients Table */}
       <div>
-        <h3 className="text-[12px] font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Recipients</h3>
+        <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Recipients</h3>
         {recipientsLoading ? (
           <div className="flex justify-center py-6"><Spinner size="sm" /></div>
         ) : !recipientsData || recipientsData.data.length === 0 ? (
-          <p className="text-[12px] text-on-surface-variant/50 py-4 text-center">No recipients enrolled yet.</p>
+          <p className="text-label text-on-surface-variant/50 py-4 text-center">No recipients enrolled yet.</p>
         ) : (
           <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
             <table className="table-auto w-full">
               <thead>
                 <tr className="bg-surface-container-low border-b border-outline-variant/15">
-                  <th className="text-left px-4 py-2.5 text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Contact</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Current Step</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Enrolled</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Contact</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Current Step</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Enrolled</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
                 {recipientsData.data.map((r) => (
                   <tr key={r.id} className="hover:bg-surface-container/50 transition-colors">
                     <td className="px-4 py-2.5">
-                      <p className="text-[13px] font-medium text-on-surface">
+                      <p className="text-body font-medium text-on-surface">
                         {r.contact.name || r.contact.phoneNumber}
                       </p>
                       {r.contact.name && (
-                        <p className="text-[11px] text-on-surface-variant/60">{r.contact.phoneNumber}</p>
+                        <p className="text-caption text-on-surface-variant/60">{r.contact.phoneNumber}</p>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{r.status}</Badge>
                     </td>
-                    <td className="px-4 py-2.5 text-[12px] text-on-surface-variant">
+                    <td className="px-4 py-2.5 text-label text-on-surface-variant">
                       Step {r.currentStep + 1}
                     </td>
-                    <td className="px-4 py-2.5 text-[11px] text-on-surface-variant">
+                    <td className="px-4 py-2.5 text-caption text-on-surface-variant">
                       {new Date(r.enrolledAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -162,9 +162,9 @@ function StatCard({
     <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/10 space-y-1">
       <div className="flex items-center gap-1.5">
         <Icon className={`h-3.5 w-3.5 ${color}`} />
-        <span className="text-[10px] text-on-surface-variant/60 uppercase tracking-wide">{label}</span>
+        <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">{label}</span>
       </div>
-      <p className="text-[20px] font-semibold text-on-surface">{value}</p>
+      <p className="text-title font-semibold text-on-surface">{value}</p>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export function ContactNotes({ contactId }: ContactNotesProps) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="Add a note..."
           rows={2}
-          className="flex-1 rounded-xl bg-surface-container-low px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          className="flex-1 rounded-xl bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40 resize-none"
         />
         <Button
           type="submit"
@@ -83,15 +83,15 @@ export function ContactNotes({ contactId }: ContactNotesProps) {
                 ) : (
                   <ShoppingBag className="h-3 w-3 text-[#96bf48]" />
                 )}
-                <span className="text-[10px] font-semibold text-[#96bf48] uppercase tracking-wide">
+                <span className="text-caption font-semibold text-[#96bf48] uppercase tracking-wide">
                   {isShopifyCart ? "Abandoned Cart" : "Shopify Order"}
                 </span>
               </div>
             )}
-            <p className="text-[13px] text-on-surface leading-relaxed whitespace-pre-wrap">
+            <p className="text-body text-on-surface leading-relaxed whitespace-pre-wrap">
               {note.content}
             </p>
-            <p className="text-[11px] text-on-surface-variant/60">
+            <p className="text-caption text-on-surface-variant/60">
               {timeAgo(note.createdAt)}
             </p>
           </div>
@@ -99,7 +99,7 @@ export function ContactNotes({ contactId }: ContactNotesProps) {
       })}
 
       {data && data.notes.length === 0 && (
-        <p className="text-center text-[13px] text-on-surface-variant/50 py-4">
+        <p className="text-center text-body text-on-surface-variant/50 py-4">
           No notes yet
         </p>
       )}

@@ -42,6 +42,7 @@ import type {
   AutomationTriggerType,
   AutomationConditionOperator,
 } from "@/lib/types/automation";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ function Section({ title, children, defaultOpen = true }: { title: string; child
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-container/50 transition-colors"
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">{title}</span>
+        <span className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant">{title}</span>
         {open ? <ChevronDown className="h-3.5 w-3.5 text-on-surface-variant" /> : <ChevronRight className="h-3.5 w-3.5 text-on-surface-variant" />}
       </button>
       {open && <div className="px-4 pb-4 pt-1 space-y-3">{children}</div>}
@@ -127,7 +128,7 @@ interface TriggerConfigProps {
 }
 
 function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerConfigProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   if (triggerType === "MESSAGE_RECEIVED" || triggerType === "WIDGET_MESSAGE_RECEIVED") {
     return (
@@ -140,7 +141,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
             value={String(triggerConfig.messageKeyword ?? "")}
             onChange={(e) => onChange("messageKeyword", e.target.value)}
           />
-          <p className="text-[11px] text-on-surface-variant/50 mt-1">Leave blank to match every message.</p>
+          <p className="text-caption text-on-surface-variant/50 mt-1">Leave blank to match every message.</p>
         </div>
       </div>
     );
@@ -181,7 +182,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           value={String(triggerConfig.cronExpression ?? "")}
           onChange={(e) => onChange("cronExpression", e.target.value)}
         />
-        <p className="text-[11px] text-on-surface-variant/50 mt-1">Uses standard cron syntax (UTC).</p>
+        <p className="text-caption text-on-surface-variant/50 mt-1">Uses standard cron syntax (UTC).</p>
       </div>
     );
   }
@@ -232,7 +233,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
   }
 
   return (
-    <p className="text-[12px] text-on-surface-variant/60 italic">No additional configuration needed for this trigger.</p>
+    <p className="text-label text-on-surface-variant/60 italic">No additional configuration needed for this trigger.</p>
   );
 }
 
@@ -251,7 +252,7 @@ interface ConditionBuilderProps {
 }
 
 function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
-  const inputCls = "flex-1 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 bg-surface-container-low text-[12px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const inputCls = "flex-1 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
   const selectCls = `${inputCls} flex-none`;
 
   function add() {
@@ -269,14 +270,14 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
   return (
     <div className="space-y-2">
       {conditions.length === 0 && (
-        <p className="text-[12px] text-on-surface-variant/50 italic">
+        <p className="text-label text-on-surface-variant/50 italic">
           No conditions — rule fires for every matching trigger event.
         </p>
       )}
       {conditions.map((row, i) => (
         <div key={row.id} className="flex items-center gap-2">
           {i > 0 && (
-            <span className="text-[10px] font-semibold text-primary uppercase shrink-0 w-6 text-center">AND</span>
+            <span className="text-caption font-semibold text-primary uppercase shrink-0 w-6 text-center">AND</span>
           )}
           {i === 0 && <span className="w-6 shrink-0" />}
 
@@ -307,19 +308,17 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
             onChange={(e) => update(row.id, "value", e.target.value)}
           />
 
-          <button
+          <IconButton size="xs" variant="danger"
             type="button"
-            onClick={() => remove(row.id)}
-            className="p-1 rounded text-on-surface-variant/40 hover:text-error transition-colors shrink-0"
-          >
+            onClick={() => remove(row.id)} aria-label="Remove">
             <X className="h-3.5 w-3.5" />
-          </button>
+          </IconButton>
         </div>
       ))}
       <button
         type="button"
         onClick={add}
-        className="flex items-center gap-1.5 text-[12px] text-primary hover:underline"
+        className="flex items-center gap-1.5 text-label text-primary hover:underline"
       >
         <Plus className="h-3.5 w-3.5" />
         Add condition
@@ -349,7 +348,7 @@ interface ActionRowEditorProps {
 }
 
 function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMoveDown }: ActionRowEditorProps) {
-  const inputCls = "w-full px-3 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low text-[12px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const inputCls = "w-full px-3 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
   const meta = ACTION_TYPES.find((a) => a.value === row.actionType);
   const Icon = meta?.icon ?? MessageSquare;
 
@@ -368,26 +367,24 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       <div className="flex items-center gap-2">
         {/* Order controls */}
         <div className="flex flex-col gap-0.5 shrink-0">
-          <button
+          <IconButton size="xs"
             type="button"
             disabled={index === 0}
             onClick={() => onMoveUp(row.id)}
-            className="p-0.5 rounded text-on-surface-variant/30 hover:text-on-surface-variant disabled:opacity-20 transition-colors"
-          >
+            className="hover:text-on-surface-variant" aria-label="Expand">
             <ChevronDown className="h-3 w-3 rotate-180" />
-          </button>
-          <button
+          </IconButton>
+          <IconButton size="xs"
             type="button"
             disabled={index === total - 1}
             onClick={() => onMoveDown(row.id)}
-            className="p-0.5 rounded text-on-surface-variant/30 hover:text-on-surface-variant disabled:opacity-20 transition-colors"
-          >
+            className="hover:text-on-surface-variant" aria-label="Expand">
             <ChevronDown className="h-3 w-3" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Step badge */}
-        <span className="flex-shrink-0 h-5 w-5 rounded-full text-[11px] font-semibold flex items-center justify-center"
+        <span className="flex-shrink-0 h-5 w-5 rounded-full text-caption font-semibold flex items-center justify-center"
           style={{ backgroundColor: (meta?.color ?? "#6366f1") + "20", color: meta?.color ?? "#6366f1" }}
         >
           {index + 1}
@@ -399,7 +396,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
           <select
             value={row.actionType}
             onChange={(e) => onUpdate(row.id, { actionType: e.target.value as AutomationActionType, actionConfig: {} })}
-            className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-[12px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             {ACTION_TYPES.map((a) => (
               <option key={a.value} value={a.value}>{a.label}</option>
@@ -408,13 +405,11 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
         </div>
 
         {total > 1 && (
-          <button
+          <IconButton size="xs" variant="danger"
             type="button"
-            onClick={() => onRemove(row.id)}
-            className="p-1 rounded text-on-surface-variant/30 hover:text-error transition-colors shrink-0"
-          >
+            onClick={() => onRemove(row.id)} aria-label="Delete">
             <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          </IconButton>
         )}
       </div>
 
@@ -422,7 +417,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       {row.actionType === "SEND_MESSAGE" && (
         <div className="space-y-2 pl-8">
           <div>
-            <Label className="text-[11px]">Message Body</Label>
+            <Label className="text-caption">Message Body</Label>
             <textarea
               rows={3}
               value={String(row.actionConfig.messageBody ?? "")}
@@ -436,7 +431,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
                   key={chip.value}
                   type="button"
                   onClick={() => insertVar(chip.value)}
-                  className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono hover:bg-primary/20 transition-colors"
+                  className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-caption font-mono hover:bg-primary/20 transition-colors"
                 >
                   {chip.label}
                 </button>
@@ -444,7 +439,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             </div>
           </div>
           <div>
-            <Label className="text-[11px]">Session ID (optional)</Label>
+            <Label className="text-caption">Session ID (optional)</Label>
             <input
               className={`${inputCls} mt-1`}
               placeholder="Leave blank to auto-detect"
@@ -457,7 +452,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "ASSIGN_CONTACT" && (
         <div className="pl-8">
-          <Label className="text-[11px]">Assign To User ID</Label>
+          <Label className="text-caption">Assign To User ID</Label>
           <input
             className={`${inputCls} mt-1`}
             placeholder="User UUID to assign contact to"
@@ -469,7 +464,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "ADD_TAG" && (
         <div className="pl-8">
-          <Label className="text-[11px]">Tag Name</Label>
+          <Label className="text-caption">Tag Name</Label>
           <input
             className={`${inputCls} mt-1`}
             placeholder="e.g. hot-lead"
@@ -481,7 +476,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "UPDATE_STATUS" && (
         <div className="pl-8">
-          <Label className="text-[11px]">New Status</Label>
+          <Label className="text-caption">New Status</Label>
           <select
             value={String(row.actionConfig.newStatus ?? "")}
             onChange={(e) => setConfig("newStatus", e.target.value)}
@@ -498,15 +493,15 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       {/* Delay */}
       <div className="pl-8 flex items-center gap-2">
         <Clock className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
-        <Label className="text-[11px] text-on-surface-variant/60 shrink-0">Delay before action:</Label>
+        <Label className="text-caption text-on-surface-variant/60 shrink-0">Delay before action:</Label>
         <input
           type="number"
           min={0}
           value={row.delaySeconds}
           onChange={(e) => onUpdate(row.id, { delaySeconds: parseInt(e.target.value) || 0 })}
-          className="w-20 px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-[12px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-20 px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <span className="text-[11px] text-on-surface-variant/60">seconds</span>
+        <span className="text-caption text-on-surface-variant/60">seconds</span>
       </div>
     </div>
   );
@@ -705,28 +700,28 @@ export default function AutomationRuleEditorPage() {
       {/* ── Header ── */}
       <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant/10 bg-surface-container-low">
         <div className="flex items-center gap-3">
-          <button
+          <IconButton size="sm"
             onClick={() => router.push("/automation")}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+           
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </IconButton>
           <Zap className="h-4 w-4 text-on-surface-variant" />
           <input
             value={name}
             onChange={(e) => { setName(e.target.value); markDirty(); }}
-            className="text-[15px] font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0"
+            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0"
           />
           <RuleStatusBadge status={rule.status} />
         </div>
 
         <div className="flex items-center gap-2">
           {isDirty && (
-            <span className="text-[11px] text-on-surface-variant/50">Unsaved changes</span>
+            <span className="text-caption text-on-surface-variant/50">Unsaved changes</span>
           )}
           {saved && (
-            <span className="flex items-center gap-1 text-[11px] text-green-600">
+            <span className="flex items-center gap-1 text-caption text-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Saved
             </span>
@@ -770,7 +765,7 @@ export default function AutomationRuleEditorPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-body font-medium border-b-2 transition-colors ${
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
@@ -786,7 +781,7 @@ export default function AutomationRuleEditorPage() {
         {activeTab === "builder" ? (
           <div className="max-w-2xl mx-auto space-y-4">
             {/* Stats bar */}
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-on-surface-variant px-1">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-label text-on-surface-variant px-1">
               <span>Created: <span className="text-on-surface">{formatDate(rule.createdAt)}</span></span>
               <span>Total executions: <span className="text-on-surface font-medium">{rule.executionCount.toLocaleString()}</span></span>
               {rule.lastTriggeredAt && (
@@ -801,7 +796,7 @@ export default function AutomationRuleEditorPage() {
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); markDirty(); }}
                 placeholder="Optional description for this rule..."
-                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
             </Section>
 
@@ -817,7 +812,7 @@ export default function AutomationRuleEditorPage() {
                       setTriggerConfig({});
                       markDirty();
                     }}
-                    className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
                     <optgroup label="General">
                       {TRIGGER_TYPES.filter((t) => !t.group).map((t) => (
@@ -868,14 +863,14 @@ export default function AutomationRuleEditorPage() {
                     onMoveDown={(rid) => moveAction(rid, 1)}
                   />
                 ))}
-                <button
+                <Button variant="secondary" size="lg"
                   type="button"
                   onClick={addAction}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-outline-variant/30 text-[12px] text-on-surface-variant hover:border-primary/40 hover:text-primary transition-colors"
+                  className="w-full border-dashed hover:border-primary/40 hover:text-primary"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add action
-                </button>
+                </Button>
               </div>
             </Section>
 

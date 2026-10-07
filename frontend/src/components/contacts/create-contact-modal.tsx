@@ -21,6 +21,8 @@ import {
 } from "@/lib/validations/contacts";
 import type { Tag as TagType } from "@/lib/types/contacts";
 import type { Product } from "@/lib/types/products";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface CreateContactModalProps {
   open: boolean;
@@ -51,7 +53,7 @@ function MultiSelect<T extends { id: string; name: string }>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-container-low text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 mt-1"
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-container-low text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 mt-1"
       >
         <Icon className="h-4 w-4 text-on-surface-variant shrink-0" />
         <span className="flex-1 text-left truncate">
@@ -62,7 +64,7 @@ function MultiSelect<T extends { id: string; name: string }>({
               {selectedItems.map((item) => (
                 <span
                   key={item.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-caption font-medium"
                 >
                   {colorDot && colorDot(item) && (
                     <span
@@ -82,7 +84,7 @@ function MultiSelect<T extends { id: string; name: string }>({
       {open && (
         <div className="absolute z-10 mt-1 w-full rounded-xl bg-surface-container-lowest border border-outline-variant/15 shadow-lg max-h-48 overflow-y-auto">
           {items.length === 0 ? (
-            <p className="px-3 py-2.5 text-[12px] text-on-surface-variant/50">No {label.toLowerCase()} found</p>
+            <p className="px-3 py-2.5 text-label text-on-surface-variant/50">No {label.toLowerCase()} found</p>
           ) : (
             items.map((item) => {
               const isSelected = selected.includes(item.id);
@@ -91,7 +93,7 @@ function MultiSelect<T extends { id: string; name: string }>({
                   key={item.id}
                   type="button"
                   onClick={() => onToggle(item.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left hover:bg-surface-container transition-colors ${isSelected ? "text-primary" : "text-on-surface"}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-body text-left hover:bg-surface-container transition-colors ${isSelected ? "text-primary" : "text-on-surface"}`}
                 >
                   {colorDot && colorDot(item) && (
                     <span
@@ -181,32 +183,22 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
     });
   }
 
-  if (!open) return null;
-
   const tagItems: TagType[] = orgTags ?? [];
   const productItems: Product[] = products ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+    <Modal open={open} onClose={onClose} className="max-w-md p-6 max-h-[90vh]">
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[16px] font-semibold text-on-surface">
+          <h2 className="text-title-sm font-semibold text-on-surface">
             New Contact
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="xs"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -246,7 +238,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             <select
               id="source"
               {...register("source")}
-              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-[15px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body-lg text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
             >
               <option value="MANUAL">Manual</option>
               <option value="WHATSAPP">WhatsApp</option>
@@ -260,7 +252,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             <select
               id="ownerId"
               {...register("ownerId")}
-              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-[15px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body-lg text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Me (default)</option>
               {(members ?? []).map((m) => (
@@ -284,8 +276,8 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-3.5 flex items-start gap-3">
               <Package className="h-4 w-4 text-on-surface-variant shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-on-surface">No products yet</p>
-                <p className="text-[11px] text-on-surface-variant/60 mt-0.5">
+                <p className="text-body font-medium text-on-surface">No products yet</p>
+                <p className="text-caption text-on-surface-variant/60 mt-0.5">
                   Create at least one product to assign it to contacts.
                 </p>
                 <button
@@ -294,7 +286,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
                     onClose();
                     router.push("/settings/products");
                   }}
-                  className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
                 >
                   Go to Products
                   <ArrowRight className="h-3 w-3" />
@@ -312,7 +304,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
           )}
 
           {createContact.isError && (
-            <p className="text-[13px] text-error">
+            <p className="text-body text-error">
               {(createContact.error as Error)?.message ||
                 "Failed to create contact"}
             </p>
@@ -336,7 +328,8 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

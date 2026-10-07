@@ -15,6 +15,8 @@ import { TokenService, TokenPair } from '../../domain/services/token.service';
 import { SessionRepository } from '../../infrastructure/repositories/session.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { EVENT_NAMES } from '@/common/constants';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { orgSuspendedException } from '@/modules/org/interfaces/guards/org-status.guard';
 
 export interface LoginResult {
   accessToken: string;
@@ -44,6 +46,7 @@ export class LoginUseCase {
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgStatus: OrgStatusService,
   ) {}
 
   async execute(
@@ -108,6 +111,11 @@ export class LoginUseCase {
     if (!passwordValid) {
       await this.handleFailedLogin(user.id, user.orgId, ipAddress, userAgent);
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Checked after the password so it can't be used to probe which accounts exist
+    if (await this.orgStatus.isSuspended(user.orgId)) {
+      throw orgSuspendedException();
     }
 
     // Success: reset failed attempts

@@ -22,11 +22,11 @@ export default function GdprPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+        <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
           <ShieldCheck className="h-6 w-6 text-primary" />
           GDPR & Data Privacy
         </h1>
-        <p className="text-[13px] text-on-surface-variant mt-0.5">
+        <p className="text-body text-on-surface-variant mt-0.5">
           Track data export and erasure requests for GDPR compliance
         </p>
       </div>
@@ -36,27 +36,27 @@ export default function GdprPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
           <div className="flex items-center gap-2 mb-1">
             <Download className="h-4 w-4 text-info" />
-            <p className="text-[12px] font-medium text-on-surface-variant">Data Exports</p>
+            <p className="text-label font-medium text-on-surface-variant">Data Exports</p>
           </div>
-          <p className="text-2xl font-bold text-on-surface">
+          <p className="text-headline font-semibold text-on-surface">
             {data?.data.filter((r) => r.requestType === "export").length ?? 0}
           </p>
         </div>
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
           <div className="flex items-center gap-2 mb-1">
             <Trash2 className="h-4 w-4 text-error" />
-            <p className="text-[12px] font-medium text-on-surface-variant">Data Erasures</p>
+            <p className="text-label font-medium text-on-surface-variant">Data Erasures</p>
           </div>
-          <p className="text-2xl font-bold text-on-surface">
+          <p className="text-headline font-semibold text-on-surface">
             {data?.data.filter((r) => r.requestType === "erasure").length ?? 0}
           </p>
         </div>
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="h-4 w-4 text-warning" />
-            <p className="text-[12px] font-medium text-on-surface-variant">Pending</p>
+            <p className="text-label font-medium text-on-surface-variant">Pending</p>
           </div>
-          <p className="text-2xl font-bold text-on-surface">
+          <p className="text-headline font-semibold text-on-surface">
             {data?.data.filter((r) => r.status === "pending").length ?? 0}
           </p>
         </div>
@@ -87,8 +87,8 @@ export default function GdprPage() {
               <TableRow key={req.id}>
                 <TableCell>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-on-surface">{req.contact.name || "Unknown"}</p>
-                    <p className="text-[11px] text-on-surface-variant/60">{req.contact.phoneNumber}</p>
+                    <p className="text-body font-medium text-on-surface">{req.contact.name || "Unknown"}</p>
+                    <p className="text-caption text-on-surface-variant/60">{req.contact.phoneNumber}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -105,10 +105,10 @@ export default function GdprPage() {
                     {req.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-[11px] text-on-surface-variant">
+                <TableCell className="text-caption text-on-surface-variant">
                   {new Date(req.createdAt).toLocaleString()}
                 </TableCell>
-                <TableCell className="text-[11px] text-on-surface-variant">
+                <TableCell className="text-caption text-on-surface-variant">
                   {req.completedAt ? new Date(req.completedAt).toLocaleString() : "—"}
                 </TableCell>
               </TableRow>

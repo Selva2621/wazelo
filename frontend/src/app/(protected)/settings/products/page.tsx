@@ -36,6 +36,7 @@ import {
 import { ProductFormModal } from "@/components/products/product-form-modal";
 import { CategoryFormModal } from "@/components/products/category-form-modal";
 import type { Product, ProductCategory } from "@/lib/types/products";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -121,11 +122,11 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Package className="h-6 w-6 text-primary" />
             Products
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <p className="text-body text-on-surface-variant mt-0.5">
             Manage products and assign them to contacts, deals, and sequences
           </p>
         </div>
@@ -157,7 +158,7 @@ export default function ProductsPage() {
             <div key={tab.id} className="flex items-center gap-0.5 group">
               <button
                 onClick={() => setActiveCategoryTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
                   activeCategoryTab === tab.id
                     ? "bg-primary/10 text-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
@@ -167,24 +168,22 @@ export default function ProductsPage() {
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: tab.color }} />
                 )}
                 {tab.label}
-                <span className="text-[10px] opacity-60">({tab.count})</span>
+                <span className="text-caption opacity-60">({tab.count})</span>
               </button>
               {tab.id !== "ALL" && tab.id !== "NONE" && (
                 <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                  <button
+                  <IconButton size="xs"
                     onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }}
-                    className="p-1 rounded text-on-surface-variant/50 hover:text-primary transition-colors"
-                    title="Edit category"
-                  >
+                    className="hover:text-primary"
+                    title="Edit category" aria-label="Edit category">
                     <Pencil className="h-3 w-3" />
-                  </button>
-                  <button
+                  </IconButton>
+                  <IconButton size="xs" variant="danger"
                     onClick={() => setDeleteCatTarget((categories ?? []).find((c) => c.id === tab.id) ?? null)}
-                    className="p-1 rounded text-on-surface-variant/50 hover:text-error transition-colors"
-                    title="Delete category"
-                  >
+                   
+                    title="Delete category" aria-label="Delete category">
                     <Trash2 className="h-3 w-3" />
-                  </button>
+                  </IconButton>
                 </div>
               )}
             </div>
@@ -200,7 +199,7 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products…"
-            className="flex-1 bg-transparent text-[13px] text-on-surface outline-none placeholder:text-on-surface-variant/40"
+            className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
           />
         </div>
       )}
@@ -237,9 +236,9 @@ export default function ProductsPage() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-on-surface truncate">{product.name}</p>
+                        <p className="text-body font-medium text-on-surface truncate">{product.name}</p>
                         {product.description && (
-                          <p className="text-[11px] text-on-surface-variant/60 truncate max-w-[200px]">
+                          <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
                             {product.description}
                           </p>
                         )}
@@ -247,24 +246,24 @@ export default function ProductsPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="text-[12px] text-on-surface-variant font-mono">
+                  <TableCell className="text-label text-on-surface-variant font-mono">
                     {product.sku || "—"}
                   </TableCell>
 
                   <TableCell>
                     {product.category ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-container border border-outline-variant/10">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container border border-outline-variant/10">
                         {product.category.color && (
                           <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
                         )}
                         {product.category.name}
                       </span>
                     ) : (
-                      <span className="text-[12px] text-on-surface-variant/40">—</span>
+                      <span className="text-label text-on-surface-variant/40">—</span>
                     )}
                   </TableCell>
 
-                  <TableCell className="text-[13px] font-medium text-on-surface">
+                  <TableCell className="text-body font-medium text-on-surface">
                     {formatPrice(product.price, product.currency)}
                   </TableCell>
 
@@ -279,7 +278,7 @@ export default function ProductsPage() {
                     </button>
                   </TableCell>
 
-                  <TableCell className="text-[12px] text-on-surface-variant">
+                  <TableCell className="text-label text-on-surface-variant">
                     {new Date(product.createdAt).toLocaleDateString("en-IN", {
                       day: "numeric", month: "short", year: "numeric",
                     })}
@@ -287,20 +286,18 @@ export default function ProductsPage() {
 
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <button
+                      <IconButton size="xs"
                         onClick={() => openEdit(product)}
-                        className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                        title="Edit"
-                      >
+                        className="hover:text-primary hover:bg-primary/10"
+                        title="Edit" aria-label="Edit">
                         <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
+                      </IconButton>
+                      <IconButton size="xs" variant="danger"
                         onClick={() => setDeleteTarget(product)}
-                        className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                        title="Delete"
-                      >
+                       
+                        title="Delete" aria-label="Delete">
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </IconButton>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -309,7 +306,7 @@ export default function ProductsPage() {
           </Table>
         </div>
       ) : (products ?? []).length > 0 ? (
-        <p className="text-[13px] text-on-surface-variant/50 text-center py-8">
+        <p className="text-body text-on-surface-variant/50 text-center py-8">
           No products match your filters
         </p>
       ) : (

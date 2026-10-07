@@ -24,6 +24,8 @@ import { useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import type { MessageTemplate } from "@/lib/types/templates";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 const SOURCE_LABELS: Record<string, string> = {
   GOOGLE_MAPS: "Google Maps",
@@ -59,7 +61,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none text-xs bg-surface-container border border-outline-variant/20 rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+        className="w-full appearance-none text-label bg-surface-container border border-outline-variant/20 rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
       >
         {children}
       </select>
@@ -73,7 +75,7 @@ function SectionHeading({ icon, label }: { icon: React.ReactNode; label: string 
   return (
     <div className="flex items-center gap-2 mb-3">
       <span className="text-on-surface-variant/60">{icon}</span>
-      <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest">
+      <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">
         {label}
       </p>
     </div>
@@ -163,17 +165,17 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
     );
   }
 
-  if (!open) return null;
-
   const completedRuns = scrapeRunsData?.runs.filter((r) => r.status === "COMPLETED") ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-surface/80 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal — two-column layout */}
-      <div className="relative w-full max-w-4xl rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-2xl flex flex-col max-h-[90vh] my-auto">
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-label="New Campaign"
+      className="max-w-4xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
+    >
+      {() => (
+      <>
 
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/10 shrink-0">
@@ -181,14 +183,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
               <Megaphone className="h-4 w-4 text-primary" />
             </span>
-            <h2 className="text-[16px] font-semibold text-on-surface">New Campaign</h2>
+            <h2 className="text-title-sm font-semibold text-on-surface">New Campaign</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* ── Body ────────────────────────────────────────────────────────── */}
@@ -215,7 +215,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   id="description"
                   placeholder="Brief description…"
                   rows={2}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-[13px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
                   {...register("description")}
                 />
               </div>
@@ -234,7 +234,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                       key={value}
                       type="button"
                       onClick={() => setValue("messageType", value, { shouldValidate: true })}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border ${
+                      className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors border ${
                         messageType === value
                           ? "bg-primary/15 text-primary border-primary/30"
                           : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container border-transparent"
@@ -257,21 +257,21 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-primary/30 bg-primary/5 mt-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <FileText className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-[13px] font-medium text-on-surface truncate">{selectedTemplate.name}</span>
-                      <span className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant shrink-0">{selectedTemplate.language}</span>
+                      <span className="text-body font-medium text-on-surface truncate">{selectedTemplate.name}</span>
+                      <span className="text-caption bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant shrink-0">{selectedTemplate.language}</span>
                       {selectedTemplate.category && (
-                        <span className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant shrink-0">{selectedTemplate.category}</span>
+                        <span className="text-caption bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant shrink-0">{selectedTemplate.category}</span>
                       )}
                     </div>
-                    <button type="button" onClick={() => setSelectedTemplate(null)} className="p-1 rounded text-on-surface-variant hover:text-error transition-colors shrink-0">
+                    <IconButton size="xs" variant="danger" type="button" onClick={() => setSelectedTemplate(null)} aria-label="Remove">
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setShowTemplatePicker((v) => !v)}
-                    className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-[13px] text-on-surface-variant/60 hover:bg-surface-container transition-colors text-left"
+                    className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-body text-on-surface-variant/60 hover:bg-surface-container transition-colors text-left"
                   >
                     <FileText className="h-4 w-4 shrink-0" />
                     Select a template…
@@ -287,20 +287,20 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                         value={templateSearch}
                         onChange={(e) => setTemplateSearch(e.target.value)}
                         placeholder="Search templates…"
-                        className="flex-1 bg-transparent text-[13px] text-on-surface outline-none placeholder:text-on-surface-variant/40"
+                        className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
                       />
                     </div>
                     <div className="max-h-[200px] overflow-y-auto">
                       {templatesLoading ? (
-                        <p className="text-xs text-center text-on-surface-variant py-4">Loading…</p>
+                        <p className="text-label text-center text-on-surface-variant py-4">Loading…</p>
                       ) : filteredTemplates.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 py-5 px-4 text-center">
                           <FileText className="h-6 w-6 text-on-surface-variant/30" />
-                          <p className="text-[13px] text-on-surface-variant">
+                          <p className="text-body text-on-surface-variant">
                             {templateSearch.trim() ? "No templates match" : "No templates yet"}
                           </p>
                           {!templateSearch.trim() && (
-                            <button type="button" onClick={() => { onClose(); router.push("/settings/templates"); }} className="flex items-center gap-1.5 text-[12px] text-primary hover:underline">
+                            <button type="button" onClick={() => { onClose(); router.push("/settings/templates"); }} className="flex items-center gap-1.5 text-label text-primary hover:underline">
                               <ExternalLink className="h-3.5 w-3.5" /> Create a template
                             </button>
                           )}
@@ -321,20 +321,20 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                               className="w-full text-left px-3 py-2.5 hover:bg-surface-container transition-colors border-b border-outline-variant/5 last:border-0"
                             >
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="text-[13px] font-medium text-on-surface">{tpl.name}</span>
-                                <span className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">{tpl.language}</span>
+                                <span className="text-body font-medium text-on-surface">{tpl.name}</span>
+                                <span className="text-caption bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">{tpl.language}</span>
                                 {tpl.category && (
-                                  <span className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">{tpl.category}</span>
+                                  <span className="text-caption bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">{tpl.category}</span>
                                 )}
                               </div>
-                              <p className="text-[12px] text-on-surface-variant/60 truncate">{body || "—"}</p>
+                              <p className="text-label text-on-surface-variant/60 truncate">{body || "—"}</p>
                             </button>
                           );
                         })
                       )}
                     </div>
                     {!templateSearch.trim() && filteredTemplates.length > 3 && (
-                      <p className="px-3 py-2 text-[11px] text-on-surface-variant/50 border-t border-outline-variant/10 text-center">
+                      <p className="px-3 py-2 text-caption text-on-surface-variant/50 border-t border-outline-variant/10 text-center">
                         {filteredTemplates.length - 3} more — search to filter
                       </p>
                     )}
@@ -349,15 +349,15 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   id="messageBody"
                   placeholder={`Type your message… Use {{name}} for personalization`}
                   rows={5}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-[13px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
                   {...register("messageBody")}
                 />
                 <div className="flex justify-between mt-1">
-                  <p className="text-[11px] text-on-surface-variant/50">{"{{name}}"}, {"{{phone}}"}</p>
-                  <p className="text-[11px] text-on-surface-variant/50 tabular-nums">{messageBody.length} / 4,096</p>
+                  <p className="text-caption text-on-surface-variant/50">{"{{name}}"}, {"{{phone}}"}</p>
+                  <p className="text-caption text-on-surface-variant/50 tabular-nums">{messageBody.length} / 4,096</p>
                 </div>
                 {errors.messageBody && (
-                  <p className="text-[12px] text-error mt-1">{errors.messageBody.message}</p>
+                  <p className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
               </div>
 
@@ -400,8 +400,8 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                         : "border-outline-variant/15 bg-surface-container-low hover:bg-surface-container"
                     }`}
                   >
-                    <p className="text-[12px] font-medium text-on-surface">{opt.title}</p>
-                    <p className="text-[11px] text-on-surface-variant/60">{opt.desc}</p>
+                    <p className="text-label font-medium text-on-surface">{opt.title}</p>
+                    <p className="text-caption text-on-surface-variant/60">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -412,13 +412,13 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
                   {/* Lead Status */}
                   <div>
-                    <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Lead Status</p>
+                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Lead Status</p>
                     <div className="flex flex-wrap gap-1">
                       {(["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"] as const).map((s) => {
                         const active = audienceFilters?.leadStatuses?.includes(s);
                         return (
                           <button key={s} type="button" onClick={() => toggleFilter("leadStatuses", s)}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
+                            className={`px-2 py-0.5 rounded-md text-caption font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
                             {s.charAt(0) + s.slice(1).toLowerCase()}
                           </button>
                         );
@@ -428,13 +428,13 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
                   {/* Source */}
                   <div>
-                    <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Source</p>
+                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Source</p>
                     <div className="flex flex-wrap gap-1">
                       {(["WHATSAPP", "MANUAL", "IMPORT", "API"] as const).map((s) => {
                         const active = audienceFilters?.sources?.includes(s);
                         return (
                           <button key={s} type="button" onClick={() => toggleFilter("sources", s)}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
+                            className={`px-2 py-0.5 rounded-md text-caption font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
                             {s.charAt(0) + s.slice(1).toLowerCase()}
                           </button>
                         );
@@ -444,7 +444,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
                   {/* Tags */}
                   <div>
-                    <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Tags</p>
+                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Tags</p>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <FilterSelect
                         value=""
@@ -464,12 +464,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                       {(audienceFilters?.tagIds ?? []).map((tagId) => {
                         const tag = orgTags?.find((t) => t.id === tagId);
                         return (
-                          <span key={tagId} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary font-medium">
+                          <span key={tagId} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-caption text-primary font-medium">
                             <Tag className="h-2.5 w-2.5" />
                             {tag?.name ?? tagId}
-                            <button type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, tagIds: (audienceFilters?.tagIds ?? []).filter((id) => id !== tagId) })} className="rounded-full p-0.5 hover:bg-primary/20">
+                            <IconButton size="xs" type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, tagIds: (audienceFilters?.tagIds ?? []).filter((id) => id !== tagId) })} className="hover:bg-primary/20" aria-label="Close">
                               <X className="h-2.5 w-2.5" />
-                            </button>
+                            </IconButton>
                           </span>
                         );
                       })}
@@ -479,7 +479,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   {/* Products */}
                   {products && products.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Products</p>
+                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Products</p>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <FilterSelect
                           value=""
@@ -499,11 +499,11 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                         {(audienceFilters?.productIds ?? []).map((pid) => {
                           const product = products?.find((p) => p.id === pid);
                           return (
-                            <span key={pid} className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2 py-0.5 text-[11px] text-secondary font-medium">
+                            <span key={pid} className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2 py-0.5 text-caption text-secondary font-medium">
                               {product?.name ?? pid}
-                              <button type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, productIds: (audienceFilters?.productIds ?? []).filter((id) => id !== pid) })} className="rounded-full p-0.5 hover:bg-secondary/20">
+                              <IconButton size="xs" type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, productIds: (audienceFilters?.productIds ?? []).filter((id) => id !== pid) })} className="hover:bg-secondary/20" aria-label="Close">
                                 <X className="h-2.5 w-2.5" />
-                              </button>
+                              </IconButton>
                             </span>
                           );
                         })}
@@ -514,7 +514,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   {/* Scraper Run */}
                   {completedRuns.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">From Scraper Run</p>
+                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">From Scraper Run</p>
                       <FilterSelect
                         value={audienceFilters?.scrapeRunId ?? ""}
                         onChange={(v) => setValue("audienceFilters", { ...audienceFilters, scrapeRunId: v || undefined })}
@@ -531,7 +531,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
                   {/* Quick filters row */}
                   <div>
-                    <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Quick Filters</p>
+                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Quick Filters</p>
                     <div className="flex flex-wrap gap-1.5">
                       <FilterSelect
                         value={audienceFilters?.hasPhone === true ? "yes" : audienceFilters?.hasPhone === false ? "no" : ""}
@@ -585,7 +585,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                    audienceFilters?.hasPhone === undefined &&
                    audienceFilters?.hasWebsite === undefined &&
                    !audienceFilters?.dateAdded && (
-                    <p className="text-[11px] text-on-surface-variant/40 italic">
+                    <p className="text-caption text-on-surface-variant/40 italic">
                       Select filters above to narrow your audience.
                     </p>
                   )}
@@ -609,7 +609,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   Preview Audience
                 </Button>
                 {previewAudience.data && (
-                  <span className="text-[12px] text-on-surface-variant">
+                  <span className="text-label text-on-surface-variant">
                     ~<span className="font-semibold text-on-surface">{(previewAudience.data.estimatedRecipients ?? 0).toLocaleString()}</span> recipients
                   </span>
                 )}
@@ -621,7 +621,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
               <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="WhatsApp Session" />
               <select
                 {...register("sessionId")}
-                className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-[13px] text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+                className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Select a session</option>
                 {sessions.map((s) => (
@@ -629,7 +629,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                 ))}
               </select>
               {errors.sessionId && (
-                <p className="text-[12px] text-error mt-1">{errors.sessionId.message}</p>
+                <p className="text-label text-error mt-1">{errors.sessionId.message}</p>
               )}
             </div>
 
@@ -651,7 +651,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                     key={opt.value}
                     type="button"
                     onClick={() => setScheduleMode(opt.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-[12px] font-medium transition-colors border ${
+                    className={`flex-1 px-3 py-2 rounded-lg text-label font-medium transition-colors border ${
                       scheduleMode === opt.value
                         ? "border-primary/50 bg-primary/10 text-primary"
                         : "border-outline-variant/15 text-on-surface-variant hover:bg-surface-container"
@@ -680,7 +680,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant/10 bg-surface-container-lowest">
           {createCampaign.isError && (
-            <p className="text-[12px] text-error flex-1">
+            <p className="text-label text-error flex-1">
               {(createCampaign.error as Error)?.message || "Failed to create campaign"}
             </p>
           )}
@@ -698,7 +698,8 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

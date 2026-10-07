@@ -6,8 +6,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useProducts } from "@/hooks/use-products";
 import type { CreateSequenceRequest, CreateSequenceStepRequest, StepCondition } from "@/lib/types/sequences";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface CreateSequenceModalProps {
+  /** Defaults to true so callers that mount the modal conditionally keep working. */
+  open?: boolean;
   sessionId: string;
   onSubmit: (data: CreateSequenceRequest) => void;
   onClose: () => void;
@@ -62,7 +66,22 @@ const DELAY_PRESETS = [
   { label: "7 days", value: 10080 },
 ];
 
-export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }: CreateSequenceModalProps) {
+export function CreateSequenceModal({ open = true, ...props }: CreateSequenceModalProps) {
+  return (
+    <Modal
+      open={open}
+      onClose={props.onClose}
+      dismissible={!props.submitting}
+      aria-labelledby="create-sequence-title"
+      className="max-w-2xl rounded-3xl bg-surface max-h-[90vh] flex flex-col overflow-hidden"
+    >
+      {/* Form state lives in a child so it resets each time the modal opens. */}
+      {() => <CreateSequenceForm {...props} />}
+    </Modal>
+  );
+}
+
+function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<CreateSequenceModalProps, "open">) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [exitOnReply, setExitOnReply] = useState(true);
@@ -130,26 +149,25 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40">
-      <div className="w-full max-w-2xl rounded-3xl bg-surface shadow-2xl max-h-[90vh] flex flex-col">
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-          <h2 className="text-lg font-semibold text-on-surface">Create Drip Sequence</h2>
-          <button onClick={onClose} className="p-1 rounded-lg text-on-surface-variant hover:text-error transition-colors">
+          <h2 id="create-sequence-title" className="text-title font-semibold text-on-surface">Create Drip Sequence</h2>
+          <IconButton size="sm" variant="danger" onClick={onClose} aria-label="Close">
             <X className="h-5 w-5" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Quick Start Presets */}
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
               Quick Start
             </label>
             <div className="flex gap-2 mt-1.5">
               {SEQUENCE_PRESETS.map((preset) => (
-                <button
+                <Button variant="secondary" size="sm"
                   key={preset.label}
                   type="button"
                   onClick={() => {
@@ -158,18 +176,18 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                     setExitOnReply(preset.exitOnReply);
                     setSteps(preset.steps.map((s, i) => ({ ...s, _key: i })));
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/20 bg-surface hover:bg-primary/5 hover:border-primary/30 transition-colors text-[12px] text-on-surface"
+                  className="hover:bg-primary/5 hover:border-primary/30"
                 >
                   <span>{preset.icon}</span>
                   {preset.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
           {/* Name */}
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
               Sequence Name *
             </label>
             <input
@@ -177,13 +195,13 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Welcome series, Re-engagement..."
               maxLength={255}
-              className="w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
               Description
             </label>
             <textarea
@@ -191,7 +209,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What this sequence does..."
               rows={2}
-              className="w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              className="w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
           </div>
 
@@ -203,12 +221,12 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
               onChange={(e) => setExitOnReply(e.target.checked)}
               className="rounded border-outline-variant/30 text-primary focus:ring-primary"
             />
-            <span className="text-[13px] text-on-surface">Exit sequence when contact replies</span>
+            <span className="text-body text-on-surface">Exit sequence when contact replies</span>
           </label>
 
           {/* Audience */}
           <div className="space-y-2">
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide flex items-center gap-1">
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide flex items-center gap-1">
               <Filter className="h-3 w-3" /> Audience
             </label>
             <div className="flex gap-2">
@@ -216,7 +234,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                 type="button"
                 onClick={() => setAudienceType("ALL")}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-[12px] border transition-colors",
+                  "px-3 py-1.5 rounded-lg text-label border transition-colors",
                   audienceType === "ALL"
                     ? "bg-primary text-on-primary border-primary"
                     : "bg-surface border-outline-variant/20 text-on-surface hover:bg-surface-container",
@@ -228,7 +246,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                 type="button"
                 onClick={() => setAudienceType("FILTERED")}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-[12px] border transition-colors",
+                  "px-3 py-1.5 rounded-lg text-label border transition-colors",
                   audienceType === "FILTERED"
                     ? "bg-primary text-on-primary border-primary"
                     : "bg-surface border-outline-variant/20 text-on-surface hover:bg-surface-container",
@@ -240,7 +258,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
 
             {audienceType === "FILTERED" && products && products.length > 0 && (
               <div className="space-y-1.5 pl-2 border-l-2 border-primary/30">
-                <span className="text-[11px] text-on-surface-variant/60">Select products:</span>
+                <span className="text-caption text-on-surface-variant/60">Select products:</span>
                 {products.filter((p) => p.status === "ACTIVE").map((p) => (
                   <label key={p.id} className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -255,17 +273,17 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                       }}
                       className="rounded border-outline-variant/30 text-primary focus:ring-primary"
                     />
-                    <span className="text-[12px] text-on-surface">{p.name}</span>
+                    <span className="text-label text-on-surface">{p.name}</span>
                   </label>
                 ))}
                 {selectedProductIds.length === 0 && (
-                  <p className="text-[10px] text-warning">Select at least one product</p>
+                  <p className="text-caption text-warning">Select at least one product</p>
                 )}
               </div>
             )}
 
             {audienceType === "FILTERED" && (!products || products.length === 0) && (
-              <p className="text-[11px] text-on-surface-variant/50 pl-2">
+              <p className="text-caption text-on-surface-variant/50 pl-2">
                 No products created yet. Go to Settings → Products to create one.
               </p>
             )}
@@ -273,7 +291,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
 
           {/* Steps */}
           <div>
-            <p className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide mb-2">
+            <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide mb-2">
               Steps ({steps.length})
             </p>
 
@@ -286,11 +304,11 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                       <ArrowDown className="h-4 w-4 text-on-surface-variant/40" />
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-on-surface-variant/50" />
-                        <span className="text-[11px] text-on-surface-variant/60">Wait</span>
+                        <span className="text-caption text-on-surface-variant/60">Wait</span>
                         <select
                           value={step.delayMinutes}
                           onChange={(e) => updateStep(index, "delayMinutes", parseInt(e.target.value))}
-                          className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-0.5 text-[11px] text-on-surface focus:border-primary focus:outline-none"
+                          className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-0.5 text-caption text-on-surface focus:border-primary focus:outline-none"
                         >
                           {DELAY_PRESETS.map((p) => (
                             <option key={p.value} value={p.value}>{p.label}</option>
@@ -304,22 +322,20 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                   <div className="rounded-xl border border-outline-variant/20 bg-surface-container p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <GripVertical className="h-4 w-4 text-on-surface-variant/30" />
-                      <span className="text-[12px] font-semibold text-on-surface-variant">
+                      <span className="text-label font-semibold text-on-surface-variant">
                         Step {index + 1}
                       </span>
                       <input
                         value={step.name || ""}
                         onChange={(e) => updateStep(index, "name", e.target.value)}
                         placeholder="Step name (optional)"
-                        className="flex-1 rounded-lg border-0 bg-transparent px-2 py-0.5 text-[12px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none"
+                        className="flex-1 rounded-lg border-0 bg-transparent px-2 py-0.5 text-label text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none"
                       />
                       {steps.length > 1 && (
-                        <button
-                          onClick={() => removeStep(index)}
-                          className="p-1 text-on-surface-variant hover:text-error transition-colors"
-                        >
+                        <IconButton size="xs" variant="danger"
+                          onClick={() => removeStep(index)} aria-label="Delete">
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </IconButton>
                       )}
                     </div>
                     <textarea
@@ -328,7 +344,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                       placeholder="Message content..."
                       rows={2}
                       maxLength={4096}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface px-2.5 py-1.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none resize-none"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface px-2.5 py-1.5 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none resize-none"
                     />
 
                     {/* Conditions button */}
@@ -337,7 +353,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                         <button
                           type="button"
                           onClick={() => addCondition(index)}
-                          className="flex items-center gap-1 text-[11px] text-tertiary hover:text-tertiary/80 transition-colors"
+                          className="flex items-center gap-1 text-caption text-tertiary hover:text-tertiary/80 transition-colors"
                         >
                           <GitBranch className="h-3 w-3" /> Add Condition
                         </button>
@@ -347,7 +363,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                     {/* Conditions */}
                     {step.conditions && step.conditions.length > 0 && (
                       <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-tertiary/30">
-                        <p className="text-[10px] font-medium text-tertiary/70 uppercase tracking-wide">
+                        <p className="text-caption font-medium text-tertiary/70 uppercase tracking-wide">
                           If customer replies with keyword:
                         </p>
                         {step.conditions.map((cond, ci) => (
@@ -356,24 +372,22 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
                               value={cond.keyword}
                               onChange={(e) => updateCondition(index, ci, "keyword", e.target.value)}
                               placeholder="keyword..."
-                              className="flex-1 rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[11px] text-on-surface focus:border-tertiary focus:outline-none"
+                              className="flex-1 rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-caption text-on-surface focus:border-tertiary focus:outline-none"
                             />
-                            <span className="text-[10px] text-on-surface-variant/50">→ go to</span>
+                            <span className="text-caption text-on-surface-variant/50">→ go to</span>
                             <select
                               value={cond.goToStepOrder}
                               onChange={(e) => updateCondition(index, ci, "goToStepOrder", parseInt(e.target.value))}
-                              className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[11px] text-on-surface"
+                              className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-caption text-on-surface"
                             >
                               {steps.map((_, si) => (
                                 <option key={si} value={si}>Step {si + 1}</option>
                               ))}
                             </select>
-                            <button
-                              onClick={() => removeCondition(index, ci)}
-                              className="p-0.5 text-on-surface-variant hover:text-error"
-                            >
+                            <IconButton size="xs" variant="danger"
+                              onClick={() => removeCondition(index, ci)} aria-label="Remove">
                               <X className="h-3 w-3" />
-                            </button>
+                            </IconButton>
                           </div>
                         ))}
                       </div>
@@ -385,7 +399,7 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
 
             <button
               onClick={addStep}
-              className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary hover:text-primary/80 transition-colors"
+              className="mt-2 flex items-center gap-1.5 text-label font-medium text-primary hover:text-primary/80 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Add step
             </button>
@@ -401,8 +415,6 @@ export function CreateSequenceModal({ sessionId, onSubmit, onClose, submitting }
             {submitting ? "Creating..." : "Create Sequence"}
           </Button>
         </div>
-      </div>
-
-    </div>
+      </>
   );
 }

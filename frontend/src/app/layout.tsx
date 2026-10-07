@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" data-theme="daylight" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         <QueryProvider>
           <ThemeProvider>
@@ -38,7 +38,7 @@ export default function RootLayout({
               richColors
               closeButton
               duration={3000}
-              toastOptions={{ classNames: { toast: "font-sans text-[13px]" } }}
+              toastOptions={{ classNames: { toast: "font-sans text-body" } }}
             />
           </ThemeProvider>
         </QueryProvider>

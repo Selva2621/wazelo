@@ -36,7 +36,7 @@ function ResetPasswordContent() {
         <CardFooter>
           <Link
             href="/auth/forgot-password"
-            className="text-[13px] text-primary hover:underline"
+            className="text-body text-primary hover:underline"
           >
             Request a new link
           </Link>

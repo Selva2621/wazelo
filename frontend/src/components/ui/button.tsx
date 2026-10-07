@@ -12,21 +12,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary:
-    "bg-gradient-to-br from-primary to-primary-container text-on-primary font-medium hover:shadow-[0_0_20px_var(--primary-glow)] active:scale-[0.98]",
+  primary: "bg-primary text-on-primary hover:bg-primary-container",
   secondary:
-    "border border-outline-variant bg-transparent text-primary-container hover:bg-surface-container-low",
+    "border border-outline-variant bg-transparent text-on-surface hover:bg-surface-container-low",
   ghost:
     "bg-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-  destructive:
-    "bg-error text-white font-medium hover:bg-error/90",
-  link: "bg-transparent text-primary underline-offset-4 hover:underline p-0 h-auto",
+  destructive: "bg-error text-on-error hover:bg-error/90",
+  link: "bg-transparent text-primary-container underline-offset-4 hover:underline p-0 h-auto",
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: "h-9 px-3 text-[13px] rounded-lg",
-  md: "h-11 px-5 text-[14px] rounded-xl",
-  lg: "h-12 px-6 text-[15px] rounded-xl",
+  sm: "h-8 px-3 text-body",
+  md: "h-9 px-4 text-body-lg",
+  lg: "h-11 px-5 text-body-lg",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,7 +44,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium",
+          "transition-[background-color,color,border-color,transform] duration-120 ease-standard active:scale-[0.98]",
+          "outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+          "disabled:pointer-events-none disabled:opacity-50",
           variant !== "link" && sizeStyles[size],
           variantStyles[variant],
           className,

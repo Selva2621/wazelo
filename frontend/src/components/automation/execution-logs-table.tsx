@@ -127,7 +127,7 @@ export function ExecutionLogsTable({
                           }
                         </span>
                       )}
-                      <p className="text-[13px] font-medium text-on-surface truncate">
+                      <p className="text-body font-medium text-on-surface truncate">
                         {log.rule.name}
                       </p>
                     </div>
@@ -145,21 +145,21 @@ export function ExecutionLogsTable({
 
                   {/* Duration */}
                   <TableCell>
-                    <span className="text-[12px] text-on-surface-variant tabular-nums">
+                    <span className="text-label text-on-surface-variant tabular-nums">
                       {formatDuration(log.executionTimeMs)}
                     </span>
                   </TableCell>
 
                   {/* Executed at */}
                   <TableCell>
-                    <span className="text-[12px] text-on-surface-variant tabular-nums">
+                    <span className="text-label text-on-surface-variant tabular-nums">
                       {log.startedAt ? formatDate(log.startedAt) : formatDate(log.createdAt)}
                     </span>
                   </TableCell>
 
                   {/* Retry count */}
                   <TableCell align="center">
-                    <span className="text-[12px] text-on-surface-variant tabular-nums">
+                    <span className="text-label text-on-surface-variant tabular-nums">
                       {log.retryCount}
                     </span>
                   </TableCell>
@@ -171,16 +171,16 @@ export function ExecutionLogsTable({
                     <td colSpan={6} className="px-5 py-3">
                       {log.error && (
                         <div className="mb-2">
-                          <p className="text-[11px] font-medium text-error uppercase tracking-wide mb-1">Error</p>
-                          <p className="text-[12px] text-error/80 font-mono bg-error/5 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                          <p className="text-caption font-medium text-error uppercase tracking-wide mb-1">Error</p>
+                          <p className="text-label text-error/80 font-mono bg-error/5 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
                             {log.error}
                           </p>
                         </div>
                       )}
                       {log.actionResults && log.actionResults.length > 0 && (
                         <div>
-                          <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wide mb-1">Action Results</p>
-                          <pre className="text-[11px] text-on-surface-variant font-mono bg-surface-container-high rounded-lg px-3 py-2 overflow-x-auto whitespace-pre-wrap break-words">
+                          <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide mb-1">Action Results</p>
+                          <pre className="text-caption text-on-surface-variant font-mono bg-surface-container-high rounded-lg px-3 py-2 overflow-x-auto whitespace-pre-wrap break-words">
                             {JSON.stringify(log.actionResults, null, 2)}
                           </pre>
                         </div>

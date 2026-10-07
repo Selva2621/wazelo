@@ -64,6 +64,8 @@ import { LeadScraperModule } from './modules/lead-scraper/lead-scraper.module';
 
 // Guards & Interceptors
 import { JwtAuthGuard } from './modules/auth/interfaces/guards/jwt-auth.guard';
+import { OrgStatusModule } from './modules/org/org-status.module';
+import { OrgStatusGuard } from './modules/org/interfaces/guards/org-status.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { CsrfGuard } from './common/guards/csrf.guard';
 import { OrgScopeInterceptor } from './common/interceptors/org-scope.interceptor';
@@ -79,6 +81,9 @@ import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
+    // Org suspension check — global, used by guards, workers and the socket gateway
+    OrgStatusModule,
+
     // Config (loads .env + typed config)
     ConfigModule.forRoot({
       isGlobal: true,
@@ -166,6 +171,11 @@ import { EventsModule } from './events/events.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Global org-status guard — blocks every tenant request from a suspended org
+    {
+      provide: APP_GUARD,
+      useClass: OrgStatusGuard,
     },
     // Global permissions guard (replaces RolesGuard, with backward compatibility)
     {

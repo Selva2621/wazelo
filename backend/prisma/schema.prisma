@@ -173,6 +173,7 @@ enum AuditAction {
   LOGOUT
   SESSION_REVOKED
   TOKEN_REFRESHED
+  REFRESH_TOKEN_REUSED
 
   // Org/User management actions (EPIC 2)
   USER_INVITED
@@ -448,6 +449,11 @@ model Organization {
   description String?   @db.VarChar(2000)
   website     String?   @db.VarChar(500)
   trialUsedAt DateTime? @map("trial_used_at")
+  onboardedAt DateTime? @map("onboarded_at")
+  // Set by a super admin. SUSPENDED blocks the tenant API, logins, sockets and outbound sends
+  status        OrgStatus @default(ACTIVE)
+  suspendedAt   DateTime? @map("suspended_at")
+  suspendReason String?   @map("suspend_reason") @db.VarChar(500)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
@@ -606,18 +612,24 @@ model Session {
   id           String    @id @default(uuid()) @db.Uuid
   userId       String    @map("user_id") @db.Uuid
   orgId        String    @map("org_id") @db.Uuid
+  /// SHA-256 hex of the refresh JWT (never the token itself; see SessionRepository)
   refreshToken String    @unique @map("refresh_token") @db.VarChar(512)
+  /// Every session rotated from one login shares this id; reuse of a rotated token revokes the family
+  familyId     String?   @map("family_id") @db.Uuid
   userAgent    String?   @map("user_agent") @db.VarChar(512)
   ipAddress    String?   @map("ip_address") @db.VarChar(45)
   rememberMe   Boolean   @default(false) @map("remember_me")
   expiresAt    DateTime  @map("expires_at")
   revokedAt    DateTime? @map("revoked_at")
+  /// Set when this token was exchanged for a new one (vs. revoked by logout/admin)
+  rotatedAt    DateTime? @map("rotated_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([orgId])
+  @@index([familyId])
   @@index([refreshToken])
   @@index([expiresAt])
   @@index([revokedAt])
@@ -3272,12 +3284,135 @@ model SuperAdmin {
   email        String        @unique @db.VarChar(320)
   passwordHash String        @map("password_hash") @db.VarChar(255)
   name         String        @db.VarChar(255)
+  // Bumped on logout — every token carrying an older version is rejected
+  tokenVersion Int           @default(0) @map("token_version")
+  // TOTP secret, AES-256-GCM encrypted; set during 2FA setup, active once totpEnabled
+  totpSecret   String?       @map("totp_secret") @db.VarChar(512)
+  totpEnabled  Boolean       @default(false) @map("totp_enabled")
+  lastLoginAt  DateTime?     @map("last_login_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  ticketReplies TicketReply[]
+  ticketReplies   TicketReply[]
+  assignedTickets HelpTicket[] @relation("TicketAssignee")
 
   @@map("super_admins")
+}
+
+// ─────────────────────────────────────────────
+// PLATFORM AUDIT LOG (super admin actions)
+// Separate from AuditLog, whose userId is a FK to tenant users.
+// Append-only: the app never updates or deletes rows.
+// ─────────────────────────────────────────────
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlatformActorType {
+  SUPER_ADMIN
+  SYSTEM
+}
+
+enum PlatformAuditAction {
+  SUPER_ADMIN_LOGIN
+  SUPER_ADMIN_LOGIN_FAILED
+  SUPER_ADMIN_LOGOUT
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  PLAN_CREATED
+  PLAN_UPDATED
+  TICKET_CREATED
+  TICKET_REPLIED
+  TICKET_STATUS_CHANGED
+  ORG_SUSPENDED
+  ORG_REACTIVATED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_PLAN_CHANGED
+  SUBSCRIPTION_TRIAL_EXTENDED
+  ALERT_RULE_CREATED
+  TICKET_ASSIGNED
+  ANNOUNCEMENT_CREATED
+  ANNOUNCEMENT_ARCHIVED
+}
+
+// ─────────────────────────────────────────────
+// PLATFORM ANNOUNCEMENTS (super admin → tenant banner)
+// ─────────────────────────────────────────────
+
+enum AnnouncementSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AnnouncementTarget {
+  ALL
+  PLAN
+  ORG
+}
+
+model PlatformAnnouncement {
+  id             String               @id @default(uuid()) @db.Uuid
+  title          String               @db.VarChar(200)
+  body           String               @db.VarChar(2000)
+  severity       AnnouncementSeverity @default(INFO)
+  targetType     AnnouncementTarget   @default(ALL) @map("target_type")
+  // Plan slug (covers every version of the plan) when targetType = PLAN
+  targetPlanSlug String?              @map("target_plan_slug") @db.VarChar(100)
+  targetOrgId    String?              @map("target_org_id") @db.Uuid
+  startsAt       DateTime             @default(now()) @map("starts_at")
+  endsAt         DateTime?            @map("ends_at")
+  dismissible    Boolean              @default(true)
+  // SuperAdmin id — no FK, the record outlives the account
+  createdById    String               @map("created_by_id") @db.Uuid
+  archivedAt     DateTime?            @map("archived_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  dismissals AnnouncementDismissal[]
+
+  @@index([archivedAt, startsAt])
+  @@map("platform_announcements")
+}
+
+model AnnouncementDismissal {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  dismissedAt    DateTime @default(now()) @map("dismissed_at")
+
+  announcement PlatformAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_dismissals")
+}
+
+model PlatformAuditLog {
+  id         String              @id @default(uuid()) @db.Uuid
+  actorType  PlatformActorType   @map("actor_type")
+  // No FK: the record must survive the actor being removed
+  actorId    String?             @map("actor_id") @db.Uuid
+  actorEmail String?             @map("actor_email") @db.VarChar(320)
+  action     PlatformAuditAction
+  targetType String?             @map("target_type") @db.VarChar(100)
+  targetId   String?             @map("target_id") @db.VarChar(255)
+  // Org affected by the action, if any (no FK — orgs can be purged)
+  orgId      String?             @map("org_id") @db.Uuid
+  // { before, after } for changes, or other context
+  metadata   Json?               @db.JsonB
+  ipAddress  String?             @map("ip_address") @db.VarChar(45)
+  userAgent  String?             @map("user_agent") @db.VarChar(512)
+  createdAt  DateTime            @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([orgId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@map("platform_audit_logs")
 }
 
 // ─────────────────────────────────────────────
@@ -3294,16 +3429,21 @@ model HelpTicket {
   priority    TicketPriority @default(MEDIUM)
   status        TicketStatus   @default(OPEN)
   attachmentUrl String?        @map("attachment_url") @db.Text
+  // Super admin handling the ticket (support queue)
+  assignedToId  String?        @map("assigned_to_id") @db.Uuid
+  assignedAt    DateTime?      @map("assigned_at")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   closedAt      DateTime?      @map("closed_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
   user         User          @relation(fields: [userId], references: [id])
+  assignedTo   SuperAdmin?   @relation("TicketAssignee", fields: [assignedToId], references: [id])
   replies      TicketReply[]
 
   @@index([orgId, status])
   @@index([status, createdAt])
+  @@index([assignedToId, status])
   @@map("help_tickets")
 }
 
@@ -3313,6 +3453,8 @@ model TicketReply {
   body         String      @db.Text
   userId       String?     @map("user_id") @db.Uuid
   superAdminId String?     @map("super_admin_id") @db.Uuid
+  // Staff-only note — never returned to the tenant, no customer notification
+  isInternal   Boolean     @default(false) @map("is_internal")
   createdAt    DateTime    @default(now()) @map("created_at")
 
   ticket       HelpTicket  @relation(fields: [ticketId], references: [id])

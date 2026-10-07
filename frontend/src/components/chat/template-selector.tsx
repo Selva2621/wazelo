@@ -74,7 +74,7 @@ export function TemplateSelector({
     return (
       <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-4">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-on-surface">
+          <h4 className="text-body-lg font-semibold text-on-surface">
             {selectedTemplate.name}
           </h4>
           <Button variant="ghost" size="sm" onClick={() => setSelectedTemplate(null)}>
@@ -83,12 +83,12 @@ export function TemplateSelector({
         </div>
 
         <div className="rounded-xl bg-surface-container p-3 mb-3">
-          <p className="text-sm text-on-surface whitespace-pre-wrap">{bodyText}</p>
+          <p className="text-body-lg text-on-surface whitespace-pre-wrap">{bodyText}</p>
         </div>
 
         {slots.length > 0 && (
           <div className="space-y-2 mb-3">
-            <p className="text-xs font-medium text-on-surface-variant">
+            <p className="text-label font-medium text-on-surface-variant">
               Variables
             </p>
             {slots.map((slot) => (
@@ -125,7 +125,7 @@ export function TemplateSelector({
   return (
     <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-4">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-semibold text-on-surface">
+        <h4 className="text-body-lg font-semibold text-on-surface">
           Message Templates
         </h4>
         <div className="flex items-center gap-2">
@@ -145,13 +145,13 @@ export function TemplateSelector({
       </div>
 
       {isLoading ? (
-        <p className="text-xs text-on-surface-variant py-4 text-center">
+        <p className="text-label text-on-surface-variant py-4 text-center">
           Loading templates...
         </p>
       ) : !templates || templates.length === 0 ? (
         <div className="text-center py-6">
           <FileText className="h-8 w-8 text-on-surface-variant/30 mx-auto mb-2" />
-          <p className="text-xs text-on-surface-variant">
+          <p className="text-label text-on-surface-variant">
             No approved templates found. Sync from Meta to get started.
           </p>
         </div>
@@ -167,7 +167,7 @@ export function TemplateSelector({
                 className="w-full text-left rounded-xl px-3 py-2.5 hover:bg-surface-container transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-on-surface">
+                  <span className="text-body font-medium text-on-surface">
                     {tpl.name}
                   </span>
                   <Badge variant="muted">{tpl.language}</Badge>
@@ -175,7 +175,7 @@ export function TemplateSelector({
                     <Badge variant="default">{tpl.category}</Badge>
                   )}
                 </div>
-                <p className="text-[12px] text-on-surface-variant/70 truncate mt-0.5">
+                <p className="text-label text-on-surface-variant/70 truncate mt-0.5">
                   {body}
                 </p>
               </button>

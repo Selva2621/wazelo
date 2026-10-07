@@ -4,6 +4,8 @@ import { OrgService } from './domain/services/org.service';
 import { GetOrgSettingsUseCase } from './application/use-cases/get-org-settings.use-case';
 import { UpdateOrgSettingsUseCase } from './application/use-cases/update-org-settings.use-case';
 import { RebuildOrgMemoryUseCase } from './application/use-cases/rebuild-org-memory.use-case';
+import { OnboardOrgUseCase } from './application/use-cases/onboard-org.use-case';
+import { OrgOnboardingRepository } from './infrastructure/repositories/org-onboarding.repository';
 import { OrgAiMemoryService } from './domain/services/org-ai-memory.service';
 import { OrgController } from './interfaces/controllers/org.controller';
 import { AuditModule } from '../audit/audit.module';
@@ -21,7 +23,15 @@ import { AiProviderService } from '../ai/domain/services/ai-provider.service';
     AiProviderService,
     OrgAiMemoryService,
     RebuildOrgMemoryUseCase,
+    OrgOnboardingRepository,
+    OnboardOrgUseCase,
   ],
-  exports: [OrgService, OrgRepository, OrgAiMemoryService, RebuildOrgMemoryUseCase],
+  exports: [
+    OrgService,
+    OrgRepository,
+    OrgAiMemoryService,
+    RebuildOrgMemoryUseCase,
+    OnboardOrgUseCase,
+  ],
 })
 export class OrgModule {}

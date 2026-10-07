@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { PAGE_SIZE } from "@/lib/constants";
+import { IconButton } from "@/components/ui/icon-button";
 
 type StatusFilter = "" | "CONNECTED" | "DISCONNECTED" | "RECONNECTING" | "CONNECTING";
 
@@ -58,10 +59,10 @@ export default function AdminWhatsAppSessionsPage() {
     <div className="flex-1 p-6 space-y-6">
       {/* Header */}
       <div>
-        <p className="text-[12px] text-on-surface-variant mb-1">
+        <p className="text-label text-on-surface-variant mb-1">
           Admin &gt; WhatsApp Sessions
         </p>
-        <h1 className="text-2xl font-semibold text-on-surface">
+        <h1 className="text-headline font-semibold text-on-surface">
           WhatsApp Sessions
         </h1>
       </div>
@@ -75,7 +76,7 @@ export default function AdminWhatsAppSessionsPage() {
               setStatusFilter(e.target.value as StatusFilter);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-[13px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="">All Statuses</option>
             <option value="CONNECTED">Connected</option>
@@ -91,11 +92,11 @@ export default function AdminWhatsAppSessionsPage() {
               placeholder="Search by user name..."
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest pl-9 pr-3 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
-          <span className="ml-auto text-[12px] text-on-surface-variant">
+          <span className="ml-auto text-label text-on-surface-variant">
             {total} session{total !== 1 ? "s" : ""}
           </span>
         </div>
@@ -108,7 +109,7 @@ export default function AdminWhatsAppSessionsPage() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Wifi className="h-10 w-10 text-on-surface-variant/40 mb-3" />
-            <p className="text-[14px] text-on-surface-variant">
+            <p className="text-body-lg text-on-surface-variant">
               No sessions found
             </p>
           </div>
@@ -117,19 +118,19 @@ export default function AdminWhatsAppSessionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     User
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Phone
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Last Active
                   </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-right text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Actions
                   </th>
                 </tr>
@@ -151,13 +152,13 @@ export default function AdminWhatsAppSessionsPage() {
                           size="sm"
                         />
                         <div className="min-w-0">
-                          <p className="text-[13px] font-medium text-on-surface truncate">
+                          <p className="text-body font-medium text-on-surface truncate">
                             {s.user
                               ? `${s.user.firstName} ${s.user.lastName}`
                               : "Unknown User"}
                           </p>
                           {s.user?.email && (
-                            <p className="text-[11px] text-on-surface-variant truncate">
+                            <p className="text-caption text-on-surface-variant truncate">
                               {s.user.email}
                             </p>
                           )}
@@ -165,7 +166,7 @@ export default function AdminWhatsAppSessionsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <span className="text-[13px] text-on-surface">
+                      <span className="text-body text-on-surface">
                         {s.phoneNumber ?? "—"}
                       </span>
                     </td>
@@ -173,7 +174,7 @@ export default function AdminWhatsAppSessionsPage() {
                       <SessionStatusBadge status={s.status} />
                     </td>
                     <td className="px-5 py-3">
-                      <span className="text-[12px] text-on-surface-variant">
+                      <span className="text-label text-on-surface-variant">
                         {s.lastActiveAt
                           ? formatRelativeTime(new Date(s.lastActiveAt))
                           : "Never"}
@@ -194,12 +195,12 @@ export default function AdminWhatsAppSessionsPage() {
                           </Button>
                         )}
                         {s.status === "DISCONNECTED" && latestSessionIdPerUser.has(s.id) && !s.hasCreds && (
-                          <span className="text-[11px] text-on-surface-variant/50 italic">
+                          <span className="text-caption text-on-surface-variant/50 italic">
                             Needs QR re-scan
                           </span>
                         )}
                         {s.status === "DISCONNECTED" && !latestSessionIdPerUser.has(s.id) && (
-                          <span className="text-[11px] text-on-surface-variant/30 italic">
+                          <span className="text-caption text-on-surface-variant/30 italic">
                             Old session
                           </span>
                         )}
@@ -219,7 +220,7 @@ export default function AdminWhatsAppSessionsPage() {
                           </Button>
                         )}
                         {s.status === "CONNECTING" && (
-                          <span className="text-[12px] text-on-surface-variant/50">
+                          <span className="text-label text-on-surface-variant/50">
                             Waiting for QR...
                           </span>
                         )}
@@ -235,24 +236,20 @@ export default function AdminWhatsAppSessionsPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/15">
-            <span className="text-[12px] text-on-surface-variant">
+            <span className="text-label text-on-surface-variant">
               Page {page} of {totalPages}
             </span>
             <div className="flex items-center gap-1">
-              <button
+              <IconButton size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
+                disabled={page <= 1} aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
+              </IconButton>
+              <IconButton size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
+                disabled={page >= totalPages} aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
           </div>
         )}

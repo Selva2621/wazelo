@@ -28,7 +28,7 @@ export function Alert({ variant, children, className }: AlertProps) {
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-2.5 rounded-xl px-4 py-3 text-[13px] leading-relaxed",
+        "flex items-start gap-2.5 rounded-xl px-4 py-3 text-body leading-relaxed",
         styles[variant],
         className,
       )}

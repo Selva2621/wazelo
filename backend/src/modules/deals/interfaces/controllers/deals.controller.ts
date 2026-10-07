@@ -30,6 +30,7 @@ import {
   MoveDealDto,
 } from '../../application/dto';
 import { ScoreDealUseCase } from '../../application/use-cases/score-deal.use-case';
+import { DEFAULT_PIPELINE_STAGES } from '@/shared/constants/org-defaults';
 
 @Controller('pipelines')
 export class DealsController {
@@ -49,15 +50,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreatePipelineDto,
   ) {
-    const stages = dto.stages?.length
-      ? dto.stages
-      : [
-          { name: 'Qualified', order: 0, color: '#6366f1' },
-          { name: 'Proposal', order: 1, color: '#f59e0b' },
-          { name: 'Negotiation', order: 2, color: '#3b82f6' },
-          { name: 'Won', order: 3, color: '#22c55e', isWonStage: true },
-          { name: 'Lost', order: 4, color: '#ef4444', isLostStage: true },
-        ];
+    const stages = dto.stages?.length ? dto.stages : DEFAULT_PIPELINE_STAGES;
     return this.pipelineRepo.create({
       orgId: user.orgId,
       name: dto.name,

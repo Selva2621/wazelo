@@ -57,6 +57,7 @@ import type {
   MessageResponse,
   MessageStatus as BackendMessageStatus,
 } from "@/lib/types/inbox";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Mappers: backend types → component props ──────────
 
@@ -387,7 +388,7 @@ export function InboxView({
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-b border-outline-variant/15 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 text-body font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-b border-outline-variant/15 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             {targetUserName ? `${targetUserName}'s Inbox` : "Back to Users"}
@@ -412,7 +413,7 @@ export function InboxView({
           <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-warning-container/80 border-b border-warning/20">
             <div className="flex items-center gap-2 text-warning">
               <WifiOff className="h-4 w-4 shrink-0" />
-              <span className="text-[13px] font-medium">
+              <span className="text-body font-medium">
                 {waStatus === "reconnecting"
                   ? "Reconnecting to WhatsApp..."
                   : "Your WhatsApp session was disconnected"}
@@ -451,7 +452,7 @@ export function InboxView({
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-[14px] font-semibold text-on-surface truncate">
+                    <h3 className="text-body-lg font-semibold text-on-surface truncate">
                       {selectedConversation.contactName}
                     </h3>
                     {selectedChannelType && (
@@ -462,11 +463,11 @@ export function InboxView({
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-[12px] text-on-surface-variant">
+                    <p className="text-label text-on-surface-variant">
                       {selectedConversation.contactPhone}
                     </p>
                     {contactProducts && contactProducts.length > 0 && contactProducts.slice(0, 2).map((p) => (
-                      <span key={p.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{p.name}</span>
+                      <span key={p.id} className="text-caption px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{p.name}</span>
                     ))}
                   </div>
                 </div>
@@ -474,47 +475,43 @@ export function InboxView({
               <div className="flex items-center gap-1.5">
                 {/* Close / Reopen */}
                 {selectedRawConv?.status === "OPEN" ? (
-                  <button
+                  <IconButton size="sm"
                     onClick={() => setShowCloseConfirm(true)}
                     disabled={closeConversation.isPending}
-                    className="p-2 rounded-lg text-on-surface-variant hover:text-warning hover:bg-warning/10 transition-colors"
-                    title="Close conversation"
-                  >
+                    className="hover:text-warning hover:bg-warning/10"
+                    title="Close conversation" aria-label="Close conversation">
                     <XCircle className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 ) : (
-                  <button
+                  <IconButton size="sm"
                     onClick={() => selectedId && reopenConversation.mutate(selectedId)}
                     disabled={reopenConversation.isPending}
-                    className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                    title="Reopen conversation"
-                  >
+                    className="hover:text-primary hover:bg-primary/10"
+                    title="Reopen conversation" aria-label="Reopen conversation">
                     <RotateCcw className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 )}
                 {/* Archive */}
                 {selectedRawConv?.status !== "ARCHIVED" && (
-                  <button
+                  <IconButton size="sm"
                     onClick={() => selectedId && archiveConversation.mutate(selectedId)}
                     disabled={archiveConversation.isPending}
-                    className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-                    title="Archive conversation"
-                  >
+                   
+                    title="Archive conversation" aria-label="Archive conversation">
                     <Archive className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 )}
                 {/* Create Deal */}
                 {contactData?.id && (
-                  <button
+                  <IconButton size="sm"
                     onClick={() => setShowCreateDeal(true)}
-                    className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                    title="Create deal"
-                  >
+                    className="hover:text-primary hover:bg-primary/10"
+                    title="Create deal" aria-label="Create deal">
                     <Handshake className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 )}
                 {/* Send CSAT */}
-                <button
+                <Button variant="secondary" size="sm"
                   onClick={() => {
                     if (!selectedId || !selectedRawConv) return;
                     sendCsatSurvey.mutate({
@@ -524,21 +521,20 @@ export function InboxView({
                     });
                   }}
                   disabled={sendCsatSurvey.isPending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 disabled:opacity-50 transition-colors"
+                  className="bg-warning-container text-warning border-warning/30 hover:bg-warning/20 hover:border-warning/50"
                   title="Send CSAT survey to customer"
                 >
-                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                  <Star className="h-3.5 w-3.5 fill-warning text-warning" />
                   <span>{sendCsatSurvey.isPending ? "Sending…" : "Send Survey"}</span>
-                </button>
+                </Button>
                 {/* Delete */}
-                <button
+                <IconButton size="sm" variant="danger"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={deleteConversation.isPending}
-                  className="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                  title="Delete conversation"
-                >
+                 
+                  title="Delete conversation" aria-label="Delete conversation">
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </IconButton>
                 <button
                   onClick={toggleContactPanel}
                   className={cn(
@@ -595,7 +591,7 @@ export function InboxView({
             {/* Input — disabled when disconnected */}
             {isDisconnected && !skipSessionCheck ? (
               <div className="shrink-0 px-4 py-3 border-t border-outline-variant/15">
-                <div className="flex items-center justify-center gap-2 rounded-xl bg-surface-container px-4 py-3 text-[13px] text-on-surface-variant/50">
+                <div className="flex items-center justify-center gap-2 rounded-xl bg-surface-container px-4 py-3 text-body text-on-surface-variant/50">
                   <WifiOff className="h-4 w-4" />
                   Session disconnected — reconnect to send messages
                 </div>

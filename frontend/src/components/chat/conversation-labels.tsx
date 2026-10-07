@@ -42,11 +42,11 @@ export function ConversationLabels({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Tag className="h-3.5 w-3.5 text-on-surface-variant/50" />
-          <span className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wider">
+          <span className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wider">
             Labels
           </span>
         </div>
-        <button
+        <button aria-label="Add label"
           onClick={() => setShowAdd(!showAdd)}
           className="text-on-surface-variant/50 hover:text-primary transition-colors"
         >
@@ -60,13 +60,13 @@ export function ConversationLabels({
           {labels.map((label) => (
             <span
               key={label.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-container"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container"
               style={{
                 borderLeft: label.color ? `3px solid ${label.color}` : undefined,
               }}
             >
               {label.name}
-              <button
+              <button aria-label="Remove label"
                 onClick={() => onRemove(label.id)}
                 className="text-on-surface-variant/40 hover:text-error ml-0.5"
               >

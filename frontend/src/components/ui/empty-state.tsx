@@ -31,8 +31,8 @@ export function EmptyState({
       )}
     >
       <div className="mb-5 text-primary">{icon}</div>
-      <h3 className="text-xl font-semibold text-on-surface mb-2">{title}</h3>
-      <p className="text-[14px] text-on-surface-variant max-w-[400px] leading-relaxed">
+      <h3 className="text-title font-semibold text-on-surface mb-2">{title}</h3>
+      <p className="text-body-lg text-on-surface-variant max-w-[400px] leading-relaxed">
         {description}
       </p>
       {actionLabel && onAction && (
@@ -43,7 +43,7 @@ export function EmptyState({
       {secondaryLabel && onSecondary && (
         <button
           onClick={onSecondary}
-          className="mt-3 text-[13px] text-primary hover:underline"
+          className="mt-3 text-body text-primary hover:underline"
         >
           {secondaryLabel}
         </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { AnimatePresence } from "motion/react";
 import { Plus, BarChart3, TrendingUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,18 +90,18 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
       {/* Summary bar */}
       {analytics && (
         <div className="shrink-0 flex items-center gap-6 px-6 py-3 border-b border-outline-variant/10 bg-surface-container/30">
-          <div className="flex items-center gap-2 text-[13px]">
+          <div className="flex items-center gap-2 text-body">
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-on-surface-variant">Total:</span>
             <span className="font-semibold text-on-surface">{analytics.totalDeals} deals</span>
           </div>
-          <div className="flex items-center gap-2 text-[13px]">
+          <div className="flex items-center gap-2 text-body">
             <DollarSign className="h-4 w-4 text-tertiary" />
             <span className="text-on-surface-variant">Value:</span>
             <span className="font-semibold text-on-surface">{formatCurrency(Number(analytics.totalValue))}</span>
           </div>
           {analytics.byStatus.find((s) => s.status === "WON") && (
-            <div className="flex items-center gap-2 text-[13px]">
+            <div className="flex items-center gap-2 text-body">
               <TrendingUp className="h-4 w-4 text-success" />
               <span className="text-on-surface-variant">Won:</span>
               <span className="font-semibold text-success">
@@ -138,11 +139,11 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: stage.color || "#6b7280" }}
                     />
-                    <span className="text-[13px] font-semibold text-on-surface">{stage.name}</span>
-                    <Badge variant="muted" className="text-[10px]">{stageDeals.length}</Badge>
+                    <span className="text-body font-semibold text-on-surface">{stage.name}</span>
+                    <Badge variant="muted" className="text-caption">{stageDeals.length}</Badge>
                   </div>
                   {stageAnalytics && stageAnalytics.value > 0 && (
-                    <span className="text-[10px] text-on-surface-variant">
+                    <span className="text-caption text-on-surface-variant">
                       {formatCurrency(Number(stageAnalytics.value))}
                     </span>
                   )}
@@ -151,7 +152,7 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
                 {/* Stage deals */}
                 <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                   {stageDeals.length === 0 ? (
-                    <div className="text-center py-6 text-[12px] text-on-surface-variant/40">
+                    <div className="text-center py-6 text-label text-on-surface-variant/40">
                       Drop deals here
                     </div>
                   ) : (
@@ -183,14 +184,17 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
         stages={pipeline.stages}
       />
 
-      {selectedDeal && (
-        <DealDetailDrawer
-          deal={selectedDeal}
-          pipelineId={pipeline.id}
-          stages={pipeline.stages}
-          onClose={() => setSelectedDealId(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedDeal && (
+          <DealDetailDrawer
+            key={selectedDeal.id}
+            deal={selectedDeal}
+            pipelineId={pipeline.id}
+            stages={pipeline.stages}
+            onClose={() => setSelectedDealId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

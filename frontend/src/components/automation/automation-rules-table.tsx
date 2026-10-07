@@ -17,6 +17,7 @@ import {
 import { RuleStatusBadge } from "./rule-status-badge";
 import { TriggerTypeLabel } from "./trigger-type-label";
 import type { AutomationRule } from "@/lib/types/automation";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface AutomationRulesTableProps {
   rules: AutomationRule[];
@@ -129,11 +130,11 @@ export function AutomationRulesTable({
             >
               {/* Name + Description */}
               <TableCell>
-                <p className="text-[13px] font-medium text-on-surface truncate max-w-[280px]">
+                <p className="text-body font-medium text-on-surface truncate max-w-[280px]">
                   {rule.name}
                 </p>
                 {rule.description && (
-                  <p className="text-[11px] text-on-surface-variant/60 truncate max-w-[280px]">
+                  <p className="text-caption text-on-surface-variant/60 truncate max-w-[280px]">
                     {rule.description}
                   </p>
                 )}
@@ -151,14 +152,14 @@ export function AutomationRulesTable({
 
               {/* Execution count */}
               <TableCell align="center">
-                <span className="text-[12px] text-on-surface-variant tabular-nums">
+                <span className="text-label text-on-surface-variant tabular-nums">
                   {rule.executionCount.toLocaleString()}
                 </span>
               </TableCell>
 
               {/* Last triggered */}
               <TableCell>
-                <span className="text-[12px] text-on-surface-variant">
+                <span className="text-label text-on-surface-variant">
                   {rule.lastTriggeredAt ? timeAgo(rule.lastTriggeredAt) : "—"}
                 </span>
               </TableCell>
@@ -169,14 +170,12 @@ export function AutomationRulesTable({
                   className="relative inline-flex justify-end"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
+                  <IconButton size="xs"
                     onClick={() =>
                       setOpenMenu(openMenu === rule.id ? null : rule.id)
-                    }
-                    className="p-1 rounded-lg text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container transition-colors"
-                  >
+                    } aria-label="More actions">
                     <MoreVertical className="h-4 w-4" />
-                  </button>
+                  </IconButton>
 
                   {openMenu === rule.id && (
                     <>
@@ -191,7 +190,7 @@ export function AutomationRulesTable({
                               onEnable(rule.id);
                               setOpenMenu(null);
                             }}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-on-surface hover:bg-surface-container transition-colors"
+                            className="flex items-center gap-2 w-full px-3 py-2 text-body text-on-surface hover:bg-surface-container transition-colors"
                           >
                             <Power className="h-3.5 w-3.5" />
                             Enable
@@ -202,7 +201,7 @@ export function AutomationRulesTable({
                               onDisable(rule.id);
                               setOpenMenu(null);
                             }}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-on-surface hover:bg-surface-container transition-colors"
+                            className="flex items-center gap-2 w-full px-3 py-2 text-body text-on-surface hover:bg-surface-container transition-colors"
                           >
                             <PowerOff className="h-3.5 w-3.5" />
                             Disable
@@ -213,7 +212,7 @@ export function AutomationRulesTable({
                             onDelete(rule.id);
                             setOpenMenu(null);
                           }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-error hover:bg-error/10 transition-colors"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-body text-error hover:bg-error/10 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Delete

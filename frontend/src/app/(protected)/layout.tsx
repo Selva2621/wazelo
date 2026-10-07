@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/lib/api/auth";
-import { Spinner } from "@/components/ui/spinner";
 import { AppShell } from "@/components/layout/app-shell";
+import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
+import { AnnouncementBanner } from "@/components/layout/announcement-banner";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
 
@@ -18,6 +20,7 @@ const ORG_TYPE_EXEMPT = ["/onboarding"];
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: subscriptionData, isLoading: subLoading, isError: subError } = useSubscription({
@@ -72,9 +75,11 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       if (redirectingRef.current) return;
       redirectingRef.current = true;
+      // Covers expiry and revocation too, not just explicit logout: drop cached org data.
+      queryClient.clear();
       router.replace("/auth/login");
     }
-  }, [sessionChecked, isAuthenticated, router]);
+  }, [sessionChecked, isAuthenticated, router, queryClient]);
 
   // Org-type gate: redirect to /onboarding/type if org type is still the DB default ("CRM").
   // This fires for new users on TRIAL who skip /onboarding entirely.
@@ -129,12 +134,13 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     };
   }, [isAuthenticated, expiresAt, setTokens]);
 
-  // Show spinner while session check is in progress (prevents flash of login redirect)
+  // App frame (no spinner) while the session is restored from the refresh cookie on reload;
+  // also prevents a flash of the login redirect.
   if (!sessionChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <Spinner size="lg" className="text-primary" />
-      </div>
+    return pathname.startsWith("/onboarding") ? (
+      <div className="min-h-dvh bg-surface" />
+    ) : (
+      <AppShellSkeleton />
     );
   }
 
@@ -147,6 +153,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell>
+      <AnnouncementBanner />
       {children}
     </AppShell>
   );

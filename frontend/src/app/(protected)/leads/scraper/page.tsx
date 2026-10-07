@@ -14,6 +14,8 @@ import {
 } from "@/hooks/use-lead-scraper";
 import { Spinner } from "@/components/ui/spinner";
 import type { ScrapeSource, ScrapeRunStatus, ScrapeRun } from "@/lib/types/lead-scraper";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -113,7 +115,7 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
   };
   const { label, className, icon } = config[status];
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${className}`}>
+    <span className={`inline-flex items-center gap-1 text-label font-medium px-2 py-0.5 rounded-full ${className}`}>
       {icon} {label}
     </span>
   );
@@ -140,19 +142,19 @@ function NoteEditor({ runId, initial, onClose }: { runId: string; initial: strin
         onChange={(e) => setVal(e.target.value)}
         placeholder="Add a note about this run…"
         rows={2}
-        className="w-full text-xs bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+        className="w-full text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
         autoFocus
       />
       <div className="flex gap-2">
         <button
           onClick={() => onClose(val)}
-          className="text-xs font-medium text-primary hover:underline"
+          className="text-label font-medium text-primary hover:underline"
         >
           Save
         </button>
         <button
           onClick={() => onClose(initial)}
-          className="text-xs text-on-surface-variant hover:underline"
+          className="text-label text-on-surface-variant hover:underline"
         >
           Cancel
         </button>
@@ -200,22 +202,22 @@ function RunRow({
         {/* Left: info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm text-on-surface">{SOURCE_LABELS[run.source]}</span>
+            <span className="font-semibold text-body-lg text-on-surface">{SOURCE_LABELS[run.source]}</span>
             <StatusBadge status={run.status} />
             {run.status === "COMPLETED" && run.resultCount > 0 && (
-              <span className="text-xs text-on-surface-variant">
+              <span className="text-label text-on-surface-variant">
                 {run.resultCount} found
                 {run.importedCount > 0 && ` · ${run.importedCount} imported`}
               </span>
             )}
           </div>
-          <p className="text-xs text-on-surface-variant mt-0.5 truncate">
+          <p className="text-label text-on-surface-variant mt-0.5 truncate">
             <span className="font-medium">{run.keywords}</span>
             {run.location && <> · {run.location}</>}
             <span className="ml-2">· max {run.maxResults}</span>
           </p>
           {note && !showNote && (
-            <p className="mt-1 text-[11px] text-on-surface-variant italic flex items-center gap-1">
+            <p className="mt-1 text-caption text-on-surface-variant italic flex items-center gap-1">
               <StickyNote className="w-3 h-3 shrink-0" />
               {note}
             </p>
@@ -224,7 +226,7 @@ function RunRow({
 
         {/* Right: time + actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xs text-on-surface-variant mr-1">{formatTimeAgo(run.createdAt)}</span>
+          <span className="text-label text-on-surface-variant mr-1">{formatTimeAgo(run.createdAt)}</span>
 
           {/* Note toggle */}
           <button
@@ -236,13 +238,11 @@ function RunRow({
           </button>
 
           {/* Duplicate / use as template */}
-          <button
+          <IconButton size="xs"
             onClick={() => onDuplicate(run)}
-            title="Duplicate — copy settings to form"
-            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-          >
+            title="Duplicate — copy settings to form" aria-label="Duplicate — copy settings to form">
             <Copy className="w-3.5 h-3.5" />
-          </button>
+          </IconButton>
 
           {/* Re-run */}
           <button
@@ -265,25 +265,23 @@ function RunRow({
                 <button
                   onClick={handleDelete}
                   disabled={deleteMutation.isPending}
-                  className="text-[11px] font-semibold text-error hover:underline px-1"
+                  className="text-caption font-semibold text-error hover:underline px-1"
                 >
                   {deleteMutation.isPending ? "…" : "Confirm"}
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="text-[11px] text-on-surface-variant hover:underline px-1"
+                  className="text-caption text-on-surface-variant hover:underline px-1"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
-              <button
+              <IconButton size="xs" variant="danger"
                 onClick={() => setConfirmDelete(true)}
-                title="Delete run"
-                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error/10 hover:text-error transition-colors"
-              >
+                title="Delete run" aria-label="Delete run">
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </IconButton>
             )
           )}
         </div>
@@ -294,7 +292,7 @@ function RunRow({
 
       {/* Error */}
       {run.status === "FAILED" && run.errorMessage && (
-        <p className="mt-2 text-xs text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
+        <p className="mt-2 text-label text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
       )}
 
       {/* View / Monitor link */}
@@ -302,7 +300,7 @@ function RunRow({
         <div className="mt-3 border-t border-outline-variant/20 pt-3">
           <Link
             href={`/leads/scraper/${run.id}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-body-lg font-medium text-primary hover:underline"
           >
             View {run.resultCount} result{run.resultCount !== 1 ? "s" : ""}
             <ArrowRight className="w-4 h-4" />
@@ -310,13 +308,13 @@ function RunRow({
         </div>
       )}
       {run.status === "COMPLETED" && run.resultCount === 0 && (
-        <p className="mt-2 text-xs text-on-surface-variant">No results found for this search.</p>
+        <p className="mt-2 text-label text-on-surface-variant">No results found for this search.</p>
       )}
       {isActive && (
         <div className="mt-3 border-t border-outline-variant/20 pt-3">
           <Link
             href={`/leads/scraper/${run.id}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-on-surface-variant hover:text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-body-lg font-medium text-on-surface-variant hover:text-primary hover:underline"
           >
             Monitor run <ArrowRight className="w-4 h-4" />
           </Link>
@@ -391,15 +389,15 @@ export default function LeadScraperPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-on-surface">Lead Scraper</h1>
-        <p className="text-sm text-on-surface-variant mt-1">
+        <h1 className="text-headline font-semibold text-on-surface">Lead Scraper</h1>
+        <p className="text-body-lg text-on-surface-variant mt-1">
           Pick a source, search for leads, review the results, then import the ones you want.
         </p>
       </div>
 
       {/* Scraper catalog */}
       <div>
-        <h2 className="text-sm font-semibold text-on-surface mb-3">Pick a Scraper</h2>
+        <h2 className="text-body-lg font-semibold text-on-surface mb-3">Pick a Scraper</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {SCRAPERS.map((s) => (
             <button
@@ -415,10 +413,10 @@ export default function LeadScraperPage() {
                 {s.icon}
               </span>
               <div>
-                <p className="text-sm font-semibold text-on-surface">{s.title}</p>
-                <p className="text-[11px] text-on-surface-variant mt-0.5 leading-tight">{s.description}</p>
+                <p className="text-body-lg font-semibold text-on-surface">{s.title}</p>
+                <p className="text-caption text-on-surface-variant mt-0.5 leading-tight">{s.description}</p>
               </div>
-              <span className="text-[10px] bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">
+              <span className="text-caption bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">
                 {s.bestFor}
               </span>
             </button>
@@ -430,15 +428,15 @@ export default function LeadScraperPage() {
       {selectedScraper && (
         <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-on-surface">Configure {selectedScraper.title} Search</h2>
-            <button onClick={() => setSelected(null)} className="text-on-surface-variant hover:text-on-surface">
+            <h2 className="text-body-lg font-semibold text-on-surface">Configure {selectedScraper.title} Search</h2>
+            <button aria-label="Close" onClick={() => setSelected(null)} className="text-on-surface-variant hover:text-on-surface">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-on-surface-variant block mb-1">
+              <label className="text-label font-medium text-on-surface-variant block mb-1">
                 Keywords <span className="text-error">*</span>
               </label>
               <input
@@ -447,12 +445,12 @@ export default function LeadScraperPage() {
                 onChange={(e) => setKeywords(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleRun()}
                 placeholder={selectedScraper.keywordsPlaceholder}
-                className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
               />
             </div>
             {selectedScraper.locationPlaceholder && (
               <div>
-                <label className="text-xs font-medium text-on-surface-variant block mb-1">
+                <label className="text-label font-medium text-on-surface-variant block mb-1">
                   {selectedScraper.locationLabel ?? "Location"} (optional)
                 </label>
                 <input
@@ -461,14 +459,14 @@ export default function LeadScraperPage() {
                   onChange={(e) => setLocation(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRun()}
                   placeholder={selectedScraper.locationPlaceholder}
-                  className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                  className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
                 />
               </div>
             )}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-on-surface-variant block mb-1">
+            <label className="text-label font-medium text-on-surface-variant block mb-1">
               Max Results: <span className="text-on-surface font-semibold">{maxResults}</span>
             </label>
             <input
@@ -476,24 +474,24 @@ export default function LeadScraperPage() {
               onChange={(e) => setMaxResults(Number(e.target.value))}
               className="w-full accent-primary"
             />
-            <div className="flex justify-between text-[10px] text-on-surface-variant mt-0.5">
+            <div className="flex justify-between text-caption text-on-surface-variant mt-0.5">
               <span>5</span><span>100</span>
             </div>
             {selectedScraper.source === "GOOGLE_MAPS" && (
-              <p className="text-[11px] text-on-surface-variant/70 mt-1">
+              <p className="text-caption text-on-surface-variant/70 mt-1">
                 Google Maps visits each place detail page — higher limits take more time.
               </p>
             )}
           </div>
 
-          <button
+          <Button size="lg"
             onClick={handleRun}
             disabled={!keywords.trim() || trigger.isPending}
-            className="flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+           
           >
             {trigger.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Run Scraper
-          </button>
+          </Button>
         </div>
       )}
 
@@ -502,12 +500,12 @@ export default function LeadScraperPage() {
         {/* Section header + filters */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-on-surface">Recent Runs</h2>
+            <h2 className="text-body-lg font-semibold text-on-surface">Recent Runs</h2>
             {total > 0 && (
-              <span className="text-xs text-on-surface-variant">({total} total)</span>
+              <span className="text-label text-on-surface-variant">({total} total)</span>
             )}
             {activeFilterCount > 0 && (
-              <span className="bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="bg-primary text-on-primary text-caption font-semibold px-1.5 py-0.5 rounded-full">
                 {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
               </span>
             )}
@@ -519,7 +517,7 @@ export default function LeadScraperPage() {
               <select
                 value={filterSource}
                 onChange={(e) => { setFilterSource(e.target.value as ScrapeSource | ""); setPage(0); }}
-                className="appearance-none text-xs bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+                className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
               >
                 {SOURCE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -533,7 +531,7 @@ export default function LeadScraperPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => { setFilterStatus(e.target.value as ScrapeRunStatus | ""); setPage(0); }}
-                className="appearance-none text-xs bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+                className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -546,7 +544,7 @@ export default function LeadScraperPage() {
             {activeFilterCount > 0 && (
               <button
                 onClick={() => { setFilterSource(""); setFilterStatus(""); setPage(0); }}
-                className="flex items-center gap-1 text-xs text-error hover:underline"
+                className="flex items-center gap-1 text-label text-error hover:underline"
               >
                 <X className="w-3 h-3" /> Clear
               </button>
@@ -562,18 +560,18 @@ export default function LeadScraperPage() {
             <Users className="w-8 h-8 text-on-surface-variant mx-auto mb-2" />
             {activeFilterCount > 0 ? (
               <>
-                <p className="text-sm text-on-surface-variant">No runs match the current filters.</p>
+                <p className="text-body-lg text-on-surface-variant">No runs match the current filters.</p>
                 <button
                   onClick={() => { setFilterSource(""); setFilterStatus(""); setPage(0); }}
-                  className="mt-2 text-xs text-primary hover:underline"
+                  className="mt-2 text-label text-primary hover:underline"
                 >
                   Clear filters
                 </button>
               </>
             ) : (
               <>
-                <p className="text-sm text-on-surface-variant">No scraper runs yet.</p>
-                <p className="text-xs text-on-surface-variant mt-1">Pick a scraper above and click Run to find leads.</p>
+                <p className="text-body-lg text-on-surface-variant">No scraper runs yet.</p>
+                <p className="text-label text-on-surface-variant mt-1">Pick a scraper above and click Run to find leads.</p>
               </>
             )}
           </div>
@@ -588,24 +586,23 @@ export default function LeadScraperPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-on-surface-variant">
+            <span className="text-label text-on-surface-variant">
               Page {page + 1} of {totalPages} · {total} runs
             </span>
             <div className="flex items-center gap-1">
-              <button
+              <IconButton size="sm"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+                className="border border-outline-variant" aria-label="Previous page">
                 <ChevronLeft className="w-4 h-4" />
-              </button>
+              </IconButton>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const pageNum = totalPages <= 5 ? i : Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`w-7 h-7 text-xs rounded-lg transition-colors ${
+                    className={`w-7 h-7 text-label rounded-lg transition-colors ${
                       pageNum === page
                         ? "bg-primary text-on-primary font-semibold"
                         : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
@@ -615,13 +612,12 @@ export default function LeadScraperPage() {
                   </button>
                 );
               })}
-              <button
+              <IconButton size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+                className="border border-outline-variant" aria-label="Next page">
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </IconButton>
             </div>
           </div>
         )}

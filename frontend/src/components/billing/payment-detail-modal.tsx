@@ -2,6 +2,8 @@
 
 import { X, CreditCard, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import type { Payment } from "@/lib/types/billing";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface Props {
   payment: Payment;
@@ -43,7 +45,7 @@ function StatusBadge({ status }: { status: Payment["status"] }) {
     REFUNDED:  "bg-surface-container text-on-surface-variant",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${map[status]}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label font-semibold ${map[status]}`}>
       <StatusIcon status={status} />
       {status}
     </span>
@@ -53,20 +55,17 @@ function StatusBadge({ status }: { status: Payment["status"] }) {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between py-3 border-b border-outline-variant/10 last:border-0">
-      <span className="text-[12px] text-on-surface-variant w-36 shrink-0">{label}</span>
-      <span className="text-[13px] text-on-surface font-medium text-right break-all">{value}</span>
+      <span className="text-label text-on-surface-variant w-36 shrink-0">{label}</span>
+      <span className="text-body text-on-surface font-medium text-right break-all">{value}</span>
     </div>
   );
 }
 
 export function PaymentDetailModal({ payment, onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-md bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl overflow-hidden">
+    <Modal open onClose={onClose} className="max-w-md bg-surface-container-low border border-outline-variant">
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface-container">
           <div className="flex items-center gap-3">
@@ -74,24 +73,22 @@ export function PaymentDetailModal({ payment, onClose }: Props) {
               <CreditCard className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-[14px] font-semibold text-on-surface">Payment Details</p>
-              <p className="text-[11px] text-on-surface-variant font-mono mt-0.5 truncate max-w-[220px]">{payment.id}</p>
+              <p className="text-body-lg font-semibold text-on-surface">Payment Details</p>
+              <p className="text-caption text-on-surface-variant font-mono mt-0.5 truncate max-w-[220px]">{payment.id}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
-          >
+          <IconButton size="sm"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Amount hero */}
         <div className="px-6 py-5 bg-gradient-to-br from-surface-container to-surface-container-low border-b border-outline-variant/10 text-center">
-          <p className="text-[28px] font-bold text-on-surface tracking-tight">
+          <p className="text-display font-semibold text-on-surface tracking-tight">
             {formatAmount(payment.amountInCents, payment.currency)}
           </p>
-          <p className="text-[12px] text-on-surface-variant mt-1">{payment.currency.toUpperCase()}</p>
+          <p className="text-label text-on-surface-variant mt-1">{payment.currency.toUpperCase()}</p>
           <div className="mt-3">
             <StatusBadge status={payment.status} />
           </div>
@@ -124,12 +121,13 @@ export function PaymentDetailModal({ payment, onClose }: Props) {
         <div className="px-6 py-4 border-t border-outline-variant/10">
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-[13px] font-medium text-on-surface-variant"
+            className="w-full py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-body font-medium text-on-surface-variant"
           >
             Close
           </button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

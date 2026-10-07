@@ -1,6 +1,10 @@
 /**
  * Main seed entry point.
- * Order: plans → super-admin → freelancer-templates → shopify-templates
+ * Order: plans → super-admin → org-onboarding backfill
+ *
+ * Per-org master data (system templates, pipeline, tags, …) is seeded by the
+ * org onboarding job — the backfill only enqueues it, so the backend must be
+ * running for existing orgs to be processed.
  *
  * Run: npm run prisma:seed
  */
@@ -13,8 +17,7 @@ const path = require('path');
 const seeds = [
   'seed-plans.js',
   'seed-super-admin.js',
-  'seed-freelancer-templates.js',
-  'seed-shopify-templates.js',
+  'backfill-org-onboarding.js',
 ];
 
 for (const seed of seeds) {

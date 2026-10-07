@@ -50,7 +50,7 @@ export function CampaignRecipientsTable({
 
   if (recipients.length === 0) {
     return (
-      <p className="text-center text-[13px] text-on-surface-variant/60 py-8">
+      <p className="text-center text-body text-on-surface-variant/60 py-8">
         No recipients yet.
       </p>
     );
@@ -59,7 +59,7 @@ export function CampaignRecipientsTable({
   return (
     <div>
       {/* Header */}
-      <div className="grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-[11px] font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
         <span>Contact</span>
         <span>Phone</span>
         <span>Status</span>
@@ -74,14 +74,14 @@ export function CampaignRecipientsTable({
             key={r.id}
             className="grid grid-cols-[1fr_120px_90px_100px] gap-2 items-center px-4 py-2.5 border-b border-outline-variant/10"
           >
-            <span className="text-[13px] text-on-surface truncate">
+            <span className="text-body text-on-surface truncate">
               {r.contact?.name || "Unknown"}
             </span>
-            <span className="text-[12px] text-on-surface-variant/60 tabular-nums">
+            <span className="text-label text-on-surface-variant/60 tabular-nums">
               {r.contactPhone}
             </span>
             <Badge variant={cfg.variant}>{cfg.label}</Badge>
-            <span className="text-[11px] text-on-surface-variant/60">
+            <span className="text-caption text-on-surface-variant/60">
               {r.processedAt
                 ? new Date(r.processedAt).toLocaleTimeString()
                 : "—"}
@@ -93,7 +93,7 @@ export function CampaignRecipientsTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-[12px] text-on-surface-variant/60">
+          <p className="text-label text-on-surface-variant/60">
             {skip + 1}–{Math.min(skip + take, total)} of {total}
           </p>
           <div className="flex gap-1.5">

@@ -48,7 +48,7 @@ function CampaignFilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-xs bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+        className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -170,11 +170,11 @@ export default function CampaignsPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Upgrade banner */}
       {!campaignsEnabled && (
-        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-          <Megaphone className="h-4 w-4 shrink-0 text-amber-600" />
+        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
+          <Megaphone className="h-4 w-4 shrink-0 text-warning" />
           <span>
             <strong>Campaigns</strong> are not included in your current plan.{" "}
-            <Link href="/settings/billing" className="underline font-medium hover:text-amber-900">
+            <Link href="/settings/billing" className="underline font-medium hover:text-on-surface">
               Upgrade to Growth or higher
             </Link>{" "}
             to unlock this feature.
@@ -187,9 +187,9 @@ export default function CampaignsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Megaphone className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-[18px] font-semibold text-on-surface">Campaigns</h1>
+            <h1 className="text-title font-semibold text-on-surface">Campaigns</h1>
             {data && (
-              <span className="text-[13px] text-on-surface-variant/60">{data.total} total</span>
+              <span className="text-body text-on-surface-variant/60">{data.total} total</span>
             )}
           </div>
           <Button onClick={() => setShowCreate(true)}>
@@ -202,11 +202,11 @@ export default function CampaignsPage() {
         <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
           {/* Top row: label + search + count + clear */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+            <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
               <Filter className="w-3.5 h-3.5" />
               Filters
               {activeFilterCount > 0 && (
-                <span className="bg-primary text-on-primary text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="bg-primary text-on-primary text-caption font-semibold w-4 h-4 rounded-full flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -217,17 +217,17 @@ export default function CampaignsPage() {
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               placeholder="Search campaigns…"
-              className="flex-1 min-w-[180px] text-xs bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+              className="flex-1 min-w-[180px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
             />
 
-            <span className="text-xs text-on-surface-variant ml-auto shrink-0">
+            <span className="text-label text-on-surface-variant ml-auto shrink-0">
               {filteredCampaigns.length} of {data?.data?.length ?? 0}
             </span>
 
             {activeFilterCount > 0 && (
               <button
                 onClick={handleClearFilters}
-                className="flex items-center gap-1 text-xs text-error hover:underline shrink-0"
+                className="flex items-center gap-1 text-label text-error hover:underline shrink-0"
               >
                 <X className="w-3 h-3" /> Clear all
               </button>

@@ -168,8 +168,8 @@ export class SubscribeUseCase {
         ? plan.trialMaxWhatsappSessions : plan.maxWhatsappSessions,
       [UsageMetricType.CAMPAIGN_EXECUTIONS]: isTrial && plan.trialMaxCampaignsPerMonth != null
         ? plan.trialMaxCampaignsPerMonth : plan.maxCampaignsPerMonth,
-      [UsageMetricType.API_CALLS]: isTrial && plan.trialMaxMessagesPerMonth != null
-        ? plan.trialMaxMessagesPerMonth : plan.maxMessagesPerMonth,
+      // No trial-specific API limit exists on Plan
+      [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
       [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
       [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
     };

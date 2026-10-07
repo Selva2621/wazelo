@@ -5,27 +5,24 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
-import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { CreatePlanDto } from '../dto/create-plan.dto';
 import { EVENT_NAMES } from '@/common/constants';
-import { AuditAction } from '@prisma/client';
 
+/**
+ * Plans are platform-wide and managed only by super admins (via the
+ * super-admin module, which also writes the platform audit entry).
+ */
 @Injectable()
 export class CreatePlanUseCase {
   private readonly logger = new Logger(CreatePlanUseCase.name);
 
   constructor(
     private readonly planRepo: PlanRepository,
-    private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async execute(
-    userId: string,
-    dto: CreatePlanDto,
-    ipAddress: string,
-    userAgent: string,
-  ) {
+  /** `superAdminId` is a SuperAdmin id, not a User id. */
+  async execute(superAdminId: string, dto: CreatePlanDto) {
     // Check if an active plan with same slug+cycle already exists
     const existing = await this.planRepo.findActiveBySlugAndCycle(
       dto.slug,
@@ -81,25 +78,10 @@ export class CreatePlanUseCase {
       planId: plan.id,
       name: plan.name,
       slug: plan.slug,
-      userId,
+      superAdminId,
     });
 
-    await this.auditService.log({
-      userId,
-      action: AuditAction.PLAN_CREATED,
-      targetType: 'Plan',
-      targetId: plan.id,
-      metadata: {
-        name: plan.name,
-        slug: plan.slug,
-        billingCycle: plan.billingCycle,
-        priceInCents: plan.priceInCents,
-      },
-      ipAddress,
-      userAgent,
-    });
-
-    this.logger.log(`Plan ${plan.id} (${plan.name}) created by user ${userId}`);
+    this.logger.log(`Plan ${plan.id} (${plan.name}) created by super admin ${superAdminId}`);
     return { plan };
   }
 }

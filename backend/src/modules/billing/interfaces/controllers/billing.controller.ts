@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
   Body,
   Param,
   Query,
@@ -19,13 +18,9 @@ import { Roles } from '@/common/decorators/roles.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
-import { CreatePlanDto } from '../../application/dto/create-plan.dto';
-import { UpdatePlanDto } from '../../application/dto/update-plan.dto';
 import { SubscribeDto, ChangePlanDto, CancelSubscriptionDto } from '../../application/dto/subscribe.dto';
 import { ListInvoicesQueryDto, ListPaymentsQueryDto } from '../../application/dto/list-billing-query.dto';
 import { CreateOrderDto, VerifyPaymentDto } from '../../application/dto/create-order.dto';
-import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';
-import { UpdatePlanUseCase } from '../../application/use-cases/update-plan.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { SubscribeUseCase } from '../../application/use-cases/subscribe.use-case';
 import { ChangePlanUseCase } from '../../application/use-cases/change-plan.use-case';
@@ -43,8 +38,6 @@ import { UsageMetricType } from '@prisma/client';
 @Controller('billing')
 export class BillingController {
   constructor(
-    private readonly createPlanUseCase: CreatePlanUseCase,
-    private readonly updatePlanUseCase: UpdatePlanUseCase,
     private readonly listPlansUseCase: ListPlansUseCase,
     private readonly subscribeUseCase: SubscribeUseCase,
     private readonly changePlanUseCase: ChangePlanUseCase,
@@ -60,42 +53,8 @@ export class BillingController {
     private readonly usageRepo: UsageRepository,
   ) {}
 
-  // ── Plan Management (system/admin only) ──
-
-  @Post('plans')
-  @Roles('ADMIN')
-  @Permissions(PERMISSIONS.BILLING_PLANS_MANAGE)
-  @HttpCode(HttpStatus.CREATED)
-  async createPlan(
-    @Body() dto: CreatePlanDto,
-    @CurrentUser() user: JwtPayload,
-    @Req() req: Request,
-  ) {
-    return this.createPlanUseCase.execute(
-      user.sub,
-      dto,
-      this.extractIp(req),
-      this.extractUserAgent(req),
-    );
-  }
-
-  @Patch('plans/:id')
-  @Roles('ADMIN')
-  @Permissions(PERMISSIONS.BILLING_PLANS_MANAGE)
-  async updatePlan(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdatePlanDto,
-    @CurrentUser() user: JwtPayload,
-    @Req() req: Request,
-  ) {
-    return this.updatePlanUseCase.execute(
-      id,
-      user.sub,
-      dto,
-      this.extractIp(req),
-      this.extractUserAgent(req),
-    );
-  }
+  // Plans are platform-wide: create/update live only under /super-admin/plans.
+  // (Tenant org ADMINs bypass permission checks, so they must never reach them.)
 
   @Get('plans')
   @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
@@ -236,7 +195,7 @@ export class BillingController {
             [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
             [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
             [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-            [UsageMetricType.API_CALLS]: plan.maxMessagesPerMonth,
+            [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
             [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
             [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
           },
@@ -360,7 +319,7 @@ export class BillingController {
           [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
           [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
           [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-          [UsageMetricType.API_CALLS]: plan.maxMessagesPerMonth,
+          [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
           [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
           [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
         },

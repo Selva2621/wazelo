@@ -63,15 +63,15 @@ export function CampaignProgressRing({
         </svg>
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[28px] font-bold text-on-surface tabular-nums">
+          <span className="text-display font-semibold text-on-surface tabular-nums">
             {pct}%
           </span>
-          <span className="text-[11px] text-on-surface-variant/60 tabular-nums">
+          <span className="text-caption text-on-surface-variant/60 tabular-nums">
             {sent.toLocaleString()} / {total.toLocaleString()}
           </span>
         </div>
       </div>
-      <p className="text-[12px] text-on-surface-variant/60">
+      <p className="text-label text-on-surface-variant/60">
         Messages Processed
       </p>
     </div>

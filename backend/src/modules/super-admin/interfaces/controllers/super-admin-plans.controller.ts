@@ -1,49 +1,47 @@
 import {
   Controller, Get, Post, Patch, Body, Param,
-  UseGuards, Req, HttpCode, HttpStatus, ParseUUIDPipe,
+  Req, HttpCode, HttpStatus, ParseUUIDPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Public } from '@/common/decorators/public.decorator';
-import { SuperAdminGuard } from '../guards/super-admin.guard';
+import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
+import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { ListPlansUseCase } from '@/modules/billing/application/use-cases/list-plans.use-case';
-import { CreatePlanUseCase } from '@/modules/billing/application/use-cases/create-plan.use-case';
-import { UpdatePlanUseCase } from '@/modules/billing/application/use-cases/update-plan.use-case';
 import { CreatePlanDto } from '@/modules/billing/application/dto/create-plan.dto';
 import { UpdatePlanDto } from '@/modules/billing/application/dto/update-plan.dto';
+import {
+  SuperAdminCreatePlanUseCase,
+  SuperAdminUpdatePlanUseCase,
+} from '../../application/use-cases/super-admin-plans.use-cases';
+import { requestMeta } from '../request-meta';
 
 @Controller('super-admin/plans')
-@Public()
-@UseGuards(SuperAdminGuard)
+@SuperAdminOnly()
 export class SuperAdminPlansController {
   constructor(
     private readonly listPlansUseCase: ListPlansUseCase,
-    private readonly createPlanUseCase: CreatePlanUseCase,
-    private readonly updatePlanUseCase: UpdatePlanUseCase,
+    private readonly createPlanUseCase: SuperAdminCreatePlanUseCase,
+    private readonly updatePlanUseCase: SuperAdminUpdatePlanUseCase,
   ) {}
 
+  /** Includes inactive plans so they can be reactivated. */
   @Get()
   async listPlans() {
-    return this.listPlansUseCase.execute();
+    return this.listPlansUseCase.execute({ includeInactive: true });
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createPlan(@Body() dto: CreatePlanDto, @Req() req: Request) {
-    const user = (req as any).user;
-    const ip = req.ip ?? req.socket?.remoteAddress ?? '';
-    const ua = req.headers['user-agent'] ?? '';
-    return this.createPlanUseCase.execute(user.sub, dto, ip, ua);
+  async createPlan(@Body() dto: CreatePlanDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.createPlanUseCase.execute({ id: user.sub, email: user.email }, dto, requestMeta(req));
   }
 
   @Patch(':id')
   async updatePlan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePlanDto,
+    @CurrentUser() user: JwtPayload,
     @Req() req: Request,
   ) {
-    const user = (req as any).user;
-    const ip = req.ip ?? req.socket?.remoteAddress ?? '';
-    const ua = req.headers['user-agent'] ?? '';
-    return this.updatePlanUseCase.execute(id, user.sub, dto, ip, ua);
+    return this.updatePlanUseCase.execute({ id: user.sub, email: user.email }, id, dto, requestMeta(req));
   }
 }

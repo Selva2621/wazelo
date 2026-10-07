@@ -77,16 +77,16 @@ export function SlaBreachTable({
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[13px] font-medium text-on-surface-variant">
+        <h3 className="text-body font-medium text-on-surface-variant">
           SLA Breaches
         </h3>
-        <span className="text-[11px] text-on-surface-variant/50">
+        <span className="text-caption text-on-surface-variant/50">
           {breaches.length} breach{breaches.length !== 1 ? "es" : ""}
         </span>
       </div>
 
       {breaches.length === 0 ? (
-        <div className="py-8 text-center text-[13px] text-on-surface-variant/40">
+        <div className="py-8 text-center text-body text-on-surface-variant/40">
           No breaches found — all SLAs are being met
         </div>
       ) : (
@@ -113,7 +113,7 @@ export function SlaBreachTable({
                 <TableRow key={breach.id}>
                   <TableCell>
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${config.className}`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium ${config.className}`}
                     >
                       <StatusIcon className="h-3 w-3" />
                       {config.label}
@@ -143,12 +143,12 @@ export function SlaBreachTable({
                         <button
                           onClick={() => onAcknowledge(breach.id)}
                           disabled={isAcknowledging}
-                          className="text-[11px] text-primary hover:text-primary/80 font-medium disabled:opacity-50"
+                          className="text-caption text-primary hover:text-primary/80 font-medium disabled:opacity-50"
                         >
                           Acknowledge
                         </button>
                       ) : (
-                        <span className="text-[11px] text-on-surface-variant/40">
+                        <span className="text-caption text-on-surface-variant/40">
                           —
                         </span>
                       )}

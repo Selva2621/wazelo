@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MessageStatus, ChannelStatus } from '@prisma/client';
 import { ChannelAdapterRegistry } from '@/modules/channels/domain/services/channel-adapter-registry';
 import { ChannelService } from '@/modules/channels/domain/services/channel.service';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import {
   QUEUE_NAMES,
   EVENT_NAMES,
@@ -42,6 +43,7 @@ export class SendChannelMessageWorker implements OnModuleInit {
     private readonly adapterRegistry: ChannelAdapterRegistry,
     private readonly channelService: ChannelService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgStatus: OrgStatusService,
   ) {}
 
   async onModuleInit() {
@@ -98,7 +100,13 @@ export class SendChannelMessageWorker implements OnModuleInit {
       return;
     }
 
-    // 4. Verify channel is active
+    // 4. Suspended org: never send (failed without dead-letter, so nothing resends it)
+    if (await this.orgStatus.isSuspended(orgId)) {
+      await this.failMessage(messageId, orgId, 'Organization suspended', false);
+      return;
+    }
+
+    // 5. Verify channel is active
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
     });

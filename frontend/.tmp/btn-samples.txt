@@ -1,0 +1,246 @@
+app\(protected)\admin\teams\page.tsx
+  - <button onClick={() => router.push(`/admin/teams/${team.id}`)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="View / Edit team" >
+  + <IconButton size="xs" onClick={() => router.push(`/admin/teams/${team.id}`)} className="hover:text-primary hover:bg-primary/10" title="View / Edit team" aria-label="View / Edit team">
+app\(protected)\admin\teams\page.tsx
+  - <button onClick={() => setDeleteTarget({ id: team.id, name: team.name })} className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete team" >
+  + <IconButton size="xs" variant="danger" onClick={() => setDeleteTarget({ id: team.id, name: team.name })} title="Delete team" aria-label="Delete team">
+app\(protected)\admin\teams\[teamId]\page.tsx
+  - <button onClick={() => removeMember.mutate({ teamId: team.id, userId: member.user.id }) } className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Remove member" >
+  + <IconButton size="sm" variant="danger" onClick={() => removeMember.mutate({ teamId: team.id, userId: member.user.id }) } title="Remove member" aria-label="Remove member">
+app\(protected)\admin\users\page.tsx
+  - <button onClick={() => { if (!isSelf) { setChangingRoleUserId(user.id); setNewRole(user.role); } }} disabled={isSelf} className="group flex items-center gap-1.5" title={isSelf ? "Cannot change own role" : "Click to change role"} >
+  + <IconButton size="xs" onClick={() => { if (!isSelf) { setChangingRoleUserId(user.id); setNewRole(user.role); } }} disabled={isSelf} className="group" title={isSelf ? "Cannot change own role" : "Click to change role"} aria-label={isSelf ? "Cannot change own rol
+app\(protected)\admin\users\page.tsx
+  - <button onClick={() => disableUser.mutate(user.id)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-warning hover:bg-warning/10 transition-colors" title="Disable user" >
+  + <IconButton size="xs" onClick={() => disableUser.mutate(user.id)} className="hover:text-warning hover:bg-warning/10" title="Disable user" aria-label="Disable user">
+app\(protected)\admin\users\page.tsx
+  - <button onClick={() => enableUser.mutate(user.id)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-success hover:bg-success/10 transition-colors" title="Enable user" >
+  + <IconButton size="xs" onClick={() => enableUser.mutate(user.id)} className="hover:text-success hover:bg-success/10" title="Enable user" aria-label="Enable user">
+app\(protected)\admin\users\page.tsx
+  - <button onClick={() => { if ( confirm( `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`, ) ) { deleteUser.mutate(user.id); } }} className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="
+  + <IconButton size="xs" variant="danger" onClick={() => { if ( confirm( `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`, ) ) { deleteUser.mutate(user.id); } }} title="Delete user" aria-label="Delete user">
+app\(protected)\automation\[id]\page.tsx
+  - <button onClick={() => router.push("/automation")} className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" aria-label="Back" >
+  + <IconButton size="sm" onClick={() => router.push("/automation")} aria-label="Back" >
+app\(protected)\automation\[id]\page.tsx
+  - <button type="button" onClick={addAction} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-outline-variant/30 text-label text-on-surface-variant hover:border-primary/40 hover:text-primary transition-co
+  + <Button variant="secondary" size="sm" type="button" onClick={addAction} className="w-full border-dashed hover:text-primary" >
+app\(protected)\chatbot\[id]\page.tsx
+  - <button onClick={handleAutoLayout} title="Auto-layout nodes" className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" >
+  + <IconButton size="sm" onClick={handleAutoLayout} title="Auto-layout nodes" aria-label="Auto-layout nodes">
+app\(protected)\contacts\[id]\page.tsx
+  - <button onClick={startEditing} className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" >
+  + <IconButton size="md" onClick={startEditing} className="hover:text-primary hover:bg-primary/10" title="Edit" aria-label="Edit">
+app\(protected)\contacts\[id]\page.tsx
+  - <button onClick={() => setShowAssign(true)} className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Assign Owner" >
+  + <IconButton size="md" onClick={() => setShowAssign(true)} className="hover:text-primary hover:bg-primary/10" title="Assign Owner" aria-label="Assign Owner">
+app\(protected)\contacts\[id]\page.tsx
+  - <button onClick={handleExport} className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Export Data" >
+  + <IconButton size="md" onClick={handleExport} className="hover:text-primary hover:bg-primary/10" title="Export Data" aria-label="Export Data">
+app\(protected)\contacts\[id]\page.tsx
+  - <button onClick={() => setShowDeleteConfirm(true)} className="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete Contact" >
+  + <IconButton size="md" variant="danger" onClick={() => setShowDeleteConfirm(true)} title="Delete Contact" aria-label="Delete Contact">
+app\(protected)\lead-scoring\page.tsx
+  - <button onClick={() => onToggle(rule)} className="shrink-0 text-on-surface-variant hover:text-primary transition-colors" title={rule.enabled ? "Disable rule" : "Enable rule"} >
+  + <IconButton size="md" onClick={() => onToggle(rule)} className="hover:text-primary" title={rule.enabled ? "Disable rule" : "Enable rule"} aria-label={rule.enabled ? "Disable rule" : "Enable rule"}>
+app\(protected)\lead-scoring\page.tsx
+  - <button onClick={() => onEdit(rule)} className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Edit rule" >
+  + <IconButton size="xs" onClick={() => onEdit(rule)} title="Edit rule" aria-label="Edit rule">
+app\(protected)\lead-scoring\page.tsx
+  - <button onClick={() => onDelete(rule.id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete rule" >
+  + <IconButton size="xs" variant="danger" onClick={() => onDelete(rule.id)} title="Delete rule" aria-label="Delete rule">
+app\(protected)\leads\scraper\page.tsx
+  - <button onClick={() => onDuplicate(run)} title="Duplicate — copy settings to form" className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" >
+  + <IconButton size="xs" onClick={() => onDuplicate(run)} title="Duplicate — copy settings to form" aria-label="Duplicate — copy settings to form">
+app\(protected)\leads\scraper\page.tsx
+  - <button onClick={() => reRunMutation.mutate(run.id)} disabled={reRunMutation.isPending || isActive} title="Re-run same search" className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors disabled:opacity-
+  + <IconButton size="xs" onClick={() => reRunMutation.mutate(run.id)} disabled={reRunMutation.isPending || isActive} title="Re-run same search" className="hover:text-primary" aria-label="Re-run same search">
+app\(protected)\leads\scraper\page.tsx
+  - <button onClick={() => setConfirmDelete(true)} title="Delete run" className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error/10 hover:text-error transition-colors" >
+  + <IconButton size="xs" variant="danger" onClick={() => setConfirmDelete(true)} title="Delete run" aria-label="Delete run">
+app\(protected)\leads\scraper\page.tsx
+  - <button onClick={handleRun} disabled={!keywords.trim() || trigger.isPending} className="flex items-center gap-2 bg-primary text-on-primary text-body-lg font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed tra
+  + <Button size="lg" onClick={handleRun} disabled={!keywords.trim() || trigger.isPending} >
+app\(protected)\leads\scraper\[runId]\page.tsx
+  - <button onClick={exportCsv} className="flex items-center gap-2 border border-outline-variant text-on-surface text-body-lg font-medium px-4 py-2 rounded-xl hover:bg-surface-container transition-colors" >
+  + <Button variant="secondary" onClick={exportCsv} >
+app\(protected)\leads\scraper\[runId]\page.tsx
+  - <button onClick={handleImport} disabled={importMutation.isPending} className="flex items-center gap-2 border border-primary text-primary text-body-lg font-semibold px-4 py-2 rounded-xl hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed transiti
+  + <Button variant="secondary" onClick={handleImport} disabled={importMutation.isPending} className="border-primary text-primary hover:bg-primary/5" >
+app\(protected)\leads\scraper\[runId]\page.tsx
+  - <button onClick={() => setPitchOpen(true)} disabled={importedSelected.length === 0} title={importedSelected.length === 0 ? "Import leads first before pitching" : undefined} className="flex items-center gap-2 bg-primary text-on-primary text-body-lg font-semibol
+  + <Button onClick={() => setPitchOpen(true)} disabled={importedSelected.length === 0} title={importedSelected.length === 0 ? "Import leads first before pitching" : undefined} >
+app\(protected)\onboarding\page.tsx
+  - <button onClick={onContinue} className="bg-primary text-on-primary font-semibold px-8 py-3 rounded-xl hover:bg-primary/90 transition-colors inline-flex items-center gap-2" >
+  + <Button size="lg" onClick={onContinue} >
+app\(protected)\onboarding\page.tsx
+  - <button onClick={onNext} className="bg-primary text-on-primary font-semibold px-8 py-3 rounded-xl hover:bg-primary/90 transition-colors inline-flex items-center gap-2" >
+  + <Button size="lg" onClick={onNext} >
+app\(protected)\onboarding\page.tsx
+  - <button onClick={onNext} disabled={!selectedId} className="flex-1 bg-primary text-on-primary font-semibold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2" >
+  + <Button size="lg" onClick={onNext} disabled={!selectedId} className="flex-1" >
+app\(protected)\settings\chat-widget\page.tsx
+  - <button onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors" title="Copy">
+  + <IconButton size="xs" onClick={copyEmbed} className="absolute top-2 right-2 bg-surface" title="Copy" aria-label="Copy">
+app\(protected)\settings\page.tsx
+  - <button onClick={() => handleCopyKey(createdKey.rawKey!)} className="shrink-0 p-1.5 rounded-lg hover:bg-surface-container transition-colors" title="Copy" >
+  + <IconButton size="sm" onClick={() => handleCopyKey(createdKey.rawKey!)} title="Copy" aria-label="Copy">
+app\(protected)\settings\page.tsx
+  - <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors" >
+  + <Button onClick={() => setShowForm(true)} >
+app\(protected)\settings\page.tsx
+  - <button onClick={handleCopy} className="shrink-0 p-1 rounded hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface" title="Copy URL" >
+  + <IconButton size="xs" onClick={handleCopy} title="Copy URL" aria-label="Copy URL">
+app\(protected)\settings\page.tsx
+  - <button onClick={handleDelete} disabled={deleteIntegration.isPending} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant/40 hover:text-error transition-colors" title="Disconnect Shopify" >
+  + <IconButton size="xs" variant="danger" onClick={handleDelete} disabled={deleteIntegration.isPending} title="Disconnect Shopify" aria-label="Disconnect Shopify">
+app\(protected)\settings\products\page.tsx
+  - <button onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }} className="p-1 rounded text-on-surface-variant/50 hover:text-primary transition-colors" title="Edit category" >
+  + <IconButton size="xs" onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }} className="hover:text-primary" title="Edit category" aria-label="Edit category">
+app\(protected)\settings\products\page.tsx
+  - <button onClick={() => setDeleteCatTarget((categories ?? []).find((c) => c.id === tab.id) ?? null)} className="p-1 rounded text-on-surface-variant/50 hover:text-error transition-colors" title="Delete category" >
+  + <IconButton size="xs" variant="danger" onClick={() => setDeleteCatTarget((categories ?? []).find((c) => c.id === tab.id) ?? null)} title="Delete category" aria-label="Delete category">
+app\(protected)\settings\products\page.tsx
+  - <button onClick={() => openEdit(product)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" >
+  + <IconButton size="xs" onClick={() => openEdit(product)} className="hover:text-primary hover:bg-primary/10" title="Edit" aria-label="Edit">
+app\(protected)\settings\products\page.tsx
+  - <button onClick={() => setDeleteTarget(product)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete" >
+  + <IconButton size="xs" variant="danger" onClick={() => setDeleteTarget(product)} title="Delete" aria-label="Delete">
+app\(protected)\settings\shopify\page.tsx
+  - <button onClick={handleCopy} className="shrink-0 p-1 rounded hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface" title="Copy URL" >
+  + <IconButton size="xs" onClick={handleCopy} title="Copy URL" aria-label="Copy URL">
+app\(protected)\settings\shopify\page.tsx
+  - <button onClick={handleDelete} disabled={deleteIntegration.isPending} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant/40 hover:text-error transition-colors" title="Disconnect Shopify" >
+  + <IconButton size="xs" variant="danger" onClick={handleDelete} disabled={deleteIntegration.isPending} title="Disconnect Shopify" aria-label="Disconnect Shopify">
+app\(protected)\settings\sla\page.tsx
+  - <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors" >
+  + <Button onClick={() => setShowForm(true)} >
+app\(protected)\settings\templates\page.tsx
+  - <button onClick={() => startEdit(tpl)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" >
+  + <IconButton size="xs" onClick={() => startEdit(tpl)} className="hover:text-primary hover:bg-primary/10" title="Edit" aria-label="Edit">
+app\(protected)\settings\templates\page.tsx
+  - <button onClick={() => setDeleteTarget(tpl)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete" >
+  + <IconButton size="xs" variant="danger" onClick={() => setDeleteTarget(tpl)} title="Delete" aria-label="Delete">
+app\(protected)\sla\policies\page.tsx
+  - <button onClick={() => { setEditingPolicy(undefined); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors" >
+  + <Button size="sm" onClick={() => { setEditingPolicy(undefined); setShowForm(true); }} >
+app\(protected)\support\page.tsx
+  - <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 w-full border border-dashed border-outline-variant rounded-xl px-4 py-3 text-body-lg text-on-surface-variant hover:text-on-surface hover:border-primary/50 ho
+  + <Button variant="secondary" size="lg" type="button" onClick={() => fileInputRef.current?.click()} className="w-full border-dashed" >
+app\(protected)\support\page.tsx
+  - <button type="button" onClick={onClose} className="flex-1 border border-outline-variant rounded-xl py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" >
+  + <Button variant="secondary" size="lg" type="button" onClick={onClose} className="flex-1" >
+app\(protected)\support\page.tsx
+  - <button onClick={handleReply} disabled={!body.trim() || reply.isPending} className="bg-primary text-on-primary text-label font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 disabled:opacity-40 flex items-center gap-1.5 transition-colors" >
+  + <Button size="sm" onClick={handleReply} disabled={!body.trim() || reply.isPending} >
+app\(protected)\support\page.tsx
+  - <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-primary text-on-primary text-body-lg font-semibold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-colors shadow-sm" >
+  + <Button size="lg" onClick={() => setShowModal(true)} >
+app\super-admin\dashboard\page.tsx
+  - <button onClick={() => refetch()} className="flex items-center gap-1.5 text-label text-on-surface-variant hover:text-on-surface bg-surface-container-low border border-outline-variant hover:border-outline-variant/70 px-3 py-1.5 rounded-lg transition-all" >
+  + <Button variant="secondary" size="sm" onClick={() => refetch()} >
+app\super-admin\login\page.tsx
+  - <button type="submit" disabled={login.isPending} className="w-full bg-primary hover:bg-primary/90 text-on-primary font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60" >
+  + <Button size="lg" type="submit" disabled={login.isPending} className="w-full" >
+app\super-admin\plans\page.tsx
+  - <button onClick={() => openEdit(plan)} className="p-1.5 text-on-surface-variant hover:text-primary-container hover:bg-primary/10 rounded-lg transition-colors" title="Edit" >
+  + <IconButton size="sm" onClick={() => openEdit(plan)} className="hover:text-primary-container hover:bg-primary/10" title="Edit" aria-label="Edit">
+app\super-admin\plans\page.tsx
+  - <button onClick={() => handleToggle(plan)} className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" title={plan.isActive ? "Deactivate" : "Activate"} >
+  + <IconButton size="sm" onClick={() => handleToggle(plan)} title={plan.isActive ? "Deactivate" : "Activate"} aria-label={plan.isActive ? "Deactivate" : "Activate"}>
+app\super-admin\tickets\[id]\page.tsx
+  - <button onClick={handleReply} disabled={!replyBody.trim() || replyMutation.isPending} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary text-body-lg font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50" >
+  + <Button onClick={handleReply} disabled={!replyBody.trim() || replyMutation.isPending} >
+components\automation\create-automation-rule-modal.tsx
+  - <button type="button" onClick={() => { setShowAiPanel(true); setTimeout(() => promptRef.current?.focus(), 50); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-primary/20 bg-primary/5 text-body text
+  + <Button variant="secondary" size="lg" type="button" onClick={() => { setShowAiPanel(true); setTimeout(() => promptRef.current?.focus(), 50); }} className="w-full border-dashed border-primary/20 bg-primary/5 text-primary hover:bg-primary/10" >
+components\billing\usage-limit-banner.tsx
+  - <button onClick={() => setDismissed(true)} className="p-1 rounded text-warning/60 hover:text-warning transition-colors shrink-0" aria-label="Dismiss warning" >
+  + <IconButton size="xs" onClick={() => setDismissed(true)} className="text-warning/60 hover:text-warning" aria-label="Dismiss warning" >
+components\campaigns\create-campaign-modal.tsx
+  - <button type="button" onClick={() => setShowTemplatePicker((v) => !v)} className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-body text-on-surface-variant/60 hover:bg-surface-contain
+  + <Button variant="secondary" size="lg" type="button" onClick={() => setShowTemplatePicker((v) => !v)} className="mt-1 w-full text-on-surface-variant/60 text-left" >
+components\chat\chat-input.tsx
+  - <button onClick={removeAttachment} className="shrink-0 p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Remove attachment" >
+  + <IconButton size="sm" variant="danger" onClick={removeAttachment} title="Remove attachment" aria-label="Remove attachment">
+components\chat\chat-input.tsx
+  - <button type="button" className="shrink-0 p-1.5 text-on-surface-variant hover:text-on-surface transition-colors rounded-lg" title="Emoji" >
+  + <IconButton size="md" type="button" title="Emoji" aria-label="Emoji">
+components\contacts\contact-detail-drawer.tsx
+  - <button onClick={() => router.push(`/contacts/${contactId}`)} className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Open full profile" >
+  + <IconButton size="sm" onClick={() => router.push(`/contacts/${contactId}`)} className="hover:text-primary hover:bg-primary/10" title="Open full profile" aria-label="Open full profile">
+components\contacts\contact-detail-drawer.tsx
+  - <button onClick={startEditing} className="shrink-0 p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Edit contact" >
+  + <IconButton size="sm" onClick={startEditing} className="hover:text-primary hover:bg-primary/10" title="Edit contact" aria-label="Edit contact">
+components\dashboard\setup-checklist.tsx
+  - <button onClick={dismiss} aria-label="Dismiss" className="absolute right-3 top-3 z-10 p-1 rounded-md text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high transition-colors" >
+  + <IconButton size="xs" onClick={dismiss} aria-label="Dismiss" className="absolute right-3 top-3 z-10 hover:text-on-surface-variant" >
+components\inbox\inbox-view.tsx
+  - <button onClick={() => setShowCloseConfirm(true)} disabled={closeConversation.isPending} className="p-2 rounded-lg text-on-surface-variant hover:text-warning hover:bg-warning/10 transition-colors" title="Close conversation" >
+  + <IconButton size="md" onClick={() => setShowCloseConfirm(true)} disabled={closeConversation.isPending} className="hover:text-warning hover:bg-warning/10" title="Close conversation" aria-label="Close conversation">
+components\inbox\inbox-view.tsx
+  - <button onClick={() => selectedId && reopenConversation.mutate(selectedId)} disabled={reopenConversation.isPending} className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Reopen conversation" >
+  + <IconButton size="md" onClick={() => selectedId && reopenConversation.mutate(selectedId)} disabled={reopenConversation.isPending} className="hover:text-primary hover:bg-primary/10" title="Reopen conversation" aria-label="Reopen conversation">
+components\inbox\inbox-view.tsx
+  - <button onClick={() => selectedId && archiveConversation.mutate(selectedId)} disabled={archiveConversation.isPending} className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Archive conversat
+  + <IconButton size="md" onClick={() => selectedId && archiveConversation.mutate(selectedId)} disabled={archiveConversation.isPending} title="Archive conversation" aria-label="Archive conversation">
+components\inbox\inbox-view.tsx
+  - <button onClick={() => setShowCreateDeal(true)} className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Create deal" >
+  + <IconButton size="md" onClick={() => setShowCreateDeal(true)} className="hover:text-primary hover:bg-primary/10" title="Create deal" aria-label="Create deal">
+components\inbox\inbox-view.tsx
+  - <button onClick={() => { if (!selectedId || !selectedRawConv) return; sendCsatSurvey.mutate({ conversationId: selectedId, contactPhone: selectedRawConv.contactPhone, sessionId: selectedRawConv.sessionId ?? undefined, }); }} disabled={sendCsatSurvey.isPending} 
+  + <IconButton size="xs" onClick={() => { if (!selectedId || !selectedRawConv) return; sendCsatSurvey.mutate({ conversationId: selectedId, contactPhone: selectedRawConv.contactPhone, sessionId: selectedRawConv.sessionId ?? undefined, }); }} disabled={sendCsatSurv
+components\inbox\inbox-view.tsx
+  - <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteConversation.isPending} className="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete conversation" >
+  + <IconButton size="md" variant="danger" onClick={() => setShowDeleteConfirm(true)} disabled={deleteConversation.isPending} title="Delete conversation" aria-label="Delete conversation">
+components\layout\sidebar.tsx
+  - <button onClick={() => logout.mutate()} className="text-on-surface-variant hover:text-error transition-colors p-1.5 rounded-lg" title="Sign out" >
+  + <IconButton size="sm" variant="danger" onClick={() => logout.mutate()} title="Sign out" aria-label="Sign out">
+components\layout\sidebar.tsx
+  - <button onClick={toggleSidebar} className="text-on-surface-variant hover:text-on-surface transition-colors p-1.5 rounded-lg" title={collapsed ? "Expand sidebar" : "Collapse sidebar"} >
+  + <IconButton size="sm" onClick={toggleSidebar} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+components\lead-scraper\pitch-template-modal.tsx
+  - <button onClick={handleClose} className="mt-2 bg-primary text-on-primary text-body-lg font-semibold px-5 py-2 rounded-xl hover:bg-primary/90 transition-colors" >
+  + <Button onClick={handleClose} className="mt-2" >
+components\lead-scraper\pitch-template-modal.tsx
+  - <button onClick={handleSend} disabled={!selectedTemplate || !channel || sending || selectedResults.length === 0} className="flex items-center gap-2 bg-primary text-on-primary text-body-lg font-semibold px-5 py-2 rounded-xl hover:bg-primary/90 disabled:opacity-
+  + <Button onClick={handleSend} disabled={!selectedTemplate || !channel || sending || selectedResults.length === 0} >
+components\notifications\notification-center.tsx
+  - <button onClick={() => { setIsOpen(!isOpen); if (!isOpen) refetch(); }} className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" aria-label="Notifications" >
+  + <IconButton size="md" onClick={() => { setIsOpen(!isOpen); if (!isOpen) refetch(); }} className="relative" aria-label="Notifications" >
+components\notifications\notification-center.tsx
+  - <button onClick={(e) => { e.stopPropagation(); onMarkRead(); }} className="p-1 rounded text-on-surface-variant/50 hover:text-primary hover:bg-primary/10 transition-colors" title="Mark as read" >
+  + <IconButton size="xs" onClick={(e) => { e.stopPropagation(); onMarkRead(); }} className="hover:text-primary hover:bg-primary/10" title="Mark as read" aria-label="Mark as read">
+components\notifications\notification-center.tsx
+  - <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1 rounded text-on-surface-variant/50 hover:text-error hover:bg-error/10 transition-colors" title="Delete" >
+  + <IconButton size="xs" variant="danger" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete" aria-label="Delete">
+components\scheduler\scheduled-messages-table.tsx
+  - <button onClick={() => onCancel(msg.id)} disabled={isCancelling} className="p-1.5 rounded-lg text-on-surface-variant/40 hover:text-error hover:bg-error/10 transition-colors disabled:opacity-50" title="Cancel message" >
+  + <IconButton size="sm" variant="danger" onClick={() => onCancel(msg.id)} disabled={isCancelling} title="Cancel message" aria-label="Cancel message">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => onStart(seq.id)} className="p-1 rounded text-success hover:bg-success/10 transition-colors" title="Start" >
+  + <IconButton size="xs" onClick={() => onStart(seq.id)} className="text-success hover:bg-success/10" title="Start" aria-label="Start">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => onPause(seq.id)} className="p-1 rounded text-warning hover:bg-warning/10 transition-colors" title="Pause" >
+  + <IconButton size="xs" onClick={() => onPause(seq.id)} className="text-warning hover:bg-warning/10" title="Pause" aria-label="Pause">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => onResume(seq.id)} className="p-1 rounded text-success hover:bg-success/10 transition-colors" title="Resume" >
+  + <IconButton size="xs" onClick={() => onResume(seq.id)} className="text-success hover:bg-success/10" title="Resume" aria-label="Resume">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => onCancel(seq.id)} className="p-1 rounded text-error hover:bg-error/10 transition-colors" title="Cancel" >
+  + <IconButton size="xs" variant="danger" onClick={() => onCancel(seq.id)} className="text-error" title="Cancel" aria-label="Cancel">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => onAnalytics(seq.id)} className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Analytics" >
+  + <IconButton size="xs" onClick={() => onAnalytics(seq.id)} className="hover:text-primary hover:bg-primary/10" title="Analytics" aria-label="Analytics">
+components\sequences\sequence-table.tsx
+  - <button onClick={() => { if (confirm(`Delete sequence "${seq.name}"? This cannot be undone.`)) { onDelete(seq.id); } }} className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors" title="Delete" >
+  + <IconButton size="xs" variant="danger" onClick={() => { if (confirm(`Delete sequence "${seq.name}"? This cannot be undone.`)) { onDelete(seq.id); } }} title="Delete" aria-label="Delete">
+components\sla\sla-policy-list.tsx
+  - <button onClick={() => onToggle(p.id, !p.isActive)} disabled={isUpdating} title={p.isActive ? "Disable" : "Enable"} className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-40" >
+  + <IconButton size="sm" onClick={() => onToggle(p.id, !p.isActive)} disabled={isUpdating} title={p.isActive ? "Disable" : "Enable"} aria-label={p.isActive ? "Disable" : "Enable"}>
+components\sla\sla-policy-list.tsx
+  - <button onClick={() => onEdit(p)} title="Edit" className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors" >
+  + <IconButton size="sm" onClick={() => onEdit(p)} title="Edit" className="hover:text-primary hover:bg-primary/8" aria-label="Edit">
+components\sla\sla-policy-list.tsx
+  - <button onClick={() => onDelete(p.id)} title="Delete" className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors" >
+  + <IconButton size="sm" variant="danger" onClick={() => onDelete(p.id)} title="Delete" aria-label="Delete">

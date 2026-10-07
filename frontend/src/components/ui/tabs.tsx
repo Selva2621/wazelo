@@ -23,7 +23,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={cn(
-            "px-3 py-2 text-[13px] font-medium rounded-lg transition-colors",
+            "px-3 py-2 text-body font-medium rounded-lg transition-colors",
             activeTab === tab.id
               ? "text-primary bg-primary/10"
               : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container",
@@ -33,7 +33,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
           {tab.count !== undefined && (
             <span
               className={cn(
-                "ml-1.5 text-[11px]",
+                "ml-1.5 text-caption",
                 activeTab === tab.id
                   ? "text-primary/70"
                   : "text-on-surface-variant/60",

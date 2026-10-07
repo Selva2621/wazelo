@@ -136,17 +136,17 @@ export function ContactsTable({
                     size="sm"
                   />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-on-surface truncate">
+                    <p className="text-body font-medium text-on-surface truncate">
                       {contact.name || "Unknown"}
                     </p>
-                    <p className="text-[11px] text-on-surface-variant/60 truncate">
+                    <p className="text-caption text-on-surface-variant/60 truncate">
                       {contact.phoneNumber}
                     </p>
                   </div>
                 </div>
               </TableCell>
 
-              <TableCell className="text-[12px] text-on-surface-variant truncate max-w-[180px]">
+              <TableCell className="text-label text-on-surface-variant truncate max-w-[180px]">
                 {contact.email || "—"}
               </TableCell>
 
@@ -158,7 +158,7 @@ export function ContactsTable({
                 <LeadScoreBadge score={contact.leadScore} />
               </TableCell>
 
-              <TableCell className="text-[12px] text-on-surface-variant truncate">
+              <TableCell className="text-label text-on-surface-variant truncate">
                 {contact.owner.firstName} {contact.owner.lastName}
               </TableCell>
 
@@ -170,7 +170,7 @@ export function ContactsTable({
                     </Badge>
                   ))}
                   {contact.contactTags.length > 2 && (
-                    <span className="text-[11px] text-on-surface-variant/50">
+                    <span className="text-caption text-on-surface-variant/50">
                       +{contact.contactTags.length - 2}
                     </span>
                   )}
@@ -185,7 +185,7 @@ export function ContactsTable({
                     </Badge>
                   ))}
                   {(contact.contactProducts || []).length > 2 && (
-                    <span className="text-[11px] text-on-surface-variant/50">
+                    <span className="text-caption text-on-surface-variant/50">
                       +{(contact.contactProducts || []).length - 2}
                     </span>
                   )}
@@ -198,7 +198,7 @@ export function ContactsTable({
                 </Badge>
               </TableCell>
 
-              <TableCell className="text-[11px] text-on-surface-variant/60">
+              <TableCell className="text-caption text-on-surface-variant/60">
                 {timeAgo(contact.createdAt)}
               </TableCell>
 

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UserRole, UserStatus, TokenType, UsageMetricType } from '@prisma/client';
+import { UserRole, UserStatus, TokenType } from '@prisma/client';
 import { RegisterDto } from '../dto/register.dto';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
 import { OrgService } from '@/modules/org/domain/services/org.service';
@@ -16,8 +16,6 @@ import { TokenRepository } from '../../infrastructure/repositories/token.reposit
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { QUEUE_NAMES, EVENT_NAMES, SAFE_AUTH_MESSAGE } from '@/common/constants';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { SeedOrgPermissionsUseCase } from '@/modules/rbac/application/use-cases';
-import { RebuildOrgMemoryUseCase } from '@/modules/org/application/use-cases/rebuild-org-memory.use-case';
 
 export interface RegisterResult {
   message: string;
@@ -38,8 +36,6 @@ export class RegisterUseCase {
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly seedOrgPermissionsUseCase: SeedOrgPermissionsUseCase,
-    private readonly rebuildOrgMemoryUseCase: RebuildOrgMemoryUseCase,
   ) {}
 
   async execute(
@@ -111,26 +107,12 @@ export class RegisterUseCase {
       },
     );
 
-    // Auto-subscribe new org to the free-trial plan (non-blocking)
-    this.autoAssignTrial(user.orgId, user.id).catch((err) => {
-      this.logger.error(
-        `Failed to auto-assign trial for org ${user.orgId}: ${err.message}`,
-      );
-    });
-
-    // Seed default RBAC permissions for the new org (non-blocking)
-    this.seedOrgPermissionsUseCase.execute(user.orgId).catch((err) => {
-      this.logger.error(
-        `Failed to seed permissions for org ${user.orgId}: ${err.message}`,
-      );
-    });
-
-    // Initialize AI memory for the new org (non-blocking)
-    this.rebuildOrgMemoryUseCase.execute(user.orgId).catch((err) => {
-      this.logger.error(
-        `Failed to initialize AI memory for org ${user.orgId}: ${err.message}`,
-      );
-    });
+    // Seed trial, permissions, AI memory and default master data (retried by pg-boss)
+    await this.queueService.publishOnce(
+      QUEUE_NAMES.ORG_ONBOARDING,
+      { orgId: user.orgId, mode: 'signup' },
+      `org-onboarding:${user.orgId}`,
+    );
 
     // Audit log (fire-and-forget, won't break main flow)
     await this.auditService.log({
@@ -173,58 +155,6 @@ export class RegisterUseCase {
     });
 
     return { message: SAFE_AUTH_MESSAGE };
-  }
-
-  private async autoAssignTrial(orgId: string, userId: string): Promise<void> {
-    const trialPlan = await this.prisma.plan.findFirst({
-      where: { isDefault: true, isActive: true, deletedAt: null },
-    });
-    if (!trialPlan || trialPlan.trialDays <= 0) return;
-
-    const now = new Date();
-    const trialEndsAt = new Date(now.getTime() + trialPlan.trialDays * 24 * 60 * 60 * 1000);
-
-    await this.prisma.subscription.create({
-      data: {
-        orgId,
-        planId: trialPlan.id,
-        status: 'TRIAL',
-        billingCycle: trialPlan.billingCycle,
-        priceInCents: 0,
-        currency: trialPlan.currency,
-        trialEndsAt,
-        currentPeriodStart: now,
-        currentPeriodEnd: trialEndsAt,
-      },
-    });
-
-    await this.prisma.organization.update({
-      where: { id: orgId },
-      data: { trialUsedAt: now },
-    });
-
-    const limitMap: Record<string, number> = {
-      [UsageMetricType.MESSAGES_SENT]: trialPlan.maxMessagesPerMonth,
-      [UsageMetricType.ACTIVE_USERS]: trialPlan.maxUsers,
-      [UsageMetricType.WHATSAPP_SESSIONS]: trialPlan.maxWhatsappSessions,
-      [UsageMetricType.CAMPAIGN_EXECUTIONS]: trialPlan.maxCampaignsPerMonth,
-      [UsageMetricType.API_CALLS]: trialPlan.maxMessagesPerMonth,
-    };
-
-    for (const [metricType, limitValue] of Object.entries(limitMap)) {
-      await this.prisma.usageRecord.create({
-        data: {
-          orgId,
-          metricType: metricType as UsageMetricType,
-          currentValue: 0,
-          limitValue,
-          periodStart: now,
-          periodEnd: trialEndsAt,
-        },
-      });
-    }
-
-    this.logger.log(`Auto-assigned free trial to org ${orgId}`);
   }
 
   private async generateSlugInTx(

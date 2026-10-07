@@ -56,6 +56,7 @@ import {
 import { exportContactData, eraseContactData } from "@/lib/api/gdpr";
 import { SendMessageModal } from "@/components/contacts/send-message-modal";
 import type { LeadStatus } from "@/lib/types/contacts";
+import { IconButton } from "@/components/ui/icon-button";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -174,7 +175,7 @@ export default function ContactDetailPage() {
       {/* Back nav */}
       <button
         onClick={() => router.push("/contacts")}
-        className="flex items-center gap-1.5 text-[13px] text-on-surface-variant hover:text-on-surface transition-colors"
+        className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Contacts
@@ -199,7 +200,7 @@ export default function ContactDetailPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditing(false); }}
                   autoFocus
                   placeholder="Contact name"
-                  className="w-full h-9 rounded-lg bg-surface-container px-3 text-[16px] font-semibold text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/20"
+                  className="w-full h-9 rounded-lg bg-surface-container px-3 text-title-sm font-semibold text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/20"
                 />
                 <input
                   value={editForm.email}
@@ -207,7 +208,7 @@ export default function ContactDetailPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") handleEditSave(); if (e.key === "Escape") setEditing(false); }}
                   placeholder="email@example.com"
                   type="email"
-                  className="w-full h-8 rounded-lg bg-surface-container px-3 text-[13px] text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/20"
+                  className="w-full h-8 rounded-lg bg-surface-container px-3 text-body text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/20"
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleEditSave} loading={updateContact.isPending}>
@@ -220,10 +221,10 @@ export default function ContactDetailPage() {
               </div>
             ) : (
               <>
-                <h1 className="text-[22px] font-bold text-on-surface truncate">
+                <h1 className="text-headline font-semibold text-on-surface truncate">
                   {contact.name || "Unknown"}
                 </h1>
-                <div className="flex items-center gap-4 flex-wrap text-[13px] text-on-surface-variant">
+                <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant">
                   <span className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> {contact.phoneNumber}
                   </span>
@@ -237,7 +238,7 @@ export default function ContactDetailPage() {
                     <Badge variant="default">{SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
                   </span>
                 </div>
-                <div className="text-[12px] text-on-surface-variant/60">
+                <div className="text-label text-on-surface-variant/60">
                   Owner: {contact.owner.firstName} {contact.owner.lastName}
                   {" · "}
                   Created: {new Date(contact.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -250,47 +251,43 @@ export default function ContactDetailPage() {
           <div className="flex items-center gap-2 shrink-0">
             <LeadScoreBadge score={contact.leadScore} size="md" />
             {!editing && (
-              <button
+              <IconButton size="sm"
                 onClick={startEditing}
-                className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                title="Edit"
-              >
+                className="hover:text-primary hover:bg-primary/10"
+                title="Edit" aria-label="Edit">
                 <Pencil className="h-4 w-4" />
-              </button>
+              </IconButton>
             )}
-            <button
+            <IconButton size="sm"
               onClick={() => setShowAssign(true)}
-              className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-              title="Assign Owner"
-            >
+              className="hover:text-primary hover:bg-primary/10"
+              title="Assign Owner" aria-label="Assign Owner">
               <UserPlus className="h-4 w-4" />
-            </button>
+            </IconButton>
             <Button size="sm" onClick={() => setShowSendMessage(true)}>
               <MessageSquare className="h-4 w-4 mr-1" /> Send Message
             </Button>
             <Button size="sm" variant="secondary" onClick={openConversation}>
               Open Chat
             </Button>
-            <button
+            <IconButton size="sm"
               onClick={handleExport}
-              className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-              title="Export Data"
-            >
+              className="hover:text-primary hover:bg-primary/10"
+              title="Export Data" aria-label="Export Data">
               <Download className="h-4 w-4" />
-            </button>
-            <button
+            </IconButton>
+            <IconButton size="sm" variant="danger"
               onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-              title="Delete Contact"
-            >
+             
+              title="Delete Contact" aria-label="Delete Contact">
               <Trash2 className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
         {/* Lead status row */}
         <div className="space-y-1.5">
-          <p className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Lead Status</p>
+          <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Lead Status</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             {LEAD_STATUSES.map((s) => (
               <button
@@ -370,7 +367,7 @@ function OverviewTab({ contact, contactId }: { contact: any; contactId: string }
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Contact Info */}
       <div className="space-y-3">
-        <h3 className="text-[13px] font-semibold text-on-surface-variant/70 uppercase tracking-wide">
+        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
           Contact Information
         </h3>
         <div className="space-y-2">
@@ -399,8 +396,8 @@ function OverviewTab({ contact, contactId }: { contact: any; contactId: string }
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5 border-b border-outline-variant/8">
-      <span className="text-[12px] text-on-surface-variant/60 shrink-0 w-24">{label}</span>
-      <span className="text-[13px] text-on-surface text-right">{value}</span>
+      <span className="text-label text-on-surface-variant/60 shrink-0 w-24">{label}</span>
+      <span className="text-body text-on-surface text-right">{value}</span>
     </div>
   );
 }
@@ -447,22 +444,22 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-on-surface-variant/70 uppercase tracking-wide">
+        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
           Custom Fields
         </h3>
         {!editing ? (
-          <button onClick={startEdit} className="text-[12px] text-primary hover:underline">
+          <button onClick={startEdit} className="text-label text-primary hover:underline">
             Edit
           </button>
         ) : (
           <div className="flex gap-2">
-            <button onClick={() => setEditing(false)} className="text-[12px] text-on-surface-variant hover:underline">
+            <button onClick={() => setEditing(false)} className="text-label text-on-surface-variant hover:underline">
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saveMut.isPending}
-              className="text-[12px] text-primary font-medium hover:underline"
+              className="text-label text-primary font-medium hover:underline"
             >
               {saveMut.isPending ? "Saving..." : "Save"}
             </button>
@@ -473,7 +470,7 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
       {isLoading && <Spinner size="sm" />}
 
       {!isLoading && (!definitions || definitions.length === 0) && (
-        <p className="text-[12px] text-on-surface-variant/50">
+        <p className="text-label text-on-surface-variant/50">
           No custom fields defined. Add them in Settings → Custom Fields.
         </p>
       )}
@@ -484,7 +481,7 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
             const currentValue = fieldValues?.find((fv) => fv.fieldId === def.id)?.value || "";
             return (
               <div key={def.id} className="flex items-center justify-between py-1.5 border-b border-outline-variant/8">
-                <span className="text-[12px] text-on-surface-variant/60 shrink-0 w-24">{def.fieldLabel}</span>
+                <span className="text-label text-on-surface-variant/60 shrink-0 w-24">{def.fieldLabel}</span>
                 {editing ? (
                   def.fieldType === "boolean" ? (
                     <input
@@ -497,7 +494,7 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
                     <select
                       value={values[def.id] || ""}
                       onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                      className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[12px]"
+                      className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label"
                     >
                       <option value="">—</option>
                       {(def.options as string[]).map((o) => (
@@ -509,11 +506,11 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
                       type={def.fieldType === "number" ? "number" : def.fieldType === "date" ? "date" : "text"}
                       value={values[def.id] || ""}
                       onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                      className="max-w-[180px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[12px] text-on-surface"
+                      className="max-w-[180px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface"
                     />
                   )
                 ) : (
-                  <span className="text-[13px] text-on-surface">{currentValue || "—"}</span>
+                  <span className="text-body text-on-surface">{currentValue || "—"}</span>
                 )}
               </div>
             );
@@ -534,7 +531,7 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[14px] font-semibold text-on-surface">
+        <h3 className="text-body-lg font-semibold text-on-surface">
           Deals <span className="text-on-surface-variant/50 font-normal">({deals?.length || 0})</span>
         </h3>
         <Button size="sm" onClick={() => setShowCreate(true)}>
@@ -547,20 +544,20 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
           {deals.map((deal) => (
             <div key={deal.id} className="p-4 rounded-xl bg-surface-container border border-outline-variant/10 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[14px] font-medium text-on-surface">{deal.title}</span>
+                <span className="text-body-lg font-medium text-on-surface">{deal.title}</span>
                 <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
                   {deal.status}
                 </Badge>
               </div>
               {deal.value != null && (
-                <p className="text-[13px] text-primary font-semibold">
+                <p className="text-body text-primary font-semibold">
                   ₹{Number(deal.value).toLocaleString("en-IN")}
                 </p>
               )}
               {deal.stage && (
-                <p className="text-[12px] text-on-surface-variant/60">Stage: {deal.stage.name}</p>
+                <p className="text-label text-on-surface-variant/60">Stage: {deal.stage.name}</p>
               )}
-              <p className="text-[11px] text-on-surface-variant/50">
+              <p className="text-caption text-on-surface-variant/50">
                 {new Date(deal.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </p>
             </div>
@@ -569,8 +566,8 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
       ) : (
         <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Briefcase className="h-8 w-8 text-on-surface-variant/30" />
-          <p className="text-[13px] text-on-surface-variant/50">No deals yet</p>
-          <button onClick={() => setShowCreate(true)} className="text-[13px] text-primary hover:underline">
+          <p className="text-body text-on-surface-variant/50">No deals yet</p>
+          <button onClick={() => setShowCreate(true)} className="text-body text-primary hover:underline">
             Create first deal
           </button>
         </div>
@@ -602,7 +599,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[14px] font-semibold text-on-surface">
+        <h3 className="text-body-lg font-semibold text-on-surface">
           Products <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
         </h3>
         {available.length > 0 && (
@@ -614,7 +611,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
               }
             }}
             defaultValue=""
-            className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-[13px] text-on-surface"
+            className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface"
           >
             <option value="" disabled>+ Assign Product</option>
             {available.map((p) => (
@@ -633,7 +630,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
                   <Package className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-medium text-on-surface">{p.name}</p>
+                  <p className="text-body font-medium text-on-surface">{p.name}</p>
                   <Badge variant={p.status === "ACTIVE" ? "success" : "muted"} className="mt-0.5">
                     {p.status}
                   </Badge>
@@ -641,7 +638,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
               </div>
               <button
                 onClick={() => unassignProduct.mutate({ contactId, productId: p.id })}
-                className="text-[12px] text-error hover:underline"
+                className="text-label text-error hover:underline"
               >
                 Remove
               </button>
@@ -651,9 +648,9 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
       ) : (
         <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Package className="h-8 w-8 text-on-surface-variant/30" />
-          <p className="text-[13px] text-on-surface-variant/50">No products assigned yet</p>
+          <p className="text-body text-on-surface-variant/50">No products assigned yet</p>
           {available.length > 0 && (
-            <p className="text-[12px] text-on-surface-variant/40">Use the dropdown above to assign a product</p>
+            <p className="text-label text-on-surface-variant/40">Use the dropdown above to assign a product</p>
           )}
         </div>
       )}

@@ -8,6 +8,7 @@ import { DeadLetterRepository } from '@/modules/messages/infrastructure/reposito
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { RateLimiterService } from '@/modules/messages/domain/services/rate-limiter.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   QUEUE_NAMES,
@@ -69,6 +70,7 @@ export class SendMessageWorker implements OnModuleInit {
     private readonly rateLimiter: RateLimiterService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgStatus: OrgStatusService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -100,6 +102,20 @@ export class SendMessageWorker implements OnModuleInit {
       message.whatsappMessageId
     ) {
       this.logger.log(`Message ${messageId} already processed (${message.status}), skipping`);
+      return;
+    }
+
+    // Suspended org: never send. Failed without retry or dead-letter, so nothing resends it later.
+    if (await this.orgStatus.isSuspended(orgId)) {
+      await this.messageRepo.markFailed(messageId, 'Organization suspended');
+      await this.messageEventRepo.record({
+        messageId,
+        orgId,
+        status: MessageStatus.FAILED,
+        error: 'Organization suspended',
+        metadata: { jobId },
+      });
+      this.logger.warn(`Message ${messageId} not sent — org ${orgId} is suspended`);
       return;
     }
 

@@ -12,14 +12,11 @@ import {
   Bug,
   ChevronLeft,
   ChevronRight,
-  ShieldAlert,
   RefreshCw,
   Clock,
   Gauge,
   Server,
 } from "lucide-react";
-import { usePageTitle } from "@/hooks/use-page-title";
-import { useAuthStore } from "@/stores/auth-store";
 import {
   useHealth,
   useQueueHealth,
@@ -34,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { HealthStatus, QueueHealth, AlertRule, AlertEvent, ErrorGroup } from "@/lib/types/observability";
 import { PAGE_SIZE } from "@/lib/constants";
+import { IconButton } from "@/components/ui/icon-button";
 
 type ObsTab = "overview" | "queues" | "alerts" | "errors";
 
@@ -49,37 +47,17 @@ const STATUS_TEXT: Record<HealthStatus, string> = {
   unhealthy: "text-error",
 };
 
-export default function ObservabilityPage() {
-  usePageTitle("System Observability");
-
-  const user = useAuthStore((s) => s.user);
+// Platform-wide data: access is enforced by the super admin layout + API guard.
+export default function SystemHealthPage() {
   const [activeTab, setActiveTab] = useState<ObsTab>("overview");
-
-  if (user?.role !== "ADMIN") {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center">
-          <ShieldAlert className="h-12 w-12 text-on-surface-variant/40 mx-auto mb-3" />
-          <p className="text-[14px] text-on-surface-variant">
-            You don&apos;t have permission to view system observability.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 p-6 space-y-6">
       {/* Header */}
       <div>
-        <p className="text-[12px] text-on-surface-variant mb-1">
-          Admin &gt; Observability
-        </p>
-        <h1 className="text-2xl font-semibold text-on-surface">
-          System Observability
-        </h1>
-        <p className="text-[13px] text-on-surface-variant mt-1">
-          Monitor system health, queue status, alerts, and errors
+        <h1 className="text-title font-semibold text-on-surface">System Health</h1>
+        <p className="text-body-lg text-on-surface-variant mt-1">
+          Platform-wide health, queues, alerts and errors across all organizations
         </p>
       </div>
 
@@ -96,7 +74,7 @@ export default function ObservabilityPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body font-medium transition-colors ${
               activeTab === tab.id
                 ? "bg-surface-container text-on-surface shadow-sm"
                 : "text-on-surface-variant hover:text-on-surface"
@@ -138,16 +116,16 @@ function OverviewSection() {
               <div
                 className={`w-3 h-3 rounded-full ${STATUS_COLORS[health.status]} animate-pulse`}
               />
-              <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wider">
+              <span className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
                 System Status
               </span>
             </div>
             <p
-              className={`text-xl font-bold capitalize ${STATUS_TEXT[health.status]}`}
+              className={`text-title font-semibold capitalize ${STATUS_TEXT[health.status]}`}
             >
               {health.status}
             </p>
-            <p className="text-[11px] text-on-surface-variant/60 mt-1">
+            <p className="text-caption text-on-surface-variant/60 mt-1">
               Uptime: {formatUptime(health.uptime)}
             </p>
           </Card>
@@ -194,7 +172,7 @@ function OverviewSection() {
       {!metricsLoading && metrics && metrics.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2 text-title-sm">
               <Gauge className="h-5 w-5" />
               Latest Metrics
             </CardTitle>
@@ -204,13 +182,13 @@ function OverviewSection() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Metric
                     </th>
-                    <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-right text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Value
                     </th>
-                    <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-right text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Recorded At
                     </th>
                   </tr>
@@ -222,17 +200,17 @@ function OverviewSection() {
                       className="border-b border-outline-variant/10 last:border-0"
                     >
                       <td className="px-5 py-3">
-                        <span className="text-[13px] text-on-surface font-mono">
+                        <span className="text-body text-on-surface font-mono">
                           {m.metric}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <span className="text-[13px] font-semibold text-on-surface">
+                        <span className="text-body font-semibold text-on-surface">
                           {formatMetricValue(m.value)}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <span className="text-[12px] text-on-surface-variant">
+                        <span className="text-label text-on-surface-variant">
                           {timeAgo(m.createdAt)}
                         </span>
                       </td>
@@ -260,7 +238,7 @@ function QueuesSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-on-surface">
+        <h3 className="text-body font-semibold text-on-surface">
           Queue Status
         </h3>
         <Button variant="ghost" size="sm" onClick={() => refetch()}>
@@ -273,7 +251,7 @@ function QueuesSection() {
         <Card className="!p-0">
           <div className="text-center py-12">
             <Server className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-            <p className="text-[13px] text-on-surface-variant">
+            <p className="text-body text-on-surface-variant">
               No queue data available
             </p>
           </div>
@@ -299,7 +277,7 @@ function QueueCard({ queue }: { queue: QueueHealth }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Server className="h-4 w-4 text-on-surface-variant" />
-          <span className="text-[13px] font-medium text-on-surface font-mono">
+          <span className="text-body font-medium text-on-surface font-mono">
             {queue.name}
           </span>
         </div>
@@ -324,11 +302,11 @@ function QueueCard({ queue }: { queue: QueueHealth }) {
       {total > 0 && (
         <div className="mt-3 pt-3 border-t border-outline-variant/10">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-on-surface-variant">
+            <span className="text-caption text-on-surface-variant">
               Total processed: {total.toLocaleString()}
             </span>
             <span
-              className={`text-[11px] font-medium ${Number(failRate) > 5 ? "text-error" : "text-on-surface-variant"}`}
+              className={`text-caption font-medium ${Number(failRate) > 5 ? "text-error" : "text-on-surface-variant"}`}
             >
               Fail rate: {failRate}%
             </span>
@@ -350,10 +328,10 @@ function QueueStat({
 }) {
   return (
     <div>
-      <p className="text-[10px] text-on-surface-variant/60 uppercase tracking-wider">
+      <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider">
         {label}
       </p>
-      <p className={`text-base font-semibold ${color}`}>
+      <p className={`text-title-sm font-semibold ${color}`}>
         {value.toLocaleString()}
       </p>
     </div>
@@ -379,7 +357,7 @@ function AlertsSection() {
       {/* Alert Rules */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-title-sm">
             <Bell className="h-5 w-5" />
             Alert Rules
             {rules && (
@@ -393,7 +371,7 @@ function AlertsSection() {
           {!rules || rules.length === 0 ? (
             <div className="text-center py-12">
               <Bell className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-              <p className="text-[13px] text-on-surface-variant">
+              <p className="text-body text-on-surface-variant">
                 No alert rules configured
               </p>
             </div>
@@ -402,19 +380,19 @@ function AlertsSection() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Name
                     </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Metric
                     </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Condition
                     </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Status
                     </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                       Last Triggered
                     </th>
                   </tr>
@@ -425,13 +403,13 @@ function AlertsSection() {
                       key={rule.id}
                       className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors"
                     >
-                      <td className="px-5 py-3 text-[13px] text-on-surface font-medium">
+                      <td className="px-5 py-3 text-body text-on-surface font-medium">
                         {rule.name}
                       </td>
-                      <td className="px-5 py-3 text-[12px] text-on-surface-variant font-mono">
+                      <td className="px-5 py-3 text-label text-on-surface-variant font-mono">
                         {rule.metric}
                       </td>
-                      <td className="px-5 py-3 text-[12px] text-on-surface-variant">
+                      <td className="px-5 py-3 text-label text-on-surface-variant">
                         {rule.condition} {rule.threshold} ({rule.windowSeconds}s
                         window)
                       </td>
@@ -440,7 +418,7 @@ function AlertsSection() {
                           {rule.enabled ? "Active" : "Disabled"}
                         </Badge>
                       </td>
-                      <td className="px-5 py-3 text-[12px] text-on-surface-variant">
+                      <td className="px-5 py-3 text-label text-on-surface-variant">
                         {rule.lastTriggeredAt
                           ? timeAgo(rule.lastTriggeredAt)
                           : "Never"}
@@ -457,7 +435,7 @@ function AlertsSection() {
       {/* Alert History */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-title-sm">
             <AlertTriangle className="h-5 w-5" />
             Alert History
           </CardTitle>
@@ -470,7 +448,7 @@ function AlertsSection() {
           ) : !history?.data?.length ? (
             <div className="text-center py-12">
               <AlertTriangle className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-              <p className="text-[13px] text-on-surface-variant">
+              <p className="text-body text-on-surface-variant">
                 No alerts triggered yet
               </p>
             </div>
@@ -480,16 +458,16 @@ function AlertsSection() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                         Time
                       </th>
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                         Metric
                       </th>
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                         Value / Threshold
                       </th>
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                         Message
                       </th>
                     </tr>
@@ -500,13 +478,13 @@ function AlertsSection() {
                         key={event.id}
                         className="border-b border-outline-variant/10 last:border-0"
                       >
-                        <td className="px-5 py-3 text-[12px] text-on-surface-variant font-mono whitespace-nowrap">
+                        <td className="px-5 py-3 text-label text-on-surface-variant font-mono whitespace-nowrap">
                           {formatTimestamp(event.createdAt)}
                         </td>
-                        <td className="px-5 py-3 text-[12px] text-on-surface font-mono">
+                        <td className="px-5 py-3 text-label text-on-surface font-mono">
                           {event.metric}
                         </td>
-                        <td className="px-5 py-3 text-[12px]">
+                        <td className="px-5 py-3 text-label">
                           <span className="text-error font-medium">
                             {formatMetricValue(event.value)}
                           </span>
@@ -515,7 +493,7 @@ function AlertsSection() {
                             {formatMetricValue(event.threshold)}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-[12px] text-on-surface-variant max-w-[300px] truncate">
+                        <td className="px-5 py-3 text-label text-on-surface-variant max-w-[300px] truncate">
                           {event.message}
                         </td>
                       </tr>
@@ -526,31 +504,27 @@ function AlertsSection() {
 
               {history.total > PAGE_SIZE && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/15">
-                  <span className="text-[12px] text-on-surface-variant">
+                  <span className="text-label text-on-surface-variant">
                     Page {historyPage} of {Math.ceil(history.total / PAGE_SIZE)}
                     <span className="text-on-surface-variant/50 ml-1">
                       ({history.total} total)
                     </span>
                   </span>
                   <div className="flex items-center gap-1">
-                    <button
+                    <IconButton size="sm"
                       onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                      disabled={historyPage <= 1}
-                      className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
+                      disabled={historyPage <= 1} aria-label="Previous page">
                       <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button
+                    </IconButton>
+                    <IconButton size="sm"
                       onClick={() =>
                         setHistoryPage((p) =>
                           Math.min(Math.ceil(history.total / PAGE_SIZE), p + 1),
                         )
                       }
-                      disabled={historyPage >= Math.ceil(history.total / PAGE_SIZE)}
-                      className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
+                      disabled={historyPage >= Math.ceil(history.total / PAGE_SIZE)} aria-label="Next page">
                       <ChevronRight className="h-4 w-4" />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               )}
@@ -574,7 +548,7 @@ function ErrorsSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2 text-title-sm">
           <Bug className="h-5 w-5" />
           Error Groups
         </CardTitle>
@@ -583,10 +557,10 @@ function ErrorsSection() {
         {!errors || errors.length === 0 ? (
           <div className="text-center py-12">
             <Bug className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-            <p className="text-[13px] text-on-surface-variant">
+            <p className="text-body text-on-surface-variant">
               No errors tracked
             </p>
-            <p className="text-[11px] text-on-surface-variant/60 mt-1">
+            <p className="text-caption text-on-surface-variant/60 mt-1">
               Errors will appear here when they occur
             </p>
           </div>
@@ -595,19 +569,19 @@ function ErrorsSection() {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Error
                   </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-right text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Count
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Context
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     First Seen
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Last Seen
                   </th>
                 </tr>
@@ -619,27 +593,27 @@ function ErrorsSection() {
                     className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors"
                   >
                     <td className="px-5 py-3 max-w-[300px]">
-                      <p className="text-[13px] text-on-surface truncate">
+                      <p className="text-body text-on-surface truncate">
                         {err.message}
                       </p>
-                      <p className="text-[10px] text-on-surface-variant/50 font-mono mt-0.5 truncate">
+                      <p className="text-caption text-on-surface-variant/50 font-mono mt-0.5 truncate">
                         {err.fingerprint}
                       </p>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span
-                        className={`text-[14px] font-semibold ${err.count > 10 ? "text-error" : "text-on-surface"}`}
+                        className={`text-body-lg font-semibold ${err.count > 10 ? "text-error" : "text-on-surface"}`}
                       >
                         {err.count}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-[12px] text-on-surface-variant">
+                    <td className="px-5 py-3 text-label text-on-surface-variant">
                       {err.context ?? "—"}
                     </td>
-                    <td className="px-5 py-3 text-[12px] text-on-surface-variant whitespace-nowrap">
+                    <td className="px-5 py-3 text-label text-on-surface-variant whitespace-nowrap">
                       {timeAgo(err.firstSeen)}
                     </td>
-                    <td className="px-5 py-3 text-[12px] text-on-surface-variant whitespace-nowrap">
+                    <td className="px-5 py-3 text-label text-on-surface-variant whitespace-nowrap">
                       {timeAgo(err.lastSeen)}
                     </td>
                   </tr>
@@ -670,7 +644,7 @@ function HealthCheckCard({
     <Card className="!p-5">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 text-on-surface-variant" />
-        <span className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">
+        <span className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">
           {label}
         </span>
       </div>
@@ -679,13 +653,13 @@ function HealthCheckCard({
           className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[status]}`}
         />
         <span
-          className={`text-[14px] font-semibold capitalize ${STATUS_TEXT[status]}`}
+          className={`text-body-lg font-semibold capitalize ${STATUS_TEXT[status]}`}
         >
           {status}
         </span>
       </div>
       {detail && (
-        <p className="text-[11px] text-on-surface-variant/60 mt-1">
+        <p className="text-caption text-on-surface-variant/60 mt-1">
           {detail}
         </p>
       )}

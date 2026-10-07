@@ -12,20 +12,22 @@ interface AvatarProps {
 }
 
 const sizeStyles: Record<AvatarSize, string> = {
-  sm: "h-8 w-8 text-[11px]",
-  md: "h-10 w-10 text-[13px]",
-  lg: "h-16 w-16 text-[18px]",
+  sm: "h-8 w-8 text-caption",
+  md: "h-10 w-10 text-body",
+  lg: "h-16 w-16 text-title",
 };
 
+// Identity palette (design-tokens.json `identity`): desaturated so avatars
+// never compete with the primary accent. Initials render dark on all of them.
 const colors = [
-  "bg-[#6366f1]",
-  "bg-[#f59e0b]",
-  "bg-[#10b981]",
-  "bg-[#ef4444]",
-  "bg-[#8b5cf6]",
-  "bg-[#ec4899]",
-  "bg-[#14b8a6]",
-  "bg-[#f97316]",
+  "bg-[#7fa7e8]",
+  "bg-[#6cc4a4]",
+  "bg-[#e48a8a]",
+  "bg-[#b59be6]",
+  "bg-[#e6a6c8]",
+  "bg-[#6ec3d1]",
+  "bg-[#c9b26b]",
+  "bg-[#a0a8b8]",
 ];
 
 function getColor(name: string): string {
@@ -62,7 +64,7 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
   return (
     <div
       className={cn(
-        "shrink-0 rounded-full flex items-center justify-center font-medium text-white",
+        "shrink-0 rounded-full flex items-center justify-center font-semibold text-[#0f1117]",
         sizeStyles[size],
         getColor(name),
         className,

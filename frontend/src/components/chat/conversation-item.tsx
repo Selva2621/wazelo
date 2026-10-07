@@ -51,10 +51,10 @@ export function ConversationItem({
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+        "flex h-16 w-full items-center gap-3 rounded-lg px-3 text-left transition-colors duration-120 ease-standard",
         isActive
-          ? "bg-primary/10"
-          : "hover:bg-surface-container",
+          ? "bg-surface-container"
+          : "hover:bg-surface-container-low",
       )}
     >
       <div className="relative shrink-0">
@@ -67,10 +67,10 @@ export function ConversationItem({
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface-container-lowest" />
         )}
         {!conversation.isOnline && (
-          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface-container-lowest ring-1 ring-outline-variant/20">
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface-container-lowest ring-1 ring-outline-variant">
             <ChannelIcon
               type={conversation.channelType ?? "WHATSAPP"}
-              className="h-2.5 w-2.5 text-on-surface-variant/60"
+              className="h-2.5 w-2.5 text-on-surface-variant"
             />
           </span>
         )}
@@ -80,25 +80,21 @@ export function ConversationItem({
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
-              "text-[14px] truncate",
-              hasUnread
-                ? "font-semibold text-on-surface"
-                : "font-medium text-on-surface",
+              "text-body truncate text-on-surface",
+              hasUnread ? "font-semibold" : "font-medium",
             )}
           >
             {conversation.contactName}
           </span>
-          <span className="text-[11px] text-on-surface-variant shrink-0">
+          <span className="text-caption font-normal tabular-nums text-on-surface-variant shrink-0">
             {formatTime(conversation.lastMessageAt)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
           <p
             className={cn(
-              "text-[13px] truncate",
-              hasUnread
-                ? "text-on-surface-variant font-medium"
-                : "text-on-surface-variant/70",
+              "text-body truncate",
+              hasUnread ? "text-on-surface" : "text-on-surface-variant",
             )}
           >
             {conversation.lastMessage}

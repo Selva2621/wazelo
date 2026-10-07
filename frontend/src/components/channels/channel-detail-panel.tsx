@@ -36,8 +36,8 @@ export function ChannelDetailPanel({ channel, onClose }: ChannelDetailPanelProps
             <ChannelIcon type={channel.type} className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-on-surface">{channel.name}</h3>
-            <p className="text-sm text-on-surface-variant">
+            <h3 className="text-title font-semibold text-on-surface">{channel.name}</h3>
+            <p className="text-body-lg text-on-surface-variant">
               {CHANNEL_TYPE_LABELS[channel.type]}
               {channel.externalHandle && ` · ${channel.externalHandle}`}
             </p>
@@ -51,7 +51,7 @@ export function ChannelDetailPanel({ channel, onClose }: ChannelDetailPanelProps
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 text-body-lg">
         {/* Dates */}
         <InfoRow icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(channel.createdAt)} />
         <InfoRow icon={<Shield className="h-3.5 w-3.5" />} label="Verified" value={formatDate(channel.verifiedAt)} />
@@ -64,10 +64,10 @@ export function ChannelDetailPanel({ channel, onClose }: ChannelDetailPanelProps
         <div className="mt-4 rounded-xl bg-error-container/30 p-3">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="h-3.5 w-3.5 text-error" />
-            <span className="text-xs font-medium text-error">Last Error</span>
+            <span className="text-label font-medium text-error">Last Error</span>
           </div>
-          <p className="text-xs text-on-surface-variant">{channel.lastError}</p>
-          <p className="text-xs text-on-surface-variant/60 mt-1">
+          <p className="text-label text-on-surface-variant">{channel.lastError}</p>
+          <p className="text-label text-on-surface-variant/60 mt-1">
             {formatDate(channel.lastErrorAt)}
           </p>
         </div>
@@ -76,9 +76,9 @@ export function ChannelDetailPanel({ channel, onClose }: ChannelDetailPanelProps
       {/* Suspend reason */}
       {channel.status === "SUSPENDED" && channel.suspendReason && (
         <div className="mt-4 rounded-xl bg-warning-container/30 p-3">
-          <p className="text-xs font-medium text-warning mb-1">Suspend Reason</p>
-          <p className="text-xs text-on-surface-variant">{channel.suspendReason}</p>
-          <p className="text-xs text-on-surface-variant/60 mt-1">
+          <p className="text-label font-medium text-warning mb-1">Suspend Reason</p>
+          <p className="text-label text-on-surface-variant">{channel.suspendReason}</p>
+          <p className="text-label text-on-surface-variant/60 mt-1">
             Since {formatDate(channel.suspendedAt)}
           </p>
         </div>
@@ -87,13 +87,13 @@ export function ChannelDetailPanel({ channel, onClose }: ChannelDetailPanelProps
       {/* Capabilities */}
       {caps && (
         <div className="mt-4">
-          <p className="text-sm font-medium text-on-surface mb-2">Capabilities</p>
+          <p className="text-body-lg font-medium text-on-surface mb-2">Capabilities</p>
           <div className="flex flex-wrap gap-1.5">
             {caps.supportedMessageTypes?.map((t) => (
               <Badge key={t} variant="default">{t}</Badge>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-on-surface-variant">
+          <div className="grid grid-cols-2 gap-2 mt-3 text-label text-on-surface-variant">
             <span>Max text: {caps.maxTextLength?.toLocaleString()} chars</span>
             <span>Max media: {caps.maxMediaSizeMb} MB</span>
             <span>Reactions: {caps.supportsReactions ? "Yes" : "No"}</span>

@@ -17,7 +17,7 @@ export function CampaignProgressBar({ sent, total, className = "" }: CampaignPro
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-[11px] text-on-surface-variant/60 w-8 text-right">
+      <span className="text-caption text-on-surface-variant/60 w-8 text-right">
         {pct}%
       </span>
     </div>

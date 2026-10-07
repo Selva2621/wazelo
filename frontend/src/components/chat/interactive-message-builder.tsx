@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Plus, Trash2, MousePointerClick, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { InteractivePayload, InteractiveButton, InteractiveListSection } from "@/lib/types/inbox";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface InteractiveMessageBuilderProps {
   onSend: (payload: InteractivePayload) => void;
@@ -102,10 +103,10 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
     <div className="rounded-2xl border border-outline-variant/20 bg-surface-container p-4 mb-2">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-[13px] font-semibold text-on-surface">Interactive Message</h4>
-        <button onClick={onClose} className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors">
+        <h4 className="text-body font-semibold text-on-surface">Interactive Message</h4>
+        <IconButton size="xs" variant="danger" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
 
       {/* Type toggle */}
@@ -113,7 +114,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         <button
           onClick={() => setType("button")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-colors",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-label font-medium transition-colors",
             type === "button" ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest",
           )}
         >
@@ -123,7 +124,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         <button
           onClick={() => setType("list")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-colors",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-label font-medium transition-colors",
             type === "list" ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest",
           )}
         >
@@ -139,7 +140,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         placeholder="Message body..."
         rows={2}
         maxLength={1024}
-        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none mb-2"
+        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none mb-2"
       />
 
       {/* Footer */}
@@ -148,13 +149,13 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         onChange={(e) => setFooter(e.target.value)}
         placeholder="Footer text (optional)"
         maxLength={60}
-        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[12px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-3"
+        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-3"
       />
 
       {/* Button builder */}
       {type === "button" && (
         <div>
-          <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">
+          <p className="text-caption font-medium text-on-surface-variant mb-1.5">
             Buttons ({buttons.length}/3)
           </p>
           {buttons.map((btn, i) => (
@@ -164,19 +165,19 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                 onChange={(e) => updateButton(i, e.target.value)}
                 placeholder={`Button ${i + 1} label`}
                 maxLength={20}
-                className="flex-1 rounded-lg border border-outline-variant/30 bg-surface px-2.5 py-1.5 text-[12px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                className="flex-1 rounded-lg border border-outline-variant/30 bg-surface px-2.5 py-1.5 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
               />
               {buttons.length > 1 && (
-                <button onClick={() => removeButton(i)} className="p-1 text-on-surface-variant hover:text-error transition-colors">
+                <IconButton size="xs" variant="danger" onClick={() => removeButton(i)} aria-label="Delete">
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </IconButton>
               )}
             </div>
           ))}
           {buttons.length < 3 && (
             <button
               onClick={addButton}
-              className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 font-medium mt-1"
+              className="flex items-center gap-1 text-caption text-primary hover:text-primary/80 font-medium mt-1"
             >
               <Plus className="h-3 w-3" /> Add button
             </button>
@@ -192,9 +193,9 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
             onChange={(e) => setButtonText(e.target.value)}
             placeholder="Menu button text"
             maxLength={20}
-            className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[12px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-2"
+            className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-2"
           />
-          <p className="text-[11px] font-medium text-on-surface-variant mb-1.5">
+          <p className="text-caption font-medium text-on-surface-variant mb-1.5">
             Sections &middot; {totalRows}/10 rows
           </p>
           {sections.map((section, si) => (
@@ -207,12 +208,12 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                   }
                   placeholder="Section title (optional)"
                   maxLength={24}
-                  className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-[11px] placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                  className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
                 />
                 {sections.length > 1 && (
-                  <button onClick={() => removeSection(si)} className="p-1 text-on-surface-variant hover:text-error transition-colors">
+                  <IconButton size="xs" variant="danger" onClick={() => removeSection(si)} aria-label="Delete">
                     <Trash2 className="h-3 w-3" />
-                  </button>
+                  </IconButton>
                 )}
               </div>
               {section.rows.map((row, ri) => (
@@ -231,7 +232,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                       }
                       placeholder="Row title"
                       maxLength={24}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-[11px] placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
                     />
                     <input
                       value={row.description || ""}
@@ -246,20 +247,20 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                       }
                       placeholder="Description (optional)"
                       maxLength={72}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-[11px] placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
                     />
                   </div>
                   {section.rows.length > 1 && (
-                    <button onClick={() => removeRow(si, ri)} className="p-1 mt-0.5 text-on-surface-variant hover:text-error transition-colors">
+                    <IconButton size="xs" variant="danger" onClick={() => removeRow(si, ri)} className="mt-0.5" aria-label="Delete">
                       <Trash2 className="h-3 w-3" />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
               ))}
               {totalRows < 10 && (
                 <button
                   onClick={() => addRow(si)}
-                  className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium mt-1"
+                  className="flex items-center gap-1 text-caption text-primary hover:text-primary/80 font-medium mt-1"
                 >
                   <Plus className="h-3 w-3" /> Add row
                 </button>
@@ -268,7 +269,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
           ))}
           <button
             onClick={addSection}
-            className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 font-medium"
+            className="flex items-center gap-1 text-caption text-primary hover:text-primary/80 font-medium"
           >
             <Plus className="h-3 w-3" /> Add section
           </button>
@@ -280,7 +281,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         onClick={handleSend}
         disabled={!canSend()}
         className={cn(
-          "mt-3 w-full rounded-xl py-2 text-[13px] font-medium transition-colors",
+          "mt-3 w-full rounded-xl py-2 text-body font-medium transition-colors",
           canSend()
             ? "bg-primary text-on-primary hover:bg-primary/90"
             : "bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed",

@@ -1,0 +1,942 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Wazelo CRM design tokens v1.0 (2026-10-04). Rationale in DESIGN.md. Consumed by frontend/src/app/globals.css (CSS variables per [data-theme] + Tailwind v4 @theme inline bridge).",
+  "theme": {
+    "midnight-ember": {
+      "$description": "Default. Cool charcoal + amber (logo).",
+      "primary": {
+        "$type": "color",
+        "$value": "#d97706"
+      },
+      "primary-container": {
+        "$type": "color",
+        "$value": "#f59e0b"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#1a1d27"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#0f1117"
+      },
+      "surface-container-lowest": {
+        "$type": "color",
+        "$value": "#1e2130"
+      },
+      "surface-container-low": {
+        "$type": "color",
+        "$value": "#252838"
+      },
+      "surface-container": {
+        "$type": "color",
+        "$value": "#2d3044"
+      },
+      "surface-container-high": {
+        "$type": "color",
+        "$value": "#363a50"
+      },
+      "surface-container-highest": {
+        "$type": "color",
+        "$value": "#40445c",
+        "$description": "new"
+      },
+      "on-surface": {
+        "$type": "color",
+        "$value": "#e8eaed"
+      },
+      "on-surface-variant": {
+        "$type": "color",
+        "$value": "#a3aabb",
+        "$description": "adjusted from #9ca3b4 for AA on surface-container-high"
+      },
+      "placeholder": {
+        "$type": "color",
+        "$value": "#8a91a5",
+        "$description": "new; replaces on-surface-variant/50"
+      },
+      "outline-variant": {
+        "$type": "color",
+        "$value": "#3d4258"
+      },
+      "outline": {
+        "$type": "color",
+        "$value": "#6e7594",
+        "$description": "new; input borders, 3.2:1 on input fill"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#34d399"
+      },
+      "success-container": {
+        "$type": "color",
+        "$value": "#1a3a2a"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "#facc15",
+        "$description": "shifted from #fbbf24 to separate from amber primary"
+      },
+      "warning-container": {
+        "$type": "color",
+        "$value": "#3a3010"
+      },
+      "error": {
+        "$type": "color",
+        "$value": "#f87171"
+      },
+      "error-container": {
+        "$type": "color",
+        "$value": "#451a1a"
+      },
+      "on-error": {
+        "$type": "color",
+        "$value": "#1a1d27"
+      },
+      "info": {
+        "$type": "color",
+        "$value": "#60a5fa",
+        "$description": "new"
+      },
+      "info-container": {
+        "$type": "color",
+        "$value": "#172a45",
+        "$description": "new"
+      },
+      "bubble-out": {
+        "$type": "color",
+        "$value": "#4a3413",
+        "$description": "new; agent's own messages"
+      },
+      "on-bubble-out": {
+        "$type": "color",
+        "$value": "#f3ede2"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "#f59e0b"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgb(5 6 10 / 0.6)"
+      },
+      "shadow-color": {
+        "$type": "color",
+        "$value": "rgb(5 6 10 / 0.55)"
+      },
+      "sidebar": {
+        "$type": "color",
+        "$value": "#1e2130"
+      }
+    },
+    "emerald-night": {
+      "$description": "Alternate dark. Green-black + emerald.",
+      "primary": {
+        "$type": "color",
+        "$value": "#047857",
+        "$description": "darkened from #059669: white on #059669 was 3.77:1 (fails AA), now 5.48:1"
+      },
+      "primary-container": {
+        "$type": "color",
+        "$value": "#10b981"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#ffffff"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#111816"
+      },
+      "surface-container-lowest": {
+        "$type": "color",
+        "$value": "#1a2420"
+      },
+      "surface-container-low": {
+        "$type": "color",
+        "$value": "#222e29"
+      },
+      "surface-container": {
+        "$type": "color",
+        "$value": "#2a3833"
+      },
+      "surface-container-high": {
+        "$type": "color",
+        "$value": "#334340"
+      },
+      "surface-container-highest": {
+        "$type": "color",
+        "$value": "#3e504b"
+      },
+      "on-surface": {
+        "$type": "color",
+        "$value": "#e6ece9"
+      },
+      "on-surface-variant": {
+        "$type": "color",
+        "$value": "#9ab2a8",
+        "$description": "adjusted from #8fa89e for AA"
+      },
+      "placeholder": {
+        "$type": "color",
+        "$value": "#84a094"
+      },
+      "outline-variant": {
+        "$type": "color",
+        "$value": "#3d524a"
+      },
+      "outline": {
+        "$type": "color",
+        "$value": "#5d7a70"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#34d399"
+      },
+      "success-container": {
+        "$type": "color",
+        "$value": "#1a3a2a"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "#facc15"
+      },
+      "warning-container": {
+        "$type": "color",
+        "$value": "#3a3010"
+      },
+      "error": {
+        "$type": "color",
+        "$value": "#f87171"
+      },
+      "error-container": {
+        "$type": "color",
+        "$value": "#3b1515"
+      },
+      "on-error": {
+        "$type": "color",
+        "$value": "#111816"
+      },
+      "info": {
+        "$type": "color",
+        "$value": "#60a5fa"
+      },
+      "info-container": {
+        "$type": "color",
+        "$value": "#16283f"
+      },
+      "bubble-out": {
+        "$type": "color",
+        "$value": "#0f4a3a"
+      },
+      "on-bubble-out": {
+        "$type": "color",
+        "$value": "#e6f2ec"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "#10b981"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgb(3 8 6 / 0.6)"
+      },
+      "shadow-color": {
+        "$type": "color",
+        "$value": "rgb(3 8 6 / 0.55)"
+      },
+      "sidebar": {
+        "$type": "color",
+        "$value": "#1a2420"
+      }
+    },
+    "daylight": {
+      "$description": "Shipped light theme (Lavish-style layering): blue-grey page, white cards, darker sidebar so the active nav tab reads as part of the page. Default for first-time visitors whose OS prefers light.",
+      "primary": {
+        "$type": "color",
+        "$value": "#b45309"
+      },
+      "primary-container": {
+        "$type": "color",
+        "$value": "#92400e"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#fffaf2"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#eef1f6"
+      },
+      "surface-container-lowest": {
+        "$type": "color",
+        "$value": "#fdfdfe"
+      },
+      "sidebar": {
+        "$type": "color",
+        "$value": "#e3e8ef"
+      },
+      "surface-container-low": {
+        "$type": "color",
+        "$value": "#f5f7fa"
+      },
+      "surface-container": {
+        "$type": "color",
+        "$value": "#e9edf3"
+      },
+      "surface-container-high": {
+        "$type": "color",
+        "$value": "#e0e5ec"
+      },
+      "surface-container-highest": {
+        "$type": "color",
+        "$value": "#d6dce5"
+      },
+      "on-surface": {
+        "$type": "color",
+        "$value": "#1d2330"
+      },
+      "on-surface-variant": {
+        "$type": "color",
+        "$value": "#555e70"
+      },
+      "placeholder": {
+        "$type": "color",
+        "$value": "#646d7f"
+      },
+      "outline-variant": {
+        "$type": "color",
+        "$value": "#d9dfe8"
+      },
+      "outline": {
+        "$type": "color",
+        "$value": "#7f889b"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#047857"
+      },
+      "success-container": {
+        "$type": "color",
+        "$value": "#dff3ea"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "#8a5a06"
+      },
+      "warning-container": {
+        "$type": "color",
+        "$value": "#fcf1cf"
+      },
+      "error": {
+        "$type": "color",
+        "$value": "#c81e1e"
+      },
+      "error-container": {
+        "$type": "color",
+        "$value": "#fdeaea"
+      },
+      "on-error": {
+        "$type": "color",
+        "$value": "#fffaf2"
+      },
+      "info": {
+        "$type": "color",
+        "$value": "#1d4ed8"
+      },
+      "info-container": {
+        "$type": "color",
+        "$value": "#e3ebfd"
+      },
+      "bubble-out": {
+        "$type": "color",
+        "$value": "#fbe7c3"
+      },
+      "on-bubble-out": {
+        "$type": "color",
+        "$value": "#2b2006"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "#b45309"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgb(20 26 40 / 0.35)"
+      },
+      "shadow-color": {
+        "$type": "color",
+        "$value": "rgb(31 41 64 / 0.14)"
+      },
+      "chart-1": {
+        "$type": "color",
+        "$value": "#d97706"
+      },
+      "chart-2": {
+        "$type": "color",
+        "$value": "#2563eb"
+      },
+      "chart-3": {
+        "$type": "color",
+        "$value": "#059669"
+      },
+      "chart-4": {
+        "$type": "color",
+        "$value": "#db2777"
+      },
+      "chart-5": {
+        "$type": "color",
+        "$value": "#7c3aed"
+      },
+      "chart-6": {
+        "$type": "color",
+        "$value": "#64748b"
+      }
+    },
+    "ember-glass": {
+      "$description": "Opt-in dark glassmorphism theme (Stitch project \"Wazelo — Ember Glass Theme\"). Translucent glass cards over a warm amber aurora canvas; nested surfaces are white overlays so they stack inside glass; floating layers (menus, tooltips, dialogs) get a near-opaque glass fill. Theme-scoped surface rules live at the end of app/globals.css.",
+      "primary": {
+        "$type": "color",
+        "$value": "#d97706"
+      },
+      "primary-container": {
+        "$type": "color",
+        "$value": "#f59e0b"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#1f1300"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#0b0c10"
+      },
+      "surface-container-lowest": {
+        "$type": "color",
+        "$value": "rgb(18 20 29 / 0.72)"
+      },
+      "sidebar": {
+        "$type": "color",
+        "$value": "rgb(18 20 29 / 0.72)"
+      },
+      "surface-container-low": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.045)"
+      },
+      "surface-container": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.07)"
+      },
+      "surface-container-high": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.1)"
+      },
+      "surface-container-highest": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.14)"
+      },
+      "on-surface": {
+        "$type": "color",
+        "$value": "#ece9e4"
+      },
+      "on-surface-variant": {
+        "$type": "color",
+        "$value": "#c8bba9"
+      },
+      "placeholder": {
+        "$type": "color",
+        "$value": "#9c9182"
+      },
+      "outline-variant": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.09)"
+      },
+      "outline": {
+        "$type": "color",
+        "$value": "rgb(255 255 255 / 0.24)"
+      },
+      "error": {
+        "$type": "color",
+        "$value": "#f87171"
+      },
+      "error-container": {
+        "$type": "color",
+        "$value": "#451a1a"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#34d399"
+      },
+      "success-container": {
+        "$type": "color",
+        "$value": "#1a3a2a"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "#facc15"
+      },
+      "warning-container": {
+        "$type": "color",
+        "$value": "#3a3010"
+      },
+      "info": {
+        "$type": "color",
+        "$value": "#60a5fa"
+      },
+      "info-container": {
+        "$type": "color",
+        "$value": "#172a45"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "#f59e0b"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgb(5 6 10 / 0.55)"
+      },
+      "glass": {
+        "$description": "Glass layers. Level 1 = cards, level 2 = dialogs/drawers/rail, floating = menus/tooltips.",
+        "level-1": {
+          "$type": "string",
+          "$value": "fill rgb(18 20 29 / 0.72); border rgb(255 255 255 / 0.09); inset 0 1px 0 rgb(255 255 255 / 0.07); shadow 0 12px 36px -8px rgb(0 0 0 / 0.55)"
+        },
+        "level-2": {
+          "$type": "string",
+          "$value": "fill rgb(26 29 42 / 0.9); blur 20px saturate 190%; border rgb(255 255 255 / 0.14); amber glow 0 0 24px -2px rgb(245 158 11 / 0.08)"
+        },
+        "floating": {
+          "$type": "string",
+          "$value": "fill rgb(26 29 42 / 0.94); blur 20px saturate 180%"
+        },
+        "canvas": {
+          "$type": "string",
+          "$value": "#0b0c10 + amber radial glows (0.2 / 0.17 / 0.07 alpha), background-attachment fixed"
+        }
+      }
+    }
+  },
+  "identity": {
+    "1": {
+      "$type": "color",
+      "$value": "#7fa7e8"
+    },
+    "2": {
+      "$type": "color",
+      "$value": "#6cc4a4"
+    },
+    "3": {
+      "$type": "color",
+      "$value": "#e48a8a"
+    },
+    "4": {
+      "$type": "color",
+      "$value": "#b59be6"
+    },
+    "5": {
+      "$type": "color",
+      "$value": "#e6a6c8"
+    },
+    "6": {
+      "$type": "color",
+      "$value": "#6ec3d1"
+    },
+    "7": {
+      "$type": "color",
+      "$value": "#c9b26b"
+    },
+    "8": {
+      "$type": "color",
+      "$value": "#a0a8b8"
+    },
+    "$description": "Avatar initials backgrounds. Theme-independent, desaturated. Text on these: #0f1117. Pick by stable hash of contact id."
+  },
+  "chart": {
+    "1": {
+      "$type": "color",
+      "$value": "#f59e0b"
+    },
+    "2": {
+      "$type": "color",
+      "$value": "#60a5fa"
+    },
+    "3": {
+      "$type": "color",
+      "$value": "#34d399"
+    },
+    "4": {
+      "$type": "color",
+      "$value": "#f472b6"
+    },
+    "5": {
+      "$type": "color",
+      "$value": "#a78bfa"
+    },
+    "6": {
+      "$type": "color",
+      "$value": "#94a3b8"
+    },
+    "$description": "Dark-theme categorical series (Midnight Ember, Emerald Night). Daylight overrides these per theme (theme.daylight.chart-*)."
+  },
+  "channel": {
+    "$description": "Third-party brand marks. Use only for the channel's own icon/logo, never as UI accent.",
+    "whatsapp": {
+      "$type": "color",
+      "$value": "#25D366"
+    },
+    "facebook": {
+      "$type": "color",
+      "$value": "#1877F2"
+    },
+    "instagram": {
+      "$type": "color",
+      "$value": "#E4405F"
+    }
+  },
+  "font": {
+    "family": {
+      "sans": {
+        "$type": "fontFamily",
+        "$value": [
+          "var(--font-inter)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif"
+        ]
+      },
+      "mono": {
+        "$type": "fontFamily",
+        "$value": [
+          "ui-monospace",
+          "SF Mono",
+          "Cascadia Mono",
+          "Menlo",
+          "monospace"
+        ]
+      }
+    },
+    "weight": {
+      "regular": {
+        "$type": "fontWeight",
+        "$value": 400
+      },
+      "medium": {
+        "$type": "fontWeight",
+        "$value": 500
+      },
+      "semibold": {
+        "$type": "fontWeight",
+        "$value": 600
+      }
+    }
+  },
+  "text": {
+    "caption": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "11px",
+        "lineHeight": "16px",
+        "fontWeight": 500
+      }
+    },
+    "label": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "fontWeight": 500
+      }
+    },
+    "body": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "13px",
+        "lineHeight": "20px",
+        "fontWeight": 400
+      }
+    },
+    "body-lg": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "14px",
+        "lineHeight": "22px",
+        "fontWeight": 400
+      }
+    },
+    "title-sm": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "16px",
+        "lineHeight": "24px",
+        "fontWeight": 600
+      }
+    },
+    "title": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "18px",
+        "lineHeight": "26px",
+        "fontWeight": 600
+      }
+    },
+    "headline": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "22px",
+        "lineHeight": "28px",
+        "fontWeight": 600,
+        "letterSpacing": "-0.01em"
+      }
+    },
+    "display": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "28px",
+        "lineHeight": "34px",
+        "fontWeight": 600,
+        "letterSpacing": "-0.02em"
+      }
+    }
+  },
+  "space": {
+    "page": {
+      "$type": "dimension",
+      "$value": "24px"
+    },
+    "page-sm": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "section": {
+      "$type": "dimension",
+      "$value": "32px"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "20px"
+    },
+    "row-y": {
+      "$type": "dimension",
+      "$value": "10px"
+    },
+    "row-x": {
+      "$type": "dimension",
+      "$value": "12px"
+    },
+    "stack-sm": {
+      "$type": "dimension",
+      "$value": "8px"
+    },
+    "stack-md": {
+      "$type": "dimension",
+      "$value": "12px"
+    },
+    "stack-lg": {
+      "$type": "dimension",
+      "$value": "16px"
+    }
+  },
+  "radius": {
+    "xs": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$description": "checkbox, kbd (rounded)"
+    },
+    "control": {
+      "$type": "dimension",
+      "$value": "8px",
+      "$description": "button, input, nav item (rounded-lg)"
+    },
+    "container": {
+      "$type": "dimension",
+      "$value": "12px",
+      "$description": "card, panel, popover (rounded-xl)"
+    },
+    "overlay": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "modal, bubble (rounded-2xl)"
+    },
+    "pill": {
+      "$type": "dimension",
+      "$value": "9999px",
+      "$description": "badge, avatar (rounded-full)"
+    }
+  },
+  "size": {
+    "control-sm": {
+      "$type": "dimension",
+      "$value": "32px"
+    },
+    "control-md": {
+      "$type": "dimension",
+      "$value": "36px"
+    },
+    "control-lg": {
+      "$type": "dimension",
+      "$value": "44px"
+    },
+    "input": {
+      "$type": "dimension",
+      "$value": "40px"
+    },
+    "table-row": {
+      "$type": "dimension",
+      "$value": "44px"
+    },
+    "conversation-row": {
+      "$type": "dimension",
+      "$value": "64px"
+    },
+    "avatar-sm": {
+      "$type": "dimension",
+      "$value": "28px"
+    },
+    "avatar-md": {
+      "$type": "dimension",
+      "$value": "36px"
+    },
+    "avatar-lg": {
+      "$type": "dimension",
+      "$value": "48px"
+    },
+    "icon-sm": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "icon-md": {
+      "$type": "dimension",
+      "$value": "18px"
+    },
+    "icon-lg": {
+      "$type": "dimension",
+      "$value": "20px"
+    },
+    "sidebar": {
+      "$type": "dimension",
+      "$value": "240px"
+    },
+    "sidebar-collapsed": {
+      "$type": "dimension",
+      "$value": "64px"
+    },
+    "header": {
+      "$type": "dimension",
+      "$value": "64px"
+    },
+    "inbox-list": {
+      "$type": "dimension",
+      "$value": "320px"
+    },
+    "inbox-panel": {
+      "$type": "dimension",
+      "$value": "320px"
+    },
+    "drawer": {
+      "$type": "dimension",
+      "$value": "480px"
+    },
+    "modal-sm": {
+      "$type": "dimension",
+      "$value": "400px"
+    },
+    "modal-md": {
+      "$type": "dimension",
+      "$value": "560px"
+    },
+    "modal-lg": {
+      "$type": "dimension",
+      "$value": "720px"
+    }
+  },
+  "shadow": {
+    "popover": {
+      "$type": "shadow",
+      "$value": "0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant)"
+    },
+    "modal": {
+      "$type": "shadow",
+      "$value": "0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant)"
+    }
+  },
+  "z": {
+    "raised": {
+      "$type": "number",
+      "$value": 10
+    },
+    "header": {
+      "$type": "number",
+      "$value": 20
+    },
+    "sidebar": {
+      "$type": "number",
+      "$value": 30
+    },
+    "dropdown": {
+      "$type": "number",
+      "$value": 40
+    },
+    "modal": {
+      "$type": "number",
+      "$value": 50
+    },
+    "toast": {
+      "$type": "number",
+      "$value": 60
+    }
+  },
+  "motion": {
+    "duration-fast": {
+      "$type": "duration",
+      "$value": "120ms"
+    },
+    "duration-base": {
+      "$type": "duration",
+      "$value": "180ms"
+    },
+    "duration-slow": {
+      "$type": "duration",
+      "$value": "240ms"
+    },
+    "ease-standard": {
+      "$type": "cubicBezier",
+      "$value": [
+        0.2,
+        0,
+        0,
+        1
+      ]
+    },
+    "ease-exit": {
+      "$type": "cubicBezier",
+      "$value": [
+        0.4,
+        0,
+        1,
+        1
+      ]
+    }
+  },
+  "breakpoint": {
+    "sm": {
+      "$type": "dimension",
+      "$value": "640px"
+    },
+    "md": {
+      "$type": "dimension",
+      "$value": "768px"
+    },
+    "lg": {
+      "$type": "dimension",
+      "$value": "1024px"
+    },
+    "xl": {
+      "$type": "dimension",
+      "$value": "1280px"
+    },
+    "2xl": {
+      "$type": "dimension",
+      "$value": "1536px"
+    }
+  }
+}

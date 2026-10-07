@@ -12,6 +12,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
 import type { Plan, BillingCycle } from "@/lib/types/billing";
+import { Button } from "@/components/ui/button";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ function Steps({ current, labels }: { current: number; labels: string[] }) {
         <div key={label} className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-label font-semibold transition-colors ${
                 i < current
                   ? "bg-primary text-on-primary"
                   : i === current
@@ -65,7 +66,7 @@ function Steps({ current, labels }: { current: number; labels: string[] }) {
               {i < current ? <Check className="w-3.5 h-3.5" /> : i + 1}
             </div>
             <span
-              className={`text-sm font-medium hidden sm:block ${
+              className={`text-body-lg font-medium hidden sm:block ${
                 i === current ? "text-on-surface" : "text-on-surface-variant"
               }`}
             >
@@ -97,7 +98,7 @@ function TrialActiveStep({
       <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
         <Sparkles className="w-8 h-8 text-success" />
       </div>
-      <h1 className="text-2xl font-bold text-on-surface mb-2">
+      <h1 className="text-headline font-semibold text-on-surface mb-2">
         Your free trial is active{firstName ? `, ${firstName}` : ""}!
       </h1>
       <p className="text-on-surface-variant mb-6 max-w-md mx-auto">
@@ -113,7 +114,7 @@ function TrialActiveStep({
           { icon: Bot, label: "Automation", value: "Included" },
           { icon: Clock, label: "Trial duration", value: `${daysLeft} days remaining` },
         ].map(({ icon: Icon, label, value }) => (
-          <div key={label} className="flex items-center justify-between text-sm">
+          <div key={label} className="flex items-center justify-between text-body-lg">
             <span className="flex items-center gap-2 text-on-surface-variant">
               <Icon className="w-4 h-4" />
               {label}
@@ -123,13 +124,13 @@ function TrialActiveStep({
         ))}
       </div>
 
-      <button
+      <Button size="lg"
         onClick={onContinue}
-        className="bg-primary text-on-primary font-semibold px-8 py-3 rounded-xl hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+       
       >
         Go to Dashboard
         <ArrowRight className="w-4 h-4" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -142,7 +143,7 @@ function WelcomeStep({ orgName, onNext }: { orgName: string; onNext: () => void 
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
         <Sparkles className="w-8 h-8 text-primary" />
       </div>
-      <h1 className="text-2xl font-bold text-on-surface mb-2">
+      <h1 className="text-headline font-semibold text-on-surface mb-2">
         Welcome to Wazelo CRM{orgName ? `, ${orgName}` : ""}!
       </h1>
       <p className="text-on-surface-variant mb-8 max-w-md mx-auto">
@@ -157,19 +158,19 @@ function WelcomeStep({ orgName, onNext }: { orgName: string; onNext: () => void 
         ].map(({ icon: Icon, title, desc }) => (
           <div key={title} className="bg-surface-container rounded-xl p-4">
             <Icon className="w-5 h-5 text-primary mb-2" />
-            <div className="font-semibold text-sm text-on-surface">{title}</div>
-            <div className="text-xs text-on-surface-variant mt-0.5">{desc}</div>
+            <div className="font-semibold text-body-lg text-on-surface">{title}</div>
+            <div className="text-label text-on-surface-variant mt-0.5">{desc}</div>
           </div>
         ))}
       </div>
 
-      <button
+      <Button size="lg"
         onClick={onNext}
-        className="bg-primary text-on-primary font-semibold px-8 py-3 rounded-xl hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+       
       >
         Choose a Plan
         <ChevronRight className="w-4 h-4" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -207,27 +208,27 @@ function PlanCard({
           <div className="flex items-center gap-2">
             <span className="font-semibold text-on-surface">{plan.name}</span>
             {recommended && (
-              <span className="bg-primary/10 text-primary text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+              <span className="bg-primary/10 text-primary text-caption font-semibold px-1.5 py-0.5 rounded-full">
                 Best for Freelancers
               </span>
             )}
           </div>
-          <div className="text-xs text-on-surface-variant mt-0.5">{plan.description}</div>
+          <div className="text-label text-on-surface-variant mt-0.5">{plan.description}</div>
         </div>
         <div className="text-right flex-shrink-0 ml-3">
-          <div className="font-bold text-on-surface">
-            {formatINR(perMonth)}<span className="text-xs font-normal text-on-surface-variant">/mo</span>
+          <div className="font-semibold text-on-surface">
+            {formatINR(perMonth)}<span className="text-label font-normal text-on-surface-variant">/mo</span>
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-label text-on-surface-variant">
         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{formatLimit(plan.maxUsers)} agents</span>
         <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{formatLimit(plan.maxMessagesPerMonth)} msgs/mo</span>
         {plan.automationEnabled && <span className="flex items-center gap-1"><Bot className="w-3 h-3" />Automation</span>}
         {(plan as any).apiEnabled && <span className="flex items-center gap-1"><Code2 className="w-3 h-3" />API</span>}
       </div>
       {selected && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-primary font-medium">
+        <div className="mt-2 flex items-center gap-1 text-label text-primary font-medium">
           <Check className="w-3.5 h-3.5" /> Selected
         </div>
       )}
@@ -265,24 +266,24 @@ function ChoosePlanStep({
   return (
     <div>
       <div className="text-center mb-6">
-        <h2 className="text-xl font-bold text-on-surface">Choose your plan</h2>
-        <p className="text-sm text-on-surface-variant mt-1">
+        <h2 className="text-title font-semibold text-on-surface">Choose your plan</h2>
+        <p className="text-body-lg text-on-surface-variant mt-1">
           All plans include full access — cancel anytime
         </p>
       </div>
 
       {/* Cycle toggle */}
       <div className="flex items-center justify-center gap-3 mb-6">
-        <span className={`text-sm font-medium ${!yearly ? "text-on-surface" : "text-on-surface-variant"}`}>Monthly</span>
-        <button
+        <span className={`text-body-lg font-medium ${!yearly ? "text-on-surface" : "text-on-surface-variant"}`}>Monthly</span>
+        <button role="switch" aria-checked={yearly} aria-label="Bill yearly"
           onClick={onYearlyToggle}
           className={`relative w-11 h-6 rounded-full transition-colors ${yearly ? "bg-primary" : "bg-surface-container-high"}`}
         >
           <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-on-primary shadow transition-transform ${yearly ? "translate-x-5" : "translate-x-0"}`} />
         </button>
-        <span className={`text-sm font-medium ${yearly ? "text-on-surface" : "text-on-surface-variant"}`}>
+        <span className={`text-body-lg font-medium ${yearly ? "text-on-surface" : "text-on-surface-variant"}`}>
           Yearly
-          <span className="ml-1.5 bg-success/10 text-success text-xs font-semibold px-1.5 py-0.5 rounded-full">Save 17%</span>
+          <span className="ml-1.5 bg-success/10 text-success text-label font-semibold px-1.5 py-0.5 rounded-full">Save 17%</span>
         </span>
       </div>
 
@@ -302,18 +303,18 @@ function ChoosePlanStep({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="px-5 py-2.5 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
         >
           Back
         </button>
-        <button
+        <Button size="lg"
           onClick={onNext}
           disabled={!selectedId}
-          className="flex-1 bg-primary text-on-primary font-semibold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+          className="flex-1"
         >
           Continue
           <ChevronRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -339,7 +340,7 @@ function ConfirmStep({
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
         <CreditCard className="w-8 h-8 text-primary" />
       </div>
-      <h2 className="text-xl font-bold text-on-surface mb-2">
+      <h2 className="text-title font-semibold text-on-surface mb-2">
         Subscribe to {plan.name}
       </h2>
       <p className="text-on-surface-variant mb-6">
@@ -347,26 +348,26 @@ function ConfirmStep({
       </p>
 
       <div className="bg-surface-container rounded-xl p-4 text-left mb-6 max-w-sm mx-auto space-y-2">
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-body-lg">
           <span className="text-on-surface-variant">Plan</span>
           <span className="font-medium text-on-surface">{plan.name}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-body-lg">
           <span className="text-on-surface-variant">Agents</span>
           <span className="font-medium text-on-surface">{formatLimit(plan.maxUsers)}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-body-lg">
           <span className="text-on-surface-variant">Messages/mo</span>
           <span className="font-medium text-on-surface">{formatLimit(plan.maxMessagesPerMonth)}</span>
         </div>
-        <div className="flex justify-between text-sm border-t border-outline-variant pt-2 mt-2">
+        <div className="flex justify-between text-body-lg border-t border-outline-variant pt-2 mt-2">
           <span className="text-on-surface-variant">Due today</span>
-          <span className="font-bold text-on-surface">{formatINR(plan.priceInCents)}</span>
+          <span className="font-semibold text-on-surface">{formatINR(plan.priceInCents)}</span>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-sm text-error text-left max-w-sm mx-auto">
+        <div className="mb-4 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-body-lg text-error text-left max-w-sm mx-auto">
           {error}
         </div>
       )}
@@ -375,14 +376,14 @@ function ConfirmStep({
         <button
           onClick={onBack}
           disabled={loading}
-          className="px-5 py-2.5 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
         >
           Back
         </button>
-        <button
+        <Button size="lg"
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 bg-primary text-on-primary font-semibold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-60 transition-colors inline-flex items-center justify-center gap-2"
+          className="flex-1"
         >
           {loading ? (
             <>
@@ -395,7 +396,7 @@ function ConfirmStep({
               Pay {formatINR(plan.priceInCents)}
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -438,7 +439,7 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
-            <span className="font-bold text-on-surface text-xl">CRM-<span className="text-primary">WA</span></span>
+            <span className="font-semibold text-on-surface text-title">CRM-<span className="text-primary">WA</span></span>
           </div>
           <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
             <TrialActiveStep
@@ -493,7 +494,7 @@ export default function OnboardingPage() {
             name: user ? `${user.firstName} ${user.lastName}` : "",
             email: user?.email ?? "",
           },
-          theme: { color: "#6366F1" },
+          theme: { color: "#d97706" },
           modal: {
             ondismiss: () => {
               setError("Payment was cancelled. Please try again.");
@@ -515,7 +516,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="font-bold text-on-surface text-xl">CRM-<span className="text-primary">WA</span></span>
+          <span className="font-semibold text-on-surface text-title">CRM-<span className="text-primary">WA</span></span>
         </div>
 
         <Steps current={step} labels={["Welcome", "Choose Plan", "Confirm"]} />
@@ -559,7 +560,7 @@ export default function OnboardingPage() {
           ) : null}
         </div>
 
-        <p className="text-center text-xs text-on-surface-variant mt-4">
+        <p className="text-center text-label text-on-surface-variant mt-4">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-primary hover:underline">
             Sign in

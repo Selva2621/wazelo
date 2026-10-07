@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CannedResponsePicker } from "./canned-response-picker";
 import { InteractiveMessageBuilder } from "./interactive-message-builder";
 import type { InteractivePayload } from "@/lib/types/inbox";
+import { IconButton } from "@/components/ui/icon-button";
 
 export interface MediaAttachment {
   file: File;
@@ -93,7 +94,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    el.style.height = Math.min(el.scrollHeight, 132) + "px";
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +122,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   const isEmail = channelType === "EMAIL";
 
   return (
-    <div className="shrink-0 border-t border-outline-variant/15 px-4 py-3">
+    <div className="shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-3">
       {/* Interactive message builder */}
       {showInteractiveBuilder && onSendInteractive && (
         <InteractiveMessageBuilder
@@ -142,7 +143,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             onChange={(e) => onSubjectChange(e.target.value)}
             placeholder="Subject..."
             disabled={disabled}
-            className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-body-lg text-on-surface placeholder:text-placeholder outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
         </div>
       )}
@@ -162,25 +163,24 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] text-on-surface truncate font-medium">
+            <p className="text-body text-on-surface truncate font-medium">
               {attachment.file.name}
             </p>
-            <p className="text-[11px] text-on-surface-variant">
+            <p className="text-caption font-normal text-on-surface-variant">
               {attachment.type} &middot; {formatFileSize(attachment.file.size)}
             </p>
           </div>
-          <button
+          <IconButton size="xs" variant="danger"
             onClick={removeAttachment}
-            className="shrink-0 p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-            title="Remove attachment"
-          >
+           
+            title="Remove attachment" aria-label="Remove attachment">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
       )}
 
       {/* Input row */}
-      <div className="relative flex items-end gap-2 rounded-2xl bg-surface-container px-3 py-2">
+      <div className="relative flex items-end gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2 transition-[border-color,box-shadow] duration-120 ease-standard focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
         <CannedResponsePicker
           open={showCannedPicker}
           filter={cannedFilter}
@@ -203,19 +203,18 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           disabled={disabled || uploading}
           className={cn(
             "shrink-0 p-1.5 text-on-surface-variant hover:text-on-surface transition-colors rounded-lg",
-            attachment && "text-primary",
+            attachment && "text-primary-container",
           )}
           title="Attach file"
         >
           <Paperclip className="h-5 w-5" />
         </button>
-        <button
+        <IconButton size="sm"
           type="button"
-          className="shrink-0 p-1.5 text-on-surface-variant hover:text-on-surface transition-colors rounded-lg"
-          title="Emoji"
-        >
+         
+          title="Emoji" aria-label="Emoji">
           <Smile className="h-5 w-5" />
-        </button>
+        </IconButton>
         {onSendInteractive && (
           <button
             type="button"
@@ -224,7 +223,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             className={cn(
               "shrink-0 p-1.5 transition-colors rounded-lg",
               showInteractiveBuilder
-                ? "text-primary bg-primary/10"
+                ? "text-primary-container bg-primary/10"
                 : "text-on-surface-variant hover:text-on-surface",
             )}
             title="Interactive message (buttons / list)"
@@ -250,17 +249,17 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           placeholder={attachment ? "Add a caption..." : isEmail ? "Compose email..." : "Type a message..."}
           rows={1}
           disabled={disabled || uploading}
-          className="flex-1 resize-none bg-transparent text-[14px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none min-h-[24px] max-h-[120px] py-1"
+          className="flex-1 resize-none bg-transparent text-body-lg text-on-surface placeholder:text-placeholder outline-none min-h-[24px] max-h-[132px] py-1"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={!canSend}
           className={cn(
-            "shrink-0 p-2 rounded-xl transition-colors",
+            "shrink-0 p-2 rounded-lg transition-colors duration-120 ease-standard",
             canSend
-              ? "bg-primary text-on-primary hover:bg-primary/90"
-              : "text-on-surface-variant/40 cursor-not-allowed",
+              ? "bg-primary text-on-primary hover:bg-primary-container"
+              : "text-on-surface-variant opacity-50 cursor-not-allowed",
           )}
           title="Send"
         >
@@ -277,12 +276,12 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
         <div className="flex justify-end mt-1 px-1">
           <span
             className={cn(
-              "text-[11px]",
+              "text-caption font-normal tabular-nums",
               isOverLimit
                 ? "text-error font-medium"
                 : value.length > maxTextLength * 0.9
                   ? "text-warning"
-                  : "text-on-surface-variant/50",
+                  : "text-on-surface-variant",
             )}
           >
             {value.length} / {maxTextLength}

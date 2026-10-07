@@ -78,7 +78,7 @@ export default function AuditLogsPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
           <ShieldAlert className="h-12 w-12 text-on-surface-variant/40 mx-auto mb-3" />
-          <p className="text-[14px] text-on-surface-variant">
+          <p className="text-body-lg text-on-surface-variant">
             You don&apos;t have permission to view audit logs.
           </p>
         </div>
@@ -90,11 +90,11 @@ export default function AuditLogsPage() {
     <div className="flex-1 p-6 space-y-6">
       {/* Header */}
       <div>
-        <p className="text-[12px] text-on-surface-variant mb-1">
+        <p className="text-label text-on-surface-variant mb-1">
           Admin &gt; Audit Logs
         </p>
-        <h1 className="text-2xl font-semibold text-on-surface">Audit Logs</h1>
-        <p className="text-[13px] text-on-surface-variant mt-1">
+        <h1 className="text-headline font-semibold text-on-surface">Audit Logs</h1>
+        <p className="text-body text-on-surface-variant mt-1">
           Track all security and access events in your organization
         </p>
       </div>
@@ -110,7 +110,7 @@ export default function AuditLogsPage() {
               setActionFilter(e.target.value);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-[13px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
           >
             {ACTION_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -127,10 +127,10 @@ export default function AuditLogsPage() {
                 setStartDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-[13px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="From"
             />
-            <span className="text-[12px] text-on-surface-variant">to</span>
+            <span className="text-label text-on-surface-variant">to</span>
             <input
               type="date"
               value={endDate}
@@ -138,7 +138,7 @@ export default function AuditLogsPage() {
                 setEndDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-[13px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="To"
             />
           </div>
@@ -150,7 +150,7 @@ export default function AuditLogsPage() {
             </Button>
           )}
 
-          <span className="ml-auto text-[12px] text-on-surface-variant">
+          <span className="ml-auto text-label text-on-surface-variant">
             {total} event{total !== 1 ? "s" : ""}
           </span>
         </div>
@@ -165,11 +165,11 @@ export default function AuditLogsPage() {
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <ShieldAlert className="h-10 w-10 text-on-surface-variant/40 mb-3" />
-            <p className="text-[14px] text-on-surface-variant">
+            <p className="text-body-lg text-on-surface-variant">
               No audit logs found
             </p>
             {hasFilters && (
-              <p className="text-[12px] text-on-surface-variant/60 mt-1">
+              <p className="text-label text-on-surface-variant/60 mt-1">
                 Try adjusting your filters
               </p>
             )}
@@ -179,20 +179,20 @@ export default function AuditLogsPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant w-8" />
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant w-8" />
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Timestamp
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Action
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     User
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     Target
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                     IP Address
                   </th>
                 </tr>
@@ -251,7 +251,7 @@ function LogRow({
         onClick={onToggle}
       >
         <td className="px-5 py-3">
-          <button className="text-on-surface-variant/50 hover:text-on-surface-variant">
+          <button aria-expanded={expanded} aria-label={expanded ? "Collapse row" : "Expand row"} className="text-on-surface-variant/50 hover:text-on-surface-variant">
             {expanded ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -260,7 +260,7 @@ function LogRow({
           </button>
         </td>
         <td className="px-5 py-3">
-          <span className="text-[12px] text-on-surface-variant font-mono">
+          <span className="text-label text-on-surface-variant font-mono">
             {formatTimestamp(log.createdAt)}
           </span>
         </td>
@@ -271,11 +271,11 @@ function LogRow({
           <div className="flex items-center gap-2">
             <Avatar name={userName} size="sm" />
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-on-surface truncate">
+              <p className="text-body font-medium text-on-surface truncate">
                 {userName}
               </p>
               {log.user?.email && (
-                <p className="text-[11px] text-on-surface-variant truncate">
+                <p className="text-caption text-on-surface-variant truncate">
                   {log.user.email}
                 </p>
               )}
@@ -285,21 +285,21 @@ function LogRow({
         <td className="px-5 py-3">
           {log.targetType ? (
             <div>
-              <span className="text-[12px] text-on-surface-variant">
+              <span className="text-label text-on-surface-variant">
                 {log.targetType}
               </span>
               {log.targetId && (
-                <p className="text-[11px] text-on-surface-variant/60 font-mono truncate max-w-[160px]">
+                <p className="text-caption text-on-surface-variant/60 font-mono truncate max-w-[160px]">
                   {log.targetId}
                 </p>
               )}
             </div>
           ) : (
-            <span className="text-[12px] text-on-surface-variant/40">—</span>
+            <span className="text-label text-on-surface-variant/40">—</span>
           )}
         </td>
         <td className="px-5 py-3">
-          <span className="text-[12px] text-on-surface-variant font-mono">
+          <span className="text-label text-on-surface-variant font-mono">
             {log.ipAddress ?? "—"}
           </span>
         </td>
@@ -310,20 +310,20 @@ function LogRow({
         <tr className="bg-surface-container/10">
           <td colSpan={6} className="px-5 py-4">
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+              <p className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                 Details
               </p>
               {log.metadata ? (
-                <pre className="text-[12px] text-on-surface-variant bg-surface-container-lowest rounded-lg p-3 overflow-x-auto max-h-[200px] font-mono">
+                <pre className="text-label text-on-surface-variant bg-surface-container-lowest rounded-lg p-3 overflow-x-auto max-h-[200px] font-mono">
                   {JSON.stringify(log.metadata, null, 2)}
                 </pre>
               ) : (
-                <p className="text-[12px] text-on-surface-variant/50">
+                <p className="text-label text-on-surface-variant/50">
                   No additional details
                 </p>
               )}
               {log.userAgent && (
-                <p className="text-[11px] text-on-surface-variant/50 truncate">
+                <p className="text-caption text-on-surface-variant/50 truncate">
                   UA: {log.userAgent}
                 </p>
               )}
@@ -347,7 +347,7 @@ function ActionBadge({ action }: { action: string }) {
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${colorClasses[variant]}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-md text-caption font-medium ${colorClasses[variant]}`}
     >
       {formatActionLabel(action)}
     </span>

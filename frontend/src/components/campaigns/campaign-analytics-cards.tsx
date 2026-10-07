@@ -68,15 +68,15 @@ export function CampaignAnalyticsCards({
         >
           <div className="flex items-center gap-2 mb-2">
             <card.icon className="h-4 w-4 text-on-surface-variant/60" />
-            <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+            <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
               {card.label}
             </span>
           </div>
-          <p className="text-[22px] font-semibold text-on-surface tabular-nums">
+          <p className="text-headline font-semibold text-on-surface tabular-nums">
             {card.value}
           </p>
           {card.rate && (
-            <p className={`text-[12px] font-medium tabular-nums ${card.rateColor}`}>
+            <p className={`text-label font-medium tabular-nums ${card.rateColor}`}>
               {card.rate}
             </p>
           )}

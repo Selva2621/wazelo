@@ -70,12 +70,12 @@ export function SlaTeamTable({ performance, users }: SlaTeamTableProps) {
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+      <h3 className="text-body font-medium text-on-surface-variant mb-4">
         Team SLA Performance
       </h3>
 
       {rows.length === 0 ? (
-        <div className="py-8 text-center text-[13px] text-on-surface-variant/40">
+        <div className="py-8 text-center text-body text-on-surface-variant/40">
           No team performance data available
         </div>
       ) : (

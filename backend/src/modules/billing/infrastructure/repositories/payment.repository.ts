@@ -75,9 +75,12 @@ export class PaymentRepository {
     newStatus: PaymentStatus,
     extra?: Record<string, unknown>,
   ): Promise<Payment | null> {
+    // A succeeded payment always gets paidAt (revenue reporting groups by it);
+    // callers may still pass their own timestamp
+    const paidAt = newStatus === PaymentStatus.SUCCEEDED ? { paidAt: new Date() } : {};
     const result = await this.prisma.payment.updateMany({
       where: { id, status: expectedStatus },
-      data: { status: newStatus, ...extra },
+      data: { status: newStatus, ...paidAt, ...extra },
     });
 
     if (result.count === 0) return null;

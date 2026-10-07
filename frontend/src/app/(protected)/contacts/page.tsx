@@ -103,11 +103,11 @@ export default function ContactsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-[18px] font-semibold text-on-surface">
+            <h1 className="text-title font-semibold text-on-surface">
               Contacts
             </h1>
             {data && (
-              <span className="text-[13px] text-on-surface-variant/60">
+              <span className="text-body text-on-surface-variant/60">
                 {data.total} total
               </span>
             )}

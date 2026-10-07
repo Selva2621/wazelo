@@ -23,10 +23,10 @@ export function LeadScoreBadge({ score, size = "sm" }: LeadScoreBadgeProps) {
       <div className={cn("flex items-center gap-2 rounded-xl px-3 py-1.5 ring-1", bg, ring)}>
         <TrendingUp className={cn("h-4 w-4", text)} />
         <div>
-          <span className={cn("text-[15px] font-bold", text)}>{score}</span>
-          <span className={cn("text-[11px] ml-1", text)}>/100</span>
+          <span className={cn("text-body-lg font-semibold", text)}>{score}</span>
+          <span className={cn("text-caption ml-1", text)}>/100</span>
         </div>
-        <span className={cn("text-[11px] font-medium uppercase tracking-wide", text)}>{label}</span>
+        <span className={cn("text-caption font-medium uppercase tracking-wide", text)}>{label}</span>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function LeadScoreBadge({ score, size = "sm" }: LeadScoreBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1",
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-semibold ring-1",
         bg,
         text,
         ring,

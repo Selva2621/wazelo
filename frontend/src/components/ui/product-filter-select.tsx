@@ -17,7 +17,7 @@ export function ProductFilterSelect({ value, onChange, className }: ProductFilte
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={className || "h-9 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer border border-outline-variant/15"}
+      className={className || "h-9 rounded-lg border border-outline-variant bg-surface-container-low px-2.5 text-body text-on-surface outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30 appearance-none cursor-pointer"}
     >
       <option value="">All Products</option>
       {products

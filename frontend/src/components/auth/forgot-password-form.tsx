@@ -47,17 +47,17 @@ export function ForgotPasswordForm() {
         <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
           <Mail className="w-7 h-7 text-primary" />
         </div>
-        <h2 className="text-[22px] font-extrabold tracking-tight text-on-surface mb-3">
+        <h2 className="text-headline font-semibold tracking-tight text-on-surface mb-3">
           Reset link sent
         </h2>
-        <p className="text-[14px] text-on-surface-variant leading-relaxed mb-5 max-w-[300px] mx-auto">
+        <p className="text-body-lg text-on-surface-variant leading-relaxed mb-5 max-w-[300px] mx-auto">
           If that email exists in our system, you&apos;ll receive a password reset link shortly.
         </p>
-        <div className="flex items-center justify-center gap-2 text-[12px] text-on-surface-variant/60 mb-7">
+        <div className="flex items-center justify-center gap-2 text-label text-on-surface-variant/60 mb-7">
           <Clock className="w-3.5 h-3.5" />
           <span>Link expires in 1 hour · Check spam folder</span>
         </div>
-        <Link href="/auth/login" className="text-[13px] text-primary hover:underline font-medium">
+        <Link href="/auth/login" className="text-body text-primary hover:underline font-medium">
           ← Back to login
         </Link>
       </div>
@@ -69,7 +69,7 @@ export function ForgotPasswordForm() {
       {/* Back link */}
       <Link
         href="/auth/login"
-        className="inline-flex items-center gap-1.5 text-[13px] text-on-surface-variant hover:text-on-surface transition-colors mb-7"
+        className="inline-flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors mb-7"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to login
@@ -77,10 +77,10 @@ export function ForgotPasswordForm() {
 
       {/* Header */}
       <div className="mb-7">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-on-surface mb-2 leading-tight">
+        <h1 className="text-display font-semibold tracking-tight text-on-surface mb-2 leading-tight">
           Forgot password?
         </h1>
-        <p className="text-[14px] text-on-surface-variant leading-relaxed">
+        <p className="text-body-lg text-on-surface-variant leading-relaxed">
           Enter your email and we&apos;ll send you a reset link.
         </p>
       </div>

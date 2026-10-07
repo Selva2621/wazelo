@@ -14,6 +14,8 @@ import {
   type CreateScheduledMessageFormData,
 } from "@/lib/validations/scheduler";
 import type { MessageType } from "@/lib/types/scheduler";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface CreateScheduledMessageModalProps {
   open: boolean;
@@ -69,29 +71,24 @@ export function CreateScheduledMessageModal({
     onClose();
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-surface-container rounded-2xl shadow-xl">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      aria-labelledby="schedule-message-title"
+      className="max-w-lg bg-surface-container"
+    >
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-          <h2 className="text-[16px] font-semibold text-on-surface">
+          <h2 id="schedule-message-title" className="text-title-sm font-semibold text-on-surface">
             Schedule Message
           </h2>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={handleClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Form */}
@@ -102,7 +99,7 @@ export function CreateScheduledMessageModal({
             <select
               id="sessionId"
               {...register("sessionId")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Select session...</option>
               {sessions.map((s) => (
@@ -112,7 +109,7 @@ export function CreateScheduledMessageModal({
               ))}
             </select>
             {errors.sessionId && (
-              <p className="mt-1 text-[12px] text-error">
+              <p className="mt-1 text-label text-error">
                 {errors.sessionId.message}
               </p>
             )}
@@ -135,7 +132,7 @@ export function CreateScheduledMessageModal({
             <select
               id="messageType"
               {...register("messageType")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {MESSAGE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -154,10 +151,10 @@ export function CreateScheduledMessageModal({
                 rows={3}
                 placeholder="Type your message..."
                 {...register("messageBody")}
-                className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
               {errors.messageBody && (
-                <p className="mt-1 text-[12px] text-error">
+                <p className="mt-1 text-label text-error">
                   {errors.messageBody.message}
                 </p>
               )}
@@ -216,7 +213,8 @@ export function CreateScheduledMessageModal({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

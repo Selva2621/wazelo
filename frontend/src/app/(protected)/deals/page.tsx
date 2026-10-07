@@ -47,7 +47,7 @@ export default function DealsPage() {
       <div className="shrink-0 px-6 pt-5 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Kanban className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">Deals</h1>
+          <h1 className="text-title font-semibold text-on-surface">Deals</h1>
 
           {/* Pipeline selector */}
           {pipelines.length > 1 && (
@@ -55,7 +55,7 @@ export default function DealsPage() {
               <select
                 value={activePipeline?.id || ""}
                 onChange={(e) => setSelectedPipelineId(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg bg-surface-container border border-outline-variant/10 text-[13px] font-medium text-on-surface cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg bg-surface-container border border-outline-variant/10 text-body font-medium text-on-surface cursor-pointer"
               >
                 {pipelines.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>

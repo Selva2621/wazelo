@@ -87,7 +87,7 @@ export default function CampaignDetailPage() {
   if (!campaign) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-var(--header-height))] gap-3">
-        <p className="text-[14px] text-on-surface-variant">
+        <p className="text-body-lg text-on-surface-variant">
           Campaign not found.
         </p>
         <Button variant="ghost" onClick={() => router.push("/campaigns")}>
@@ -121,7 +121,7 @@ export default function CampaignDetailPage() {
         <div>
           <button
             onClick={() => router.push("/campaigns")}
-            className="flex items-center gap-1.5 text-[13px] text-on-surface-variant hover:text-on-surface transition-colors mb-3"
+            className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors mb-3"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Campaigns
@@ -130,7 +130,7 @@ export default function CampaignDetailPage() {
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-[22px] font-semibold text-on-surface">
+                <h1 className="text-headline font-semibold text-on-surface">
                   {campaign.name}
                 </h1>
                 <CampaignStatusBadge
@@ -138,18 +138,18 @@ export default function CampaignDetailPage() {
                   pulse={isRunning}
                 />
                 {isRunning && (
-                  <span className="flex items-center gap-1 text-[11px] text-error font-medium">
+                  <span className="flex items-center gap-1 text-caption text-error font-medium">
                     <span className="h-2 w-2 rounded-full bg-error animate-pulse" />
                     LIVE
                   </span>
                 )}
               </div>
               {campaign.description && (
-                <p className="text-[13px] text-on-surface-variant/70 mb-2">
+                <p className="text-body text-on-surface-variant/70 mb-2">
                   {campaign.description}
                 </p>
               )}
-              <div className="flex gap-4 text-[12px] text-on-surface-variant/60">
+              <div className="flex gap-4 text-label text-on-surface-variant/60">
                 <span>Started: {formatDate(campaign.startedAt)}</span>
                 <span>Completed: {formatDate(campaign.completedAt)}</span>
                 {campaign.scheduledAt && (
@@ -226,33 +226,33 @@ export default function CampaignDetailPage() {
         <div className="grid grid-cols-[1fr_1.5fr] gap-6">
           {/* Left: Campaign Info */}
           <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
-            <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wide">
+            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
               Campaign Details
             </p>
             <div className="space-y-3">
               <div>
-                <p className="text-[11px] text-on-surface-variant/60">
+                <p className="text-caption text-on-surface-variant/60">
                   Message Type
                 </p>
-                <p className="text-[13px] text-on-surface">
+                <p className="text-body text-on-surface">
                   {campaign.messageType}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-on-surface-variant/60">
+                <p className="text-caption text-on-surface-variant/60">
                   Audience
                 </p>
-                <p className="text-[13px] text-on-surface">
+                <p className="text-body text-on-surface">
                   {campaign.audienceType === "ALL"
                     ? "All Contacts"
                     : "Filtered"}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-on-surface-variant/60">
+                <p className="text-caption text-on-surface-variant/60">
                   Timezone
                 </p>
-                <p className="text-[13px] text-on-surface">
+                <p className="text-body text-on-surface">
                   {campaign.timezone}
                 </p>
               </div>
@@ -261,11 +261,11 @@ export default function CampaignDetailPage() {
             {/* Message Preview */}
             {campaign.messageBody && (
               <div>
-                <p className="text-[11px] text-on-surface-variant/60 mb-2">
+                <p className="text-caption text-on-surface-variant/60 mb-2">
                   Message Preview
                 </p>
                 <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary-container/10 border border-primary/10 p-3">
-                  <p className="text-[13px] text-on-surface whitespace-pre-wrap break-words">
+                  <p className="text-body text-on-surface whitespace-pre-wrap break-words">
                     {campaign.messageBody}
                   </p>
                 </div>
@@ -276,10 +276,10 @@ export default function CampaignDetailPage() {
           {/* Right: Recipients Table */}
           <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wide">
+              <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
                 Recipients
               </p>
-              <span className="text-[12px] text-on-surface-variant/60">
+              <span className="text-label text-on-surface-variant/60">
                 {campaign.totalRecipients.toLocaleString()} total
               </span>
             </div>

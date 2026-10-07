@@ -10,6 +10,9 @@ import {
 import apiClient from "@/lib/api/client";
 import { Spinner } from "@/components/ui/spinner";
 import { PAGE_SIZE } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -20,13 +23,13 @@ const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 
 const ticketApi = {
   list: (params: { page: number; limit: number }) =>
-    apiClient.get<any>("/super-admin/tickets", { params }).then((r) => r.data),
+    apiClient.get<any>("/support/tickets", { params }).then((r) => r.data),
   get: (id: string) =>
-    apiClient.get<any>(`/super-admin/tickets/${id}`).then((r) => r.data),
+    apiClient.get<any>(`/support/tickets/${id}`).then((r) => r.data),
   create: (data: { title: string; description: string; category: string; priority: string; attachmentUrl?: string }) =>
-    apiClient.post<any>("/super-admin/tickets", data).then((r) => r.data),
+    apiClient.post<any>("/support/tickets", data).then((r) => r.data),
   reply: (id: string, body: string) =>
-    apiClient.post<any>(`/super-admin/tickets/${id}/replies`, { body }).then((r) => r.data),
+    apiClient.post<any>(`/support/tickets/${id}/replies`, { body }).then((r) => r.data),
   uploadFile: async (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -71,23 +74,23 @@ function useReply(ticketId: string) {
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  OPEN:        { label: "Open",        className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",  icon: <Circle className="h-3 w-3" /> },
-  IN_PROGRESS: { label: "In Progress", className: "bg-blue-500/10 text-blue-400 border-blue-500/20",           icon: <RefreshCw className="h-3 w-3" /> },
-  RESOLVED:    { label: "Resolved",    className: "bg-violet-500/10 text-violet-400 border-violet-500/20",     icon: <CheckCircle2 className="h-3 w-3" /> },
+  OPEN:        { label: "Open",        className: "bg-success/10 text-success border-success/20",  icon: <Circle className="h-3 w-3" /> },
+  IN_PROGRESS: { label: "In Progress", className: "bg-info/10 text-info border-info/20",           icon: <RefreshCw className="h-3 w-3" /> },
+  RESOLVED:    { label: "Resolved",    className: "bg-chart-5/10 text-chart-5 border-chart-5/20",     icon: <CheckCircle2 className="h-3 w-3" /> },
   CLOSED:      { label: "Closed",      className: "bg-surface-container text-on-surface-variant border-outline-variant", icon: <X className="h-3 w-3" /> },
 };
 
 const PRIORITY_CONFIG: Record<string, { className: string; dot: string }> = {
   LOW:    { className: "text-on-surface-variant", dot: "bg-on-surface-variant/40" },
-  MEDIUM: { className: "text-blue-400",           dot: "bg-blue-400" },
-  HIGH:   { className: "text-orange-400",         dot: "bg-orange-400" },
-  URGENT: { className: "text-red-400",            dot: "bg-red-400" },
+  MEDIUM: { className: "text-info",           dot: "bg-info" },
+  HIGH:   { className: "text-warning",         dot: "bg-warning" },
+  URGENT: { className: "text-error",            dot: "bg-error" },
 };
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.CLOSED;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border ${cfg.className}`}>
+    <span className={`inline-flex items-center gap-1 text-label px-2 py-0.5 rounded-full font-medium border ${cfg.className}`}>
       {cfg.icon} {cfg.label}
     </span>
   );
@@ -96,7 +99,7 @@ function StatusBadge({ status }: { status: string }) {
 function PriorityDot({ priority }: { priority: string }) {
   const cfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.MEDIUM;
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.className}`}>
+    <span className={`inline-flex items-center gap-1.5 text-label font-medium ${cfg.className}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
       {priority}
     </span>
@@ -106,7 +109,7 @@ function PriorityDot({ priority }: { priority: string }) {
 function AuthImage({ url, className }: { url: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return (
-    <div className="flex items-center gap-1.5 text-xs text-on-surface-variant bg-surface-container border border-outline-variant rounded-lg px-3 py-2 w-fit">
+    <div className="flex items-center gap-1.5 text-label text-on-surface-variant bg-surface-container border border-outline-variant rounded-lg px-3 py-2 w-fit">
       <ImageIcon className="h-3.5 w-3.5" /> Failed to load image
     </div>
   );
@@ -135,23 +138,21 @@ function Pagination({ page, totalPages, total, onPage }: { page: number; totalPa
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-      <p className="text-xs text-on-surface-variant">{total} ticket{total !== 1 ? "s" : ""}</p>
+      <p className="text-label text-on-surface-variant">{total} ticket{total !== 1 ? "s" : ""}</p>
       <div className="flex items-center gap-1">
-        <button
+        <IconButton size="sm"
           onClick={() => onPage(page - 1)}
-          disabled={page === 1}
-          className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
+          disabled={page === 1} aria-label="Previous page">
           <ChevronLeft className="h-4 w-4" />
-        </button>
+        </IconButton>
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-on-surface-variant text-xs">…</span>
+            <span key={`ellipsis-${i}`} className="px-1 text-on-surface-variant text-label">…</span>
           ) : (
             <button
               key={p}
               onClick={() => onPage(p as number)}
-              className={`min-w-[28px] h-7 rounded-lg text-xs font-medium transition-colors ${
+              className={`min-w-[28px] h-7 rounded-lg text-label font-medium transition-colors ${
                 p === page
                   ? "bg-primary text-on-primary"
                   : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
@@ -161,13 +162,11 @@ function Pagination({ page, totalPages, total, onPage }: { page: number; totalPa
             </button>
           )
         )}
-        <button
+        <IconButton size="sm"
           onClick={() => onPage(page + 1)}
-          disabled={page === totalPages}
-          className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
+          disabled={page === totalPages} aria-label="Next page">
           <ChevronRight className="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
     </div>
   );
@@ -175,7 +174,16 @@ function Pagination({ page, totalPages, total, onPage }: { page: number; totalPa
 
 // ─── New Ticket Modal ─────────────────────────────────────────────────────────
 
-function NewTicketModal({ onClose }: { onClose: () => void }) {
+function NewTicketModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal open={open} onClose={onClose} aria-labelledby="new-ticket-title" className="max-w-lg">
+      {/* Form state lives in a child so it resets each time the modal opens. */}
+      {() => <NewTicketForm onClose={onClose} />}
+    </Modal>
+  );
+}
+
+function NewTicketForm({ onClose }: { onClose: () => void }) {
   const create = useCreateTicket();
   const [form, setForm] = useState({
     title: "",
@@ -227,51 +235,50 @@ function NewTicketModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-[#0f1117] border border-outline-variant rounded-2xl shadow-2xl w-full max-w-lg">
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <div className="flex items-center gap-2">
             <LifeBuoy className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-on-surface text-sm">New Support Ticket</h2>
+            <h2 id="new-ticket-title" className="font-semibold text-on-surface text-body-lg">New Support Ticket</h2>
           </div>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container">
+          <IconButton size="xs" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Title</label>
+            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Title</label>
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
               maxLength={255}
               placeholder="Briefly describe the issue"
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
             />
           </div>
 
           {/* Category + Priority */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Category</label>
+              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Category</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
               >
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Priority</label>
+              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Priority</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
               >
                 {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -280,73 +287,71 @@ function NewTicketModal({ onClose }: { onClose: () => void }) {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Description</label>
+            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               required
               rows={4}
               placeholder="Explain the issue in detail..."
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
             />
           </div>
 
           {/* Image upload */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">
+            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Attachment <span className="normal-case font-normal text-on-surface-variant/50">(optional · max 16 MB)</span>
             </label>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageSelect} className="hidden" />
             {imagePreview ? (
               <div className="relative w-fit group">
                 <img src={imagePreview} alt="preview" className="max-h-28 rounded-xl border border-outline-variant object-contain bg-surface-container" />
-                <button
+                <IconButton size="xs" variant="danger"
                   type="button"
                   onClick={clearImage}
-                  className="absolute -top-2 -right-2 bg-surface-container-high border border-outline-variant rounded-full p-0.5 text-on-surface-variant hover:text-error transition-colors shadow-sm"
-                >
+                  className="absolute -top-2 -right-2 bg-surface-container-high border border-outline-variant shadow-sm" aria-label="Remove">
                   <X className="h-3 w-3" />
-                </button>
+                </IconButton>
               </div>
             ) : (
-              <button
+              <Button variant="secondary" size="lg"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 w-full border border-dashed border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface-variant hover:text-on-surface hover:border-primary/50 hover:bg-surface-container transition-colors"
+                className="w-full border-dashed hover:border-primary/50"
               >
                 <Paperclip className="h-4 w-4" />
                 Click to attach an image
-              </button>
+              </Button>
             )}
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 text-body-lg text-error bg-error/10 border border-error/20 rounded-xl px-3 py-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
           <div className="flex gap-2 pt-1">
-            <button
+            <Button variant="secondary" size="lg"
               type="button"
               onClick={onClose}
-              className="flex-1 border border-outline-variant rounded-xl py-2.5 text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+              className="flex-1"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button size="lg"
               type="submit"
               disabled={create.isPending || uploading}
-              className="flex-1 bg-primary text-on-primary rounded-xl py-2.5 text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2 transition-colors"
+              className="flex-1"
             >
               {(uploading || create.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
               {uploading ? "Uploading…" : create.isPending ? "Submitting…" : "Submit Ticket"}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
   );
 }
 
@@ -377,14 +382,14 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
       <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant flex-shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors group"
+          className="flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
         </button>
         <span className="text-outline-variant">|</span>
         <StatusBadge status={ticket.status} />
-        <span className="text-xs text-on-surface-variant ml-auto">
+        <span className="text-label text-on-surface-variant ml-auto">
           #{ticket.id.slice(0, 8).toUpperCase()}
         </span>
       </div>
@@ -394,17 +399,17 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
         <div className="flex-1 flex flex-col min-w-0">
           {/* Ticket header */}
           <div className="px-6 py-5 border-b border-outline-variant flex-shrink-0">
-            <h1 className="text-base font-semibold text-on-surface leading-snug">{ticket.title}</h1>
+            <h1 className="text-title-sm font-semibold text-on-surface leading-snug">{ticket.title}</h1>
             <div className="flex items-center flex-wrap gap-3 mt-2">
               <PriorityDot priority={ticket.priority} />
-              <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+              <span className="flex items-center gap-1 text-label text-on-surface-variant">
                 <Tag className="h-3 w-3" /> {ticket.category.replace("_", " ")}
               </span>
-              <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+              <span className="flex items-center gap-1 text-label text-on-surface-variant">
                 <Clock className="h-3 w-3" /> {new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </span>
               {ticket._count?.replies !== undefined && (
-                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                <span className="flex items-center gap-1 text-label text-on-surface-variant">
                   <MessageSquare className="h-3 w-3" /> {ticket._count.replies} replies
                 </span>
               )}
@@ -416,16 +421,16 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
             {/* Original message */}
             <div className="flex justify-start">
               <div className="max-w-[75%]">
-                <div className="text-xs text-on-surface-variant mb-1.5 flex items-center gap-1.5">
+                <div className="text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5">
                   <span className="font-medium text-on-surface">You</span>
                   <span>·</span>
                   <span>{new Date(ticket.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-2xl rounded-tl-sm px-4 py-3">
-                  <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+                  <p className="text-body-lg text-on-surface whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
                   {ticket.attachmentUrl && (
                     <div className="mt-3 pt-3 border-t border-outline-variant/50">
-                      <p className="text-xs text-on-surface-variant flex items-center gap-1 mb-2">
+                      <p className="text-label text-on-surface-variant flex items-center gap-1 mb-2">
                         <Paperclip className="h-3 w-3" /> Attachment
                       </p>
                       <AuthImage
@@ -444,7 +449,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
               return (
                 <div key={r.id} className={`flex ${isSupport ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%]`}>
-                    <div className={`text-xs text-on-surface-variant mb-1.5 flex items-center gap-1.5 ${isSupport ? "justify-end" : ""}`}>
+                    <div className={`text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5 ${isSupport ? "justify-end" : ""}`}>
                       <span className="font-medium text-on-surface">{isSupport ? "Support Team" : "You"}</span>
                       <span>·</span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
@@ -454,7 +459,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                         ? "bg-primary/10 border-primary/20 rounded-tr-sm"
                         : "bg-surface-container border-outline-variant rounded-tl-sm"
                     }`}>
-                      <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed">{r.body}</p>
+                      <p className="text-body-lg text-on-surface whitespace-pre-wrap leading-relaxed">{r.body}</p>
                     </div>
                   </div>
                 </div>
@@ -464,7 +469,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
             {isClosed && (
               <div className="flex items-center gap-3 py-2">
                 <div className="flex-1 h-px bg-outline-variant" />
-                <span className="text-xs text-on-surface-variant">Ticket {ticket.status.toLowerCase()}</span>
+                <span className="text-label text-on-surface-variant">Ticket {ticket.status.toLowerCase()}</span>
                 <div className="flex-1 h-px bg-outline-variant" />
               </div>
             )}
@@ -480,17 +485,17 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                   onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
                   rows={3}
                   placeholder="Write a reply… (Ctrl+Enter to send)"
-                  className="w-full bg-transparent px-4 pt-3 pb-1 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none resize-none"
+                  className="w-full bg-transparent px-4 pt-3 pb-1 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none resize-none"
                 />
                 <div className="flex items-center justify-end px-3 py-2">
-                  <button
+                  <Button
                     onClick={handleReply}
                     disabled={!body.trim() || reply.isPending}
-                    className="bg-primary text-on-primary text-xs font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
+                   
                   >
                     {reply.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     Send Reply
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -500,25 +505,25 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
         {/* Right sidebar: ticket meta */}
         <div className="w-64 border-l border-outline-variant flex-shrink-0 px-5 py-5 space-y-5 overflow-y-auto hidden lg:block">
           <div>
-            <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-2">Status</p>
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Status</p>
             <StatusBadge status={ticket.status} />
           </div>
           <div>
-            <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priority</p>
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priority</p>
             <PriorityDot priority={ticket.priority} />
           </div>
           <div>
-            <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-2">Category</p>
-            <p className="text-sm text-on-surface">{ticket.category.replace("_", " ")}</p>
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Category</p>
+            <p className="text-body-lg text-on-surface">{ticket.category.replace("_", " ")}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-2">Opened</p>
-            <p className="text-sm text-on-surface">{new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Opened</p>
+            <p className="text-body-lg text-on-surface">{new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
           {ticket.closedAt && (
             <div>
-              <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-2">Closed</p>
-              <p className="text-sm text-on-surface">{new Date(ticket.closedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+              <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Closed</p>
+              <p className="text-body-lg text-on-surface">{new Date(ticket.closedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
             </div>
           )}
         </div>
@@ -539,9 +544,9 @@ function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
 
   return (
     <div className="border border-outline-variant rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
+      <table className="w-full text-body-lg">
         <thead>
-          <tr className="bg-surface-container/60 border-b border-outline-variant text-xs text-on-surface-variant font-medium uppercase tracking-wide">
+          <tr className="bg-surface-container/60 border-b border-outline-variant text-label text-on-surface-variant font-medium uppercase tracking-wide">
             <th className="text-left px-5 py-3">Ticket</th>
             <th className="text-left px-4 py-3 hidden sm:table-cell">Category</th>
             <th className="text-left px-4 py-3 hidden md:table-cell">Priority</th>
@@ -563,7 +568,7 @@ function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
               <td colSpan={7} className="py-16 text-center">
                 <LifeBuoy className="h-10 w-10 mx-auto mb-3 text-on-surface-variant opacity-20" />
                 <p className="font-medium text-on-surface">No tickets yet</p>
-                <p className="text-xs text-on-surface-variant mt-1">Create a ticket and we'll get back to you.</p>
+                <p className="text-label text-on-surface-variant mt-1">Create a ticket and we'll get back to you.</p>
               </td>
             </tr>
           ) : tickets.map((t) => (
@@ -577,7 +582,7 @@ function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
                   {t.attachmentUrl && <Paperclip className="h-3.5 w-3.5 text-on-surface-variant flex-shrink-0 mt-0.5" />}
                   <div className="min-w-0">
                     <p className="font-medium text-on-surface truncate group-hover:text-primary transition-colors">{t.title}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-label text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
                   </div>
                 </div>
               </td>
@@ -630,17 +635,17 @@ export default function SupportPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <LifeBuoy className="h-5 w-5 text-primary" /> Support
           </h1>
-          <p className="text-sm text-on-surface-variant mt-0.5">Submit and track your support tickets</p>
+          <p className="text-body-lg text-on-surface-variant mt-0.5">Submit and track your support tickets</p>
         </div>
-        <button
+        <Button size="lg"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
+         
         >
           <Plus className="h-4 w-4" /> New Ticket
-        </button>
+        </Button>
       </div>
 
       {/* DataTable — fills remaining height */}
@@ -648,7 +653,7 @@ export default function SupportPage() {
         <TicketTable onSelect={setSelectedId} />
       </div>
 
-      {showModal && <NewTicketModal onClose={() => setShowModal(false)} />}
+      <NewTicketModal open={showModal} onClose={() => setShowModal(false)} />
     </div>
   );
 }

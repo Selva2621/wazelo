@@ -146,7 +146,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       <CardFooter>
         <Link
           href="/auth/login"
-          className="text-[13px] text-primary hover:underline"
+          className="text-body text-primary hover:underline"
         >
           Back to login
         </Link>

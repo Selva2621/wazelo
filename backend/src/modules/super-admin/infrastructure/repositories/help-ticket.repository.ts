@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { TicketStatus, TicketCategory, TicketPriority } from '@prisma/client';
+import { Prisma, TicketStatus, TicketCategory, TicketPriority } from '@prisma/client';
 
 export interface CreateTicketInput {
   orgId: string;
@@ -19,7 +19,11 @@ export interface ListTicketsFilter {
   category?: TicketCategory;
   priority?: TicketPriority;
   orgId?: string;
+  /** Super admin queue only: a super admin id, or null for unassigned */
+  assignedToId?: string | null;
 }
+
+const ASSIGNEE_SELECT = { select: { id: true, name: true, email: true } } as const;
 
 @Injectable()
 export class HelpTicketRepository {
@@ -40,13 +44,19 @@ export class HelpTicketRepository {
     });
   }
 
-  async findById(id: string) {
+  /**
+   * @param includeInternal true only for super admins — internal notes must
+   *   never reach the tenant.
+   */
+  async findById(id: string, includeInternal = false) {
     return this.prisma.helpTicket.findUnique({
       where: { id },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         organization: { select: { id: true, name: true, slug: true } },
+        assignedTo: ASSIGNEE_SELECT,
         replies: {
+          where: includeInternal ? {} : { isInternal: false },
           orderBy: { createdAt: 'asc' },
           include: {
             user: { select: { id: true, firstName: true, lastName: true } },
@@ -57,12 +67,13 @@ export class HelpTicketRepository {
     });
   }
 
+  /** Tenant view: their own org only, internal notes not counted. */
   async findByOrg(orgId: string, filter: ListTicketsFilter) {
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const where: any = { orgId };
+    const where: Prisma.HelpTicketWhereInput = { orgId };
     if (filter.status) where.status = filter.status;
     if (filter.category) where.category = filter.category;
     if (filter.priority) where.priority = filter.priority;
@@ -75,7 +86,7 @@ export class HelpTicketRepository {
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { id: true, firstName: true, lastName: true } },
-          _count: { select: { replies: true } },
+          _count: { select: { replies: { where: { isInternal: false } } } },
         },
       }),
       this.prisma.helpTicket.count({ where }),
@@ -84,16 +95,18 @@ export class HelpTicketRepository {
     return { tickets, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  /** Super admin queue across all orgs. */
   async findAll(filter: ListTicketsFilter) {
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.HelpTicketWhereInput = {};
     if (filter.status) where.status = filter.status;
     if (filter.category) where.category = filter.category;
     if (filter.priority) where.priority = filter.priority;
     if (filter.orgId) where.orgId = filter.orgId;
+    if (filter.assignedToId !== undefined) where.assignedToId = filter.assignedToId;
 
     const [tickets, total] = await Promise.all([
       this.prisma.helpTicket.findMany({
@@ -104,6 +117,7 @@ export class HelpTicketRepository {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },
           organization: { select: { id: true, name: true, slug: true } },
+          assignedTo: ASSIGNEE_SELECT,
           _count: { select: { replies: true } },
         },
       }),
@@ -114,16 +128,25 @@ export class HelpTicketRepository {
   }
 
   async updateStatus(id: string, status: TicketStatus) {
-    const data: any = { status };
+    const data: Prisma.HelpTicketUpdateInput = { status };
     if (status === 'CLOSED' || status === 'RESOLVED') {
       data.closedAt = new Date();
     }
     return this.prisma.helpTicket.update({ where: { id }, data });
   }
 
-  async addReply(ticketId: string, body: string, userId?: string, superAdminId?: string) {
+  /** Assign to a super admin, or unassign with null. */
+  async assign(id: string, assignedToId: string | null) {
+    return this.prisma.helpTicket.update({
+      where: { id },
+      data: { assignedToId, assignedAt: assignedToId ? new Date() : null },
+      include: { assignedTo: ASSIGNEE_SELECT },
+    });
+  }
+
+  async addReply(ticketId: string, body: string, userId?: string, superAdminId?: string, isInternal = false) {
     return this.prisma.ticketReply.create({
-      data: { ticketId, body, userId: userId ?? null, superAdminId: superAdminId ?? null },
+      data: { ticketId, body, userId: userId ?? null, superAdminId: superAdminId ?? null, isInternal },
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
         superAdmin: { select: { id: true, name: true } },

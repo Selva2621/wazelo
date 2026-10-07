@@ -16,7 +16,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     <>
       <script
         dangerouslySetInnerHTML={{
-          __html: `try{var t=JSON.parse(localStorage.getItem("crm-theme")||"{}");if(t&&t.state&&t.state.theme)document.documentElement.setAttribute("data-theme",t.state.theme)}catch(e){}`,
+          __html: `try{var t=JSON.parse(localStorage.getItem("crm-theme")||"{}"),v=t&&t.state&&t.state.theme;document.documentElement.setAttribute("data-theme",v||"daylight")}catch(e){}`,
         }}
       />
       {children}

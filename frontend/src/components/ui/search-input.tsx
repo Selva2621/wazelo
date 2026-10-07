@@ -12,19 +12,20 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ className, shortcutHint, ...props }, ref) => {
     return (
       <div className={cn("relative", className)}>
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant/50" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
         <input
           ref={ref}
           type="text"
           className={cn(
-            "w-full rounded-xl bg-surface-container-low pl-9 pr-4 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 outline-none",
-            "focus:bg-surface-container focus:ring-2 focus:ring-primary/40",
+            "h-9 w-full rounded-lg border border-outline-variant bg-surface-container-low pl-9 pr-3 text-body text-on-surface placeholder:text-placeholder outline-none",
+            "transition-[border-color,box-shadow] duration-120 ease-standard hover:border-outline",
+            "focus:border-primary focus:ring-2 focus:ring-primary/30",
             shortcutHint && "pr-14",
           )}
           {...props}
         />
         {shortcutHint && (
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-outline-variant/30 bg-surface-container px-1.5 py-0.5 text-[10px] text-on-surface-variant/60 font-mono">
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-outline-variant bg-surface-container px-1.5 py-0.5 text-caption font-normal text-on-surface-variant font-mono">
             {shortcutHint}
           </kbd>
         )}

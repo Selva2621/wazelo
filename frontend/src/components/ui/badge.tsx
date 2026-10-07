@@ -17,11 +17,11 @@ interface BadgeProps {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default: "bg-surface-container-high text-on-surface-variant",
-  primary: "bg-primary/15 text-primary",
+  primary: "bg-primary/15 text-primary-container",
   success: "bg-success-container text-success",
   warning: "bg-warning-container text-warning",
   error: "bg-error-container text-error",
-  info: "bg-[#1e3a5f] text-[#60a5fa]",
+  info: "bg-info-container text-info",
   muted: "bg-surface-container text-on-surface-variant",
 };
 
@@ -29,7 +29,7 @@ export function Badge({ variant = "default", children, className }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-tight",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption",
         variantStyles[variant],
         className,
       )}
@@ -51,10 +51,7 @@ export function CountBadge({ count, className }: CountBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full bg-primary text-on-primary font-semibold",
-        display.length <= 2
-          ? "h-5 w-5 text-[10px]"
-          : "h-5 min-w-5 px-1.5 text-[10px]",
+        "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-caption font-semibold tabular-nums text-on-primary",
         className,
       )}
     >

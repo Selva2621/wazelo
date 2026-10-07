@@ -57,8 +57,8 @@ function SectionHeader({ icon, label, count }: { icon: React.ReactNode; label: s
   return (
     <div className="flex items-center gap-2 px-1 mb-2">
       <span className="text-on-surface-variant/60">{icon}</span>
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/60">{label}</span>
-      <span className="ml-auto text-[11px] text-on-surface-variant/40">{count} result{count !== 1 ? "s" : ""}</span>
+      <span className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant/60">{label}</span>
+      <span className="ml-auto text-caption text-on-surface-variant/40">{count} result{count !== 1 ? "s" : ""}</span>
     </div>
   );
 }
@@ -79,20 +79,20 @@ function ContactResults({ contacts, query, onNavigate }: {
             className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 transition-colors text-left group ${i < contacts.length - 1 ? "border-b border-outline-variant/8" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-              <span className="text-[12px] font-semibold text-primary">
+              <span className="text-label font-semibold text-primary">
                 {(c.name ?? c.phoneNumber).charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-on-surface truncate">
+              <p className="text-body font-medium text-on-surface truncate">
                 {highlight(c.name ?? "—", query)}
               </p>
-              <p className="text-[11px] text-on-surface-variant/60">
+              <p className="text-caption text-on-surface-variant/60">
                 {highlight(c.phoneNumber, query)}
                 {c.email && <> · {highlight(c.email, query)}</>}
               </p>
             </div>
-            <Badge variant={statusColor(c.leadStatus) as "default" | "primary" | "success" | "error"} className="text-[10px] shrink-0">
+            <Badge variant={statusColor(c.leadStatus) as "default" | "primary" | "success" | "error"} className="text-caption shrink-0">
               {c.leadStatus}
             </Badge>
             <ArrowRight className="h-3.5 w-3.5 text-on-surface-variant/30 group-hover:text-primary transition-colors shrink-0" />
@@ -122,16 +122,16 @@ function ConversationResults({ conversations, query, onNavigate }: {
               <MessageSquare className="h-3.5 w-3.5 text-on-surface-variant/60" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-on-surface truncate">
+              <p className="text-body font-medium text-on-surface truncate">
                 {highlight(c.contactPhone, query)}
               </p>
               {c.lastMessageBody && (
-                <p className="text-[11px] text-on-surface-variant/60 truncate">
+                <p className="text-caption text-on-surface-variant/60 truncate">
                   {c.lastMessageBody}
                 </p>
               )}
             </div>
-            <Badge variant={c.status === "OPEN" ? "primary" : "default"} className="text-[10px] shrink-0">
+            <Badge variant={c.status === "OPEN" ? "primary" : "default"} className="text-caption shrink-0">
               {c.status}
             </Badge>
             <ArrowRight className="h-3.5 w-3.5 text-on-surface-variant/30 group-hover:text-primary transition-colors shrink-0" />
@@ -161,14 +161,14 @@ function CampaignResults({ campaigns, query, onNavigate }: {
               <Megaphone className="h-3.5 w-3.5 text-on-surface-variant/60" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-on-surface truncate">
+              <p className="text-body font-medium text-on-surface truncate">
                 {highlight(c.name, query)}
               </p>
-              <p className="text-[11px] text-on-surface-variant/60">
+              <p className="text-caption text-on-surface-variant/60">
                 {c.totalRecipients.toLocaleString()} recipients
               </p>
             </div>
-            <Badge variant={campaignStatusColor(c.status) as "default" | "primary" | "success" | "error"} className="text-[10px] shrink-0">
+            <Badge variant={campaignStatusColor(c.status) as "default" | "primary" | "success" | "error"} className="text-caption shrink-0">
               {c.status}
             </Badge>
             <ArrowRight className="h-3.5 w-3.5 text-on-surface-variant/30 group-hover:text-primary transition-colors shrink-0" />
@@ -216,7 +216,7 @@ export default function SearchPage() {
       <div className="shrink-0 px-6 pt-5 pb-4">
         <div className="flex items-center gap-3 mb-4">
           <Search className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">Search</h1>
+          <h1 className="text-title font-semibold text-on-surface">Search</h1>
         </div>
 
         {/* Search Input */}
@@ -228,7 +228,7 @@ export default function SearchPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Search contacts, conversations, campaigns..."
-            className="w-full pl-10 pr-10 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+            className="w-full pl-10 pr-10 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
           />
           {isFetching && (
             <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary animate-spin" />
@@ -236,7 +236,7 @@ export default function SearchPage() {
         </div>
 
         {query.length >= 2 && !isFetching && data && (
-          <p className="mt-2 text-[12px] text-on-surface-variant/50">
+          <p className="mt-2 text-label text-on-surface-variant/50">
             {(data.contacts.length + data.conversations.length + data.campaigns.length)} result{(data.contacts.length + data.conversations.length + data.campaigns.length) !== 1 ? "s" : ""} for &quot;{query}&quot;
           </p>
         )}
@@ -250,10 +250,10 @@ export default function SearchPage() {
             <div className="h-16 w-16 rounded-2xl bg-surface-container flex items-center justify-center mb-4">
               <Search className="h-7 w-7 text-on-surface-variant/40" />
             </div>
-            <p className="text-[15px] font-medium text-on-surface-variant/60 mb-1">
+            <p className="text-body-lg font-medium text-on-surface-variant/60 mb-1">
               Search across your CRM
             </p>
-            <p className="text-[13px] text-on-surface-variant/40 max-w-xs">
+            <p className="text-body text-on-surface-variant/40 max-w-xs">
               Find contacts by name, phone or email · conversations · campaigns
             </p>
           </div>
@@ -262,17 +262,17 @@ export default function SearchPage() {
         {/* Error */}
         {isError && (
           <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
-            <p className="text-[13px] text-error">Search failed. Please try again.</p>
+            <p className="text-body text-error">Search failed. Please try again.</p>
           </div>
         )}
 
         {/* No results */}
         {noResults && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-[15px] font-medium text-on-surface-variant/60 mb-1">
+            <p className="text-body-lg font-medium text-on-surface-variant/60 mb-1">
               No results for &quot;{query}&quot;
             </p>
-            <p className="text-[13px] text-on-surface-variant/40">
+            <p className="text-body text-on-surface-variant/40">
               Try a different name, phone number, or keyword
             </p>
           </div>

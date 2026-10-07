@@ -2,6 +2,7 @@
 
 import { ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import type { SlaPolicy } from "@/lib/types/sla";
+import { IconButton } from "@/components/ui/icon-button";
 
 function fmtMs(ms: number): string {
   const m = Math.floor(ms / 60_000);
@@ -39,8 +40,8 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
   if (policies.length === 0) {
     return (
       <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest px-6 py-16 text-center">
-        <p className="text-[13px] font-medium text-on-surface-variant/50">No policies configured</p>
-        <p className="text-[12px] text-on-surface-variant/35 mt-1">Create a policy to start tracking SLA compliance</p>
+        <p className="text-body font-medium text-on-surface-variant/50">No policies configured</p>
+        <p className="text-label text-on-surface-variant/35 mt-1">Create a policy to start tracking SLA compliance</p>
       </div>
     );
   }
@@ -50,7 +51,7 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
       {/* Table header */}
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-5 py-2.5 bg-surface-container/50">
         {["Policy", "Metric", "Breach", "Warning", ""].map((h) => (
-          <span key={h} className="text-[11px] font-semibold text-on-surface-variant/50 uppercase tracking-wide">{h}</span>
+          <span key={h} className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-wide">{h}</span>
         ))}
       </div>
 
@@ -67,28 +68,28 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
             {/* Name + description */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-on-surface truncate">{p.name}</span>
-                <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${priority.bg} ${priority.text}`}>
+                <span className="text-body font-medium text-on-surface truncate">{p.name}</span>
+                <span className={`shrink-0 text-caption font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${priority.bg} ${priority.text}`}>
                   {p.priority}
                 </span>
                 {!p.isActive && (
-                  <span className="shrink-0 text-[10px] text-on-surface-variant/40 font-medium">disabled</span>
+                  <span className="shrink-0 text-caption text-on-surface-variant/40 font-medium">disabled</span>
                 )}
               </div>
               {p.description && (
-                <p className="text-[11px] text-on-surface-variant/50 truncate mt-0.5">{p.description}</p>
+                <p className="text-caption text-on-surface-variant/50 truncate mt-0.5">{p.description}</p>
               )}
             </div>
 
             {/* Metric */}
-            <span className="text-[12px] text-on-surface-variant">
+            <span className="text-label text-on-surface-variant">
               {METRIC_LABEL[p.metricType] ?? p.metricType}
-              {p.businessHoursOnly && <span className="block text-[10px] text-on-surface-variant/40">Biz hours</span>}
+              {p.businessHoursOnly && <span className="block text-caption text-on-surface-variant/40">Biz hours</span>}
             </span>
 
             {/* Breach */}
             <div>
-              <span className="text-[13px] font-semibold text-error">{fmtMs(p.thresholdMs)}</span>
+              <span className="text-body font-semibold text-error">{fmtMs(p.thresholdMs)}</span>
               {warningPct !== null && (
                 <div className="mt-1 h-1 w-16 rounded-full overflow-hidden bg-outline-variant/15 flex">
                   <div className="bg-success/50 h-full" style={{ width: `${warningPct}%` }} />
@@ -98,7 +99,7 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
             </div>
 
             {/* Warning */}
-            <span className="text-[13px] font-semibold text-warning">
+            <span className="text-body font-semibold text-warning">
               {p.warningThresholdMs ? fmtMs(p.warningThresholdMs) : <span className="text-on-surface-variant/30 font-normal">—</span>}
             </span>
 
@@ -114,20 +115,17 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
                   ? <ToggleRight className="h-4.5 w-4.5 text-success" style={{ width: 18, height: 18 }} />
                   : <ToggleLeft className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />}
               </button>
-              <button
+              <IconButton size="sm"
                 onClick={() => onEdit(p)}
                 title="Edit"
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors"
-              >
+                className="hover:text-primary hover:bg-primary/8" aria-label="Edit">
                 <Pencil style={{ width: 14, height: 14 }} />
-              </button>
-              <button
+              </IconButton>
+              <IconButton size="sm" variant="danger"
                 onClick={() => onDelete(p.id)}
-                title="Delete"
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors"
-              >
+                title="Delete" aria-label="Delete">
                 <Trash2 style={{ width: 14, height: 14 }} />
-              </button>
+              </IconButton>
             </div>
           </div>
         );

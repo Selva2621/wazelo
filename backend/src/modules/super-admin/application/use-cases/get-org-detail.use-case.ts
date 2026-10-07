@@ -1,44 +1,28 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '@/infrastructure/database/prisma.service';
+import {
+  PlatformRepository,
+  LIVE_SUBSCRIPTION_STATUSES,
+} from '../../infrastructure/repositories/platform.repository';
 
 @Injectable()
 export class GetOrgDetailUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly platformRepo: PlatformRepository) {}
 
   async execute(orgId: string) {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId, deletedAt: null },
-      include: {
-        users: {
-          where: { deletedAt: null },
-          select: {
-            id: true, firstName: true, lastName: true,
-            email: true, role: true, status: true,
-            lastLoginAt: true, createdAt: true,
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        subscriptions: {
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          include: { plan: true },
-        },
-        usageRecords: {
-          orderBy: { periodStart: 'desc' },
-          take: 10,
-        },
-        _count: {
-          select: {
-            helpTickets: true,
-            contacts: { where: { deletedAt: null } },
-            campaigns: { where: { deletedAt: null } },
-            messages: true,
-          },
-        },
-      },
-    });
-
+    const org = await this.platformRepo.findOrgDetail(orgId);
     if (!org) throw new NotFoundException('Organization not found');
+
+    const subscription =
+      org.subscriptions.find((s) => LIVE_SUBSCRIPTION_STATUSES.includes(s.status)) ??
+      org.subscriptions[0] ??
+      null;
+
+    // Usage for the current billing period only, so it can be compared to plan limits
+    const currentUsage = subscription
+      ? org.usageRecords.filter(
+          (u) => u.periodStart.getTime() >= subscription.currentPeriodStart.getTime() - 1000,
+        )
+      : [];
 
     return {
       org: {
@@ -47,12 +31,15 @@ export class GetOrgDetailUseCase {
         slug: org.slug,
         orgType: org.orgType,
         timezone: org.timezone,
+        status: org.status,
+        suspendedAt: org.suspendedAt,
+        suspendReason: org.suspendReason,
         createdAt: org.createdAt,
       },
       users: org.users,
-      subscription: org.subscriptions[0] ?? null,
+      subscription,
       subscriptionHistory: org.subscriptions,
-      usageRecords: org.usageRecords,
+      usageRecords: currentUsage,
       counts: org._count,
     };
   }

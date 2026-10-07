@@ -5,6 +5,8 @@ import { X, Check } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAssignContact, useOrgMembers } from "@/hooks/use-contacts";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface AssignOwnerModalProps {
   contactId: string;
@@ -46,26 +48,18 @@ export function AssignOwnerModal({
     );
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div className="relative w-full max-w-sm rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-xl p-6">
+    <Modal open={open} onClose={onClose} className="max-w-sm p-6">
+      {() => (
+      <>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[16px] font-semibold text-on-surface">
+          <h2 className="text-title-sm font-semibold text-on-surface">
             Assign Owner
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="xs"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         <div className="space-y-1 max-h-60 overflow-y-auto">
@@ -91,15 +85,15 @@ export function AssignOwnerModal({
                   size="sm"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-on-surface truncate">
+                  <p className="text-body font-medium text-on-surface truncate">
                     {member.firstName} {member.lastName}
                   </p>
-                  <p className="text-[11px] text-on-surface-variant/60 truncate">
+                  <p className="text-caption text-on-surface-variant/60 truncate">
                     {member.email}
                   </p>
                 </div>
                 {isCurrent && (
-                  <span className="text-[11px] text-on-surface-variant/50">
+                  <span className="text-caption text-on-surface-variant/50">
                     Current
                   </span>
                 )}
@@ -117,12 +111,12 @@ export function AssignOwnerModal({
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (optional)"
             rows={2}
-            className="w-full rounded-xl bg-surface-container-low px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+            className="w-full rounded-xl bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40 resize-none"
           />
         </div>
 
         {error && (
-          <p className="text-[12px] text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg mt-3">
+          <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg mt-3">
             {error}
           </p>
         )}
@@ -140,7 +134,8 @@ export function AssignOwnerModal({
             Assign
           </Button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

@@ -24,23 +24,23 @@ export function DealCard({ deal, onClick }: DealCardProps) {
       onClick={onClick}
       className="w-full text-left rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-3.5 hover:border-primary/20 hover:shadow-sm transition-all group"
     >
-      <p className="text-[13px] font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
+      <p className="text-body font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
         {deal.title}
       </p>
 
-      <p className="text-[12px] text-on-surface-variant mt-1 truncate">
+      <p className="text-label text-on-surface-variant mt-1 truncate">
         {deal.contact.name || deal.contact.phoneNumber}
       </p>
 
       <div className="flex items-center gap-2 mt-2.5 flex-wrap">
         {deal.value !== null && (
-          <Badge variant="primary" className="text-[10px]">
+          <Badge variant="primary" className="text-caption">
             <DollarSign className="h-3 w-3 mr-0.5" />
             {formatValue(deal.value, deal.currency)}
           </Badge>
         )}
         {deal.expectedClose && (
-          <Badge variant="muted" className="text-[10px]">
+          <Badge variant="muted" className="text-caption">
             <Calendar className="h-3 w-3 mr-0.5" />
             {new Date(deal.expectedClose).toLocaleDateString("en-IN", {
               month: "short",
@@ -49,13 +49,13 @@ export function DealCard({ deal, onClick }: DealCardProps) {
           </Badge>
         )}
         {deal.product && (
-          <Badge variant="info" className="text-[10px]">
+          <Badge variant="info" className="text-caption">
             <Package className="h-3 w-3 mr-0.5" />
             {deal.product.name}
           </Badge>
         )}
         {deal.assignedTo && (
-          <Badge variant="default" className="text-[10px]">
+          <Badge variant="default" className="text-caption">
             <User className="h-3 w-3 mr-0.5" />
             {deal.assignedTo.firstName}
           </Badge>

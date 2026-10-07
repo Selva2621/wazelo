@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck, FileText } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { SendProposalModal } from "./send-proposal-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LeadStatus } from "@/lib/types/contacts";
+import { IconButton } from "@/components/ui/icon-button";
 
 export interface OrgUserOption {
   id: string;
@@ -43,11 +45,11 @@ interface ContactPanelProps {
 }
 
 const LEAD_STATUSES: { value: LeadStatus; label: string; dot: string }[] = [
-  { value: "NEW", label: "New", dot: "bg-blue-500" },
+  { value: "NEW", label: "New", dot: "bg-info" },
   { value: "CONTACTED", label: "Contacted", dot: "bg-primary" },
-  { value: "INTERESTED", label: "Interested", dot: "bg-amber-500" },
-  { value: "CONVERTED", label: "Converted", dot: "bg-emerald-500" },
-  { value: "CLOSED", label: "Cancelled", dot: "bg-red-500" },
+  { value: "INTERESTED", label: "Interested", dot: "bg-warning" },
+  { value: "CONVERTED", label: "Converted", dot: "bg-success" },
+  { value: "CLOSED", label: "Cancelled", dot: "bg-error" },
 ];
 
 const statusVariant: Record<LeadStatus, "info" | "primary" | "warning" | "success" | "error"> = {
@@ -113,15 +115,13 @@ export function ContactPanel({
     <div className="flex h-full flex-col bg-surface-container-lowest">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/15">
-        <span className="text-[14px] font-semibold text-on-surface">
+        <span className="text-body-lg font-semibold text-on-surface">
           Contact Info
         </span>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-        >
+        <IconButton size="xs"
+          onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
 
       {/* Content */}
@@ -129,7 +129,7 @@ export function ContactPanel({
         {/* Profile */}
         <div className="flex flex-col items-center text-center">
           <Avatar name={contact.name} src={contact.avatar} size="lg" />
-          <h3 className="mt-3 text-[16px] font-semibold text-on-surface">
+          <h3 className="mt-3 text-title-sm font-semibold text-on-surface">
             {contact.name}
           </h3>
           <Badge
@@ -142,7 +142,7 @@ export function ContactPanel({
 
         {/* Lead Status Selector */}
         <div>
-          <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+          <span className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
             Lead Status
           </span>
           <div className="relative mt-1.5" ref={dropdownRef}>
@@ -152,7 +152,7 @@ export function ContactPanel({
               className={cn(
                 "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border transition-colors",
                 "border-outline-variant/20 hover:border-outline-variant/40",
-                "bg-surface-container text-on-surface text-[13px] font-medium",
+                "bg-surface-container text-on-surface text-body font-medium",
                 isUpdatingStatus && "opacity-60 cursor-not-allowed",
               )}
             >
@@ -175,7 +175,7 @@ export function ContactPanel({
                       setStatusOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors",
+                      "w-full flex items-center gap-2.5 px-3 py-2 text-body transition-colors",
                       "hover:bg-surface-container",
                       s.value === contact.leadStatus ? "text-primary font-medium" : "text-on-surface",
                     )}
@@ -192,7 +192,7 @@ export function ContactPanel({
 
         {/* Conversation Assignment */}
         <div>
-          <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+          <span className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
             Assigned To
           </span>
           {canAssign ? (
@@ -203,7 +203,7 @@ export function ContactPanel({
                 className={cn(
                   "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border transition-colors",
                   "border-outline-variant/20 hover:border-outline-variant/40",
-                  "bg-surface-container text-on-surface text-[13px] font-medium",
+                  "bg-surface-container text-on-surface text-body font-medium",
                   isAssigning && "opacity-60 cursor-not-allowed",
                 )}
               >
@@ -224,7 +224,7 @@ export function ContactPanel({
                       setAssignOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:bg-surface-container",
+                      "w-full flex items-center gap-2.5 px-3 py-2 text-body transition-colors hover:bg-surface-container",
                       !conversationAssignedToId ? "text-primary font-medium" : "text-on-surface-variant",
                     )}
                   >
@@ -239,7 +239,7 @@ export function ContactPanel({
                         setAssignOpen(false);
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:bg-surface-container",
+                        "w-full flex items-center gap-2.5 px-3 py-2 text-body transition-colors hover:bg-surface-container",
                         u.id === conversationAssignedToId ? "text-primary font-medium" : "text-on-surface",
                       )}
                     >
@@ -252,7 +252,7 @@ export function ContactPanel({
               )}
             </div>
           ) : (
-            <div className="mt-1.5 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-surface-container text-[13px] text-on-surface-variant/70">
+            <div className="mt-1.5 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-surface-container text-body text-on-surface-variant/70">
               <UserCheck className="h-4 w-4 shrink-0" />
               <span>{assignedLabel}</span>
             </div>
@@ -262,14 +262,14 @@ export function ContactPanel({
         {/* Quick Actions */}
         {conversationId && (
           <div>
-            <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+            <span className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Quick Actions
             </span>
             <div className="mt-1.5 flex flex-col gap-2">
               <button
                 onClick={() => setShowProposal(true)}
                 className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-[13px] font-medium",
+                  "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-body font-medium",
                   "border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/50",
                 )}
               >
@@ -296,7 +296,7 @@ export function ContactPanel({
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <Tag className="h-3.5 w-3.5 text-on-surface-variant" />
-              <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+              <span className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
                 Tags
               </span>
             </div>
@@ -315,11 +315,11 @@ export function ContactPanel({
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <StickyNote className="h-3.5 w-3.5 text-on-surface-variant" />
-              <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wide">
+              <span className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
                 Notes
               </span>
             </div>
-            <p className="text-[13px] text-on-surface-variant leading-relaxed">
+            <p className="text-body text-on-surface-variant leading-relaxed">
               {contact.notes}
             </p>
           </div>
@@ -327,14 +327,16 @@ export function ContactPanel({
       </div>
 
       {/* Send Proposal Modal */}
-      {showProposal && conversationId && (
-        <SendProposalModal
-          conversationId={conversationId}
-          contactPhone={contact.phone}
-          contactName={contact.name}
-          onClose={() => setShowProposal(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showProposal && conversationId && (
+          <SendProposalModal
+            conversationId={conversationId}
+            contactPhone={contact.phone}
+            contactName={contact.name}
+            onClose={() => setShowProposal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -352,10 +354,10 @@ function DetailRow({
     <div className="flex items-center gap-3">
       <span className="text-on-surface-variant">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+        <p className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
           {label}
         </p>
-        <p className="text-[13px] text-on-surface truncate">{value}</p>
+        <p className="text-body text-on-surface truncate">{value}</p>
       </div>
     </div>
   );

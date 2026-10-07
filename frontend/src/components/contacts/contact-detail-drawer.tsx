@@ -46,6 +46,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFieldValues, setFieldValues, listFieldDefinitions, type CustomFieldValue } from "@/lib/api/custom-fields";
 import { exportContactData, eraseContactData } from "@/lib/api/gdpr";
 import { SendMessageModal } from "./send-message-modal";
+import { IconButton } from "@/components/ui/icon-button";
+import { Drawer } from "@/components/ui/modal";
 
 interface ContactDetailDrawerProps {
   contactId: string | null;
@@ -140,42 +142,34 @@ export function ContactDetailDrawer({
 
   return (
     <>
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-surface/40 backdrop-blur-[2px]"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Drawer */}
-      <div
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-[400px] bg-surface-container-lowest border-l border-outline-variant/15 shadow-2xl transform transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+      {/* Drawer (child modals below handle their own Escape, so block it here while one is open) */}
+      <Drawer
+        open={open}
+        onClose={onClose}
+        dismissible={!showSendMessage && !showAssign && !showDeleteConfirm}
+        className="max-w-[400px]"
       >
+        {() => (
+        <>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
-          <h2 className="text-[15px] font-semibold text-on-surface">
+          <h2 className="text-body-lg font-semibold text-on-surface">
             Contact Details
           </h2>
           <div className="flex items-center gap-1">
             {contactId && (
-              <button
+              <IconButton size="sm"
                 onClick={() => router.push(`/contacts/${contactId}`)}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                title="Open full profile"
-              >
+                className="hover:text-primary hover:bg-primary/10"
+                title="Open full profile" aria-label="Open full profile">
                 <ExternalLink className="h-4 w-4" />
-              </button>
+              </IconButton>
             )}
             <div className="relative">
-              <button
-                onClick={() => setShowActions(!showActions)}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-              >
+              <IconButton size="sm"
+                onClick={() => setShowActions(!showActions)} aria-label="More actions">
                 <MoreHorizontal className="h-4 w-4" />
-              </button>
+              </IconButton>
               {showActions && (
                 <div className="absolute right-0 top-9 z-10 w-44 rounded-xl bg-surface-container-lowest border border-outline-variant/15 shadow-lg py-1">
                   <button
@@ -183,7 +177,7 @@ export function ContactDetailDrawer({
                       setShowAssign(true);
                       setShowActions(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-on-surface hover:bg-surface-container transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-body text-on-surface hover:bg-surface-container transition-colors"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
                     Assign Owner
@@ -202,7 +196,7 @@ export function ContactDetailDrawer({
                       });
                       setShowActions(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-on-surface hover:bg-surface-container transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-body text-on-surface hover:bg-surface-container transition-colors"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Export Data (GDPR)
@@ -212,7 +206,7 @@ export function ContactDetailDrawer({
                       handleDelete();
                       setShowActions(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-surface-container transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-body text-error hover:bg-surface-container transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Delete Contact
@@ -225,7 +219,7 @@ export function ContactDetailDrawer({
                       }
                       setShowActions(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-surface-container transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-body text-error hover:bg-surface-container transition-colors"
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Erase Data (GDPR)
@@ -233,12 +227,10 @@ export function ContactDetailDrawer({
                 </div>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-            >
+            <IconButton size="sm"
+              onClick={onClose} aria-label="Close">
               <X className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
@@ -261,21 +253,20 @@ export function ContactDetailDrawer({
                     size="lg"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[16px] font-semibold text-on-surface truncate">
+                    <p className="text-title-sm font-semibold text-on-surface truncate">
                       {contact.name || "Unknown"}
                     </p>
-                    <p className="text-[12px] text-on-surface-variant/60 mt-0.5">
+                    <p className="text-label text-on-surface-variant/60 mt-0.5">
                       {contact.owner.firstName} {contact.owner.lastName}
                     </p>
                   </div>
                   {!editing && (
-                    <button
+                    <IconButton size="sm"
                       onClick={startEditing}
-                      className="shrink-0 p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                      title="Edit contact"
-                    >
+                      className="hover:text-primary hover:bg-primary/10"
+                      title="Edit contact" aria-label="Edit contact">
                       <Pencil className="h-4 w-4" />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
 
@@ -300,7 +291,7 @@ export function ContactDetailDrawer({
 
               {/* Lead Score */}
               <div className="px-5 pb-2">
-                <p className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide mb-1">
+                <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide mb-1">
                   Lead Score
                 </p>
                 <LeadScoreBadge score={contact.leadScore} size="md" />
@@ -310,7 +301,7 @@ export function ContactDetailDrawer({
               {editing ? (
                 <div className="px-5 pb-4 space-y-3">
                   <div>
-                    <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+                    <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
                       Name
                     </label>
                     <input
@@ -318,15 +309,15 @@ export function ContactDetailDrawer({
                       onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleEditSave();
-                        if (e.key === "Escape") setEditing(false);
+                        if (e.key === "Escape") { e.stopPropagation(); setEditing(false); }
                       }}
                       autoFocus
                       placeholder="Contact name"
-                      className="mt-1 w-full h-9 rounded-lg bg-surface-container-low px-3 text-[13px] text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15"
+                      className="mt-1 w-full h-9 rounded-lg bg-surface-container-low px-3 text-body text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+                    <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
                       Email
                     </label>
                     <input
@@ -334,18 +325,18 @@ export function ContactDetailDrawer({
                       onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleEditSave();
-                        if (e.key === "Escape") setEditing(false);
+                        if (e.key === "Escape") { e.stopPropagation(); setEditing(false); }
                       }}
                       placeholder="email@example.com"
                       type="email"
-                      className="mt-1 w-full h-9 rounded-lg bg-surface-container-low px-3 text-[13px] text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15"
+                      className="mt-1 w-full h-9 rounded-lg bg-surface-container-low px-3 text-body text-on-surface outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+                    <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
                       Phone
                     </label>
-                    <p className="mt-1 px-3 py-2 text-[13px] text-on-surface-variant/60 bg-surface-container-low rounded-lg border border-outline-variant/10">
+                    <p className="mt-1 px-3 py-2 text-body text-on-surface-variant/60 bg-surface-container-low rounded-lg border border-outline-variant/10">
                       {contact.phoneNumber}
                     </p>
                   </div>
@@ -370,17 +361,17 @@ export function ContactDetailDrawer({
                 </div>
               ) : (
                 <div className="px-5 pb-4 space-y-2">
-                  <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+                  <div className="flex items-center gap-2 text-body text-on-surface-variant">
                     <Phone className="h-3.5 w-3.5 shrink-0" />
                     <span>{contact.phoneNumber}</span>
                   </div>
                   {contact.email && (
-                    <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+                    <div className="flex items-center gap-2 text-body text-on-surface-variant">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{contact.email}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+                  <div className="flex items-center gap-2 text-body text-on-surface-variant">
                     <Globe className="h-3.5 w-3.5 shrink-0" />
                     <Badge variant="default">{contact.source}</Badge>
                   </div>
@@ -482,7 +473,9 @@ export function ContactDetailDrawer({
             </div>
           )}
         </div>
-      </div>
+        </>
+        )}
+      </Drawer>
 
       {/* Send message modal */}
       {contact && (
@@ -566,19 +559,19 @@ function CustomFieldsTab({ contactId }: { contactId: string }) {
   if (isLoading) return <Spinner size="sm" />;
 
   if (!definitions?.length) {
-    return <p className="text-[12px] text-on-surface-variant/50">No custom fields defined. Add them in Settings.</p>;
+    return <p className="text-label text-on-surface-variant/50">No custom fields defined. Add them in Settings.</p>;
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Custom Fields</span>
+        <span className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Custom Fields</span>
         {!editing ? (
-          <button onClick={startEdit} className="text-[11px] text-primary hover:underline">Edit</button>
+          <button onClick={startEdit} className="text-caption text-primary hover:underline">Edit</button>
         ) : (
           <div className="flex gap-1.5">
-            <button onClick={() => setEditing(false)} className="text-[11px] text-on-surface-variant hover:underline">Cancel</button>
-            <button onClick={handleSave} disabled={saveMut.isPending} className="text-[11px] text-primary hover:underline font-medium">
+            <button onClick={() => setEditing(false)} className="text-caption text-on-surface-variant hover:underline">Cancel</button>
+            <button onClick={handleSave} disabled={saveMut.isPending} className="text-caption text-primary hover:underline font-medium">
               {saveMut.isPending ? "Saving..." : "Save"}
             </button>
           </div>
@@ -588,7 +581,7 @@ function CustomFieldsTab({ contactId }: { contactId: string }) {
         const currentValue = fieldValues?.find((fv) => fv.fieldId === def.id)?.value || "";
         return (
           <div key={def.id} className="flex items-center justify-between">
-            <span className="text-[12px] text-on-surface-variant/60">{def.fieldLabel}</span>
+            <span className="text-label text-on-surface-variant/60">{def.fieldLabel}</span>
             {editing ? (
               def.fieldType === "boolean" ? (
                 <input
@@ -601,7 +594,7 @@ function CustomFieldsTab({ contactId }: { contactId: string }) {
                 <select
                   value={values[def.id] || ""}
                   onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                  className="max-w-[160px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[12px]"
+                  className="max-w-[160px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label"
                 >
                   <option value="">—</option>
                   {(def.options as string[]).map((o) => <option key={o} value={o}>{o}</option>)}
@@ -611,11 +604,11 @@ function CustomFieldsTab({ contactId }: { contactId: string }) {
                   type={def.fieldType === "number" ? "number" : def.fieldType === "date" ? "date" : "text"}
                   value={values[def.id] || ""}
                   onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                  className="max-w-[160px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-[12px] text-on-surface"
+                  className="max-w-[160px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface"
                 />
               )
             ) : (
-              <span className="text-[13px] text-on-surface">{currentValue || "—"}</span>
+              <span className="text-body text-on-surface">{currentValue || "—"}</span>
             )}
           </div>
         );
@@ -637,24 +630,24 @@ function ContactProductsTab({ contactId }: { contactId: string }) {
 
   return (
     <div className="space-y-3">
-      <span className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+      <span className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
         Assigned Products ({contactProducts?.length || 0})
       </span>
 
       {contactProducts && contactProducts.length > 0 ? (
         contactProducts.map((p) => (
           <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10">
-            <span className="text-[13px] text-on-surface">{p.name}</span>
+            <span className="text-body text-on-surface">{p.name}</span>
             <button
               onClick={() => unassignProduct.mutate({ contactId, productId: p.id })}
-              className="text-[11px] text-error hover:underline"
+              className="text-caption text-error hover:underline"
             >
               Remove
             </button>
           </div>
         ))
       ) : (
-        <p className="text-[12px] text-on-surface-variant/50">No products assigned.</p>
+        <p className="text-label text-on-surface-variant/50">No products assigned.</p>
       )}
 
       <div className="pt-2">
@@ -681,10 +674,10 @@ function ContactDealsTab({ contactId, contactName }: { contactId: string; contac
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+        <span className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
           Deals ({deals?.length || 0})
         </span>
-        <button onClick={() => setShowCreate(true)} className="text-[11px] text-primary hover:underline font-medium">
+        <button onClick={() => setShowCreate(true)} className="text-caption text-primary hover:underline font-medium">
           + Create Deal
         </button>
       </div>
@@ -693,24 +686,24 @@ function ContactDealsTab({ contactId, contactName }: { contactId: string; contac
         deals.map((deal) => (
           <div key={deal.id} className="p-3 rounded-lg bg-surface-container border border-outline-variant/10 space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium text-on-surface">{deal.title}</span>
+              <span className="text-body font-medium text-on-surface">{deal.title}</span>
               <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
                 {deal.status}
               </Badge>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-on-surface-variant/60">
+            <div className="flex items-center justify-between text-caption text-on-surface-variant/60">
               <span>{deal.stage?.name}</span>
               {deal.value != null && <span>{deal.currency || "INR"} {deal.value.toLocaleString()}</span>}
             </div>
             {deal.expectedClose && (
-              <p className="text-[11px] text-on-surface-variant/40">
+              <p className="text-caption text-on-surface-variant/40">
                 Close: {new Date(deal.expectedClose).toLocaleDateString()}
               </p>
             )}
           </div>
         ))
       ) : (
-        <p className="text-[12px] text-on-surface-variant/50">No deals yet for this contact.</p>
+        <p className="text-label text-on-surface-variant/50">No deals yet for this contact.</p>
       )}
 
       <CreateDealModal
@@ -727,8 +720,8 @@ function ContactDealsTab({ contactId, contactName }: { contactId: string; contac
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[12px] text-on-surface-variant/60">{label}</span>
-      <span className="text-[13px] text-on-surface">{value}</span>
+      <span className="text-label text-on-surface-variant/60">{label}</span>
+      <span className="text-body text-on-surface">{value}</span>
     </div>
   );
 }

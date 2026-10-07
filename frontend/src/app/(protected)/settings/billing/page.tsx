@@ -37,6 +37,7 @@ import {
   useCreateOrder,
   useVerifyPayment,
 } from "@/hooks/use-billing";
+import { AnimatePresence } from "motion/react";
 import { PaymentDetailModal } from "@/components/billing/payment-detail-modal";
 import { InvoiceDetailModal } from "@/components/billing/invoice-detail-modal";
 
@@ -65,6 +66,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { Modal } from "@/components/ui/modal";
 import type {
   Plan,
   SubscriptionPlanSummary,
@@ -74,6 +76,7 @@ import type {
 } from "@/lib/types/billing";
 import { formatPlanPrice } from "@/lib/types/billing";
 import { PAGE_SIZE } from "@/lib/constants";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Status Helpers ───────────────────────────
 
@@ -159,7 +162,7 @@ export default function BillingPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
           <ShieldAlert className="h-12 w-12 text-on-surface-variant/40 mx-auto mb-3" />
-          <p className="text-[14px] text-on-surface-variant">
+          <p className="text-body-lg text-on-surface-variant">
             You don&apos;t have permission to view billing.
           </p>
         </div>
@@ -229,7 +232,7 @@ export default function BillingPage() {
             name: user ? `${user.firstName} ${user.lastName}` : "",
             email: user?.email ?? "",
           },
-          theme: { color: "#6366F1" },
+          theme: { color: "#d97706" },
           modal: { ondismiss: () => setPlanChangeError("Payment cancelled. Try again.") },
         };
         new (window as any).Razorpay(options).open();
@@ -310,15 +313,15 @@ export default function BillingPage() {
       <div className="max-w-[1200px] mx-auto p-6 space-y-6">
         {/* Breadcrumb + Header */}
         <div>
-          <p className="text-[12px] text-on-surface-variant/60 mb-1">
+          <p className="text-label text-on-surface-variant/60 mb-1">
             Settings &gt; Billing
           </p>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-on-surface">
+              <h1 className="text-headline font-semibold text-on-surface">
                 Billing &amp; Subscription
               </h1>
-              <p className="text-[13px] text-on-surface-variant mt-1">
+              <p className="text-body text-on-surface-variant mt-1">
                 Manage your plan, track usage, and view payment history.
               </p>
             </div>
@@ -331,26 +334,26 @@ export default function BillingPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-on-surface">
+                  <h2 className="text-title font-semibold text-on-surface">
                     {subscription.plan.name}
                   </h2>
                   {getStatusBadge(subscription.status)}
                 </div>
-                <p className="text-[13px] text-on-surface-variant">
+                <p className="text-body text-on-surface-variant">
                   Your current billing period:{" "}
                   <span className="text-on-surface">
                     {formatDate(subscription.currentPeriodStart)} —{" "}
                     {formatDate(subscription.currentPeriodEnd)}
                   </span>
                 </p>
-                <p className="text-3xl font-bold text-primary mt-2">
+                <p className="text-display font-semibold text-primary mt-2">
                   ₹{(subscription.plan.priceInCents / 100).toLocaleString("en-IN")}
-                  <span className="text-sm font-normal text-on-surface-variant">
+                  <span className="text-body-lg font-normal text-on-surface-variant">
                     /{subscription.plan.billingCycle === "MONTHLY" ? "mo" : "yr"}
                   </span>
                 </p>
                 {subscription.trialEndsAt && subscription.status === "TRIAL" && (
-                  <p className="text-[12px] text-warning mt-1 flex items-center gap-1.5">
+                  <p className="text-label text-warning mt-1 flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     Trial ends {formatDate(subscription.trialEndsAt)}
                   </p>
@@ -359,19 +362,19 @@ export default function BillingPage() {
                   const scheduledPayment = payments?.data?.find((p) => p.status === "SUCCEEDED");
                   return (
                     <div className="mt-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 space-y-1.5">
-                      <p className="text-[12px] text-warning flex items-center gap-1.5 font-medium">
+                      <p className="text-label text-warning flex items-center gap-1.5 font-medium">
                         <ArrowDownCircle className="h-3.5 w-3.5 shrink-0" />
                         Plan change scheduled for {formatDate(subscription.scheduledChangeAt)}
                       </p>
                       {subscription.scheduledPlan && (
                         <div className="pl-5 flex items-center gap-2 flex-wrap">
-                          <span className="text-[12px] text-on-surface-variant">
+                          <span className="text-label text-on-surface-variant">
                             Switching to{" "}
                             <span className="font-semibold text-on-surface">
                               {subscription.scheduledPlan.name}
                             </span>
                           </span>
-                          <span className="text-[12px] font-semibold text-primary">
+                          <span className="text-label font-semibold text-primary">
                             ₹{(subscription.scheduledPlan.priceInCents / 100).toLocaleString("en-IN")}
                             /{subscription.scheduledPlan.billingCycle === "MONTHLY" ? "mo" : "yr"}
                           </span>
@@ -380,7 +383,7 @@ export default function BillingPage() {
                       {scheduledPayment && (
                         <div className="pl-5 flex items-center gap-1.5">
                           <Check className="h-3 w-3 text-success shrink-0" />
-                          <span className="text-[11px] text-success font-medium">
+                          <span className="text-caption text-success font-medium">
                             Payment of ₹{(scheduledPayment.amountInCents / 100).toLocaleString("en-IN")} received on{" "}
                             {formatDate(scheduledPayment.createdAt)}
                           </span>
@@ -436,10 +439,10 @@ export default function BillingPage() {
           <Card className="border-warning/20">
             <CardContent className="!mt-0 !py-8 text-center">
               <AlertTriangle className="h-10 w-10 text-warning mx-auto mb-3" />
-              <p className="text-[15px] font-medium text-on-surface">
+              <p className="text-body-lg font-medium text-on-surface">
                 No active subscription
               </p>
-              <p className="text-[13px] text-on-surface-variant mt-1">
+              <p className="text-body text-on-surface-variant mt-1">
                 Choose a plan below to get started.
               </p>
             </CardContent>
@@ -450,11 +453,11 @@ export default function BillingPage() {
         {usage && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[14px] font-semibold text-on-surface">
+              <h3 className="text-body-lg font-semibold text-on-surface">
                 Current Usage
               </h3>
               {subscription?.status === "TRIAL" && (
-                <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
+                <span className="text-caption text-warning bg-warning-container border border-warning/30 rounded-full px-2.5 py-0.5">
                   Trial limits active — upgrade to unlock full capacity
                 </span>
               )}
@@ -517,21 +520,21 @@ export default function BillingPage() {
         {plans && plans.length > 0 && (
           <div id="plan-tiers">
             {planChangeError && !confirmPlan && (
-              <div className="mb-3 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-sm text-error flex items-center justify-between">
+              <div className="mb-3 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-body-lg text-error flex items-center justify-between">
                 <span>{planChangeError}</span>
-                <button onClick={() => setPlanChangeError(null)} className="ml-3 text-error/60 hover:text-error">✕</button>
+                <button aria-label="Dismiss" onClick={() => setPlanChangeError(null)} className="ml-3 text-error/60 hover:text-error">✕</button>
               </div>
             )}
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[14px] font-semibold text-on-surface">
+              <h3 className="text-body-lg font-semibold text-on-surface">
                 Subscription Tiers
               </h3>
               {/* Monthly / Yearly toggle */}
               <div className="flex items-center gap-2.5">
-                <span className={`text-[13px] font-medium ${!showYearly ? "text-on-surface" : "text-on-surface-variant"}`}>
+                <span className={`text-body font-medium ${!showYearly ? "text-on-surface" : "text-on-surface-variant"}`}>
                   Monthly
                 </span>
-                <button
+                <button role="switch" aria-checked={showYearly} aria-label="Show yearly pricing"
                   onClick={() => setShowYearly((v) => !v)}
                   className={`relative w-10 h-5 rounded-full transition-colors ${showYearly ? "bg-primary" : "bg-surface-container-high"}`}
                 >
@@ -539,9 +542,9 @@ export default function BillingPage() {
                     className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showYearly ? "translate-x-5" : "translate-x-0"}`}
                   />
                 </button>
-                <span className={`text-[13px] font-medium ${showYearly ? "text-on-surface" : "text-on-surface-variant"}`}>
+                <span className={`text-body font-medium ${showYearly ? "text-on-surface" : "text-on-surface-variant"}`}>
                   Yearly
-                  <span className="ml-1.5 bg-success/10 text-success text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                  <span className="ml-1.5 bg-success/10 text-success text-caption font-semibold px-1.5 py-0.5 rounded-full">
                     Save 17%
                   </span>
                 </span>
@@ -606,7 +609,7 @@ export default function BillingPage() {
         {/* Billing History — Payments & Invoices */}
         <Card>
           <div className="p-6 pb-0">
-            <h3 className="text-lg font-semibold text-on-surface mb-4">
+            <h3 className="text-title font-semibold text-on-surface mb-4">
               Billing History
             </h3>
             <Tabs
@@ -629,7 +632,7 @@ export default function BillingPage() {
               ) : !payments?.data?.length ? (
                 <div className="text-center py-12">
                   <CreditCard className="h-10 w-10 text-on-surface-variant/30 mx-auto mb-3" />
-                  <p className="text-[13px] text-on-surface-variant">
+                  <p className="text-body text-on-surface-variant">
                     No payment history yet
                   </p>
                 </div>
@@ -652,25 +655,25 @@ export default function BillingPage() {
                           className="cursor-pointer"
                           onClick={() => setSelectedPaymentId(payment.id)}
                         >
-                          <TableCell className="text-[13px] text-on-surface">
+                          <TableCell className="text-body text-on-surface">
                             {formatDate(payment.createdAt)}
                           </TableCell>
-                          <TableCell className="text-[13px] text-on-surface font-medium">
+                          <TableCell className="text-body text-on-surface font-medium">
                             ₹{(payment.amountInCents / 100).toLocaleString("en-IN")}{" "}
-                            <span className="text-[11px] text-on-surface-variant font-normal">
+                            <span className="text-caption text-on-surface-variant font-normal">
                               {payment.currency}
                             </span>
                           </TableCell>
-                          <TableCell className="text-[13px] text-on-surface-variant capitalize">
+                          <TableCell className="text-body text-on-surface-variant capitalize">
                             {payment.paymentMethod?.replace("_", " ") ?? "—"}
                           </TableCell>
                           <TableCell>
-                            <span className={`text-[12px] font-medium ${getPaymentStatusColor(payment.status)}`}>
+                            <span className={`text-label font-medium ${getPaymentStatusColor(payment.status)}`}>
                               {payment.status}
                             </span>
                           </TableCell>
                           <TableCell align="right">
-                            <span className="text-[12px] text-primary font-medium">View →</span>
+                            <span className="text-label text-primary font-medium">View →</span>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -697,7 +700,7 @@ export default function BillingPage() {
               ) : !invoices?.data?.length ? (
                 <div className="text-center py-12">
                   <FileText className="h-10 w-10 text-on-surface-variant/30 mx-auto mb-3" />
-                  <p className="text-[13px] text-on-surface-variant">
+                  <p className="text-body text-on-surface-variant">
                     No invoices yet
                   </p>
                 </div>
@@ -720,25 +723,25 @@ export default function BillingPage() {
                           className="cursor-pointer"
                           onClick={() => setSelectedInvoiceId(invoice.id)}
                         >
-                          <TableCell className="text-[13px] text-on-surface font-medium">
+                          <TableCell className="text-body text-on-surface font-medium">
                             {invoice.invoiceNumber}
                           </TableCell>
-                          <TableCell className="text-[13px] text-on-surface-variant">
+                          <TableCell className="text-body text-on-surface-variant">
                             {formatDate(invoice.periodStart)} — {formatDate(invoice.periodEnd)}
                           </TableCell>
-                          <TableCell className="text-[13px] text-on-surface font-medium">
+                          <TableCell className="text-body text-on-surface font-medium">
                             ₹{(invoice.amountInCents / 100).toLocaleString("en-IN")}{" "}
-                            <span className="text-[11px] text-on-surface-variant font-normal">
+                            <span className="text-caption text-on-surface-variant font-normal">
                               {invoice.currency}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <span className={`text-[12px] font-medium ${getInvoiceStatusColor(invoice.status)}`}>
+                            <span className={`text-label font-medium ${getInvoiceStatusColor(invoice.status)}`}>
                               {invoice.status}
                             </span>
                           </TableCell>
                           <TableCell align="right">
-                            <span className="inline-flex items-center gap-1.5 text-[12px] text-primary font-medium">
+                            <span className="inline-flex items-center gap-1.5 text-label text-primary font-medium">
                               <Download className="h-3.5 w-3.5" />
                               View &amp; Download
                             </span>
@@ -761,48 +764,69 @@ export default function BillingPage() {
       </div>
 
       {/* Upgrade/Downgrade Confirmation Modal */}
-      {confirmPlan && subscription && (
-        <UpgradeConfirmModal
-          currentPlan={subscription.plan}
-          newPlan={confirmPlan}
-          isUpgrade={isUpgrade}
-          isLoading={changePlanMutation.isPending}
-          error={planChangeError}
-          onConfirm={handleConfirmChange}
-          onCancel={() => { setConfirmPlan(null); setPlanChangeError(null); }}
-        />
-      )}
+      <Modal
+        open={!!(confirmPlan && subscription)}
+        onClose={() => { setConfirmPlan(null); setPlanChangeError(null); }}
+        aria-labelledby="upgrade-confirm-title"
+        className="max-w-lg border border-outline-variant/20"
+      >
+        {() =>
+          confirmPlan && subscription && (
+            <UpgradeConfirmModal
+              currentPlan={subscription.plan}
+              newPlan={confirmPlan}
+              isUpgrade={isUpgrade}
+              isLoading={changePlanMutation.isPending}
+              error={planChangeError}
+              onConfirm={handleConfirmChange}
+              onCancel={() => { setConfirmPlan(null); setPlanChangeError(null); }}
+            />
+          )
+        }
+      </Modal>
 
       {/* Payment detail modal */}
-      {selectedPaymentId && selectedPayment && (
-        <PaymentDetailModal
-          payment={selectedPayment}
-          onClose={() => setSelectedPaymentId(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedPaymentId && selectedPayment && (
+          <PaymentDetailModal
+            key={selectedPaymentId}
+            payment={selectedPayment}
+            onClose={() => setSelectedPaymentId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Invoice detail + PDF modal */}
-      {selectedInvoiceId && selectedInvoice && (
-        <InvoiceDetailModal
-          invoice={selectedInvoice}
-          user={user}
-          onClose={() => setSelectedInvoiceId(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedInvoiceId && selectedInvoice && (
+          <InvoiceDetailModal
+            key={selectedInvoiceId}
+            invoice={selectedInvoice}
+            user={user}
+            onClose={() => setSelectedInvoiceId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Cancel plan confirm modal */}
-      {showCancelConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-surface rounded-2xl border border-outline-variant shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+      <Modal
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        dismissible={!cancelMutation.isPending}
+        aria-labelledby="cancel-plan-title"
+        className="bg-surface border border-outline-variant max-w-md p-6 space-y-4"
+      >
+        {() => (
+          <>
             <div className="flex items-start gap-3">
               <div className="rounded-full bg-error/10 p-2 shrink-0">
                 <AlertTriangle className="h-5 w-5 text-error" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-on-surface">
+                <h3 id="cancel-plan-title" className="text-body-lg font-semibold text-on-surface">
                   Cancel {subscription?.plan.name}?
                 </h3>
-                <p className="text-[13px] text-on-surface-variant mt-1">
+                <p className="text-body text-on-surface-variant mt-1">
                   Your plan will remain active until the end of the current billing period. After that, access will be restricted.
                 </p>
               </div>
@@ -825,14 +849,14 @@ export default function BillingPage() {
                   });
                 }}
                 loading={cancelMutation.isPending}
-                className="bg-error hover:bg-error/90 text-white"
+                className="bg-error hover:bg-error/90 text-on-error"
               >
                 Yes, Cancel
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -864,7 +888,7 @@ function UsageCard({
             <div className="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center">
               <Icon className="h-4 w-4 text-on-surface-variant" />
             </div>
-            <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wider">
+            <span className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
               {label}
             </span>
           </div>
@@ -876,19 +900,19 @@ function UsageCard({
           )}
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-xl font-bold text-on-surface">
+          <span className="text-title font-semibold text-on-surface">
             {current.toLocaleString()}
           </span>
-          <span className="text-[12px] text-on-surface-variant">
+          <span className="text-label text-on-surface-variant">
             / {limit > 0 ? limit.toLocaleString() : "∞"}
           </span>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[11px] text-on-surface-variant/60">
+          <span className="text-caption text-on-surface-variant/60">
             {pct.toFixed(0)}% used
           </span>
           {isTrial && (
-            <span className="text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+            <span className="text-caption font-medium text-warning bg-warning-container border border-warning/30 rounded px-1.5 py-0.5">
               trial limit
             </span>
           )}
@@ -925,9 +949,9 @@ function FeatureLimitRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
         <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-[12px] text-on-surface-variant">{label}</span>
+        <span className="text-label text-on-surface-variant">{label}</span>
       </div>
-      <span className="text-[12px] font-medium text-on-surface">{value}</span>
+      <span className="text-label font-medium text-on-surface">{value}</span>
     </div>
   );
 }
@@ -970,19 +994,19 @@ function PlanCard({
       {/* Top banner — Active > Popular > Enterprise */}
       {isCurrent ? (
         <div className="bg-primary/10 px-4 py-1.5 text-center">
-          <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+          <span className="text-caption font-semibold text-primary uppercase tracking-wider">
             Active Plan
           </span>
         </div>
       ) : isPopular ? (
         <div className="bg-primary px-4 py-1.5 text-center">
-          <span className="text-[11px] font-semibold text-white uppercase tracking-wider">
+          <span className="text-caption font-semibold text-on-primary uppercase tracking-wider">
             Most Popular
           </span>
         </div>
       ) : isEnterprise ? (
         <div className="bg-on-surface/5 px-4 py-1.5 text-center">
-          <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">
+          <span className="text-caption font-semibold text-on-surface-variant uppercase tracking-wider">
             Custom Pricing
           </span>
         </div>
@@ -993,11 +1017,11 @@ function PlanCard({
       <div className="p-5 flex flex-col flex-1">
         {/* Plan name + description */}
         <div className="mb-4">
-          <h3 className="text-base font-semibold text-on-surface">
+          <h3 className="text-title-sm font-semibold text-on-surface">
             {plan.name}
           </h3>
           {plan.description && (
-            <p className="text-[12px] text-on-surface-variant/70 mt-0.5 min-h-[32px]">
+            <p className="text-label text-on-surface-variant/70 mt-0.5 min-h-[32px]">
               {plan.description}
             </p>
           )}
@@ -1006,24 +1030,24 @@ function PlanCard({
         {/* Price */}
         <div className="mb-4">
           {isEnterprise ? (
-            <span className="text-2xl font-bold text-on-surface">Custom</span>
+            <span className="text-headline font-semibold text-on-surface">Custom</span>
           ) : (
             <>
-              <span className="text-2xl font-bold text-on-surface">
+              <span className="text-headline font-semibold text-on-surface">
                 {formatPlanPrice(plan)}
               </span>
-              <span className="text-[13px] text-on-surface-variant">
+              <span className="text-body text-on-surface-variant">
                 /{plan.billingCycle === "MONTHLY" ? "mo" : "yr"}
               </span>
             </>
           )}
           {isTrial ? (
-            <p className="text-[11px] text-amber-600 font-medium mt-1 flex items-center gap-1">
+            <p className="text-caption text-warning font-medium mt-1 flex items-center gap-1">
               <Clock className="h-3 w-3" />
               Trial active — limited capacity
             </p>
           ) : !isCurrent && plan.trialDays > 0 ? (
-            <p className="text-[11px] text-success font-medium mt-1">
+            <p className="text-caption text-success font-medium mt-1">
               {plan.trialDays}-day free trial
             </p>
           ) : null}
@@ -1031,7 +1055,7 @@ function PlanCard({
 
         {/* ── Section A: Usage ── */}
         <div className="space-y-2 mb-3">
-          <p className="text-[10px] font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
+          <p className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
             Usage
           </p>
           <LimitRow
@@ -1058,7 +1082,7 @@ function PlanCard({
 
         {/* ── Section B: Features with limits ── */}
         <div className="border-t border-outline-variant/10 pt-3 space-y-2">
-          <p className="text-[10px] font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
+          <p className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
             Features
           </p>
           <FeatureLimitRow label="Templates"   value={fmtFeatureLimit(plan.maxMessageTemplates, "")} />
@@ -1074,7 +1098,7 @@ function PlanCard({
         {isEnterprise && !isCurrent ? (
           <a
             href="mailto:sales@wazelo.in"
-            className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-on-surface/20 px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container transition-colors"
+            className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-on-surface/20 px-3 py-2 text-body font-medium text-on-surface hover:bg-surface-container transition-colors"
           >
             Contact Us
           </a>
@@ -1146,187 +1170,178 @@ function UpgradeConfirmModal({
   const charge = (newPrice / daysInPeriod) * estimatedDaysRemaining;
   const net = charge - credit;
 
+  // Rendered inside <Modal> by the page, which owns the backdrop, panel and animation.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-surface-container-lowest border border-outline-variant/20 shadow-2xl mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-0">
-          <div className="flex items-center gap-2">
-            {isUpgrade ? (
-              <TrendingUp className="h-5 w-5 text-primary" />
-            ) : (
-              <ArrowDownCircle className="h-5 w-5 text-warning" />
-            )}
-            <h2 className="text-lg font-semibold text-on-surface">
-              {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
-            </h2>
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 pb-0">
+        <div className="flex items-center gap-2">
+          {isUpgrade ? (
+            <TrendingUp className="h-5 w-5 text-primary" />
+          ) : (
+            <ArrowDownCircle className="h-5 w-5 text-warning" />
+          )}
+          <h2 id="upgrade-confirm-title" className="text-title font-semibold text-on-surface">
+            {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
+          </h2>
+        </div>
+        <IconButton size="sm"
+          onClick={onCancel} aria-label="Close">
+          <X className="h-4 w-4" />
+        </IconButton>
+      </div>
+
+      <div className="p-6 space-y-5">
+        {/* Plan Comparison */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 rounded-xl bg-surface-container p-4 text-center">
+            <p className="text-caption text-on-surface-variant uppercase tracking-wider mb-1">
+              Current
+            </p>
+            <p className="text-body-lg font-semibold text-on-surface">
+              {currentPlan.name}
+            </p>
+            <p className="text-body-lg text-on-surface-variant mt-0.5">
+              ₹{currentPrice.toLocaleString("en-IN")}/{cycleSuffix}
+            </p>
           </div>
-          <button
-            onClick={onCancel}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="text-on-surface-variant/50">→</div>
+          <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-4 text-center">
+            <p className="text-caption text-primary uppercase tracking-wider mb-1">
+              New Plan
+            </p>
+            <p className="text-body-lg font-semibold text-on-surface">
+              {newPlan.name}
+            </p>
+            <p className="text-body-lg text-primary mt-0.5">
+              ₹{newPrice.toLocaleString("en-IN")}/{cycleSuffix}
+            </p>
+          </div>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Plan Comparison */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 rounded-xl bg-surface-container p-4 text-center">
-              <p className="text-[11px] text-on-surface-variant uppercase tracking-wider mb-1">
-                Current
-              </p>
-              <p className="text-[15px] font-semibold text-on-surface">
-                {currentPlan.name}
-              </p>
-              <p className="text-sm text-on-surface-variant mt-0.5">
-                ₹{currentPrice.toLocaleString("en-IN")}/{cycleSuffix}
-              </p>
-            </div>
-            <div className="text-on-surface-variant/50">→</div>
-            <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-4 text-center">
-              <p className="text-[11px] text-primary uppercase tracking-wider mb-1">
-                New Plan
-              </p>
-              <p className="text-[15px] font-semibold text-on-surface">
-                {newPlan.name}
-              </p>
-              <p className="text-sm text-primary mt-0.5">
-                ₹{newPrice.toLocaleString("en-IN")}/{cycleSuffix}
-              </p>
-            </div>
-          </div>
+        {/* Feature Comparison Table */}
+        <div className="rounded-xl bg-surface-container/50 overflow-hidden">
+          <table className="w-full text-body">
+            <thead>
+              <tr className="bg-surface-container/40 border-b border-outline-variant/15">
+                <th className="px-4 py-2.5 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  Feature
+                </th>
+                <th className="px-4 py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  Current
+                </th>
+                <th className="px-4 py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-primary">
+                  New
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <CompareRow
+                label="Users"
+                current={formatLimit(currentPlan.maxUsers)}
+                next={formatLimit(newPlan.maxUsers)}
+              />
+              <CompareRow
+                label="Sessions"
+                current={formatLimit(currentPlan.maxWhatsappSessions)}
+                next={formatLimit(newPlan.maxWhatsappSessions)}
+              />
+              <CompareRow
+                label="Messages/mo"
+                current={formatLimit(currentPlan.maxMessagesPerMonth)}
+                next={formatLimit(newPlan.maxMessagesPerMonth)}
+              />
+              <CompareRow
+                label="Campaigns/mo"
+                current={formatLimit(currentPlan.maxCampaignsPerMonth)}
+                next={formatLimit(newPlan.maxCampaignsPerMonth)}
+              />
+              <CompareRow
+                label="Templates"
+                current={formatLimit(currentPlan.maxMessageTemplates)}
+                next={formatLimit(newPlan.maxMessageTemplates)}
+              />
+              <CompareRow
+                label="API Calls/mo"
+                current={currentPlan.apiEnabled ? formatLimit(currentPlan.maxApiCallsPerMonth) : "—"}
+                next={newPlan.apiEnabled ? formatLimit(newPlan.maxApiCallsPerMonth) : "—"}
+              />
+              <CompareRow
+                label="AI Credits/mo"
+                current={currentPlan.aiEnabled ? formatLimit(currentPlan.aiCreditsPerMonth) : "—"}
+                next={newPlan.aiEnabled ? formatLimit(newPlan.aiCreditsPerMonth) : "—"}
+              />
+            </tbody>
+          </table>
+        </div>
 
-          {/* Feature Comparison Table */}
-          <div className="rounded-xl bg-surface-container/50 overflow-hidden">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
-                    Feature
-                  </th>
-                  <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
-                    Current
-                  </th>
-                  <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-primary">
-                    New
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <CompareRow
-                  label="Users"
-                  current={formatLimit(currentPlan.maxUsers)}
-                  next={formatLimit(newPlan.maxUsers)}
-                />
-                <CompareRow
-                  label="Sessions"
-                  current={formatLimit(currentPlan.maxWhatsappSessions)}
-                  next={formatLimit(newPlan.maxWhatsappSessions)}
-                />
-                <CompareRow
-                  label="Messages/mo"
-                  current={formatLimit(currentPlan.maxMessagesPerMonth)}
-                  next={formatLimit(newPlan.maxMessagesPerMonth)}
-                />
-                <CompareRow
-                  label="Campaigns/mo"
-                  current={formatLimit(currentPlan.maxCampaignsPerMonth)}
-                  next={formatLimit(newPlan.maxCampaignsPerMonth)}
-                />
-                <CompareRow
-                  label="Templates"
-                  current={formatLimit(currentPlan.maxMessageTemplates)}
-                  next={formatLimit(newPlan.maxMessageTemplates)}
-                />
-                <CompareRow
-                  label="API Calls/mo"
-                  current={currentPlan.apiEnabled ? formatLimit(currentPlan.maxApiCallsPerMonth) : "—"}
-                  next={newPlan.apiEnabled ? formatLimit(newPlan.maxApiCallsPerMonth) : "—"}
-                />
-                <CompareRow
-                  label="AI Credits/mo"
-                  current={currentPlan.aiEnabled ? formatLimit(currentPlan.aiCreditsPerMonth) : "—"}
-                  next={newPlan.aiEnabled ? formatLimit(newPlan.aiCreditsPerMonth) : "—"}
-                />
-              </tbody>
-            </table>
-          </div>
-
-          {/* Proration Details (upgrades only) */}
-          {isUpgrade && (
-            <div className="rounded-xl bg-surface-container p-4 space-y-2">
-              <p className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wider">
-                Estimated Proration
-              </p>
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-on-surface-variant">
-                  Credit for remaining period
-                </span>
-                <span className="text-success font-medium">
-                  -₹{credit.toLocaleString("en-IN")}
-                </span>
+        {/* Proration Details (upgrades only) */}
+        {isUpgrade && (
+          <div className="rounded-xl bg-surface-container p-4 space-y-2">
+            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              Estimated Proration
+            </p>
+            <div className="flex items-center justify-between text-body">
+              <span className="text-on-surface-variant">
+                Credit for remaining period
+              </span>
+              <span className="text-success font-medium">
+                -₹{credit.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-body">
+              <span className="text-on-surface-variant">
+                New plan charge (prorated)
+              </span>
+              <span className="text-on-surface font-medium">
+                ₹{charge.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="border-t border-outline-variant/15 pt-2 mt-2">
+              <div className="flex items-center justify-between text-body-lg font-semibold">
+                <span className="text-on-surface">Amount due today</span>
+                <span className="text-primary">₹{net.toLocaleString("en-IN")}</span>
               </div>
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-on-surface-variant">
-                  New plan charge (prorated)
-                </span>
-                <span className="text-on-surface font-medium">
-                  ₹{charge.toLocaleString("en-IN")}
-                </span>
-              </div>
-              <div className="border-t border-outline-variant/15 pt-2 mt-2">
-                <div className="flex items-center justify-between text-[14px] font-semibold">
-                  <span className="text-on-surface">Amount due today</span>
-                  <span className="text-primary">₹{net.toLocaleString("en-IN")}</span>
-                </div>
-              </div>
-              <p className="text-[11px] text-on-surface-variant/60 mt-1">
-                Exact proration will be calculated by the server based on your
-                current billing period.
-              </p>
             </div>
-          )}
-
-          {/* Downgrade note */}
-          {!isUpgrade && (
-            <div className="rounded-xl bg-warning-container/30 border border-warning/10 p-4">
-              <p className="text-[13px] text-on-surface">
-                Your downgrade will take effect at the end of your current
-                billing period. You&apos;ll keep your current plan until then.
-              </p>
-            </div>
-          )}
-
-          {/* Actions */}
-          {error && (
-            <div className="rounded-lg bg-error/10 border border-error/20 px-4 py-3 text-[13px] text-error">
-              {error}
-            </div>
-          )}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <Button variant="ghost" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={onConfirm}
-              loading={isLoading}
-              disabled={!!error}
-            >
-              {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
-            </Button>
+            <p className="text-caption text-on-surface-variant/60 mt-1">
+              Exact proration will be calculated by the server based on your
+              current billing period.
+            </p>
           </div>
+        )}
+
+        {/* Downgrade note */}
+        {!isUpgrade && (
+          <div className="rounded-xl bg-warning-container/30 border border-warning/10 p-4">
+            <p className="text-body text-on-surface">
+              Your downgrade will take effect at the end of your current
+              billing period. You&apos;ll keep your current plan until then.
+            </p>
+          </div>
+        )}
+
+        {/* Actions */}
+        {error && (
+          <div className="rounded-lg bg-error/10 border border-error/20 px-4 py-3 text-body text-error">
+            {error}
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-3 pt-1">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onConfirm}
+            loading={isLoading}
+            disabled={!!error}
+          >
+            {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
+          </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1363,15 +1378,15 @@ function LimitRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[12px] text-on-surface-variant">{label}</span>
+      <span className="text-label text-on-surface-variant">{label}</span>
       <div className="flex items-center gap-1.5">
         {trialValue !== undefined ? (
           <span className="flex items-center gap-1">
-            <span className="text-[12px] font-medium text-amber-700">{trialValue.toLocaleString()}</span>
-            <span className="text-[10px] text-on-surface-variant/50 line-through">{value}</span>
+            <span className="text-label font-medium text-warning">{trialValue.toLocaleString()}</span>
+            <span className="text-caption text-on-surface-variant/50 line-through">{value}</span>
           </span>
         ) : (
-          <span className="text-[12px] font-medium text-on-surface">{value}</span>
+          <span className="text-label font-medium text-on-surface">{value}</span>
         )}
       </div>
     </div>

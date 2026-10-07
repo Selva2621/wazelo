@@ -23,6 +23,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { SCORING_SIGNALS } from "@/lib/types/lead-scoring";
 import type { LeadScoringRule, CreateScoringRuleRequest } from "@/lib/types/lead-scoring";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 // ─── Rule Form Modal ───────────────────────────────────────────────────────────
 
@@ -33,7 +35,22 @@ interface RuleFormProps {
   isPending: boolean;
 }
 
-function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
+function RuleFormModal({ open, ...props }: RuleFormProps & { open: boolean }) {
+  return (
+    <Modal
+      open={open}
+      onClose={props.onClose}
+      dismissible={!props.isPending}
+      aria-labelledby="rule-form-title"
+      className="max-w-md border border-outline-variant/10 p-6"
+    >
+      {/* Form state lives in a child so it re-initialises each time the modal opens. */}
+      {() => <RuleForm {...props} />}
+    </Modal>
+  );
+}
+
+function RuleForm({ initial, onSave, onClose, isPending }: RuleFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [signal, setSignal] = useState(initial?.signal ?? SCORING_SIGNALS[0].value);
@@ -46,16 +63,15 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/10 p-6">
-        <h2 className="text-[16px] font-semibold text-on-surface mb-5">
+      <>
+        <h2 id="rule-form-title" className="text-title-sm font-semibold text-on-surface mb-5">
           {initial ? "Edit Rule" : "New Scoring Rule"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-[12px] font-medium text-on-surface-variant mb-1">
+            <label className="block text-label font-medium text-on-surface-variant mb-1">
               Rule Name <span className="text-error">*</span>
             </label>
             <input
@@ -65,13 +81,13 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
               required
               maxLength={255}
               placeholder="e.g. First message received"
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-[12px] font-medium text-on-surface-variant mb-1">
+            <label className="block text-label font-medium text-on-surface-variant mb-1">
               Description
             </label>
             <textarea
@@ -80,19 +96,19 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
               maxLength={1000}
               rows={2}
               placeholder="Optional — explain when this rule fires"
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
           {/* Signal */}
           <div>
-            <label className="block text-[12px] font-medium text-on-surface-variant mb-1">
+            <label className="block text-label font-medium text-on-surface-variant mb-1">
               Trigger Signal <span className="text-error">*</span>
             </label>
             <select
               value={signal}
               onChange={(e) => setSignal(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {SCORING_SIGNALS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -102,7 +118,7 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
 
           {/* Points */}
           <div>
-            <label className="block text-[12px] font-medium text-on-surface-variant mb-1">
+            <label className="block text-label font-medium text-on-surface-variant mb-1">
               Points <span className="text-error">*</span>
               <span className="ml-1 text-on-surface-variant/50 font-normal">(-100 to +100)</span>
             </label>
@@ -113,16 +129,16 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
               min={-100}
               max={100}
               required
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <p className="mt-1 text-[11px] text-on-surface-variant/60">
+            <p className="mt-1 text-caption text-on-surface-variant/60">
               Positive = higher quality lead. Negative = lower quality.
             </p>
           </div>
 
           {/* Max per contact */}
           <div>
-            <label className="block text-[12px] font-medium text-on-surface-variant mb-1">
+            <label className="block text-label font-medium text-on-surface-variant mb-1">
               Max fires per contact
               <span className="ml-1 text-on-surface-variant/50 font-normal">(0 = unlimited)</span>
             </label>
@@ -131,7 +147,7 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
               value={maxPerContact}
               onChange={(e) => setMaxPerContact(Number(e.target.value))}
               min={0}
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
@@ -146,8 +162,7 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
   );
 }
 
@@ -156,16 +171,16 @@ function RuleFormModal({ initial, onSave, onClose, isPending }: RuleFormProps) {
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(100, Math.max(0, score));
   const color =
-    pct >= 70 ? "bg-green-500" :
-    pct >= 40 ? "bg-yellow-500" :
-    "bg-red-400";
+    pct >= 70 ? "bg-success" :
+    pct >= 40 ? "bg-warning" :
+    "bg-error";
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-outline-variant/20 overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[12px] font-semibold text-on-surface tabular-nums w-7 text-right">
+      <span className="text-label font-semibold text-on-surface tabular-nums w-7 text-right">
         {score}
       </span>
     </div>
@@ -202,18 +217,18 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
 
       {/* Signal */}
       <div className="w-44 shrink-0">
-        <Badge variant={rule.enabled ? "primary" : "default"} className="text-[11px]">
+        <Badge variant={rule.enabled ? "primary" : "default"} className="text-caption">
           {signal?.label ?? rule.signal}
         </Badge>
       </div>
 
       {/* Name + description */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[13px] font-medium truncate ${rule.enabled ? "text-on-surface" : "text-on-surface-variant/60"}`}>
+        <p className={`text-body font-medium truncate ${rule.enabled ? "text-on-surface" : "text-on-surface-variant/60"}`}>
           {rule.name}
         </p>
         {rule.description && (
-          <p className="text-[11px] text-on-surface-variant/60 truncate mt-0.5">
+          <p className="text-caption text-on-surface-variant/60 truncate mt-0.5">
             {rule.description}
           </p>
         )}
@@ -221,32 +236,30 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
 
       {/* Points */}
       <div className="w-20 shrink-0 text-right">
-        <span className={`text-[13px] font-semibold tabular-nums ${isPositive ? "text-green-600" : "text-red-500"}`}>
+        <span className={`text-body font-semibold tabular-nums ${isPositive ? "text-success" : "text-error"}`}>
           {isPositive ? "+" : ""}{rule.points} pts
         </span>
       </div>
 
       {/* Max fires */}
-      <div className="w-28 shrink-0 text-[12px] text-on-surface-variant/60 text-center">
+      <div className="w-28 shrink-0 text-label text-on-surface-variant/60 text-center">
         {rule.maxPerContact === 0 ? "Unlimited" : `Max ${rule.maxPerContact}×`}
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
+        <IconButton size="xs"
           onClick={() => onEdit(rule)}
-          className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
-          title="Edit rule"
-        >
+         
+          title="Edit rule" aria-label="Edit rule">
           <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
+        </IconButton>
+        <IconButton size="xs" variant="danger"
           onClick={() => onDelete(rule.id)}
-          className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors"
-          title="Delete rule"
-        >
+         
+          title="Delete rule" aria-label="Delete rule">
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </IconButton>
       </div>
     </div>
   );
@@ -292,9 +305,9 @@ export default function LeadScoringPage() {
       <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <TrendingUp className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">Lead Scoring</h1>
+          <h1 className="text-title font-semibold text-on-surface">Lead Scoring</h1>
           {rules && rules.length > 0 && (
-            <span className="text-[12px] text-on-surface-variant/60">
+            <span className="text-label text-on-surface-variant/60">
               {enabledCount} active rule{enabledCount !== 1 ? "s" : ""}
             </span>
           )}
@@ -318,7 +331,7 @@ export default function LeadScoringPage() {
         {isError && (
           <div className="rounded-xl bg-error/10 border border-error/20 p-4 flex items-center gap-3">
             <AlertCircle className="h-4 w-4 text-error shrink-0" />
-            <p className="text-[13px] text-error">Failed to load scoring rules. Please refresh.</p>
+            <p className="text-body text-error">Failed to load scoring rules. Please refresh.</p>
           </div>
         )}
 
@@ -337,16 +350,16 @@ export default function LeadScoringPage() {
         {rules && rules.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wider mb-1">Total Rules</p>
-              <p className="text-[22px] font-semibold text-on-surface tabular-nums">{rules.length}</p>
+              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Total Rules</p>
+              <p className="text-headline font-semibold text-on-surface tabular-nums">{rules.length}</p>
             </div>
             <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wider mb-1">Active Rules</p>
-              <p className="text-[22px] font-semibold text-primary tabular-nums">{enabledCount}</p>
+              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Active Rules</p>
+              <p className="text-headline font-semibold text-primary tabular-nums">{enabledCount}</p>
             </div>
             <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wider mb-1">Max Possible Score</p>
-              <p className={`text-[22px] font-semibold tabular-nums ${totalPoints >= 0 ? "text-green-600" : "text-red-500"}`}>
+              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Max Possible Score</p>
+              <p className={`text-headline font-semibold tabular-nums ${totalPoints >= 0 ? "text-success" : "text-error"}`}>
                 {totalPoints >= 0 ? "+" : ""}{totalPoints}
               </p>
             </div>
@@ -357,7 +370,7 @@ export default function LeadScoringPage() {
         {rules && rules.length > 0 && (
           <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 flex items-start gap-3">
             <TrendingUp className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <div className="text-[12px] text-on-surface-variant leading-relaxed">
+            <div className="text-label text-on-surface-variant leading-relaxed">
               <span className="font-medium text-on-surface">How it works:</span>{" "}
               Each time a contact triggers a signal (e.g. sends a message), matching rules fire and add/subtract points from their lead score (0–100).
               High-scoring leads appear highlighted in your Contacts list.
@@ -371,16 +384,16 @@ export default function LeadScoringPage() {
             {/* Table header */}
             <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant/10 bg-surface-container/40">
               <div className="w-5 shrink-0" />
-              <div className="w-44 shrink-0 text-[11px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-44 shrink-0 text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
                 Signal
               </div>
-              <div className="flex-1 text-[11px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="flex-1 text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
                 Rule
               </div>
-              <div className="w-20 shrink-0 text-right text-[11px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-20 shrink-0 text-right text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
                 Points
               </div>
-              <div className="w-28 shrink-0 text-center text-[11px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-28 shrink-0 text-center text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
                 Limit
               </div>
               <div className="w-16 shrink-0" />
@@ -401,23 +414,21 @@ export default function LeadScoringPage() {
       </div>
 
       {/* Create Modal */}
-      {showCreate && (
-        <RuleFormModal
-          onSave={handleCreate}
-          onClose={() => setShowCreate(false)}
-          isPending={createRule.isPending}
-        />
-      )}
+      <RuleFormModal
+        open={showCreate}
+        onSave={handleCreate}
+        onClose={() => setShowCreate(false)}
+        isPending={createRule.isPending}
+      />
 
       {/* Edit Modal */}
-      {editingRule && (
-        <RuleFormModal
-          initial={editingRule}
-          onSave={handleUpdate}
-          onClose={() => setEditingRule(null)}
-          isPending={updateRule.isPending}
-        />
-      )}
+      <RuleFormModal
+        open={editingRule !== null}
+        initial={editingRule ?? undefined}
+        onSave={handleUpdate}
+        onClose={() => setEditingRule(null)}
+        isPending={updateRule.isPending}
+      />
     </div>
   );
 }

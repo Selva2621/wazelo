@@ -1,5 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ApiKeysRepository } from '../../infrastructure/repositories/api-keys.repository';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { orgSuspendedException } from '@/modules/org/interfaces/guards/org-status.guard';
 
 /**
  * Guard that authenticates requests via API key in the X-API-Key header.
@@ -7,7 +9,10 @@ import { ApiKeysRepository } from '../../infrastructure/repositories/api-keys.re
  */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
-  constructor(private readonly repo: ApiKeysRepository) {}
+  constructor(
+    private readonly repo: ApiKeysRepository,
+    private readonly orgStatus: OrgStatusService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -20,6 +25,11 @@ export class ApiKeyGuard implements CanActivate {
     const keyData = await this.repo.validateKey(apiKey);
     if (!keyData) {
       throw new UnauthorizedException('Invalid or expired API key');
+    }
+
+    // The global OrgStatusGuard runs before the key is resolved, so check here too
+    if (await this.orgStatus.isSuspended(keyData.orgId)) {
+      throw orgSuspendedException();
     }
 
     // Attach org context to request (similar to JWT auth)

@@ -20,7 +20,7 @@
     "prisma:migrate:prod": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "seed:freelancer-templates": "node prisma/seed-freelancer-templates.js"
+    "seed:org-onboarding": "node prisma/backfill-org-onboarding.js"
   },
   "dependencies": {
     "@hapi/boom": "^10.0.1",

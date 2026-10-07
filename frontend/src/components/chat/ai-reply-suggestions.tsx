@@ -3,6 +3,7 @@
 import { Sparkles } from "lucide-react";
 import { useSmartReplies } from "@/hooks/use-ai";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 interface AiReplySuggestionsProps {
   conversationId: string | null;
@@ -22,16 +23,16 @@ export function AiReplySuggestions({ conversationId, onSelect }: AiReplySuggesti
         ) : (
           <Sparkles className="h-3.5 w-3.5" />
         )}
-        <span className="text-[10px] font-medium uppercase tracking-wider">AI</span>
+        <span className="text-caption font-medium uppercase tracking-wider">AI</span>
       </div>
       {data?.replies.map((reply, i) => (
-        <button
+        <Button variant="secondary" size="sm"
           key={i}
           onClick={() => onSelect(reply)}
-          className="shrink-0 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[12px] text-on-surface hover:bg-primary/10 hover:border-primary/20 transition-colors whitespace-nowrap"
+          className="shrink-0 bg-primary/5 border-primary/10 hover:bg-primary/10 hover:border-primary/20 whitespace-nowrap"
         >
           {reply.length > 60 ? reply.slice(0, 57) + "..." : reply}
-        </button>
+        </Button>
       ))}
     </div>
   );
