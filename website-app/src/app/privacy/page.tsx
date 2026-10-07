@@ -8,7 +8,7 @@ import SiteNavbar from "@/components/Navbar";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 48 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 16, letterSpacing: "-0.02em" }}>{title}</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16, letterSpacing: "-0.02em" }}>{title}</h2>
       {children}
     </div>
   );
@@ -16,13 +16,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 14 }}>{children}</p>
+    <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>
   );
 }
 
 function Li({ children }: { children: React.ReactNode }) {
   return (
-    <li style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 8, paddingLeft: 4 }}>{children}</li>
+    <li style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8, paddingLeft: 4 }}>{children}</li>
   );
 }
 
@@ -45,12 +45,12 @@ export default function PrivacyPage() {
               marginBottom: 20,
             }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>Legal</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Legal</span>
             </div>
-            <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 16 }}>
+            <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
               Privacy Policy
             </h1>
-            <p style={{ fontSize: 14, color: "rgba(219,194,176,0.45)", fontFamily: "'Inter', sans-serif" }}>
+            <p style={{ fontSize: 14, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
               Last updated: April 19, 2025 · Effective for all Wazelo CRM users
             </p>
           </div>
@@ -144,9 +144,9 @@ export default function PrivacyPage() {
           <Section title="11. Contact Us">
             <P>For privacy-related questions or requests, contact us at:</P>
             <div style={{ background: "#1c1b1b", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 10, padding: "20px 24px" }}>
-              <p style={{ fontSize: 14, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 4, fontWeight: 600 }}>Wazelo CRM</p>
-              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "'Inter', sans-serif", marginBottom: 4 }}>Email: <a href="mailto:privacy@wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>privacy@wazelo.in</a></p>
-              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "'Inter', sans-serif" }}>Website: <a href="https://wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>wazelo.in</a></p>
+              <p style={{ fontSize: 14, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4, fontWeight: 600 }}>Wazelo CRM</p>
+              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4 }}>Email: <a href="mailto:privacy@wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>privacy@wazelo.in</a></p>
+              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Website: <a href="https://wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>wazelo.in</a></p>
             </div>
           </Section>
 

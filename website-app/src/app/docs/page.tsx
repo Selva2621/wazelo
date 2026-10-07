@@ -33,8 +33,8 @@ function DocSection({ id, title, badge, children }: { id: string; title: string;
   return (
     <div id={id} style={{ marginBottom: 64, scrollMarginTop: 88 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.03em", margin: 0 }}>{title}</h2>
-        {badge && <span style={{ fontSize: 10, fontWeight: 700, color: "#ffb77d", border: "1px solid rgba(255,183,125,0.3)", borderRadius: 100, padding: "2px 10px", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>{badge}</span>}
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "-0.03em", margin: 0 }}>{title}</h2>
+        {badge && <span style={{ fontSize: 10, fontWeight: 700, color: "#ffb77d", border: "1px solid rgba(255,183,125,0.3)", borderRadius: 100, padding: "2px 10px", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>{badge}</span>}
       </div>
       <div style={{ width: 40, height: 2, background: "linear-gradient(to right,#ffb77d,transparent)", marginBottom: 24, borderRadius: 2 }} />
       {children}
@@ -43,22 +43,22 @@ function DocSection({ id, title, badge, children }: { id: string; title: string;
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 14 }}>{children}</p>;
+  return <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>;
 }
 
 function H3({ children }: { children: React.ReactNode }) {
-  return <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 10, marginTop: 28 }}>{children}</h3>;
+  return <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10, marginTop: 28 }}>{children}</h3>;
 }
 
 function Li({ children }: { children: React.ReactNode }) {
-  return <li style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 6, paddingLeft: 4 }}>{children}</li>;
+  return <li style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6, paddingLeft: 4 }}>{children}</li>;
 }
 
 function Callout({ icon, color, children }: { icon: string; color: string; children: React.ReactNode }) {
   return (
     <div style={{ background: "#1c1b1b", borderLeft: `3px solid ${color}`, borderRadius: 8, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-start" }}>
       <span className="material-symbols-outlined" style={{ fontSize: 18, color, flexShrink: 0, marginTop: 1 }}>{icon}</span>
-      <p style={{ fontSize: 14, color: "rgba(219,194,176,0.7)", lineHeight: 1.75, fontFamily: "'Inter', sans-serif", margin: 0 }}>{children}</p>
+      <p style={{ fontSize: 14, color: "rgba(219,194,176,0.7)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif", margin: 0 }}>{children}</p>
     </div>
   );
 }
@@ -87,12 +87,12 @@ export default function DocsPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)", marginBottom: 20 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>Documentation</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Documentation</span>
           </div>
-          <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 16 }}>
+          <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
             Wazelo CRM Docs
           </h1>
-          <p style={{ fontSize: 16, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter', sans-serif", maxWidth: 560 }}>
+          <p style={{ fontSize: 16, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 560 }}>
             Everything you need to set up, configure, and get the most out of Wazelo CRM for your team.
           </p>
         </div>
@@ -104,11 +104,11 @@ export default function DocsPage() {
         {/* Sidebar */}
         {!mobile && (
           <aside style={{ width: 220, flexShrink: 0, paddingTop: 40, paddingRight: 32, position: "sticky", top: 64, alignSelf: "flex-start", height: "calc(100vh - 64px)", overflowY: "auto" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(219,194,176,0.3)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif", marginBottom: 12 }}>On this page</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(219,194,176,0.3)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>On this page</p>
             {sections.map(s => (
               <a key={s.id} href={`#${s.id}`} onClick={() => setActive(s.id)} style={{
                 display: "block", padding: "7px 12px", borderRadius: 6, marginBottom: 2,
-                fontSize: 13, fontFamily: "'Inter', sans-serif", textDecoration: "none",
+                fontSize: 13, fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none",
                 fontWeight: active === s.id ? 600 : 400,
                 color: active === s.id ? "#ffb77d" : "rgba(219,194,176,0.5)",
                 background: active === s.id ? "rgba(255,183,125,0.07)" : "transparent",
@@ -117,7 +117,7 @@ export default function DocsPage() {
               }}>{s.label}</a>
             ))}
             <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,183,125,0.08)" }}>
-              <a href="/api-reference" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "'Inter', sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
+              <a href="/api-reference" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 15 }}>api</span>
                 API Reference →
               </a>
@@ -279,8 +279,8 @@ export default function DocsPage() {
                 ["Agent", "Access only to assigned conversations and their own performance stats"],
               ].map(([role, desc], i) => (
                 <div key={role} style={{ display: "flex", gap: 16, padding: "14px 18px", borderBottom: i < 2 ? "1px solid rgba(255,183,125,0.06)" : "none", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", fontFamily: "'Inter', sans-serif", minWidth: 72, paddingTop: 1 }}>{role}</span>
-                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{desc}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", minWidth: 72, paddingTop: 1 }}>{role}</span>
+                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{desc}</span>
                 </div>
               ))}
             </div>
@@ -299,9 +299,9 @@ export default function DocsPage() {
                 ["Pro", "₹1,999/mo", "Unlimited agents, 100,000 messages/mo"],
               ].map(([plan, price, desc], i) => (
                 <div key={plan} style={{ display: "flex", gap: 16, padding: "14px 18px", borderBottom: i < 2 ? "1px solid rgba(255,183,125,0.06)" : "none", alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffb77d", fontFamily: "'Inter', sans-serif", minWidth: 72 }}>{plan}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", minWidth: 90 }}>{price}</span>
-                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", fontFamily: "'Inter', sans-serif" }}>{desc}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", minWidth: 72 }}>{plan}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", minWidth: 90 }}>{price}</span>
+                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
                 </div>
               ))}
             </div>

@@ -21,13 +21,13 @@ function SequenceMockup() {
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "#ffb77d",
-          fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 12,
+          fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-          color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 0,
+          color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Drip sequences, on autopilot.
         </h2>
@@ -49,7 +49,7 @@ function SequenceMockup() {
           border: "1px solid rgba(52,211,153,0.3)",
           borderRadius: 20, padding: "6px 14px",
           fontSize: 12, color: "#34d399",
-          fontFamily: "'Inter', sans-serif", fontWeight: 500,
+          fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500,
           display: "flex", alignItems: "center", gap: 6,
         }}>
           <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
@@ -59,7 +59,7 @@ function SequenceMockup() {
         {/* Header */}
         <div style={{
           fontSize: 14, fontWeight: 700, color: "#fff",
-          fontFamily: "'Inter', sans-serif", marginBottom: 24,
+          fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
         }}>
           Sequence: Welcome Flow
         </div>
@@ -110,7 +110,7 @@ function SequenceMockup() {
                       <span style={{
                         background: "rgba(251,191,36,0.1)", color: "#fbbf24",
                         padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700,
-                        fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em",
+                        fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.06em",
                       }}>
                         STOP
                       </span>
@@ -118,7 +118,7 @@ function SequenceMockup() {
                       <span style={{
                         background: "rgba(255,183,125,0.1)", color: "#ffb77d",
                         padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600,
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: "var(--font-geist-sans), sans-serif",
                       }}>
                         {step.day}
                       </span>
@@ -128,7 +128,7 @@ function SequenceMockup() {
                   {/* Title */}
                   <div style={{
                     fontSize: 14, fontWeight: 700, color: "#fff",
-                    fontFamily: "'Inter', sans-serif", marginBottom: 6,
+                    fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6,
                   }}>
                     {step.title}
                   </div>
@@ -136,7 +136,7 @@ function SequenceMockup() {
                   {/* Preview */}
                   <div style={{
                     fontSize: 12, lineHeight: 1.6,
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: "var(--font-geist-sans), sans-serif",
                     color: step.type === "stop" ? "#fbbf24" : "rgba(219,194,176,0.5)",
                     fontStyle: step.type === "stop" ? "italic" : "normal",
                   }}>

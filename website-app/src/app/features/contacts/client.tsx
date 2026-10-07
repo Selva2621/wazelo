@@ -234,7 +234,7 @@ const data: FeatureDetailData = {
     { step: "04", title: "Act on your data", desc: "Launch a campaign to a segment, assign conversations to the right agent, or export a list for use outside Wazelo." },
   ],
   screens: [
-    { src: "/screens/01-inbox-shared-team.png", caption: "Contact profiles visible in every conversation" },
+    { src: "/screens/01-inbox-shared-team.jpeg", caption: "Contact profiles visible in every conversation" },
   ],
   relatedFeatures: [
     { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },

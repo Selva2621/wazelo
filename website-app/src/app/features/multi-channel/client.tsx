@@ -16,7 +16,7 @@ function MultiChannelMockup() {
     return () => clearInterval(id);
   }, []);
 
-  const FONT = "'Inter', sans-serif";
+  const FONT = "var(--font-geist-sans), sans-serif";
 
   const channels: { id: "all" | "whatsapp" | "instagram" | "messenger" | "email"; label: string; color: string; bg: string }[] = [
     { id: "all",       label: "All",       color: "#e5e2e1",  bg: "rgba(255,255,255,0.1)" },

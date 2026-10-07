@@ -86,7 +86,7 @@ function NodeCard({
         textTransform: "uppercase" as const,
         letterSpacing: "0.1em",
         color: node.color,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--font-geist-sans), sans-serif",
         fontWeight: 700,
         marginBottom: 6,
       }}>
@@ -94,9 +94,9 @@ function NodeCard({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 18, color: node.color }}>{node.icon}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif" }}>{node.label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{node.label}</span>
       </div>
-      <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter', sans-serif", marginTop: 4 }}>{node.sub}</div>
+      <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 4 }}>{node.sub}</div>
     </div>
   );
 }
@@ -134,14 +134,14 @@ function AutomationMockup() {
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "#f59e0b",
-          fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 10,
+          fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
           letterSpacing: "-0.04em", color: "#e5e2e1",
-          fontFamily: "'Inter', sans-serif", marginBottom: 0,
+          fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Visual automations, zero code.
         </h2>
@@ -163,7 +163,7 @@ function AutomationMockup() {
           alignItems: "center",
           marginBottom: 28,
         }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>
             Automation: Price Inquiry Flow
           </span>
           <span style={{
@@ -173,7 +173,7 @@ function AutomationMockup() {
             borderRadius: 20,
             padding: "4px 12px",
             fontSize: 12,
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-geist-sans), sans-serif",
           }}>
             ● Active
           </span>
@@ -223,7 +223,7 @@ function AutomationMockup() {
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "var(--font-geist-sans), sans-serif",
                 fontWeight: 700,
                 marginBottom: 8,
                 marginRight: 0,
@@ -257,7 +257,7 @@ function AutomationMockup() {
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "var(--font-geist-sans), sans-serif",
                 fontWeight: 700,
                 marginBottom: 8,
                 alignSelf: "flex-start",
@@ -283,7 +283,7 @@ function AutomationMockup() {
             fontSize: 12,
             color: "rgba(219,194,176,0.3)",
             fontStyle: "italic",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-geist-sans), sans-serif",
           }}>
             Hover any node to focus it
           </p>

@@ -220,7 +220,7 @@ const data: FeatureDetailData = {
   tag: "Shared Inbox",
   heroTitle: "Your whole team.<br /><span style=\"color:#ffb77d\">One inbox.</span>",
   heroSubtitle: "Every WhatsApp conversation — routed, assigned, and resolved from a single shared workspace. No lead ever falls through again.",
-  heroScreen: "/screens/01-inbox-shared-team.png",
+  heroScreen: "/screens/01-inbox-shared-team.jpeg",
   overviewTitle: "One inbox. Zero chaos.",
   overviewDesc: "When your team manages customer conversations across personal WhatsApp numbers, messages get missed and accountability disappears. Wazelo CRM's shared inbox gives every agent a unified view — with real-time routing, clear ownership, and full conversation history — so your team can deliver fast, consistent support at scale.",
   capabilities: [

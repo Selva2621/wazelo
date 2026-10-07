@@ -33,14 +33,14 @@ function ContactForm() {
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "13px 16px", borderRadius: 10,
     background: "var(--surface-high)", border: "1px solid rgba(255,183,125,0.12)",
-    color: "#e5e2e1", fontSize: 14, fontFamily: "'Inter', sans-serif",
+    color: "#e5e2e1", fontSize: 14, fontFamily: "var(--font-geist-sans), sans-serif",
     outline: "none", boxSizing: "border-box",
     transition: "border-color 0.2s",
   };
 
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: 12, fontWeight: 600, color: "rgba(219,194,176,0.6)",
-    marginBottom: 8, letterSpacing: "0.04em", fontFamily: "'Inter', sans-serif",
+    marginBottom: 8, letterSpacing: "0.04em", fontFamily: "var(--font-geist-sans), sans-serif",
   };
 
   return (
@@ -86,13 +86,13 @@ function ContactForm() {
       <button type="submit" disabled={status === "sending"} className="btn-primary" style={{
         padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 800,
         border: "none", cursor: status === "sending" ? "wait" : "pointer",
-        fontFamily: "'Inter', sans-serif", alignSelf: "flex-start",
+        fontFamily: "var(--font-geist-sans), sans-serif", alignSelf: "flex-start",
         opacity: status === "sending" ? 0.7 : 1,
       }}>
         {status === "sending" ? "Opening email..." : status === "sent" ? "Message ready ✓" : "Send message"}
       </button>
       {status === "sent" && (
-        <p style={{ fontSize: 13, color: "#34d399", fontFamily: "'Inter', sans-serif" }}>
+        <p style={{ fontSize: 13, color: "#34d399", fontFamily: "var(--font-geist-sans), sans-serif" }}>
           Your email client should have opened. If not, email us directly at <a href="mailto:hello@wazelo.in" style={{ color: "#ffb77d" }}>hello@wazelo.in</a>
         </p>
       )}
@@ -122,12 +122,12 @@ export default function ContactPage() {
         <div style={{ textAlign: "center", maxWidth: 700, position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)", marginBottom: 28, opacity: heroView.inView ? 1 : 0, transition: "opacity 0.8s ease" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>Get in touch</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Get in touch</span>
           </div>
-          <h1 style={{ fontSize: "clamp(36px,5.5vw,68px)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.08, color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 20, opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease" }}>
+          <h1 style={{ fontSize: "clamp(36px,5.5vw,68px)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.08, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20, opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease" }}>
             We&apos;re here to help.
           </h1>
-          <p style={{ fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8, fontFamily: "'Inter', sans-serif", opacity: heroView.inView ? 1 : 0, transition: "opacity 0.9s 0.2s ease" }}>
+          <p style={{ fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8, fontFamily: "var(--font-geist-sans), sans-serif", opacity: heroView.inView ? 1 : 0, transition: "opacity 0.9s 0.2s ease" }}>
             Sales, support, security, or partnerships — reach out and we&apos;ll respond within one business day.
           </p>
         </div>
@@ -142,9 +142,9 @@ export default function ContactPage() {
               onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)")}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 24, color: "#ffb77d", marginBottom: 12, display: "block" }}>{c.icon}</span>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", marginBottom: 4, fontFamily: "'Inter', sans-serif" }}>{c.title}</h3>
-              <p style={{ fontSize: 13, color: "#ffb77d", fontFamily: "'Inter', sans-serif", marginBottom: 6 }}>{c.value}</p>
-              <p style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", fontFamily: "'Inter', sans-serif" }}>{c.desc}</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", marginBottom: 4, fontFamily: "var(--font-geist-sans), sans-serif" }}>{c.title}</h3>
+              <p style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>{c.value}</p>
+              <p style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{c.desc}</p>
             </a>
           ))}
         </div>
@@ -156,14 +156,14 @@ export default function ContactPage() {
 
           {/* Form */}
           <div style={{ opacity: formView.inView ? 1 : 0, transform: formView.inView ? "translateX(0)" : "translateX(-24px)", transition: "opacity 0.9s ease, transform 0.9s ease" }}>
-            <h2 style={{ fontSize: "clamp(22px,2.5vw,34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 32 }}>Send us a message</h2>
+            <h2 style={{ fontSize: "clamp(22px,2.5vw,34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 32 }}>Send us a message</h2>
             <ContactForm />
           </div>
 
           {/* Info panel */}
           <div style={{ opacity: formView.inView ? 1 : 0, transform: formView.inView ? "translateX(0)" : "translateX(24px)", transition: "opacity 0.9s 0.12s ease, transform 0.9s 0.12s ease" }}>
             <div style={{ background: "var(--surface)", border: "1px solid rgba(255,183,125,0.12)", borderRadius: 20, padding: "36px 32px", marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 20 }}>Typical response times</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>Typical response times</h3>
               {[
                 { type: "Sales enquiries", time: "< 4 hours" },
                 { type: "Technical support", time: "< 8 hours" },
@@ -171,18 +171,18 @@ export default function ContactPage() {
                 { type: "Partnerships", time: "2–3 business days" },
               ].map((r, i, arr) => (
                 <div key={r.type} style={{ display: "flex", justifyContent: "space-between", paddingBottom: i < arr.length - 1 ? 14 : 0, marginBottom: i < arr.length - 1 ? 14 : 0, borderBottom: i < arr.length - 1 ? "1px solid rgba(255,183,125,0.06)" : "none" }}>
-                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter', sans-serif" }}>{r.type}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1", fontFamily: "'Inter', sans-serif" }}>{r.time}</span>
+                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{r.type}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif" }}>{r.time}</span>
                 </div>
               ))}
             </div>
 
             <div style={{ background: "var(--surface)", border: "1px solid rgba(255,183,125,0.12)", borderRadius: 20, padding: "36px 32px" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 16 }}>Ready to start?</h3>
-              <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", lineHeight: 1.7, fontFamily: "'Inter', sans-serif", marginBottom: 20 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>Ready to start?</h3>
+              <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", lineHeight: 1.7, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
                 Skip the queue — sign up for a free trial and explore Wazelo CRM yourself in minutes.
               </p>
-              <a href={APP_REGISTER_URL} className="btn-primary" style={{ display: "block", padding: "13px 20px", borderRadius: 100, fontSize: 13, fontWeight: 800, textDecoration: "none", fontFamily: "'Inter', sans-serif", textAlign: "center" }}>
+              <a href={APP_REGISTER_URL} className="btn-primary" style={{ display: "block", padding: "13px 20px", borderRadius: 100, fontSize: 13, fontWeight: 800, textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", textAlign: "center" }}>
                 Start free trial
               </a>
             </div>

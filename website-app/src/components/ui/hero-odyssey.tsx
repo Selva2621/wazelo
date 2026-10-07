@@ -145,7 +145,7 @@ export const HeroSection: React.FC = () => {
   };
 
   return (
-    <div style={{ position: "relative", width: "100%", background: "#131313", color: "#fff", fontFamily: "'Inter',sans-serif", cursor: "none" }}>
+    <div style={{ position: "relative", width: "100%", background: "#131313", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", cursor: "none" }}>
 
       {/* ── Custom page cursor ── */}
       <div ref={cursorRef} style={{
@@ -391,9 +391,9 @@ export const HeroSection: React.FC = () => {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", flexShrink: 0, display: "inline-block" }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", fontFamily: "'Inter',sans-serif", whiteSpace: "nowrap" }}>{label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", whiteSpace: "nowrap" }}>{label}</span>
                     </div>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "'Inter',sans-serif", marginLeft: align === "left" ? 12 : 0, marginRight: align === "right" ? 12 : 0 }}>{sub}</span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: align === "left" ? 12 : 0, marginRight: align === "right" ? 12 : 0 }}>{sub}</span>
                   </div>
                 );
               })}
@@ -426,7 +426,7 @@ export const HeroSection: React.FC = () => {
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b" }} />
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
               <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "3px 20px", fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif" }}>
+                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "3px 20px", fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
                   app.wazelo.in/analytics
                 </div>
               </div>
@@ -460,7 +460,7 @@ export const HeroSection: React.FC = () => {
               {/* Sidebar nav */}
               <div className="wz-sidebar" style={{ width: 200, flexShrink: 0, background: "#0b0b0b", borderRight: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", padding: "16px 0" }}>
                 <div style={{ padding: "0 16px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", fontFamily: "'Inter',sans-serif" }}>Wazelo <span style={{ color: "#ffb77d" }}>CRM</span></span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", fontFamily: "var(--font-geist-sans), sans-serif" }}>Wazelo <span style={{ color: "#ffb77d" }}>CRM</span></span>
                 </div>
                 {NAV_ITEMS.map((item, idx) => {
                   const active = idx === activeNav;
@@ -473,7 +473,7 @@ export const HeroSection: React.FC = () => {
                       transition: "all 0.4s ease",
                     }}>
                       <span style={{ fontSize: 14 }}>{item.icon}</span>
-                      <span style={{ fontSize: 12, fontWeight: active ? 600 : 400, color: active ? "#ffb77d" : "rgba(229,226,225,0.45)", fontFamily: "'Inter',sans-serif", transition: "color 0.4s ease" }}>{item.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: active ? 600 : 400, color: active ? "#ffb77d" : "rgba(229,226,225,0.45)", fontFamily: "var(--font-geist-sans), sans-serif", transition: "color 0.4s ease" }}>{item.label}</span>
                     </div>
                   );
                 })}
@@ -485,12 +485,12 @@ export const HeroSection: React.FC = () => {
                 {/* Page header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", fontFamily: "'Inter',sans-serif" }}>Analytics</div>
-                    <div style={{ fontSize: 11, color: "rgba(219,194,176,0.45)", fontFamily: "'Inter',sans-serif", marginTop: 2 }}>Last 7 days · Updated just now</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>Analytics</div>
+                    <div style={{ fontSize: 11, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 2 }}>Last 7 days · Updated just now</div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {["7D","30D","90D"].map((r, i) => (
-                      <div key={r} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: i === ds.range ? "rgba(255,183,125,0.15)" : "transparent", border: i === ds.range ? "1px solid rgba(255,183,125,0.3)" : "1px solid rgba(255,255,255,0.08)", color: i === ds.range ? "#ffb77d" : "rgba(229,226,225,0.45)", fontFamily: "'Inter',sans-serif", transition: "all 0.4s ease" }}>{r}</div>
+                      <div key={r} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: i === ds.range ? "rgba(255,183,125,0.15)" : "transparent", border: i === ds.range ? "1px solid rgba(255,183,125,0.3)" : "1px solid rgba(255,255,255,0.08)", color: i === ds.range ? "#ffb77d" : "rgba(229,226,225,0.45)", fontFamily: "var(--font-geist-sans), sans-serif", transition: "all 0.4s ease" }}>{r}</div>
                     ))}
                   </div>
                 </div>
@@ -505,11 +505,11 @@ export const HeroSection: React.FC = () => {
                       <div key={kpi.label} style={{ background: "#2a2a2a", borderRadius: 12, padding: "14px 16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#ffb77d", lineHeight: 1 }}>{kpi.icon}</span>
-                          <span style={{ fontSize: 11, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter',sans-serif" }}>{kpi.label}</span>
+                          <span style={{ fontSize: 11, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{kpi.label}</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff", fontFamily: "'Inter',sans-serif" }}>{kpi.value}</span>
-                          <span style={{ fontSize: 11, color: deltaColor, fontFamily: "'Inter',sans-serif" }}>{kpi.delta}</span>
+                          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{kpi.value}</span>
+                          <span style={{ fontSize: 11, color: deltaColor, fontFamily: "var(--font-geist-sans), sans-serif" }}>{kpi.delta}</span>
                         </div>
                       </div>
                     );
@@ -521,14 +521,14 @@ export const HeroSection: React.FC = () => {
 
                   {/* Bar chart */}
                   <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "16px 16px 12px" }}>
-                    <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "'Inter',sans-serif" }}>Message Volume — Last 7 Days</div>
+                    <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "var(--font-geist-sans), sans-serif" }}>Message Volume — Last 7 Days</div>
                     <div style={{ height: 160, display: "flex", alignItems: "flex-end", gap: 6 }}>
                       {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, di) => (
                         <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, height: "100%" }}>
                           <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
                             <DashBar pct={ds.bars[di]} />
                           </div>
-                          <span style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", fontFamily: "'Inter',sans-serif" }}>{day}</span>
+                          <span style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{day}</span>
                         </div>
                       ))}
                     </div>
@@ -536,7 +536,7 @@ export const HeroSection: React.FC = () => {
 
                   {/* Agent leaderboard */}
                   <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "16px 16px 12px" }}>
-                    <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "'Inter',sans-serif" }}>Top Agents</div>
+                    <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "var(--font-geist-sans), sans-serif" }}>Top Agents</div>
                     {[
                       { name: "Priya S.", convs: 142, time: "3m 40s", score: 4.8 },
                       { name: "Rahul K.", convs: 118, time: "5m 12s", score: 4.5 },
@@ -544,11 +544,11 @@ export const HeroSection: React.FC = () => {
                       { name: "Arjun T.", convs: 83,  time: "7m 22s", score: 3.9 },
                     ].map((agent, i) => (
                       <div key={agent.name} style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.05)", padding: "9px 0" }}>
-                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,183,125,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#ffb77d", flexShrink: 0, fontFamily: "'Inter',sans-serif" }}>{i + 1}</div>
-                        <span style={{ fontSize: 12, color: "#e5e2e1", flex: 1, fontFamily: "'Inter',sans-serif" }}>{agent.name}</span>
-                        <span style={{ fontSize: 11, color: "rgba(219,194,176,0.45)", minWidth: 28, textAlign: "right", fontFamily: "'Inter',sans-serif" }}>{agent.convs}</span>
-                        <span style={{ fontSize: 10, color: "rgba(219,194,176,0.35)", minWidth: 40, textAlign: "right", fontFamily: "'Inter',sans-serif" }}>{agent.time}</span>
-                        <span style={{ fontSize: 11, color: "#ffb77d", minWidth: 30, textAlign: "right", fontFamily: "'Inter',sans-serif" }}>{agent.score} ★</span>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,183,125,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#ffb77d", flexShrink: 0, fontFamily: "var(--font-geist-sans), sans-serif" }}>{i + 1}</div>
+                        <span style={{ fontSize: 12, color: "#e5e2e1", flex: 1, fontFamily: "var(--font-geist-sans), sans-serif" }}>{agent.name}</span>
+                        <span style={{ fontSize: 11, color: "rgba(219,194,176,0.45)", minWidth: 28, textAlign: "right", fontFamily: "var(--font-geist-sans), sans-serif" }}>{agent.convs}</span>
+                        <span style={{ fontSize: 10, color: "rgba(219,194,176,0.35)", minWidth: 40, textAlign: "right", fontFamily: "var(--font-geist-sans), sans-serif" }}>{agent.time}</span>
+                        <span style={{ fontSize: 11, color: "#ffb77d", minWidth: 30, textAlign: "right", fontFamily: "var(--font-geist-sans), sans-serif" }}>{agent.score} ★</span>
                       </div>
                     ))}
                   </div>
@@ -556,11 +556,11 @@ export const HeroSection: React.FC = () => {
 
                 {/* Campaign performance mini-table */}
                 <div className="wz-campaign-table" style={{ background: "#2a2a2a", borderRadius: 12, padding: "16px" }}>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "'Inter',sans-serif" }}>Recent Campaigns</div>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginBottom: 12, fontFamily: "var(--font-geist-sans), sans-serif" }}>Recent Campaigns</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto auto", gap: "8px 16px", alignItems: "center" }}>
                     {/* Header */}
                     {["Campaign", "Sent", "Delivered", "Read", "Replied"].map(h => (
-                      <div key={h} style={{ fontSize: 10, color: "rgba(219,194,176,0.35)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'Inter',sans-serif" }}>{h}</div>
+                      <div key={h} style={{ fontSize: 10, color: "rgba(219,194,176,0.35)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-geist-sans), sans-serif" }}>{h}</div>
                     ))}
                     {/* Rows */}
                     {[
@@ -569,9 +569,9 @@ export const HeroSection: React.FC = () => {
                       { name: "Follow-up Drip #3",  sent: "5,600",  del: "5,530",  read: "4,200",  rep: "670"   },
                     ].map(row => (
                       <React.Fragment key={row.name}>
-                        <div style={{ fontSize: 12, color: "#e5e2e1", fontFamily: "'Inter',sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.name}</div>
+                        <div style={{ fontSize: 12, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.name}</div>
                         {[row.sent, row.del, row.read, row.rep].map((v, vi) => (
-                          <div key={vi} style={{ fontSize: 12, color: vi === 3 ? "#ffb77d" : "rgba(219,194,176,0.6)", textAlign: "right", fontFamily: "'Inter',sans-serif" }}>{v}</div>
+                          <div key={vi} style={{ fontSize: 12, color: vi === 3 ? "#ffb77d" : "rgba(219,194,176,0.6)", textAlign: "right", fontFamily: "var(--font-geist-sans), sans-serif" }}>{v}</div>
                         ))}
                       </React.Fragment>
                     ))}

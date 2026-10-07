@@ -64,7 +64,7 @@ import SiteNavbar from "@/components/Navbar";
 
 function EcommerceMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       {/* Chrome bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
@@ -119,7 +119,7 @@ function EcommerceMockup() {
 
 function RealEstateMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -168,7 +168,7 @@ function RealEstateMockup() {
 
 function HealthcareMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -220,7 +220,7 @@ function HealthcareMockup() {
 
 function EducationMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -267,7 +267,7 @@ function TravelMockup() {
     { icon: "🏄", label: "Desert Safari", detail: "Pickup from hotel", time: "15:00 Tomorrow", done: false },
   ];
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -331,7 +331,7 @@ function FinanceMockup() {
     { label: "Video KYC", done: false, active: false },
   ];
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -431,9 +431,9 @@ function UseCaseSection({
           transition: "opacity 0.9s ease, transform 0.9s ease",
           display: "flex", flexDirection: "column", justifyContent: "center",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 14 }}>{tag}</span>
-          <h2 style={{ fontSize: "clamp(26px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 18 }}>{title}</h2>
-          <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 28 }}>{desc}</p>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>{tag}</span>
+          <h2 style={{ fontSize: "clamp(26px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 18 }}>{title}</h2>
+          <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 28 }}>{desc}</p>
           <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
             {bullets.map((b, bi) => (
               <li key={b} style={{
@@ -445,13 +445,13 @@ function UseCaseSection({
                 <span style={{ width: 18, height: 18, borderRadius: "50%", background: "rgba(255,183,125,0.15)", border: "1px solid rgba(255,183,125,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "block" }} />
                 </span>
-                <span style={{ fontSize: 14, color: "rgba(219,194,176,0.75)", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{b}</span>
+                <span style={{ fontSize: 14, color: "rgba(219,194,176,0.75)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{b}</span>
               </li>
             ))}
           </ul>
           <a href={APP_REGISTER_URL} className="btn-primary" style={{
             display: "inline-block", padding: "12px 28px", borderRadius: 100,
-            fontSize: 13, fontWeight: 800, textDecoration: "none", fontFamily: "'Inter', sans-serif",
+            fontSize: 13, fontWeight: 800, textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif",
             alignSelf: "flex-start",
             opacity: view.inView ? 1 : 0,
             transition: "opacity 0.7s 0.5s ease",
@@ -589,8 +589,8 @@ function WhyStats({ active }: { active: boolean }) {
           transform: active ? "translateY(0)" : "translateY(24px)",
           transition: `opacity 0.7s ${0.1 + i * 0.1}s ease, transform 0.7s ${0.1 + i * 0.1}s ease`,
         }}>
-          <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "'Inter', sans-serif", marginBottom: 12 }}>{s.value}</div>
-          <div style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{s.label}</div>
+          <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>{s.value}</div>
+          <div style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -656,12 +656,12 @@ export default function UseCasesPage() {
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block", animation: "usecasePulse 2s ease-in-out infinite" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>Use Cases</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Use Cases</span>
           </div>
 
           <h1 style={{
             fontSize: "clamp(38px,5.5vw,80px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.08, color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 24,
+            lineHeight: 1.08, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>
@@ -671,7 +671,7 @@ export default function UseCasesPage() {
 
           <p style={{
             fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
-            maxWidth: 580, margin: "0 auto 48px", fontFamily: "'Inter', sans-serif",
+            maxWidth: 580, margin: "0 auto 48px", fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
           }}>
@@ -687,7 +687,7 @@ export default function UseCasesPage() {
               <button key={ind.id} onClick={() => scrollToIndustry(ind.id)} style={{
                 padding: "8px 18px", borderRadius: 100, fontSize: 13, fontWeight: 600,
                 background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
-                color: "#dbc2b0", cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                color: "#dbc2b0", cursor: "pointer", fontFamily: "var(--font-geist-sans), sans-serif",
                 transition: "all 0.2s ease",
                 opacity: heroView.inView ? 1 : 0,
                 transform: heroView.inView ? "translateY(0)" : "translateY(12px)",
@@ -705,7 +705,7 @@ export default function UseCasesPage() {
       <div style={{ background: "var(--surface-low)", borderTop: "1px solid rgba(255,183,125,0.06)", borderBottom: "1px solid rgba(255,183,125,0.06)", padding: "14px 0", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 40, whiteSpace: "nowrap", animation: "marqueeScroll 20s linear infinite" }}>
           {[...industries, ...industries].map((ind, i) => (
-            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 12, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(219,194,176,0.35)", fontFamily: "'Inter', sans-serif", flexShrink: 0 }}>
+            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 12, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(219,194,176,0.35)", fontFamily: "var(--font-geist-sans), sans-serif", flexShrink: 0 }}>
               <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(255,183,125,0.4)", display: "inline-block" }} />
               {ind.tag}
             </span>
@@ -728,7 +728,7 @@ export default function UseCasesPage() {
                 background: activeIndustry === ind.id ? "rgba(255,183,125,0.18)" : "transparent",
                 border: activeIndustry === ind.id ? "1px solid rgba(255,183,125,0.4)" : "1px solid transparent",
                 color: activeIndustry === ind.id ? "#ffb77d" : "rgba(219,194,176,0.5)",
-                cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                cursor: "pointer", fontFamily: "var(--font-geist-sans), sans-serif",
                 transition: "all 0.25s ease",
               }}>{ind.tag}</button>
             ))}
@@ -747,10 +747,10 @@ export default function UseCasesPage() {
         borderTop: "1px solid rgba(255,183,125,0.06)",
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 12 }}>The numbers</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>The numbers</span>
           <h2 style={{
             fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 56,
+            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 56,
             opacity: whyView.inView ? 1 : 0, transform: whyView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
@@ -769,7 +769,7 @@ export default function UseCasesPage() {
         <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{
             fontSize: "clamp(28px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 16,
+            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
@@ -777,14 +777,14 @@ export default function UseCasesPage() {
           </h2>
           <p style={{
             fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
-            fontFamily: "'Inter', sans-serif", marginBottom: 36,
+            fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease",
           }}>
             Free trial. No credit card required. Setup in under 5 minutes.
           </p>
           <a href={APP_REGISTER_URL} className="btn-primary" style={{
             padding: "16px 40px", borderRadius: 100, fontSize: 15, fontWeight: 800,
-            textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block",
+            textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.8s 0.2s ease, transform 0.8s 0.2s ease",
           }}>Get started for free</a>
