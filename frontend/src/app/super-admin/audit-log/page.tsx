@@ -27,6 +27,11 @@ const ACTIONS: Record<string, string> = {
   SUBSCRIPTION_PLAN_CHANGED: "Changed plan",
   SUBSCRIPTION_TRIAL_EXTENDED: "Extended trial",
   ALERT_RULE_CREATED: "Created alert rule",
+  TICKET_ASSIGNED: "Assigned ticket",
+  ANNOUNCEMENT_CREATED: "Published announcement",
+  ANNOUNCEMENT_ARCHIVED: "Archived announcement",
+  ENTITLEMENT_OVERRIDE_SET: "Set limit/feature override",
+  ENTITLEMENT_OVERRIDE_REMOVED: "Removed limit/feature override",
 };
 
 const ATTENTION = new Set([

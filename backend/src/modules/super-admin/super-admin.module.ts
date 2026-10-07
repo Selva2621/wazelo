@@ -73,6 +73,11 @@ import { CreateAlertRuleUseCase } from './application/use-cases/create-alert-rul
 import { GetOrgMessagingHealthUseCase } from './application/use-cases/get-org-messaging-health.use-case';
 import { AnnouncementRepository } from './infrastructure/repositories/announcement.repository';
 import {
+  GetOrgEntitlementsUseCase,
+  SetEntitlementOverrideUseCase,
+  RemoveEntitlementOverrideUseCase,
+} from './application/use-cases/entitlements.use-cases';
+import {
   CreateAnnouncementUseCase,
   ListAnnouncementsUseCase,
   ArchiveAnnouncementUseCase,
@@ -133,6 +138,9 @@ import {
     CreateAlertRuleUseCase,
     GetOrgMessagingHealthUseCase,
     AnnouncementRepository,
+    GetOrgEntitlementsUseCase,
+    SetEntitlementOverrideUseCase,
+    RemoveEntitlementOverrideUseCase,
     CreateAnnouncementUseCase,
     ListAnnouncementsUseCase,
     ArchiveAnnouncementUseCase,

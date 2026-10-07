@@ -9,9 +9,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 import { OrgActionsPanel } from "@/components/super-admin/org-actions-panel";
 import { MessagingHealthPanel } from "@/components/super-admin/messaging-health-panel";
+import { EntitlementsPanel } from "@/components/super-admin/entitlements-panel";
 import { cn, formatMoney } from "@/lib/utils";
 
-const TABS = ["Overview", "WhatsApp", "Usage", "Billing history", "Users", "Tickets"] as const;
+const TABS = ["Overview", "WhatsApp", "Usage", "Limits & features", "Billing history", "Users", "Tickets"] as const;
 type Tab = typeof TABS[number];
 
 const USAGE_LABELS: Record<string, string> = {
@@ -203,7 +204,7 @@ export default function OrgDetailPage() {
                 {usageRecords.map((u: any) => (
                   <UsageMeter
                     key={u.id}
-                    label={USAGE_LABELS[u.metricType] ?? u.metricType}
+                    label={`${USAGE_LABELS[u.metricType] ?? u.metricType}${u.limitOverridden ? " (override)" : ""}`}
                     value={u.currentValue}
                     limit={u.limitValue}
                   />
@@ -214,6 +215,8 @@ export default function OrgDetailPage() {
             )}
           </section>
         )}
+
+        {tab === "Limits & features" && <EntitlementsPanel orgId={org.id} />}
 
         {tab === "Billing history" && (
           <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">

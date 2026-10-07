@@ -76,6 +76,20 @@ export function useSAOrg(id: string) {
   return useQuery({ queryKey: saKeys.org(id), queryFn: () => superAdminApi.getOrg(id), enabled: !!id });
 }
 
+export function useSAOrgEntitlements(orgId: string) {
+  const qc = useQueryClient();
+  const key = ["sa", "org", orgId, "entitlements"];
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: key });
+    qc.invalidateQueries({ queryKey: saKeys.org(orgId) });
+  };
+  return {
+    query: useQuery({ queryKey: key, queryFn: () => superAdminApi.getOrgEntitlements(orgId), enabled: !!orgId }),
+    set: useMutation({ mutationFn: (data: Record<string, unknown>) => superAdminApi.setOrgEntitlement(orgId, data), onSuccess: refresh }),
+    remove: useMutation({ mutationFn: (overrideId: string) => superAdminApi.removeOrgEntitlement(orgId, overrideId), onSuccess: refresh }),
+  };
+}
+
 export function useSAOrgMessagingHealth(id: string, enabled = true) {
   return useQuery({
     queryKey: ["sa", "org", id, "messaging-health"],

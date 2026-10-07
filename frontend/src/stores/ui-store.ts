@@ -21,7 +21,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      sidebarCollapsed: false,
+      sidebarCollapsed: true,
       mobileSidebarOpen: false,
       contactPanelOpen: true,
       pageTitle: "",
@@ -38,6 +38,13 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: "crm-ui",
+      // v1: sidebar defaults to collapsed. Reset the value saved under the old default once;
+      // the user's own toggle is persisted again from here on.
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<UIState>;
+        return version < 1 ? { ...state, sidebarCollapsed: true } : state;
+      },
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         contactPanelOpen: state.contactPanelOpen,

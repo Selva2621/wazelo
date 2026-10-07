@@ -161,6 +161,15 @@ export const superAdminApi = {
   getOrg: (id: string) =>
     superAdminClient.get<any>(`/super-admin/organizations/${id}`).then((r) => r.data.data),
 
+  getOrgEntitlements: (id: string) =>
+    superAdminClient.get<any>(`/super-admin/organizations/${id}/entitlements`).then((r) => r.data.data),
+
+  setOrgEntitlement: (id: string, data: Record<string, unknown>) =>
+    superAdminClient.put<any>(`/super-admin/organizations/${id}/entitlements`, data).then((r) => r.data.data),
+
+  removeOrgEntitlement: (id: string, overrideId: string) =>
+    superAdminClient.delete(`/super-admin/organizations/${id}/entitlements/${overrideId}`).then(() => undefined),
+
   getOrgMessagingHealth: (id: string) =>
     superAdminClient.get<any>(`/super-admin/organizations/${id}/messaging-health`).then((r) => r.data.data),
 

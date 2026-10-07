@@ -459,6 +459,7 @@ model Organization {
   deletedAt   DateTime? @map("deleted_at")
 
   users                   User[]
+  entitlementOverrides    OrgEntitlementOverride[]
   invitations             Invitation[]
   auditLogs               AuditLog[]
   whatsappSessions        WhatsAppSession[]
@@ -3335,6 +3336,44 @@ enum PlatformAuditAction {
   TICKET_ASSIGNED
   ANNOUNCEMENT_CREATED
   ANNOUNCEMENT_ARCHIVED
+  ENTITLEMENT_OVERRIDE_SET
+  ENTITLEMENT_OVERRIDE_REMOVED
+}
+
+// ─────────────────────────────────────────────
+// ORG ENTITLEMENT OVERRIDES (super admin only)
+// Per-org limit / feature overrides on top of the plan. Deliberately separate
+// from FeatureFlag, which tenant admins can edit — paid entitlements must not be.
+// ─────────────────────────────────────────────
+
+enum EntitlementKind {
+  LIMIT
+  FEATURE
+}
+
+model OrgEntitlementOverride {
+  id          String          @id @default(uuid()) @db.Uuid
+  orgId       String          @map("org_id") @db.Uuid
+  kind        EntitlementKind
+  // LIMIT: a UsageMetricType name (e.g. MESSAGES_SENT). FEATURE: campaigns | automation | api | ai | shopify
+  key         String          @db.VarChar(50)
+  // LIMIT only — 0 means unlimited
+  limitValue  Int?            @map("limit_value")
+  // FEATURE only
+  enabled     Boolean?
+  reason      String          @db.VarChar(500)
+  // Null = permanent; after this the plan value applies again
+  expiresAt   DateTime?       @map("expires_at")
+  // SuperAdmin id — no FK
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, kind, key])
+  @@index([orgId])
+  @@map("org_entitlement_overrides")
 }
 
 // ─────────────────────────────────────────────

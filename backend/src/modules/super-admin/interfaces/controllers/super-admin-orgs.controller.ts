@@ -1,9 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { requestMeta } from '../request-meta';
 import { GetOrgMessagingHealthUseCase } from '../../application/use-cases/get-org-messaging-health.use-case';
+import {
+  GetOrgEntitlementsUseCase,
+  RemoveEntitlementOverrideUseCase,
+  SetEntitlementOverrideUseCase,
+} from '../../application/use-cases/entitlements.use-cases';
+import { SetEntitlementOverrideDto } from '../../application/dto/entitlement.dto';
 import {
   AdminActionContext,
   AdminCancelSubscriptionUseCase,
@@ -48,6 +54,9 @@ export class SuperAdminOrgsController {
     private readonly changePlanUseCase: AdminChangePlanUseCase,
     private readonly extendTrialUseCase: AdminExtendTrialUseCase,
     private readonly getMessagingHealthUseCase: GetOrgMessagingHealthUseCase,
+    private readonly getEntitlementsUseCase: GetOrgEntitlementsUseCase,
+    private readonly setEntitlementUseCase: SetEntitlementOverrideUseCase,
+    private readonly removeEntitlementUseCase: RemoveEntitlementOverrideUseCase,
   ) {}
 
   // ── Org actions ──
@@ -130,6 +139,36 @@ export class SuperAdminOrgsController {
   @Get('organizations/:id')
   async getOrg(@Param('id', ParseUUIDPipe) id: string) {
     return this.getOrgDetailUseCase.execute(id);
+  }
+
+  // ── Per-org limit / feature overrides ──
+
+  @Get('organizations/:id/entitlements')
+  async getEntitlements(@Param('id', ParseUUIDPipe) id: string) {
+    return this.getEntitlementsUseCase.execute(id);
+  }
+
+  @Put('organizations/:id/entitlements')
+  async setEntitlement(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetEntitlementOverrideDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const ctx = actionContext(user, req);
+    return this.setEntitlementUseCase.execute(id, dto, ctx.actor, ctx.meta);
+  }
+
+  @Delete('organizations/:id/entitlements/:overrideId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeEntitlement(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('overrideId', ParseUUIDPipe) overrideId: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const ctx = actionContext(user, req);
+    await this.removeEntitlementUseCase.execute(id, overrideId, ctx.actor, ctx.meta);
   }
 
   @Get('organizations/:id/messaging-health')

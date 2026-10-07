@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EntitlementOverrideService } from '@/modules/billing/domain/services/entitlement-override.service';
+import { effectiveLimit } from '@/modules/billing/domain/services/entitlements';
 import {
   PlatformRepository,
   LIVE_SUBSCRIPTION_STATUSES,
@@ -6,7 +8,10 @@ import {
 
 @Injectable()
 export class GetOrgDetailUseCase {
-  constructor(private readonly platformRepo: PlatformRepository) {}
+  constructor(
+    private readonly platformRepo: PlatformRepository,
+    private readonly overrides: EntitlementOverrideService,
+  ) {}
 
   async execute(orgId: string) {
     const org = await this.platformRepo.findOrgDetail(orgId);
@@ -17,11 +22,16 @@ export class GetOrgDetailUseCase {
       org.subscriptions[0] ??
       null;
 
-    // Usage for the current billing period only, so it can be compared to plan limits
+    // Usage for the current billing period only, compared to the effective limit
+    // (a super admin override wins over the limit snapshotted from the plan)
+    const overrides = await this.overrides.forOrg(orgId);
     const currentUsage = subscription
-      ? org.usageRecords.filter(
-          (u) => u.periodStart.getTime() >= subscription.currentPeriodStart.getTime() - 1000,
-        )
+      ? org.usageRecords
+          .filter((u) => u.periodStart.getTime() >= subscription.currentPeriodStart.getTime() - 1000)
+          .map((u) => {
+            const eff = effectiveLimit(u.limitValue, overrides, u.metricType);
+            return { ...u, limitValue: eff.value, limitOverridden: eff.overridden };
+          })
       : [];
 
     return {
