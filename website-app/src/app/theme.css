@@ -268,6 +268,11 @@
 html {
   background: var(--c-surface);
   color: var(--c-on-surface);
+  color-scheme: light;
+}
+/* Native scrollbars and form controls follow the active theme too. */
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 body {
   background: var(--c-surface);

@@ -1,7 +1,9 @@
 "use client";
 
 // Light/dark switch. The theme lives on <html data-theme>, set before first
-// paint by the script in layout.tsx; this button flips it and remembers it.
+// paint by the script in layout.tsx, which follows the device theme. This
+// button overrides it; the override is stored with the device mode it was made
+// against, so layout.tsx drops it as soon as the device switches.
 
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
@@ -26,9 +28,12 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
+    const sys: Theme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem(KEY, next);
+      // Picking the device's own theme just means "back to automatic".
+      if (next === sys) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, JSON.stringify({ theme: next, sys }));
     } catch {
       /* private mode: the choice just isn't remembered */
     }
