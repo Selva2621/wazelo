@@ -110,7 +110,7 @@ export function Pricing() {
   );
 
   return (
-    <section ref={section} id="pricing" className="scroll-mt-16 border-t border-outline-variant/70 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section ref={section} id="pricing" className="ember-rule scroll-mt-16 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
       <div className="mx-auto max-w-7xl">
         <Reveal className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>

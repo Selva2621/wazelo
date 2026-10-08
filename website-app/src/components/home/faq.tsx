@@ -136,7 +136,7 @@ export function Faq() {
   };
 
   return (
-    <section ref={section} id="faq" className="relative scroll-mt-16 overflow-hidden border-t border-outline-variant/70 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section ref={section} id="faq" className="ember-rule scroll-mt-16 overflow-hidden px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
       <div aria-hidden className="glass-stage">
         <span className="right-[8%] top-1/4 h-96 w-96 bg-primary/15" />
       </div>

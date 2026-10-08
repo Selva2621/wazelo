@@ -722,8 +722,22 @@ body {
   }
 }
 
+/* ── Feature orbit (feature-index.tsx) ─────────────────────────────────────────
+   Rings spin; chips run the same animation in reverse so icons stay upright.
+   Duration and direction are set inline per ring. */
+@keyframes orbitSpin {
+  to { transform: rotate(360deg); }
+}
+.orbit-ring,
+.orbit-chip {
+  animation-name: orbitSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee { animation: none; }
+  .orbit-ring, .orbit-chip { animation: none; }
 }
 
 /* ── Liquid glass (web approximation) ───────────────────────────────────────── */
@@ -787,6 +801,89 @@ body {
     position: absolute;
     border-radius: 9999px;
     filter: blur(70px);
+  }
+
+  /* Page-wide backdrop behind every landing section (see site-backdrop.tsx):
+     a quiet line grid, the same grid in amber revealed only around the cursor,
+     a soft amber spotlight, and film grain. --mx / --my come from the pointer;
+     the defaults park the spotlight top-right for touch and first paint. */
+  .site-backdrop {
+    --mx: 70vw;
+    --my: 20vh;
+    --grid: 56px;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .site-backdrop > span {
+    position: absolute;
+    inset: 0;
+  }
+  .site-grid {
+    background-image:
+      linear-gradient(to right, rgb(232 234 237 / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(232 234 237 / 0.045) 1px, transparent 1px);
+    background-size: var(--grid) var(--grid);
+    background-position: -1px -1px;
+    -webkit-mask-image: radial-gradient(ellipse 100% 90% at 50% 30%, #000 30%, transparent 95%);
+    mask-image: radial-gradient(ellipse 100% 90% at 50% 30%, #000 30%, transparent 95%);
+  }
+  .site-grid--lit {
+    background-image:
+      linear-gradient(to right, rgb(245 158 11 / 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(245 158 11 / 0.35) 1px, transparent 1px);
+    -webkit-mask-image: radial-gradient(16rem circle at var(--mx) var(--my), #000, transparent 70%);
+    mask-image: radial-gradient(16rem circle at var(--mx) var(--my), #000, transparent 70%);
+  }
+  .site-spot {
+    background: radial-gradient(36rem circle at var(--mx) var(--my), rgb(217 119 6 / 0.11), transparent 60%);
+  }
+  .site-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Section divider: a hairline that warms to amber in the middle, with a soft
+     glow spilling down into the section. Replaces a plain border-t. */
+  .ember-rule {
+    position: relative;
+    isolation: isolate;
+  }
+  .ember-rule::before,
+  .ember-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+  }
+  .ember-rule::before {
+    z-index: 1;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #262a38 15%, rgb(245 158 11 / 0.6) 50%, #262a38 85%, transparent);
+  }
+  .ember-rule::after {
+    /* Behind the section's content, still above the page backdrop. */
+    z-index: -1;
+    top: 0;
+    height: 140px;
+    background: radial-gradient(40% 100% at 50% 0%, rgb(217 119 6 / 0.12), transparent 70%);
+  }
+  /* Same rule on the bottom edge. */
+  .ember-rule--bottom::before {
+    top: auto;
+    bottom: 0;
+  }
+  .ember-rule--bottom::after {
+    top: auto;
+    bottom: 0;
+    background: radial-gradient(40% 100% at 50% 100%, rgb(217 119 6 / 0.1), transparent 70%);
   }
 
   /* Cursor spotlight on feature cards; --mx / --my set from pointer position. */

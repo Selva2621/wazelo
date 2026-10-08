@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { SiteBackdrop } from "@/components/site-backdrop";
 import { Hero } from "@/components/home/hero";
 import { Integrations } from "@/components/home/integrations";
 import { StorySection } from "@/components/home/story-section";
@@ -12,7 +13,8 @@ import { FinalCta } from "@/components/home/final-cta";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-dvh bg-surface font-sans text-on-surface">
+    <div className="relative isolate min-h-dvh bg-surface font-sans text-on-surface">
+      <SiteBackdrop />
       <Navbar />
       <main>
         <Hero />

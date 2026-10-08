@@ -101,7 +101,7 @@ export function Freelancers() {
           scrollTrigger: {
             trigger: section.current,
             pin: true,
-            // After the story pin above (priority 2), before ordinary triggers below.
+            // Before ordinary triggers below, whose starts depend on this pin's length.
             refreshPriority: 1,
             start: "top top",
             end: () => `+=${distance()}`,

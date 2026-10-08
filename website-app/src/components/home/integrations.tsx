@@ -70,7 +70,7 @@ export function Integrations() {
   );
 
   return (
-    <section ref={root} aria-label="Integrations" className="border-y border-outline-variant/70 py-8">
+    <section ref={root} aria-label="Integrations" className="ember-rule ember-rule--bottom border-t border-outline-variant/70 py-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 sm:px-6 lg:flex-row lg:gap-10 lg:px-8">
         <p className="shrink-0 text-sm text-on-surface-variant">Works with the tools you already use</p>
         <div className="w-full overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)]">

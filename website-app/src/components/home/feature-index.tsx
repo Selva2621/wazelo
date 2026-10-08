@@ -1,10 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+// "Everything else in the box" as a hub: the Wazelo mark in the middle, one
+// orbit per product area, every feature a chip on its ring. Rings spin slowly
+// (CSS, alternating direction) and chips counter-spin to stay upright. The side
+// panel tours the features one by one without stopping; hovering or focusing
+// a chip jumps the tour to it.
+// Every feature page is still linked from here.
+
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useInView } from "framer-motion";
 import {
-  ArrowUpRight,
+  ArrowRight,
   BarChart3,
   Bot,
   Code2,
@@ -20,148 +28,275 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Reveal } from "@/components/home/reveal";
-import { springs } from "@/components/mocks/motion";
-import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
-import { Illustration } from "@/components/illustration";
+import { usePageVisible } from "@/components/mocks/phone-frame";
+import { gsap, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
-type Category = "Conversations" | "Growth" | "Data and dev";
+type Feature = { icon: LucideIcon; name: string; text: string; href: string };
+type Ring = {
+  label: string;
+  blurb: string;
+  /** Tailwind text colour for the ring's icons and legend dot. */
+  tone: string;
+  dot: string;
+  /** Radius as a fraction of the stage size. */
+  r: number;
+  /** Seconds per revolution; sign is the direction. */
+  spin: number;
+  offset: number;
+  items: Feature[];
+};
 
-// Every feature page on the site, so the homepage keeps linking to all of them.
-const FEATURES: { icon: LucideIcon; name: string; text: string; href: string; category: Category }[] = [
-  { icon: Inbox, name: "Shared inbox", text: "One number, the whole team", href: "/features/shared-inbox", category: "Conversations" },
-  { icon: Bot, name: "Chatbot builder", text: "No-code flows for FAQs", href: "/features/chatbot", category: "Conversations" },
-  { icon: Layers, name: "Multi-channel", text: "Instagram, Messenger, email", href: "/features/multi-channel", category: "Conversations" },
-  { icon: Star, name: "CSAT surveys", text: "Ratings after every chat", href: "/features/csat", category: "Conversations" },
-  { icon: Megaphone, name: "Campaigns", text: "Broadcasts with delivery tracking", href: "/features/campaigns", category: "Growth" },
-  { icon: Repeat, name: "Sequences", text: "Follow-ups on a timer", href: "/features/sequences", category: "Growth" },
-  { icon: Workflow, name: "Automation", text: "Rules that run around the clock", href: "/features/automation", category: "Growth" },
-  { icon: Gauge, name: "Lead scoring", text: "Know who to call first", href: "/features/lead-scoring", category: "Growth" },
-  { icon: Contact, name: "Contacts", text: "Tags, segments, custom fields", href: "/features/contacts", category: "Data and dev" },
-  { icon: KanbanSquare, name: "Deals pipeline", text: "Stages and forecasts", href: "/features/deals", category: "Data and dev" },
-  { icon: BarChart3, name: "Analytics", text: "Team and campaign reports", href: "/features/analytics", category: "Data and dev" },
-  { icon: Code2, name: "Developer API", text: "REST API and webhooks", href: "/features/developer-api", category: "Data and dev" },
+const RINGS: Ring[] = [
+  {
+    label: "Conversations",
+    blurb: "Answer every chat, as a team.",
+    tone: "text-primary-container",
+    dot: "bg-primary-container",
+    r: 0.19,
+    spin: 60,
+    offset: 45,
+    items: [
+      { icon: Inbox, name: "Shared inbox", text: "One number, the whole team. Assign chats, leave notes, never double-reply.", href: "/features/shared-inbox" },
+      { icon: Bot, name: "Chatbot builder", text: "No-code flows that answer FAQs and qualify leads before a person steps in.", href: "/features/chatbot" },
+      { icon: Layers, name: "Multi-channel", text: "Instagram, Messenger and email in the same inbox as WhatsApp.", href: "/features/multi-channel" },
+      { icon: Star, name: "CSAT surveys", text: "A quick rating after every closed chat, reported per agent.", href: "/features/csat" },
+    ],
+  },
+  {
+    label: "Growth",
+    blurb: "Reach people and follow up on time.",
+    tone: "text-success",
+    dot: "bg-success",
+    r: 0.32,
+    spin: -85,
+    offset: 0,
+    items: [
+      { icon: Megaphone, name: "Campaigns", text: "Broadcast approved templates and track delivered, read and replied.", href: "/features/campaigns" },
+      { icon: Repeat, name: "Sequences", text: "Follow-ups that send themselves on a timer until someone replies.", href: "/features/sequences" },
+      { icon: Workflow, name: "Automation", text: "Rules that route, tag and reply around the clock.", href: "/features/automation" },
+      { icon: Gauge, name: "Lead scoring", text: "Scores from replies and activity, so you know who to call first.", href: "/features/lead-scoring" },
+    ],
+  },
+  {
+    label: "Data and dev",
+    blurb: "Keep records clean and connect your stack.",
+    tone: "text-chart-2",
+    dot: "bg-chart-2",
+    r: 0.45,
+    spin: 110,
+    offset: 67.5,
+    items: [
+      { icon: Contact, name: "Contacts", text: "Tags, segments and custom fields on every number you talk to.", href: "/features/contacts" },
+      { icon: KanbanSquare, name: "Deals pipeline", text: "Drag deals through stages and see the forecast add up.", href: "/features/deals" },
+      { icon: BarChart3, name: "Analytics", text: "Response times, team load and campaign results in one report.", href: "/features/analytics" },
+      { icon: Code2, name: "Developer API", text: "REST API and webhooks to send messages and sync data from your own code.", href: "/features/developer-api" },
+    ],
+  },
 ];
 
-const FILTERS: ("All" | Category)[] = ["All", "Conversations", "Growth", "Data and dev"];
+const ALL = RINGS.flatMap((ring) => ring.items.map((f) => ({ ...f, ring })));
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
 
-function FeatureCard({ f }: { f: (typeof FEATURES)[number] }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const Icon = f.icon;
-
-  // Spotlight follows the pointer through CSS variables; no React state per move.
-  const onMove = (e: React.PointerEvent) => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-    el.style.setProperty("--my", `${e.clientY - r.top}px`);
-  };
-
-  return (
-    <Link
-      ref={ref}
-      data-feature-card
-      href={f.href}
-      onPointerMove={onMove}
-      className={`lg-glass group relative flex h-full flex-col overflow-hidden rounded-2xl p-6 transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-primary/35 active:scale-[0.99] ${focusRing}`}
-    >
-      <span aria-hidden className="spotlight pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      <span className="relative flex items-start justify-between">
-        <span className="lg-glass-pill grid size-10 place-items-center rounded-xl">
-          <Icon className="h-5 w-5 text-primary-container" />
-        </span>
-        <ArrowUpRight className="h-5 w-5 text-outline transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary-container" />
-      </span>
-      <span className="relative mt-8 block font-medium text-on-surface">{f.name}</span>
-      <span className="relative mt-1 block text-sm text-on-surface-variant">{f.text}</span>
-    </Link>
-  );
-}
+const STEP_MS = 1800;
 
 export function FeatureIndex() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
-  const reduce = useReducedMotion();
+  const [index, setIndex] = useState(0);
   const section = useRef<HTMLElement>(null);
+  const inView = useInView(section, { amount: 0.4 });
+  const visible = usePageVisible();
+  const active = ALL[index];
+  const pick = (href: string) => setIndex(ALL.findIndex((f) => f.href === href));
 
-  // Cards arrive in staggered batches as they scroll in. GSAP animates only the
-  // inner card links; framer-motion owns the list items for the filter reflow.
+  // Autoplay walks the features in ring order while the section is on screen and
+  // never holds; pointing at a chip just jumps the tour to it.
+  const playing = inView && visible;
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => setIndex((i) => (i + 1) % ALL.length), STEP_MS);
+    return () => clearTimeout(t);
+  }, [playing, index]);
+
+  // Hub pops in, then the rings open outward one by one.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
       mm.add(MQ_MOTION, () => {
-        gsap.set("[data-feature-card]", { autoAlpha: 0, y: 48 });
-        ScrollTrigger.batch("[data-feature-card]", {
-          start: "top 88%",
-          once: true,
-          onEnter: (batch) =>
-            gsap.to(batch, { autoAlpha: 1, y: 0, stagger: 0.08, duration: 0.8, ease: "power3.out", overwrite: true, clearProps: "transform" }),
-        });
+        const tl = gsap.timeline({ scrollTrigger: { trigger: "[data-orbit]", start: "top 75%", once: true } });
+        tl.from("[data-hub]", { autoAlpha: 0, scale: 0.6, duration: 0.7, ease: "back.out(1.6)" }).from(
+          "[data-ring-wrap]",
+          { autoAlpha: 0, scale: 0.7, stagger: 0.15, duration: 0.9, ease: "power3.out" },
+          "-=0.35",
+        );
       });
     },
     { scope: section },
   );
-  const items = filter === "All" ? FEATURES : FEATURES.filter((f) => f.category === filter);
+
+  const ActiveIcon = active.icon;
 
   return (
     <section ref={section} id="features" className="relative scroll-mt-16 overflow-hidden px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-      <div aria-hidden className="glass-stage">
-        <span className="right-1/4 top-1/3 h-96 w-[40rem] bg-primary/15" />
-        <span className="-left-16 bottom-0 h-72 w-72 bg-[#24403b]/50" />
-      </div>
-
-      <div className="relative mx-auto max-w-7xl">
-        <Reveal className="flex items-end justify-between gap-10">
-          <div>
-            <h2 className="max-w-2xl text-4xl font-semibold leading-[1.05] tracking-tight text-on-surface md:text-5xl">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+        {/* Copy + detail panel */}
+        <div>
+          <Reveal>
+            <h2 className="max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight text-on-surface md:text-5xl">
               Everything else in the box.
             </h2>
-            <p className="mt-5 max-w-[60ch] text-base leading-relaxed text-on-surface-variant">
-              Twelve tools in one workspace. Filter by what you need, then open any one for the details.
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-on-surface-variant">
+              {ALL.length} tools around one workspace. Point at any of them to see what it does.
             </p>
-          </div>
-          <Illustration name="toolbox" className="hidden h-40 w-60 shrink-0 lg:block" />
-        </Reveal>
+          </Reveal>
 
-        <div className="mt-10">
-          <div role="group" aria-label="Filter features" className="lg-glass-pill flex w-full gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none] sm:w-max [&::-webkit-scrollbar]:hidden">
-            {FILTERS.map((f) => {
-              const count = f === "All" ? FEATURES.length : FEATURES.filter((x) => x.category === f).length;
-              const on = f === filter;
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setFilter(f)}
-                  className={`relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-[background-color] ${focusRing} ${
-                    on ? "text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-                  }`}
-                >
-                  {on && <motion.span layoutId="feature-filter" transition={springs.layout} className="absolute inset-0 rounded-full bg-primary-container" />}
-                  <span className="relative">{f}</span>
-                  <span className={`relative font-mono text-xs tabular-nums ${on ? "text-on-primary/70" : "text-outline"}`}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <motion.ul layout={!reduce} className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {items.map((f, i) => (
-                <motion.li
-                  key={f.href}
-                  layout={!reduce}
-                  initial={reduce ? false : { opacity: 0, scale: 0.94, filter: "blur(6px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                  exit={reduce ? undefined : { opacity: 0, scale: 0.94, filter: "blur(6px)", transition: { duration: 0.18 } }}
-                  transition={{ ...springs.gentle, delay: reduce ? 0 : Math.min(i, 8) * 0.025 }}
-                >
-                  <FeatureCard f={f} />
-                </motion.li>
-              ))}
+          <div className="lg-glass mt-8 min-h-[13.5rem] overflow-hidden rounded-2xl p-6">
+            {/* Time left on this feature; restarts on every step. */}
+            <div aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 bg-outline-variant/40">
+              <motion.div
+                key={`${index}-${playing}`}
+                className="h-full origin-left bg-primary-container"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: playing ? 1 : 0 }}
+                transition={{ duration: playing ? STEP_MS / 1000 : 0, ease: "linear" }}
+              />
+            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={active.href}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-outline">
+                  <span className={`size-1.5 rounded-full ${active.ring.dot}`} />
+                  {active.ring.label}
+                </p>
+                <p className="mt-4 flex items-center gap-3 text-xl font-semibold text-on-surface">
+                  <span className="lg-glass-pill grid size-10 place-items-center rounded-xl">
+                    <ActiveIcon className={`h-5 w-5 ${active.ring.tone}`} />
+                  </span>
+                  {active.name}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">{active.text}</p>
+                <Link href={active.href} className={`group mt-5 inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary-container ${focusRing}`}>
+                  Open {active.name}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </motion.div>
             </AnimatePresence>
-          </motion.ul>
+          </div>
+
+          {/* Legend */}
+          <ul className="mt-6 hidden gap-6 lg:flex">
+            {RINGS.map((ring) => (
+              <li key={ring.label} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                <span className={`size-2 rounded-full ${ring.dot}`} />
+                {ring.label}
+                <span className="font-mono text-xs text-outline">{ring.items.length}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Orbit stage */}
+        <div
+          data-orbit
+          className="orbit @container relative mx-auto aspect-square w-full max-w-[40rem]"
+        >
+          {/* Hub */}
+          <div data-hub className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <span aria-hidden className="absolute inset-0 rounded-full bg-primary/25 motion-safe:animate-ping [animation-duration:3s]" />
+            <span aria-hidden className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgb(217_119_6/0.35),transparent)]" />
+            <span className="lg-glass relative grid size-16 place-items-center rounded-full sm:size-24">
+              <Image src="/logo/logo.png" alt="Wazelo" width={56} height={56} className="size-9 sm:size-14" />
+            </span>
+          </div>
+
+          {RINGS.map((ring) => {
+            const dur = `${Math.abs(ring.spin)}s`;
+            const dir = ring.spin > 0 ? "normal" : "reverse";
+            const counter = ring.spin > 0 ? "reverse" : "normal";
+            return (
+              <div key={ring.label} data-ring-wrap className="absolute inset-0">
+                {/* Track */}
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-outline-variant"
+                  style={{ width: `${ring.r * 200}%`, height: `${ring.r * 200}%` }}
+                />
+                <div className="orbit-ring absolute inset-0" style={{ animationDuration: dur, animationDirection: dir }}>
+                  {ring.items.map((f, i) => {
+                    const angle = ring.offset + (360 / ring.items.length) * i;
+                    const radius = `calc(100cqw * ${ring.r})`;
+                    const on = active.href === f.href;
+                    const Icon = f.icon;
+                    return (
+                      <div key={f.href}>
+                        {/* Spoke from hub to chip */}
+                        <span
+                          aria-hidden
+                          className={`absolute left-1/2 top-1/2 h-px origin-left transition-opacity duration-300 ${on ? "opacity-100" : "opacity-40"}`}
+                          style={{
+                            width: radius,
+                            transform: `rotate(${angle}deg)`,
+                            background: `linear-gradient(90deg, transparent, ${on ? "rgb(245 158 11 / 0.7)" : "rgb(110 117 148 / 0.35)"})`,
+                          }}
+                        />
+                        {/* Chip */}
+                        <div
+                          className="absolute left-1/2 top-1/2 size-0"
+                          style={{ transform: `rotate(${angle}deg) translateX(${radius}) rotate(${-angle}deg)` }}
+                        >
+                          <div className="orbit-chip absolute -left-5 -top-5 sm:-left-6 sm:-top-6" style={{ animationDuration: dur, animationDirection: counter }}>
+                            <Link
+                              href={f.href}
+                              aria-label={`${f.name}: ${f.text}`}
+                              onPointerEnter={() => pick(f.href)}
+                              onFocus={() => pick(f.href)}
+                              className={`group relative grid size-10 place-items-center rounded-xl border bg-surface-container-lowest/90 backdrop-blur transition-[transform,border-color,box-shadow] duration-300 hover:scale-110 sm:size-12 ${focusRing} ${
+                                on ? "scale-110 border-primary/60 shadow-[0_0_24px_rgb(245_158_11/0.35)]" : "border-outline-variant"
+                              }`}
+                            >
+                              <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${ring.tone}`} />
+                              <span
+                                className={`pointer-events-none absolute top-full mt-2 hidden whitespace-nowrap text-xs transition-colors lg:block ${
+                                  on ? "text-on-surface" : "text-on-surface-variant"
+                                }`}
+                              >
+                                {f.name}
+                              </span>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Small screens: the orbit has no labels, so list every tool too. */}
+        <div className="grid gap-6 sm:grid-cols-3 lg:hidden">
+          {RINGS.map((ring) => (
+            <div key={ring.label}>
+              <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-outline">
+                <span className={`size-1.5 rounded-full ${ring.dot}`} />
+                {ring.label}
+              </p>
+              <ul className="mt-3 space-y-1">
+                {ring.items.map((f) => (
+                  <li key={f.href}>
+                    <Link href={f.href} className={`flex items-center gap-2.5 rounded-lg py-1.5 text-sm text-on-surface ${focusRing}`}>
+                      <f.icon className={`h-4 w-4 ${ring.tone}`} />
+                      {f.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </section>
