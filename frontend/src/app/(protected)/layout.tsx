@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import axios from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/lib/api/auth";
@@ -39,6 +40,9 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
 
   // Guard against React StrictMode double-invoke: only one refresh call per mount
   const refreshCalledRef = useRef(false);
+  // Session restore failed for a non-auth reason (backend unreachable): offer a retry
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [refreshAttempt, setRefreshAttempt] = useState(0);
 
   // On mount: always attempt silent refresh — backend is sole authority.
   // No client-side cookie gate: the httpOnly refresh token cookie is the only signal.
@@ -51,8 +55,10 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
 
     // Prevent duplicate refresh calls (React StrictMode fires effects twice in dev).
     // Token rotation means a second call with the already-rotated cookie → 401 → logout.
-    if (refreshCalledRef.current) return;
+    // A manual retry (refreshAttempt > 0) is always allowed.
+    if (refreshCalledRef.current && refreshAttempt === 0) return;
     refreshCalledRef.current = true;
+    setRefreshFailed(false);
 
     authApi
       .refreshToken()
@@ -60,13 +66,21 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
         setTokens(data);
         setSessionChecked(true);
       })
-      .catch(() => {
-        clearAuth();
-        setSessionChecked(true);
+      .catch((err) => {
+        // Only a definitive auth rejection ends the session. A timeout (cold backend),
+        // network blip, 429 or 5xx says nothing about the refresh cookie: logging out
+        // here would also make the next reload hit /auth/login via the hint cookie.
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        if (status === 401 || status === 403) {
+          clearAuth();
+          setSessionChecked(true);
+          return;
+        }
+        setRefreshFailed(true);
       });
-  // Run once on mount only
+  // Run once on mount, and again on each manual retry
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshAttempt]);
 
   // Redirect unauthenticated users after session check completes.
   // Uses replace (not push) so the protected page is not added to browser history.
@@ -136,6 +150,23 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
 
   // App frame (no spinner) while the session is restored from the refresh cookie on reload;
   // also prevents a flash of the login redirect.
+  if (!sessionChecked && refreshFailed) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-surface p-4 text-center">
+        <p className="text-sm text-on-surface-variant">
+          Couldn&apos;t reach the server to restore your session.
+        </p>
+        <button
+          type="button"
+          onClick={() => setRefreshAttempt((n) => n + 1)}
+          className="rounded-md border border-outline-variant px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!sessionChecked) {
     return pathname.startsWith("/onboarding") ? (
       <div className="min-h-dvh bg-surface" />
