@@ -156,6 +156,29 @@ function coin(x, y, fill = ACCENT) {
 function sparkle(x, y, r = 6, fill = ACCENT) {
   return pathEl(`M${x},${y - r} Q${x + r * 0.2},${y - r * 0.2} ${x + r},${y} Q${x + r * 0.2},${y + r * 0.2} ${x},${y + r} Q${x - r * 0.2},${y + r * 0.2} ${x - r},${y} Q${x - r * 0.2},${y - r * 0.2} ${x},${y - r} Z`, fill);
 }
+function star(cx, cy, r, fill = AMBER) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
+  }
+  return `<polygon points="${pts.join(" ")}" fill="${fill}"/>`;
+}
+function gear(cx, cy, r, fill = C.slate) {
+  let s = "";
+  for (let i = 0; i < 8; i++)
+    s += `<rect x="${cx - r * 0.22}" y="${cy - r * 1.3}" width="${r * 0.44}" height="${r * 0.5}" rx="2" fill="${fill}" transform="rotate(${i * 45} ${cx} ${cy})"/>`;
+  return s + circle(cx, cy, r, fill) + circle(cx, cy, r * 0.42, C.blob);
+}
+function phone(x, y, w = 40, h = 64) {
+  return rect(x, y, w, h, "#2a3144", 8) + rect(x + 4, y + 8, w - 8, h - 14, "#151925", 5);
+}
+const bolt = (x, y, fill = AMBER) => pathEl(`M${x + 4},${y} L${x - 6},${y + 14} L${x},${y + 14} L${x - 4},${y + 26} L${x + 8},${y + 10} L${x + 2},${y + 10} L${x + 6},${y} Z`, fill);
+function clock(x, y, r) {
+  return circle(x, y, r, C.light) + stroke(`M${x},${y} L${x},${y - r * 0.6}`, C.ink, 2) + stroke(`M${x},${y} L${x + r * 0.45},${y}`, C.ink, 2);
+}
+const pulse = (inner) => g(inner, `data-anim="pulse"`);
 
 /* ─── Scenes ─────────────────────────────────────────────────────────────── */
 
@@ -324,6 +347,203 @@ const scenes = {
       // trophy held at chest
       pathEl(`M250,${F - 104} L274,${F - 104} Q274,${F - 86} 262,${F - 84} Q250,${F - 86} 250,${F - 104} Z`, AMBER) + rect(259, F - 84, 6, 7, AMBER, 1) + rect(254, F - 78, 16, 5, "#d98a06", 2),
       floatGroup(sparkle(300, 110, 6) + sparkle(96, 140, 5)),
+    ];
+  },
+
+  /* ─── Feature pages (/features/<slug>) ──────────────────────────────────── */
+
+  "feature-shared-inbox": () => {
+    const F = 262;
+    const px = 118, py = 34, pw = 164;
+    const rows = [0, 1, 2]
+      .map((i) => {
+        const ry = py + 28 + i * 30, hi = i === 1;
+        return rect(px + 10, ry, pw - 20, 24, hi ? "#2f3650" : "#262c3d", 6) + circle(px + 24, ry + 12, 7, [C.green, AMBER, C.slate][i]) + rect(px + 38, ry + 6, 60, 4, hi ? AMBER : C.line, 2) + rect(px + 38, ry + 14, 90, 3.5, C.lineDark, 1.75);
+      })
+      .join("");
+    return [
+      blob(200, 140, 168, 114, J.a, C.blob),
+      floor(F),
+      rect(px, py, pw, 124, "#2a3144", 10) + rect(px + 10, py + 10, 46, 5, AMBER, 2.5) + rows,
+      pulse(circle(px + pw - 12, py + 12, 4.5, "#ef4444")),
+      person({ x: 72, floor: F, skin: SKIN.a, hair: HAIR.auburn, hairStyle: "long", top: "#6b5a8a", bottom: "#3b4260", left: "down", right: "point" }),
+      person({ x: 328, floor: F, skin: SKIN.d, hair: HAIR.black, hairStyle: "short", top: C.slate, bottom: "#3b4260", left: "point", right: "down" }),
+      floatGroup(bubble(150, 182, 56, 22, "amber", 1, "left")),
+      floatGroup(bubble(214, 196, 50, 22, "slate", 1, "right")),
+    ];
+  },
+  "feature-campaigns": () => {
+    const F = 262;
+    const phones = [[270, 40], [318, 104], [270, 170]]
+      .map(([x, y]) => floatGroup(phone(x, y) + rect(x + 8, y + 16, 22, 10, ACCENT, 4) + rect(x + 8, y + 32, 18, 3.5, C.line, 1.75) + check(x + 38, y + 4, 7)))
+      .join("");
+    return [
+      blob(205, 140, 165, 115, J.b, C.blob),
+      floor(F),
+      person({ x: 104, floor: F, skin: SKIN.b, hair: HAIR.brown, hairStyle: "bun", top: C.slate, bottom: "#3b4260", left: "down", right: "point" }),
+      // megaphone held in the right hand
+      rect(146, 141, 14, 18, C.light, 3) + pathEl(`M158,142 L200,120 L200,180 L158,158 Z`, AMBER) + rect(198, 116, 8, 68, "#d98a06", 3),
+      stroke(`M216,134 Q226,150 216,166`, AMBER, 3) + stroke(`M230,124 Q244,150 230,176`, AMBER, 3),
+      phones,
+      plant(48, F, 0.85),
+    ];
+  },
+  "feature-automation": () => {
+    const F = 262;
+    const node = (x, y, w, inner) => rect(x, y, w, 40, "#262c3d", 8) + inner + rect(x + 36, y + 12, w - 48, 4, C.line, 2) + rect(x + 36, y + 22, (w - 48) * 0.7, 3.5, C.lineDark, 1.75);
+    return [
+      blob(205, 140, 165, 115, J.c, C.blob),
+      floor(F),
+      stroke(`M258,66 Q304,66 318,108`, C.lineDark, 2, ` stroke-dasharray="4 5"`) + stroke(`M318,152 Q318,196 258,196`, C.lineDark, 2, ` stroke-dasharray="4 5"`),
+      node(176, 46, 82, rect(184, 54, 24, 24, ACCENT, 6) + bolt(196, 53, C.ink)),
+      node(276, 110, 84, circle(296, 130, 11, C.green) + stroke(`M291,130 l4,4 l7,-7`, C.ink, 2.5)),
+      node(176, 176, 82, rect(184, 184, 24, 24, C.slate, 6) + rect(189, 193, 14, 3.5, C.light, 1.75)),
+      floatGroup(gear(340, 54, 12)),
+      floatGroup(sparkle(160, 128, 5)),
+      person({ x: 96, floor: F, skin: SKIN.c, hair: HAIR.black, hairStyle: "curly", top: "#4f5a7d", bottom: "#3b4260", left: "down", right: "point" }),
+    ];
+  },
+  "feature-analytics": () => {
+    const F = 262;
+    const bars = [34, 52, 44, 72, 96].map((h, i) => rect(190 + i * 32, 172 - h, 20, h, i === 4 ? AMBER : C.slate, 4)).join("");
+    return [
+      blob(205, 140, 165, 115, J.a, C.blob),
+      floor(F),
+      rect(170, 38, 190, 150, "#2a3144", 10) + rect(184, 50, 50, 5, C.line, 2.5) + bars,
+      stroke(`M200,126 L232,110 L264,116 L296,90 L330,62`, ACCENT, 3),
+      floatGroup(circle(330, 62, 6, ACCENT) + sparkle(352, 34, 5)),
+      person({ x: 110, floor: F, skin: SKIN.a, hair: HAIR.blond, hairStyle: "long", top: C.slate, bottom: "#3b4260", left: "down", right: "point" }),
+      plant(48, F, 0.9),
+    ];
+  },
+  "feature-contacts": () => {
+    const F = 262;
+    const contact = (x, y, avatar, tag) =>
+      floatGroup(rect(x, y, 120, 40, "#262c3d", 8) + circle(x + 18, y + 20, 10, avatar) + rect(x + 34, y + 11, 48, 5, C.light, 2.5) + rect(x + 34, y + 22, 64, 3.5, C.lineDark, 1.75) + rect(x + 92, y + 10, 22, 9, tag, 4.5));
+    return [
+      blob(200, 140, 165, 115, J.b, C.blob),
+      floor(F),
+      contact(62, 66, SKIN.b, AMBER),
+      contact(90, 120, SKIN.d, C.green),
+      contact(62, 174, SKIN.a, C.slate),
+      person({ x: 270, floor: F, skin: SKIN.c, hair: HAIR.slate, hairStyle: "short", top: "#6b5a8a", bottom: "#3b4260", left: "reach", right: "down" }),
+      floatGroup(pin(228, 112)),
+      plant(348, F, 0.9),
+    ];
+  },
+  "feature-chatbot": () => {
+    const F = 262;
+    return [
+      blob(200, 140, 165, 115, J.c, C.blob),
+      floor(F),
+      // robot
+      stroke(`M280,94 L280,76`, C.light, 3) + pulse(circle(280, 72, 6, ACCENT)),
+      rect(258, 226, 14, 34, C.slateDark, 5) + rect(288, 226, 14, 34, C.slateDark, 5),
+      `<ellipse cx="265" cy="261" rx="10" ry="3.6" fill="${C.shoe}"/><ellipse cx="295" cy="261" rx="10" ry="3.6" fill="${C.shoe}"/>`,
+      stroke(`M252,166 L234,196`, C.slate, 9) + stroke(`M308,166 L326,196`, C.slate, 9),
+      rect(248, 150, 64, 80, C.slate, 12) + rect(262, 168, 36, 22, "#151925", 5) + rect(268, 176, 24, 4, AMBER, 2),
+      rect(244, 94, 72, 54, "#4f5a7d", 14) + circle(266, 120, 7, C.ink) + circle(294, 120, 7, C.ink),
+      pulse(circle(266, 120, 3, AMBER) + circle(294, 120, 3, AMBER)),
+      person({ x: 104, floor: F, skin: SKIN.b, hair: HAIR.brown, hairStyle: "long", top: "#4f5a7d", bottom: "#3b4260", left: "down", right: "phone" }),
+      rect(104 + 4, F - 116, 14, 24, "#20253a", 3) + rect(104 + 6, F - 114, 10, 18, AMBER, 2),
+      floatGroup(bubble(140, 44, 82, 30, "slate", 2, "left")),
+      floatGroup(bubble(150, 92, 76, 30, "amber", 2, "right")),
+    ];
+  },
+  "feature-csat": () => {
+    const F = 262;
+    const stars = [0, 1, 2, 3, 4].map((i) => star(224 + i * 28, 104, 11, i < 4 ? AMBER : C.slateDark)).join("");
+    return [
+      blob(205, 140, 165, 115, J.a, C.blob),
+      floor(F),
+      rect(196, 54, 168, 118, "#2a3144", 12) + rect(212, 68, 64, 5, C.line, 2.5) + stars + rect(212, 134, 136, 4, C.lineDark, 2) + rect(212, 144, 96, 4, C.lineDark, 2),
+      floatGroup(star(356, 40, 8, ACCENT) + star(180, 44, 6, ACCENT)),
+      floatGroup(sparkle(330, 196, 5)),
+      person({ x: 110, floor: F, skin: SKIN.d, hair: HAIR.black, hairStyle: "bun", top: C.slate, bottom: "#3b4260", left: "down", right: "raise", wave: "right" }),
+      plant(46, F, 0.85),
+    ];
+  },
+  "feature-deals": () => {
+    const F = 262;
+    const cols = [160, 228, 296];
+    const dealCard = (x, y, won = false) => rect(x + 6, y, 46, 26, "#30374f", 5) + rect(x + 12, y + 7, 24, 4, C.line, 2) + rect(x + 12, y + 15, 16, 4, won ? C.green : AMBER, 2);
+    const board =
+      rect(150, 36, 214, 170, "#2a3144", 10) +
+      cols.map((x, i) => rect(x, 48, 30, 5, i === 2 ? C.green : C.line, 2.5) + rect(x, 60, 58, 136, "#262c3d", 6)).join("") +
+      dealCard(160, 68) + dealCard(160, 100) + dealCard(228, 68) + dealCard(296, 68, true) + dealCard(296, 100, true) + check(346, 40, 9);
+    return [
+      blob(205, 140, 168, 115, J.b, C.blob),
+      floor(F),
+      board,
+      person({ x: 92, floor: F, skin: SKIN.a, hair: HAIR.brown, hairStyle: "short", top: "#4f5a7d", bottom: "#3b4260", left: "down", right: "reach" }),
+      floatGroup(rect(132, 114, 52, 28, "#30374f", 5) + rect(139, 121, 26, 4, AMBER, 2) + rect(139, 129, 18, 4, C.line, 2)),
+      floatGroup(coin(338, 228)),
+      plant(40, F, 0.8),
+    ];
+  },
+  "feature-developer-api": () => {
+    const F = 262;
+    const x = 140, hipY = 212;
+    const code = [[0, 52, AMBER], [12, 70, C.line], [12, 44, C.green], [24, 60, C.line], [12, 36, C.slate], [0, 28, AMBER]]
+      .map(([indent, w, fill], i) => rect(232 + indent, 66 + i * 13, w, 5, fill, 2.5))
+      .join("");
+    return [
+      blob(200, 140, 168, 115, J.c, C.blob),
+      floor(F),
+      chairBack(x, hipY),
+      person({ x, seated: true, hipY, skin: SKIN.c, hair: HAIR.black, hairStyle: "short", top: C.slate, left: "type", right: "type" }),
+      desk(60, 228, 204, F),
+      laptopBack(x, 204, 72),
+      floatGroup(rect(216, 36, 150, 116, "#151925", 10) + circle(230, 50, 3.5, "#ef4444") + circle(242, 50, 3.5, AMBER) + circle(254, 50, 3.5, C.green) + code),
+      floatGroup(rect(286, 182, 66, 46, "#2f3650", 10) + `<text x="319" y="212" text-anchor="middle" font-family="ui-monospace, monospace" font-size="20" font-weight="700" fill="${AMBER}">&lt;/&gt;</text>`),
+    ];
+  },
+  "feature-lead-scoring": () => {
+    const F = 262;
+    const lead = (x, fill) => floatGroup(rect(x, 188, 76, 28, "#262c3d", 6) + circle(x + 14, 202, 7, fill) + rect(x + 27, 196, 38, 4, C.line, 2) + rect(x + 27, 204, 24, 3.5, C.lineDark, 1.75));
+    return [
+      blob(205, 140, 165, 115, J.a, C.blob),
+      floor(F),
+      rect(180, 56, 180, 116, "#2a3144", 12),
+      stroke(`M210,152 A60,60 0 0 1 330,152`, C.slateDark, 14),
+      stroke(`M210,152 A60,60 0 0 1 312.4,109.6`, AMBER, 14),
+      stroke(`M270,152 L302,122`, C.light, 5) + circle(270, 152, 9, C.light),
+      lead(190, AMBER),
+      lead(276, C.green),
+      floatGroup(sparkle(352, 44, 6) + sparkle(170, 40, 4.5)),
+      person({ x: 104, floor: F, skin: SKIN.b, hair: HAIR.auburn, hairStyle: "curly", top: "#6b5a8a", bottom: "#3b4260", left: "down", right: "point" }),
+    ];
+  },
+  "feature-multi-channel": () => {
+    const F = 262;
+    const hx = 258, hy = 140;
+    const nodes = [[186, 60, C.green], [334, 62, "#d9467a"], [346, 194, "#4c7bf3"], [250, 236, C.slate]];
+    const spokes = nodes.map(([x, y]) => stroke(`M${hx},${hy} L${x},${y}`, C.lineDark, 2, ` stroke-dasharray="4 5"`)).join("");
+    const channels = nodes
+      .map(([x, y, fill]) => floatGroup(circle(x, y, 19, fill) + rect(x - 9, y - 7, 18, 12, C.light, 4) + pathEl(`M${x - 5},${y + 4} L${x - 7},${y + 10} L${x + 1},${y + 4} Z`, C.light)))
+      .join("");
+    return [
+      blob(210, 140, 165, 115, J.b, C.blob),
+      floor(F),
+      spokes,
+      circle(hx, hy, 38, "#2a3144") + rect(hx - 18, hy - 14, 36, 28, ACCENT, 6) + stroke(`M${hx - 18},${hy - 12} L${hx},${hy + 2} L${hx + 18},${hy - 12}`, C.ink, 2.5),
+      channels,
+      person({ x: 92, floor: F, skin: SKIN.d, hair: HAIR.slate, hairStyle: "short", top: C.slate, bottom: "#3b4260", left: "down", right: "point" }),
+    ];
+  },
+  "feature-sequences": () => {
+    const F = 262;
+    return [
+      blob(210, 140, 165, 115, J.c, C.blob),
+      floor(F),
+      stroke(`M150,216 Q192,216 230,154 Q262,102 330,86`, C.lineDark, 2.5, ` stroke-dasharray="5 6"`),
+      circle(150, 216, 17, "#2a3144") + check(150, 216, 10),
+      circle(230, 154, 17, "#2a3144") + clock(230, 154, 10),
+      circle(330, 86, 17, "#2a3144") + rect(320, 79, 20, 14, ACCENT, 4),
+      floatGroup(bubble(168, 168, 52, 22, "slate", 1, "left")),
+      floatGroup(bubble(250, 104, 52, 22, "amber", 1, "left")),
+      floatGroup(bubble(300, 36, 60, 24, "amber", 1, "right")),
+      person({ x: 76, floor: F, skin: SKIN.a, hair: HAIR.blond, hairStyle: "bun", top: "#4f5a7d", bottom: "#3b4260", left: "down", right: "point" }),
     ];
   },
 };

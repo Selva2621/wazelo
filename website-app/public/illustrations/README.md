@@ -21,7 +21,8 @@ Edit poses, colours or props in that script and re-run; don't hand-edit the SVGs
 | `team.svg` | three teammates under one shared inbox | Teams section |
 | `toolbox.svg` | person stacking building blocks | Features heading |
 | `support.svg` | agent with headset at a desk | FAQ |
-| `success.svg` | two people celebrating with a trophy | Final call to action |
+| `success.svg` | two people celebrating with a trophy | Final call to action, feature pages closing panel |
+| `feature-<slug>.svg` | one scene per feature (inbox, megaphone, flow, chart, contacts, bot, stars, board, code, gauge, hub, timeline) | Hero of `/features/<slug>` |
 
 ## Animation hooks
 

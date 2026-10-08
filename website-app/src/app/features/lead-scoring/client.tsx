@@ -104,7 +104,7 @@ function LeadScoringMockup() {
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-primary-container)" }} />
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-success)" }} />
           <span style={{ marginLeft: 12, fontSize: 12, color: "var(--c-placeholder)", fontFamily: "monospace" }}>
-            wazelo.in — Lead Scoring
+            wazelo.in - Lead Scoring
           </span>
         </div>
 
@@ -114,7 +114,7 @@ function LeadScoringMockup() {
           {/* LEFT PANEL */}
           <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 16 }}>
-              Leads — Sorted by Score
+              Leads - Sorted by Score
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -250,16 +250,15 @@ const data: FeatureDetailData = {
   slug: "lead-scoring",
   tag: "Lead Scoring",
   heroTitle: "Know who to call<br /><span style=\"color:var(--c-primary-container)\">first. Always.</span>",
-  heroSubtitle: "Automatic lead scoring based on engagement, profile completeness, and behaviour — so your team focuses on the hottest leads, not the longest queue.",
-  heroScreen: "",
+  heroSubtitle: "Automatic lead scoring based on engagement, profile completeness, and behaviour, so your team focuses on the hottest leads, not the longest queue.",
   overviewTitle: "Not every lead deserves equal attention.",
   overviewDesc: "When 300 contacts message you in a day, your team can't treat them all equally. Wazelo CRM's lead scoring engine assigns a score to every contact based on their WhatsApp engagement, how complete their profile is, which campaigns they responded to, and whether they've been tagged as qualified. High-score leads rise to the top. Low-score leads wait their turn.",
   capabilities: [
-    { icon: "query_stats", title: "Automatic score calculation", desc: "Scores are calculated continuously based on engagement signals — no manual input required." },
+    { icon: "query_stats", title: "Automatic score calculation", desc: "Scores are calculated continuously based on engagement signals, no manual input required." },
     { icon: "tune", title: "Configurable scoring rules", desc: "Set which actions add or subtract score points: replied to campaign, opened chatbot, tag added, field filled." },
     { icon: "sort", title: "Sorted inbox view", desc: "Sort your inbox by lead score so agents always work the highest-value conversations first." },
     { icon: "label", title: "Score-based tagging", desc: "Automatically tag contacts as 'Hot', 'Warm', or 'Cold' when their score crosses a threshold." },
-    { icon: "bolt", title: "Trigger automations on score", desc: "Use lead score as a workflow trigger — enrol a hot lead in a sequence, or alert a senior agent." },
+    { icon: "bolt", title: "Trigger automations on score", desc: "Use lead score as a workflow trigger, enrol a hot lead in a sequence, or alert a senior agent." },
     { icon: "insights", title: "Score distribution report", desc: "See how your lead base is distributed across score ranges. Identify bottlenecks in your qualification funnel." },
   ],
   howItWorks: [
@@ -268,7 +267,6 @@ const data: FeatureDetailData = {
     { step: "03", title: "Surface high-priority leads", desc: "Sort the inbox or contact list by score. Agents always see which conversations are worth the most attention." },
     { step: "04", title: "Act on score thresholds", desc: "When a contact crosses a score threshold, trigger an automation: enrol in a sequence, assign to a senior agent, or send an alert." },
   ],
-  screens: [],
   relatedFeatures: [
     { label: "Contacts CRM", href: "/features/contacts", icon: "group" },
     { label: "Automation", href: "/features/automation", icon: "bolt" },
