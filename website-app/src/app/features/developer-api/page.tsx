@@ -3,7 +3,7 @@ import DeveloperApiClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp CRM REST API & Webhooks",
-  description: "Full REST API, webhook subscriptions, and API key management for teams building custom integrations on top of Wazelo CRM.",
+  description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
   keywords: [
     "WhatsApp CRM API", "WhatsApp REST API", "WhatsApp webhook", "WhatsApp API integration",
     "Wazelo API", "WhatsApp API developer",
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/developer-api" },
   openGraph: {
     title: "WhatsApp CRM REST API & Webhooks | Wazelo CRM",
-    description: "Full REST API, webhook subscriptions, and API key management for teams building custom integrations on top of Wazelo CRM.",
+    description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
     url: "https://wazelo.in/features/developer-api",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp CRM REST API & Webhooks | Wazelo CRM",
-    description: "Full REST API, webhook subscriptions, and API key management for teams building custom integrations on top of Wazelo CRM.",
+    description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
   },
 };
 

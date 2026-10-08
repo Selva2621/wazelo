@@ -5,93 +5,28 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 const endpoints = [
   {
     method: "POST",
-    path: "/v1/messages/send",
-    request: `{
-  "to": "+91987654321",
-  "type": "text",
-  "text": {
-    "body": "Hello {{name}}, your order is confirmed!"
-  },
-  "context": {
-    "contact_id": "cnt_01HXYZ",
-    "org_id": "org_01ABCD"
-  }
-}`,
-    response: `{
-  "id": "msg_01HXYZ9876",
-  "status": "queued",
-  "to": "+91987654321",
-  "timestamp": "2025-05-05T10:23:41Z",
-  "wamid": "wamid.HBgMOTE5ODc2..."
-}`,
-  },
-  {
-    method: "GET",
-    path: "/v1/contacts",
-    request: `{
-  "filter": {
-    "tag": "hot_lead",
-    "score_min": 70
-  },
-  "pagination": {
-    "page": 1,
-    "limit": 25
-  }
-}`,
-    response: `{
-  "contacts": [
-    {
-      "id": "cnt_01HXYZ",
-      "name": "Ananya Sharma",
-      "phone": "+91987654321",
-      "score": 91,
-      "tags": ["hot_lead"]
-    }
-  ],
-  "total": 47,
-  "page": 1
-}`,
+    path: "/messages/send",
+    request: "{\n  \"to\": \"+919876543210\",\n  \"type\": \"text\",\n  \"body\": \"Hi Ananya, your order is confirmed!\"\n}",
+    response: "{\n  \"success\": true,\n  \"data\": {\n    \"message\": {\n      \"id\": \"8f2c41d7-...\",\n      \"to\": \"+919876543210\",\n      \"type\": \"text\",\n      \"status\": \"QUEUED\",\n      \"createdAt\": \"2026-10-09T10:23:41Z\"\n    },\n    \"deduplicated\": false\n  },\n  \"timestamp\": \"2026-10-09T10:23:41Z\"\n}"
   },
   {
     method: "POST",
-    path: "/v1/webhooks",
-    request: `{
-  "url": "https://your-app.com/webhooks",
-  "events": [
-    "message.received",
-    "message.delivered",
-    "conversation.resolved"
-  ],
-  "secret": "whsec_xxxxxxxx"
-}`,
-    response: `{
-  "id": "whk_01HXYZ1234",
-  "url": "https://your-app.com/webhooks",
-  "events": ["message.received"],
-  "status": "active",
-  "created_at": "2025-05-05T10:23:41Z"
-}`,
+    path: "/messages/send-bulk",
+    request: "{\n  \"to\": [\n    \"+919876543210\",\n    \"+919812345678\"\n  ],\n  \"type\": \"image\",\n  \"mediaUrl\": \"https://example.com/diwali-offer.jpg\",\n  \"caption\": \"Our Diwali offer is live\"\n}",
+    response: "{\n  \"success\": true,\n  \"data\": {\n    \"queued\": 2\n  },\n  \"timestamp\": \"2026-10-09T10:24:02Z\"\n}"
   },
   {
     method: "GET",
-    path: "/v1/analytics/summary",
-    request: `{
-  "period": "last_30_days",
-  "metrics": [
-    "messages_sent",
-    "response_time_avg",
-    "csat_score",
-    "resolution_rate"
-  ]
-}`,
-    response: `{
-  "period": "last_30_days",
-  "messages_sent": 48500,
-  "response_time_avg": 252,
-  "csat_score": 4.3,
-  "resolution_rate": 0.87
-}`,
+    path: "/contacts",
+    request: "\"limit\": 20\n\"X-API-Key\": \"your-api-key\"",
+    response: "{\n  \"success\": true,\n  \"data\": {\n    \"data\": [\n      {\n        \"id\": \"c1a9...\",\n        \"name\": \"Ananya Sharma\",\n        \"phoneNumber\": \"+919876543210\",\n        \"leadStatus\": \"INTERESTED\",\n        \"source\": \"WHATSAPP\"\n      }\n    ],\n    \"nextCursor\": \"c1a9...\",\n    \"hasMore\": true\n  }\n}"
   },
+  {
+    method: "GET",
+    path: "/session/status",
+    request: "\"X-API-Key\": \"your-api-key\"",
+    response: "{\n  \"success\": true,\n  \"data\": {\n    \"connected\": true,\n    \"sessions\": [\n      {\n        \"phoneNumber\": \"+919876543210\",\n        \"status\": \"CONNECTED\"\n      }\n    ]\n  }\n}"
+  }
 ];
 
 function ApiMockup() {
@@ -147,7 +82,7 @@ function ApiMockup() {
         </span>
       </div>
       <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 0 }}>
-        REST API built for developers.
+        Real requests, real responses.
       </h2>
 
       <div style={{ background: "var(--c-surface)", borderRadius: 16, boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)", overflow: "hidden", marginTop: 32 }}>
@@ -214,7 +149,7 @@ function ApiMockup() {
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontFamily: "monospace" }}>
               <span style={methodStyleLarge(endpoints[activeTab].method)}>{endpoints[activeTab].method}</span>
-              <span style={{ fontSize: 14, color: "var(--c-on-surface)" }}>{endpoints[activeTab].path}</span>
+              <span style={{ fontSize: 14, color: "var(--c-on-surface)" }}>/api/v1/developer{endpoints[activeTab].path}</span>
             </div>
 
             <div style={{ background: "var(--c-surface)", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
@@ -291,22 +226,33 @@ const data: FeatureDetailData = {
   slug: "developer-api",
   tag: "Developer API",
   heroTitle: "Build anything<br /><span style=\"color:var(--c-primary-container)\">on top of Wazelo.</span>",
-  heroSubtitle: "Full REST API, webhook system, and API key management for teams that need to integrate Wazelo CRM with their own systems, automations, or data pipelines.",
-  overviewTitle: "Your data, your way.",
-  overviewDesc: "Not every workflow fits inside a SaaS interface. Wazelo CRM's Developer API gives you programmatic access to contacts, conversations, campaigns, and analytics, so your engineering team can build custom integrations, sync data to internal systems, and trigger Wazelo actions from external events. Generate API keys, subscribe to webhooks, and explore the full reference in the docs.",
+  heroSubtitle: "Send WhatsApp messages and manage contacts from your own code, and get a webhook when something happens.",
+  overviewTitle: "Connect Wazelo to your systems.",
+  overviewDesc: "Create an API key in Settings, send it in the X-API-Key header, and call the REST API to send messages, message up to 100 numbers at once, use templates, manage contacts and check your WhatsApp connection. Webhooks push events like a received message or a finished campaign to your URL, signed so you can verify them and retried if your server is down.",
   capabilities: [
-    { icon: "code", title: "Full REST API", desc: "Read and write contacts, conversations, campaigns, messages, and analytics data via a documented REST API." },
-    { icon: "key", title: "API key management", desc: "Generate, rotate, and revoke API keys from the dashboard. Scoped keys available for read-only or write access." },
-    { icon: "webhook", title: "Webhook subscriptions", desc: "Subscribe to real-time events: new message, conversation assigned, deal stage changed, CSAT received, and more." },
-    { icon: "data_object", title: "JSON response format", desc: "Clean, consistent JSON responses. Pagination, filtering, and sorting built into every list endpoint." },
-    { icon: "book", title: "Full API reference docs", desc: "Every endpoint documented with request/response examples, authentication instructions, and rate limit info." },
-    { icon: "speed", title: "Rate limits and reliability", desc: "Generous rate limits for Pro and Enterprise plans. Retry headers and idempotency keys supported." },
+    { icon: "send", title: "Send messages", desc: "Send text, media or a template, or the same message to up to 100 numbers in one request." },
+    { icon: "contacts", title: "Contacts API", desc: "List, create, read and update contacts, up to 100 per page." },
+    { icon: "key", title: "API keys", desc: "Create keys with an expiry date, rotate them and revoke them from Settings." },
+    { icon: "webhook", title: "Webhooks", desc: "Subscribe to 11 events and receive a signed POST at your URL when they happen." },
+    { icon: "verified_user", title: "Signed and retried", desc: "HMAC-SHA256 signatures, retries with backoff, a delivery log and a Send test button." },
+    { icon: "terminal", title: "Quick Start", desc: "Copy-ready examples in cURL, Node and Python, plus API Logs of your recent calls." },
+  ],
+  details: [
+    { title: "Endpoints", items: ["POST /messages/send", "POST /messages/send-bulk", "POST /messages/send-template", "GET /messages", "GET /messages/:id", "GET, POST /contacts", "GET, PUT /contacts/:id", "GET, POST /templates", "GET /session/status"] },
+    { title: "Webhook events", items: ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED", "CONTACT_CREATED", "CONTACT_UPDATED", "CAMPAIGN_COMPLETED", "CAMPAIGN_FAILED", "PAYMENT_SUCCEEDED", "PAYMENT_FAILED", "SUBSCRIPTION_CHANGED"] },
+    { title: "Security and delivery", items: ["X-API-Key header", "Key expiry and rotation", "X-Webhook-Signature", "X-Webhook-Timestamp", "Custom headers", "Up to 10 retries", "Paused after 10 failures", "Up to 25 webhooks"] },
   ],
   howItWorks: [
-    { step: "01", title: "Generate an API key", desc: "Go to Settings → Developer → API Keys. Click 'Create Key', name it, choose its scope, and copy the key. It only shows once." },
-    { step: "02", title: "Authenticate your requests", desc: "Pass your API key in the Authorization header: Bearer <your-api-key>. All requests require HTTPS." },
-    { step: "03", title: "Call any endpoint", desc: "Use our REST API to fetch contacts, send messages, create deals, tag contacts, or pull analytics. Full reference at /api-reference." },
-    { step: "04", title: "Subscribe to webhooks", desc: "Register a webhook URL to receive real-time POST events for any action in Wazelo: new message, resolved conversation, CSAT score received, and more." },
+    { step: "01", title: "Create a key", desc: "Open Settings, Developer API, API Keys and click New API Key. Copy it now, it's shown only once." },
+    { step: "02", title: "Connect WhatsApp", desc: "API messages go out from your connected number, so link it by QR first." },
+    { step: "03", title: "Call the API", desc: "Send requests to /api/v1/developer with your key in the X-API-Key header." },
+    { step: "04", title: "Add a webhook", desc: "In Settings, Webhooks, add your URL, pick events and send a test." },
+  ],
+  faqs: [
+    { q: "Which plans include the API?", a: "Starter, Growth, Pro and Enterprise. The Solo plan doesn't include API access." },
+    { q: "How many numbers can a bulk send reach?", a: "Up to 100 recipients per request." },
+    { q: "How do I verify a webhook?", a: "Each delivery has an X-Webhook-Signature header: an HMAC-SHA256 of the timestamp and body, made with your webhook secret, which starts with whsec_." },
+    { q: "What if my server is down?", a: "Failed deliveries are retried with growing delays, 5 times by default and up to 10. After 10 failures in a row the webhook is paused." },
   ],
   interactiveSection: <ApiMockup />,
   relatedFeatures: [

@@ -3,7 +3,7 @@ import AnalyticsClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp CRM Analytics Dashboard",
-  description: "Track response times, delivery rates, agent performance, and CSAT scores across all your WhatsApp conversations.",
+  description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
   keywords: [
     "WhatsApp analytics", "WhatsApp CRM dashboard", "WhatsApp response time tracking",
     "WhatsApp agent performance", "WhatsApp CSAT analytics",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/analytics" },
   openGraph: {
     title: "WhatsApp CRM Analytics Dashboard | Wazelo CRM",
-    description: "Track response times, delivery rates, agent performance, and CSAT scores across all your WhatsApp conversations.",
+    description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
     url: "https://wazelo.in/features/analytics",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp CRM Analytics Dashboard | Wazelo CRM",
-    description: "Track response times, delivery rates, agent performance, and CSAT scores across all your WhatsApp conversations.",
+    description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
   },
 };
 

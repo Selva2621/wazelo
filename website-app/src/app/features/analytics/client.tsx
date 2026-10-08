@@ -17,15 +17,15 @@ function AnalyticsMockup() {
   const kpis = [
     { label: "Total Messages", value: "48,500", icon: "forum", delta: "+12%" },
     { label: "Avg Response", value: "4m 12s", icon: "timer", delta: "-8%" },
-    { label: "CSAT Score", value: "4.3/5", icon: "star", delta: "+0.3" },
-    { label: "Resolution Rate", value: "87%", icon: "check_circle", delta: "+5%" },
+    { label: "Delivered", value: "96.4%", icon: "done_all", delta: "+1.2%" },
+    { label: "Conversion Rate", value: "18%", icon: "trending_up", delta: "+3%" },
   ];
 
   const agents = [
-    { name: "Priya S.", convs: 142, time: "3m 40s", score: 4.8 },
-    { name: "Rahul K.", convs: 118, time: "5m 12s", score: 4.5 },
-    { name: "Meera J.", convs: 97, time: "6m 05s", score: 4.1 },
-    { name: "Arjun T.", convs: 83, time: "7m 22s", score: 3.9 },
+    { name: "Priya S.", convs: 142, time: "3m 40s", score: 31 },
+    { name: "Rahul K.", convs: 118, time: "5m 12s", score: 24 },
+    { name: "Meera J.", convs: 97, time: "6m 05s", score: 19 },
+    { name: "Arjun T.", convs: 83, time: "7m 22s", score: 12 },
   ];
 
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -98,7 +98,7 @@ function AnalyticsMockup() {
           {/* Left - Bar chart */}
           <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
             <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
-              Message Volume - Last 7 Days
+              Message Volume, This Week
             </p>
             <div style={{
               height: 160,
@@ -127,7 +127,7 @@ function AnalyticsMockup() {
           {/* Right - Agent leaderboard */}
           <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
             <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
-              Top Agents
+              Team Performance
             </p>
             <div style={{ marginTop: 12 }}>
               {agents.map((agent, i) => (
@@ -168,7 +168,7 @@ function AnalyticsMockup() {
                   </span>
                   {/* Score */}
                   <span style={{ fontSize: 12, color: "var(--c-primary-container)", minWidth: 32, textAlign: "right" }}>
-                    {agent.score} ★
+                    {agent.score} won
                   </span>
                 </div>
               ))}
@@ -185,22 +185,32 @@ const data: FeatureDetailData = {
   slug: "analytics",
   tag: "Analytics",
   heroTitle: "Data that<br /><span style=\"color:var(--c-primary-container)\">drives deals.</span>",
-  heroSubtitle: "Track response times, delivery rates, agent performance, and CSAT scores, all in one real-time dashboard.",
-  overviewTitle: "You can't improve what you can't measure.",
-  overviewDesc: "Gut feel doesn't scale. Wazelo CRM gives you a live analytics layer across your entire WhatsApp operation, from message delivery rates and campaign performance to individual agent response times and customer satisfaction scores. Export raw data or integrate via API into your BI tool of choice.",
+  heroSubtitle: "Messages, response times, delivery and conversions for today, this week or this month, with every agent's numbers for managers.",
+  overviewTitle: "Know how your WhatsApp is doing.",
+  overviewDesc: "The dashboard is the first thing you see after logging in. Everyone gets total messages, average response time and delivery, plus message volume and response time charts. Admins and Managers also see the lead funnel, peak hours, a row for each agent, and a summary of campaign delivery, reads and failures.",
   capabilities: [
-    { icon: "bar_chart", title: "Message delivery analytics", desc: "Track sent, delivered, read, and failed counts per campaign, channel, or time period." },
-    { icon: "speed", title: "Response time tracking", desc: "Measure first response time and average resolution time per agent, team, or conversation type." },
-    { icon: "person_search", title: "Agent performance", desc: "Leaderboards for conversations handled, resolution rate, and CSAT score per agent." },
-    { icon: "star_rate", title: "CSAT scores", desc: "Automatic customer satisfaction surveys with aggregated scoring by agent, team, and time period." },
-    { icon: "trending_up", title: "Campaign performance", desc: "Open rates, reply rates, and conversion tracking for every broadcast campaign." },
-    { icon: "download", title: "Export & API", desc: "Download CSV exports or access raw analytics via REST API for use in your own BI dashboards." },
+    { icon: "speed", title: "KPI cards", desc: "Total Messages, Avg Response Time, Delivered and Conversion Rate at a glance." },
+    { icon: "bar_chart", title: "Volume and response time", desc: "Charts for the period you pick: Today, This Week or This Month." },
+    { icon: "filter_alt", title: "Conversion funnel", desc: "How many contacts are at New, Contacted, Interested, Converted and Closed." },
+    { icon: "schedule", title: "Peak hours", desc: "Hourly bars show when customers message most, so you can staff those hours." },
+    { icon: "groups", title: "Team performance", desc: "Sent, Received, Avg Response, Converted and Active Convos for every agent." },
+    { icon: "campaign", title: "Campaign summary", desc: "Campaigns sent, with their Delivered, Read and Failed totals." },
+  ],
+  details: [
+    { title: "Everyone sees", items: ["Total Messages", "Avg Response Time", "Delivered", "Message Volume", "Response Time"] },
+    { title: "Admins and Managers also see", items: ["Conversion Rate", "Conversion Funnel", "Peak Hours", "Team Performance", "Campaign summary"] },
+    { title: "Freelancer dashboard", items: ["Total Leads", "Proposals Sent", "Closed This Month", "Follow-ups Due Today", "Pipeline bar"] },
   ],
   howItWorks: [
-    { step: "01", title: "Data is collected automatically", desc: "Every message sent, delivered, read, or replied, every agent action and CSAT response, is captured in real time." },
-    { step: "02", title: "View your live dashboard", desc: "Open the Analytics tab for a real-time overview: today vs yesterday, week-over-week trends, and team leaderboards." },
-    { step: "03", title: "Drill down into specifics", desc: "Filter by agent, date range, campaign, or conversation tag to isolate exactly what you need to see." },
-    { step: "04", title: "Export or pipe to your BI tool", desc: "Download CSV reports or use the API to send data to Metabase, Looker, Power BI, or any other tool." },
+    { step: "01", title: "Log in", desc: "The dashboard opens with today's numbers." },
+    { step: "02", title: "Pick a period", desc: "Switch between Today, This Week and This Month." },
+    { step: "03", title: "Compare the team", desc: "Managers scroll to Team Performance to see each agent side by side." },
+    { step: "04", title: "Check satisfaction", desc: "Open the CSAT page for average ratings and scores by agent." },
+  ],
+  faqs: [
+    { q: "Can employees see everyone's numbers?", a: "No. Employees see message and response-time figures. The funnel, peak hours, team and campaign views are for Admins and Managers." },
+    { q: "Can I export reports?", a: "Not from the dashboard yet." },
+    { q: "Where are CSAT scores?", a: "On their own Customer Satisfaction page, with average rating, rating distribution and scores by agent." },
   ],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },

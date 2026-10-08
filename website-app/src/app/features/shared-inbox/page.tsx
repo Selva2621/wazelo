@@ -3,7 +3,7 @@ import SharedInboxClient from "./client";
 
 export const metadata: Metadata = {
   title: "Shared WhatsApp Inbox for Teams",
-  description: "One shared WhatsApp inbox for your team. All, Unread, and Mine tabs, chat assignment, labels, and quick replies with \"/\".",
+  description: "A shared WhatsApp inbox for your team: assign chats, reply with media, buttons and / quick replies, and get AI summaries and reply suggestions.",
   keywords: [
     "shared WhatsApp inbox", "WhatsApp team inbox", "WhatsApp CRM shared inbox",
     "multi-agent WhatsApp", "WhatsApp helpdesk", "team WhatsApp management",
@@ -16,14 +16,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/shared-inbox" },
   openGraph: {
     title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
-    description: "One shared WhatsApp inbox for your team. All, Unread, and Mine tabs, chat assignment, labels, and quick replies with \"/\".",
+    description: "A shared WhatsApp inbox for your team: assign chats, reply with media, buttons and / quick replies, and get AI summaries and reply suggestions.",
     url: "https://wazelo.in/features/shared-inbox",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
-    description: "One shared WhatsApp inbox for your team. All, Unread, and Mine tabs, chat assignment, labels, and quick replies with \"/\".",
+    description: "A shared WhatsApp inbox for your team: assign chats, reply with media, buttons and / quick replies, and get AI summaries and reply suggestions.",
   },
 };
 

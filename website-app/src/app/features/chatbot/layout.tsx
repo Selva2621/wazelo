@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Chatbot Builder | AI and No-Code Flows",
   description:
-    "Build a WhatsApp AI chatbot or a no-code custom flow. Trigger on keywords, first messages, or button replies. Ask questions, branch on conditions, tag contacts, call an API, and assign the chat to an agent.",
+    "Build a WhatsApp AI chatbot that answers from your documents, or a custom flow with questions, conditions and API calls. Trigger on keywords or first messages.",
   keywords: [
     // Short-keys
     "WhatsApp chatbot",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Chatbot Builder | Wazelo CRM",
     description:
-      "Build a WhatsApp AI chatbot or a no-code flow: ask questions, branch on answers, tag contacts, and assign the chat to an agent.",
+      "Build a WhatsApp AI chatbot that answers from your documents, or a custom flow with questions, conditions and API calls. Trigger on keywords or first messages.",
     url: "https://wazelo.in/features/chatbot",
     images: [
       {
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Chatbot Builder | Wazelo CRM",
     description:
-      "WhatsApp AI chatbot or no-code flows: questions, conditions, tags, agent handoff. 14-day free trial.",
+      "Build a WhatsApp AI chatbot that answers from your documents, or a custom flow with questions, conditions and API calls. Trigger on keywords or first messages.",
     images: ["/opengraph-image"],
   },
 };

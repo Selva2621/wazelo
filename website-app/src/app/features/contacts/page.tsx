@@ -3,7 +3,7 @@ import ContactsClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp Contacts CRM",
-  description: "Manage your WhatsApp contacts in one place. Tags, custom fields, notes, owners, CSV import and export, merge, and list or kanban views.",
+  description: "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
   keywords: [
     "WhatsApp contacts CRM", "WhatsApp contact management", "WhatsApp lead management",
     "contact tagging WhatsApp", "WhatsApp CRM India",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/contacts" },
   openGraph: {
     title: "WhatsApp Contacts CRM | Wazelo CRM",
-    description: "Manage your WhatsApp contacts in one place. Tags, custom fields, notes, owners, CSV import and export, merge, and list or kanban views.",
+    description: "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
     url: "https://wazelo.in/features/contacts",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp Contacts CRM | Wazelo CRM",
-    description: "Manage your WhatsApp contacts in one place. Tags, custom fields, notes, owners, CSV import and export, merge, and list or kanban views.",
+    description: "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
   },
 };
 

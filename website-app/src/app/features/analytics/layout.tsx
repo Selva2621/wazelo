@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Analytics & Performance Dashboard",
   description:
-    "Track WhatsApp delivery rates, agent response times, CSAT scores, and team performance in real time. Exportable reports and insights for Indian businesses.",
+    "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
   keywords: [
     // Short-keys
     "WhatsApp analytics",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Analytics & Performance Dashboard | Wazelo CRM",
     description:
-      "Track delivery rates, CSAT scores, agent response times, and team performance. Exportable WhatsApp analytics reports for Indian businesses.",
+      "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
     url: "https://wazelo.in/features/analytics",
     images: [
       {
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Analytics | Wazelo CRM",
     description:
-      "Delivery rates, CSAT scores, agent performance, exportable reports. Real-time WhatsApp analytics dashboard.",
+      "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
     images: ["/opengraph-image"],
   },
 };

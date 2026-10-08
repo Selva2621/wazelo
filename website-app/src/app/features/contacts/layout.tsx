@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Contacts CRM | Lead Management",
   description:
-    "Manage your WhatsApp contacts and leads in one place. Tags, custom fields, notes, owners, CSV import and export, merge, and list or kanban views. Meta lead ads flow in as contacts.",
+    "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
   keywords: [
     // Short-keys
     "WhatsApp contacts",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Contacts CRM | Wazelo CRM",
     description:
-      "Tags, custom fields, notes, owners, CSV import and export, and list or kanban views for your WhatsApp leads.",
+      "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
     url: "https://wazelo.in/features/contacts",
     images: [
       {
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Contacts CRM | Wazelo CRM",
     description:
-      "Tags, custom fields, CSV import and export, and list or kanban views for your WhatsApp leads.",
+      "Every WhatsApp number becomes a contact. Tags, custom fields, notes, owners, CSV import and export, merge, list or kanban views, and Meta lead ads.",
     images: ["/opengraph-image"],
   },
 };

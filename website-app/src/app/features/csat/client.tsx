@@ -40,7 +40,7 @@ function CsatMockup() {
         </span>
       </div>
       <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--c-on-surface)", margin: "0 0 0 0" }}>
-        CSAT surveys, automatically.
+        Ratings, straight from WhatsApp.
       </h3>
 
       <div style={{
@@ -80,7 +80,7 @@ function CsatMockup() {
               letterSpacing: "0.08em",
               marginBottom: 16,
             }}>
-              Post-Resolution Survey
+              Rate Your Experience
             </div>
 
             {/* Agent bubble */}
@@ -92,7 +92,7 @@ function CsatMockup() {
               marginBottom: 16,
             }}>
               <div style={{ fontSize: 13, color: "var(--c-on-surface)", lineHeight: 1.6 }}>
-                Hi! We&apos;ve resolved your issue. How was your experience today?
+                ⭐ How was your experience with us? Please rate your satisfaction (1-5 stars). Thank you for your feedback!
               </div>
               <div style={{ fontSize: 10, color: "var(--c-placeholder)", textAlign: "right", marginTop: 6 }}>
                 Wazelo CRM &nbsp;✓✓
@@ -157,7 +157,7 @@ function CsatMockup() {
                     width: "100%",
                   }}
                 >
-                  Submit Rating ({selectedStar}★)
+                  Submit Feedback ({selectedStar}★)
                 </button>
               </div>
             )}
@@ -175,9 +175,9 @@ function CsatMockup() {
                 <span style={{ fontSize: 48, fontWeight: 700, color: "var(--c-primary-container)" }}>4.2</span>
                 <span style={{ fontSize: 20, color: "var(--c-placeholder)" }}>/5</span>
               </div>
-              <div style={{ fontSize: 11, color: "var(--c-placeholder)", marginBottom: 4 }}>avg score</div>
+              <div style={{ fontSize: 11, color: "var(--c-placeholder)", marginBottom: 4 }}>Avg Rating</div>
               <div style={{ fontSize: 11, color: "var(--c-primary-container)", letterSpacing: 2 }}>★★★★☆</div>
-              <div style={{ fontSize: 12, color: "var(--c-placeholder)", marginTop: 4 }}>68% response rate</div>
+              <div style={{ fontSize: 12, color: "var(--c-placeholder)", marginTop: 4 }}>118 responses</div>
             </div>
 
             {/* Agent table */}
@@ -221,7 +221,7 @@ function CsatMockup() {
               borderRadius: 8,
             }}>
               <span style={{ fontSize: 12, color: "#ef4444" }}>
-                ⚠ 2 low-score conversations this week
+                Dissatisfied (1-2): 2 this week
               </span>
             </div>
           </div>
@@ -235,22 +235,33 @@ const data: FeatureDetailData = {
   slug: "csat",
   tag: "CSAT Surveys",
   heroTitle: "Know how customers<br /><span style=\"color:var(--c-primary-container)\">really feel.</span>",
-  heroSubtitle: "Automatically send satisfaction surveys after every resolved WhatsApp conversation. Collect scores, read responses, and identify your best and worst-performing agents.",
-  overviewTitle: "Every resolved conversation is a data point.",
-  overviewDesc: "CSAT surveys are usually an afterthought: a form link nobody clicks. Wazelo CRM sends satisfaction surveys directly on WhatsApp, immediately after a conversation is marked resolved, with quick-tap rating buttons so customers respond in 2 seconds. Every score is automatically linked to the agent and conversation, giving you a real, unbiased view of team performance.",
+  heroSubtitle: "Send a rating link on WhatsApp when a chat wraps up. Customers pick 1 to 5 stars, and you see scores by agent.",
+  overviewTitle: "Ask at the right moment.",
+  overviewDesc: "When a conversation is done, the agent clicks Send Survey. The customer gets a WhatsApp message with a link to a short page, picks Poor to Excellent, and can add a comment. Every response is tied to the conversation and the agent who handled it, so the CSAT dashboard shows how each person on your team is doing.",
   capabilities: [
-    { icon: "star_rate", title: "Automatic post-resolution surveys", desc: "Survey sends the moment a conversation is marked resolved. No manual trigger required." },
-    { icon: "thumbs_up_down", title: "1-5 star or thumbs rating", desc: "Choose your rating format, numeric scale or thumbs up/down. Tapping sends the response instantly." },
-    { icon: "message", title: "Open-ended follow-up", desc: "After the rating, optionally ask a follow-up question to capture qualitative feedback." },
-    { icon: "person_search", title: "Per-agent scoring", desc: "Every CSAT score is linked to the agent who handled the conversation. Agent leaderboards update in real time." },
-    { icon: "bar_chart", title: "CSAT analytics dashboard", desc: "Average score by agent, team, date range, and conversation tag. Spot trends before they become problems." },
-    { icon: "notifications", title: "Low-score alerts", desc: "Get notified immediately when a contact gives a 1 or 2-star rating so you can follow up fast." },
+    { icon: "send", title: "Send Survey from any chat", desc: "One click in the conversation header sends the rating link to the customer on WhatsApp. You decide which chats get a survey." },
+    { icon: "star_rate", title: "1 to 5 stars", desc: "Customers choose Poor, Fair, Good, Very Good or Excellent on a simple mobile page." },
+    { icon: "chat", title: "Optional comment", desc: "Customers can add a few words with their rating, so you know why." },
+    { icon: "groups", title: "Scores by agent", desc: "Each agent's average rating and number of reviews, side by side." },
+    { icon: "bar_chart", title: "Rating distribution", desc: "How many responses landed on each star, plus Satisfied (4-5) and Dissatisfied (1-2) counts." },
+    { icon: "table_rows", title: "Recent responses", desc: "Contact, agent, rating, comment, sent time, and Responded or Pending for every survey." },
+  ],
+  details: [
+    { title: "Dashboard cards", items: ["Avg Rating", "Responses", "Satisfied (4-5)", "Dissatisfied (1-2)"] },
+    { title: "Rating scale", items: ["1 Poor", "2 Fair", "3 Good", "4 Very Good", "5 Excellent"] },
+    { title: "Time periods", items: ["Today", "This Week", "This Month"] },
   ],
   howItWorks: [
-    { step: "01", title: "Enable CSAT for your team", desc: "Turn on CSAT surveys in your settings and choose your rating format. One toggle, no template approvals needed." },
-    { step: "02", title: "Survey sends automatically", desc: "When any agent marks a conversation resolved, the CSAT message is sent to the customer on WhatsApp within seconds." },
-    { step: "03", title: "Customer taps a rating", desc: "The customer sees a rating message and taps their score. No forms, no links, no friction." },
-    { step: "04", title: "Track scores in real time", desc: "Every response appears in your CSAT dashboard. Filter by agent, date, or tag to understand performance across your team." },
+    { step: "01", title: "Finish the conversation", desc: "Help the customer in the shared inbox as usual." },
+    { step: "02", title: "Click Send Survey", desc: "The customer gets a WhatsApp message with a link to rate their experience." },
+    { step: "03", title: "The customer rates", desc: "They tap 1 to 5 stars, add an optional comment and press Submit Feedback." },
+    { step: "04", title: "Review the dashboard", desc: "Admins and Managers open CSAT to see the average, per-agent scores and every response." },
+  ],
+  faqs: [
+    { q: "Are surveys sent automatically when a chat closes?", a: "No. An agent sends each survey with the Send Survey button, so you choose which conversations get one." },
+    { q: "What does the customer see?", a: "A WhatsApp message asking them to rate their experience, with a link to a short page: 1 to 5 stars, an optional comment and a Submit Feedback button. They don't need to log in." },
+    { q: "Who can see CSAT results?", a: "Admins and Managers. The CSAT menu is hidden for Employees and for Solo / Freelancer accounts." },
+    { q: "Can I send a survey twice?", a: "Each conversation has one survey. Sending it again resends the link and updates the sent time." },
   ],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },

@@ -3,7 +3,7 @@ import SequencesClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp Drip Sequences",
-  description: "Automated multi-step WhatsApp drip sequences. Enrol contacts, space messages by days, and stop the moment they reply.",
+  description: "WhatsApp drip sequences with waits from 5 minutes to 7 days, keyword branching, and an automatic exit the moment a contact replies.",
   keywords: [
     "WhatsApp drip sequence", "WhatsApp follow up automation", "WhatsApp nurture sequence",
     "automated WhatsApp messages", "WhatsApp drip campaign",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/sequences" },
   openGraph: {
     title: "WhatsApp Drip Sequences | Wazelo CRM",
-    description: "Automated multi-step WhatsApp drip sequences. Enrol contacts, space messages by days, and stop the moment they reply.",
+    description: "WhatsApp drip sequences with waits from 5 minutes to 7 days, keyword branching, and an automatic exit the moment a contact replies.",
     url: "https://wazelo.in/features/sequences",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp Drip Sequences | Wazelo CRM",
-    description: "Automated multi-step WhatsApp drip sequences. Enrol contacts, space messages by days, and stop the moment they reply.",
+    description: "WhatsApp drip sequences with waits from 5 minutes to 7 days, keyword branching, and an automatic exit the moment a contact replies.",
   },
 };
 

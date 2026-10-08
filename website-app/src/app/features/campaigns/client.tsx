@@ -15,14 +15,14 @@ function CampaignMockup() {
   const audiences = [
     { label: "All Contacts",    count: "2,847", desc: "Your entire contact list" },
     { label: "Tagged: Hot Lead", count: "412",   desc: "Contacts tagged as hot leads" },
-    { label: "Custom Segment",  count: "88",    desc: "Manually selected contacts" },
+    { label: "From Scraper Run", count: "88",   desc: "Google Maps run, imported leads" },
   ];
 
   const stats = [
     { icon: "send",       label: "Sent",      value: "8,432" },
     { icon: "done_all",   label: "Delivered", value: "7,910" },
     { icon: "visibility", label: "Read",      value: "5,204" },
-    { icon: "reply",      label: "Replied",   value: "1,847" },
+    { icon: "error",      label: "Failed",    value: "96" },
   ];
 
   const FONT = "var(--font-geist-sans), sans-serif";
@@ -176,22 +176,33 @@ const data: FeatureDetailData = {
   slug: "campaigns",
   tag: "Bulk Campaigns",
   heroTitle: "Reach thousands.<br /><span style=\"color:var(--c-primary-container)\">One click.</span>",
-  heroSubtitle: "Schedule and send personalised WhatsApp broadcasts to segmented contact lists. Track delivery, opens, and replies in real time.",
-  overviewTitle: "Campaigns that actually get read.",
-  overviewDesc: "Email open rates hover around 20%. WhatsApp messages get read 98% of the time, usually within 3 minutes. Wazelo CRM's campaign engine lets you broadcast to your entire contact list or a targeted segment, personalise each message with contact fields, and track every delivery and reply as it happens.",
+  heroSubtitle: "Send one WhatsApp message to a filtered list, personalised for each contact. Track Delivered, Read and Failed per person.",
+  overviewTitle: "Pick the audience, then press send.",
+  overviewDesc: "Write a text, image, video, document or audio message. Filter your contacts by lead status, tags, source, products or a lead scraper run, and preview how many people it will reach. Wazelo sends in small batches to protect your number, skips anyone who opted out, and shows each recipient's status live while the campaign runs.",
   capabilities: [
-    { icon: "campaign", title: "Broadcast to segments", desc: "Send to your full list or a filtered segment, by tag, location, last interaction, or custom field." },
-    { icon: "person", title: "Personalised messages", desc: "Merge contact fields into your message: name, city, order number, or any custom attribute." },
-    { icon: "schedule", title: "Scheduled sending", desc: "Set campaigns to send at the optimal time, even if that's 3am. We'll deliver it." },
-    { icon: "repeat", title: "Smart retry logic", desc: "Failed deliveries are automatically retried. No message is dropped without logging the reason." },
-    { icon: "insights", title: "Real-time delivery tracking", desc: "Live dashboard showing sent, delivered, read, and replied counts as they update." },
-    { icon: "star_rate", title: "CSAT follow-ups", desc: "Automatically send a satisfaction survey after a campaign interaction completes." },
+    { icon: "campaign", title: "Filtered audiences", desc: "Send to All Contacts, or filter by Lead Status, Source, Tags, Products or a scraper run. Preview Audience shows the count before you send." },
+    { icon: "perm_media", title: "Text or media", desc: "Send text, or an image, video, document or audio file from a media URL." },
+    { icon: "person", title: "Personalised fields", desc: "Insert {{name}}, {{phone}}, {{email}} or {{leadStatus}} and every contact gets their own version." },
+    { icon: "schedule", title: "Send now or schedule", desc: "Launch right away, or pick a date and time to send later." },
+    { icon: "pause_circle", title: "Pause, resume, cancel", desc: "Stop a running campaign at any point and pick it back up when you're ready." },
+    { icon: "insights", title: "Status for every recipient", desc: "Delivered, Read and Failed counts update live, with a list of every recipient and their status." },
+  ],
+  details: [
+    { title: "Audience filters", items: ["Lead Status", "Source", "Tags", "Products", "From Scraper Run", "Has phone", "Has website", "Added in the last 7, 30 or 90 days", "Rating 3.0+ to 4.5+"] },
+    { title: "Personalisation", items: ["{{name}}", "{{phone}}", "{{email}}", "{{leadStatus}}"] },
+    { title: "Sending safeguards", items: ["Batches of 50", "30 messages a minute per number", "Opted-out contacts skipped", "Duplicate numbers removed", "Invalid numbers dropped", "3 automatic retries"] },
   ],
   howItWorks: [
-    { step: "01", title: "Import or build your contact list", desc: "Upload a CSV or use contacts already in your CRM. Apply filters to target the right segment." },
-    { step: "02", title: "Create your message template", desc: "Write your message using our editor. Use {{name}} and other variables for personalisation. Submit for Meta approval if needed." },
-    { step: "03", title: "Schedule and launch", desc: "Pick a send time or launch immediately. Wazelo handles rate limiting and queuing automatically." },
-    { step: "04", title: "Track and optimise", desc: "Monitor delivery and reply rates live. Filter replies into your shared inbox for follow-up." },
+    { step: "01", title: "Write the message", desc: "Click New Campaign and write your text or add media, or start from a saved template." },
+    { step: "02", title: "Choose who gets it", desc: "Filter your contacts and click Preview Audience to see how many people it will reach." },
+    { step: "03", title: "Send now or schedule", desc: "Pick the WhatsApp number to send from, then launch now or at a set time." },
+    { step: "04", title: "Watch it deliver", desc: "Track Delivered, Read and Failed live, and pause or cancel if you need to." },
+  ],
+  faqs: [
+    { q: "How many campaigns can I send?", a: "Per month: 5 on Solo and the free trial, 10 on Starter, 50 on Growth, 200 on Pro, and unlimited on Enterprise." },
+    { q: "Will bulk sending get my number banned?", a: "Wazelo spaces sends out, in batches of 50 at up to 30 messages a minute per number, and skips opted-out contacts. Messaging only people who know your business is still the best way to protect your number." },
+    { q: "Do I need Meta-approved templates?", a: "No. Your number is linked by QR, so you write messages directly. Saved templates just fill in the message text for you." },
+    { q: "Who can create campaigns?", a: "Admins and Managers." },
   ],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },

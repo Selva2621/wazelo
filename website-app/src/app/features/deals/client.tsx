@@ -4,15 +4,15 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 
 // ─── KanbanMockup ─────────────────────────────────────────────────────────────
 const columns = [
-  { name: "Lead", color: "var(--c-placeholder)", total: "₹73,500", deals: [
+  { name: "Qualified", color: "var(--c-placeholder)", total: "₹73,500", deals: [
     { id: 0, name: "Ananya Sharma", value: "₹45,000", owner: "PS", days: "Day 2" },
     { id: 1, name: "Rohan Verma",   value: "₹28,500", owner: "RK", days: "Day 5" },
   ]},
-  { name: "Qualified", color: "var(--c-primary)", total: "₹1,95,000", deals: [
+  { name: "Proposal", color: "var(--c-primary)", total: "₹1,95,000", deals: [
     { id: 2, name: "Vikram Patel",  value: "₹1,20,000", owner: "MJ", days: "Day 8" },
     { id: 3, name: "Meera Joshi",   value: "₹75,000",   owner: "PS", days: "Day 3" },
   ]},
-  { name: "Proposal", color: "var(--c-primary-container)", total: "₹2,50,000", deals: [
+  { name: "Negotiation", color: "var(--c-primary-container)", total: "₹2,50,000", deals: [
     { id: 4, name: "Karan Mehta",   value: "₹2,50,000", owner: "AT", days: "Day 12" },
   ]},
   { name: "Won", color: "var(--c-success)", total: "₹2,40,000", deals: [
@@ -22,13 +22,13 @@ const columns = [
 ];
 
 const dealDetails = [
-  { conv: "Conv #1042 - Order inquiry",     activity: ["Stage changed: New → Lead",            "Note added: Interested in Pro plan",          "Follow-up scheduled: Tomorrow 10am"],       closeDate: "Dec 15, 2025" },
-  { conv: "Conv #987 - Pricing question",   activity: ["Contact created",                       "Deal created from conversation",              "Tagged: Hot Lead"],                         closeDate: "Jan 8, 2026"  },
-  { conv: "Conv #1103 - Enterprise demo",   activity: ["Stage changed: Lead → Qualified",       "Note added: Needs custom invoice",            "Meeting booked: Dec 10"],                   closeDate: "Dec 28, 2025" },
-  { conv: "Conv #1055 - Product walkthrough",activity: ["Stage changed: New → Qualified",       "Note added: Decision maker confirmed",        "Tagged: Priority"],                         closeDate: "Jan 15, 2026" },
-  { conv: "Conv #1198 - Contract review",   activity: ["Stage changed: Qualified → Proposal",  "Note added: Sent proposal doc",               "Follow-up scheduled: Dec 14"],              closeDate: "Dec 20, 2025" },
-  { conv: "Conv #892 - Onboarding call",    activity: ["Stage changed: Proposal → Won",        "Payment confirmed",                           "Onboarding scheduled: Dec 5"],              closeDate: "Nov 30, 2025" },
-  { conv: "Conv #944 - Renewal discussion", activity: ["Stage changed: Lead → Won",            "Note added: Existing customer upsell",        "Contract signed"],                          closeDate: "Dec 7, 2025"  },
+  { conv: "Product: Growth plan, yearly",   activity: ["Asked about team pricing on WhatsApp", "Wants a demo for 3 agents"],       closeDate: "Dec 15, 2025" },
+  { conv: "Product: Starter plan",          activity: ["Created from an inbox chat", "Comparing with spreadsheet setup"],                         closeDate: "Jan 8, 2026"  },
+  { conv: "Product: Pro plan",              activity: ["Needs a GST invoice", "Decision by end of month"],                   closeDate: "Dec 28, 2025" },
+  { conv: "Product: Growth plan",           activity: ["Decision maker confirmed", "Sent price list on WhatsApp"],                         closeDate: "Jan 15, 2026" },
+  { conv: "Product: Enterprise plan",       activity: ["Reviewing proposal", "Follow up on Monday"],              closeDate: "Dec 20, 2025" },
+  { conv: "Product: Starter plan",          activity: ["Marked Won", "Onboarding next week"],              closeDate: "Nov 30, 2025" },
+  { conv: "Product: Pro plan renewal",      activity: ["Existing customer upsell", "Marked Won"],                          closeDate: "Dec 7, 2025"  },
 ];
 
 // Gradient pool for owner avatars
@@ -246,7 +246,7 @@ function KanbanMockup() {
                     textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    CONVERSATION
+                    PRODUCT
                   </span>
                   <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
                     {selected.conv}
@@ -260,7 +260,7 @@ function KanbanMockup() {
                     textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    ACTIVITY
+                    NOTES
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {selected.activity.map((item, i) => (
@@ -279,7 +279,7 @@ function KanbanMockup() {
                     textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    CLOSE DATE
+                    EXPECTED CLOSE
                   </span>
                   <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
                     {selected.closeDate}
@@ -300,22 +300,32 @@ const data: FeatureDetailData = {
   slug: "deals",
   tag: "Deals Pipeline",
   heroTitle: "Your pipeline.<br /><span style=\"color:var(--c-primary-container)\">Always full.</span>",
-  heroSubtitle: "A full CRM-style sales pipeline built into your WhatsApp workflow. Track deal stages, values, close dates, and owners, without switching tools.",
-  overviewTitle: "Stop losing deals in DMs.",
-  overviewDesc: "Most WhatsApp sales teams track deals in their heads, on paper, or in a spreadsheet they never update. Wazelo CRM gives you a Kanban-style pipeline where every deal is linked to a WhatsApp conversation, a contact, and a stage, so your team sees exactly what's open, what's stalled, and what's about to close.",
+  heroSubtitle: "Track deals on a kanban board, each linked to a contact, with a value and an expected close date.",
+  overviewTitle: "See what's about to close.",
+  overviewDesc: "Create a pipeline, add deals with a contact, value, product and expected close date, and drag them through Qualified, Proposal, Negotiation, Won and Lost. Each stage shows its total value, so you always know how much is in play. Create deals from a contact's page or straight from a WhatsApp chat in the inbox.",
   capabilities: [
-    { icon: "view_kanban",    title: "Kanban deal board",       desc: "Visualise every open deal across your custom pipeline stages. Drag to move, click to open." },
-    { icon: "attach_money",   title: "Deal value & close date", desc: "Set expected revenue and expected close date per deal. Your forecast updates in real time." },
-    { icon: "assignment_ind", title: "Deal owner assignment",   desc: "Assign each deal to the agent or team responsible. Accountability at every stage." },
-    { icon: "forum",          title: "Linked conversation",     desc: "Every deal is linked to a WhatsApp conversation thread. Full context, always one click away." },
-    { icon: "history",        title: "Deal activity log",       desc: "Automatic log of every stage change, note, and file attached to the deal." },
-    { icon: "trending_up",    title: "Pipeline analytics",      desc: "Win rate, average deal size, time in stage, and conversion rate, tracked automatically." },
+    { icon: "view_kanban", title: "Kanban board", desc: "Drag deals between stages and see the total value of each stage and of the whole pipeline." },
+    { icon: "account_tree", title: "Multiple pipelines", desc: "Keep separate pipelines, for example one for new sales and one for renewals." },
+    { icon: "currency_rupee", title: "Value and close date", desc: "Record what each deal is worth in rupees and when you expect it to close." },
+    { icon: "forum", title: "Create from a chat", desc: "Click Create deal in the inbox and the contact is filled in for you." },
+    { icon: "inventory_2", title: "Linked to products", desc: "Attach the product from your catalogue that the deal is about." },
+    { icon: "assignment_ind", title: "Owner and status", desc: "Assign each deal to a teammate and mark it Open, Won or Lost." },
+  ],
+  details: [
+    { title: "Default stages", items: ["Qualified", "Proposal", "Negotiation", "Won", "Lost"] },
+    { title: "Deal fields", items: ["Title", "Contact", "Product", "Value (INR)", "Expected close", "Notes", "Assignee", "Status"] },
+    { title: "Create deals from", items: ["An inbox chat", "A contact's page", "The contact drawer", "The deals board"] },
   ],
   howItWorks: [
-    { step: "01", title: "Create a deal from any conversation", desc: "Open any WhatsApp conversation and create a deal in two clicks. Contact details, tags, and history carry over automatically." },
-    { step: "02", title: "Set your pipeline stages",            desc: "Define your own stages, for example New Lead, Qualified, Proposal Sent, Negotiation, Won. Drag deals between stages as they progress." },
-    { step: "03", title: "Log notes and set close dates",       desc: "Add internal notes, set deal values, and pick an expected close date. Use these to prioritise your daily follow-ups." },
-    { step: "04", title: "Review your forecast",                desc: "Open the pipeline analytics view to see total open value, win rate, and which stage is becoming a bottleneck for your team." },
+    { step: "01", title: "Create a pipeline", desc: "Click New Pipeline. It starts with the five default stages." },
+    { step: "02", title: "Add a deal", desc: "Pick the contact, then add a value, product and expected close date." },
+    { step: "03", title: "Move it along", desc: "Drag the card to the next stage as the conversation progresses." },
+    { step: "04", title: "Close it out", desc: "Mark it Won or Lost and watch the stage totals update." },
+  ],
+  faqs: [
+    { q: "Does it show win rate or forecasts?", a: "Not yet. The board shows the number and total value of deals in each stage and status." },
+    { q: "Which currency are deal values in?", a: "Indian rupees (INR)." },
+    { q: "Can a deal be created from WhatsApp?", a: "Yes. Click Create deal in a conversation's header and the deal is linked to that contact." },
   ],
   relatedFeatures: [
     { label: "Shared Inbox",  href: "/features/shared-inbox",   icon: "forum"        },

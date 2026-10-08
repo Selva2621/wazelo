@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Automation & No-Code Workflow Builder",
   description:
-    "No-code WhatsApp automation rules. Trigger on new messages, new contacts, status changes, schedules, no reply, Meta lead ads, or Shopify orders, then send a message, assign, tag, or update status. Included from the Growth plan, ₹999/mo.",
+    "WhatsApp automation rules that reply instantly when a message arrives, a contact is created, a lead status changes, or a Shopify order or cart comes in.",
   keywords: [
     // Short-keys
     "WhatsApp automation",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Automation & No-Code Workflow Builder | Wazelo CRM",
     description:
-      "No-code WhatsApp automation rules: auto-replies, chat assignment, tags, and status updates. Draft rules with AI and check execution logs. Included from the Growth plan, ₹999/mo.",
+      "WhatsApp automation rules that reply instantly when a message arrives, a contact is created, a lead status changes, or a Shopify order or cart comes in.",
     url: "https://wazelo.in/features/automation",
     images: [
       {
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Automation | Wazelo CRM",
     description:
-      "No-code WhatsApp automation rules: auto-replies, assignment, tags, status updates. Automation is included from the Growth plan, ₹999/mo.",
+      "WhatsApp automation rules that reply instantly when a message arrives, a contact is created, a lead status changes, or a Shopify order or cart comes in.",
     images: ["/opengraph-image"],
   },
 };

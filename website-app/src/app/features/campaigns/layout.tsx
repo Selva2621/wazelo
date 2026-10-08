@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Bulk Campaigns & Broadcast Messaging",
   description:
-    "Send WhatsApp campaigns with text, media, or templates. Pick your audience by status, tags, source, or scraper run, schedule with a timezone, and see Sent, Delivered, Read, or Failed for each recipient.",
+    "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
   keywords: [
     // Short-keys
     "WhatsApp bulk campaign",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Bulk Campaigns & Broadcast Messaging | Wazelo CRM",
     description:
-      "WhatsApp campaigns with audience filters, scheduling, pause and resume, and per-recipient delivery and read status.",
+      "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
     url: "https://wazelo.in/features/campaigns",
     images: [
       {
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Bulk Campaigns | Wazelo CRM",
     description:
-      "WhatsApp campaigns with scheduling and per-recipient delivery status. From ₹299/mo.",
+      "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
     images: ["/opengraph-image"],
   },
 };

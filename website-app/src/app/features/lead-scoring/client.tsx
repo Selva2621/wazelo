@@ -11,11 +11,11 @@ const leads = [
 ];
 
 const rules = [
-  { id: "opened",       label: "+20 Opened message",       points: "+20", matchTag: "opened",       color: "var(--c-success)" },
-  { id: "replied",      label: "+15 Replied within 5min",  points: "+15", matchTag: "replied",      color: "var(--c-success)" },
-  { id: "hasPhone",     label: "+10 Has phone number",     points: "+10", matchTag: "hasPhone",     color: "var(--c-success)" },
-  { id: "isLead",       label: "+5 Tagged as Lead",        points: "+5",  matchTag: "isLead",       color: "var(--c-success)" },
-  { id: "unresponsive", label: "−10 Unresponsive 7 days",  points: "−10", matchTag: "unresponsive", color: "#ef4444" },
+  { id: "opened",       label: "+20 Marked as interested",  points: "+20", matchTag: "opened",       color: "var(--c-success)" },
+  { id: "replied",      label: "+5 Customer replied",       points: "+5", matchTag: "replied",      color: "var(--c-success)" },
+  { id: "hasPhone",     label: "+10 Tag Added",             points: "+10", matchTag: "hasPhone",     color: "var(--c-success)" },
+  { id: "isLead",       label: "+5 Contact Created",         points: "+5",  matchTag: "isLead",       color: "var(--c-success)" },
+  { id: "unresponsive", label: "+3 Note Added",             points: "+3",  matchTag: "unresponsive", color: "var(--c-success)" },
 ];
 
 const avatarGradients = [
@@ -250,22 +250,32 @@ const data: FeatureDetailData = {
   slug: "lead-scoring",
   tag: "Lead Scoring",
   heroTitle: "Know who to call<br /><span style=\"color:var(--c-primary-container)\">first. Always.</span>",
-  heroSubtitle: "Automatic lead scoring based on engagement, profile completeness, and behaviour, so your team focuses on the hottest leads, not the longest queue.",
-  overviewTitle: "Not every lead deserves equal attention.",
-  overviewDesc: "When 300 contacts message you in a day, your team can't treat them all equally. Wazelo CRM's lead scoring engine assigns a score to every contact based on their WhatsApp engagement, how complete their profile is, which campaigns they responded to, and whether they've been tagged as qualified. High-score leads rise to the top. Low-score leads wait their turn.",
+  heroSubtitle: "Give contacts points when they reply, get tagged or change status. Badges show who is Hot, Warm or Cool.",
+  overviewTitle: "Know who is warming up.",
+  overviewDesc: "Lead scoring adds or removes points when something happens to a contact: they are created, send a message, get a tag or a note, or move to a new lead status. Scores stay between 0 and 100 and every change is logged. Five starter rules are ready the day you sign up, like +5 when a customer replies and +20 when they are marked Interested.",
   capabilities: [
-    { icon: "query_stats", title: "Automatic score calculation", desc: "Scores are calculated continuously based on engagement signals, no manual input required." },
-    { icon: "tune", title: "Configurable scoring rules", desc: "Set which actions add or subtract score points: replied to campaign, opened chatbot, tag added, field filled." },
-    { icon: "sort", title: "Sorted inbox view", desc: "Sort your inbox by lead score so agents always work the highest-value conversations first." },
-    { icon: "label", title: "Score-based tagging", desc: "Automatically tag contacts as 'Hot', 'Warm', or 'Cold' when their score crosses a threshold." },
-    { icon: "bolt", title: "Trigger automations on score", desc: "Use lead score as a workflow trigger, enrol a hot lead in a sequence, or alert a senior agent." },
-    { icon: "insights", title: "Score distribution report", desc: "See how your lead base is distributed across score ranges. Identify bottlenecks in your qualification funnel." },
+    { icon: "tune", title: "Your own rules", desc: "Name a rule, pick a signal, and give it anywhere from -100 to +100 points." },
+    { icon: "repeat", title: "Caps per contact", desc: "Set Max fires per contact so one chatty lead doesn't run away with the score." },
+    { icon: "local_fire_department", title: "Hot, Warm and Cool", desc: "A badge on every contact: Hot at 75 and above, Warm at 50, Cool at 25." },
+    { icon: "bolt", title: "Updates on its own", desc: "Scores change the moment the signal happens. No spreadsheet, no manual entry." },
+    { icon: "history", title: "Score history", desc: "Every change is recorded, so you can see why a contact has the score they do." },
+    { icon: "checklist", title: "Starter rules included", desc: "Five default rules, such as Customer replied (+5, up to 10 times) and Marked as interested (+20)." },
+  ],
+  details: [
+    { title: "Signals", items: ["Contact Created", "Lead Status Changed", "Message Received", "Note Added", "Tag Added"] },
+    { title: "Rule settings", items: ["Name", "Description", "Signal", "Points (-100 to 100)", "Max fires per contact"] },
+    { title: "Badges", items: ["Cool 25+", "Warm 50+", "Hot 75+"] },
   ],
   howItWorks: [
-    { step: "01", title: "Define your scoring rules", desc: "Set which signals increase or decrease a lead's score. Examples: +20 for replying to a campaign, +10 for filling a custom field, -15 for 7 days of no response." },
-    { step: "02", title: "Scores update automatically", desc: "As contacts engage or disengage, their scores update in real time. No manual scoring or spreadsheet maintenance." },
-    { step: "03", title: "Surface high-priority leads", desc: "Sort the inbox or contact list by score. Agents always see which conversations are worth the most attention." },
-    { step: "04", title: "Act on score thresholds", desc: "When a contact crosses a score threshold, trigger an automation: enrol in a sequence, assign to a senior agent, or send an alert." },
+    { step: "01", title: "Start with the defaults", desc: "Five scoring rules are set up for you when you sign up." },
+    { step: "02", title: "Add your own", desc: "Create a rule, pick a signal, then set the points and a cap." },
+    { step: "03", title: "Let contacts engage", desc: "Scores update as messages, tags, notes and status changes happen." },
+    { step: "04", title: "Spot the hot leads", desc: "Check the Hot, Warm and Cool badges on your contacts list and profiles." },
+  ],
+  faqs: [
+    { q: "Where do I see a contact's score?", a: "As a badge on the contacts list, the contact drawer and the contact's page." },
+    { q: "Do scores drop over time?", a: "No. Scores change only when a rule fires, and always stay between 0 and 100." },
+    { q: "Can a score trigger an automation?", a: "Not yet. Scores are for prioritising who your team talks to next." },
   ],
   relatedFeatures: [
     { label: "Contacts CRM", href: "/features/contacts", icon: "group" },

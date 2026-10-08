@@ -69,7 +69,7 @@ function MultiChannelMockup() {
           See it in action
         </span>
         <h2 style={{ fontSize: "clamp(24px,2.8vw,32px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c-on-surface)", fontFamily: FONT, margin: 0 }}>
-          Build and send campaigns.
+          Every channel, one list.
         </h2>
       </div>
 
@@ -185,22 +185,32 @@ const data: FeatureDetailData = {
   slug: "multi-channel",
   tag: "Multi-Channel",
   heroTitle: "Every channel.<br /><span style=\"color:var(--c-primary-container)\">One inbox.</span>",
-  heroSubtitle: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email conversations from a single shared inbox, with the same automations, routing, and analytics across all channels.",
-  overviewTitle: "Your customers don't stay on one channel.",
-  overviewDesc: "A lead might find you on Instagram, message on WhatsApp, and follow up by email. Without a unified inbox, your team handles each channel in a different tool, missing context, duplicating work, and delivering inconsistent experiences. Wazelo CRM brings WhatsApp, Instagram DMs, Facebook Messenger, and Email into a single workspace where every conversation is managed, routed, and tracked the same way.",
+  heroSubtitle: "Answer Instagram DMs and Messenger chats in the same inbox as WhatsApp, each marked with its channel.",
+  overviewTitle: "Where your customers already are.",
+  overviewDesc: "WhatsApp connects by QR code, or through the Meta Cloud API for a WhatsApp Business number. From Settings, Channels you can also add Instagram Direct Messages, a Facebook Messenger page and an email account. Instagram and Messenger messages land in the shared inbox with a channel badge and filter, and a website chat widget puts a chat bubble on your site.",
   capabilities: [
-    { icon: "devices", title: "Unified multi-channel inbox", desc: "WhatsApp, Instagram DMs, Facebook Messenger, and Email, all in one shared queue. One workflow, all channels." },
-    { icon: "account_tree", title: "Cross-channel routing", desc: "Apply the same assignment rules and automation workflows across all channels. No duplicate setup." },
-    { icon: "manage_history", title: "Unified contact timeline", desc: "See every message a contact has ever sent, across all channels, in a single conversation timeline." },
-    { icon: "bolt", title: "Multi-channel automations", desc: "Build workflows that trigger and act across channels. Auto-reply on Instagram, follow up on WhatsApp." },
-    { icon: "bar_chart", title: "Per-channel analytics", desc: "Volume, response time, and CSAT broken down by channel, so you know where to focus investment." },
-    { icon: "verified", title: "Consistent brand experience", desc: "Same tone, same SLAs, same escalation path, regardless of which channel the customer chose." },
+    { icon: "qr_code_2", title: "WhatsApp two ways", desc: "Link a number by QR code in a minute, or connect a WhatsApp Business number through the Meta Cloud API." },
+    { icon: "photo_camera", title: "Instagram DMs", desc: "Receive and reply to Instagram Direct Messages from the inbox." },
+    { icon: "chat", title: "Facebook Messenger", desc: "Connect a Facebook Page and answer Messenger chats next to WhatsApp." },
+    { icon: "mail", title: "Email", desc: "Send email from the inbox, with a subject line, through your own SMTP account." },
+    { icon: "filter_list", title: "Channel badges and filter", desc: "Every conversation shows where it came from, and you can filter the inbox by channel." },
+    { icon: "web", title: "Website chat widget", desc: "Add a chat bubble to your site with one script tag, in your colour, with your logo and welcome message." },
+  ],
+  details: [
+    { title: "Channels", items: ["WhatsApp (QR)", "WhatsApp Cloud API", "Instagram DMs", "Facebook Messenger", "Email (SMTP)"] },
+    { title: "Channel controls", items: ["Add Channel", "Edit", "Suspend", "Reactivate", "Delete", "Rate limit per channel"] },
+    { title: "Widget settings", items: ["Position", "Primary Color", "Welcome Message", "Input Placeholder", "Company Name", "Avatar / Logo", "Pre-chat Form", "AI Assistant"] },
   ],
   howItWorks: [
-    { step: "01", title: "Connect your channels", desc: "Link your WhatsApp Business number, Instagram account, Facebook Page, and email inbox in the Channels settings. Each connection is authorised via OAuth." },
-    { step: "02", title: "All messages arrive in one inbox", desc: "Every incoming message from every connected channel lands in the shared inbox queue, with a channel badge showing its origin." },
-    { step: "03", title: "Apply the same rules", desc: "Your routing rules, auto-replies, and automation workflows apply across all channels automatically. Build once, run everywhere." },
-    { step: "04", title: "Report across channels", desc: "Your analytics dashboard shows volume, response time, and CSAT for each channel side by side, so you can compare and optimise." },
+    { step: "01", title: "Open Channels", desc: "In Settings, Channels, click Add Channel and pick a type." },
+    { step: "02", title: "Add your details", desc: "Enter your Page ID and access token for Meta channels, or SMTP details for email." },
+    { step: "03", title: "Point Meta's webhook", desc: "Set your Meta app's webhook to the URL Wazelo shows for that channel." },
+    { step: "04", title: "Answer from the inbox", desc: "Conversations arrive with a channel badge. Filter by channel when you need to." },
+  ],
+  faqs: [
+    { q: "Is connecting Instagram and Messenger one click?", a: "Not yet. You add the Page ID and access token from your Meta app, then point Meta's webhook at Wazelo." },
+    { q: "Can I receive email in the inbox?", a: "Sending works today. Receiving email needs a custom relay, so most teams use email for outgoing messages for now." },
+    { q: "Do website widget chats appear in the inbox?", a: "Not yet. Widget messages can trigger automation rules, and the widget's AI Assistant can answer from your knowledge base." },
   ],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },

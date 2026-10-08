@@ -3,7 +3,7 @@ import CampaignsClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp Bulk Campaign Broadcasting",
-  description: "Send personalised WhatsApp broadcasts to thousands of contacts. Schedule, segment, and track delivery, reads, and replies in real time.",
+  description: "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
   keywords: [
     "WhatsApp bulk campaigns", "WhatsApp broadcast", "WhatsApp mass messaging",
     "WhatsApp marketing India", "bulk WhatsApp sender", "WhatsApp campaign tool",
@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/campaigns" },
   openGraph: {
     title: "WhatsApp Bulk Campaign Broadcasting | Wazelo CRM",
-    description: "Send personalised WhatsApp broadcasts to thousands of contacts. Schedule, segment, and track delivery, reads, and replies in real time.",
+    description: "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
     url: "https://wazelo.in/features/campaigns",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp Bulk Campaign Broadcasting | Wazelo CRM",
-    description: "Send personalised WhatsApp broadcasts to thousands of contacts. Schedule, segment, and track delivery, reads, and replies in real time.",
+    description: "Send WhatsApp campaigns to filtered contact lists, with text or media and personalised fields. Schedule, pause, and track Delivered, Read and Failed.",
   },
 };
 

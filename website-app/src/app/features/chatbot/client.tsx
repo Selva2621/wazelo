@@ -59,7 +59,7 @@ function ChatbotMockup() {
 
       <div className="relative mt-10 flex justify-center">
         <div aria-hidden className="device-glow" />
-        <PhoneFrame contact={{ name: "Wazelo Bot", initials: "WB", subtitle: "Business account", verified: true }} typing={typing}>
+        <PhoneFrame contact={{ name: "Wazelo Bot", initials: "WB", subtitle: "Business account" }} typing={typing}>
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div key="bot1" layout className="flex flex-col">
               <Incoming>
@@ -111,7 +111,7 @@ function ChatbotMockup() {
             {at("bot3") && (
               <motion.div key="bot3" {...bubbleEnter} layout className="flex flex-col">
                 <Incoming>
-                  Great choice! Connecting you with our sales team now. 🚀
+                  Great choice! Our Starter plan fits small teams. Want me to send the price list?
                   <Time>10:03</Time>
                 </Incoming>
               </motion.div>
@@ -128,22 +128,33 @@ const data: FeatureDetailData = {
   slug: "chatbot",
   tag: "Chatbot Builder",
   heroTitle: "Build bots.<br /><span style=\"color:var(--c-primary-container)\">No code needed.</span>",
-  heroSubtitle: "Create WhatsApp chatbots that qualify leads, answer FAQs, capture data, and hand off to your team, all without writing a single line of code.",
-  overviewTitle: "Automate the first conversation.",
-  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo CRM's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent, or resolve entirely on their own, 24 hours a day, 7 days a week.",
+  heroSubtitle: "Answer WhatsApp messages with an AI bot that reads your documents, or a step-by-step flow you design.",
+  overviewTitle: "Answer the first message, any hour.",
+  overviewDesc: "Start with Create AI Chatbot: write a system prompt, choose which products it covers, and upload PDF, TXT, CSV or Markdown files. It replies using your documents, your knowledge base articles and the last 20 messages of the chat. Or build a Custom Flow that sends messages, asks questions, checks answers and calls your API, then test it before you switch it on.",
   capabilities: [
-    { icon: "smart_toy", title: "No-code flow builder", desc: "Build chatbot flows visually using a drag-and-drop canvas. No developer required." },
-    { icon: "quiz", title: "Question & answer flows", desc: "Ask a sequence of questions, capture responses, and store answers as contact fields automatically." },
-    { icon: "call_split", title: "Conditional branching", desc: "Route the conversation based on what the user says, keyword match, button selection, or numeric input." },
-    { icon: "transfer_within_a_station", title: "Agent handoff", desc: "At any point, hand the conversation to a human agent, with the full chatbot transcript already in the inbox." },
-    { icon: "quick_replies", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
-    { icon: "schedule_send", title: "24/7 availability", desc: "Your chatbot handles incoming messages even when your whole team is offline. Nothing slips through after hours." },
+    { icon: "smart_toy", title: "AI Chatbot", desc: "Set a System Prompt and Product Scope, upload product docs, and the bot answers from them." },
+    { icon: "bolt", title: "Three triggers", desc: "Start on a Keyword Match, a First Message, or a Button Reply." },
+    { icon: "quiz", title: "Ask and remember", desc: "Ask Question saves the answer as a variable you can use later in the chat, like {{name}}." },
+    { icon: "call_split", title: "Conditions", desc: "Branch on an answer that equals, contains or does not equal a value." },
+    { icon: "api", title: "API Call step", desc: "Fetch or send data to your own system in the middle of a conversation." },
+    { icon: "science", title: "Test before going live", desc: "Run a custom flow in the Test panel, then Activate or Pause it at any time." },
+  ],
+  details: [
+    { title: "Flow steps", items: ["Send Message", "Ask Question", "Condition", "AI Reply", "Intent Detect", "API Call", "Carousel (as a numbered list)"] },
+    { title: "What the AI reads", items: ["System Prompt", "Product Scope", "PDF, TXT, CSV, Markdown", "Up to 20MB per file", "Knowledge base articles", "Last 20 messages"] },
+    { title: "Triggers", items: ["Keyword Match", "First Message", "Button Reply"] },
   ],
   howItWorks: [
-    { step: "01", title: "Design your flow", desc: "Use the visual builder to map out how your bot should respond to different inputs, start with a template or build from scratch." },
-    { step: "02", title: "Add questions and branches", desc: "Insert question blocks, decision branches, and action steps like setting contact fields or adding tags." },
-    { step: "03", title: "Set your triggers", desc: "Choose when the bot activates: on every first message, a specific keyword, outside business hours, or from a campaign CTA." },
-    { step: "04", title: "Activate and review", desc: "Go live. Monitor bot sessions, drop-off points, and handoff rates to improve your flow over time." },
+    { step: "01", title: "Choose a bot type", desc: "Click Create AI Chatbot (recommended) or Create Custom Flow." },
+    { step: "02", title: "Teach or design it", desc: "Add a prompt and documents for the AI, or add steps for a custom flow." },
+    { step: "03", title: "Set the trigger", desc: "Pick a keyword, a first message, or a button reply." },
+    { step: "04", title: "Activate", desc: "Test a custom flow, then switch the bot on. Pause it whenever you like." },
+  ],
+  faqs: [
+    { q: "Do I need to code?", a: "No. The AI bot needs only a prompt and your documents. The API Call step is optional, for teams who want to connect their own system." },
+    { q: "Which files can the AI learn from?", a: "PDF, TXT, CSV and Markdown files up to 20MB each, plus the articles in your knowledge base." },
+    { q: "Does the bot answer every message?", a: "It answers incoming text messages that match its trigger. When the bot replies to a message, automation rules don't also fire for it." },
+    { q: "Who can build chatbots?", a: "Admins and Managers." },
   ],
   relatedFeatures: [
     { label: "Automation", href: "/features/automation", icon: "bolt" },

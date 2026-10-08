@@ -5,10 +5,10 @@ import { useInView } from "@/lib/wazelo";
 
 // ─── SequenceMockup ───────────────────────────────────────────────────────────
 const steps = [
-  { day: "Day 0",    title: "Welcome Message", preview: "Hi {{name}}, thanks for reaching out to Wazelo! Here's what you need to know to get started...", type: "message" },
-  { day: "Day 2",    title: "Follow-Up",       preview: "Hey {{name}}, just checking in! Have you had a chance to explore our features? We'd love to help.", type: "message" },
-  { day: "Day 5",    title: "Special Offer",   preview: "Hi {{name}}, we'd like to offer you an exclusive 20% discount. Use code WAZE20 at checkout.", type: "message" },
-  { day: "On Reply", title: "Auto-Stop",       preview: "Contact replied - sequence paused automatically.", type: "stop" },
+  { day: "Day 0",    title: "Welcome Message", preview: "Hi, thanks for reaching out to Wazelo! Here's what you need to know to get started...", type: "message" },
+  { day: "Day 2",    title: "Follow-Up",       preview: "Hey, just checking in! Have you had a chance to explore our features? We'd love to help.", type: "message" },
+  { day: "Day 5",    title: "Special Offer",   preview: "Hi, we'd like to offer you an exclusive 20% discount. Use code WAZE20 at checkout.", type: "message" },
+  { day: "On Reply", title: "Auto-Stop",       preview: "Contact replied, so they exit the sequence automatically.", type: "stop" },
 ];
 
 function SequenceMockup() {
@@ -157,22 +157,33 @@ const data: FeatureDetailData = {
   slug: "sequences",
   tag: "Sequences",
   heroTitle: "Follow up automatically.<br /><span style=\"color:var(--c-primary-container)\">Every time.</span>",
-  heroSubtitle: "Multi-step WhatsApp drip sequences that enrol contacts, space messages by hours or days, and stop automatically the moment a contact replies.",
-  overviewTitle: "Your follow-up runs itself.",
-  overviewDesc: "Sales teams lose deals not because they had the wrong product, but because they forgot to follow up. Wazelo CRM Sequences let you build a timed series of WhatsApp messages that automatically send to enrolled contacts, and automatically stop the moment someone responds, so you never message someone who's already engaged.",
+  heroSubtitle: "Space a series of WhatsApp messages over minutes or days. Each contact leaves the sequence the moment they reply.",
+  overviewTitle: "Follow-ups that know when to stop.",
+  overviewDesc: "Write a few messages, set how long to wait between them, and start the sequence for all your contacts or only those linked to a product. When someone replies they leave automatically, or a keyword in their reply can send them to a different step. The step funnel shows where people drop off.",
   capabilities: [
-    { icon: "low_priority",  title: "Multi-step message flows",  desc: "Chain up to 10+ messages with individual delays between each step: hours, days, or weeks." },
-    { icon: "person_add",    title: "Automatic enrolment",       desc: "Enrol contacts via automation rules, tags, or manual selection. Bulk-enrol from a filtered segment." },
-    { icon: "stop_circle",   title: "Auto-stop on reply",        desc: "The sequence pauses automatically when a contact replies. No more messaging someone who's already talking to you." },
-    { icon: "edit_note",     title: "Personalised messages",     desc: "Use contact field variables in each message, name, company, product, so every message feels 1:1." },
-    { icon: "schedule",      title: "Send time controls",        desc: "Set sequences to send only within business hours. Avoid messaging contacts at 3am." },
-    { icon: "insights",      title: "Sequence analytics",        desc: "Open rate, reply rate, and drop-off by step, so you know exactly which message is losing them." },
+    { icon: "low_priority", title: "Steps with waits", desc: "Wait 5 minutes, an hour, or up to 7 days before each message." },
+    { icon: "stop_circle", title: "Exit on reply", desc: "Turn on Exit sequence when contact replies, so you never chase someone who already answered." },
+    { icon: "call_split", title: "Keyword branching", desc: "If a customer replies with a keyword, move them to the step you choose." },
+    { icon: "bolt", title: "Quick Start presets", desc: "Start from Welcome Series, Follow-up Series or Re-engagement and edit from there." },
+    { icon: "groups", title: "Choose the audience", desc: "Run it for all contacts, or only the ones linked to a product." },
+    { icon: "insights", title: "Step funnel", desc: "Active, Completed and Exited counts, reply rate, average completion time, and how many contacts reached each step." },
+  ],
+  details: [
+    { title: "Wait before a step", items: ["5 min", "1 hour", "4 hours", "1 day", "2 days", "3 days", "7 days"] },
+    { title: "Controls", items: ["Start", "Pause", "Resume", "Cancel", "Analytics", "Delete"] },
+    { title: "Analytics", items: ["Total Recipients", "Active", "Completed", "Exited", "Reply rate", "Avg. completion time", "Step Funnel", "Exit Reasons", "Current step per contact"] },
   ],
   howItWorks: [
-    { step: "01", title: "Build your sequence",            desc: "Create a new sequence, give it a name, and add steps. Each step is a message with a delay before it sends." },
-    { step: "02", title: "Write and personalise messages", desc: "Write each message using the editor. Insert contact field variables like {{first_name}} for personalisation." },
-    { step: "03", title: "Enrol your contacts",            desc: "Add contacts manually, from a tag filter, or set an automation rule to enrol contacts automatically when they hit a trigger." },
-    { step: "04", title: "Let it run",                     desc: "The sequence handles timing, delivery, and auto-stopping. Review analytics to optimise open and reply rates per step." },
+    { step: "01", title: "Pick a starting point", desc: "Open Sequences and choose a Quick Start preset or a blank sequence." },
+    { step: "02", title: "Write the steps", desc: "Add your messages and set the wait before each one." },
+    { step: "03", title: "Add conditions", desc: "Optionally route a reply keyword to a specific step, and choose the audience." },
+    { step: "04", title: "Press Start", desc: "Wazelo sends each step on time and removes anyone who replies." },
+  ],
+  faqs: [
+    { q: "What happens when a contact replies?", a: "With Exit sequence when contact replies turned on, they leave the sequence right away. A keyword condition can instead move them to another step." },
+    { q: "Can I add people after a sequence starts?", a: "Contacts are enrolled when you press Start. To reach newer contacts, start a new sequence." },
+    { q: "Can steps include the contact's name?", a: "Not yet. Sequence messages are sent exactly as written." },
+    { q: "How is this different from a campaign?", a: "A campaign sends one message once. A sequence sends several messages over time and stops for anyone who replies." },
   ],
   relatedFeatures: [
     { label: "Bulk Campaigns", href: "/features/campaigns",  icon: "campaign"    },

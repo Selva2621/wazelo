@@ -3,7 +3,7 @@ import DealsClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp CRM Deals Pipeline",
-  description: "Track every deal through stages with a full CRM pipeline inside your WhatsApp workflow. Forecast revenue without switching tools.",
+  description: "A kanban deals pipeline inside your WhatsApp CRM. Deals linked to contacts and products, with values in INR, expected close dates and stage totals.",
   keywords: [
     "WhatsApp CRM pipeline", "WhatsApp deals tracking", "WhatsApp sales pipeline",
     "CRM for WhatsApp sales", "deal stage WhatsApp",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/deals" },
   openGraph: {
     title: "WhatsApp CRM Deals Pipeline | Wazelo CRM",
-    description: "Track every deal through stages with a full CRM pipeline inside your WhatsApp workflow. Forecast revenue without switching tools.",
+    description: "A kanban deals pipeline inside your WhatsApp CRM. Deals linked to contacts and products, with values in INR, expected close dates and stage totals.",
     url: "https://wazelo.in/features/deals",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp CRM Deals Pipeline | Wazelo CRM",
-    description: "Track every deal through stages with a full CRM pipeline inside your WhatsApp workflow. Forecast revenue without switching tools.",
+    description: "A kanban deals pipeline inside your WhatsApp CRM. Deals linked to contacts and products, with values in INR, expected close dates and stage totals.",
   },
 };
 

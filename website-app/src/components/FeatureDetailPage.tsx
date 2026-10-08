@@ -27,6 +27,10 @@ export interface FeatureDetailData {
   capabilities: { icon: string; title: string; desc: string }[];
   howItWorks: { step: string; title: string; desc: string }[];
   relatedFeatures: { label: string; href: string; icon: string }[];
+  /** Grouped specifics (e.g. every trigger, every filter), shown as pills. */
+  details?: { title: string; items: string[] }[];
+  /** Short questions and plain answers, shown as an accordion. */
+  faqs?: { q: string; a: string }[];
   interactiveSection?: ReactNode;
 }
 
@@ -146,6 +150,62 @@ function Capabilities({ items }: { items: FeatureDetailData["capabilities"] }) {
   );
 }
 
+// ─── In detail ────────────────────────────────────────────────────────────────
+function Details({ groups }: { groups: NonNullable<FeatureDetailData["details"]> }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8 lg:pb-28">
+      <Reveal>
+        <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">In detail</h2>
+      </Reveal>
+      <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+        {groups.map((g, i) => (
+          <Reveal key={g.title} delay={0.06 * i}>
+            <h3 className="border-t border-outline-variant/60 pt-5 text-base font-semibold text-on-surface">{g.title}</h3>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {g.items.map((item) => (
+                <li
+                  key={item}
+                  className="rounded-full border border-outline-variant/70 bg-surface-container-lowest px-3 py-1.5 text-sm text-on-surface-variant"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+// No FAQPage JSON-LD here: the root layout already emits the site-wide one,
+// and a page should carry only one.
+function Faqs({ items }: { items: NonNullable<FeatureDetailData["faqs"]> }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 lg:px-8 lg:pt-28">
+      <div className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
+        <Reveal>
+          <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">Questions</h2>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <div className="divide-y divide-outline-variant/50 border-y border-outline-variant/50">
+            {items.map((f) => (
+              <details key={f.q} className="group py-5">
+                <summary className={`flex cursor-pointer list-none items-start justify-between gap-6 rounded text-base font-medium text-on-surface [&::-webkit-details-marker]:hidden ${focusRing}`}>
+                  {f.q}
+                  <Icon name="add" className="!text-[20px] shrink-0 text-placeholder transition-transform duration-200 group-open:rotate-45" />
+                </summary>
+                <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-on-surface-variant">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 // ─── How it works ─────────────────────────────────────────────────────────────
 function Steps({ steps }: { steps: FeatureDetailData["howItWorks"] }) {
   const reduce = useReducedMotion();
@@ -230,12 +290,14 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
         <Hero data={data} />
         <Overview data={data} />
         <Capabilities items={data.capabilities} />
+        {data.details?.length ? <Details groups={data.details} /> : null}
         <Steps steps={data.howItWorks} />
         {data.interactiveSection && (
           <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 lg:px-8 lg:pt-28">
             <Reveal>{data.interactiveSection}</Reveal>
           </section>
         )}
+        {data.faqs?.length ? <Faqs items={data.faqs} /> : null}
         <Closing data={data} />
       </main>
       <SiteFooter />
