@@ -43,7 +43,10 @@ export const useUIStore = create<UIState>()(
       version: 1,
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<UIState>;
-        return version < 1 ? { ...state, sidebarCollapsed: true } : state;
+        return {
+          sidebarCollapsed: version < 1 ? true : (state.sidebarCollapsed ?? true),
+          contactPanelOpen: state.contactPanelOpen ?? true,
+        };
       },
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,

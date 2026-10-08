@@ -164,7 +164,8 @@ export class SuperAdminAuthController {
     res.cookie(this.REFRESH_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      // Cross-site API in production: see AuthController.setRefreshCookie
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: REFRESH_COOKIE_MAX_AGE,
     });
@@ -174,7 +175,7 @@ export class SuperAdminAuthController {
     res.clearCookie(this.REFRESH_COOKIE, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
     });
   }
