@@ -289,7 +289,10 @@ export class AuthController {
     res.cookie(this.REFRESH_COOKIE, token, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      // The frontend (app.wazelo.in) calls the API on another site (onrender.com): a Lax
+      // cookie is never sent there, so /auth/refresh would 401 on every reload. CSRF is
+      // covered by the CORS origin allowlist + required x-requested-with header.
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge,
     });
@@ -300,7 +303,7 @@ export class AuthController {
     res.clearCookie(this.REFRESH_COOKIE, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
     });
   }
