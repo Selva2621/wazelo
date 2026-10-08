@@ -12,6 +12,7 @@ import { Incoming, Outgoing, PhoneFrame, Time } from "@/components/mocks/phone-f
 import { gsap, ScrollTrigger, SplitText, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import { LenisContext } from "@/app/lenis-provider";
 import { Illustration } from "@/components/illustration";
+import { WaterCard } from "@/components/home/water";
 
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
 const gutter = "lg:motion-safe:px-[max(2rem,calc((100vw-80rem)/2+2rem))]";
@@ -301,11 +302,10 @@ export function Freelancers() {
 
   return (
     <section ref={section} id="freelancers" className="relative scroll-mt-16 overflow-hidden">
-      <div aria-hidden className="glass-stage">
-        <span className="-left-20 top-1/4 h-96 w-96 bg-primary/25" />
-        <span className="left-[60%] top-1/3 h-[28rem] w-[40rem] bg-primary-container/12" />
-        <span className="bottom-0 left-1/4 h-72 w-[36rem] bg-wa-out/50" />
-      </div>
+      <WaterCard
+        className="inset-2 rounded-[2rem] sm:inset-4 lg:motion-safe:inset-x-6 lg:motion-safe:bottom-6 lg:motion-safe:top-20 lg:motion-safe:rounded-[2.5rem]"
+        waveClassName="h-48 lg:motion-safe:h-[38%]"
+      />
 
       <div ref={track} className={`relative flex flex-col px-4 will-change-transform sm:px-6 lg:motion-safe:w-max lg:motion-safe:flex-row ${gutter}`}>
         {/* 0: intro */}

@@ -94,6 +94,50 @@
   --illo-line-dark: #a8afbf;
 }
 
+/* Freelancer wave card: light amber water with deeper amber waves. */
+:root,
+[data-theme="light"] {
+  --wave-card-top: #fff8ec;
+  --wave-card-mid: #fdecc8;
+  --wave-card-ring: rgb(180 83 9 / 0.14);
+  --wave-1: #fcd38d;
+  --wave-2: #f59e0b;
+  --wave-3: #d97706;
+  --wave-foam: rgb(255 255 255 / 0.55);
+}
+
+[data-theme="dark"] {
+  --wave-card-top: #1c140b;
+  --wave-card-mid: #2a1b0b;
+  --wave-card-ring: rgb(245 158 11 / 0.16);
+  --wave-1: #5a3510;
+  --wave-2: #92400e;
+  --wave-3: #b45309;
+  --wave-foam: rgb(253 230 138 / 0.18);
+}
+
+/* Teal set for the Teams card (<WaterCard tone="teal">). */
+:root [data-tone="teal"],
+[data-theme="light"] [data-tone="teal"] {
+  --wave-card-top: #f0faf7;
+  --wave-card-mid: #d3efe8;
+  --wave-card-ring: rgb(15 118 110 / 0.16);
+  --wave-1: #a7e0d2;
+  --wave-2: #14b8a6;
+  --wave-3: #0f766e;
+  --wave-foam: rgb(255 255 255 / 0.6);
+}
+
+[data-theme="dark"] [data-tone="teal"] {
+  --wave-card-top: #0a1615;
+  --wave-card-mid: #0e2320;
+  --wave-card-ring: rgb(45 212 191 / 0.16);
+  --wave-1: #134e48;
+  --wave-2: #115e59;
+  --wave-3: #2dd4bf;
+  --wave-foam: rgb(153 246 228 / 0.12);
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --c-primary: #d97706;

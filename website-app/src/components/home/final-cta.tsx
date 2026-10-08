@@ -1,6 +1,6 @@
 "use client";
 
-// Closing call to action: one bold amber panel, type only (no images).
+// Closing call to action: one bold amber panel with rolling waves, type only.
 // The highlighted word rotates through what arrives on WhatsApp.
 
 import { useEffect, useRef, useState } from "react";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Reveal } from "@/components/home/reveal";
+import { Waves } from "@/components/home/water";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 
 const WORDS = ["client", "order", "booking", "review"];
@@ -92,6 +93,8 @@ export function FinalCta() {
             className="absolute inset-0 -z-10 opacity-[0.14] [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_80%_70%_at_70%_20%,#000_20%,transparent_75%)]"
           />
           <div aria-hidden className="absolute -right-24 -top-24 -z-10 size-[28rem] rounded-full bg-on-primary/10 blur-3xl" />
+          {/* waves in the panel's own text colour, so they suit both themes */}
+          <Waves fills={["currentColor", "currentColor", "currentColor"]} opacities={[0.06, 0.09, 0.13]} foam="currentColor" className="-z-10 h-40 opacity-90 sm:h-56 lg:h-[46%]" />
 
           <div className="grid items-end gap-12 lg:grid-cols-12">
             <h2 className="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl md:text-6xl lg:col-span-8">

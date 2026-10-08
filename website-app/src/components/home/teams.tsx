@@ -27,6 +27,7 @@ import { LaptopFrame } from "@/components/mocks/laptop-frame";
 import { TeamScreen } from "@/components/mocks/app-screens";
 import { gsap, useGSAP, MQ_FULL } from "@/lib/gsap";
 import { Illustration } from "@/components/illustration";
+import { WaterCard } from "@/components/home/water";
 
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
 
@@ -394,12 +395,8 @@ function CapabilityTabs() {
 
 export function Teams() {
   return (
-    <section id="teams" className="ember-rule scroll-mt-16 overflow-hidden px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-      <div aria-hidden className="glass-stage">
-        <span className="left-1/4 top-56 h-80 w-[36rem] bg-primary/20" />
-        <span className="-right-24 top-24 h-72 w-72 bg-chart-2/10" />
-        <span className="bottom-10 left-0 h-64 w-96 bg-primary-container/10" />
-      </div>
+    <section id="teams" className="relative scroll-mt-16 overflow-hidden px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <WaterCard tone="teal" variant="ripples" className="inset-2 rounded-[2rem] sm:inset-4 lg:inset-x-6 lg:rounded-[2.5rem]" />
 
       <div className="relative mx-auto max-w-7xl">
         <Reveal>
