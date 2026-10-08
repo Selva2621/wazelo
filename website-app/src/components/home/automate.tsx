@@ -9,6 +9,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Bot, CalendarClock, Code2, Megaphone, MessageCircle, Sparkles, UserPlus, Workflow, type LucideIcon } from "lucide-react";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
+import { Undercurrent } from "@/components/home/water";
 
 function Cell({
   icon: Icon,
@@ -123,7 +124,8 @@ export function Automate() {
   );
 
   return (
-    <section ref={root} id="features" className="scroll-mt-16 py-24 lg:py-32">
+    <section ref={root} id="features" className="relative isolate scroll-mt-16 overflow-hidden py-24 lg:py-32">
+      <Undercurrent className="-z-10" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 className="max-w-[18ch] text-4xl font-semibold leading-[1.05] tracking-tighter text-on-surface md:text-5xl">
           Runs while you&apos;re busy.

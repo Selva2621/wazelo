@@ -5,6 +5,7 @@ import "./globals.css";
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import LenisProvider from "./lenis-provider";
+import { ScrollMeter } from "@/components/scroll-meter";
 
 // ── Structured Data Schemas ────────────────────────────────────────────────────
 
@@ -355,6 +356,7 @@ export default function RootLayout({
       <body className="font-sans">
         <LenisProvider>
           {children}
+          <ScrollMeter />
         </LenisProvider>
       </body>
     </html>

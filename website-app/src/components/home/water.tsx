@@ -132,6 +132,89 @@ export function Ripples({ stroke, className = "" }: { stroke: string; className?
   );
 }
 
+/* ─── Undercurrent ───────────────────────────────────────────────────────── */
+
+const CURRENTS = [
+  { d: wave(140, 40, 1440), dot: null },
+  { d: wave(300, 30, 720), dot: { duration: 18, start: -600 } },
+  { d: wave(470, 50, 1440), dot: { duration: 24, start: -1500 } },
+  { d: wave(640, 35, 480), dot: null },
+  { d: wave(800, 45, 720), dot: { duration: 20, start: -2300 } },
+];
+
+/** Faint current lines drifting across a whole section, with amber dots
+    riding them: work moving along on its own. */
+export function Undercurrent({ className = "" }: { className?: string }) {
+  const root = useRef<SVGSVGElement>(null);
+
+  useWaterLoop(root, () => {
+    const tl = gsap.timeline();
+    tl.fromTo("[data-current]", { x: 0 }, { x: -1440, duration: 70, ease: "none", repeat: -1 }, 0);
+    gsap.utils.toArray<SVGPathElement>("[data-dot]", root.current).forEach((dot) => {
+      const len = dot.getTotalLength();
+      const { duration, start } = CURRENTS[Number(dot.dataset.dot)].dot!;
+      gsap.set(dot, { strokeDasharray: `0.001 ${len}` });
+      tl.fromTo(dot, { strokeDashoffset: start }, { strokeDashoffset: start - len, duration, ease: "none", repeat: -1 }, 0);
+    });
+    return tl;
+  });
+
+  return (
+    <svg
+      ref={root}
+      aria-hidden
+      viewBox="0 0 1440 900"
+      preserveAspectRatio="xMidYMid slice"
+      className={`pointer-events-none absolute inset-0 h-full w-full [mask-image:linear-gradient(to_bottom,transparent,#000_15%,#000_85%,transparent)] ${className}`}
+    >
+      <g data-current>
+        {CURRENTS.map((c, i) => (
+          <g key={i}>
+            <path d={c.d} fill="none" stroke="rgb(var(--fx-ink) / 0.08)" strokeWidth={1.5} />
+            {c.dot && (
+              // Static position for reduced motion; GSAP sets the real dash.
+              <path data-dot={i} d={c.d} fill="none" stroke="rgb(var(--fx-accent))" strokeWidth={7} strokeLinecap="round" strokeDasharray="0.001 4000" strokeDashoffset={c.dot.start} />
+            )}
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+/* ─── Pool ───────────────────────────────────────────────────────────────── */
+
+const POOL_RINGS = 3;
+const POOL_S = 7.5;
+
+/** A soft glow with one slow ripple at a time: a calm spotlight. Centre it
+    on what it should draw the eye to. */
+export function Pool({ className = "" }: { className?: string }) {
+  const root = useRef<SVGSVGElement>(null);
+
+  useWaterLoop(root, () =>
+    gsap
+      .timeline()
+      .fromTo(
+        root.current!.querySelectorAll("circle"),
+        { attr: { r: 250 }, opacity: 0.55 },
+        { attr: { r: 500 }, opacity: 0, duration: POOL_S, ease: "sine.out", stagger: { each: POOL_S / POOL_RINGS, repeat: -1 } },
+      )
+      .time(POOL_S),
+  );
+
+  return (
+    <div aria-hidden className={`pointer-events-none absolute ${className}`}>
+      <div className="absolute inset-[15%] rounded-full bg-[radial-gradient(closest-side,rgb(var(--fx-accent)/0.2),transparent)]" />
+      <svg ref={root} viewBox="0 0 1000 1000" className="absolute inset-0 h-full w-full">
+        {Array.from({ length: POOL_RINGS }, (_, i) => (
+          <circle key={i} cx={500} cy={500} r={300 + i * 80} fill="none" stroke="rgb(var(--fx-accent))" strokeWidth={1.5} vectorEffect="non-scaling-stroke" opacity={0.35 - i * 0.12} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 /* ─── Card ───────────────────────────────────────────────────────────────── */
 
 /** Big rounded card behind a section. Colours come from the `--wave-*`

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Reveal } from "@/components/home/reveal";
+import { Pool } from "@/components/home/water";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
@@ -111,7 +112,7 @@ export function Pricing() {
   );
 
   return (
-    <section ref={section} id="pricing" className="ember-rule scroll-mt-16 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section ref={section} id="pricing" className="ember-rule scroll-mt-16 overflow-hidden px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
       <div className="mx-auto max-w-7xl">
         <Reveal className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
@@ -167,7 +168,9 @@ export function Pricing() {
           </div>
 
           {/* Team plans, one container */}
-          <div data-plan className="lg:col-span-8">
+          <div data-plan className="relative isolate lg:col-span-8">
+            {/* still pool behind the middle plan (Growth, the most chosen) */}
+            <Pool className="left-1/2 top-1/2 -z-10 size-[44rem] -translate-x-1/2 -translate-y-1/2 lg:size-[60rem]" />
             <div className="grid h-full divide-y divide-outline-variant rounded-2xl border border-outline-variant bg-surface-container-lowest md:grid-cols-3 md:divide-x md:divide-y-0">
               {TEAM_PLANS.map((p) => (
                 <article key={p.name} className="flex flex-col p-8">

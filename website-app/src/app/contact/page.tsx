@@ -114,7 +114,7 @@ export default function ContactPage() {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-      <SiteNavbar />
+      <SiteNavbar activePage="Contact" />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section ref={heroView.ref} style={{ minHeight: "55vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: mobile ? "120px 20px 60px" : "120px 48px 60px", background: "var(--bg)", position: "relative", overflow: "hidden" }}>

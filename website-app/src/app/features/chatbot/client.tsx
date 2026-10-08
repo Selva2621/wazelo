@@ -1,144 +1,42 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureDetailPage";
-
-// ─── Typing Dots ──────────────────────────────────────────────────────────────
-const dotKeyframes = `
-@keyframes chatbotDotBounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-  30%            { transform: translateY(-5px); opacity: 1; }
-}
-`;
-
-function TypingIndicator() {
-  return (
-    <>
-      <style>{dotKeyframes}</style>
-      <div style={{
-        background: "var(--c-surface-container-high)",
-        borderRadius: "10px 10px 10px 3px",
-        padding: "10px 14px",
-        display: "inline-flex",
-        gap: 4,
-        alignSelf: "flex-start",
-      }}>
-        {[0, 1, 2].map((i) => (
-          <span key={i} style={{
-            background: "var(--c-placeholder)",
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            display: "inline-block",
-            animation: "chatbotDotBounce 1.2s infinite",
-            animationDelay: `${i * 0.2}s`,
-          }} />
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ─── Bot Bubble ───────────────────────────────────────────────────────────────
-function BotBubble({ text }: { text: string }) {
-  return (
-    <div style={{
-      background: "var(--c-surface-container-high)",
-      color: "var(--c-on-surface)",
-      borderRadius: "10px 10px 10px 3px",
-      padding: "9px 12px",
-      maxWidth: "80%",
-      fontSize: 13,
-      lineHeight: 1.5,
-      alignSelf: "flex-start",
-    }}>
-      {text}
-    </div>
-  );
-}
-
-// ─── User Bubble ──────────────────────────────────────────────────────────────
-function UserBubble({ text }: { text: string }) {
-  return (
-    <div style={{
-      background: "var(--c-primary)",
-      color: "var(--c-on-primary)",
-      borderRadius: "10px 10px 3px 10px",
-      padding: "9px 12px",
-      maxWidth: "80%",
-      fontSize: 13,
-      lineHeight: 1.5,
-      alignSelf: "flex-end",
-    }}>
-      {text}
-    </div>
-  );
-}
-
-// ─── Quick Reply Button ────────────────────────────────────────────────────────
-function QuickReplyBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: "rgb(var(--fx-accent) / 0.1)",
-        border: "1px solid rgb(var(--fx-accent) / 0.3)",
-        color: "var(--c-primary-container)",
-        borderRadius: 16,
-        padding: "6px 12px",
-        fontSize: 11,
-        cursor: "pointer",
-        fontFamily: "var(--font-geist-sans), sans-serif",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
+import { Incoming, Outgoing, PhoneFrame, QuickReply, Time, TypingBubble, bubbleEnter, usePageVisible } from "@/components/mocks/phone-frame";
 
 // ─── ChatbotMockup ────────────────────────────────────────────────────────────
+// A looping bot conversation in the shared WhatsApp phone. Each step adds one
+// thing to the chat; "tap" steps press the quick reply the visitor picks.
+const STEPS = ["menu", "tap1", "user1", "bot2", "tap2", "user2", "bot3"] as const;
+type Step = (typeof STEPS)[number];
+const HOLD: Record<Step, number> = { menu: 1400, tap1: 350, user1: 1000, bot2: 1400, tap2: 350, user2: 1000, bot3: 2600 };
+
+const FIRST = ["💰 Pricing", "🎯 Book a demo", "🆘 Support"];
+const SECOND = ["👤 Solo", "👥 Small team", "🏢 Enterprise"];
+
+function Replies({ options, pressed }: { options: string[]; pressed?: string }) {
+  return (
+    <motion.div {...bubbleEnter} layout className="flex w-[85%] flex-col gap-1 self-start">
+      {options.map((o) => (
+        <QuickReply key={o} label={o} pressed={pressed === o} />
+      ))}
+    </motion.div>
+  );
+}
+
 function ChatbotMockup() {
-  // step: 0 = first bot msg + buttons
-  //       1 = user tapped "💰 Pricing", show bubble + typing
-  //       2 = second bot msg + buttons
-  //       3 = user tapped "👤 Small Team", show bubble + typing
-  //       4 = final bot msg, then reset
-  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
-  const [typing, setTyping] = useState(false);
+  const [i, setI] = useState(0);
+  const visible = usePageVisible();
+  const step = STEPS[i];
+  const at = (s: Step) => i >= STEPS.indexOf(s);
 
-  // Auto-advance all steps
   useEffect(() => {
-    if (step === 0) {
-      const t = setTimeout(() => setStep(1), 1200);
-      return () => clearTimeout(t);
-    }
-    if (step === 1) {
-      setTyping(true);
-      const t = setTimeout(() => { setTyping(false); setStep(2); }, 900);
-      return () => clearTimeout(t);
-    }
-    if (step === 2) {
-      const t = setTimeout(() => setStep(3), 1200);
-      return () => clearTimeout(t);
-    }
-    if (step === 3) {
-      setTyping(true);
-      const t = setTimeout(() => { setTyping(false); setStep(4); }, 900);
-      return () => clearTimeout(t);
-    }
-    if (step === 4) {
-      const t = setTimeout(() => setStep(0), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [step]);
+    if (!visible) return;
+    const t = setTimeout(() => setI((n) => (n + 1) % STEPS.length), HOLD[step]);
+    return () => clearTimeout(t);
+  }, [step, visible]);
 
-  function handleFirstReply() {
-    setStep(1);
-  }
-
-  function handleSecondReply() {
-    setStep(3);
-  }
-
+  const typing = step === "user1" || step === "user2";
   return (
     <div>
       {/* Section header */}
@@ -159,133 +57,67 @@ function ChatbotMockup() {
         </h2>
       </div>
 
-      {/* Phone frame outer */}
-      <div style={{ display: "flex", justifyContent: "center", padding: "0 20px" }}>
-        <div style={{
-          width: 300,
-          height: 540,
-          background: "var(--c-surface)",
-          borderRadius: 36,
-          overflow: "hidden",
-          border: "8px solid var(--c-surface-container-lowest)",
-          boxShadow: "0 40px 80px rgb(var(--fx-shadow) / 0.35)",
-          marginTop: 32,
-          display: "flex",
-          flexDirection: "column",
-        }}>
+      <div className="relative mt-10 flex justify-center">
+        <div aria-hidden className="device-glow" />
+        <PhoneFrame contact={{ name: "Wazelo Bot", initials: "WB", subtitle: "Business account", verified: true }} typing={typing}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div key="bot1" layout className="flex flex-col">
+              <Incoming>
+                Hi! 👋 What are you looking for today?
+                <Time>10:02</Time>
+              </Incoming>
+            </motion.div>
 
-          {/* WhatsApp header bar */}
-          <div style={{
-            background: "var(--c-surface)",
-            padding: "10px 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 16, color: "var(--c-on-surface)", lineHeight: 1 }}>‹</span>
-            <div style={{
-              width: 32, height: 32, borderRadius: "50%",
-              background: "var(--c-primary-container)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "var(--c-on-surface)" }}>smart_toy</span>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
-              <div style={{ fontSize: 10, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
-            </div>
-          </div>
+            {!at("user1") && <Replies key="menu1" options={FIRST} pressed={step === "tap1" ? FIRST[0] : undefined} />}
 
-          {/* Messages area */}
-          <div style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "12px 10px",
-            background: "var(--c-surface)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            minHeight: 0,
-          }}>
-            {/* Step 0: First bot message — always visible */}
-            <BotBubble text="Hi! 👋 What are you looking for today?" />
-
-            {/* Quick replies for step 0 */}
-            {step === 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                {["💰 Pricing", "🎯 Demo", "🆘 Support"].map((r) => (
-                  <QuickReplyBtn key={r} label={r} onClick={handleFirstReply} />
-                ))}
-              </div>
+            {at("user1") && (
+              <motion.div key="user1" {...bubbleEnter} layout className="flex flex-col">
+                <Outgoing>
+                  {FIRST[0]}
+                  <Time read>10:02</Time>
+                </Outgoing>
+              </motion.div>
+            )}
+            {step === "user1" && (
+              <motion.div key="typing1" {...bubbleEnter} layout className="flex flex-col">
+                <TypingBubble />
+              </motion.div>
             )}
 
-            {/* Step >= 1: user bubble */}
-            {step >= 1 && <UserBubble text="💰 Pricing" />}
+            {at("bot2") && (
+              <motion.div key="bot2" {...bubbleEnter} layout className="flex flex-col">
+                <Incoming>
+                  Sure! We have plans for every size. Which best describes you?
+                  <Time>10:02</Time>
+                </Incoming>
+              </motion.div>
+            )}
+            {at("bot2") && !at("user2") && <Replies key="menu2" options={SECOND} pressed={step === "tap2" ? SECOND[1] : undefined} />}
 
-            {/* Step 1 typing indicator */}
-            {step === 1 && typing && <TypingIndicator />}
-
-            {/* Step >= 2: second bot message */}
-            {step >= 2 && (
-              <BotBubble text="Sure! We have 3 plans. Which best describes your team?" />
+            {at("user2") && (
+              <motion.div key="user2" {...bubbleEnter} layout className="flex flex-col">
+                <Outgoing>
+                  {SECOND[1]}
+                  <Time read>10:03</Time>
+                </Outgoing>
+              </motion.div>
+            )}
+            {step === "user2" && (
+              <motion.div key="typing2" {...bubbleEnter} layout className="flex flex-col">
+                <TypingBubble />
+              </motion.div>
             )}
 
-            {/* Quick replies for step 2 */}
-            {step === 2 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                {["👤 Solo", "👥 Small Team", "🏢 Enterprise"].map((r) => (
-                  <QuickReplyBtn key={r} label={r} onClick={handleSecondReply} />
-                ))}
-              </div>
+            {at("bot3") && (
+              <motion.div key="bot3" {...bubbleEnter} layout className="flex flex-col">
+                <Incoming>
+                  Great choice! Connecting you with our sales team now. 🚀
+                  <Time>10:03</Time>
+                </Incoming>
+              </motion.div>
             )}
-
-            {/* Step >= 3: second user bubble */}
-            {step >= 3 && <UserBubble text="👤 Small Team" />}
-
-            {/* Step 3 typing indicator */}
-            {step === 3 && typing && <TypingIndicator />}
-
-            {/* Step >= 4: final bot message */}
-            {step >= 4 && (
-              <BotBubble text="Great choice! I'll connect you with our sales team. 🚀" />
-            )}
-
-            {/* Step 4: start over button */}
-            {step === 4 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                <QuickReplyBtn label="Start Over" onClick={() => setStep(0)} />
-              </div>
-            )}
-          </div>
-
-          {/* Input bar */}
-          <div style={{
-            background: "var(--c-surface-container-lowest)",
-            padding: "8px 12px",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexShrink: 0,
-          }}>
-            <div style={{
-              flex: 1,
-              background: "var(--c-surface-container-high)",
-              border: "none",
-              borderRadius: 20,
-              padding: "8px 12px",
-              fontSize: 12,
-              color: "var(--c-placeholder)",
-              fontFamily: "var(--font-geist-sans), sans-serif",
-              lineHeight: 1,
-            }}>
-              Type a message...
-            </div>
-            <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)" }}>send</span>
-          </div>
-
-        </div>
+          </AnimatePresence>
+        </PhoneFrame>
       </div>
     </div>
   );

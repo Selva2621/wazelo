@@ -41,6 +41,7 @@ const LINKS_AFTER: NavItem[] = [
   { label: "Pricing", href: "/#pricing" },
   { label: "Use Cases", href: "/use-cases" },
   { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
 ];
 
 // Every feature page, grouped for the Features menu.

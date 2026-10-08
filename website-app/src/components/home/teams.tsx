@@ -166,7 +166,7 @@ function RoutingPanel() {
             </span>
             <span className="hidden leading-tight sm:block">
               <span className="block text-sm font-medium text-on-surface">Your number</span>
-              <span className="block text-xs text-on-surface-variant">+91 20 4718 2290</span>
+              <span className="block text-xs text-on-surface-variant">WhatsApp</span>
             </span>
           </div>
         </Node>

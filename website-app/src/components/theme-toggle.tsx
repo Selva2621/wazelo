@@ -13,8 +13,15 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   // Unknown until mounted (the server can't see the visitor's choice).
   const [theme, setTheme] = useState<Theme | null>(null);
 
+  // Follow <html data-theme>, so every toggle on the page (navbar, footer dock)
+  // shows the same icon whichever one was clicked.
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    const root = document.documentElement;
+    const read = () => setTheme(root.dataset.theme === "dark" ? "dark" : "light");
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
   }, []);
 
   const toggle = () => {
