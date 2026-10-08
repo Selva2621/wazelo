@@ -2528,7 +2528,8 @@ const SHOPIFY_EVENTS = [
 ];
 
 function ShopifyWebhookUrlCard({ orgId }: { orgId: string }) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "https://your-backend.com";
+  // A relative API URL (/api/v1, proxied by next.config rewrites) leaves "" here: use this site's origin
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || window.location.origin;
   const url = `${baseUrl}/api/v1/webhooks/shopify/${orgId}`;
   const [copied, setCopied] = useState(false);
 
