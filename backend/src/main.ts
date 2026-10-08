@@ -25,6 +25,15 @@ async function bootstrap() {
     'http://localhost:3000',
   );
 
+  // Behind Nginx, req.ip is the proxy's address unless Express trusts it. Without this,
+  // every user shares one rate-limit bucket (refresh/login limits trip for everyone).
+  // Set to the number of proxies in front of the app; 0 when exposed directly, so a
+  // client can't spoof X-Forwarded-For to dodge throttling.
+  const trustProxyHops = Number(
+    process.env.TRUST_PROXY_HOPS ?? (process.env.NODE_ENV === 'production' ? 1 : 0),
+  );
+  app.set('trust proxy', trustProxyHops);
+
   // Cookie parser — required for httpOnly refresh token cookie
   app.use(cookieParser());
 

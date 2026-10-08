@@ -7,6 +7,7 @@ import { useOrgMembers, useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStatus, ContactSource } from "@/lib/types/contacts";
+import { IconButton } from "@/components/ui/icon-button";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -56,7 +57,7 @@ export function ContactFilters() {
         onChange={(e) =>
           setFilterStatus(e.target.value ? (e.target.value as LeadStatus) : null)
         }
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
       >
         <option value="">All Statuses</option>
         {LEAD_STATUSES.map((s) => (
@@ -71,7 +72,7 @@ export function ContactFilters() {
         <select
           value={filterOwnerId ?? ""}
           onChange={(e) => setFilterOwnerId(e.target.value || null)}
-          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
         >
           <option value="">All Owners</option>
           {(members ?? []).map((m) => (
@@ -88,7 +89,7 @@ export function ContactFilters() {
         onChange={(e) =>
           setFilterSource(e.target.value ? (e.target.value as ContactSource) : null)
         }
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
       >
         <option value="">All Sources</option>
         {SOURCES.map((s) => (
@@ -106,7 +107,7 @@ export function ContactFilters() {
             setFilterTagIds([...filterTagIds, e.target.value]);
           }
         }}
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
       >
         <option value="">Filter by Tag</option>
         {(orgTags ?? [])
@@ -124,17 +125,16 @@ export function ContactFilters() {
         return (
           <span
             key={tagId}
-            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
+            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-caption text-primary"
           >
             {tag?.name ?? tagId}
-            <button
+            <IconButton size="xs"
               onClick={() =>
                 setFilterTagIds(filterTagIds.filter((id) => id !== tagId))
               }
-              className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
-            >
+              className="hover:bg-primary/20" aria-label="Close">
               <X className="h-2.5 w-2.5" />
-            </button>
+            </IconButton>
           </span>
         );
       })}
@@ -148,7 +148,7 @@ export function ContactFilters() {
               setFilterProductIds([...filterProductIds, e.target.value]);
             }
           }}
-          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-[12px] text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
         >
           <option value="">Filter by Product</option>
           {products
@@ -165,22 +165,21 @@ export function ContactFilters() {
         return (
           <span
             key={productId}
-            className="inline-flex items-center gap-1 rounded-full bg-tertiary/10 px-2 py-0.5 text-[11px] text-tertiary"
+            className="inline-flex items-center gap-1 rounded-full bg-tertiary/10 px-2 py-0.5 text-caption text-tertiary"
           >
             {product?.name ?? productId}
-            <button
+            <IconButton size="xs"
               onClick={() => setFilterProductIds(filterProductIds.filter((id) => id !== productId))}
-              className="rounded-full p-0.5 hover:bg-tertiary/20 transition-colors"
-            >
+              className="hover:bg-tertiary/20" aria-label="Close">
               <X className="h-2.5 w-2.5" />
-            </button>
+            </IconButton>
           </span>
         );
       })}
 
       {/* Clear all */}
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-[12px]">
+        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-label">
           Clear
         </Button>
       )}

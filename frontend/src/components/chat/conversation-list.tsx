@@ -57,7 +57,7 @@ export function ConversationList({
     <div className="flex h-full flex-col bg-surface-container-lowest">
       {/* Header */}
       <div className="shrink-0 px-4 pt-4 pb-2 space-y-3">
-        <h2 className="text-[16px] font-semibold text-on-surface">Inbox</h2>
+        <h2 className="text-title-sm font-semibold text-on-surface">Inbox</h2>
         <SearchInput
           placeholder="Search conversations..."
           value={search}
@@ -70,7 +70,7 @@ export function ConversationList({
             <button
               onClick={() => onChannelFilterChange("all")}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors",
+                "px-2.5 py-1 rounded-lg text-caption font-medium transition-colors",
                 channelFilter === "all"
                   ? "bg-primary/15 text-primary"
                   : "text-on-surface-variant hover:bg-surface-container",
@@ -84,7 +84,7 @@ export function ConversationList({
                 onClick={() => onChannelFilterChange(type)}
                 title={CHANNEL_TYPE_LABELS[type]}
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors",
+                  "flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium transition-colors",
                   channelFilter === type
                     ? "bg-primary/15 text-primary"
                     : "text-on-surface-variant hover:bg-surface-container",
@@ -107,7 +107,7 @@ export function ConversationList({
       <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-[13px] text-on-surface-variant/60">
+            <p className="text-body text-on-surface-variant/60">
               No conversations found
             </p>
           </div>

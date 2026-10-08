@@ -79,7 +79,7 @@ export default function CsatPage() {
       <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Star className="h-5 w-5 text-warning" />
-          <h1 className="text-[18px] font-semibold text-on-surface">
+          <h1 className="text-title font-semibold text-on-surface">
             Customer Satisfaction
           </h1>
         </div>
@@ -110,24 +110,24 @@ export default function CsatPage() {
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-warning p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Star className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
                     Avg Rating
                   </span>
                 </div>
-                <p className="text-[22px] font-semibold text-on-surface tabular-nums">
+                <p className="text-headline font-semibold text-on-surface tabular-nums">
                   {stats.avgRating.toFixed(1)}
                 </p>
-                <p className="text-[12px] text-on-surface-variant/60">out of 5.0</p>
+                <p className="text-label text-on-surface-variant/60">out of 5.0</p>
               </div>
 
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-primary p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
                     Responses
                   </span>
                 </div>
-                <p className="text-[22px] font-semibold text-on-surface tabular-nums">
+                <p className="text-headline font-semibold text-on-surface tabular-nums">
                   {stats.totalResponses}
                 </p>
               </div>
@@ -135,11 +135,11 @@ export default function CsatPage() {
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-success p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
                     Satisfied (4-5)
                   </span>
                 </div>
-                <p className="text-[22px] font-semibold text-success tabular-nums">
+                <p className="text-headline font-semibold text-success tabular-nums">
                   {stats.distribution
                     .filter((d) => d.rating !== null && d.rating >= 4)
                     .reduce((s, d) => s + d.count, 0)}
@@ -149,11 +149,11 @@ export default function CsatPage() {
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-error p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Users className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
                     Dissatisfied (1-2)
                   </span>
                 </div>
-                <p className="text-[22px] font-semibold text-error tabular-nums">
+                <p className="text-headline font-semibold text-error tabular-nums">
                   {stats.distribution
                     .filter((d) => d.rating !== null && d.rating <= 2)
                     .reduce((s, d) => s + d.count, 0)}
@@ -165,7 +165,7 @@ export default function CsatPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Distribution */}
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-                <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+                <h3 className="text-body font-medium text-on-surface-variant mb-4">
                   Rating Distribution
                 </h3>
                 <div className="space-y-2.5">
@@ -175,7 +175,7 @@ export default function CsatPage() {
                     return (
                       <div key={r} className="flex items-center gap-3">
                         <div className="flex items-center gap-1 w-16 shrink-0">
-                          <span className="text-[13px] font-medium text-on-surface">{r}</span>
+                          <span className="text-body font-medium text-on-surface">{r}</span>
                           <Star className="h-3.5 w-3.5 text-warning fill-warning" />
                         </div>
                         <div className="flex-1 h-2 rounded-full bg-surface-container overflow-hidden">
@@ -184,7 +184,7 @@ export default function CsatPage() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="text-[12px] text-on-surface-variant tabular-nums w-10 text-right">
+                        <span className="text-label text-on-surface-variant tabular-nums w-10 text-right">
                           {count}
                         </span>
                       </div>
@@ -195,28 +195,28 @@ export default function CsatPage() {
 
               {/* Agent Breakdown */}
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-                <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+                <h3 className="text-body font-medium text-on-surface-variant mb-4">
                   By Agent
                 </h3>
                 {stats.byAgent.length === 0 ? (
-                  <p className="text-[13px] text-on-surface-variant/40 text-center py-4">
+                  <p className="text-body text-on-surface-variant/40 text-center py-4">
                     No agent data yet
                   </p>
                 ) : (
                   <div className="space-y-3">
                     {stats.byAgent.map((a) => (
                       <div key={a.agentId} className="flex items-center justify-between">
-                        <span className="text-[13px] text-on-surface truncate flex-1">
+                        <span className="text-body text-on-surface truncate flex-1">
                           {userMap.get(a.agentId) ?? a.agentId.slice(0, 8)}
                         </span>
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 text-warning fill-warning" />
-                            <span className="text-[13px] font-semibold text-on-surface tabular-nums">
+                            <span className="text-body font-semibold text-on-surface tabular-nums">
                               {a._avg.rating.toFixed(1)}
                             </span>
                           </div>
-                          <span className="text-[11px] text-on-surface-variant/50 tabular-nums">
+                          <span className="text-caption text-on-surface-variant/50 tabular-nums">
                             {a._count.rating} reviews
                           </span>
                         </div>
@@ -235,7 +235,7 @@ export default function CsatPage() {
             ) : surveysData && surveysData.data.length > 0 ? (
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
                 <div className="px-5 py-3 border-b border-outline-variant/10">
-                  <h3 className="text-[13px] font-medium text-on-surface-variant">
+                  <h3 className="text-body font-medium text-on-surface-variant">
                     Recent Responses
                   </h3>
                 </div>
@@ -253,17 +253,17 @@ export default function CsatPage() {
                   <TableBody>
                     {surveysData.data.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="text-[13px] text-on-surface font-medium">
+                        <TableCell className="text-body text-on-surface font-medium">
                           {s.contactPhone}
                         </TableCell>
-                        <TableCell className="text-[12px] text-on-surface-variant">
+                        <TableCell className="text-label text-on-surface-variant">
                           {userMap.get(s.agentId) ?? "—"}
                         </TableCell>
                         <TableCell>{renderStars(s.rating)}</TableCell>
-                        <TableCell className="text-[12px] text-on-surface-variant truncate max-w-[200px]">
+                        <TableCell className="text-label text-on-surface-variant truncate max-w-[200px]">
                           {s.comment || "—"}
                         </TableCell>
-                        <TableCell className="text-[11px] text-on-surface-variant/60">
+                        <TableCell className="text-caption text-on-surface-variant/60">
                           {new Date(s.sentAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>

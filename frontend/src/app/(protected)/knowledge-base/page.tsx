@@ -14,6 +14,8 @@ import {
   useKbArticles, useKbCategories, useCreateArticle, useUpdateArticle, useDeleteArticle,
 } from "@/hooks/use-knowledge-base";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 export default function KnowledgeBasePage() {
   usePageTitle("Knowledge Base");
@@ -79,11 +81,11 @@ export default function KnowledgeBasePage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" />
             Knowledge Base
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">Manage help articles for your team and customers</p>
+          <p className="text-body text-on-surface-variant mt-0.5">Manage help articles for your team and customers</p>
         </div>
         <Button onClick={() => { resetForm(); setEditId(null); setShowCreate(true); }}>
           <Plus className="h-4 w-4 mr-1" /> New Article
@@ -98,13 +100,13 @@ export default function KnowledgeBasePage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             placeholder="Search articles..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
-          className="rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface focus:border-primary focus:outline-none"
+          className="rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none"
         >
           <option value="">All Categories</option>
           {categories?.map((c) => (
@@ -143,17 +145,17 @@ export default function KnowledgeBasePage() {
                 <TableRow key={article.id}>
                   <TableCell>
                     <div className="min-w-0">
-                      <p className="text-[13px] font-medium text-on-surface truncate max-w-[250px]">{article.title}</p>
+                      <p className="text-body font-medium text-on-surface truncate max-w-[250px]">{article.title}</p>
                       {article.tags.length > 0 && (
                         <div className="flex gap-1 mt-0.5">
                           {article.tags.slice(0, 3).map((t) => (
-                            <span key={t} className="text-[10px] text-on-surface-variant/60 bg-surface-container-high rounded px-1">{t}</span>
+                            <span key={t} className="text-caption text-on-surface-variant/60 bg-surface-container-high rounded px-1">{t}</span>
                           ))}
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[12px] text-on-surface-variant">{article.category?.name || "—"}</TableCell>
+                  <TableCell className="text-label text-on-surface-variant">{article.category?.name || "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {article.isPublished ? (
@@ -164,19 +166,19 @@ export default function KnowledgeBasePage() {
                       {article.isInternal && <Badge variant="warning"><Lock className="h-3 w-3 mr-0.5" />Internal</Badge>}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[12px] text-on-surface-variant">
+                  <TableCell className="text-label text-on-surface-variant">
                     <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{article.viewCount}</span>
                   </TableCell>
-                  <TableCell className="text-[12px] text-on-surface-variant">
+                  <TableCell className="text-label text-on-surface-variant">
                     <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{article.helpfulCount}</span>
                   </TableCell>
-                  <TableCell className="text-[11px] text-on-surface-variant">
+                  <TableCell className="text-caption text-on-surface-variant">
                     {new Date(article.updatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => startEdit(article)} className="p-1 rounded text-on-surface-variant hover:text-primary transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => deleteArticle.mutate(article.id)} className="p-1 rounded text-on-surface-variant hover:text-error transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <IconButton size="xs" onClick={() => startEdit(article)} className="hover:text-primary" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></IconButton>
+                      <IconButton size="xs" variant="danger" onClick={() => deleteArticle.mutate(article.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></IconButton>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -188,27 +190,32 @@ export default function KnowledgeBasePage() {
       )}
 
       {/* Create/Edit Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40">
-          <div className="w-full max-w-2xl rounded-3xl bg-surface shadow-2xl max-h-[90vh] flex flex-col">
+      <Modal
+        open={showCreate}
+        onClose={() => { setShowCreate(false); setEditId(null); resetForm(); }}
+        aria-labelledby="kb-article-modal-title"
+        className="max-w-2xl rounded-3xl bg-surface max-h-[90vh] flex flex-col overflow-hidden"
+      >
+        {() => (
+          <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-              <h2 className="text-lg font-semibold text-on-surface">{editId ? "Edit Article" : "New Article"}</h2>
-              <button onClick={() => { setShowCreate(false); setEditId(null); resetForm(); }} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
+              <h2 id="kb-article-modal-title" className="text-title font-semibold text-on-surface">{editId ? "Edit Article" : "New Article"}</h2>
+              <button aria-label="Close" onClick={() => { setShowCreate(false); setEditId(null); resetForm(); }} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-              <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Article title" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none">
+              <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Article title" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none">
                 <option value="">No category</option>
                 {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Article content (Markdown supported)" rows={10} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none font-mono" />
-              <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder="Tags (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none" />
+              <textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Article content (Markdown supported)" rows={10} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none font-mono" />
+              <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder="Tags (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none" />
               <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                <label className="flex items-center gap-2 text-body cursor-pointer">
                   <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm((f) => ({ ...f, isPublished: e.target.checked }))} className="rounded" />
                   Published
                 </label>
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                <label className="flex items-center gap-2 text-body cursor-pointer">
                   <input type="checkbox" checked={form.isInternal} onChange={(e) => setForm((f) => ({ ...f, isInternal: e.target.checked }))} className="rounded" />
                   Internal Only
                 </label>
@@ -220,9 +227,9 @@ export default function KnowledgeBasePage() {
                 {editId ? "Update" : "Create"}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

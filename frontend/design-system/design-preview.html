@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en" data-theme="midnight-ember">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wazelo Design System</title>
+<style>
+/* Token values mirror design-tokens.json. Keep in sync. */
+[data-theme="midnight-ember"] {
+  --primary:#d97706; --primary-container:#f59e0b; --on-primary:#1a1d27;
+  --surface:#0f1117; --surface-container-lowest:#1e2130; --surface-container-low:#252838;
+  --surface-container:#2d3044; --surface-container-high:#363a50; --surface-container-highest:#40445c;
+  --on-surface:#e8eaed; --on-surface-variant:#a3aabb; --placeholder:#8a91a5;
+  --outline-variant:#3d4258; --outline:#6e7594;
+  --success:#34d399; --success-container:#1a3a2a; --warning:#facc15; --warning-container:#3a3010;
+  --error:#f87171; --error-container:#451a1a; --on-error:#1a1d27; --info:#60a5fa; --info-container:#172a45;
+  --bubble-out:#4a3413; --on-bubble-out:#f3ede2; --focus:#f59e0b;
+  --scrim:rgb(5 6 10 / .6); --shadow-color:rgb(5 6 10 / .55);
+}
+[data-theme="emerald-night"] {
+  --primary:#047857; --primary-container:#10b981; --on-primary:#ffffff;
+  --surface:#111816; --surface-container-lowest:#1a2420; --surface-container-low:#222e29;
+  --surface-container:#2a3833; --surface-container-high:#334340; --surface-container-highest:#3e504b;
+  --on-surface:#e6ece9; --on-surface-variant:#9ab2a8; --placeholder:#84a094;
+  --outline-variant:#3d524a; --outline:#5d7a70;
+  --success:#34d399; --success-container:#1a3a2a; --warning:#facc15; --warning-container:#3a3010;
+  --error:#f87171; --error-container:#3b1515; --on-error:#111816; --info:#60a5fa; --info-container:#16283f;
+  --bubble-out:#0f4a3a; --on-bubble-out:#e6f2ec; --focus:#10b981;
+  --scrim:rgb(3 8 6 / .6); --shadow-color:rgb(3 8 6 / .55);
+}
+[data-theme="daylight"] {
+  --primary:#b45309; --primary-container:#92400e; --on-primary:#fffaf2;
+  --surface:#f6f7f9; --surface-container-lowest:#fdfdfe; --surface-container-low:#f1f2f5;
+  --surface-container:#e9ebf0; --surface-container-high:#e1e4ea; --surface-container-highest:#d8dce3;
+  --on-surface:#161922; --on-surface-variant:#545b6d; --placeholder:#636a7d;
+  --outline-variant:#dde0e7; --outline:#7d8397;
+  --success:#047857; --success-container:#e2f4ec; --warning:#8a5a06; --warning-container:#fdf3d4;
+  --error:#c81e1e; --error-container:#fdeaea; --on-error:#fffaf2; --info:#1d4ed8; --info-container:#e5edfd;
+  --bubble-out:#fbe9c8; --on-bubble-out:#2b2006; --focus:#b45309;
+  --scrim:rgb(22 25 34 / .4); --shadow-color:rgb(22 25 34 / .12);
+}
+:root {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  --shadow-popover: 0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant);
+  --shadow-modal: 0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant);
+  --ease: cubic-bezier(.2,0,0,1);
+}
+*,*::before,*::after { box-sizing: border-box; }
+body { margin:0; background:var(--surface); color:var(--on-surface); font:400 13px/20px var(--font-sans); -webkit-font-smoothing:antialiased; }
+:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition-duration:.01ms !important; animation-duration:.01ms !important; } }
+
+.t-caption{font-size:11px;line-height:16px;font-weight:500}
+.t-label{font-size:12px;line-height:16px;font-weight:500}
+.t-body{font-size:13px;line-height:20px}
+.t-body-lg{font-size:14px;line-height:22px}
+.t-title-sm{font-size:16px;line-height:24px;font-weight:600}
+.t-title{font-size:18px;line-height:26px;font-weight:600}
+.t-headline{font-size:22px;line-height:28px;font-weight:600;letter-spacing:-.01em}
+.t-display{font-size:28px;line-height:34px;font-weight:600;letter-spacing:-.02em}
+.muted{color:var(--on-surface-variant)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--font-mono)}
+
+.topbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface-container-lowest);border-bottom:1px solid var(--outline-variant)}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-weight:600;font-size:14px}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 64px}
+@media (min-width:768px){.wrap{padding:32px 24px 80px}}
+section{margin-top:40px}
+section > h2{margin:0 0 4px}
+section > p{margin:0 0 16px;max-width:65ch}
+.grid{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr}
+@media (min-width:900px){.cols-2{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:12px;padding:20px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.seg{display:inline-flex;flex-wrap:wrap;padding:3px;gap:2px;border-radius:10px;background:var(--surface-container-low);border:1px solid var(--outline-variant)}
+.seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;color:var(--on-surface-variant);transition:background-color 120ms var(--ease),color 120ms var(--ease)}
+.seg button[aria-pressed="true"]{background:var(--surface-container-high);color:var(--on-surface)}
+.seg button:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sw{border-radius:12px;border:1px solid var(--outline-variant);overflow:hidden;background:var(--surface-container-lowest)}
+.sw-chip{height:56px;display:flex;align-items:flex-end;padding:6px 8px;font-size:11px;font-weight:500}
+.sw-meta{padding:8px}
+.sw-meta div:first-child{font-size:12px;font-weight:500;word-break:break-word}
+.group-title{margin:20px 0 8px}
+
+.type-row{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--outline-variant)}
+.type-row:last-child{border-bottom:0}
+.type-row > :last-child{min-width:0;overflow-wrap:anywhere}
+@media (min-width:768px){.type-row{grid-template-columns:140px 120px 1fr}}
+.type-spec{display:none}
+@media (min-width:768px){.type-spec{display:block}}
+
+.shapes{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.shape{height:72px;background:var(--surface-container);border:1px solid var(--outline-variant);display:grid;place-items:center;text-align:center;font-size:11px;color:var(--on-surface-variant)}
+.levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:20px;background:var(--surface);border-radius:12px;border:1px solid var(--outline-variant)}
+.lvl{height:88px;border-radius:12px;padding:10px;font-size:11px;color:var(--on-surface-variant)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:8px;font:500 14px/1 var(--font-sans);cursor:pointer;white-space:nowrap;transition:background-color 120ms var(--ease),color 120ms var(--ease),border-color 120ms var(--ease),transform 120ms var(--ease)}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-sm{height:32px;padding:0 12px;font-size:13px}
+.btn-md{height:36px;padding:0 16px}
+.btn-lg{height:44px;padding:0 20px}
+.btn-primary{background:var(--primary);color:var(--on-primary)}
+.btn-primary:hover:not(:disabled){background:var(--primary-container)}
+.btn-secondary{background:transparent;border-color:var(--outline-variant);color:var(--on-surface)}
+.btn-secondary:hover:not(:disabled){background:var(--surface-container-low)}
+.btn-ghost{background:transparent;color:var(--on-surface-variant)}
+.btn-ghost:hover:not(:disabled){background:var(--surface-container-low);color:var(--on-surface)}
+.btn-destructive{background:var(--error);color:var(--on-error)}
+.btn-link{background:none;border:0;padding:0;height:auto;color:var(--primary-container);text-underline-offset:4px}
+.btn-link:hover{text-decoration:underline}
+.btn-icon{width:36px;height:36px;padding:0}
+
+.field{display:grid;gap:8px;min-width:0}
+.field label{font-size:12px;font-weight:500;color:var(--on-surface-variant)}
+.input{height:40px;width:100%;min-width:0;padding:0 12px;border-radius:8px;border:1px solid var(--outline-variant);background:var(--surface-container-low);color:var(--on-surface);font:400 14px var(--font-sans);outline:none;transition:border-color 120ms var(--ease),box-shadow 120ms var(--ease)}
+.input::placeholder{color:var(--placeholder)}
+.input:hover{border-color:var(--outline)}
+.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 30%,transparent)}
+.input.err{border-color:var(--error)}
+.help{font-size:11px;line-height:16px;color:var(--on-surface-variant);margin-top:-2px}
+.help.err{color:var(--error)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:11px;line-height:16px;font-weight:500}
+.b-default{background:var(--surface-container-high);color:var(--on-surface-variant)}
+.b-primary{background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary-container)}
+.b-success{background:var(--success-container);color:var(--success)}
+.b-warning{background:var(--warning-container);color:var(--warning)}
+.b-error{background:var(--error-container);color:var(--error)}
+.b-info{background:var(--info-container);color:var(--info)}
+.b-muted{background:var(--surface-container);color:var(--on-surface-variant)}
+.count{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--primary);color:var(--on-primary);font-size:10px;font-weight:600;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
+
+.inbox{display:grid;grid-template-columns:1fr;border:1px solid var(--outline-variant);border-radius:12px;overflow:hidden;min-height:440px;background:var(--surface)}
+@media (min-width:900px){.inbox{grid-template-columns:300px 1fr}}
+.nav-col{background:var(--surface-container-lowest);border-right:1px solid var(--outline-variant);padding:8px;min-width:0}
+.nav-item{position:relative;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;color:var(--on-surface-variant);cursor:pointer}
+.nav-item:hover{background:var(--surface-container)}
+.nav-item.active{background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary-container)}
+.nav-item.active::before{content:"";position:absolute;left:0;top:50%;translate:0 -50%;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--primary)}
+.conv{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;height:64px;padding:0 10px;border-radius:8px;cursor:pointer}
+.conv:hover{background:var(--surface-container-low)}
+.conv.sel{background:var(--surface-container)}
+.conv .name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .prev{color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv.unread .prev{color:var(--on-surface)}
+.conv .side{display:grid;justify-items:end;gap:4px}
+.avatar{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:600;color:#0f1117;flex:none}
+.thread{display:flex;flex-direction:column;min-width:0}
+.thread-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--outline-variant);background:var(--surface-container-lowest)}
+.msgs{flex:1;display:flex;flex-direction:column;padding:16px;gap:4px}
+.msgs .gap{height:8px}
+.date{align-self:center;margin:4px 0 8px;padding:2px 10px;border-radius:999px;background:var(--surface-container);color:var(--on-surface-variant);font-size:11px;line-height:16px;font-weight:500}
+.bubble{max-width:85%;padding:8px 14px;border-radius:16px;font-size:14px;line-height:22px}
+@media (min-width:768px){.bubble{max-width:70%}}
+.in{align-self:flex-start;background:var(--surface-container);color:var(--on-surface)}
+.out{align-self:flex-end;background:var(--bubble-out);color:var(--on-bubble-out)}
+.note{align-self:flex-end;background:var(--warning-container);color:var(--on-surface);border:1px dashed var(--warning)}
+.failed{border:1px solid var(--error)}
+.meta{display:block;text-align:right;font-size:11px;line-height:16px;opacity:.75;font-variant-numeric:tabular-nums}
+.composer{display:flex;gap:8px;align-items:center;padding:12px;border-top:1px solid var(--outline-variant);background:var(--surface-container-lowest)}
+
+.table-wrap{border:1px solid var(--outline-variant);border-radius:12px;overflow:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th{position:sticky;top:0;text-align:left;font-size:12px;font-weight:500;color:var(--on-surface-variant);background:var(--surface-container-lowest);padding:10px 12px;border-bottom:1px solid var(--outline-variant)}
+td{height:44px;padding:0 12px;border-bottom:1px solid var(--outline-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface-container-low)}
+td.r,th.r{text-align:right}
+
+.modal-stage{position:relative;border-radius:12px;overflow:hidden;padding:40px 16px;background:var(--surface);border:1px solid var(--outline-variant)}
+.modal-stage::before{content:"";position:absolute;inset:0;background:var(--scrim)}
+.modal{position:relative;max-width:560px;margin:0 auto;background:var(--surface-container-lowest);border-radius:16px;box-shadow:var(--shadow-modal);padding:20px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.popover{background:var(--surface-container);border-radius:12px;box-shadow:var(--shadow-popover);padding:4px;max-width:220px}
+.popover div{height:32px;display:flex;align-items:center;padding:0 10px;border-radius:8px;cursor:pointer}
+.popover div:hover{background:var(--surface-container-high)}
+
+.skel{background:var(--surface-container);border-radius:8px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+.empty{display:grid;justify-items:center;text-align:center;gap:6px;padding:28px 16px}
+.empty .ico{width:40px;height:40px;border-radius:12px;background:var(--surface-container);display:grid;place-items:center;color:var(--on-surface-variant);margin-bottom:6px;font-weight:600}
+
+.pass{color:var(--success)} .fail{color:var(--error)}
+.cx-swatch{display:inline-block;width:52px;height:24px;border-radius:6px;font-size:11px;line-height:24px;text-align:center;border:1px solid var(--outline-variant)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" aria-hidden="true">W</div>
+    <div>
+      <div class="t-title-sm">Wazelo Design System</div>
+      <div class="t-caption muted">v1.0 · tokens from design-tokens.json</div>
+    </div>
+  </div>
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-set="midnight-ember" aria-pressed="true">Midnight Ember</button>
+    <button type="button" data-set="emerald-night" aria-pressed="false">Emerald Night</button>
+    <button type="button" data-set="daylight" aria-pressed="false">Daylight (proposed)</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div>
+    <h1 class="t-headline" style="margin:0">Quiet chrome, loud conversations.</h1>
+    <p class="t-body-lg muted" style="margin:8px 0 0;max-width:65ch">One amber accent from the logo, tonal surfaces for depth, and a 13px working size tuned for agents who spend the whole day in the Inbox.</p>
+  </div>
+
+  <section>
+    <h2 class="t-title">Color roles</h2>
+    <p class="muted">Feature code uses these semantic names only. Switch the theme above to see each role re-map.</p>
+    <div class="t-label muted group-title">Brand</div>
+    <div class="swatches" id="sw-brand"></div>
+    <div class="t-label muted group-title">Surfaces (elevation by tone)</div>
+    <div class="swatches" id="sw-surface"></div>
+    <div class="t-label muted group-title">Content and lines</div>
+    <div class="swatches" id="sw-content"></div>
+    <div class="t-label muted group-title">Status</div>
+    <div class="swatches" id="sw-status"></div>
+    <div class="t-label muted group-title">Avatar identity (theme-independent)</div>
+    <div class="row" id="sw-identity"></div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Typography</h2>
+    <p class="muted">Eight steps replace fourteen ad-hoc pixel sizes. Weights 400, 500, 600 only.</p>
+    <div class="panel" style="padding:4px 20px">
+      <div class="type-row"><code class="t-caption mono muted">text-display</code><span class="type-spec t-caption muted">28/34 · 600</span><span class="t-display num">1,284 open</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-headline</code><span class="type-spec t-caption muted">22/28 · 600</span><span class="t-headline">Contacts</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-title</code><span class="type-spec t-caption muted">18/26 · 600</span><span class="t-title">Create campaign</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-title-sm</code><span class="type-spec t-caption muted">16/24 · 600</span><span class="t-title-sm">Contact details</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-body-lg</code><span class="type-spec t-caption muted">14/22 · 400</span><span class="t-body-lg">Hi Priya, your order #4417 ships tomorrow morning.</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-body</code><span class="type-spec t-caption muted">13/20 · 400</span><span class="t-body">Assigned to Karthik Raman, last reply 12 min ago</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-label</code><span class="type-spec t-caption muted">12/16 · 500</span><span class="t-label muted">Phone number</span></div>
+      <div class="type-row"><code class="t-caption mono muted">text-caption</code><span class="type-spec t-caption muted">11/16 · 500</span><span class="t-caption muted num">10:42 · Delivered</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Shape and elevation</h2>
+    <p class="muted">Controls 8px, containers 12px, overlays and bubbles 16px, pills full. Depth comes from surface tone; shadows only on floating layers.</p>
+    <div class="shapes">
+      <div class="shape" style="border-radius:4px">4px<br>checkbox, kbd</div>
+      <div class="shape" style="border-radius:8px">8px<br>controls</div>
+      <div class="shape" style="border-radius:12px">12px<br>containers</div>
+      <div class="shape" style="border-radius:16px">16px<br>overlays, bubbles</div>
+      <div class="shape" style="border-radius:999px">full<br>badge, avatar</div>
+    </div>
+    <div class="levels" style="margin-top:12px">
+      <div class="lvl" style="background:var(--surface);border:1px dashed var(--outline-variant)">L0 surface<br>page, thread</div>
+      <div class="lvl" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant)">L1 lowest + hairline<br>sidebar, card</div>
+      <div class="lvl" style="background:var(--surface-container-low)">L2 low<br>input, row hover</div>
+      <div class="lvl" style="background:var(--surface-container);box-shadow:var(--shadow-popover)">L3 container + shadow<br>popover</div>
+      <div class="lvl" style="background:var(--surface-container-lowest);box-shadow:var(--shadow-modal)">L4 modal shadow<br>modal, drawer</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Controls</h2>
+    <p class="muted">Solid fills, no gradients, no glow. Tab through to check the focus ring.</p>
+    <div class="grid cols-2">
+      <div class="panel grid" style="gap:16px">
+        <div class="row">
+          <button class="btn btn-primary btn-md">Send message</button>
+          <button class="btn btn-secondary btn-md">Export</button>
+          <button class="btn btn-ghost btn-md">Cancel</button>
+          <button class="btn btn-destructive btn-md">Delete</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary btn-sm">Assign</button>
+          <button class="btn btn-primary btn-md">Assign</button>
+          <button class="btn btn-primary btn-lg">Assign</button>
+          <button class="btn btn-primary btn-md" disabled>Disabled</button>
+          <button class="btn btn-ghost btn-icon" aria-label="More actions">⋯</button>
+          <button class="btn btn-link">View history</button>
+        </div>
+        <div class="row">
+          <span class="badge b-info">New</span>
+          <span class="badge b-primary">Contacted</span>
+          <span class="badge b-warning">Interested</span>
+          <span class="badge b-success">Converted</span>
+          <span class="badge b-muted">Closed</span>
+          <span class="badge b-error">Failed</span>
+          <span class="badge b-default">Default</span>
+          <span class="count">7</span>
+          <span class="count">99+</span>
+        </div>
+      </div>
+      <div class="panel grid" style="gap:16px">
+        <div class="field">
+          <label for="f1">Contact name</label>
+          <input id="f1" class="input" placeholder="e.g. Meera Iyer">
+        </div>
+        <div class="field">
+          <label for="f2">WhatsApp number</label>
+          <input id="f2" class="input err" value="+91 98450" aria-invalid="true" aria-describedby="f2e">
+          <div id="f2e" class="help err" role="alert">Enter a full number with country code.</div>
+        </div>
+        <div class="field">
+          <label for="f3">Tag</label>
+          <input id="f3" class="input" placeholder="Search tags">
+          <div class="help">Tags are shared across your organization.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Inbox</h2>
+    <p class="muted">Outgoing bubbles use a brand-tinted dark fill instead of a full amber gradient, so long threads stay readable.</p>
+    <div class="inbox">
+      <div class="nav-col">
+        <div class="nav-item active">Inbox <span class="count" style="margin-left:auto">4</span></div>
+        <div class="nav-item">Contacts</div>
+        <div class="nav-item">Campaigns</div>
+        <div style="height:1px;background:var(--outline-variant);margin:8px 4px"></div>
+        <div class="conv sel unread">
+          <div class="avatar" style="background:#7fa7e8">PS</div>
+          <div style="min-width:0"><div class="name">Priya Subramanian</div><div class="prev">Can I change the delivery address?</div></div>
+          <div class="side"><span class="t-caption muted num">10:42</span><span class="count">2</span></div>
+        </div>
+        <div class="conv">
+          <div class="avatar" style="background:#6cc4a4">AR</div>
+          <div style="min-width:0"><div class="name">Arjun Rao</div><div class="prev">Thanks, received the invoice.</div></div>
+          <div class="side"><span class="t-caption muted num">09:15</span></div>
+        </div>
+        <div class="conv">
+          <div class="avatar" style="background:#e48a8a">FK</div>
+          <div style="min-width:0"><div class="name">Fatima Khan</div><div class="prev">You: Sharing the catalogue now</div></div>
+          <div class="side"><span class="t-caption muted">Yesterday</span></div>
+        </div>
+      </div>
+      <div class="thread">
+        <div class="thread-head">
+          <div style="min-width:0"><div class="t-title-sm">Priya Subramanian</div><div class="t-caption muted num">+91 98450 31277 · Assigned to you</div></div>
+          <span class="badge b-warning">Interested</span>
+        </div>
+        <div class="msgs">
+          <span class="date">Today</span>
+          <div class="bubble in">Hi, I ordered the steel water bottles yesterday.<span class="meta">10:38</span></div>
+          <div class="bubble in">Can I change the delivery address?<span class="meta">10:38</span></div>
+          <div class="gap"></div>
+          <div class="bubble out">Of course. Please share the new address and pin code.<span class="meta">10:41 · Read</span></div>
+          <div class="gap"></div>
+          <div class="bubble note">Internal note: order #4417 has not shipped yet, safe to update.<span class="meta">10:42</span></div>
+          <div class="bubble out failed">I have updated it for you.<span class="meta" style="color:var(--error);opacity:1">Failed · Retry</span></div>
+        </div>
+        <div class="composer">
+          <input class="input" placeholder="Type a message" aria-label="Message">
+          <button class="btn btn-primary btn-md">Send</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Table</h2>
+    <p class="muted">44px rows, one divider per row, numbers right-aligned in tabular figures.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Campaign</th><th>Status</th><th class="r">Sent</th><th class="r">Read rate</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>Diwali restock alert</td><td><span class="badge b-success">Completed</span></td><td class="r num">2,418</td><td class="r num">71.3%</td><td class="muted">Karthik Raman</td></tr>
+          <tr><td>Abandoned cart, week 41</td><td><span class="badge b-primary">Running</span></td><td class="r num">636</td><td class="r num">58.9%</td><td class="muted">Meera Iyer</td></tr>
+          <tr><td>Feedback request</td><td><span class="badge b-muted">Draft</span></td><td class="r num">0</td><td class="r num muted">n/a</td><td class="muted">Arjun Rao</td></tr>
+          <tr><td>Warranty reminder</td><td><span class="badge b-error">Failed</span></td><td class="r num">97</td><td class="r num">12.4%</td><td class="muted">Fatima Khan</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Overlays and states</h2>
+    <p class="muted">Scrim plus 16px modal with the modal shadow; popovers sit on L3. Loading uses skeletons shaped like the content.</p>
+    <div class="grid cols-2">
+      <div class="modal-stage">
+        <div class="modal" role="dialog" aria-labelledby="mt">
+          <div id="mt" class="t-title">Assign conversation</div>
+          <p class="t-body muted" style="margin:4px 0 16px">The new owner is notified and sees this chat at the top of their Inbox.</p>
+          <div class="field"><label for="m1">Agent</label><input id="m1" class="input" value="Meera Iyer"></div>
+          <div class="modal-foot"><button class="btn btn-secondary btn-md">Cancel</button><button class="btn btn-primary btn-md">Assign</button></div>
+        </div>
+      </div>
+      <div class="grid" style="gap:12px">
+        <div class="panel">
+          <div class="popover">
+            <div>Mark as unread</div><div>Assign to…</div><div>Add label</div><div style="color:var(--error)">Close conversation</div>
+          </div>
+        </div>
+        <div class="panel grid" style="gap:10px" aria-busy="true" aria-label="Loading conversations">
+          <div class="row" style="flex-wrap:nowrap"><div class="skel" style="width:36px;height:36px;border-radius:999px;flex:none"></div><div style="flex:1;display:grid;gap:6px"><div class="skel" style="height:12px;width:45%"></div><div class="skel" style="height:12px;width:80%"></div></div></div>
+          <div class="row" style="flex-wrap:nowrap"><div class="skel" style="width:36px;height:36px;border-radius:999px;flex:none"></div><div style="flex:1;display:grid;gap:6px"><div class="skel" style="height:12px;width:35%"></div><div class="skel" style="height:12px;width:65%"></div></div></div>
+        </div>
+        <div class="panel empty">
+          <div class="ico" aria-hidden="true">0</div>
+          <div class="t-title-sm">No scheduled messages</div>
+          <div class="t-body muted">Schedule a follow-up from any conversation.</div>
+          <button class="btn btn-primary btn-md" style="margin-top:8px">Schedule message</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t-title">Contrast check (live)</h2>
+    <p class="muted">Computed from the active theme's variables. Text pairs need 4.5:1, UI borders 3:1.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pair</th><th>Sample</th><th class="r">Ratio</th><th class="r">Target</th><th>Result</th></tr></thead>
+        <tbody id="cx"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var groups = {
+    "sw-brand": ["primary", "primary-container", "on-primary", "bubble-out", "focus"],
+    "sw-surface": ["surface", "surface-container-lowest", "surface-container-low", "surface-container", "surface-container-high", "surface-container-highest"],
+    "sw-content": ["on-surface", "on-surface-variant", "placeholder", "outline", "outline-variant"],
+    "sw-status": ["success", "success-container", "warning", "warning-container", "error", "error-container", "info", "info-container"]
+  };
+  var identity = ["#7fa7e8", "#6cc4a4", "#e48a8a", "#b59be6", "#e6a6c8", "#6ec3d1", "#c9b26b", "#a0a8b8"];
+  var pairs = [
+    ["on-surface", "surface", 4.5], ["on-surface-variant", "surface", 4.5],
+    ["on-surface-variant", "surface-container-lowest", 4.5], ["on-surface-variant", "surface-container", 4.5],
+    ["on-surface-variant", "surface-container-high", 4.5], ["placeholder", "surface-container-low", 4.5],
+    ["on-primary", "primary", 4.5], ["primary-container", "surface", 4.5],
+    ["primary-container", "surface-container-lowest", 4.5], ["on-bubble-out", "bubble-out", 4.5],
+    ["on-surface", "surface-container", 4.5], ["success", "success-container", 4.5],
+    ["warning", "warning-container", 4.5], ["error", "error-container", 4.5],
+    ["info", "info-container", 4.5], ["on-error", "error", 4.5], ["outline", "surface-container-low", 3]
+  ];
+
+  function v(name) { return getComputedStyle(root).getPropertyValue("--" + name).trim(); }
+  function hexToRgb(h) {
+    h = h.replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    return [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16); });
+  }
+  function lum(rgb) {
+    var c = rgb.map(function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function ratio(a, b) {
+    var l1 = lum(hexToRgb(a)), l2 = lum(hexToRgb(b));
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+  function textOn(hex) { return lum(hexToRgb(hex)) > 0.35 ? "#0f1117" : "#f3f4f6"; }
+
+  function renderSwatches() {
+    Object.keys(groups).forEach(function (id) {
+      document.getElementById(id).innerHTML = groups[id].map(function (n) {
+        var val = v(n);
+        return '<div class="sw"><div class="sw-chip" style="background:var(--' + n + ');color:' + textOn(val) + '">Aa</div>' +
+          '<div class="sw-meta"><div>' + n + '</div><div class="t-caption muted mono">' + val + '</div></div></div>';
+      }).join("");
+    });
+    document.getElementById("sw-identity").innerHTML = identity.map(function (h, i) {
+      return '<div class="avatar" style="background:' + h + '" title="identity-' + (i + 1) + " " + h + '">' + (i + 1) + "</div>";
+    }).join("");
+  }
+
+  function renderContrast() {
+    document.getElementById("cx").innerHTML = pairs.map(function (p) {
+      var fg = v(p[0]), bg = v(p[1]), r = ratio(fg, bg), ok = r >= p[2];
+      return '<tr><td><span class="mono t-caption">' + p[0] + '</span> <span class="muted t-caption">on</span> <span class="mono t-caption">' + p[1] + "</span></td>" +
+        '<td><span class="cx-swatch" style="background:' + bg + ";color:" + fg + '">Aa 13</span></td>' +
+        '<td class="r num">' + r.toFixed(2) + ':1</td><td class="r num muted">' + p[2] + ":1</td>" +
+        '<td class="' + (ok ? "pass" : "fail") + '">' + (ok ? "Pass" : "Fail") + "</td></tr>";
+    }).join("");
+  }
+
+  function setTheme(t) {
+    root.setAttribute("data-theme", t);
+    document.querySelectorAll(".seg button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-set") === t));
+    });
+    try { localStorage.setItem("wz-ds-theme", t); } catch (e) {}
+    renderSwatches();
+    renderContrast();
+  }
+
+  document.querySelectorAll(".seg button").forEach(function (b) {
+    b.addEventListener("click", function () { setTheme(b.getAttribute("data-set")); });
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem("wz-ds-theme"); } catch (e) {}
+  setTheme(saved || "midnight-ember");
+})();
+</script>
+</body>
+</html>

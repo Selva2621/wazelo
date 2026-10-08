@@ -5,28 +5,24 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
-import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { UpdatePlanDto } from '../dto/update-plan.dto';
 import { EVENT_NAMES } from '@/common/constants';
-import { AuditAction } from '@prisma/client';
 
+/**
+ * Plans are platform-wide and managed only by super admins (via the
+ * super-admin module, which also writes the platform audit entry).
+ */
 @Injectable()
 export class UpdatePlanUseCase {
   private readonly logger = new Logger(UpdatePlanUseCase.name);
 
   constructor(
     private readonly planRepo: PlanRepository,
-    private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async execute(
-    planId: string,
-    userId: string,
-    dto: UpdatePlanDto,
-    ipAddress: string,
-    userAgent: string,
-  ) {
+  /** `superAdminId` is a SuperAdmin id, not a User id. */
+  async execute(planId: string, superAdminId: string, dto: UpdatePlanDto) {
     const plan = await this.planRepo.findById(planId);
     if (!plan) {
       throw new NotFoundException('Plan not found');
@@ -39,21 +35,11 @@ export class UpdatePlanUseCase {
     this.eventEmitter.emit(EVENT_NAMES.PLAN_UPDATED, {
       planId: updated.id,
       name: updated.name,
-      userId,
+      superAdminId,
       changes: dto,
     });
 
-    await this.auditService.log({
-      userId,
-      action: AuditAction.PLAN_UPDATED,
-      targetType: 'Plan',
-      targetId: planId,
-      metadata: { changes: dto },
-      ipAddress,
-      userAgent,
-    });
-
-    this.logger.log(`Plan ${planId} updated by user ${userId}`);
+    this.logger.log(`Plan ${planId} updated by super admin ${superAdminId}`);
     return { plan: updated };
   }
 }

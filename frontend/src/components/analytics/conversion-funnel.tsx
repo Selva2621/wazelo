@@ -26,12 +26,12 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
   );
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
+    <div className="rounded-xl bg-surface-container-lowest p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[13px] font-medium text-on-surface-variant">
+        <h3 className="text-title-sm font-semibold text-on-surface">
           Conversion Funnel
         </h3>
-        <span className="text-[12px] font-medium text-success tabular-nums">
+        <span className="text-label font-medium text-success tabular-nums">
           {rates.conversionRate.toFixed(1)}% conversion
         </span>
       </div>
@@ -42,7 +42,7 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
           const pct = (count / maxCount) * 100;
           return (
             <div key={stage.key} className="flex items-center gap-3">
-              <span className="w-20 text-[12px] text-on-surface-variant shrink-0">
+              <span className="w-20 text-label text-on-surface-variant shrink-0">
                 {stage.label}
               </span>
               <div className="flex-1 h-7 bg-surface-container rounded overflow-hidden">
@@ -51,7 +51,7 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
                   style={{ width: `${Math.max(pct, 1)}%` }}
                 />
               </div>
-              <span className="w-14 text-right text-[12px] tabular-nums text-on-surface shrink-0">
+              <span className="w-14 text-right text-label tabular-nums text-on-surface shrink-0">
                 {count.toLocaleString()}
               </span>
             </div>

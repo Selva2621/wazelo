@@ -228,7 +228,7 @@ export class BillingCycleWorker {
       [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
       [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
       [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-      [UsageMetricType.API_CALLS]: plan.maxMessagesPerMonth,
+      [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
       [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
       [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
     };
@@ -304,13 +304,23 @@ export class BillingCycleWorker {
   private async handleTrialExpiry(subscription: any) {
     const plan = subscription.plan;
 
-    // If it's a free plan, transition to ACTIVE
+    // If it's a free plan, transition to ACTIVE (still free — not a paying customer)
     if (subscription.priceInCents === 0) {
-      await this.subscriptionRepo.transitionStatus(
+      const converted = await this.subscriptionRepo.transitionStatus(
         subscription.id,
         SubscriptionStatus.TRIAL,
         SubscriptionStatus.ACTIVE,
       );
+      if (converted) {
+        await this.subscriptionRepo.recordEvent({
+          orgId: subscription.orgId,
+          subscriptionId: subscription.id,
+          previousStatus: SubscriptionStatus.TRIAL,
+          newStatus: SubscriptionStatus.ACTIVE,
+          reason: 'Free trial ended — continued on free plan',
+          metadata: { type: 'free_trial_converted' },
+        });
+      }
       return;
     }
 
@@ -410,7 +420,7 @@ export class BillingCycleWorker {
       [UsageMetricType.ACTIVE_USERS]: newPlan.maxUsers,
       [UsageMetricType.WHATSAPP_SESSIONS]: newPlan.maxWhatsappSessions,
       [UsageMetricType.CAMPAIGN_EXECUTIONS]: newPlan.maxCampaignsPerMonth,
-      [UsageMetricType.API_CALLS]: newPlan.maxMessagesPerMonth,
+      [UsageMetricType.API_CALLS]: newPlan.maxApiCallsPerMonth,
       [UsageMetricType.AI_CREDITS]: newPlan.aiCreditsPerMonth,
       [UsageMetricType.MESSAGE_TEMPLATES]: newPlan.maxMessageTemplates,
     };

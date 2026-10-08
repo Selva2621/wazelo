@@ -21,11 +21,7 @@ export const billingApi = {
       .get<{ plans: Plan[] }>("/billing/plans")
       .then((r) => r.data.plans),
 
-  createPlan: (data: Partial<Plan>) =>
-    apiClient.post<{ plan: Plan }>("/billing/plans", data).then((r) => r.data.plan),
-
-  updatePlan: (id: string, data: Partial<Plan>) =>
-    apiClient.patch<{ plan: Plan }>(`/billing/plans/${id}`, data).then((r) => r.data.plan),
+  // Plan create/update is super-admin only — see lib/api/super-admin.ts
 
   // ─── Subscription + Usage (single endpoint) ───
 

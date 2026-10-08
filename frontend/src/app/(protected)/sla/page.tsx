@@ -110,7 +110,7 @@ export default function SlaPage() {
       <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">
+          <h1 className="text-title font-semibold text-on-surface">
             SLA Tracking
           </h1>
         </div>
@@ -118,7 +118,7 @@ export default function SlaPage() {
           {isAdmin && (
             <a
               href="/settings?tab=sla"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-medium hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors"
             >
               <Settings2 className="h-3.5 w-3.5" />
               Manage Policies
@@ -138,12 +138,12 @@ export default function SlaPage() {
 
         {perfError && (
           <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
-            <p className="text-[13px] text-error mb-2">
+            <p className="text-body text-error mb-2">
               Failed to load SLA data
             </p>
             <button
               onClick={() => refetchPerf()}
-              className="text-[12px] text-primary hover:underline"
+              className="text-label text-primary hover:underline"
             >
               Try again
             </button>

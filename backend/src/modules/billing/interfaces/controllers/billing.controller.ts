@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
   Body,
   Param,
   Query,
@@ -19,13 +18,9 @@ import { Roles } from '@/common/decorators/roles.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
-import { CreatePlanDto } from '../../application/dto/create-plan.dto';
-import { UpdatePlanDto } from '../../application/dto/update-plan.dto';
 import { SubscribeDto, ChangePlanDto, CancelSubscriptionDto } from '../../application/dto/subscribe.dto';
 import { ListInvoicesQueryDto, ListPaymentsQueryDto } from '../../application/dto/list-billing-query.dto';
 import { CreateOrderDto, VerifyPaymentDto } from '../../application/dto/create-order.dto';
-import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';
-import { UpdatePlanUseCase } from '../../application/use-cases/update-plan.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { SubscribeUseCase } from '../../application/use-cases/subscribe.use-case';
 import { ChangePlanUseCase } from '../../application/use-cases/change-plan.use-case';
@@ -43,8 +38,6 @@ import { UsageMetricType } from '@prisma/client';
 @Controller('billing')
 export class BillingController {
   constructor(
-    private readonly createPlanUseCase: CreatePlanUseCase,
-    private readonly updatePlanUseCase: UpdatePlanUseCase,
     private readonly listPlansUseCase: ListPlansUseCase,
     private readonly subscribeUseCase: SubscribeUseCase,
     private readonly changePlanUseCase: ChangePlanUseCase,
@@ -60,42 +53,8 @@ export class BillingController {
     private readonly usageRepo: UsageRepository,
   ) {}
 
-  // ── Plan Management (system/admin only) ──
-
-  @Post('plans')
-  @Roles('ADMIN')
-  @Permissions(PERMISSIONS.BILLING_PLANS_MANAGE)
-  @HttpCode(HttpStatus.CREATED)
-  async createPlan(
-    @Body() dto: CreatePlanDto,
-    @CurrentUser() user: JwtPayload,
-    @Req() req: Request,
-  ) {
-    return this.createPlanUseCase.execute(
-      user.sub,
-      dto,
-      this.extractIp(req),
-      this.extractUserAgent(req),
-    );
-  }
-
-  @Patch('plans/:id')
-  @Roles('ADMIN')
-  @Permissions(PERMISSIONS.BILLING_PLANS_MANAGE)
-  async updatePlan(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdatePlanDto,
-    @CurrentUser() user: JwtPayload,
-    @Req() req: Request,
-  ) {
-    return this.updatePlanUseCase.execute(
-      id,
-      user.sub,
-      dto,
-      this.extractIp(req),
-      this.extractUserAgent(req),
-    );
-  }
+  // Plans are platform-wide: create/update live only under /super-admin/plans.
+  // (Tenant org ADMINs bypass permission checks, so they must never reach them.)
 
   @Get('plans')
   @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
@@ -166,8 +125,127 @@ export class BillingController {
       throw new BadRequestException('Payment verification failed: invalid signature');
     }
 
-    // Check if the org already has a trial subscription — if so, activate it
+    // Check if the org already has an existing subscription
     const existing = await this.subscriptionRepo.findActiveByOrg(user.orgId);
+
+    // If an ACTIVE subscription exists, handle renewal or plan change
+    if (existing && existing.status === SubscriptionStatus.ACTIVE) {
+      const plan = await this.planRepo.findById(dto.planId);
+      if (!plan) throw new NotFoundException('Plan not found');
+
+      if (existing.planId === dto.planId) {
+        // Same plan — treat as manual renewal: extend billing period by one cycle
+        const now = new Date();
+        const newPeriodStart = now;
+        const newPeriodEnd = new Date(now);
+        if (plan.billingCycle === 'YEARLY') {
+          newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+        } else {
+          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+        }
+
+        const renewed = await this.subscriptionRepo.transitionStatus(
+          existing.id,
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.ACTIVE,
+          { currentPeriodStart: newPeriodStart, currentPeriodEnd: newPeriodEnd },
+        );
+
+        await this.subscriptionRepo.recordEvent({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          previousStatus: SubscriptionStatus.ACTIVE,
+          newStatus: SubscriptionStatus.ACTIVE,
+          triggeredById: user.sub,
+          metadata: { type: 'renewal', razorpayPaymentId: dto.razorpayPaymentId, orderId: dto.orderId },
+        });
+
+        const payment = await this.paymentRepo.createPayment({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          amountInCents: plan.priceInCents,
+          currency: plan.currency,
+          externalId: dto.razorpayPaymentId,
+          paymentMethod: 'razorpay',
+          idempotencyKey: dto.idempotencyKey || `rzp-renew-${dto.razorpayPaymentId}`,
+        });
+        await this.paymentRepo.transitionPaymentStatus(payment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
+
+        const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+        const invoice = await this.paymentRepo.createInvoice({
+          orgId: user.orgId,
+          subscriptionId: existing.id,
+          paymentId: payment.id,
+          invoiceNumber,
+          amountInCents: plan.priceInCents,
+          currency: plan.currency,
+          periodStart: newPeriodStart,
+          periodEnd: newPeriodEnd,
+          lineItems: [{ description: `${plan.name} — ${plan.billingCycle} (Renewal)`, amount: plan.priceInCents, currency: plan.currency }],
+          dueDate: now,
+        });
+        await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
+
+        await this.usageRepo.resetUsageForOrg(
+          user.orgId,
+          newPeriodStart,
+          newPeriodEnd,
+          {
+            [UsageMetricType.MESSAGES_SENT]: plan.maxMessagesPerMonth,
+            [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
+            [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
+            [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
+            [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
+            [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
+            [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
+          },
+        );
+
+        return { subscription: renewed, type: 'renewal', deduplicated: false };
+      }
+
+      // Different plan — upgrade or downgrade, both go through Razorpay payment
+      const isUpgrade = plan.priceInCents > existing.priceInCents;
+      const planChangeType = isUpgrade ? 'Upgrade' : 'Downgrade';
+      const now = new Date();
+
+      // Record payment + invoice for all plan changes via Razorpay
+      const planChangePayment = await this.paymentRepo.createPayment({
+        orgId: user.orgId,
+        subscriptionId: existing.id,
+        amountInCents: plan.priceInCents,
+        currency: plan.currency,
+        externalId: dto.razorpayPaymentId,
+        paymentMethod: 'razorpay',
+        idempotencyKey: dto.idempotencyKey || `rzp-${planChangeType.toLowerCase()}-${dto.razorpayPaymentId}`,
+      });
+      await this.paymentRepo.transitionPaymentStatus(planChangePayment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
+
+      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+      const planChangeInvoice = await this.paymentRepo.createInvoice({
+        orgId: user.orgId,
+        subscriptionId: existing.id,
+        paymentId: planChangePayment.id,
+        invoiceNumber,
+        amountInCents: plan.priceInCents,
+        currency: plan.currency,
+        periodStart: existing.currentPeriodStart,
+        periodEnd: existing.currentPeriodEnd,
+        lineItems: [{ description: `${plan.name} — ${plan.billingCycle} (${planChangeType})`, amount: plan.priceInCents, currency: plan.currency }],
+        dueDate: now,
+      });
+      await this.paymentRepo.transitionInvoiceStatus(planChangeInvoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
+
+      return this.changePlanUseCase.execute(
+        user.orgId,
+        user.sub,
+        { newPlanId: dto.planId, idempotencyKey: dto.idempotencyKey },
+        this.extractIp(req),
+        this.extractUserAgent(req),
+      );
+    }
+
+    // If a TRIAL subscription exists, activate it with this payment
     if (existing && existing.status === SubscriptionStatus.TRIAL) {
       // Transition trial → active on payment
       const plan = await this.planRepo.findById(dto.planId);
@@ -241,7 +319,7 @@ export class BillingController {
           [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
           [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
           [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-          [UsageMetricType.API_CALLS]: plan.maxMessagesPerMonth,
+          [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
           [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
           [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
         },

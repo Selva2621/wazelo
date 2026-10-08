@@ -56,15 +56,15 @@ interface MessageBubbleProps {
 function StatusIcon({ status }: { status: MessageStatus }) {
   switch (status) {
     case "sending":
-      return <Clock className="h-3 w-3 text-on-surface-variant/50" />;
+      return <Clock className="h-3 w-3 text-on-bubble-out/60" />;
     case "sent":
-      return <Check className="h-3 w-3 text-on-surface-variant/50" />;
+      return <Check className="h-3 w-3 text-on-bubble-out/60" />;
     case "delivered":
-      return <CheckCheck className="h-3 w-3 text-on-surface-variant/50" />;
+      return <CheckCheck className="h-3 w-3 text-on-bubble-out/60" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-primary" />;
+      return <CheckCheck className="h-3 w-3 text-info" />;
     case "failed":
-      return <span className="text-[10px] text-error font-medium">Failed</span>;
+      return <span className="text-caption text-error">Failed</span>;
     default:
       return null;
   }
@@ -119,17 +119,17 @@ function MediaContent({ message, isOutgoing }: { message: Message; isOutgoing: b
           className={cn(
             "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
             isOutgoing
-              ? "bg-on-primary/10 hover:bg-on-primary/20"
+              ? "bg-on-bubble-out/10 hover:bg-on-bubble-out/15"
               : "bg-surface-container-high hover:bg-surface-container-highest",
           )}
         >
           <FileText className="h-8 w-8 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium truncate">{fileName}</p>
+            <p className="text-body font-medium truncate">{fileName}</p>
             <p
               className={cn(
-                "text-[11px]",
-                isOutgoing ? "text-on-primary/60" : "text-on-surface-variant/60",
+                "text-caption",
+                isOutgoing ? "text-on-bubble-out/70" : "text-on-surface-variant",
               )}
             >
               {message.mediaMimeType || "Document"}
@@ -156,10 +156,10 @@ function InteractiveContent({ message, isOutgoing }: { message: Message; isOutgo
           <div
             key={btn.id}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium border",
+              "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-body font-medium border",
               isOutgoing
-                ? "border-on-primary/20 text-on-primary/90"
-                : "border-outline-variant/30 text-primary",
+                ? "border-on-bubble-out/20 text-on-bubble-out"
+                : "border-outline-variant text-primary-container",
             )}
           >
             <MousePointerClick className="h-3.5 w-3.5" />
@@ -175,10 +175,10 @@ function InteractiveContent({ message, isOutgoing }: { message: Message; isOutgo
       <div className="mt-2">
         <div
           className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium border",
+            "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-body font-medium border",
             isOutgoing
-              ? "border-on-primary/20 text-on-primary/90"
-              : "border-outline-variant/30 text-primary",
+              ? "border-on-bubble-out/20 text-on-bubble-out"
+              : "border-outline-variant text-primary-container",
           )}
         >
           <List className="h-3.5 w-3.5" />
@@ -189,8 +189,8 @@ function InteractiveContent({ message, isOutgoing }: { message: Message; isOutgo
             {section.title && (
               <p
                 className={cn(
-                  "text-[11px] font-semibold uppercase tracking-wide px-1 mb-0.5",
-                  isOutgoing ? "text-on-primary/60" : "text-on-surface-variant/60",
+                  "text-label px-1 mb-0.5",
+                  isOutgoing ? "text-on-bubble-out/70" : "text-on-surface-variant",
                 )}
               >
                 {section.title}
@@ -201,15 +201,15 @@ function InteractiveContent({ message, isOutgoing }: { message: Message; isOutgo
                 key={row.id}
                 className={cn(
                   "rounded-lg px-2.5 py-1.5 mb-0.5",
-                  isOutgoing ? "bg-on-primary/5" : "bg-surface-container-high/50",
+                  isOutgoing ? "bg-on-bubble-out/5" : "bg-surface-container-high/50",
                 )}
               >
-                <p className="text-[13px] font-medium">{row.title}</p>
+                <p className="text-body font-medium">{row.title}</p>
                 {row.description && (
                   <p
                     className={cn(
-                      "text-[11px]",
-                      isOutgoing ? "text-on-primary/60" : "text-on-surface-variant/60",
+                      "text-caption",
+                      isOutgoing ? "text-on-bubble-out/70" : "text-on-surface-variant",
                     )}
                   >
                     {row.description}
@@ -241,11 +241,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     >
       <div
         className={cn(
-          "max-w-[70%] rounded-2xl overflow-hidden",
+          "max-w-[85%] md:max-w-[70%] rounded-2xl overflow-hidden",
           isOutgoing
-            ? "bg-gradient-to-br from-primary to-primary/80 text-on-primary"
+            ? "bg-bubble-out text-on-bubble-out"
             : "bg-surface-container text-on-surface",
-          hasMedia && !hasText ? "p-1.5" : hasMedia ? "p-1.5 pb-0" : "px-4 py-2.5",
+          message.status === "failed" && "border border-error",
+          hasMedia && !hasText ? "p-1.5" : hasMedia ? "p-1.5 pb-0" : "px-3.5 py-2",
         )}
       >
         {/* Media */}
@@ -255,12 +256,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <div className={cn(hasMedia ? "px-3 py-2" : "")}>
           {/* Email subject line */}
           {message.channelType === "EMAIL" && message.channelPayload?.subject != null && (
-            <p className="text-[13px] font-semibold mb-1 opacity-90">
+            <p className="text-body font-semibold mb-1">
               {String(message.channelPayload.subject)}
             </p>
           )}
           {hasText && (
-            <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-body-lg whitespace-pre-wrap break-words">
               {message.content}
             </p>
           )}
@@ -275,8 +276,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           >
             <span
               className={cn(
-                "text-[10px]",
-                isOutgoing ? "text-on-primary/70" : "text-on-surface-variant/60",
+                "text-caption font-normal tabular-nums",
+                isOutgoing ? "text-on-bubble-out/70" : "text-on-surface-variant",
               )}
             >
               {formatMessageTime(message.createdAt)}

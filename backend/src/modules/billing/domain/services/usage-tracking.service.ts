@@ -4,6 +4,8 @@ import { UsageMetricType } from '@prisma/client';
 import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { EVENT_NAMES } from '@/common/constants';
+import { EntitlementOverrideService } from './entitlement-override.service';
+import { effectiveFeature, effectiveLimit, FeatureKey } from './entitlements';
 
 export interface UsageCheckResult {
   allowed: boolean;
@@ -22,7 +24,14 @@ export class UsageTrackingService {
     private readonly usageRepo: UsageRepository,
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly overrides: EntitlementOverrideService,
   ) {}
+
+  /** Plan limit, unless a super admin set an active per-org override. */
+  private async getEffectiveLimit(orgId: string, plan: any, metricType: UsageMetricType): Promise<number> {
+    const overrides = await this.overrides.forOrg(orgId);
+    return effectiveLimit(this.getLimitForMetric(plan, metricType), overrides, metricType).value;
+  }
 
   /**
    * Check if an action is allowed under the org's current usage limits.
@@ -47,7 +56,7 @@ export class UsageTrackingService {
     }
 
     const plan = subscription.plan;
-    const limitValue = this.getLimitForMetric(plan, metricType);
+    const limitValue = await this.getEffectiveLimit(orgId, plan, metricType);
 
     // For count-based metrics (users, sessions), check live counts
     if (metricType === UsageMetricType.ACTIVE_USERS) {
@@ -89,7 +98,7 @@ export class UsageTrackingService {
     if (!subscription) return null;
 
     const plan = subscription.plan;
-    const limitValue = this.getLimitForMetric(plan, metricType);
+    const limitValue = await this.getEffectiveLimit(orgId, plan, metricType);
 
     // Ensure usage record exists for current period
     await this.usageRepo.findOrCreate(
@@ -140,19 +149,23 @@ export class UsageTrackingService {
   }
 
   /**
-   * Check if a feature is enabled for the org's current plan.
+   * Check if a feature is enabled for the org: a super admin override (on or
+   * off) wins, otherwise the org's current plan decides.
    */
-  async isFeatureEnabled(orgId: string, feature: 'campaigns' | 'automation' | 'api' | 'ai' | 'shopify'): Promise<boolean> {
+  async isFeatureEnabled(orgId: string, feature: FeatureKey): Promise<boolean> {
     const subscription = await this.subscriptionRepo.findByOrgWithPlan(orgId);
     if (!subscription) return false;
 
-    const plan = subscription.plan;
-    if (feature === 'campaigns') return plan.campaignsEnabled;
-    if (feature === 'automation') return plan.automationEnabled;
-    if (feature === 'api') return (plan as any).apiEnabled ?? false;
-    if (feature === 'ai') return (plan as any).aiEnabled ?? false;
-    if (feature === 'shopify') return (plan as any).shopifyEnabled ?? false;
-    return false;
+    const plan = subscription.plan as any;
+    const planEnabled: boolean =
+      feature === 'campaigns' ? plan.campaignsEnabled
+      : feature === 'automation' ? plan.automationEnabled
+      : feature === 'api' ? plan.apiEnabled ?? false
+      : feature === 'ai' ? plan.aiEnabled ?? false
+      : feature === 'shopify' ? plan.shopifyEnabled ?? false
+      : false;
+
+    return effectiveFeature(planEnabled, await this.overrides.forOrg(orgId), feature).enabled;
   }
 
   private getLimitForMetric(plan: any, metricType: UsageMetricType): number {

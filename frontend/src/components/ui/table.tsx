@@ -10,7 +10,7 @@ interface TableProps {
 export function Table({ children, className }: TableProps) {
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table className="w-full text-sm">{children}</table>
+      <table className="w-full text-body-lg">{children}</table>
     </div>
   );
 }
@@ -50,7 +50,7 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant",
+        "px-5 py-3 text-caption font-semibold uppercase tracking-wider text-on-surface-variant",
         align === "right" && "text-right",
         align === "center" && "text-center",
         align === "left" && "text-left",

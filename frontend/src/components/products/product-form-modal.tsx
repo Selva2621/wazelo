@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateProduct, useUpdateProduct, useProductCategories } from "@/hooks/use-products";
 import type { Product } from "@/lib/types/products";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface ProductFormModalProps {
   open: boolean;
@@ -18,7 +20,7 @@ interface ProductFormModalProps {
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD"];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
 export function ProductFormModal({ open, onClose, product }: ProductFormModalProps) {
   const isEditing = !!product;
@@ -96,36 +98,28 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-xl max-h-[90vh] overflow-y-auto">
-
+    <Modal open={open} onClose={onClose} className="max-w-lg border border-outline-variant/15 max-h-[90vh]">
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant/10 sticky top-0 bg-surface-container-lowest z-10">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Package className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[15px] font-semibold text-on-surface">
+            <h2 className="text-body-lg font-semibold text-on-surface">
               {isEditing ? "Edit Product" : "New Product"}
             </h2>
-            <p className="text-[11px] text-on-surface-variant/60">
+            <p className="text-caption text-on-surface-variant/60">
               {isEditing ? "Update product details" : "Add a product to your catalog"}
             </p>
           </div>
-          <button
+          <IconButton size="sm"
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Form */}
@@ -172,7 +166,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="shrink-0 border-r border-outline-variant/10 bg-surface-container px-3 py-2.5 text-[13px] text-on-surface-variant font-medium outline-none"
+                className="shrink-0 border-r border-outline-variant/10 bg-surface-container px-3 py-2.5 text-body text-on-surface-variant font-medium outline-none"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -187,7 +181,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
-                className="flex-1 px-4 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 bg-transparent outline-none"
+                className="flex-1 px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 bg-transparent outline-none"
               />
             </div>
           </div>
@@ -260,7 +254,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
 
           {/* Error */}
           {error && (
-            <p className="text-[12px] text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
+            <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
               {error}
             </p>
           )}
@@ -275,7 +269,8 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

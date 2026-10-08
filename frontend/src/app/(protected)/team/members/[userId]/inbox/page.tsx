@@ -37,16 +37,16 @@ export default function ManagerMemberInboxPage({
       <div className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 border-b border-outline-variant/15 bg-surface-container/30">
         <button
           onClick={() => router.push("/team")}
-          className="text-[13px] text-primary hover:text-primary/80 transition-colors"
+          className="text-body text-primary hover:text-primary/80 transition-colors"
         >
           My Team
         </button>
         <ChevronRight className="h-3.5 w-3.5 text-on-surface-variant/50" />
-        <span className="text-[13px] font-medium text-on-surface">
+        <span className="text-body font-medium text-on-surface">
           {userName}
         </span>
         <ChevronRight className="h-3.5 w-3.5 text-on-surface-variant/50" />
-        <span className="text-[13px] text-on-surface-variant">Inbox</span>
+        <span className="text-body text-on-surface-variant">Inbox</span>
       </div>
 
       {/* Inbox */}

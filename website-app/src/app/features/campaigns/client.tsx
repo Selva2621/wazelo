@@ -25,7 +25,7 @@ function CampaignMockup() {
     { icon: "reply",      label: "Replied",   value: "1,847" },
   ];
 
-  const FONT = "'Inter', sans-serif";
+  const FONT = "var(--font-geist-sans), sans-serif";
 
   return (
     <div>

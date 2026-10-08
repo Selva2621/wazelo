@@ -143,7 +143,7 @@ export default function RolesPermissionsPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
           <Shield className="h-12 w-12 text-on-surface-variant/40 mx-auto mb-3" />
-          <p className="text-[14px] text-on-surface-variant">
+          <p className="text-body-lg text-on-surface-variant">
             You don&apos;t have permission to view this page.
           </p>
         </div>
@@ -158,13 +158,13 @@ export default function RolesPermissionsPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[12px] text-on-surface-variant mb-1">
+          <p className="text-label text-on-surface-variant mb-1">
             Admin &gt; Roles &amp; Permissions
           </p>
-          <h1 className="text-2xl font-semibold text-on-surface">
+          <h1 className="text-headline font-semibold text-on-surface">
             Roles &amp; Permissions
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-1">
+          <p className="text-body text-on-surface-variant mt-1">
             Manage what each role can access in your organization
           </p>
         </div>
@@ -206,7 +206,7 @@ export default function RolesPermissionsPage() {
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Shield className="h-10 w-10 text-on-surface-variant/40 mb-3" />
-            <p className="text-[14px] text-on-surface-variant">
+            <p className="text-body-lg text-on-surface-variant">
               No permissions found
             </p>
           </div>
@@ -216,13 +216,13 @@ export default function RolesPermissionsPage() {
               {/* Sticky Header */}
               <thead className="sticky top-0 z-10">
                 <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant min-w-[300px]">
+                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant min-w-[300px]">
                     Permission
                   </th>
                   {ALL_ROLES.map((role) => (
                     <th
                       key={role}
-                      className="px-5 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant w-[140px]"
+                      className="px-5 py-3 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant w-[140px]"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         {role === "ADMIN" && (
@@ -251,7 +251,7 @@ export default function RolesPermissionsPage() {
         {/* Info footer */}
         <div className="px-5 py-3 border-t border-outline-variant/15 flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 text-on-surface-variant/50" />
-          <span className="text-[11px] text-on-surface-variant/60">
+          <span className="text-caption text-on-surface-variant/60">
             Admin role always has full access and cannot be modified.
           </span>
         </div>
@@ -276,7 +276,7 @@ function GroupRows({
       <tr className="bg-surface-container/20">
         <td
           colSpan={4}
-          className="px-5 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="px-5 py-2.5 text-label font-semibold uppercase tracking-wide text-on-surface-variant"
         >
           {group.label}
         </td>
@@ -291,11 +291,11 @@ function GroupRows({
         >
           <td className="px-5 py-3">
             <div>
-              <span className="text-[13px] font-medium text-on-surface">
+              <span className="text-body font-medium text-on-surface">
                 {ACTION_LABELS[perm.action] ?? perm.action}
               </span>
               {perm.description && (
-                <p className="text-[11px] text-on-surface-variant mt-0.5">
+                <p className="text-caption text-on-surface-variant mt-0.5">
                   {perm.description}
                 </p>
               )}
@@ -304,6 +304,7 @@ function GroupRows({
           {ALL_ROLES.map((role) => (
             <td key={role} className="px-5 py-3 text-center">
               <ToggleSwitch
+                label={`${role}: ${ACTION_LABELS[perm.action] ?? perm.action} ${group.label}`}
                 checked={isGranted(role, perm.id)}
                 disabled={role === "ADMIN"}
                 onChange={() => togglePermission(role, perm.id)}
@@ -318,10 +319,12 @@ function GroupRows({
 
 // ─── Toggle Switch Component ──────────────────
 function ToggleSwitch({
+  label,
   checked,
   disabled,
   onChange,
 }: {
+  label: string;
   checked: boolean;
   disabled?: boolean;
   onChange: () => void;
@@ -331,6 +334,7 @@ function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={onChange}
       className={`

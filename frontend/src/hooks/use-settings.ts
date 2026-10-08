@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsApi } from "@/lib/api/settings";
+import { useAuthStore } from "@/stores/auth-store";
 import type {
   UpdateOrgSettingsRequest,
   UpdateWhatsAppConfigRequest,
@@ -33,9 +34,13 @@ export const settingsKeys = {
 // ─── Query Hooks ───
 
 export function useOrgSettings() {
+  // ProtectedLayout calls this before the session is restored on reload; firing then only
+  // earns a 401 and an extra token refresh.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return useQuery({
     queryKey: settingsKeys.org(),
     queryFn: () => settingsApi.getOrgSettings(),
+    enabled: isAuthenticated,
   });
 }
 

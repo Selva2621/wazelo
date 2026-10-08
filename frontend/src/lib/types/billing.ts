@@ -16,6 +16,7 @@ export interface Plan {
   name: string;
   slug: string;
   description?: string;
+  planType?: string; // "CRM" | "FREELANCER" — scopes plans per org type
   billingCycle: BillingCycle;
   priceInCents: number;
   currency: string;
@@ -108,6 +109,15 @@ export interface SubscriptionPlanSummary {
   maxShopifyStores: number;
 }
 
+export interface ScheduledPlanSummary {
+  id: string;
+  name: string;
+  slug: string;
+  billingCycle: BillingCycle;
+  priceInCents: number;
+  currency: string;
+}
+
 export interface Subscription {
   id: string;
   status: SubscriptionStatus;
@@ -118,6 +128,7 @@ export interface Subscription {
   cancelledAt?: string | null;
   scheduledPlanId?: string | null;
   scheduledChangeAt?: string | null;
+  scheduledPlan?: ScheduledPlanSummary | null;
 }
 
 // ─── Usage ───

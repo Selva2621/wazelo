@@ -5,6 +5,12 @@ export const audienceFiltersSchema = z.object({
   tagIds: z.array(z.string().uuid()).optional(),
   ownerIds: z.array(z.string().uuid()).optional(),
   sources: z.array(z.string()).optional(),
+  productIds: z.array(z.string().uuid()).optional(),
+  scrapeRunId: z.string().uuid().optional(),
+  hasPhone: z.boolean().optional(),
+  hasWebsite: z.boolean().optional(),
+  minRating: z.number().optional(),
+  dateAdded: z.enum(['last_7d', 'last_30d', 'last_90d']).optional(),
 });
 
 export const createCampaignSchema = z

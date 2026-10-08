@@ -1,8 +1,14 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
-/* ─── Midnight Ember Theme ─── */
+/* Design tokens: see frontend/design-system/DESIGN.md and design-tokens.json */
+
+/* ─── Midnight Ember Theme (default) ─── */
+/* :root must come first: it has the same specificity as [data-theme], so a later
+   :root block would override every theme. */
+:root,
 [data-theme="midnight-ember"] {
+  color-scheme: dark;
   --primary: #d97706;
   --primary-container: #f59e0b;
   --primary-glow: rgba(217, 119, 6, 0.3);
@@ -10,73 +16,193 @@
 
   --surface: #0f1117;
   --surface-container-lowest: #1e2130;
+  --sidebar: #1e2130;
   --surface-container-low: #252838;
   --surface-container: #2d3044;
   --surface-container-high: #363a50;
+  --surface-container-highest: #40445c;
   --on-surface: #e8eaed;
-  --on-surface-variant: #9ca3b4;
+  --on-surface-variant: #a3aabb;
+  --placeholder: #8a91a5;
 
   --outline-variant: #3d4258;
+  --outline: #6e7594;
 
   --error: #f87171;
   --error-container: #451a1a;
+  --on-error: #1a1d27;
   --success: #34d399;
   --success-container: #1a3a2a;
-  --warning: #fbbf24;
-  --warning-container: #3b3510;
+  --warning: #facc15;
+  --warning-container: #3a3010;
+  --info: #60a5fa;
+  --info-container: #172a45;
+
+  --bubble-out: #4a3413;
+  --on-bubble-out: #f3ede2;
+  --focus: #f59e0b;
+  --scrim: rgb(5 6 10 / 0.6);
+  --shadow-color: rgb(5 6 10 / 0.55);
+  --chart-1: #f59e0b;
+  --chart-2: #60a5fa;
+  --chart-3: #34d399;
+  --chart-4: #f472b6;
+  --chart-5: #a78bfa;
+  --chart-6: #94a3b8;
 }
 
 /* ─── Emerald Night Theme ─── */
 [data-theme="emerald-night"] {
-  --primary: #059669;
+  color-scheme: dark;
+  --primary: #047857;
   --primary-container: #10b981;
-  --primary-glow: rgba(5, 150, 105, 0.3);
+  --primary-glow: rgba(4, 120, 87, 0.3);
   --on-primary: #ffffff;
 
   --surface: #111816;
   --surface-container-lowest: #1a2420;
+  --sidebar: #1a2420;
   --surface-container-low: #222e29;
   --surface-container: #2a3833;
   --surface-container-high: #334340;
+  --surface-container-highest: #3e504b;
   --on-surface: #e6ece9;
-  --on-surface-variant: #8fa89e;
+  --on-surface-variant: #9ab2a8;
+  --placeholder: #84a094;
 
   --outline-variant: #3d524a;
+  --outline: #5d7a70;
 
   --error: #f87171;
   --error-container: #3b1515;
+  --on-error: #111816;
   --success: #34d399;
   --success-container: #1a3a2a;
-  --warning: #fbbf24;
-  --warning-container: #3b3510;
+  --warning: #facc15;
+  --warning-container: #3a3010;
+  --info: #60a5fa;
+  --info-container: #16283f;
+
+  --bubble-out: #0f4a3a;
+  --on-bubble-out: #e6f2ec;
+  --focus: #10b981;
+  --scrim: rgb(3 8 6 / 0.6);
+  --shadow-color: rgb(3 8 6 / 0.55);
+  --chart-1: #f59e0b;
+  --chart-2: #60a5fa;
+  --chart-3: #34d399;
+  --chart-4: #f472b6;
+  --chart-5: #a78bfa;
+  --chart-6: #94a3b8;
 }
 
-/* Default to Midnight Ember */
-:root {
+/* ─── Daylight Theme (light) ───
+   Lavish-style layering: blue-grey page, white cards, slightly darker sidebar,
+   so the active nav tab (page colour) still reads as part of the page. */
+[data-theme="daylight"] {
+  color-scheme: light;
+  --primary: #b45309;
+  --primary-container: #92400e;
+  --primary-glow: rgba(180, 83, 9, 0.25);
+  --on-primary: #fffaf2;
+
+  --surface: #eef1f6;
+  --surface-container-lowest: #fdfdfe;
+  --sidebar: #e3e8ef;
+  --surface-container-low: #f5f7fa;
+  --surface-container: #e9edf3;
+  --surface-container-high: #e0e5ec;
+  --surface-container-highest: #d6dce5;
+  --on-surface: #1d2330;
+  --on-surface-variant: #555e70;
+  --placeholder: #646d7f;
+
+  --outline-variant: #d9dfe8;
+  --outline: #7f889b;
+
+  --error: #c81e1e;
+  --error-container: #fdeaea;
+  --on-error: #fffaf2;
+  --success: #047857;
+  --success-container: #dff3ea;
+  --warning: #8a5a06;
+  --warning-container: #fcf1cf;
+  --info: #1d4ed8;
+  --info-container: #e3ebfd;
+
+  --bubble-out: #fbe7c3;
+  --on-bubble-out: #2b2006;
+  --focus: #b45309;
+  --scrim: rgb(20 26 40 / 0.35);
+  --shadow-color: rgb(31 41 64 / 0.14);
+  --chart-1: #d97706;
+  --chart-2: #2563eb;
+  --chart-3: #059669;
+  --chart-4: #db2777;
+  --chart-5: #7c3aed;
+  --chart-6: #64748b;
+}
+
+/* ─── Ember Glass Theme (dark glassmorphism) ───
+   From the Stitch "Wazelo — Ember Glass Theme" screen. Cards are translucent glass over
+   a warm aurora canvas (see "Ember Glass surfaces" at the end of this file). Nested
+   surfaces are white overlays so they stack correctly inside glass; floating layers
+   (menus, tooltips, dialogs) get an opaque-enough fill there for readability. */
+[data-theme="ember-glass"] {
+  color-scheme: dark;
   --primary: #d97706;
   --primary-container: #f59e0b;
-  --primary-glow: rgba(217, 119, 6, 0.3);
-  --on-primary: #1a1d27;
+  --primary-glow: rgba(245, 158, 11, 0.35);
+  --on-primary: #1f1300;
 
-  --surface: #0f1117;
-  --surface-container-lowest: #1e2130;
-  --surface-container-low: #252838;
-  --surface-container: #2d3044;
-  --surface-container-high: #363a50;
-  --on-surface: #e8eaed;
-  --on-surface-variant: #9ca3b4;
+  --surface: #0b0c10;
+  --surface-container-lowest: rgb(18 20 29 / 0.72);
+  --sidebar: rgb(18 20 29 / 0.72);
+  --surface-container-low: rgb(255 255 255 / 0.045);
+  --surface-container: rgb(255 255 255 / 0.07);
+  --surface-container-high: rgb(255 255 255 / 0.1);
+  --surface-container-highest: rgb(255 255 255 / 0.14);
+  --on-surface: #ece9e4;
+  --on-surface-variant: #c8bba9;
+  --placeholder: #9c9182;
 
-  --outline-variant: #3d4258;
+  --outline-variant: rgb(255 255 255 / 0.09);
+  --outline: rgb(255 255 255 / 0.24);
 
   --error: #f87171;
   --error-container: #451a1a;
+  --on-error: #1a1d27;
   --success: #34d399;
   --success-container: #1a3a2a;
-  --warning: #fbbf24;
-  --warning-container: #3b3510;
+  --warning: #facc15;
+  --warning-container: #3a3010;
+  --info: #60a5fa;
+  --info-container: #172a45;
+
+  --bubble-out: #4a3413;
+  --on-bubble-out: #f3ede2;
+  --focus: #f59e0b;
+  --scrim: rgb(5 6 10 / 0.55);
+  --shadow-color: rgb(0 0 0 / 0.6);
+  --chart-1: #f59e0b;
+  --chart-2: #60a5fa;
+  --chart-3: #34d399;
+  --chart-4: #f472b6;
+  --chart-5: #a78bfa;
+  --chart-6: #94a3b8;
+}
+
+/* Single-series bar fill. Validated (dataviz validate_palette.js): #3b82f6 passes
+   lightness + 3:1 contrast on every dark surface; the light theme uses --chart-2. */
+:root {
+  --chart-bar: #3b82f6;
+}
+[data-theme="daylight"] {
+  --chart-bar: var(--chart-2);
 }
 
 @theme inline {
+  --color-chart-bar: var(--chart-bar);
   --color-primary: var(--primary);
   --color-primary-container: var(--primary-container);
   --color-primary-glow: var(--primary-glow);
@@ -87,23 +213,294 @@
   --color-surface-container-low: var(--surface-container-low);
   --color-surface-container: var(--surface-container);
   --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
+  --color-placeholder: var(--placeholder);
 
   --color-outline-variant: var(--outline-variant);
+  --color-outline: var(--outline);
 
   --color-error: var(--error);
   --color-error-container: var(--error-container);
+  --color-on-error: var(--on-error);
   --color-success: var(--success);
   --color-success-container: var(--success-container);
   --color-warning: var(--warning);
   --color-warning-container: var(--warning-container);
+  --color-info: var(--info);
+  --color-info-container: var(--info-container);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-bubble-out: var(--bubble-out);
+  --color-on-bubble-out: var(--on-bubble-out);
+  --color-focus: var(--focus);
+  --color-scrim: var(--scrim);
+  --color-sidebar: var(--sidebar);
 
-  --sidebar-width: 240px;
-  --sidebar-collapsed: 64px;
+  /* Categorical (charts, decorative category tints). Not for status. */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  /* Type scale (DESIGN.md §4) */
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-body: 0.8125rem;
+  --text-body--line-height: 1.25rem;
+  --text-body-lg: 0.875rem;
+  --text-body-lg--line-height: 1.375rem;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.625rem;
+  --text-headline: 1.375rem;
+  --text-headline--line-height: 1.75rem;
+  --text-headline--letter-spacing: -0.01em;
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.125rem;
+  --text-display--letter-spacing: -0.02em;
+  /* Marketing-surface headline only (auth pages); fluid between 36px and 52px. */
+  --text-hero: clamp(1.875rem, 1.2rem + 1.2vw, 2.375rem);
+  --text-hero--line-height: 1.1;
+  --text-hero--letter-spacing: -0.025em;
+
+  /* Elevation: floating layers only (DESIGN.md §5.3) */
+  --shadow-popover: 0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant);
+  --shadow-modal: 0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --sidebar-width: 256px;
+  /* Floating rail: 52px pill + 12px gutters (see "Floating sidebar") */
+  --sidebar-collapsed: 76px;
   --header-height: 64px;
+}
+
+/* ─── App sidebar (DESIGN.md §6.5) ───
+   The active item is a "tab" in the page colour, fused into the content area.
+   Its inverted corners are two sidebar-coloured circles whose shadows paint the
+   page colour around them. */
+@layer components {
+  /* No visible scrollbar: it would sit between the active tab and the page.
+     The list still scrolls with wheel, touch and keyboard. */
+  .side-scroll {
+    scrollbar-width: none;
+  }
+  .side-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .side-tab {
+    position: relative;
+  }
+}
+
+/* ─── Entrance cascade (app pages) ───
+   `.page-stagger`: wrapper set by PageTransition; each top-level section of the page
+   fades up in turn. `.stagger`: opt-in for a grid or list whose items should cascade.
+   fill-mode `backwards` only holds the start frame during the delay and keeps nothing
+   afterwards, so no transform lingers to break `position: fixed` modals inside. */
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.page-stagger > * > *,
+.stagger > * {
+  animation: enter-up 280ms var(--ease-standard) backwards;
+}
+.page-stagger > * > :nth-child(2), .stagger > :nth-child(2) { animation-delay: 50ms; }
+.page-stagger > * > :nth-child(3), .stagger > :nth-child(3) { animation-delay: 100ms; }
+.page-stagger > * > :nth-child(4), .stagger > :nth-child(4) { animation-delay: 150ms; }
+.page-stagger > * > :nth-child(5), .stagger > :nth-child(5) { animation-delay: 200ms; }
+.page-stagger > * > :nth-child(n + 6), .stagger > :nth-child(n + 6) { animation-delay: 250ms; }
+@media (prefers-reduced-motion: reduce) {
+  .page-stagger > * > *,
+  .stagger > * {
+    animation: none;
+  }
+}
+
+/* ─── Auth surfaces: aurora backdrop + liquid glass ───
+   Liquid Glass is an Apple-platform material with no web API. This is a web
+   approximation: translucent fill, backdrop blur/saturation, a specular top
+   edge and a soft inner rim. Solid fallback when transparency is reduced or
+   backdrop-filter is unsupported. */
+@layer components {
+  /* Brand panel (left half of the split auth layout). The form half stays plain. */
+  .auth-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(44rem 32rem at 78% 52%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%),
+      radial-gradient(36rem 26rem at 0% 100%, color-mix(in srgb, var(--primary-container) 12%, transparent), transparent 70%),
+      var(--surface-container-low);
+  }
+  /* Structured texture: a dot grid that fades out toward the edges. */
+  .auth-backdrop::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(color-mix(in srgb, var(--on-surface) 9%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 30% 50%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 70% 60% at 30% 50%, #000 30%, transparent 75%);
+  }
+  /* Film grain: fixed, non-interactive, so it never repaints with scroll. */
+  .auth-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* WhatsApp phone mock-up (auth pages). WhatsApp's dark/light layout, with its
+     greens desaturated so brand orange stays the only accent on the page. */
+  .wa-phone {
+    --wa-frame: #111318;
+    --wa-header: #202c33;
+    --wa-on-header: #e9edef;
+    --wa-bg: #0b141a;
+    --wa-in: #202c33;
+    --wa-out: #24403b;
+    --wa-text: #e9edef;
+    --wa-meta: #8696a0;
+    --wa-link: #53bdeb;
+    --wa-tick: #53bdeb;
+    --wa-accent: var(--primary);
+    --wa-input: #2a3942;
+    --wa-chip: #182229;
+  }
+  [data-theme="daylight"] .wa-phone {
+    --wa-header: #3b5450;
+    --wa-on-header: #ffffff;
+    --wa-bg: #efeae2;
+    --wa-in: #ffffff;
+    --wa-out: #e2efe8;
+    --wa-text: #111b21;
+    --wa-meta: #667781;
+    --wa-link: #027eb5;
+    --wa-input: #ffffff;
+    --wa-chip: #ffffff;
+  }
+  /* Chat wallpaper: quiet dot doodle like the WhatsApp default. */
+  .wa-wallpaper {
+    background-color: var(--wa-bg);
+    background-image: radial-gradient(color-mix(in srgb, var(--wa-meta) 14%, transparent) 1px, transparent 1.5px);
+    background-size: 14px 14px;
+  }
+
+  /* Single light source behind the product window on the auth pages. */
+  .auth-glow {
+    position: absolute;
+    inset: -12% -8% -18%;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 9999px;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--primary) 22%, transparent), transparent);
+    filter: blur(24px);
+  }
+  [data-theme="daylight"] .auth-glow {
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--primary) 14%, transparent), transparent);
+  }
+
+  .glass-panel,
+  .glass-pill {
+    position: relative;
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+    backdrop-filter: blur(28px) saturate(170%);
+    border: 1px solid color-mix(in srgb, var(--on-surface) 12%, transparent);
+  }
+  .glass-panel {
+    background: color-mix(in srgb, var(--surface-container-lowest) 72%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in srgb, #fff 16%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, #fff 4%, transparent),
+      0 32px 80px -24px var(--shadow-color);
+  }
+  /* Specular sheen from the top-left, behind content. */
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, #fff 9%, transparent), transparent 55%);
+  }
+  /* Interactive glass: buttons and small controls. */
+  .glass-pill {
+    background: color-mix(in srgb, var(--surface-container-lowest) 50%, transparent);
+    box-shadow: inset 0 1px 0 0 color-mix(in srgb, #fff 14%, transparent);
+    transition:
+      background-color 120ms var(--ease-standard),
+      border-color 120ms var(--ease-standard),
+      transform 120ms var(--ease-standard);
+  }
+  .glass-pill:is(a, button):hover {
+    background: color-mix(in srgb, var(--surface-container-lowest) 74%, transparent);
+    border-color: color-mix(in srgb, var(--primary-container) 45%, transparent);
+  }
+  .glass-pill:is(a, button):active {
+    transform: scale(0.98);
+  }
+
+  [data-theme="daylight"] .glass-panel {
+    background: color-mix(in srgb, #fff 64%, transparent);
+    border-color: color-mix(in srgb, #fff 80%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 #fff,
+      0 32px 80px -24px var(--shadow-color);
+  }
+  [data-theme="daylight"] .glass-pill {
+    background: color-mix(in srgb, #fff 52%, transparent);
+    border-color: color-mix(in srgb, #fff 80%, transparent);
+  }
+  [data-theme="daylight"] .glass-pill:is(a, button):hover {
+    background: color-mix(in srgb, #fff 78%, transparent);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-panel,
+    .glass-pill {
+      background: var(--surface-container-lowest);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-panel,
+    .glass-pill {
+      background: var(--surface-container-lowest);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+}
+
+/* Collapsed icon rail (desktop). Opens and closes only via the header toggle; hovering an
+   icon shows its tooltip instead (NavItem). Unlayered on purpose so these state rules beat
+   width/display utilities. */
+@media (min-width: 1024px) {
+  .app-sidebar[data-collapsed="true"] {
+    width: var(--sidebar-collapsed);
+  }
+  .app-sidebar[data-collapsed="true"] .side-label {
+    display: none;
+  }
 }
 
 body {
@@ -112,11 +509,227 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Smooth theme transitions */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+/* Layered so component utilities (outline-none + ring) still win */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
 }
 
-input, textarea {
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Ember Glass surfaces ───
+   Theme-scoped and unlayered, so they win over Tailwind utilities only in this theme.
+   Glass is reserved for the frame (rail, header), cards and floating layers; dense lists
+   stay on plain fills to keep scrolling cheap. */
+
+/* Canvas: warm aurora instead of a flat page colour, so the translucent cards read as glass */
+[data-theme="ember-glass"] body,
+[data-theme="ember-glass"] .app-canvas {
+  background:
+    radial-gradient(60rem 42rem at 88% -8%, rgb(245 158 11 / 0.2), transparent 65%),
+    radial-gradient(52rem 38rem at 8% 108%, rgb(217 119 6 / 0.17), transparent 70%),
+    radial-gradient(40rem 30rem at 48% 52%, rgb(180 83 9 / 0.07), transparent 70%),
+    var(--surface);
+  background-attachment: fixed;
+}
+
+/* Cards (glass level 1): hairline border comes from --outline-variant; add the specular edge */
+[data-theme="ember-glass"] .bg-surface-container-lowest {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+    0 12px 36px -8px rgb(0 0 0 / 0.55);
+}
+
+/* Floating layers (menus, popovers, tooltips): near-opaque glass so text over content stays readable */
+[data-theme="ember-glass"] :is(.absolute, .fixed, .sticky):is(
+    .bg-surface-container-low,
+    .bg-surface-container,
+    .bg-surface-container-high,
+    .bg-surface-container-highest
+  ),
+[data-theme="ember-glass"] :is([role="menu"], [role="listbox"]) {
+  background-color: rgb(26 29 42 / 0.94);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Dialogs and drawers (glass level 2): denser fill, blur, faint amber glow */
+[data-theme="ember-glass"] [role="dialog"] {
+  background-color: rgb(26 29 42 / 0.9);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  box-shadow:
+    inset 0 1px 1.5px 0 rgb(255 255 255 / 0.12),
+    0 16px 48px -8px rgb(0 0 0 / 0.65),
+    0 0 24px -2px rgb(245 158 11 / 0.08);
+}
+
+/* Header: glass strip over scrolling content */
+[data-theme="ember-glass"] .app-header {
+  background-color: rgb(11 12 16 / 0.55);
+}
+
+/* Glass rail: blur and specular edge on top of the shared floating rail (see below) */
+@media (min-width: 1024px) {
+  [data-theme="ember-glass"] .app-sidebar {
+    border-color: rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+      0 16px 40px -10px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Rail items in Glass: soft pill with an orange icon circle */
+[data-theme="ember-glass"] .side-tab[data-active="true"] a {
+  background-color: rgb(255 255 255 / 0.06);
+}
+[data-theme="ember-glass"] .side-tab a > span:first-child {
+  border-radius: 9999px;
+}
+[data-theme="ember-glass"] .side-tab[data-active="true"] a > span:first-child {
+  box-shadow: 0 0 20px -4px rgb(245 158 11 / 0.55);
+}
+
+/* ─── Floating sidebar (desktop, all themes) ───
+   The rail floats 12px off the viewport edges as a rounded panel; --sidebar-width and
+   --sidebar-collapsed still define the column, so <main> and the header offsets match.
+   Unlayered so it overrides the aside's Tailwind position/size utilities; the collapsed
+   widths are restated here because the layered rules above would otherwise lose. */
+@media (min-width: 1024px) {
+  .app-sidebar {
+    top: 12px;
+    left: 12px;
+    height: calc(100dvh - 24px);
+    width: calc(var(--sidebar-width) - 24px);
+    border-radius: 24px;
+    border: 1px solid var(--outline-variant);
+    box-shadow: 0 12px 32px -14px var(--shadow-color);
+  }
+  .app-sidebar[data-collapsed="true"] {
+    width: calc(var(--sidebar-collapsed) - 24px);
+  }
+  /* Centre the logo in the 52px rail */
+  .app-sidebar[data-collapsed="true"] > a:first-child {
+    padding-inline: 12px;
+  }
+  /* Collapsed rail: 4px + 4px + 36px icon + 4px + 4px = 52px, so icons sit dead centre */
+  .app-sidebar[data-collapsed="true"] .side-tab a {
+    margin-inline: 4px;
+    padding-right: 0;
+  }
+  .app-sidebar[data-collapsed="true"] .side-tab a > span:first-child {
+    margin-inline: 4px;
+  }
+  /* NavSection's list carries pl-2.5 for the expanded layout; in the 52px rail it pushed
+     every icon ~10px right and clipped it against the rail edge */
+  .app-sidebar[data-collapsed="true"] nav ul {
+    padding-left: 0;
+  }
+  /* Account row: centre the avatar in the rail */
+  .app-sidebar[data-collapsed="true"] > div:last-child {
+    padding-inline: 4px;
+  }
+}
+
+/* The nav scrolls inside the rounded rail with no scrollbar; fade its bottom edge so a cut-off
+   item reads as "more below" instead of a clipping bug */
+.app-sidebar .side-scroll {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+/* Visible scrollbar whenever the menu is open (expanded, mobile drawer); the collapsed 52px
+   rail stays clean. Chromium/Safari get a styled ::-webkit-scrollbar, which also opts out of
+   Edge/Chrome overlay scrollbars that stay hidden until you scroll. Setting scrollbar-width or
+   scrollbar-color would switch Chromium back to the standard (overlay) path, so those are
+   Firefox-only. Unlayered, so it beats the hidden-scrollbar rule above. */
+/* The base rule hides it with scrollbar-width: none, which in Chromium also disables the
+   ::-webkit-scrollbar styling below; reset to auto while the menu is open. */
+.app-sidebar:not([data-collapsed="true"]) .side-scroll,
+.app-sidebar[data-open="true"] .side-scroll {
+  scrollbar-width: auto;
+}
+.app-sidebar:not([data-collapsed="true"]) .side-scroll::-webkit-scrollbar,
+.app-sidebar[data-open="true"] .side-scroll::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+.app-sidebar .side-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: var(--outline);
+}
+.app-sidebar .side-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .app-sidebar:not([data-collapsed="true"]) .side-scroll,
+  .app-sidebar[data-open="true"] .side-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--outline) transparent;
+  }
+}
+
+/* Toggle open/close: the rail widens and the page slides right with it (margin-left follows
+   --sidebar-width / --sidebar-collapsed), on one shared duration so they move as one. */
+@media (min-width: 1024px) {
+  .app-canvas :is(.app-main, .app-header) {
+    transition-property: margin-left, background-color, border-color;
+    transition-duration: 260ms;
+    transition-timing-function: var(--ease-standard);
+  }
+  .app-sidebar {
+    transition-duration: 260ms;
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .app-canvas :is(.app-main, .app-header) {
+    transition-duration: 0ms;
+  }
+}
+
+/* Expanded sidebar: the active row is a page-coloured tab that runs to the rail's edge and
+   fuses into the content through inverted corners. The rail's right border is dropped so
+   no hairline separates tab and page. Not in Glass: its canvas is a gradient, so a
+   solid page-coloured tab would read as a hole (Glass keeps the soft pill). */
+html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) {
+  border-right-color: transparent;
+  /* Otherwise the rail's own fill shows through the transparent border as a 1px line */
+  background-clip: padding-box;
+}
+html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before,
+html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: var(--sidebar);
+  pointer-events: none;
+}
+html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before {
+  top: -32px;
+  box-shadow: 16px 16px 0 0 var(--surface);
+}
+html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
+  bottom: -32px;
+  box-shadow: 16px -16px 0 0 var(--surface);
+}
+/* Glass, expanded: keep the soft pill shape for the active row */
+[data-theme="ember-glass"] .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"] a {
+  margin-right: 0.625rem;
+  border-radius: 0.75rem;
 }

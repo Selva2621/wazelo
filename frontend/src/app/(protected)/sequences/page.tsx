@@ -21,6 +21,7 @@ import {
 import { useWhatsAppSession } from "@/hooks/use-whatsapp";
 import { usePageTitle } from "@/hooks/use-page-title";
 import type { SequenceStatus } from "@/lib/types/sequences";
+import { IconButton } from "@/components/ui/icon-button";
 
 const STATUS_TABS = [
   { id: "", label: "All" },
@@ -58,10 +59,10 @@ export default function SequencesPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => setAnalyticsId(null)} className="p-2 rounded-lg hover:bg-surface-container transition-colors">
+          <IconButton size="sm" onClick={() => setAnalyticsId(null)} aria-label="Back">
             <ArrowLeft className="h-4 w-4 text-on-surface-variant" />
-          </button>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          </IconButton>
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
             Sequence Analytics
           </h1>
@@ -76,11 +77,11 @@ export default function SequencesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Workflow className="h-6 w-6 text-primary" />
             Drip Sequences
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <p className="text-body text-on-surface-variant mt-0.5">
             Multi-step automated message sequences
           </p>
         </div>
@@ -129,18 +130,17 @@ export default function SequencesPage() {
       )}
 
       {/* Create modal */}
-      {showCreate && (
-        <CreateSequenceModal
-          sessionId={session?.id ?? ""}
-          onSubmit={(req) => {
-            createSequence.mutate(req, {
-              onSuccess: () => setShowCreate(false),
-            });
-          }}
-          onClose={() => setShowCreate(false)}
-          submitting={createSequence.isPending}
-        />
-      )}
+      <CreateSequenceModal
+        open={showCreate}
+        sessionId={session?.id ?? ""}
+        onSubmit={(req) => {
+          createSequence.mutate(req, {
+            onSuccess: () => setShowCreate(false),
+          });
+        }}
+        onClose={() => setShowCreate(false)}
+        submitting={createSequence.isPending}
+      />
     </div>
   );
 }

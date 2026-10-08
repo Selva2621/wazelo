@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useLayoutEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface TooltipProps {
@@ -20,7 +21,8 @@ export function Tooltip({
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // Layout effect: measure before paint so the tooltip never flashes at (0, 0)
+  useLayoutEffect(() => {
     if (!show || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     switch (side) {
@@ -52,20 +54,27 @@ export function Tooltip({
       className={cn("relative inline-flex", className)}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
+      // Keyboard users get the same label when the trigger receives focus
+      onFocus={() => setShow(true)}
+      onBlur={() => setShow(false)}
     >
       {children}
-      {show && (
-        <div
-          role="tooltip"
-          className={cn(
-            "fixed z-[9999] whitespace-nowrap rounded-lg bg-surface-container-high px-2.5 py-1.5 text-[12px] text-on-surface shadow-lg pointer-events-none",
-            transformMap[side],
-          )}
-          style={{ top: pos.top, left: pos.left }}
-        >
-          {content}
-        </div>
-      )}
+      {/* Portalled to <body>: inside a masked, clipped or filtered parent (the sidebar rail's
+          scroll fade, Glass blur + overflow-hidden) a fixed element is masked or clipped away. */}
+      {show &&
+        createPortal(
+          <div
+            role="tooltip"
+            className={cn(
+              "fixed z-[9999] whitespace-nowrap rounded-lg bg-surface-container-high px-2.5 py-1.5 text-label text-on-surface shadow-lg pointer-events-none",
+              transformMap[side],
+            )}
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {content}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

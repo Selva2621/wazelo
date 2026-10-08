@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import type { ApiResponse, ApiErrorResponse } from "@/lib/types/api";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 export class ApiError extends Error {
   statusCode: number;
@@ -65,20 +65,49 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Refresh lock to prevent concurrent refresh calls
-let isRefreshing = false;
-let refreshQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
-
-function processQueue(error: unknown, token: string | null) {
-  refreshQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token!);
-  });
-  refreshQueue = [];
+export interface RefreshedSession {
+  accessToken: string;
+  expiresIn: number;
+  user?: import("@/lib/types/auth").AuthUser;
 }
+
+// Single in-flight refresh shared by every caller (startup check, proactive timer, 401
+// retries). Refresh tokens are single-use, so two parallel refreshes would make the
+// second one fail and log the user out.
+let refreshInFlight: Promise<RefreshedSession> | null = null;
+
+/** Exchanges the httpOnly refresh cookie for a new access token and stores it. */
+export function refreshSession(): Promise<RefreshedSession> {
+  refreshInFlight ??= axios
+    .post(
+      `${API_BASE_URL}/auth/refresh`,
+      {},
+      // Same timeout as apiClient: a hung refresh would otherwise hold the app skeleton forever
+      { withCredentials: true, headers: { "x-requested-with": "XMLHttpRequest" }, timeout: 15000 },
+    )
+    .then((res) => {
+      const data: RefreshedSession = res.data.data || res.data;
+      const { useAuthStore } = require("@/stores/auth-store");
+      useAuthStore.getState().setTokens(data);
+      return data;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
+// Auth endpoints answer 401 for their own reasons (bad password, no cookie); retrying
+// them through a refresh would replace the real error with "Session expired".
+const NO_REFRESH_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
 
 // Response interceptor: unwrap envelope + handle 401 refresh
 apiClient.interceptors.response.use(
@@ -95,53 +124,29 @@ apiClient.interceptors.response.use(
     };
 
     // If 401 and not already retried, attempt silent token refresh via httpOnly cookie
+    const isAuthEndpoint = NO_REFRESH_PATHS.some((p) => originalRequest?.url?.startsWith(p));
     if (
       error.response?.status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
+      !isAuthEndpoint &&
       typeof window !== "undefined"
     ) {
-      if (isRefreshing) {
-        return new Promise<string>((resolve, reject) => {
-          refreshQueue.push({ resolve, reject });
-        }).then((newToken) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(originalRequest);
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
       try {
-        // No body needed — refresh token is sent automatically via httpOnly cookie
-        const res = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-            headers: { "x-requested-with": "XMLHttpRequest" },
-          },
-        );
-        const data = res.data.data || res.data;
-        const { useAuthStore } = require("@/stores/auth-store");
-        useAuthStore.getState().setTokens({
-          accessToken: data.accessToken,
-          expiresIn: data.expiresIn,
-          user: data.user,
-        });
-
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-        processQueue(null, data.accessToken);
+        const { accessToken } = await refreshSession();
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        // A rate-limited refresh (429) is not proof the session is gone; keep the user in.
+        if (axios.isAxiosError(refreshError) && refreshError.response?.status === 429) {
+          return Promise.reject(new ApiError(429, "Too many requests. Please try again shortly."));
+        }
         const { useAuthStore } = require("@/stores/auth-store");
         useAuthStore.getState().clearAuth();
         return Promise.reject(
           new ApiError(401, "Session expired. Please log in again."),
         );
-      } finally {
-        isRefreshing = false;
       }
     }
 
@@ -149,6 +154,12 @@ apiClient.interceptors.response.use(
     if (error.response?.data) {
       const { statusCode, message, errors, error: errorCode, details } = error.response.data;
       const msg = Array.isArray(message) ? message[0] : message;
+
+      // Org suspended by Wazelo: end the session and explain on the login page
+      if (errorCode === "ORG_SUSPENDED" && typeof window !== "undefined") {
+        handleOrgSuspended();
+        return Promise.reject(new ApiError(statusCode, msg, errors, errorCode));
+      }
 
       // Global handler: show toast for usage limit errors
       if (errorCode === "USAGE_LIMIT_EXCEEDED" && typeof window !== "undefined") {
@@ -174,5 +185,17 @@ apiClient.interceptors.response.use(
     );
   },
 );
+
+/**
+ * The org was suspended (API error or socket push): clear the session and send
+ * the user to the login page, which explains why. Skipped on the auth pages
+ * themselves so a failed login just shows the message inline.
+ */
+export function handleOrgSuspended(): void {
+  if (typeof window === "undefined" || window.location.pathname.startsWith("/auth")) return;
+  const { useAuthStore } = require("@/stores/auth-store");
+  useAuthStore.getState().clearAuth();
+  window.location.href = "/auth/login?suspended=1";
+}
 
 export default apiClient;

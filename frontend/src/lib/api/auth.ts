@@ -1,4 +1,4 @@
-import apiClient from "./client";
+import apiClient, { refreshSession } from "./client";
 import type {
   LoginRequest,
   LoginResponse,
@@ -39,11 +39,8 @@ export const authApi = {
       .post<MessageResponse>("/auth/reset-password", data)
       .then((r) => r.data),
 
-  // No body needed — refresh token is sent automatically via httpOnly cookie
-  refreshToken: () =>
-    apiClient
-      .post<RefreshTokenResponse>("/auth/refresh")
-      .then((r) => r.data),
+  // Shares the client's single in-flight refresh (refresh tokens are single-use).
+  refreshToken: () => refreshSession() as Promise<RefreshTokenResponse>,
 
   // No body needed — refresh token cookie cleared by backend on logout
   logout: () =>

@@ -9,8 +9,7 @@ export function Card({ className, children }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-2xl bg-surface-container-lowest p-8",
-        "shadow-[0_0_0_1px_var(--outline-variant)/8%,0_20px_48px_-12px_rgba(0,0,0,0.5)]",
+        "rounded-xl bg-surface-container-lowest p-5",
         className,
       )}
     >
@@ -27,7 +26,7 @@ export function CardTitle({ className, children }: CardProps) {
   return (
     <h2
       className={cn(
-        "text-2xl font-semibold tracking-tight text-on-surface",
+        "text-title-sm font-semibold text-on-surface",
         className,
       )}
     >
@@ -38,7 +37,7 @@ export function CardTitle({ className, children }: CardProps) {
 
 export function CardDescription({ className, children }: CardProps) {
   return (
-    <p className={cn("text-[14px] text-on-surface-variant", className)}>
+    <p className={cn("text-body text-on-surface-variant", className)}>
       {children}
     </p>
   );

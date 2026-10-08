@@ -1,52 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { PlatformRepository } from '../../infrastructure/repositories/platform.repository';
+import { computeRevenue } from '../../domain/services/revenue';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class GetPlatformStatsUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly platformRepo: PlatformRepository) {}
 
   async execute() {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS);
 
-    const [
-      totalOrgs,
-      subscriptionCounts,
-      mrrResult,
-      newOrgsLast30Days,
-      openTickets,
-    ] = await Promise.all([
-      this.prisma.organization.count({ where: { deletedAt: null } }),
-
-      this.prisma.subscription.groupBy({
-        by: ['status'],
-        _count: { status: true },
-      }),
-
-      this.prisma.subscription.aggregate({
-        where: { status: 'ACTIVE', billingCycle: 'MONTHLY' },
-        _sum: { priceInCents: true },
-      }),
-
-      this.prisma.organization.count({
-        where: { deletedAt: null, createdAt: { gte: thirtyDaysAgo } },
-      }),
-
-      this.prisma.helpTicket.count({ where: { status: 'OPEN' } }),
-    ]);
-
-    const statusMap = Object.fromEntries(
-      subscriptionCounts.map((r) => [r.status, r._count.status]),
-    );
+    const [totalOrgs, statusCounts, revenueRows, newOrgsLast30Days, churnedLast30Days, openTickets] =
+      await Promise.all([
+        this.platformRepo.countOrgs(),
+        this.platformRepo.subscriptionStatusCounts(),
+        this.platformRepo.activeRevenueRows(),
+        this.platformRepo.countOrgs(thirtyDaysAgo),
+        this.platformRepo.countChurnedSince(thirtyDaysAgo),
+        this.platformRepo.countOpenTickets(),
+      ]);
 
     return {
       totalOrgs,
-      activeSubscriptions: statusMap['ACTIVE'] ?? 0,
-      trialSubscriptions: statusMap['TRIAL'] ?? 0,
-      expiredSubscriptions: (statusMap['EXPIRED'] ?? 0) + (statusMap['CANCELLED'] ?? 0),
-      pastDueSubscriptions: statusMap['PAST_DUE'] ?? 0,
-      mrr: mrrResult._sum.priceInCents ?? 0,
+      activeSubscriptions: statusCounts.ACTIVE ?? 0,
+      trialSubscriptions: statusCounts.TRIAL ?? 0,
+      pastDueSubscriptions: (statusCounts.PAST_DUE ?? 0) + (statusCounts.GRACE_PERIOD ?? 0),
+      expiredSubscriptions: (statusCounts.EXPIRED ?? 0) + (statusCounts.CANCELLED ?? 0),
+      /** One entry per currency, largest MRR first — never summed across currencies */
+      revenue: computeRevenue(revenueRows),
       newOrgsLast30Days,
+      churnedLast30Days,
       openTickets,
     };
   }

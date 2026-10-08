@@ -77,7 +77,7 @@ export function CannedResponsePicker({
       className="absolute bottom-full left-0 right-0 mb-1 max-h-[240px] overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-lg z-50"
     >
       <div className="px-3 py-2 border-b border-outline-variant/10">
-        <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">
+        <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">
           Quick Replies
         </p>
       </div>
@@ -93,16 +93,16 @@ export function CannedResponsePicker({
         >
           <div className="flex items-center gap-2">
             <MessageSquareText className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span className="text-[13px] font-medium text-on-surface truncate">
+            <span className="text-body font-medium text-on-surface truncate">
               {response.title}
             </span>
             {response.shortcut && (
-              <span className="text-[11px] text-on-surface-variant/50 font-mono shrink-0">
+              <span className="text-caption text-on-surface-variant/50 font-mono shrink-0">
                 /{response.shortcut}
               </span>
             )}
           </div>
-          <p className="text-[12px] text-on-surface-variant/70 truncate mt-0.5 ml-5.5">
+          <p className="text-label text-on-surface-variant/70 truncate mt-0.5 ml-5.5">
             {response.content}
           </p>
         </button>

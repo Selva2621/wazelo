@@ -43,7 +43,7 @@ export function TriggerTypeLabel({
   const Icon = config.icon;
 
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] text-on-surface-variant">
+    <span className="inline-flex items-center gap-1.5 text-label text-on-surface-variant">
       {showIcon && <Icon className="h-3.5 w-3.5" />}
       {config.label}
     </span>

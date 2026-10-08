@@ -60,16 +60,16 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
       >
         <div className="flex items-center gap-2">
           <Link2 className="h-4 w-4 text-primary" />
-          <h3 className="text-[13px] font-medium text-on-surface">
+          <h3 className="text-body font-medium text-on-surface">
             Webhook Configuration
           </h3>
           {config.isFullyConfigured ? (
-            <span className="inline-flex items-center gap-1 text-[11px] text-success bg-success/10 rounded-full px-2 py-0.5 font-medium">
+            <span className="inline-flex items-center gap-1 text-caption text-success bg-success/10 rounded-full px-2 py-0.5 font-medium">
               <CheckCircle2 className="h-3 w-3" />
               Configured
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] text-warning bg-warning/10 rounded-full px-2 py-0.5 font-medium">
+            <span className="inline-flex items-center gap-1 text-caption text-warning bg-warning/10 rounded-full px-2 py-0.5 font-medium">
               <AlertCircle className="h-3 w-3" />
               Setup Required
             </span>
@@ -86,11 +86,11 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
         <div className="mt-4 space-y-4">
           {/* Webhook URL */}
           <div>
-            <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide mb-1.5">
+            <p className="text-caption text-on-surface-variant/60 uppercase tracking-wide mb-1.5">
               Your Webhook URL
             </p>
             <div className="flex items-center gap-2 bg-surface-container rounded-lg px-3 py-2">
-              <code className="text-[12px] text-on-surface font-mono flex-1 truncate">
+              <code className="text-label text-on-surface font-mono flex-1 truncate">
                 {config.webhookUrl}
               </code>
               <Button variant="ghost" size="sm" onClick={handleCopy}>
@@ -105,13 +105,13 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
 
           {/* Config Form */}
           <div className="space-y-3">
-            <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+            <p className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
               Meta App Credentials
             </p>
 
             {/* App Secret */}
             <div>
-              <label className="text-[12px] font-medium text-on-surface-variant mb-1 block">
+              <label className="text-label font-medium text-on-surface-variant mb-1 block">
                 Meta App Secret
                 {config.hasAppSecret && (
                   <span className="text-success ml-2 font-normal">Saved</span>
@@ -128,7 +128,7 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
                   value={appSecret}
                   onChange={(e) => setAppSecret(e.target.value)}
                 />
-                <button
+                <button aria-label={showSecret ? "Hide secret" : "Show secret"}
                   type="button"
                   onClick={() => setShowSecret(!showSecret)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface-variant"
@@ -144,7 +144,7 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
 
             {/* Verify Token */}
             <div>
-              <label className="text-[12px] font-medium text-on-surface-variant mb-1 block">
+              <label className="text-label font-medium text-on-surface-variant mb-1 block">
                 Webhook Verify Token
                 {config.hasVerifyToken && (
                   <span className="text-success ml-2 font-normal">Saved</span>
@@ -180,7 +180,7 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
           {/* Setup Instructions */}
           <Alert variant="info">
             <strong>Setup steps:</strong>
-            <ol className="mt-1 ml-3 list-decimal space-y-0.5 text-[12px]">
+            <ol className="mt-1 ml-3 list-decimal space-y-0.5 text-label">
               <li>
                 Get your App Secret from{" "}
                 <strong>Meta App Dashboard → Settings → Basic</strong>
@@ -198,7 +198,7 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
           {/* Subscribed Pages */}
           {config.subscribedPages.length > 0 && (
             <div>
-              <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide mb-1.5">
+              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wide mb-1.5">
                 Connected Channels
               </p>
               <div className="space-y-1.5">
@@ -207,10 +207,10 @@ export function LeadAdsWebhookCard({ config }: LeadAdsWebhookCardProps) {
                     key={page.pageId}
                     className="flex items-center justify-between rounded-lg bg-surface-container/50 px-3 py-2"
                   >
-                    <span className="text-[12px] text-on-surface">
+                    <span className="text-label text-on-surface">
                       {page.pageName || page.pageId}
                     </span>
-                    <span className="text-[11px] text-on-surface-variant capitalize">
+                    <span className="text-caption text-on-surface-variant capitalize">
                       {page.channelType.toLowerCase().replace(/_/g, " ")}
                     </span>
                   </div>

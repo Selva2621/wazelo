@@ -8,6 +8,9 @@ import { useChannels } from "@/hooks/use-channels";
 import { templatesApi } from "@/lib/api/templates";
 import type { MessageTemplate } from "@/lib/types/templates";
 import type { ScrapeResult } from "@/lib/types/lead-scraper";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -114,23 +117,26 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
     onClose();
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-surface rounded-2xl border border-outline-variant shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-
+    <Modal
+      open={open}
+      onClose={handleClose}
+      dismissible={!sending}
+      className="bg-surface border border-outline-variant max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+    >
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/20 shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-on-surface">Send Pitch</h2>
-            <p className="text-xs text-on-surface-variant mt-0.5">
+            <h2 className="text-title-sm font-semibold text-on-surface">Send Pitch</h2>
+            <p className="text-label text-on-surface-variant mt-0.5">
               {selectedResults.length} contact{selectedResults.length !== 1 ? "s" : ""} selected
             </p>
           </div>
-          <button onClick={handleClose} className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg transition-colors">
+          <IconButton size="sm" onClick={handleClose} aria-label="Close">
             <X className="w-5 h-5" />
-          </button>
+          </IconButton>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
@@ -138,35 +144,35 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
             /* ─── Done state ─── */
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <CheckCircle2 className="w-12 h-12 text-success" />
-              <p className="text-base font-semibold text-on-surface">Pitches Sent!</p>
-              <p className="text-sm text-on-surface-variant">
+              <p className="text-title-sm font-semibold text-on-surface">Pitches Sent!</p>
+              <p className="text-body-lg text-on-surface-variant">
                 Sent to {sentCount} of {selectedResults.length} contacts.
               </p>
-              <button
+              <Button
                 onClick={handleClose}
-                className="mt-2 bg-primary text-on-primary text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary/90 transition-colors"
+                className="mt-2"
               >
                 Done
-              </button>
+              </Button>
             </div>
           ) : (
             <>
               {/* No channel warning */}
               {!chLoading && !channel && (
-                <div className="bg-error/5 border border-error/20 rounded-xl px-4 py-3 text-sm text-error">
+                <div className="bg-error/5 border border-error/20 rounded-xl px-4 py-3 text-body-lg text-error">
                   No active WhatsApp channel found. Connect one in Settings → WhatsApp first.
                 </div>
               )}
 
               {/* Template list */}
               <div>
-                <label className="text-xs font-medium text-on-surface-variant block mb-2">Select Template</label>
+                <label className="text-label font-medium text-on-surface-variant block mb-2">Select Template</label>
                 {tplLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                  <div className="flex items-center gap-2 text-body-lg text-on-surface-variant">
                     <Loader2 className="w-4 h-4 animate-spin" /> Loading templates…
                   </div>
                 ) : !templates?.length ? (
-                  <p className="text-sm text-on-surface-variant">
+                  <p className="text-body-lg text-on-surface-variant">
                     No approved templates. Create one in Settings → Templates.
                   </p>
                 ) : (
@@ -182,8 +188,8 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-on-surface">{tpl.name}</p>
-                          <p className="text-xs text-on-surface-variant truncate mt-0.5">
+                          <p className="text-body-lg font-medium text-on-surface">{tpl.name}</p>
+                          <p className="text-label text-on-surface-variant truncate mt-0.5">
                             {getBodyText(tpl).slice(0, 90)}
                           </p>
                         </div>
@@ -199,7 +205,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
               {/* Variable mapping */}
               {selectedTemplate && slots.length > 0 && (
                 <div>
-                  <label className="text-xs font-medium text-on-surface-variant block mb-2">
+                  <label className="text-label font-medium text-on-surface-variant block mb-2">
                     Variable Values
                     <span className="ml-1 font-normal text-on-surface-variant/60">
                       — auto-filled from first lead, applied to all
@@ -208,7 +214,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
                   <div className="space-y-2">
                     {slots.map((slot) => (
                       <div key={slot} className="flex items-center gap-3">
-                        <span className="text-xs text-on-surface-variant w-36 shrink-0">
+                        <span className="text-label text-on-surface-variant w-36 shrink-0">
                           {`{{${slot}}}`} — {SLOT_LABELS[slot] ?? `Field ${slot}`}
                         </span>
                         <input
@@ -216,7 +222,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
                           value={vars[slot] ?? ""}
                           onChange={(e) => setVars((p) => ({ ...p, [slot]: e.target.value }))}
                           placeholder={SLOT_LABELS[slot] ?? `Value for {{${slot}}}`}
-                          className="flex-1 rounded-lg border border-outline-variant bg-surface-container px-3 py-1.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary"
+                          className="flex-1 rounded-lg border border-outline-variant bg-surface-container px-3 py-1.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary"
                         />
                       </div>
                     ))}
@@ -227,8 +233,8 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
               {/* Preview */}
               {selectedTemplate && preview && (
                 <div>
-                  <label className="text-xs font-medium text-on-surface-variant block mb-2">Message Preview</label>
-                  <div className="bg-surface-container rounded-xl px-4 py-3 text-sm text-on-surface whitespace-pre-wrap border border-outline-variant/20 leading-relaxed">
+                  <label className="text-label font-medium text-on-surface-variant block mb-2">Message Preview</label>
+                  <div className="bg-surface-container rounded-xl px-4 py-3 text-body-lg text-on-surface whitespace-pre-wrap border border-outline-variant/20 leading-relaxed">
                     {preview}
                   </div>
                 </div>
@@ -236,7 +242,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
 
               {/* Sending progress */}
               {sending && (
-                <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                <div className="flex items-center gap-2 text-body-lg text-on-surface-variant">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   Sending {sentCount} / {selectedResults.length}…
                 </div>
@@ -251,21 +257,22 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
             <button
               onClick={handleClose}
               disabled={sending}
-              className="text-sm text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl hover:bg-surface-container transition-colors disabled:opacity-40"
+              className="text-body-lg text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-xl hover:bg-surface-container transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
-            <button
+            <Button
               onClick={handleSend}
               disabled={!selectedTemplate || !channel || sending || selectedResults.length === 0}
-              className="flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+             
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Send to {selectedResults.length} Contact{selectedResults.length !== 1 ? "s" : ""}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

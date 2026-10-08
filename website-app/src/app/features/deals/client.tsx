@@ -67,13 +67,13 @@ function KanbanMockup() {
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "#ffb77d",
-          fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 12,
+          fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-          color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 0,
+          color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your pipeline, always in view.
         </h2>
@@ -98,7 +98,7 @@ function KanbanMockup() {
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: "rgba(219,194,176,0.3)", fontFamily: "'Inter', sans-serif", marginLeft: 10 }}>
+          <span style={{ fontSize: 12, color: "rgba(219,194,176,0.3)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
             Deals Pipeline — Wazelo CRM
           </span>
         </div>
@@ -114,17 +114,17 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: col.color, display: "inline-block", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif" }}>{col.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{col.name}</span>
                     <span style={{
                       marginLeft: "auto",
                       background: "rgba(255,255,255,0.07)", borderRadius: 10,
                       padding: "1px 8px", fontSize: 11,
-                      color: "rgba(219,194,176,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600,
+                      color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
                     }}>
                       {col.deals.length}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", fontFamily: "'Inter', sans-serif", paddingLeft: 17 }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif", paddingLeft: 17 }}>
                     {col.total}
                   </div>
                 </div>
@@ -150,10 +150,10 @@ function KanbanMockup() {
                           if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#2a2a2a";
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>
                           {deal.name}
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: col.color, fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: col.color, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>
                           {deal.value}
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -162,7 +162,7 @@ function KanbanMockup() {
                             width: 22, height: 22, borderRadius: "50%",
                             background: ownerGrad[deal.owner] ?? "linear-gradient(135deg,#554336,#d97707)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 9, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif",
+                            fontSize: 9, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif",
                             flexShrink: 0,
                           }}>
                             {deal.owner}
@@ -171,7 +171,7 @@ function KanbanMockup() {
                           <span style={{
                             background: "rgba(255,255,255,0.06)", borderRadius: 10,
                             padding: "2px 8px", fontSize: 10,
-                            color: "rgba(219,194,176,0.45)", fontFamily: "'Inter', sans-serif",
+                            color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif",
                           }}>
                             {deal.days}
                           </span>
@@ -194,7 +194,7 @@ function KanbanMockup() {
             {selected === null ? (
               <div style={{
                 fontSize: 12, color: "rgba(219,194,176,0.3)",
-                fontFamily: "'Inter', sans-serif", textAlign: "center", paddingTop: 40,
+                fontFamily: "var(--font-geist-sans), sans-serif", textAlign: "center", paddingTop: 40,
               }}>
                 ↑ Click a deal to view details
               </div>
@@ -214,7 +214,7 @@ function KanbanMockup() {
                 </button>
 
                 {/* Deal Details heading */}
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
                   Deal Details
                 </div>
 
@@ -224,14 +224,14 @@ function KanbanMockup() {
                     <span style={{
                       fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
                       textTransform: "uppercase", color: "#ffb77d",
-                      fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 4,
+                      fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 4,
                     }}>
                       STAGE
                     </span>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 5,
                       fontSize: 11, fontWeight: 600, color: selectedCol.color,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: "var(--font-geist-sans), sans-serif",
                     }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: selectedCol.color, display: "inline-block" }} />
                       {selectedCol.name}
@@ -244,11 +244,11 @@ function KanbanMockup() {
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
                     textTransform: "uppercase", color: "#ffb77d",
-                    fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 6,
+                    fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     CONVERSATION
                   </span>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter', sans-serif", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
                     {selected.conv}
                   </div>
                 </div>
@@ -258,13 +258,13 @@ function KanbanMockup() {
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
                     textTransform: "uppercase", color: "#ffb77d",
-                    fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 6,
+                    fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     ACTIVITY
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {selected.activity.map((item, i) => (
-                      <div key={i} style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", fontFamily: "'Inter', sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
+                      <div key={i} style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
                         <span style={{ color: "rgba(219,194,176,0.3)", flexShrink: 0 }}>•</span>
                         {item}
                       </div>
@@ -277,11 +277,11 @@ function KanbanMockup() {
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
                     textTransform: "uppercase", color: "#ffb77d",
-                    fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 6,
+                    fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     CLOSE DATE
                   </span>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "'Inter', sans-serif" }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
                     {selected.closeDate}
                   </div>
                 </div>

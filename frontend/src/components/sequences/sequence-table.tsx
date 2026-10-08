@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import type { CampaignSequence, SequenceStatus } from "@/lib/types/sequences";
 import { formatDelay } from "@/lib/types/sequences";
+import { IconButton } from "@/components/ui/icon-button";
 
 const STATUS_VARIANTS: Record<SequenceStatus, "info" | "success" | "warning" | "error" | "muted"> = {
   DRAFT: "muted",
@@ -79,9 +80,9 @@ export function SequenceTable({
             <TableRow key={seq.id}>
               <TableCell>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-on-surface truncate">{seq.name}</p>
+                  <p className="text-body font-medium text-on-surface truncate">{seq.name}</p>
                   {seq.description && (
-                    <p className="text-[11px] text-on-surface-variant/60 truncate max-w-[200px]">
+                    <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
                       {seq.description}
                     </p>
                   )}
@@ -96,11 +97,11 @@ export function SequenceTable({
                 <div className="flex items-center gap-1">
                   {seq.steps.map((step, i) => (
                     <span key={step.id} className="flex items-center">
-                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-caption font-semibold text-primary">
                         {i + 1}
                       </span>
                       {i < seq.steps.length - 1 && (
-                        <span className="text-[9px] text-on-surface-variant/40 mx-0.5">
+                        <span className="text-caption text-on-surface-variant/40 mx-0.5">
                           {formatDelay(seq.steps[i + 1]?.delayMinutes ?? 0)}→
                         </span>
                       )}
@@ -109,7 +110,7 @@ export function SequenceTable({
                 </div>
               </TableCell>
 
-              <TableCell className="text-[12px] text-on-surface-variant">
+              <TableCell className="text-label text-on-surface-variant">
                 {seq.totalRecipients}
               </TableCell>
 
@@ -122,76 +123,70 @@ export function SequenceTable({
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-[11px] text-on-surface-variant">{progress}%</span>
+                    <span className="text-caption text-on-surface-variant">{progress}%</span>
                   </div>
                 ) : (
-                  <span className="text-[11px] text-on-surface-variant/40">—</span>
+                  <span className="text-caption text-on-surface-variant/40">—</span>
                 )}
               </TableCell>
 
-              <TableCell className="text-[11px] text-on-surface-variant">
+              <TableCell className="text-caption text-on-surface-variant">
                 {new Date(seq.createdAt).toLocaleDateString()}
               </TableCell>
 
               <TableCell>
                 <div className="flex items-center gap-1">
                   {seq.status === "DRAFT" && onStart && (
-                    <button
+                    <IconButton size="xs"
                       onClick={() => onStart(seq.id)}
-                      className="p-1 rounded text-success hover:bg-success/10 transition-colors"
-                      title="Start"
-                    >
+                      className="text-success hover:bg-success/10"
+                      title="Start" aria-label="Start">
                       <Play className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                   {seq.status === "ACTIVE" && onPause && (
-                    <button
+                    <IconButton size="xs"
                       onClick={() => onPause(seq.id)}
-                      className="p-1 rounded text-warning hover:bg-warning/10 transition-colors"
-                      title="Pause"
-                    >
+                      className="text-warning hover:bg-warning/10"
+                      title="Pause" aria-label="Pause">
                       <Pause className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                   {seq.status === "PAUSED" && onResume && (
-                    <button
+                    <IconButton size="xs"
                       onClick={() => onResume(seq.id)}
-                      className="p-1 rounded text-success hover:bg-success/10 transition-colors"
-                      title="Resume"
-                    >
+                      className="text-success hover:bg-success/10"
+                      title="Resume" aria-label="Resume">
                       <RotateCcw className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                   {["ACTIVE", "PAUSED"].includes(seq.status) && onCancel && (
-                    <button
+                    <IconButton size="xs" variant="danger"
                       onClick={() => onCancel(seq.id)}
-                      className="p-1 rounded text-error hover:bg-error/10 transition-colors"
-                      title="Cancel"
-                    >
+                      className="text-error"
+                      title="Cancel" aria-label="Cancel">
                       <StopCircle className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                   {seq.status !== "DRAFT" && onAnalytics && (
-                    <button
+                    <IconButton size="xs"
                       onClick={() => onAnalytics(seq.id)}
-                      className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
-                      title="Analytics"
-                    >
+                      className="hover:text-primary hover:bg-primary/10"
+                      title="Analytics" aria-label="Analytics">
                       <BarChart3 className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                   {seq.status === "DRAFT" && onDelete && (
-                    <button
+                    <IconButton size="xs" variant="danger"
                       onClick={() => {
                         if (confirm(`Delete sequence "${seq.name}"? This cannot be undone.`)) {
                           onDelete(seq.id);
                         }
                       }}
-                      className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                      title="Delete"
-                    >
+                     
+                      title="Delete" aria-label="Delete">
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
               </TableCell>

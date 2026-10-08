@@ -3,7 +3,7 @@ import axios from "axios";
 import type { CsatStats, CsatListResponse, CsatStatsParams } from "@/lib/types/csat";
 
 const publicClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1",
 });
 
 export const csatApi = {

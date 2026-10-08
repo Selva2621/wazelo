@@ -12,11 +12,11 @@ import type { LeadStatus, Contact } from "@/lib/types/contacts";
 // ─── Column definitions ───
 
 const COLUMNS: { status: LeadStatus; label: string; color: string }[] = [
-  { status: "NEW", label: "New", color: "#60a5fa" },
-  { status: "CONTACTED", label: "Contacted", color: "#818cf8" },
-  { status: "INTERESTED", label: "Interested", color: "#fbbf24" },
-  { status: "CONVERTED", label: "Converted", color: "#34d399" },
-  { status: "CLOSED", label: "Closed", color: "#94a3b8" },
+  { status: "NEW", label: "New", color: "var(--info)" },
+  { status: "CONTACTED", label: "Contacted", color: "var(--primary-container)" },
+  { status: "INTERESTED", label: "Interested", color: "var(--warning)" },
+  { status: "CONVERTED", label: "Converted", color: "var(--success)" },
+  { status: "CLOSED", label: "Closed", color: "var(--on-surface-variant)" },
 ];
 
 // ─── Contact Card ───
@@ -43,10 +43,10 @@ function ContactCard({ contact, onDragStart, onClick }: ContactCardProps) {
           size="sm"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-on-surface truncate">
+          <p className="text-body font-medium text-on-surface truncate">
             {contact.name || "Unknown"}
           </p>
-          <p className="text-[11px] text-on-surface-variant/60 truncate">
+          <p className="text-caption text-on-surface-variant/60 truncate">
             {contact.phoneNumber}
           </p>
         </div>
@@ -56,7 +56,7 @@ function ContactCard({ contact, onDragStart, onClick }: ContactCardProps) {
       <div className="flex items-center justify-between gap-2">
         <LeadStatusBadge status={contact.leadStatus} />
         {contact.email && (
-          <span className="text-[10px] text-on-surface-variant/50 truncate max-w-[100px]">
+          <span className="text-caption text-on-surface-variant/50 truncate max-w-[100px]">
             {contact.email}
           </span>
         )}
@@ -123,8 +123,8 @@ function KanbanColumn({
           className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: color }}
         />
-        <span className="text-[13px] font-semibold text-on-surface">{label}</span>
-        <Badge variant="muted" className="text-[10px] ml-auto">
+        <span className="text-body font-semibold text-on-surface">{label}</span>
+        <Badge variant="muted" className="text-caption ml-auto">
           {isLoading ? "…" : contacts.length}
         </Badge>
       </div>
@@ -136,7 +136,7 @@ function KanbanColumn({
             <Spinner size="sm" className="text-on-surface-variant/40" />
           </div>
         ) : contacts.length === 0 ? (
-          <div className="text-center py-8 text-[12px] text-on-surface-variant/40">
+          <div className="text-center py-8 text-label text-on-surface-variant/40">
             No contacts
           </div>
         ) : (

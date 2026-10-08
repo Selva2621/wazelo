@@ -7,8 +7,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrgRepository } from '../../infrastructure/repositories/org.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { UpdateOrgSettingsDto } from '../dto/update-org-settings.dto';
-import { EVENT_NAMES } from '@/common/constants';
-import { Organization, Prisma } from '@prisma/client';
+import { QueueService } from '@/infrastructure/queue/queue.service';
+import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
+import { Organization, OrgType, Prisma } from '@prisma/client';
 import { UpdateOrgSettingsInput } from '../../infrastructure/repositories/org.repository';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class UpdateOrgSettingsUseCase {
     private readonly orgRepository: OrgRepository,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly queueService: QueueService,
   ) {}
 
   async execute(
@@ -93,6 +95,15 @@ export class UpdateOrgSettingsUseCase {
       ipAddress,
       userAgent,
     });
+
+    // Switching to FREELANCER unlocks the freelancer system templates — onboarding is idempotent
+    if (changes.orgType && dto.orgType === OrgType.FREELANCER) {
+      await this.queueService.publishOnce(
+        QUEUE_NAMES.ORG_ONBOARDING,
+        { orgId, mode: 'org-type-changed' },
+        `org-templates:${orgId}`,
+      );
+    }
 
     // Emit event for real-time updates
     this.eventEmitter.emit(EVENT_NAMES.ORG_SETTINGS_UPDATED, {

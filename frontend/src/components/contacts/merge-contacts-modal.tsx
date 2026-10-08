@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { useContacts, useMergeContacts } from "@/hooks/use-contacts";
 import type { Contact } from "@/lib/types/contacts";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface MergeContactsModalProps {
   open: boolean;
@@ -61,26 +63,18 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
   const primaryContact = contacts.find((c) => c.id === primaryId);
   const secondaryContact = contacts.find((c) => c.id === secondaryId);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div className="relative w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-xl p-6">
+    <Modal open={open} onClose={onClose} className="max-w-md p-6">
+      {() => (
+      <>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[16px] font-semibold text-on-surface">
+          <h2 className="text-title-sm font-semibold text-on-surface">
             Merge Contacts
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="xs"
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Selected contacts */}
@@ -109,7 +103,7 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={`Search for ${selecting} contact...`}
-            className="w-full h-9 pl-9 pr-3 rounded-xl bg-surface-container-low text-[13px] text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40"
+            className="w-full h-9 pl-9 pr-3 rounded-xl bg-surface-container-low text-body text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>
 
@@ -141,10 +135,10 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-on-surface truncate">
+                    <p className="text-body font-medium text-on-surface truncate">
                       {contact.name || "Unknown"}
                     </p>
-                    <p className="text-[11px] text-on-surface-variant/60 truncate">
+                    <p className="text-caption text-on-surface-variant/60 truncate">
                       {contact.phoneNumber}
                     </p>
                   </div>
@@ -154,7 +148,7 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
             })}
 
           {search && contacts.length === 0 && (
-            <p className="text-center text-[13px] text-on-surface-variant/50 py-4">
+            <p className="text-center text-body text-on-surface-variant/50 py-4">
               No contacts found
             </p>
           )}
@@ -163,7 +157,7 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
         {/* Warning */}
         {primaryId && secondaryId && (
           <div className="rounded-xl bg-error/10 border border-error/20 px-3 py-2 mb-4">
-            <p className="text-[12px] text-error">
+            <p className="text-label text-error">
               The secondary contact will be merged into the primary and marked
               as deleted. This action cannot be undone.
             </p>
@@ -188,8 +182,9 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
             Merge Contacts
           </Button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }
 
@@ -215,7 +210,7 @@ function ContactSlot({
           : "border-outline-variant/15 bg-surface-container-low"
       }`}
     >
-      <p className="text-[10px] uppercase tracking-wide text-on-surface-variant/50 mb-1">
+      <p className="text-caption uppercase tracking-wide text-on-surface-variant/50 mb-1">
         {label}
       </p>
       {contact ? (
@@ -225,10 +220,10 @@ function ContactSlot({
             src={contact.avatarUrl}
             size="sm"
           />
-          <p className="text-[12px] font-medium text-on-surface truncate flex-1">
+          <p className="text-label font-medium text-on-surface truncate flex-1">
             {contact.name || contact.phoneNumber}
           </p>
-          <button
+          <button aria-label="Clear selection"
             onClick={(e) => {
               e.stopPropagation();
               onClear();
@@ -239,7 +234,7 @@ function ContactSlot({
           </button>
         </div>
       ) : (
-        <p className="text-[12px] text-on-surface-variant/40">Select...</p>
+        <p className="text-label text-on-surface-variant/40">Select...</p>
       )}
     </button>
   );

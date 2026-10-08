@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
@@ -15,13 +15,17 @@ import type {
 
 export function useLogin() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: (data: LoginRequest) => authApi.login(data),
-    onSuccess: (data) => {
-      setAuth(data as never);
-      router.push("/dashboard");
+    onSuccess: (data, variables) => {
+      // Never show a new user anything cached for whoever used this tab before.
+      queryClient.clear();
+      setAuth({ ...data, rememberMe: variables.rememberMe ?? false });
+      // Go straight to the right dashboard instead of bouncing through /dashboard
+      router.push(data.user.orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard");
     },
   });
 }
@@ -58,14 +62,17 @@ export function useResetPassword() {
 }
 
 export function useLogout() {
+  const queryClient = useQueryClient();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSettled: () => {
-      // Only clear in-memory auth state — ProtectedLayout's redirect effect
-      // reactively navigates to /auth/login when isAuthenticated becomes false.
+      // Clear in-memory auth (also drops the realtime socket) and every cached query, so
+      // nothing from this account stays readable in the tab. ProtectedLayout's redirect
+      // effect then navigates to /auth/login when isAuthenticated becomes false.
       clearAuth();
+      queryClient.clear();
     },
   });
 }

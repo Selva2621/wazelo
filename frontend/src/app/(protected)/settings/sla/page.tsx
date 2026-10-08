@@ -13,6 +13,7 @@ import {
   useDeleteSlaPolicy,
 } from "@/hooks/use-sla";
 import type { SlaPolicy } from "@/lib/types/sla";
+import { Button } from "@/components/ui/button";
 
 export default function SlaSettingsPage() {
   usePageTitle("SLA Policies");
@@ -64,22 +65,22 @@ export default function SlaSettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
             SLA Policies
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <p className="text-body text-on-surface-variant mt-0.5">
             Set response time targets for conversations. Agents get warned before breach.
           </p>
         </div>
         {!showForm && !editPolicy && (
-          <button
+          <Button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-on-primary text-[13px] font-medium hover:bg-primary/90 transition-colors"
+           
           >
             <Plus className="h-4 w-4" />
             New Policy
-          </button>
+          </Button>
         )}
       </div>
 
@@ -114,7 +115,7 @@ export default function SlaSettingsPage() {
       {/* Info box */}
       {(policies?.length ?? 0) > 0 && (
         <div className="rounded-xl bg-primary/5 border border-primary/15 p-4">
-          <p className="text-[12px] text-on-surface-variant">
+          <p className="text-label text-on-surface-variant">
             <strong className="text-on-surface">How it works:</strong> When a conversation is created,
             the system starts tracking response time. If an agent hasn&apos;t replied within the
             warning threshold, they get an alert. If the breach threshold is exceeded, it&apos;s

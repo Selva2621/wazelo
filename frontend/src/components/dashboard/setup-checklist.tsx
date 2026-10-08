@@ -11,14 +11,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useSetupChecklist, type ChecklistItem } from "@/hooks/use-setup-checklist";
+import { IconButton } from "@/components/ui/icon-button";
 
 const ITEM_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-  whatsapp: { icon: Smartphone, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  whatsapp: { icon: Smartphone, color: "text-success", bg: "bg-success/10" },
 
 
-  products:  { icon: Package,    color: "text-orange-500", bg: "bg-orange-500/10" },
+  products:  { icon: Package,    color: "text-warning", bg: "bg-warning/10" },
   template:  { icon: FileText,   color: "text-primary",    bg: "bg-primary/10"    },
-  contacts:  { icon: Contact,    color: "text-pink-500",   bg: "bg-pink-500/10"   },
+  contacts:  { icon: Contact,    color: "text-chart-4",   bg: "bg-chart-4/10"   },
 };
 
 /* ── SVG circular progress ring ─────────────────── */
@@ -57,7 +58,7 @@ function TaskRow({ item }: { item: ChecklistItem }) {
       <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${meta.bg} shrink-0`}>
         <Icon className={`h-4.5 w-4.5 ${meta.color}`} />
       </div>
-      <span className="flex-1 text-[13px] font-medium text-on-surface truncate">
+      <span className="flex-1 text-body font-medium text-on-surface truncate">
         {item.label}
       </span>
       <ArrowRight className="h-4 w-4 text-on-surface-variant/30 group-hover:text-primary transition-colors shrink-0" />
@@ -75,15 +76,15 @@ export function SetupChecklist() {
   const pct = Math.round((doneCount / total) * 100);
 
   return (
-    <div className="relative rounded-xl border border-outline-variant/10 bg-surface-container-lowest overflow-hidden">
+    <div className="relative rounded-xl bg-surface-container-lowest overflow-hidden">
       {/* Dismiss */}
-      <button
+      <IconButton size="xs"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="absolute right-3 top-3 z-10 p-1 rounded-md text-on-surface-variant/40 hover:text-on-surface-variant hover:bg-surface-container-high transition-colors"
+        className="absolute right-3 top-3 z-10 hover:text-on-surface-variant"
       >
         <X className="h-3.5 w-3.5" />
-      </button>
+      </IconButton>
 
       <div className="flex">
         {/* ── Left: ring + stats ───────────────────── */}
@@ -91,15 +92,15 @@ export function SetupChecklist() {
           <div className="relative flex items-center justify-center">
             <ProgressRing pct={pct} />
             <div className="absolute flex flex-col items-center">
-              <span className="text-[28px] font-bold text-on-surface tabular-nums leading-none">
+              <span className="text-display font-semibold text-on-surface tabular-nums leading-none">
                 {pct}%
               </span>
-              <span className="text-[11px] text-on-surface-variant/50 mt-1">
+              <span className="text-caption text-on-surface-variant/50 mt-1">
                 complete
               </span>
             </div>
           </div>
-          <p className="text-[12px] text-on-surface-variant/60 text-center leading-snug">
+          <p className="text-label text-on-surface-variant/60 text-center leading-snug">
             {doneCount} of {total} steps done
           </p>
         </div>
@@ -107,10 +108,10 @@ export function SetupChecklist() {
         {/* ── Right: title + pending tasks ─────────── */}
         <div className="flex-1 min-w-0 py-5">
           <div className="px-5 mb-4">
-            <p className="text-[15px] font-semibold text-on-surface">
+            <p className="text-body-lg font-semibold text-on-surface">
               Complete your setup
             </p>
-            <p className="text-[12px] text-on-surface-variant/50 mt-1">
+            <p className="text-label text-on-surface-variant/50 mt-1">
               Finish these steps to get the most out of Wazelo
             </p>
           </div>
@@ -119,7 +120,7 @@ export function SetupChecklist() {
               <TaskRow key={item.id} item={item} />
             ))}
             {pending.length === 0 && (
-              <p className="px-4 text-[13px] text-on-surface-variant/50">
+              <p className="px-4 text-body text-on-surface-variant/50">
                 All done! 🎉
               </p>
             )}

@@ -34,6 +34,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { Team } from "@/lib/types/teams";
+import { IconButton } from "@/components/ui/icon-button";
 
 export default function TeamDetailPage({
   params,
@@ -144,7 +145,7 @@ export default function TeamDetailPage({
   return (
     <div className="p-6 space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-[13px]">
+      <nav className="flex items-center gap-1.5 text-body">
         <button
           onClick={() => router.push("/admin/teams")}
           className="text-on-surface-variant hover:text-on-surface transition-colors"
@@ -170,17 +171,17 @@ export default function TeamDetailPage({
                     type="text"
                     value={editName}
                     onChange={(e) => { setEditName(e.target.value); setEditError(""); }}
-                    className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-[15px] font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 w-64"
+                    className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body-lg font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 w-64"
                     autoFocus
                   />
                   {editError && (
-                    <p className="text-[11px] text-error">{editError}</p>
+                    <p className="text-caption text-error">{editError}</p>
                   )}
                 </div>
               ) : (
-                <h1 className="text-[18px] font-bold text-on-surface">{team.name}</h1>
+                <h1 className="text-title font-semibold text-on-surface">{team.name}</h1>
               )}
-              <p className="text-[12px] text-on-surface-variant mt-0.5">
+              <p className="text-label text-on-surface-variant mt-0.5">
                 Created {new Date(team.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
               </p>
             </div>
@@ -214,12 +215,12 @@ export default function TeamDetailPage({
         {/* Manager row */}
         <div className="px-6 py-4 flex items-center gap-6 border-b border-outline-variant/10">
           <div className="space-y-0.5 min-w-[120px]">
-            <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Manager</p>
+            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Manager</p>
             {isEditing ? (
               <select
                 value={editManagerId}
                 onChange={(e) => setEditManagerId(e.target.value)}
-                className="mt-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -234,23 +235,23 @@ export default function TeamDetailPage({
                   size="sm"
                 />
                 <div>
-                  <p className="text-[13px] font-medium text-on-surface">
+                  <p className="text-body font-medium text-on-surface">
                     {team.manager.firstName} {team.manager.lastName}
                   </p>
-                  <p className="text-[11px] text-on-surface-variant">{team.manager.role}</p>
+                  <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
                 </div>
               </div>
             )}
           </div>
 
           <div className="space-y-0.5">
-            <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Members</p>
-            <p className="text-[13px] text-on-surface mt-1">{team.members.length}</p>
+            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Members</p>
+            <p className="text-body text-on-surface mt-1">{team.members.length}</p>
           </div>
 
           <div className="space-y-0.5">
-            <p className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Last Updated</p>
-            <p className="text-[13px] text-on-surface mt-1">
+            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Last Updated</p>
+            <p className="text-body text-on-surface mt-1">
               {new Date(team.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
             </p>
           </div>
@@ -260,9 +261,9 @@ export default function TeamDetailPage({
       {/* Members section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-on-surface">
+          <h2 className="text-body-lg font-semibold text-on-surface">
             Members
-            <span className="ml-2 text-[13px] font-normal text-on-surface-variant">
+            <span className="ml-2 text-body font-normal text-on-surface-variant">
               ({team.members.length})
             </span>
           </h2>
@@ -286,7 +287,7 @@ export default function TeamDetailPage({
             <select
               value={newMemberUserId}
               onChange={(e) => setNewMemberUserId(e.target.value)}
-              className="flex-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-[13px] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="flex-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Select user to add</option>
               {availableToAdd.map((u) => (
@@ -312,7 +313,7 @@ export default function TeamDetailPage({
         {/* Members table */}
         {team.members.length === 0 ? (
           <div className="rounded-xl border border-outline-variant/15 px-6 py-10 text-center">
-            <p className="text-[13px] text-on-surface-variant">
+            <p className="text-body text-on-surface-variant">
               No members yet.
               {isEditing
                 ? " Click \"Add Member\" above to invite someone."
@@ -340,7 +341,7 @@ export default function TeamDetailPage({
                           name={`${member.user.firstName} ${member.user.lastName}`}
                           size="sm"
                         />
-                        <p className="text-[13px] font-medium text-on-surface">
+                        <p className="text-body font-medium text-on-surface">
                           {member.user.firstName} {member.user.lastName}
                         </p>
                       </div>
@@ -359,26 +360,25 @@ export default function TeamDetailPage({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[12px] text-on-surface-variant">
+                      <span className="text-label text-on-surface-variant">
                         {member.user.email}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[12px] text-on-surface-variant">
+                      <span className="text-label text-on-surface-variant">
                         {new Date(member.createdAt).toLocaleDateString()}
                       </span>
                     </TableCell>
                     {isEditing && (
                       <TableCell align="right">
-                        <button
+                        <IconButton size="sm" variant="danger"
                           onClick={() =>
                             removeMember.mutate({ teamId: team.id, userId: member.user.id })
                           }
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-                          title="Remove member"
-                        >
+                         
+                          title="Remove member" aria-label="Remove member">
                           <UserMinus className="h-4 w-4" />
-                        </button>
+                        </IconButton>
                       </TableCell>
                     )}
                   </TableRow>

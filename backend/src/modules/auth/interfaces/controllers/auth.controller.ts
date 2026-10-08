@@ -142,7 +142,8 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
-  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  // Every page load and open tab refreshes once; 3/min logged people out on quick reloads.
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Req() req: Request,
@@ -157,8 +158,11 @@ export class AuthController {
       this.getIp(req),
       this.getUa(req),
     );
-    // Rotate the refresh token cookie — preserve original rememberMe setting
-    this.setRefreshCookie(res, result.refreshToken, result.rememberMe);
+    // Rotate the refresh token cookie — preserve original rememberMe setting. On the
+    // concurrent-refresh grace path there is no new token: the browser already has it.
+    if (result.refreshToken) {
+      this.setRefreshCookie(res, result.refreshToken, result.rememberMe);
+    }
     // Return only accessToken + expiresIn — never expose refreshToken or rememberMe
     const { refreshToken: _, rememberMe: __, ...jsonBody } = result;
     return jsonBody;
@@ -250,11 +254,15 @@ export class AuthController {
   async changePassword(
     @Body() dto: ChangePasswordDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
+    // The caller's own session survives; every other session is revoked.
+    const currentRefreshToken = (req as any).cookies?.[this.REFRESH_COOKIE];
     await this.changePasswordUseCase.execute(
       user.sub,
       dto.oldPassword,
       dto.newPassword,
+      currentRefreshToken,
     );
     return { message: 'Password changed successfully' };
   }
@@ -298,10 +306,8 @@ export class AuthController {
   }
 
   private getIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string') {
-      return forwarded.split(',')[0].trim();
-    }
+    // req.ip honours the app's `trust proxy` setting, so a client can't spoof
+    // X-Forwarded-For into audit logs.
     return req.ip || req.socket.remoteAddress || 'unknown';
   }
 

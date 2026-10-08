@@ -55,13 +55,13 @@ export function RegisterForm() {
         <div className="w-16 h-16 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-6">
           <Mail className="w-7 h-7 text-success" />
         </div>
-        <h2 className="text-[22px] font-extrabold tracking-tight text-on-surface mb-3">
+        <h2 className="text-headline font-semibold tracking-tight text-on-surface mb-3">
           Check your inbox
         </h2>
-        <p className="text-[14px] text-on-surface-variant leading-relaxed mb-6 max-w-[320px] mx-auto">
+        <p className="text-body-lg text-on-surface-variant leading-relaxed mb-6 max-w-[320px] mx-auto">
           We&apos;ve sent a verification link to your email. Click it to activate your account.
         </p>
-        <div className="flex flex-col gap-3 items-center text-[13px] text-on-surface-variant/60 mb-6">
+        <div className="flex flex-col gap-3 items-center text-body text-on-surface-variant/60 mb-6">
           {["Check spam if you don't see it", "Link expires in 24 hours"].map(tip => (
             <div key={tip} className="flex items-center gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-success/60" />
@@ -69,7 +69,7 @@ export function RegisterForm() {
             </div>
           ))}
         </div>
-        <Link href="/auth/login" className="text-[13px] text-primary hover:underline font-medium">
+        <Link href="/auth/login" className="text-body text-primary hover:underline font-medium">
           ← Back to login
         </Link>
       </div>
@@ -80,10 +80,10 @@ export function RegisterForm() {
     <div>
       {/* Header */}
       <div className="mb-7">
-        <h1 className="text-[26px] font-extrabold tracking-tight text-on-surface mb-2 leading-tight">
+        <h1 className="text-display font-semibold tracking-tight text-on-surface mb-2 leading-tight">
           Start for free
         </h1>
-        <p className="text-[14px] text-on-surface-variant leading-relaxed">
+        <p className="text-body-lg text-on-surface-variant leading-relaxed">
           Set up your WhatsApp CRM in minutes. No credit card needed.
         </p>
       </div>
@@ -167,7 +167,7 @@ export function RegisterForm() {
       </form>
 
       {/* Terms note */}
-      <p className="text-[11px] text-on-surface-variant/50 text-center mt-4 leading-relaxed">
+      <p className="text-caption text-on-surface-variant/50 text-center mt-4 leading-relaxed">
         By creating an account, you agree to our{" "}
         <Link href="#" className="text-primary/70 hover:text-primary">Terms</Link>
         {" & "}
@@ -177,13 +177,13 @@ export function RegisterForm() {
       {/* Divider */}
       <div className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-outline-variant" />
-        <span className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest">Have an account?</span>
+        <span className="text-caption text-on-surface-variant/50 uppercase tracking-widest">Have an account?</span>
         <div className="flex-1 h-px bg-outline-variant" />
       </div>
 
       <Link
         href="/auth/login"
-        className="flex items-center justify-center w-full py-3 rounded-xl border border-outline-variant text-[14px] font-semibold text-on-surface-variant gap-1.5 transition-all duration-200 hover:border-primary hover:text-primary hover:bg-primary/5"
+        className="flex items-center justify-center w-full py-3 rounded-xl border border-outline-variant text-body-lg font-semibold text-on-surface-variant gap-1.5 transition-all duration-200 hover:border-primary hover:text-primary hover:bg-primary/5"
       >
         Sign in instead
         <ArrowRight className="w-3.5 h-3.5" />

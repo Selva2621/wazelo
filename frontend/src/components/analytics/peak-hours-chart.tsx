@@ -18,17 +18,17 @@ export function PeakHoursChart({ data }: PeakHoursChartProps) {
   const maxTotal = Math.max(...hours.map((h) => h.total), 1);
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
+    <div className="rounded-xl bg-surface-container-lowest p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[13px] font-medium text-on-surface-variant">
+        <h3 className="text-title-sm font-semibold text-on-surface">
           Peak Hours
         </h3>
-        <span className="text-[11px] text-on-surface-variant/60">
+        <span className="text-caption text-on-surface-variant">
           Peak: {formatHour(peakHour)} · Quiet: {formatHour(quietHour)}
         </span>
       </div>
 
-      <div className="flex items-end gap-[2px] h-32">
+      <div className="flex items-stretch gap-[2px] h-32">
         {hours.map((entry) => {
           const pct = (entry.total / maxTotal) * 100;
           const isPeak = entry.hour === peakHour;
@@ -45,20 +45,18 @@ export function PeakHoursChart({ data }: PeakHoursChartProps) {
               key={entry.hour}
               className="flex-1 flex flex-col items-center gap-0.5 min-w-0 group relative"
             >
-              <div className="w-full flex flex-col justify-end h-full">
+              <div className="w-full flex flex-col justify-end flex-1 min-h-0">
                 <div
                   className={`w-full rounded-t ${barColor} transition-all`}
                   style={{ height: `${Math.max(pct, 2)}%` }}
                 />
               </div>
-              {/* Show label every 3 hours */}
-              {entry.hour % 3 === 0 && (
-                <span className="text-[9px] text-on-surface-variant/50">
-                  {formatHour(entry.hour)}
-                </span>
-              )}
+              {/* Label every 3 hours; every column reserves the slot so bar bases align */}
+              <span className="h-4 text-caption font-normal whitespace-nowrap text-on-surface-variant">
+                {entry.hour % 3 === 0 ? formatHour(entry.hour) : null}
+              </span>
               {/* Hover tooltip */}
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-1.5 rounded-lg shadow-lg text-[10px] text-on-surface whitespace-nowrap z-10">
+              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-1.5 rounded-lg shadow-lg text-caption text-on-surface whitespace-nowrap z-10">
                 {formatHour(entry.hour)}: {entry.total.toLocaleString()} msgs
               </div>
             </div>

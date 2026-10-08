@@ -45,7 +45,7 @@ export class SubscriptionRepository {
   }
 
   async findById(id: string): Promise<Subscription | null> {
-    return this.prisma.subscription.findUnique({ where: { id } });
+    return this.prisma.subscription.findUnique({ where: { id }, include: { plan: true } });
   }
 
   async findByIdempotencyKey(key: string): Promise<Subscription | null> {

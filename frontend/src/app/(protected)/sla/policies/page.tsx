@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { SlaPolicyList } from "@/components/sla/sla-policy-list";
 import { SlaPolicyForm } from "@/components/sla/sla-policy-form";
 import type { SlaPolicy, CreateSlaPolicyRequest } from "@/lib/types/sla";
+import { Button } from "@/components/ui/button";
 
 export default function SlaPoliciesPage() {
   usePageTitle("SLA Policies");
@@ -78,21 +79,21 @@ export default function SlaPoliciesPage() {
             <ArrowLeft className="h-5 w-5" />
           </a>
           <Shield className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">
+          <h1 className="text-title font-semibold text-on-surface">
             SLA Policies
           </h1>
         </div>
         {!showForm && (
-          <button
+          <Button size="sm"
             onClick={() => {
               setEditingPolicy(undefined);
               setShowForm(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-medium hover:bg-primary/90 transition-colors"
+           
           >
             <Plus className="h-4 w-4" />
             New Policy
-          </button>
+          </Button>
         )}
       </div>
 
@@ -106,12 +107,12 @@ export default function SlaPoliciesPage() {
 
         {isError && (
           <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
-            <p className="text-[13px] text-error mb-2">
+            <p className="text-body text-error mb-2">
               Failed to load SLA policies
             </p>
             <button
               onClick={() => refetch()}
-              className="text-[12px] text-primary hover:underline"
+              className="text-label text-primary hover:underline"
             >
               Try again
             </button>

@@ -1,27 +1,39 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
-  UseGuards, Req, ParseUUIDPipe, HttpCode, HttpStatus, BadRequestException,
+  Controller, Get, Post, Patch, Body, Param, Query, Req,
+  ParseUUIDPipe, HttpCode, HttpStatus, BadRequestException,
 } from '@nestjs/common';
+import { SuperAdminRepository } from '../../infrastructure/repositories/super-admin.repository';
 import { Request } from 'express';
-import { SuperAdminGuard } from '../guards/super-admin.guard';
+import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
-import { Permissions } from '@/common/decorators/permissions.decorator';
-import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import {
   CreateTicketUseCase,
   GetTicketUseCase,
   ListTicketsUseCase,
   ReplyToTicketUseCase,
   UpdateTicketStatusUseCase,
+  AssignTicketUseCase,
+  SuperAdminAuditContext,
 } from '../../application/use-cases/ticket.use-cases';
 import {
   CreateTicketDto,
-  ReplyToTicketDto,
+  SuperAdminReplyDto,
   UpdateTicketStatusDto,
   ListTicketsQueryDto,
+  AssignTicketDto,
 } from '../../application/dto/ticket.dto';
+import { requestMeta } from '../request-meta';
 
+function auditContext(user: JwtPayload, req: Request): SuperAdminAuditContext {
+  return { actor: { id: user.sub, email: user.email }, meta: requestMeta(req) };
+}
+
+/**
+ * Super admin view of help tickets across all orgs.
+ * Tenant users use SupportTicketsController (/support/tickets) instead.
+ */
 @Controller('super-admin/tickets')
+@SuperAdminOnly()
 export class SuperAdminTicketsController {
   constructor(
     private readonly createTicketUseCase: CreateTicketUseCase,
@@ -29,57 +41,64 @@ export class SuperAdminTicketsController {
     private readonly listTicketsUseCase: ListTicketsUseCase,
     private readonly replyToTicketUseCase: ReplyToTicketUseCase,
     private readonly updateTicketStatusUseCase: UpdateTicketStatusUseCase,
+    private readonly assignTicketUseCase: AssignTicketUseCase,
+    private readonly superAdminRepo: SuperAdminRepository,
   ) {}
 
-  /** Any authenticated org user or super admin can create a ticket */
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @Permissions(PERMISSIONS.SETTINGS_READ)
-  async createTicket(@Body() dto: CreateTicketDto, @CurrentUser() user: JwtPayload) {
-    if (user.isSuperAdmin) {
-      if (!dto.orgId || !dto.userId) {
-        throw new BadRequestException('orgId and userId are required for super admin ticket creation');
-      }
-      return this.createTicketUseCase.execute(dto.orgId, dto.userId, dto);
-    }
-    return this.createTicketUseCase.execute(user.orgId, user.sub, dto);
+  /** Super admins a ticket can be assigned to. Declared before ':id' so it isn't parsed as an id. */
+  @Get('assignees')
+  async listAssignees() {
+    return this.superAdminRepo.findAll();
   }
 
-  /** List — super admin sees all; org users see their org's tickets */
+  /** Create a ticket on behalf of an org user */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async createTicket(@Body() dto: CreateTicketDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    if (!dto.orgId || !dto.userId) {
+      throw new BadRequestException('orgId and userId are required for super admin ticket creation');
+    }
+    return this.createTicketUseCase.execute(dto.orgId, dto.userId, dto, auditContext(user, req));
+  }
+
   @Get()
-  @Permissions(PERMISSIONS.SETTINGS_READ)
   async listTickets(@Query() query: ListTicketsQueryDto, @CurrentUser() user: JwtPayload) {
-    return this.listTicketsUseCase.execute(query, user.orgId, user.isSuperAdmin);
+    return this.listTicketsUseCase.execute(query, undefined, true, user.sub);
   }
 
   @Get(':id')
-  @Permissions(PERMISSIONS.SETTINGS_READ)
-  async getTicket(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    return this.getTicketUseCase.execute(id, user.orgId, user.isSuperAdmin);
+  async getTicket(@Param('id', ParseUUIDPipe) id: string) {
+    return this.getTicketUseCase.execute(id, undefined, true);
   }
 
-  /** Both org users and super admin can reply */
   @Post(':id/replies')
   @HttpCode(HttpStatus.CREATED)
-  @Permissions(PERMISSIONS.SETTINGS_READ)
   async replyToTicket(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ReplyToTicketDto,
+    @Body() dto: SuperAdminReplyDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    const userId = user.isSuperAdmin ? undefined : user.sub;
-    const superAdminId = user.isSuperAdmin ? user.sub : undefined;
-    return this.replyToTicketUseCase.execute(id, dto, userId, superAdminId, user.orgId);
+    return this.replyToTicketUseCase.execute(id, dto, undefined, user.sub, undefined, auditContext(user, req));
   }
 
-  /** Only super admin can change ticket status */
+  @Patch(':id/assignee')
+  async assign(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignTicketDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return { assignedTo: await this.assignTicketUseCase.execute(id, dto.assigneeId ?? null, auditContext(user, req)) };
+  }
+
   @Patch(':id/status')
-  @UseGuards(SuperAdminGuard)
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTicketStatusDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.updateTicketStatusUseCase.execute(id, dto, user.orgId, user.isSuperAdmin);
+    return this.updateTicketStatusUseCase.execute(id, dto, undefined, true, auditContext(user, req));
   }
 }

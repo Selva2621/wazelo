@@ -4,19 +4,23 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { JwtPayload } from '@/common/decorators/current-user.decorator';
+import { SuperAdminTokenService } from '../../domain/services/super-admin-token.service';
+import { SuperAdminRepository } from '../../infrastructure/repositories/super-admin.repository';
 
+/**
+ * Authenticates super admin routes. Attached via `@SuperAdminOnly()`.
+ *
+ * Accepts only access tokens signed with the super admin secret, carrying the
+ * platform audience, whose tokenVersion still matches the account — so logout
+ * revokes every outstanding token immediately.
+ */
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
-  private readonly superAdminSecret: string;
-
   constructor(
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-  ) {
-    this.superAdminSecret = this.configService.getOrThrow<string>('jwt.superAdminSecret');
-  }
+    private readonly tokenService: SuperAdminTokenService,
+    private readonly superAdminRepo: SuperAdminRepository,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -27,18 +31,21 @@ export class SuperAdminGuard implements CanActivate {
       throw new UnauthorizedException('Super admin access token required');
     }
 
-    let payload: any;
-    try {
-      payload = await this.jwtService.verifyAsync(token, { secret: this.superAdminSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired super admin token');
+    const payload = await this.tokenService.verify(token, 'access');
+
+    const superAdmin = await this.superAdminRepo.findById(payload.sub);
+    if (!superAdmin || superAdmin.tokenVersion !== payload.tv) {
+      throw new UnauthorizedException('Session revoked');
     }
 
-    if (!payload?.isSuperAdmin) {
-      throw new UnauthorizedException('Super admin access required');
-    }
-
-    request.user = payload;
+    const user: JwtPayload = {
+      sub: superAdmin.id,
+      email: superAdmin.email,
+      orgId: '',
+      role: '',
+      isSuperAdmin: true,
+    };
+    request.user = user;
     return true;
   }
 }

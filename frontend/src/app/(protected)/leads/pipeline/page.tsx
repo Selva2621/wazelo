@@ -12,11 +12,11 @@ import type { LeadStatus, Contact, ContactSource, ListContactsParams } from "@/l
 // ─── Column config ────────────────────────────────────────────────────────────
 
 const COLUMNS: { status: LeadStatus; label: string; color: string }[] = [
-  { status: "NEW",        label: "New",        color: "#60a5fa" },
-  { status: "CONTACTED",  label: "Contacted",  color: "#818cf8" },
-  { status: "INTERESTED", label: "Interested", color: "#fbbf24" },
-  { status: "CONVERTED",  label: "Converted",  color: "#34d399" },
-  { status: "CLOSED",     label: "Closed",     color: "#94a3b8" },
+  { status: "NEW",        label: "New",        color: "var(--info)" },
+  { status: "CONTACTED",  label: "Contacted",  color: "var(--primary-container)" },
+  { status: "INTERESTED", label: "Interested", color: "var(--warning)" },
+  { status: "CONVERTED",  label: "Converted",  color: "var(--success)" },
+  { status: "CLOSED",     label: "Closed",     color: "var(--on-surface-variant)" },
 ];
 
 const SCRAPE_SOURCE_LABELS: Record<string, string> = {
@@ -53,22 +53,22 @@ function PipelineCard({
       <div className="flex items-center gap-2.5 min-w-0">
         <Avatar name={contact.name || contact.phoneNumber} src={contact.avatarUrl} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-on-surface truncate">
+          <p className="text-body font-medium text-on-surface truncate">
             {contact.name || "Unknown"}
           </p>
-          <p className="text-[11px] text-on-surface-variant/60 truncate">{contact.phoneNumber}</p>
+          <p className="text-caption text-on-surface-variant/60 truncate">{contact.phoneNumber}</p>
         </div>
       </div>
 
       {/* Badges row */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {scrapeSource && SCRAPE_SOURCE_LABELS[scrapeSource] && (
-          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+          <span className="text-caption bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
             {SCRAPE_SOURCE_LABELS[scrapeSource]}
           </span>
         )}
         {rating != null && (
-          <span className="text-[10px] text-amber-500 font-medium">★ {rating.toFixed(1)}</span>
+          <span className="text-caption text-warning font-medium">★ {rating.toFixed(1)}</span>
         )}
         <LeadStatusBadge status={contact.leadStatus} />
       </div>
@@ -113,8 +113,8 @@ function PipelineColumn({
       {/* Column header */}
       <div className="shrink-0 flex items-center gap-2 px-3.5 py-3 border-b border-outline-variant/10">
         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-[13px] font-semibold text-on-surface">{label}</span>
-        <Badge variant="muted" className="text-[10px] ml-auto">
+        <span className="text-body font-semibold text-on-surface">{label}</span>
+        <Badge variant="muted" className="text-caption ml-auto">
           {isLoading ? "…" : contacts.length}
         </Badge>
       </div>
@@ -126,7 +126,7 @@ function PipelineColumn({
             <Spinner size="sm" className="text-on-surface-variant/40" />
           </div>
         ) : contacts.length === 0 ? (
-          <div className="text-center py-8 text-[12px] text-on-surface-variant/40">No leads</div>
+          <div className="text-center py-8 text-label text-on-surface-variant/40">No leads</div>
         ) : (
           contacts.map((c) => (
             <PipelineCard
@@ -168,8 +168,8 @@ export default function LeadPipelinePage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="shrink-0 px-6 py-4 border-b border-outline-variant/10">
-        <h1 className="text-xl font-bold text-on-surface">Lead Pipeline</h1>
-        <p className="text-sm text-on-surface-variant mt-0.5">
+        <h1 className="text-title font-semibold text-on-surface">Lead Pipeline</h1>
+        <p className="text-body-lg text-on-surface-variant mt-0.5">
           Scraped leads tracked through your sales stages. Drag cards to update status.
         </p>
       </div>

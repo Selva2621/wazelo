@@ -8,6 +8,7 @@ import type {
   SlaMetricType,
   SlaPriority,
 } from "@/lib/types/sla";
+import { Button } from "@/components/ui/button";
 
 const METRIC_OPTIONS: { value: SlaMetricType; label: string; description: string }[] = [
   { value: "FIRST_RESPONSE_TIME", label: "First Response", description: "Time until the first agent reply" },
@@ -85,8 +86,8 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
     });
   };
 
-  const sectionLabel = "text-[11px] font-semibold text-on-surface-variant/50 uppercase tracking-widest";
-  const inputCls = "w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15 transition-colors";
+  const sectionLabel = "text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest";
+  const inputCls = "w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15 transition-colors";
 
   return (
     <form
@@ -95,10 +96,10 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
     >
       {/* ── Header ── */}
       <div className="px-6 py-4 border-b border-outline-variant/10">
-        <h3 className="text-[14px] font-semibold text-on-surface">
+        <h3 className="text-body-lg font-semibold text-on-surface">
           {isEdit ? "Edit SLA Policy" : "New SLA Policy"}
         </h3>
-        <p className="text-[12px] text-on-surface-variant/50 mt-0.5">
+        <p className="text-label text-on-surface-variant/50 mt-0.5">
           Define response time targets and breach rules for your team.
         </p>
       </div>
@@ -109,7 +110,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
         <div className="px-6 py-5 space-y-3">
           <p className={sectionLabel}>Details</p>
           <div>
-            <label className="block text-[12px] text-on-surface-variant mb-1">
+            <label className="block text-label text-on-surface-variant mb-1">
               Name <span className="text-error">*</span>
             </label>
             <input
@@ -123,7 +124,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
             />
           </div>
           <div>
-            <label className="block text-[12px] text-on-surface-variant mb-1">
+            <label className="block text-label text-on-surface-variant mb-1">
               Description <span className="text-on-surface-variant/40">(optional)</span>
             </label>
             <input
@@ -152,8 +153,8 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                   className="mt-0.5 accent-primary shrink-0"
                 />
                 <div>
-                  <p className="text-[13px] text-on-surface leading-tight">{m.label}</p>
-                  <p className="text-[11px] text-on-surface-variant/50 mt-0.5">{m.description}</p>
+                  <p className="text-body text-on-surface leading-tight">{m.label}</p>
+                  <p className="text-caption text-on-surface-variant/50 mt-0.5">{m.description}</p>
                 </div>
               </label>
             ))}
@@ -171,7 +172,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                   onChange={() => setPriority(p.value)}
                   className="accent-primary shrink-0"
                 />
-                <span className={`text-[13px] ${priority === p.value ? p.color : "text-on-surface-variant"}`}>
+                <span className={`text-body ${priority === p.value ? p.color : "text-on-surface-variant"}`}>
                   {p.label}
                 </span>
               </label>
@@ -190,7 +191,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                   key={p.label}
                   type="button"
                   onClick={() => { setThresholdMin(p.breach); setWarningMin(p.warning); setHasWarning(true); }}
-                  className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors ${
+                  className={`px-2.5 py-1 rounded-md text-caption border transition-colors ${
                     thresholdMin === p.breach
                       ? "border-primary/50 bg-primary/8 text-primary font-semibold"
                       : "border-outline-variant/15 text-on-surface-variant/60 hover:border-outline-variant/40 hover:text-on-surface-variant"
@@ -207,10 +208,10 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
             {/* Breach */}
             <div className="rounded-lg border border-outline-variant/15 bg-surface-container p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[12px] font-medium text-on-surface">Breach threshold</p>
-                <span className="text-[13px] font-bold text-error">{fmtMin(thresholdMin)}</span>
+                <p className="text-label font-medium text-on-surface">Breach threshold</p>
+                <span className="text-body font-semibold text-error">{fmtMin(thresholdMin)}</span>
               </div>
-              <p className="text-[11px] text-on-surface-variant/50">Max time before SLA is marked as breached</p>
+              <p className="text-caption text-on-surface-variant/50">Max time before SLA is marked as breached</p>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -218,20 +219,20 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                   max={10080}
                   value={thresholdMin}
                   onChange={(e) => setThresholdMin(Math.max(1, Number(e.target.value)))}
-                  className="w-20 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-[13px] text-on-surface text-center focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15"
+                  className="w-20 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface text-center focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15"
                 />
-                <span className="text-[12px] text-on-surface-variant/60">minutes</span>
+                <span className="text-label text-on-surface-variant/60">minutes</span>
               </div>
             </div>
 
             {/* Warning */}
             <div className={`rounded-lg border p-4 space-y-3 transition-opacity ${hasWarning ? "border-outline-variant/15 bg-surface-container" : "border-outline-variant/10 bg-surface-container/40 opacity-60"}`}>
               <div className="flex items-center justify-between">
-                <p className="text-[12px] font-medium text-on-surface">Warning alert</p>
+                <p className="text-label font-medium text-on-surface">Warning alert</p>
                 <div className="flex items-center gap-2">
-                  {hasWarning && <span className="text-[13px] font-bold text-warning">{fmtMin(warningMin)}</span>}
+                  {hasWarning && <span className="text-body font-semibold text-warning">{fmtMin(warningMin)}</span>}
                   {/* Toggle */}
-                  <button
+                  <button role="switch" aria-checked={hasWarning} aria-label="Warning alert"
                     type="button"
                     onClick={() => setHasWarning(!hasWarning)}
                     className={`relative w-7 h-3.5 rounded-full transition-colors shrink-0 ${hasWarning ? "bg-primary" : "bg-outline-variant/30"}`}
@@ -240,7 +241,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                   </button>
                 </div>
               </div>
-              <p className="text-[11px] text-on-surface-variant/50">Notify agent before breach deadline</p>
+              <p className="text-caption text-on-surface-variant/50">Notify agent before breach deadline</p>
               {hasWarning && (
                 <div className="flex items-center gap-2">
                   <input
@@ -249,9 +250,9 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                     max={thresholdMin - 1}
                     value={warningMin}
                     onChange={(e) => setWarningMin(Math.max(1, Math.min(thresholdMin - 1, Number(e.target.value))))}
-                    className="w-20 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-[13px] text-on-surface text-center focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15"
+                    className="w-20 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface text-center focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15"
                   />
-                  <span className="text-[12px] text-on-surface-variant/60">minutes</span>
+                  <span className="text-label text-on-surface-variant/60">minutes</span>
                 </div>
               )}
             </div>
@@ -264,7 +265,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                 <div className="bg-success/40 h-full" style={{ width: `${Math.round((warningMin / thresholdMin) * 100)}%` }} />
                 <div className="bg-warning/40 h-full flex-1" />
               </div>
-              <div className="flex justify-between text-[10px] text-on-surface-variant/40">
+              <div className="flex justify-between text-caption text-on-surface-variant/40">
                 <span>0</span>
                 <span>{fmtMin(warningMin)} — warning</span>
                 <span>{fmtMin(thresholdMin)} — breach</span>
@@ -285,8 +286,8 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                 className="rounded accent-primary mt-0.5 shrink-0"
               />
               <div>
-                <p className="text-[13px] text-on-surface">Business hours only</p>
-                <p className="text-[11px] text-on-surface-variant/50">Pause timer outside work hours (Mon–Fri)</p>
+                <p className="text-body text-on-surface">Business hours only</p>
+                <p className="text-caption text-on-surface-variant/50">Pause timer outside work hours (Mon–Fri)</p>
               </div>
             </label>
 
@@ -298,8 +299,8 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                 className="rounded accent-primary mt-0.5 shrink-0"
               />
               <div>
-                <p className="text-[13px] text-on-surface">Notify on breach</p>
-                <p className="text-[11px] text-on-surface-variant/50">Alert agent when SLA is exceeded</p>
+                <p className="text-body text-on-surface">Notify on breach</p>
+                <p className="text-caption text-on-surface-variant/50">Alert agent when SLA is exceeded</p>
               </div>
             </label>
 
@@ -311,8 +312,8 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                 className="rounded accent-primary mt-0.5 shrink-0"
               />
               <div>
-                <p className="text-[13px] text-on-surface">Notify on warning</p>
-                <p className="text-[11px] text-on-surface-variant/50">Alert agent before breach deadline</p>
+                <p className="text-body text-on-surface">Notify on warning</p>
+                <p className="text-caption text-on-surface-variant/50">Alert agent before breach deadline</p>
               </div>
             </label>
           </div>
@@ -321,7 +322,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
           {businessHours && (
             <div className="grid grid-cols-2 gap-4 pt-1">
               <div>
-                <label className="block text-[11px] text-on-surface-variant/60 mb-1.5">Start hour</label>
+                <label className="block text-caption text-on-surface-variant/60 mb-1.5">Start hour</label>
                 <select
                   value={businessStart}
                   onChange={(e) => setBusinessStart(Number(e.target.value))}
@@ -333,7 +334,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] text-on-surface-variant/60 mb-1.5">End hour</label>
+                <label className="block text-caption text-on-surface-variant/60 mb-1.5">End hour</label>
                 <select
                   value={businessEnd}
                   onChange={(e) => setBusinessEnd(Number(e.target.value))}
@@ -352,26 +353,26 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
       {/* ── Footer ── */}
       <div className="px-6 py-4 border-t border-outline-variant/10 flex items-center gap-3">
         {error
-          ? <p className="flex-1 text-[12px] text-error">{error}</p>
+          ? <p className="flex-1 text-label text-error">{error}</p>
           : <span className="flex-1" />
         }
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 rounded-lg text-[13px] text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+          className="px-4 py-2 rounded-lg text-body text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
         >
           Cancel
         </button>
-        <button
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="px-5 py-2 rounded-lg bg-primary text-on-primary text-[13px] font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+         
         >
           {isSubmitting && (
             <span className="w-3.5 h-3.5 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
           )}
           {isEdit ? "Save Changes" : "Create Policy"}
-        </button>
+        </Button>
       </div>
     </form>
   );

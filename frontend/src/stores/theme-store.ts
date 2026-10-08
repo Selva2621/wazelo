@@ -3,7 +3,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Theme = "midnight-ember" | "emerald-night";
+export type Theme = "midnight-ember" | "emerald-night" | "daylight" | "ember-glass";
+
+export const THEMES: { id: Theme; label: string; mode: "light" | "dark" }[] = [
+  { id: "daylight", label: "Light", mode: "light" },
+  { id: "midnight-ember", label: "Dark", mode: "dark" },
+  { id: "emerald-night", label: "Emerald", mode: "dark" },
+  { id: "ember-glass", label: "Glass", mode: "dark" },
+];
 
 interface ThemeState {
   theme: Theme;
@@ -11,17 +18,23 @@ interface ThemeState {
   toggleTheme: () => void;
 }
 
+/** First visit is always light; an explicit choice is persisted after that. */
+function initialTheme(): Theme {
+  return "daylight";
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: "midnight-ember",
+      theme: initialTheme(),
       setTheme: (theme) => {
         document.documentElement.setAttribute("data-theme", theme);
         set({ theme });
       },
       toggleTheme: () => {
-        const next =
-          get().theme === "midnight-ember" ? "emerald-night" : "midnight-ember";
+        // Cycle through the available themes in menu order
+        const order = THEMES.map((t) => t.id);
+        const next = order[(order.indexOf(get().theme) + 1) % order.length];
         document.documentElement.setAttribute("data-theme", next);
         set({ theme: next });
       },

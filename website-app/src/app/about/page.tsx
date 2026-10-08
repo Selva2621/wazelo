@@ -15,10 +15,10 @@ function StatCard({ value, suffix, label, active }: { value: number; suffix: str
       borderRadius: 16, padding: "32px 24px", textAlign: "center",
       flex: "1 1 180px",
     }}>
-      <div style={{ fontSize: "clamp(36px,4vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ fontSize: "clamp(36px,4vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>
         {count.toLocaleString("en-IN")}{suffix}
       </div>
-      <div style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", marginTop: 8, fontFamily: "'Inter', sans-serif" }}>{label}</div>
+      <div style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", marginTop: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{label}</div>
     </div>
   );
 }
@@ -31,8 +31,8 @@ function ValueCard({ icon, title, desc }: { icon: string; title: string; desc: s
       borderRadius: 16, padding: "28px 24px",
     }}>
       <span className="material-symbols-outlined card-icon" style={{ fontSize: 28, color: "#ffb77d", marginBottom: 16, display: "block" }}>{icon}</span>
-      <h3 style={{ fontSize: 17, fontWeight: 700, color: "#e5e2e1", marginBottom: 8, fontFamily: "'Inter', sans-serif" }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", lineHeight: 1.7, fontFamily: "'Inter', sans-serif" }}>{desc}</p>
+      <h3 style={{ fontSize: 17, fontWeight: 700, color: "#e5e2e1", marginBottom: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{title}</h3>
+      <p style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", lineHeight: 1.7, fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</p>
     </div>
   );
 }
@@ -80,12 +80,12 @@ export default function AboutPage() {
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>Our Story</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Our Story</span>
           </div>
 
           <h1 style={{
             fontSize: "clamp(38px,5.5vw,80px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.08, color: "#fff", fontFamily: "'Inter', sans-serif", marginBottom: 24,
+            lineHeight: 1.08, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>
@@ -95,7 +95,7 @@ export default function AboutPage() {
 
           <p style={{
             fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
-            maxWidth: 560, margin: "0 auto 40px", fontFamily: "'Inter', sans-serif",
+            maxWidth: 560, margin: "0 auto 40px", fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
           }}>
@@ -109,11 +109,11 @@ export default function AboutPage() {
           }}>
             <a href={APP_REGISTER_URL} className="btn-primary" style={{
               padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 800,
-              textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block",
+              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
             }}>Start Free Trial</a>
             <a href="/#features" className="btn-ghost" style={{
               padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 600,
-              textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block",
+              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
             }}>See the product</a>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function AboutPage() {
           }} />
           <blockquote style={{
             fontSize: "clamp(22px,3vw,38px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.4,
-            color: "#e5e2e1", fontFamily: "'Inter', sans-serif", fontStyle: "normal",
+            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", fontStyle: "normal",
             opacity: missionView.inView ? 1 : 0, transform: missionView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>
@@ -138,7 +138,7 @@ export default function AboutPage() {
           </blockquote>
           <p style={{
             fontSize: 13, color: "rgba(219,194,176,0.4)", marginTop: 24, letterSpacing: "0.08em",
-            textTransform: "uppercase", fontFamily: "'Inter', sans-serif",
+            textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: missionView.inView ? 1 : 0, transition: "opacity 0.9s 0.25s ease",
           }}>
             — Our founding mission
@@ -159,17 +159,17 @@ export default function AboutPage() {
             opacity: storyView.inView ? 1 : 0, transform: storyView.inView ? "translateX(0)" : "translateX(-32px)",
             transition: "opacity 0.9s ease, transform 0.9s ease",
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 16 }}>Founding Story</span>
-            <h2 style={{ fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 24 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 16 }}>Founding Story</span>
+            <h2 style={{ fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24 }}>
               Built out of<br />real frustration.
             </h2>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 20 }}>
+            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
               We ran a small services business in India. Our team was managing customer conversations across personal WhatsApp numbers — missed follow-ups, zero accountability, no visibility.
             </p>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif", marginBottom: 20 }}>
+            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
               Every CRM we tried was built for email or calls — not WhatsApp. So in 2024, we decided to build our own.
             </p>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "'Inter', sans-serif" }}>
+            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif" }}>
               Wazelo CRM is what we wished existed — a shared inbox, campaign tools, automation, and analytics, all purpose-built for WhatsApp.
             </p>
           </div>
@@ -191,10 +191,10 @@ export default function AboutPage() {
                 { year: "Now", event: "Powering hundreds of teams across India" },
               ].map((m, i) => (
                 <div key={i} style={{ display: "flex", gap: 20, marginBottom: i < 3 ? 28 : 0, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 72, fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.06em", fontFamily: "'Inter', sans-serif", paddingTop: 2 }}>{m.year}</div>
+                  <div style={{ minWidth: 72, fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.06em", fontFamily: "var(--font-geist-sans), sans-serif", paddingTop: 2 }}>{m.year}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ height: 1, background: "rgba(255,183,125,0.15)", marginBottom: 10 }} />
-                    <p style={{ fontSize: 14, color: "rgba(219,194,176,0.7)", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{m.event}</p>
+                    <p style={{ fontSize: 14, color: "rgba(219,194,176,0.7)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{m.event}</p>
                   </div>
                 </div>
               ))}
@@ -209,10 +209,10 @@ export default function AboutPage() {
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 12 }}>What we stand for</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>What we stand for</span>
             <h2 style={{
               fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "'Inter', sans-serif",
+              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
               opacity: valuesView.inView ? 1 : 0, transform: valuesView.inView ? "translateY(0)" : "translateY(20px)",
               transition: "opacity 0.8s ease, transform 0.8s ease",
             }}>Our core values</h2>
@@ -237,7 +237,7 @@ export default function AboutPage() {
           <div style={{ textAlign: "center", marginBottom: 56 }}>
             <h2 style={{
               fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "'Inter', sans-serif",
+              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
               opacity: statsView.inView ? 1 : 0, transition: "opacity 0.8s ease",
             }}>Growing every day</h2>
           </div>
@@ -260,7 +260,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{
             fontSize: "clamp(28px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 16,
+            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
@@ -268,7 +268,7 @@ export default function AboutPage() {
           </h2>
           <p style={{
             fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
-            fontFamily: "'Inter', sans-serif", marginBottom: 36,
+            fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease",
           }}>
             Join hundreds of Indian businesses already using Wazelo CRM to manage their WhatsApp relationships.
@@ -276,7 +276,7 @@ export default function AboutPage() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <a href={APP_REGISTER_URL} className="btn-primary" style={{
               padding: "16px 40px", borderRadius: 100, fontSize: 15, fontWeight: 800,
-              textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block",
+              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
               opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
               transition: "opacity 0.8s 0.2s ease, transform 0.8s 0.2s ease",
             }}>Start your free trial</a>

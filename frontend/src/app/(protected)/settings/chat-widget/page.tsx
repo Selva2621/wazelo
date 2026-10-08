@@ -38,7 +38,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void 
 }
 
 const inputCls =
-  "w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
+  "w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
 
 // ── Build the inline widget HTML injected into the preview iframe ─────────────
 
@@ -469,11 +469,11 @@ export default function ChatWidgetSettingsPage() {
       <div className="flex-1 min-w-0 space-y-4">
 
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Globe className="h-5 w-5 text-primary" />
             Chat Widget
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
+          <p className="text-body text-on-surface-variant mt-0.5">
             Embed a live chat widget on your website
           </p>
         </div>
@@ -482,8 +482,8 @@ export default function ChatWidgetSettingsPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-medium text-on-surface">Enable Widget</p>
-              <p className="text-[12px] text-on-surface-variant">Show widget on your website</p>
+              <p className="text-body-lg font-medium text-on-surface">Enable Widget</p>
+              <p className="text-label text-on-surface-variant">Show widget on your website</p>
             </div>
             <Toggle enabled={form.enabled} onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))} />
           </div>
@@ -491,48 +491,48 @@ export default function ChatWidgetSettingsPage() {
 
         {/* Appearance */}
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
-          <p className="text-[13px] font-semibold text-on-surface">Appearance</p>
+          <p className="text-body font-semibold text-on-surface">Appearance</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Company Name</label>
+              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Company Name</label>
               <input value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Position</label>
+              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Position</label>
               <select value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
                 {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Primary Color</label>
+              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Primary Color</label>
               <div className="flex items-center gap-2 mt-1">
                 <input type="color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant/30 cursor-pointer p-0.5" />
-                <input value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                <input value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">WhatsApp Number</label>
+              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">WhatsApp Number</label>
               <input value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Welcome Message</label>
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Welcome Message</label>
             <textarea value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Input Placeholder</label>
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Input Placeholder</label>
             <input value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">Avatar / Logo</label>
+            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Avatar / Logo</label>
             <div className="flex items-center gap-2 mt-1">
               {/* Preview */}
               {form.avatarUrl ? (
                 <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" />
               ) : (
-                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-[10px] text-on-surface-variant/40 border border-outline-variant/20">
+                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/40 border border-outline-variant/20">
                   Logo
                 </div>
               )}
@@ -544,14 +544,14 @@ export default function ChatWidgetSettingsPage() {
                 className={cn(inputCls, "mt-0 flex-1")}
               />
               {/* Upload button */}
-              <button
+              <Button variant="secondary"
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarUploading}
-                className="flex-shrink-0 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[12px] text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
+                className="flex-shrink-0"
               >
                 {avatarUploading ? "Uploading..." : "Upload"}
-              </button>
+              </Button>
               <input
                 ref={avatarInputRef}
                 type="file"
@@ -567,8 +567,8 @@ export default function ChatWidgetSettingsPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-medium text-on-surface">Pre-chat Form</p>
-              <p className="text-[12px] text-on-surface-variant">Collect visitor name &amp; phone before chat starts</p>
+              <p className="text-body-lg font-medium text-on-surface">Pre-chat Form</p>
+              <p className="text-label text-on-surface-variant">Collect visitor name &amp; phone before chat starts</p>
             </div>
             <Toggle enabled={form.preChatFormEnabled} onChange={() => setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled }))} />
           </div>
@@ -578,8 +578,8 @@ export default function ChatWidgetSettingsPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-medium text-on-surface">AI Assistant</p>
-              <p className="text-[12px] text-on-surface-variant">
+              <p className="text-body-lg font-medium text-on-surface">AI Assistant</p>
+              <p className="text-label text-on-surface-variant">
                 Auto-reply using your org&apos;s Knowledge Base &amp; product data
               </p>
             </div>
@@ -590,7 +590,7 @@ export default function ChatWidgetSettingsPage() {
           </div>
           {form.aiAssistantEnabled && (
             <div>
-              <label className="text-[11px] font-medium text-on-surface-variant/60 uppercase tracking-wide">
+              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
                 Custom Instructions (optional)
               </label>
               <textarea
@@ -601,7 +601,7 @@ export default function ChatWidgetSettingsPage() {
                 placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our products. If unsure, ask the visitor to leave their contact details.`}
                 className={cn(inputCls, "resize-none mt-1")}
               />
-              <p className="text-[11px] text-on-surface-variant/40 mt-1 text-right">
+              <p className="text-caption text-on-surface-variant/40 mt-1 text-right">
                 {(form.aiSystemPrompt ?? "").length}/2000
               </p>
             </div>
@@ -614,12 +614,12 @@ export default function ChatWidgetSettingsPage() {
             {updateConfig.isPending ? "Saving..." : "Save Settings"}
           </Button>
           {updateConfig.isSuccess && (
-            <span className="text-[13px] text-success flex items-center gap-1">
+            <span className="text-body text-success flex items-center gap-1">
               <Check className="h-3.5 w-3.5" /> Saved
             </span>
           )}
           {updateConfig.isError && (
-            <span className="text-[13px] text-error">Failed to save. Try again.</span>
+            <span className="text-body text-error">Failed to save. Try again.</span>
           )}
         </div>
 
@@ -627,11 +627,11 @@ export default function ChatWidgetSettingsPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Code className="h-4 w-4 text-primary" />
-            <p className="text-[13px] font-semibold text-on-surface">Embed Code</p>
+            <p className="text-body font-semibold text-on-surface">Embed Code</p>
           </div>
-          <p className="text-[12px] text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
+          <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
           <div className="relative">
-            <pre className="rounded-xl bg-surface-container-highest p-3 text-[11px] text-on-surface overflow-x-auto pr-10">
+            <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10">
               <code>{embedCode}</code>
             </pre>
             <button onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors" title="Copy">
@@ -647,21 +647,21 @@ export default function ChatWidgetSettingsPage() {
           {/* Panel header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/10">
             <Smartphone className="h-4 w-4 text-primary" />
-            <p className="text-[13px] font-semibold text-on-surface">Live Preview</p>
-            <span className="ml-1 text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
+            <p className="text-body font-semibold text-on-surface">Live Preview</p>
+            <span className="ml-1 text-caption text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
               Interactive
             </span>
-            <p className="ml-auto text-[11px] text-on-surface-variant/50">Updates as you type</p>
+            <p className="ml-auto text-caption text-on-surface-variant/50">Updates as you type</p>
           </div>
 
           {/* Browser chrome */}
           <div className="px-3 py-2 bg-surface-container-highest flex items-center gap-2 border-b border-outline-variant/10">
             <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-error/60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-success/60" />
             </div>
-            <div className="flex-1 rounded-md bg-surface px-3 py-1 text-[10px] text-on-surface-variant/40 truncate">
+            <div className="flex-1 rounded-md bg-surface px-3 py-1 text-caption text-on-surface-variant/40 truncate">
               https://yourwebsite.com
             </div>
           </div>
@@ -674,7 +674,7 @@ export default function ChatWidgetSettingsPage() {
           {/* Hint */}
           <div className="px-4 py-2.5 border-t border-outline-variant/10 flex items-center gap-1.5">
             <RefreshCw className="h-3 w-3 text-on-surface-variant/40" />
-            <p className="text-[11px] text-on-surface-variant/50">
+            <p className="text-caption text-on-surface-variant/50">
               Click the chat button · Type a message · Test pre-chat form{form.aiAssistantEnabled ? " · AI enabled" : ""}
             </p>
           </div>

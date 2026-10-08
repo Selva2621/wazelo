@@ -64,6 +64,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatbotNodeType } from "@/lib/types/chatbot";
+import { IconButton } from "@/components/ui/icon-button";
 
 // ─── Node type metadata ───────────────────────────────────────────────────────
 
@@ -183,24 +184,23 @@ function FlowNode({ id, data, selected }: NodeProps) {
           >
             <Icon className="h-3.5 w-3.5" style={{ color: meta.color }} />
           </div>
-          <span className="text-[12px] font-semibold flex-1" style={{ color: meta.color }}>
+          <span className="text-label font-semibold flex-1" style={{ color: meta.color }}>
             {meta.label}
           </span>
-          {hasError && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-          <button
+          {hasError && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
+          <IconButton size="xs" variant="danger"
             onMouseDown={(e) => { e.stopPropagation(); d.onDelete(id); }}
-            className="p-0.5 rounded hover:bg-red-50 transition-colors"
-            style={{ color: "#ef4444" }}
-          >
+           
+            style={{ color: "#ef4444" }} aria-label="Delete">
             <Trash2 className="h-3 w-3" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Preview */}
         <div className="px-3 py-2">
-          <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{preview}</p>
+          <p className="text-caption text-on-surface-variant line-clamp-2 leading-relaxed">{preview}</p>
           {hasError && (
-            <p className="text-[10px] text-amber-500 mt-1">{errors[0]}</p>
+            <p className="text-caption text-warning mt-1">{errors[0]}</p>
           )}
         </div>
       </div>
@@ -265,11 +265,11 @@ function LeftPanel({
       <div className="p-3 space-y-4">
         {/* Trigger */}
         <section className="space-y-2">
-          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Trigger</p>
+          <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Trigger</p>
           <select
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-outline text-[12px] text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full px-2.5 py-1.5 rounded-lg border border-outline text-label text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="KEYWORD">Keyword Match</option>
             <option value="FIRST_MESSAGE">First Message</option>
@@ -280,7 +280,7 @@ function LeftPanel({
               value={triggerValue}
               onChange={(e) => setTriggerValue(e.target.value)}
               placeholder="e.g. hello, hi, start"
-              className="w-full px-2.5 py-1.5 rounded-lg border border-outline text-[12px] text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full px-2.5 py-1.5 rounded-lg border border-outline text-label text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           )}
         </section>
@@ -290,9 +290,9 @@ function LeftPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Bot className="h-3.5 w-3.5 text-primary" />
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">AI Mode</p>
+              <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">AI Mode</p>
             </div>
-            <button
+            <button role="switch" aria-checked={aiEnabled} aria-label="AI mode"
               onClick={() => setAiEnabled(!aiEnabled)}
               className={`relative w-9 h-5 rounded-full transition-colors ${aiEnabled ? "bg-primary" : "bg-surface-container-highest"}`}
             >
@@ -301,13 +301,13 @@ function LeftPanel({
           </div>
           {aiEnabled && (
             <div className="space-y-1.5">
-              <label className="text-[11px] text-on-surface-variant">System Prompt</label>
+              <label className="text-caption text-on-surface-variant">System Prompt</label>
               <textarea
                 value={aiSystemPrompt}
                 onChange={(e) => setAiSystemPrompt(e.target.value)}
                 rows={4}
                 placeholder="You are a helpful customer support agent for [Company]. Be concise and friendly."
-                className="w-full px-2.5 py-2 rounded-lg border border-outline bg-surface-container text-[11px] text-on-surface resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full px-2.5 py-2 rounded-lg border border-outline bg-surface-container text-caption text-on-surface resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
           )}
@@ -316,8 +316,8 @@ function LeftPanel({
         {/* Product scope */}
         {aiEnabled && availableProducts && availableProducts.filter((p) => p.status === "ACTIVE").length > 0 && (
           <section className="border-t border-outline-variant pt-3 space-y-2">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Product Scope</p>
-            <p className="text-[10px] text-on-surface-variant">Leave empty for all products</p>
+            <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Product Scope</p>
+            <p className="text-caption text-on-surface-variant">Leave empty for all products</p>
             {availableProducts.filter((p) => p.status === "ACTIVE").map((p) => (
               <label key={p.id} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -329,7 +329,7 @@ function LeftPanel({
                   }}
                   className="rounded h-3.5 w-3.5"
                 />
-                <span className="text-[12px] text-on-surface">{p.name}</span>
+                <span className="text-label text-on-surface">{p.name}</span>
               </label>
             ))}
           </section>
@@ -341,9 +341,9 @@ function LeftPanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-primary" />
-                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Product Docs</p>
+                <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Product Docs</p>
               </div>
-              <button
+              <button role="switch" aria-checked={useKnowledgeBase} aria-label="Use product docs"
                 onClick={() => setUseKnowledgeBase(!useKnowledgeBase)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${useKnowledgeBase ? "bg-primary" : "bg-surface-container-highest"}`}
               >
@@ -354,7 +354,7 @@ function LeftPanel({
               <div className="space-y-2">
                 <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-outline hover:border-primary/40 cursor-pointer transition-colors">
                   <Upload className="h-3.5 w-3.5 text-on-surface-variant" />
-                  <span className="text-[11px] text-on-surface-variant">
+                  <span className="text-caption text-on-surface-variant">
                     {uploadDoc.isPending ? "Uploading..." : "Upload PDF / TXT"}
                   </span>
                   <input type="file" accept=".pdf,.txt,.csv,.md" className="hidden"
@@ -367,15 +367,15 @@ function LeftPanel({
                 {documents && documents.length > 0 && (
                   <div className="space-y-1">
                     {documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface-container text-[11px]">
+                      <div key={doc.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface-container text-caption">
                         <FileText className="h-3 w-3 shrink-0 text-on-surface-variant" />
                         <span className="flex-1 truncate text-on-surface">{doc.title}</span>
-                        {doc.status === "READY"      && <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />}
-                        {doc.status === "PROCESSING" && <Loader2 className="h-3 w-3 text-yellow-500 shrink-0 animate-spin" />}
-                        {doc.status === "FAILED"     && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
-                        <button onClick={() => deleteDoc.mutate(doc.id)} className="p-0.5 rounded hover:bg-red-50 text-on-surface-variant hover:text-red-400 transition-colors shrink-0">
+                        {doc.status === "READY"      && <CheckCircle2 className="h-3 w-3 text-success shrink-0" />}
+                        {doc.status === "PROCESSING" && <Loader2 className="h-3 w-3 text-warning shrink-0 animate-spin" />}
+                        {doc.status === "FAILED"     && <AlertTriangle className="h-3 w-3 text-error shrink-0" />}
+                        <IconButton size="xs" variant="danger" onClick={() => deleteDoc.mutate(doc.id)} aria-label="Remove">
                           <X className="h-3 w-3" />
-                        </button>
+                        </IconButton>
                       </div>
                     ))}
                   </div>
@@ -388,8 +388,8 @@ function LeftPanel({
         {/* Node palette */}
         {!aiEnabled && (
           <section className="border-t border-outline-variant pt-3 space-y-1.5">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Add Node</p>
-            <p className="text-[10px] text-on-surface-variant mb-2">Drag onto canvas or click to add</p>
+            <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Add Node</p>
+            <p className="text-caption text-on-surface-variant mb-2">Drag onto canvas or click to add</p>
             {NODE_TYPE_LIST.map(([type, meta]) => {
               const Icon = meta.icon;
               return (
@@ -403,7 +403,7 @@ function LeftPanel({
                   <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: meta.bg }}>
                     <Icon className="h-3.5 w-3.5" style={{ color: meta.color }} />
                   </div>
-                  <span className="text-[12px] font-medium text-on-surface">{meta.label}</span>
+                  <span className="text-label font-medium text-on-surface">{meta.label}</span>
                 </button>
               );
             })}
@@ -437,13 +437,13 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
   function field(label: string, children: React.ReactNode) {
     return (
       <div className="space-y-1.5">
-        <label className="text-[12px] font-medium text-on-surface-variant">{label}</label>
+        <label className="text-label font-medium text-on-surface-variant">{label}</label>
         {children}
       </div>
     );
   }
 
-  const inputCls = "w-full px-3 py-2 rounded-lg border border-outline text-[12px] text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const inputCls = "w-full px-3 py-2 rounded-lg border border-outline text-label text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20";
   const textareaCls = `${inputCls} resize-none`;
 
   const errors = validateNode(nodeType, nodeData);
@@ -456,18 +456,18 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
           <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: meta.bg }}>
             <meta.icon className="h-3.5 w-3.5" style={{ color: meta.color }} />
           </div>
-          <span className="text-[13px] font-semibold text-on-surface">{meta.label}</span>
+          <span className="text-body font-semibold text-on-surface">{meta.label}</span>
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+        <IconButton size="xs" onClick={onClose} aria-label="Close">
           <X className="h-3.5 w-3.5" />
-        </button>
+        </IconButton>
       </div>
 
       {/* Validation errors */}
       {errors.length > 0 && (
-        <div className="mx-4 mt-3 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 space-y-0.5">
+        <div className="mx-4 mt-3 rounded-lg bg-warning-container border border-warning/30 px-3 py-2 space-y-0.5">
           {errors.map((e, i) => (
-            <p key={i} className="text-[11px] text-amber-700 flex items-center gap-1">
+            <p key={i} className="text-caption text-warning flex items-center gap-1">
               <AlertTriangle className="h-3 w-3 shrink-0" />
               {e}
             </p>
@@ -486,7 +486,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 placeholder="Type your message here..."
                 className={textareaCls}
               />
-              <p className="text-[10px] text-on-surface-variant">Use {"{{contact.name}}"} or {"{{variable_name}}"} for personalization</p>
+              <p className="text-caption text-on-surface-variant">Use {"{{contact.name}}"} or {"{{variable_name}}"} for personalization</p>
             </>
           ))
         )}
@@ -510,7 +510,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 className={inputCls}
               />
             ))}
-            <p className="text-[10px] text-on-surface-variant">Access in later nodes as {"{{customer_name}}"}</p>
+            <p className="text-caption text-on-surface-variant">Access in later nodes as {"{{customer_name}}"}</p>
           </>
         )}
 
@@ -529,7 +529,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
             {field("Value", (
               <input value={String(nodeData.value ?? "")} onChange={(e) => onUpdate(nodeId, { value: e.target.value })} placeholder="Expected value" className={inputCls} />
             ))}
-            <div className="rounded-lg bg-amber-50 border border-amber-100 p-3 text-[11px] text-amber-700 space-y-1">
+            <div className="rounded-lg bg-warning-container border border-warning/30 p-3 text-caption text-warning space-y-1">
               <p className="font-medium">Two outputs:</p>
               <p>• Bottom handle → True (condition met)</p>
               <p>• Right handle → False (condition not met)</p>
@@ -593,9 +593,9 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                     }
                   }}
                   placeholder={'{\n  "Authorization": "Bearer token"\n}'}
-                  className={`${textareaCls} font-mono text-[11px]`}
+                  className={`${textareaCls} font-mono text-caption`}
                 />
-                {headersError && <p className="text-[11px] text-error">{headersError}</p>}
+                {headersError && <p className="text-caption text-error">{headersError}</p>}
               </>
             ))}
             {field("Request Body (JSON or plain)", (
@@ -604,7 +604,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 rows={3}
                 onChange={(e) => onUpdate(nodeId, { body: e.target.value })}
                 placeholder={"{\n  \"phone\": \"{{contact.phone}}\"\n}"}
-                className={`${textareaCls} font-mono text-[11px]`}
+                className={`${textareaCls} font-mono text-caption`}
               />
             ))}
             {field("Save response as variable", (
@@ -615,7 +615,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 className={inputCls}
               />
             ))}
-            <p className="text-[10px] text-on-surface-variant">Use {"{{variable_name}}"} in URL, body, and headers. Response stored in variable.</p>
+            <p className="text-caption text-on-surface-variant">Use {"{{variable_name}}"} in URL, body, and headers. Response stored in variable.</p>
           </>
         )}
 
@@ -640,7 +640,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 className={inputCls}
               />
             ))}
-            <div className="rounded-lg bg-orange-50 border border-orange-100 p-3 text-[11px] text-orange-700 space-y-1">
+            <div className="rounded-lg bg-warning-container border border-warning/30 p-3 text-caption text-warning space-y-1">
               <p className="font-medium">AI will generate a reply using:</p>
               <p>• The system prompt above</p>
               <p>• Last 20 messages as context</p>
@@ -660,10 +660,10 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                   placeholder={"order_status\npricing\nsupport\nother"}
                   className={textareaCls}
                 />
-                <p className="text-[10px] text-on-surface-variant">AI will classify the customer message into one of these intents. Connect each intent to a different next node using the edge label.</p>
+                <p className="text-caption text-on-surface-variant">AI will classify the customer message into one of these intents. Connect each intent to a different next node using the edge label.</p>
               </>
             ))}
-            <div className="rounded-lg bg-purple-50 border border-purple-100 p-3 text-[11px] text-purple-700 space-y-1">
+            <div className="rounded-lg bg-chart-5/10 border border-chart-5/30 p-3 text-caption text-chart-5 space-y-1">
               <p className="font-medium">How to wire intent branches:</p>
               <p>• Connect output edges and set the label to the intent name</p>
               <p>• Add a "default" edge for unmatched intents</p>
@@ -686,7 +686,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                 {(nodeData.items as { title: string; description?: string }[] ?? []).map((item, i) => (
                   <div key={i} className="rounded-lg border border-outline-variant/20 p-2 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-semibold text-on-surface-variant w-4">{i + 1}.</span>
+                      <span className="text-caption font-semibold text-on-surface-variant w-4">{i + 1}.</span>
                       <input
                         value={item.title}
                         onChange={(e) => {
@@ -695,17 +695,15 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                           onUpdate(nodeId, { items });
                         }}
                         placeholder="Option title"
-                        className={`${inputCls} text-[11px]`}
+                        className={`${inputCls} text-caption`}
                       />
-                      <button
+                      <IconButton size="xs" variant="danger"
                         onClick={() => {
                           const items = (nodeData.items as { title: string; description?: string }[]).filter((_, j) => j !== i);
                           onUpdate(nodeId, { items });
-                        }}
-                        className="p-0.5 text-on-surface-variant/40 hover:text-error transition-colors shrink-0"
-                      >
+                        }} aria-label="Remove">
                         <X className="h-3 w-3" />
-                      </button>
+                      </IconButton>
                     </div>
                     <input
                       value={item.description ?? ""}
@@ -715,7 +713,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                         onUpdate(nodeId, { items });
                       }}
                       placeholder="Optional description"
-                      className={`${inputCls} text-[11px] ml-5`}
+                      className={`${inputCls} text-caption ml-5`}
                     />
                   </div>
                 ))}
@@ -724,7 +722,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
                     const items = [...(nodeData.items as { title: string; description?: string }[] ?? []), { title: "", description: "" }];
                     onUpdate(nodeId, { items });
                   }}
-                  className="flex items-center gap-1.5 text-[11px] text-primary hover:underline"
+                  className="flex items-center gap-1.5 text-caption text-primary hover:underline"
                 >
                   <Plus className="h-3 w-3" />
                   Add item
@@ -783,28 +781,28 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
       <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
         <div className="flex items-center gap-2">
           <FlaskConical className="h-4 w-4 text-primary" />
-          <span className="text-[13px] font-semibold text-on-surface">Test Mode</span>
+          <span className="text-body font-semibold text-on-surface">Test Mode</span>
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant">
+        <IconButton size="xs" onClick={onClose} aria-label="Close">
           <X className="h-3.5 w-3.5" />
-        </button>
+        </IconButton>
       </div>
 
       {/* Flow summary */}
       <div className="px-4 py-3 border-b border-outline-variant/10 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-on-surface-variant">Nodes</span>
-          <span className="text-[11px] font-medium text-on-surface">{nodeCount}</span>
+          <span className="text-caption text-on-surface-variant">Nodes</span>
+          <span className="text-caption font-medium text-on-surface">{nodeCount}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-on-surface-variant">Validation</span>
+          <span className="text-caption text-on-surface-variant">Validation</span>
           {validationErrors.length === 0 ? (
-            <span className="flex items-center gap-1 text-[11px] text-green-600">
+            <span className="flex items-center gap-1 text-caption text-success">
               <CheckCircle2 className="h-3 w-3" />
               All good
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[11px] text-amber-600">
+            <span className="flex items-center gap-1 text-caption text-warning">
               <AlertTriangle className="h-3 w-3" />
               {validationErrors.length} issue{validationErrors.length > 1 ? "s" : ""}
             </span>
@@ -815,10 +813,10 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
       {/* Validation issues list */}
       {validationErrors.length > 0 && (
         <div className="px-4 py-3 border-b border-outline-variant/10 space-y-1.5">
-          <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Issues</p>
+          <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-wide">Issues</p>
           {validationErrors.map(({ nodeId, errors }) =>
             errors.map((err, i) => (
-              <div key={`${nodeId}-${i}`} className="flex items-start gap-1.5 text-[11px] text-amber-700">
+              <div key={`${nodeId}-${i}`} className="flex items-start gap-1.5 text-caption text-warning">
                 <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
                 <span>{err}</span>
               </div>
@@ -832,22 +830,22 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
         {log.length === 0 && (
           <div className="text-center py-8 space-y-2">
             <FlaskConical className="h-8 w-8 text-on-surface-variant/30 mx-auto" />
-            <p className="text-[12px] text-on-surface-variant/50">
+            <p className="text-label text-on-surface-variant/50">
               Send a test message to simulate the flow. The server will walk through your nodes and return the bot replies.
             </p>
           </div>
         )}
         {log.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[90%] px-3 py-2 rounded-xl text-[12px] space-y-0.5 ${
+            <div className={`max-w-[90%] px-3 py-2 rounded-xl text-label space-y-0.5 ${
               m.role === "user"
-                ? "bg-primary text-white"
+                ? "bg-primary text-on-primary"
                 : m.role === "system"
-                ? "bg-amber-50 border border-amber-100 text-amber-700"
+                ? "bg-warning-container border border-warning/30 text-warning"
                 : "bg-surface-container text-on-surface"
             }`}>
               {m.nodeType && m.role === "bot" && (
-                <p className="text-[9px] font-semibold uppercase tracking-wide opacity-50">{m.nodeType.replace("_", " ")}</p>
+                <p className="text-caption font-semibold uppercase tracking-wide opacity-50">{m.nodeType.replace("_", " ")}</p>
               )}
               {m.text}
             </div>
@@ -867,7 +865,7 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
         {log.length > 0 && (
           <button
             onClick={() => setLog([])}
-            className="w-full text-[11px] text-on-surface-variant/50 hover:text-on-surface-variant mb-2 text-center"
+            className="w-full text-caption text-on-surface-variant/50 hover:text-on-surface-variant mb-2 text-center"
           >
             Clear chat
           </button>
@@ -878,13 +876,13 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
             onChange={(e) => setTestMessage(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) runSimulation(); }}
             placeholder="Type a test message…"
-            className="flex-1 px-3 py-2 rounded-lg border border-outline text-[12px] text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-3 py-2 rounded-lg border border-outline text-label text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
             disabled={simulate.isPending}
           />
-          <button
+          <button aria-label="Send test message"
             onClick={runSimulation}
             disabled={!testMessage.trim() || simulate.isPending}
-            className="p-2 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container disabled:opacity-40 transition-colors"
           >
             <SendHorizonal className="h-3.5 w-3.5" />
           </button>
@@ -1170,7 +1168,7 @@ function ChatbotEditorInner() {
   if (!flow) {
     return (
       <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <p className="text-on-surface-variant text-[14px]">Flow not found</p>
+        <p className="text-on-surface-variant text-body-lg">Flow not found</p>
       </div>
     );
   }
@@ -1182,28 +1180,26 @@ function ChatbotEditorInner() {
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-outline-variant bg-surface-container-low z-10">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/chatbot")}
-            className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={() => router.push("/chatbot")} aria-label="Back">
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </IconButton>
           <input
             value={flowName}
             onChange={(e) => setFlowName(e.target.value)}
-            className="text-[15px] font-semibold text-on-surface bg-transparent border-none outline-none w-[220px] focus:ring-0"
+            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[220px] focus:ring-0"
           />
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${flow.isActive ? "bg-green-100 text-green-700" : "bg-surface-container-highest text-on-surface-variant"}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium ${flow.isActive ? "bg-success-container text-success" : "bg-surface-container-highest text-on-surface-variant"}`}>
             {flow.isActive ? "Active" : "Draft"}
           </span>
           {aiEnabled && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-100 text-orange-600">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning-container text-warning">
               <Sparkles className="h-3 w-3" />
               AI Mode
             </span>
           )}
           {validationErrors.length > 0 && !aiEnabled && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-600">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning/20 text-warning">
               <AlertTriangle className="h-3 w-3" />
               {validationErrors.length} issue{validationErrors.length > 1 ? "s" : ""}
             </span>
@@ -1212,13 +1208,11 @@ function ChatbotEditorInner() {
 
         <div className="flex items-center gap-2">
           {!aiEnabled && rfNodes.length > 1 && (
-            <button
+            <IconButton size="sm"
               onClick={handleAutoLayout}
-              title="Auto-layout nodes"
-              className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
-            >
+              title="Auto-layout nodes" aria-label="Auto-layout nodes">
               <LayoutTemplate className="h-4 w-4" />
-            </button>
+            </IconButton>
           )}
           {!aiEnabled && (
             <button
@@ -1226,7 +1220,7 @@ function ChatbotEditorInner() {
                 setShowTestPanel((v) => !v);
                 setSelectedNodeId(null);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
                 showTestPanel ? "bg-primary/10 text-primary" : "hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
               }`}
             >
@@ -1283,28 +1277,28 @@ function ChatbotEditorInner() {
             <div className="flex items-center justify-center h-full">
               <div className="max-w-sm text-center space-y-4">
                 <div className="flex justify-center">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
-                    <Sparkles className="h-7 w-7 text-orange-500" />
+                  <div className="w-14 h-14 rounded-2xl bg-warning-container flex items-center justify-center">
+                    <Sparkles className="h-7 w-7 text-warning" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-[16px] font-semibold text-on-surface">AI Auto-Reply Mode</h3>
-                  <p className="text-[13px] text-on-surface-variant mt-1.5 leading-relaxed">
+                  <h3 className="text-title-sm font-semibold text-on-surface">AI Auto-Reply Mode</h3>
+                  <p className="text-body text-on-surface-variant mt-1.5 leading-relaxed">
                     AI will reply to every incoming message automatically. No flow nodes needed.
                   </p>
                 </div>
                 <div className="bg-surface-container rounded-xl border border-outline-variant p-4 text-left space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    <span className="text-[12px] text-on-surface">AI Auto-Reply is enabled</span>
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                    <span className="text-label text-on-surface">AI Auto-Reply is enabled</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {aiSystemPrompt.trim() ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                     ) : (
-                      <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
+                      <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
                     )}
-                    <span className="text-[12px] text-on-surface">
+                    <span className="text-label text-on-surface">
                       {aiSystemPrompt.trim() ? "System prompt configured" : "No system prompt — set one in the left panel"}
                     </span>
                   </div>
@@ -1342,8 +1336,8 @@ function ChatbotEditorInner() {
               {rfNodes.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center space-y-2">
-                    <p className="text-[15px] text-on-surface-variant font-medium">Drag nodes here or click from the left panel</p>
-                    <p className="text-[12px] text-on-surface-variant/60">Connect nodes by dragging from the bottom handle to the top handle of another node</p>
+                    <p className="text-body-lg text-on-surface-variant font-medium">Drag nodes here or click from the left panel</p>
+                    <p className="text-label text-on-surface-variant/60">Connect nodes by dragging from the bottom handle to the top handle of another node</p>
                   </div>
                 </div>
               )}

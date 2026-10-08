@@ -6,8 +6,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UnauthorizedException } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { TokenService } from '@/modules/auth/domain/services/token.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { EVENT_NAMES } from '@/common/constants';
 
 @WebSocketGateway({
   cors: {
@@ -31,7 +34,17 @@ export class AppWebSocketGateway
   constructor(
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
+    private readonly orgStatus: OrgStatusService,
   ) {}
+
+  /** Super admin suspended the org: tell open clients, then drop their sockets. */
+  @OnEvent(EVENT_NAMES.ORG_SUSPENDED)
+  handleOrgSuspended(event: { orgId: string }): void {
+    if (!this.server) return;
+    this.server.to(`org:${event.orgId}`).emit('org:suspended', { orgId: event.orgId });
+    this.server.in(`org:${event.orgId}`).disconnectSockets(true);
+    this.logger.warn(`Disconnected all sockets of suspended org ${event.orgId}`);
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     try {
@@ -46,6 +59,12 @@ export class AppWebSocketGateway
       const payload = await this.tokenService.verifyAccessToken(token);
       const userId = payload.sub;
       const orgId = payload.orgId;
+
+      if (await this.orgStatus.isSuspended(orgId)) {
+        client.emit('org:suspended', { orgId });
+        client.disconnect(true);
+        return;
+      }
 
       // Store socket mapping
       client.data.userId = userId;

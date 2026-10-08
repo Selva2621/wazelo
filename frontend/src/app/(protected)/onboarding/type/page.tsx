@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users, User, ArrowRight, Check } from "lucide-react";
 import { useUpdateOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 export default function OrgTypePage() {
   const router = useRouter();
@@ -38,16 +39,15 @@ export default function OrgTypePage() {
               src="/logo/logo.png"
               alt="Wazelo"
               className="h-8 w-8 object-contain"
-              style={{ mixBlendMode: "screen" }}
             />
-            <span className="text-xl font-bold text-on-surface">
+            <span className="text-title font-semibold text-on-surface">
               Waze<span className="text-primary">lo</span>
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-on-surface mt-6 mb-2">
+          <h1 className="text-headline font-semibold text-on-surface mt-6 mb-2">
             How will you use Wazelo?
           </h1>
-          <p className="text-sm text-on-surface-variant">
+          <p className="text-body-lg text-on-surface-variant">
             Choose your mode. You can change this later in Settings.
           </p>
         </div>
@@ -71,10 +71,10 @@ export default function OrgTypePage() {
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primary" />
             </div>
-            <h2 className="font-semibold text-on-surface text-base mb-1">
+            <h2 className="font-semibold text-on-surface text-title-sm mb-1">
               Team / Company
             </h2>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
+            <p className="text-label text-on-surface-variant leading-relaxed">
               Shared inbox, agent assignments, campaigns, team analytics, and
               RBAC controls.
             </p>
@@ -97,10 +97,10 @@ export default function OrgTypePage() {
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
               <User className="w-6 h-6 text-primary" />
             </div>
-            <h2 className="font-semibold text-on-surface text-base mb-1">
+            <h2 className="font-semibold text-on-surface text-title-sm mb-1">
               Solo / Freelancer
             </h2>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
+            <p className="text-label text-on-surface-variant leading-relaxed">
               Client pipeline, proposal tracking, follow-up sequences, and a
               personal WhatsApp inbox.
             </p>
@@ -108,14 +108,14 @@ export default function OrgTypePage() {
         </div>
 
         {error && (
-          <p className="text-sm text-error text-center mb-4">{error}</p>
+          <p className="text-body-lg text-error text-center mb-4">{error}</p>
         )}
 
-        <button
+        <Button size="lg"
           type="button"
           disabled={!selected || updateOrgSettings.isPending}
           onClick={handleContinue}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-on-primary font-semibold py-3 px-6 transition-opacity disabled:opacity-40"
+          className="w-full"
         >
           {updateOrgSettings.isPending ? (
             <>
@@ -128,7 +128,7 @@ export default function OrgTypePage() {
               <ArrowRight className="w-4 h-4" />
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

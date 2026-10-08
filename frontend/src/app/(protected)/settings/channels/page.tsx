@@ -110,8 +110,8 @@ export default function ChannelsPage() {
           <div className="flex items-center gap-3">
             <Radio className="h-6 w-6 text-primary" />
             <div>
-              <h1 className="text-xl font-bold text-on-surface">Channels</h1>
-              <p className="text-sm text-on-surface-variant">
+              <h1 className="text-title font-semibold text-on-surface">Channels</h1>
+              <p className="text-body-lg text-on-surface-variant">
                 Manage communication channels for your organization
               </p>
             </div>
@@ -180,7 +180,7 @@ export default function ChannelsPage() {
         {/* Error */}
         {isError && (
           <div className="text-center py-20">
-            <p className="text-sm text-error mb-3">Failed to load channels</p>
+            <p className="text-body-lg text-error mb-3">Failed to load channels</p>
             <Button variant="secondary" onClick={() => refetch()}>
               Retry
             </Button>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Invoice } from "@/lib/types/billing";
 import type { AuthUser } from "@/lib/types/auth";
+import { Modal } from "@/components/ui/modal";
 
 interface Props {
   invoice: Invoice;
@@ -51,7 +52,7 @@ function StatusBadge({ status }: { status: Invoice["status"] }) {
   };
   const m = map[status] ?? { label: status, cls: "bg-surface-container text-on-surface-variant", icon: null };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label font-semibold ${m.cls}`}>
       {m.icon}{m.label}
     </span>
   );
@@ -157,13 +158,13 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal panel */}
-      <div className="relative z-10 w-full max-w-2xl max-h-[92vh] flex flex-col bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl overflow-hidden">
-
+    <Modal
+      open
+      onClose={onClose}
+      className="max-w-2xl max-h-[92vh] flex flex-col bg-surface-container-low border border-outline-variant overflow-hidden"
+    >
+      {() => (
+      <>
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface-container shrink-0">
           <div className="flex items-center gap-3">
@@ -171,14 +172,14 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
               <FileText className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-[14px] font-semibold text-on-surface">{invoice.invoiceNumber}</p>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">Invoice Preview</p>
+              <p className="text-body-lg font-semibold text-on-surface">{invoice.invoiceNumber}</p>
+              <p className="text-caption text-on-surface-variant mt-0.5">Invoice Preview</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-[12px] font-medium text-on-surface-variant"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-label font-medium text-on-surface-variant"
             >
               <Printer className="h-3.5 w-3.5" />
               Print
@@ -186,7 +187,7 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
             <button
               onClick={handleDownloadPdf}
               disabled={downloading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors text-[12px] font-medium text-on-primary"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors text-label font-medium text-on-primary"
             >
               {downloading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -348,13 +349,13 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
         <div className="px-6 py-4 border-t border-outline-variant/10 bg-surface-container shrink-0 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-surface-container-high hover:bg-outline-variant/20 transition-colors text-[13px] font-medium text-on-surface-variant"
+            className="flex-1 py-2.5 rounded-xl bg-surface-container-high hover:bg-outline-variant/20 transition-colors text-body font-medium text-on-surface-variant"
           >
             Close
           </button>
           <button
             onClick={handlePrint}
-            className="flex-1 py-2.5 rounded-xl border border-outline-variant/30 hover:bg-surface-container-high transition-colors text-[13px] font-medium text-on-surface flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl border border-outline-variant/30 hover:bg-surface-container-high transition-colors text-body font-medium text-on-surface flex items-center justify-center gap-2"
           >
             <Printer className="h-3.5 w-3.5" />
             Print
@@ -362,13 +363,14 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
           <button
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors text-[13px] font-medium text-on-primary flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors text-body font-medium text-on-primary flex items-center justify-center gap-2"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             {downloading ? "Generating PDF…" : "Download PDF"}
           </button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

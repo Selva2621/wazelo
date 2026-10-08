@@ -5,8 +5,11 @@ import { PlanRepository } from '../../infrastructure/repositories/plan.repositor
 export class ListPlansUseCase {
   constructor(private readonly planRepo: PlanRepository) {}
 
-  async execute() {
-    const plans = await this.planRepo.findAllActive();
+  /** Tenants see active plans only; the super admin also sees inactive ones to reactivate them. */
+  async execute(options: { includeInactive?: boolean } = {}) {
+    const plans = options.includeInactive
+      ? await this.planRepo.findAllForAdmin()
+      : await this.planRepo.findAllActive();
     return { plans };
   }
 }

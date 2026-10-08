@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '@/common/decorators';
+import { IS_SUPER_ADMIN_ROUTE_KEY } from '@/common/decorators/super-admin-route.decorator';
 import { TokenService } from '../../domain/services/token.service';
 
 @Injectable()
@@ -29,6 +30,16 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
+    // Super admin routes are authenticated by SuperAdminGuard (via @SuperAdminOnly)
+    const isSuperAdminRoute = this.reflector.getAllAndOverride<boolean>(IS_SUPER_ADMIN_ROUTE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isSuperAdminRoute) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
@@ -36,27 +47,17 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Access token is required');
     }
 
-    // Try normal user JWT first
+    // Tenant routes accept tenant tokens only — a super admin token is signed
+    // with a different secret and never verifies here
     try {
       const payload = await this.tokenService.verifyAccessToken(token);
       request.user = payload;
       return true;
     } catch {
-      // Fall through — may be a super admin token
+      // Fall through to the failure log
     }
 
-    // Try super admin JWT secret via TokenService
-    try {
-      const payload = await this.tokenService.verifySuperAdminToken(token);
-      if (payload?.isSuperAdmin) {
-        request.user = payload;
-        return true;
-      }
-    } catch {
-      // Not a valid super admin token either
-    }
-
-    // Both verification paths failed — log for intrusion detection
+    // Verification failed — log for intrusion detection
     // Never log the token value itself
     this.logger.warn('JWT authentication failed', {
       ip: request.ip || request.socket?.remoteAddress || 'unknown',

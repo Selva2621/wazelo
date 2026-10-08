@@ -87,7 +87,7 @@ function QuickReplyBtn({ label, onClick }: { label: string; onClick: () => void 
         padding: "6px 12px",
         fontSize: 11,
         cursor: "pointer",
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--font-geist-sans), sans-serif",
       }}
     >
       {label}
@@ -146,14 +146,14 @@ function ChatbotMockup() {
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "#ffb77d",
-          fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 10,
+          fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
           letterSpacing: "-0.04em", color: "#e5e2e1",
-          fontFamily: "'Inter', sans-serif", marginBottom: 0,
+          fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your 24/7 WhatsApp chatbot.
         </h2>
@@ -193,8 +193,8 @@ function ChatbotMockup() {
               <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#fff" }}>smart_toy</span>
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
-              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "'Inter', sans-serif" }}>Online</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
+              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
             </div>
           </div>
 
@@ -277,7 +277,7 @@ function ChatbotMockup() {
               padding: "8px 12px",
               fontSize: 12,
               color: "#9ca3af",
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "var(--font-geist-sans), sans-serif",
               lineHeight: 1,
             }}>
               Type a message...

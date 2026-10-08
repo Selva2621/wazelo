@@ -5,6 +5,8 @@ import { Upload, FileText, X, CheckCircle2, AlertCircle, Download } from "lucide
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { useImportContacts } from "@/hooks/use-contacts";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface ImportContactsModalProps {
   open: boolean;
@@ -101,25 +103,27 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
     onClose();
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      dismissible={!importMutation.isPending}
+      className="max-w-2xl max-h-[80vh] overflow-hidden"
+    >
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
           <div className="flex items-center gap-2">
             <Upload className="h-5 w-5 text-primary" />
-            <h2 className="text-[16px] font-semibold text-on-surface">
+            <h2 className="text-title-sm font-semibold text-on-surface">
               Import Contacts
             </h2>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+          <IconButton size="sm"
+            onClick={handleClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Content */}
@@ -132,13 +136,13 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Import complete
                 </p>
-                <p className="text-[12px]">
+                <p className="text-label">
                   {importMutation.data.imported} imported, {importMutation.data.skipped} skipped
                   {importMutation.data.errors.length > 0 &&
                     `, ${importMutation.data.errors.length} errors`}
                 </p>
                 {importMutation.data.errors.length > 0 && (
-                  <ul className="text-[11px] mt-1 space-y-0.5 opacity-80">
+                  <ul className="text-caption mt-1 space-y-0.5 opacity-80">
                     {importMutation.data.errors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -178,23 +182,23 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
                 {fileName ? (
                   <div className="flex items-center justify-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    <span className="text-[13px] font-medium text-on-surface">
+                    <span className="text-body font-medium text-on-surface">
                       {fileName}
                     </span>
                   </div>
                 ) : (
                   <>
                     <Upload className="h-8 w-8 text-on-surface-variant/30 mx-auto mb-2" />
-                    <p className="text-[13px] text-on-surface-variant">
+                    <p className="text-body text-on-surface-variant">
                       Click to select a CSV file or drag & drop
                     </p>
-                    <p className="text-[11px] text-on-surface-variant/50 mt-1">
+                    <p className="text-caption text-on-surface-variant/50 mt-1">
                       Required column: Phone. Optional: Name, Email, Status, Source
                     </p>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); downloadSample(); }}
-                      className="mt-2 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                      className="mt-2 inline-flex items-center gap-1 text-caption text-primary hover:underline"
                     >
                       <Download className="h-3 w-3" />
                       Download sample file
@@ -206,17 +210,17 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
               {/* Preview */}
               {preview.length > 0 && (
                 <div>
-                  <p className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide mb-2">
+                  <p className="text-caption text-on-surface-variant/60 uppercase tracking-wide mb-2">
                     Preview (first {Math.min(preview.length - 1, 5)} rows)
                   </p>
                   <div className="overflow-x-auto rounded-lg border border-outline-variant/10">
-                    <table className="w-full text-[12px]">
+                    <table className="w-full text-label">
                       <thead>
                         <tr className="bg-surface-container/40 border-b border-outline-variant/15">
                           {preview[0]?.map((h, i) => (
                             <th
                               key={i}
-                              className="px-3 py-2 text-left text-[10px] font-semibold text-on-surface-variant uppercase"
+                              className="px-3 py-2 text-left text-caption font-semibold text-on-surface-variant uppercase"
                             >
                               {h}
                             </th>
@@ -264,7 +268,8 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

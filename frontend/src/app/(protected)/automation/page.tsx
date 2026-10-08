@@ -111,11 +111,11 @@ export default function AutomationPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Upgrade banner */}
       {!automationEnabled && (
-        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-          <Zap className="h-4 w-4 shrink-0 text-amber-600" />
+        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
+          <Zap className="h-4 w-4 shrink-0 text-warning" />
           <span>
             <strong>Automation</strong> is not included in your current plan.{" "}
-            <Link href="/settings/billing" className="underline font-medium hover:text-amber-900">
+            <Link href="/settings/billing" className="underline font-medium hover:text-on-surface">
               Upgrade to Growth or higher
             </Link>{" "}
             to unlock this feature.
@@ -127,7 +127,7 @@ export default function AutomationPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Zap className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-[18px] font-semibold text-on-surface">
+            <h1 className="text-title font-semibold text-on-surface">
               Automation
             </h1>
           </div>

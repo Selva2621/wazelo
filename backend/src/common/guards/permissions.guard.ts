@@ -10,6 +10,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { IS_SUPER_ADMIN_ROUTE_KEY } from '../decorators/super-admin-route.decorator';
 import { JwtPayload } from '../decorators/current-user.decorator';
 import { PermissionString } from '@/modules/rbac/domain/permissions.constants';
 import { RbacService } from '@/modules/rbac/domain/services/rbac.service';
@@ -55,6 +56,16 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
+    // Super admin routes: SuperAdminGuard (attached by @SuperAdminOnly) runs
+    // after the global guards and does the authentication — tenant RBAC n/a
+    const isSuperAdminRoute = this.reflector.getAllAndOverride<boolean>(IS_SUPER_ADMIN_ROUTE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isSuperAdminRoute) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user: JwtPayload | undefined = request.user;
 
@@ -62,12 +73,9 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    // Super admin bypass — only allowed on super-admin routes
+    // Defense in depth: JwtAuthGuard only accepts tenant tokens, so this should
+    // be unreachable — never let a super admin identity through tenant RBAC
     if (user.isSuperAdmin) {
-      const path: string = request.path || '';
-      if (path.startsWith('/api/v1/super-admin/') || path === '/api/v1/super-admin') {
-        return true;
-      }
       throw new ForbiddenException('Super admin token cannot be used on org endpoints');
     }
 

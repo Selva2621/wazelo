@@ -15,7 +15,7 @@ export function LeadAdsDailyChart({ analytics }: LeadAdsDailyChartProps) {
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+      <h3 className="text-body font-medium text-on-surface-variant mb-4">
         Leads Over Time
       </h3>
       <div className="flex items-end gap-1 h-[100px]">
@@ -44,13 +44,13 @@ export function LeadAdsDailyChart({ analytics }: LeadAdsDailyChartProps) {
       {/* X-axis labels (first, middle, last) */}
       {days.length >= 3 && (
         <div className="flex justify-between mt-2">
-          <span className="text-[10px] text-on-surface-variant/50">
+          <span className="text-caption text-on-surface-variant/50">
             {new Date(days[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
-          <span className="text-[10px] text-on-surface-variant/50">
+          <span className="text-caption text-on-surface-variant/50">
             {new Date(days[Math.floor(days.length / 2)].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
-          <span className="text-[10px] text-on-surface-variant/50">
+          <span className="text-caption text-on-surface-variant/50">
             {new Date(days[days.length - 1].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         </div>

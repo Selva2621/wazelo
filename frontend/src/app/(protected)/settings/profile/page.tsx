@@ -91,7 +91,7 @@ export default function ProfilePage() {
       <div className="shrink-0 px-6 pt-5 pb-4">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">
+          <h1 className="text-title font-semibold text-on-surface">
             My Profile
           </h1>
         </div>
@@ -107,10 +107,10 @@ export default function ProfilePage() {
               size="lg"
             />
             <div>
-              <p className="text-[16px] font-semibold text-on-surface">
+              <p className="text-title-sm font-semibold text-on-surface">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-[13px] text-on-surface-variant">{user.email}</p>
+              <p className="text-body text-on-surface-variant">{user.email}</p>
               <Badge
                 variant={
                   user.role === "ADMIN"
@@ -136,7 +136,7 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">
+              <label className="text-label font-medium text-on-surface-variant">
                 First Name
               </label>
               <Input
@@ -146,7 +146,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">
+              <label className="text-label font-medium text-on-surface-variant">
                 Last Name
               </label>
               <Input
@@ -158,7 +158,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[12px] font-medium text-on-surface-variant">
+            <label className="text-label font-medium text-on-surface-variant">
               Email Address
             </label>
             <Input
@@ -184,7 +184,7 @@ export default function ProfilePage() {
         <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <Lock className="h-4 w-4 text-on-surface-variant" />
-            <h3 className="text-[14px] font-semibold text-on-surface">
+            <h3 className="text-body-lg font-semibold text-on-surface">
               Change Password
             </h3>
           </div>
@@ -203,7 +203,7 @@ export default function ProfilePage() {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-[12px] font-medium text-on-surface-variant">
+            <label className="text-label font-medium text-on-surface-variant">
               Current Password
             </label>
             <Input
@@ -216,7 +216,7 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">
+              <label className="text-label font-medium text-on-surface-variant">
                 New Password
               </label>
               <Input
@@ -227,7 +227,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-on-surface-variant">
+              <label className="text-label font-medium text-on-surface-variant">
                 Confirm New Password
               </label>
               <Input
@@ -239,7 +239,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <p className="text-[11px] text-on-surface-variant/50">
+          <p className="text-caption text-on-surface-variant/50">
             Must be at least 8 characters with uppercase, lowercase, number, and symbol.
           </p>
 

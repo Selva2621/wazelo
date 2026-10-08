@@ -19,6 +19,7 @@ import {
 import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-modal";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
+import { Button } from "@/components/ui/button";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
   };
   const { label, className, icon } = config[status];
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${className}`}>
+    <span className={`inline-flex items-center gap-1 text-label font-medium px-2 py-0.5 rounded-full ${className}`}>
       {icon} {label}
     </span>
   );
@@ -70,10 +71,10 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
 function WaBadge({ status }: { status: CheckWhatsAppResult | undefined }) {
   if (!status) return null;
   if (status.exists === true)
-    return <span className="inline-flex items-center gap-1 text-[10px] text-success font-medium"><span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />WA Active</span>;
+    return <span className="inline-flex items-center gap-1 text-caption text-success font-medium"><span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />WA Active</span>;
   if (status.exists === false)
-    return <span className="inline-flex items-center gap-1 text-[10px] text-error font-medium"><span className="w-1.5 h-1.5 rounded-full bg-error inline-block" />Not on WA</span>;
-  return <span className="inline-flex items-center gap-1 text-[10px] text-on-surface-variant"><span className="w-1.5 h-1.5 rounded-full bg-outline-variant inline-block" />Unknown</span>;
+    return <span className="inline-flex items-center gap-1 text-caption text-error font-medium"><span className="w-1.5 h-1.5 rounded-full bg-error inline-block" />Not on WA</span>;
+  return <span className="inline-flex items-center gap-1 text-caption text-on-surface-variant"><span className="w-1.5 h-1.5 rounded-full bg-outline-variant inline-block" />Unknown</span>;
 }
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-xs bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+        className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
       >
         <option value="" disabled>{label}</option>
         {options.map((o) => (
@@ -132,11 +133,11 @@ function FilterBar({
     <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
       {/* Top row: search + active indicator */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+        <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
           <Filter className="w-3.5 h-3.5" />
           Filters
           {activeCount > 0 && (
-            <span className="bg-primary text-on-primary text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+            <span className="bg-primary text-on-primary text-caption font-semibold w-4 h-4 rounded-full flex items-center justify-center">
               {activeCount}
             </span>
           )}
@@ -148,11 +149,11 @@ function FilterBar({
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
           placeholder="Search name, company, category, skills…"
-          className="flex-1 min-w-[200px] text-xs bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+          className="flex-1 min-w-[200px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
         />
 
         {/* Showing count */}
-        <span className="text-xs text-on-surface-variant ml-auto shrink-0">
+        <span className="text-label text-on-surface-variant ml-auto shrink-0">
           {visibleCount} of {resultCount}
         </span>
 
@@ -160,7 +161,7 @@ function FilterBar({
         {activeCount > 0 && (
           <button
             onClick={() => onChange(DEFAULT_FILTERS)}
-            className="flex items-center gap-1 text-xs text-error hover:underline shrink-0"
+            className="flex items-center gap-1 text-label text-error hover:underline shrink-0"
           >
             <X className="w-3 h-3" /> Clear all
           </button>
@@ -247,7 +248,7 @@ function FilterBar({
                         : [...filters.categories, cat],
                     })
                   }
-                  className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                  className={`text-caption px-2 py-0.5 rounded-full border transition-colors ${
                     active
                       ? "bg-primary text-on-primary border-primary"
                       : "bg-surface-container text-on-surface-variant border-outline-variant hover:border-primary/50"
@@ -258,14 +259,14 @@ function FilterBar({
               );
             })}
             {categories.length > 8 && (
-              <span className="text-[11px] text-on-surface-variant">+{categories.length - 8} more</span>
+              <span className="text-caption text-on-surface-variant">+{categories.length - 8} more</span>
             )}
           </div>
         )}
 
         {/* Quick: Select all WA active */}
         {waChecksLoaded && (
-          <span className="ml-auto text-[11px] text-on-surface-variant">
+          <span className="ml-auto text-caption text-on-surface-variant">
             Quick:
             <button
               onClick={() => onChange({ waStatus: "active", imported: "no", hasPhone: "yes" })}
@@ -322,22 +323,22 @@ function ResultRow({
 
       {/* Name + category */}
       <TableCell>
-        <p className="font-medium text-[13px] text-on-surface truncate max-w-[200px]">
+        <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
           {result.name ?? "—"}
         </p>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
           {result.category && (
-            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+            <span className="text-caption bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
               {result.category}
             </span>
           )}
           {result.jobTitle && !result.category && (
-            <span className="text-[10px] bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">
+            <span className="text-caption bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">
               {result.jobTitle}
             </span>
           )}
           {result.imported && (
-            <span className="text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded-full">
+            <span className="text-caption bg-success/10 text-success px-1.5 py-0.5 rounded-full">
               Imported
             </span>
           )}
@@ -351,7 +352,7 @@ function ResultRow({
             <a
               href={`tel:${result.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs text-on-surface hover:text-primary whitespace-nowrap"
+              className="flex items-center gap-1 text-label text-on-surface hover:text-primary whitespace-nowrap"
             >
               <Phone className="w-3 h-3 shrink-0 text-on-surface-variant" />
               {result.phone}
@@ -359,19 +360,19 @@ function ResultRow({
             <WaBadge status={waStatus} />
           </div>
         ) : (
-          <span className="text-xs text-on-surface-variant">—</span>
+          <span className="text-label text-on-surface-variant">—</span>
         )}
       </TableCell>
 
       {/* Address */}
       <TableCell>
         {result.address || result.location ? (
-          <span className="flex items-start gap-1 text-xs text-on-surface-variant max-w-[220px]">
+          <span className="flex items-start gap-1 text-label text-on-surface-variant max-w-[220px]">
             <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
             <span className="line-clamp-2">{result.address || result.location}</span>
           </span>
         ) : (
-          <span className="text-xs text-on-surface-variant">—</span>
+          <span className="text-label text-on-surface-variant">—</span>
         )}
       </TableCell>
 
@@ -383,28 +384,28 @@ function ResultRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs text-primary hover:underline max-w-[140px] truncate"
+            className="flex items-center gap-1 text-label text-primary hover:underline max-w-[140px] truncate"
           >
             <ExternalLink className="w-3 h-3 shrink-0" />
             {result.website.replace(/^https?:\/\//, "").replace(/\/$/, "").split("/")[0]}
           </a>
         ) : (
-          <span className="text-xs text-on-surface-variant">—</span>
+          <span className="text-label text-on-surface-variant">—</span>
         )}
       </TableCell>
 
       {/* Rating */}
       <TableCell>
         {result.rating ? (
-          <span className="flex items-center gap-1 text-xs whitespace-nowrap">
-            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+          <span className="flex items-center gap-1 text-label whitespace-nowrap">
+            <Star className="w-3 h-3 fill-warning text-warning" />
             <span className="font-medium text-on-surface">{result.rating.toFixed(1)}</span>
             {result.reviewCount && (
               <span className="text-on-surface-variant">({result.reviewCount})</span>
             )}
           </span>
         ) : (
-          <span className="text-xs text-on-surface-variant">—</span>
+          <span className="text-label text-on-surface-variant">—</span>
         )}
       </TableCell>
 
@@ -412,29 +413,29 @@ function ResultRow({
       <TableCell>
         <div className="flex flex-col gap-1 max-w-[200px]">
           {result.description && (
-            <p className="text-[11px] text-on-surface-variant line-clamp-2">{result.description}</p>
+            <p className="text-caption text-on-surface-variant line-clamp-2">{result.description}</p>
           )}
           {result.openingHours && (
-            <span className="text-[11px] text-on-surface-variant">🕐 {result.openingHours}</span>
+            <span className="text-caption text-on-surface-variant">🕐 {result.openingHours}</span>
           )}
           {result.email && (
-            <span className="text-[11px] text-on-surface-variant truncate">✉️ {result.email}</span>
+            <span className="text-caption text-on-surface-variant truncate">✉️ {result.email}</span>
           )}
           {result.budget && (
-            <span className="text-[11px] text-on-surface-variant">💰 {result.budget}</span>
+            <span className="text-caption text-on-surface-variant">💰 {result.budget}</span>
           )}
           {result.jobTitle && (
-            <span className="text-[11px] text-on-surface-variant">🧑‍💼 {result.jobTitle}</span>
+            <span className="text-caption text-on-surface-variant">🧑‍💼 {result.jobTitle}</span>
           )}
           {result.company && (
-            <span className="text-[11px] text-on-surface-variant">🏢 {result.company}</span>
+            <span className="text-caption text-on-surface-variant">🏢 {result.company}</span>
           )}
           {result.skills && result.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {result.skills.slice(0, 3).map((s) => (
-                <span key={s} className="text-[10px] bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">{s}</span>
+                <span key={s} className="text-caption bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full">{s}</span>
               ))}
-              {result.skills.length > 3 && <span className="text-[10px] text-on-surface-variant">+{result.skills.length - 3}</span>}
+              {result.skills.length > 3 && <span className="text-caption text-on-surface-variant">+{result.skills.length - 3}</span>}
             </div>
           )}
           {result.socialLinks && result.socialLinks.length > 0 && (
@@ -443,7 +444,7 @@ function ResultRow({
                 const domain = url.includes("facebook") ? "FB" : url.includes("instagram") ? "IG" : url.includes("linkedin") ? "LI" : url.includes("youtube") ? "YT" : "🔗";
                 return (
                   <a key={url} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] text-primary hover:underline">{domain}</a>
+                    className="text-caption text-primary hover:underline">{domain}</a>
                 );
               })}
             </div>
@@ -452,7 +453,7 @@ function ResultRow({
            !result.budget && !result.jobTitle && !result.company &&
            (!result.skills || result.skills.length === 0) &&
            (!result.socialLinks || result.socialLinks.length === 0) && (
-            <span className="text-xs text-on-surface-variant">—</span>
+            <span className="text-label text-on-surface-variant">—</span>
           )}
         </div>
       </TableCell>
@@ -464,7 +465,7 @@ function ResultRow({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-xs text-primary hover:underline"
+          className="text-label text-primary hover:underline"
         >
           View
         </a>
@@ -597,8 +598,8 @@ export default function ScrapeRunResultsPage() {
   if (!run) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
-        <p className="text-sm text-on-surface-variant">Run not found.</p>
-        <Link href="/leads/scraper" className="text-sm text-primary hover:underline mt-2 inline-block">
+        <p className="text-body-lg text-on-surface-variant">Run not found.</p>
+        <Link href="/leads/scraper" className="text-body-lg text-primary hover:underline mt-2 inline-block">
           ← Back to Lead Scraper
         </Link>
       </div>
@@ -645,7 +646,7 @@ export default function ScrapeRunResultsPage() {
       {/* Back nav */}
       <Link
         href="/leads/scraper"
-        className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+        className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Lead Scraper
@@ -656,10 +657,10 @@ export default function ScrapeRunResultsPage() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg font-bold text-on-surface">{SOURCE_LABELS[run.source]}</h1>
+              <h1 className="text-title font-semibold text-on-surface">{SOURCE_LABELS[run.source]}</h1>
               <StatusBadge status={run.status} />
             </div>
-            <p className="text-sm text-on-surface-variant mt-1">
+            <p className="text-body-lg text-on-surface-variant mt-1">
               <span className="font-medium">{run.keywords}</span>
               {run.location && <> · {run.location}</>}
             </p>
@@ -667,24 +668,24 @@ export default function ScrapeRunResultsPage() {
 
           <div className="flex items-center gap-4 text-center">
             <div>
-              <p className="text-xl font-bold text-on-surface">{run.resultCount}</p>
-              <p className="text-[11px] text-on-surface-variant">Found</p>
+              <p className="text-title font-semibold text-on-surface">{run.resultCount}</p>
+              <p className="text-caption text-on-surface-variant">Found</p>
             </div>
             <div className="w-px h-8 bg-outline-variant" />
             <div>
-              <p className="text-xl font-bold text-on-surface">{results.filter((r) => !r.imported).length}</p>
-              <p className="text-[11px] text-on-surface-variant">Pending</p>
+              <p className="text-title font-semibold text-on-surface">{results.filter((r) => !r.imported).length}</p>
+              <p className="text-caption text-on-surface-variant">Pending</p>
             </div>
             <div className="w-px h-8 bg-outline-variant" />
             <div>
-              <p className="text-xl font-bold text-success">{importedCount}</p>
-              <p className="text-[11px] text-on-surface-variant">Imported</p>
+              <p className="text-title font-semibold text-success">{importedCount}</p>
+              <p className="text-caption text-on-surface-variant">Imported</p>
             </div>
           </div>
         </div>
 
         {run.status === "FAILED" && run.errorMessage && (
-          <p className="mt-3 text-xs text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
+          <p className="mt-3 text-label text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
         )}
       </div>
 
@@ -692,8 +693,8 @@ export default function ScrapeRunResultsPage() {
       {(run.status === "RUNNING" || run.status === "PENDING") && (
         <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-sm font-medium text-on-surface">Scraper is running…</p>
-          <p className="text-xs text-on-surface-variant mt-1">Results will appear here automatically.</p>
+          <p className="text-body-lg font-medium text-on-surface">Scraper is running…</p>
+          <p className="text-label text-on-surface-variant mt-1">Results will appear here automatically.</p>
         </div>
       )}
 
@@ -704,7 +705,7 @@ export default function ScrapeRunResultsPage() {
           ) : results.length === 0 ? (
             <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
               <Users className="w-8 h-8 text-on-surface-variant mx-auto mb-2" />
-              <p className="text-sm text-on-surface-variant">No results were found for this search.</p>
+              <p className="text-body-lg text-on-surface-variant">No results were found for this search.</p>
             </div>
           ) : (
             <>
@@ -727,7 +728,7 @@ export default function ScrapeRunResultsPage() {
                     checked={allSelected}
                     onChange={toggleAll}
                   />
-                  <span className="text-sm text-on-surface-variant">
+                  <span className="text-body-lg text-on-surface-variant">
                     {allSelected
                       ? `All ${unimportedVisible.length} visible selected`
                       : selected.size > 0
@@ -737,34 +738,34 @@ export default function ScrapeRunResultsPage() {
                 </label>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button
+                  <Button variant="secondary"
                     onClick={exportCsv}
-                    className="flex items-center gap-2 border border-outline-variant text-on-surface text-sm font-medium px-4 py-2 rounded-xl hover:bg-surface-container transition-colors"
+                   
                   >
                     <Download className="w-4 h-4" />
                     Export {filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}
-                  </button>
+                  </Button>
 
                   {selected.size > 0 && (
                     <>
-                      <button
+                      <Button variant="secondary"
                         onClick={handleImport}
                         disabled={importMutation.isPending}
-                        className="flex items-center gap-2 border border-primary text-primary text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="border-primary text-primary hover:bg-primary/5"
                       >
                         {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
                         Import {selected.size}
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         onClick={() => setPitchOpen(true)}
                         disabled={importedSelected.length === 0}
                         title={importedSelected.length === 0 ? "Import leads first before pitching" : undefined}
-                        className="flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                       
                       >
                         <Send className="w-4 h-4" />
                         Send Pitch ({importedSelected.length})
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
@@ -774,10 +775,10 @@ export default function ScrapeRunResultsPage() {
               {filteredResults.length === 0 ? (
                 <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-10 text-center">
                   <Filter className="w-7 h-7 text-on-surface-variant mx-auto mb-2" />
-                  <p className="text-sm text-on-surface-variant">No results match the current filters.</p>
+                  <p className="text-body-lg text-on-surface-variant">No results match the current filters.</p>
                   <button
                     onClick={() => setFilters(DEFAULT_FILTERS)}
-                    className="mt-2 text-xs text-primary hover:underline"
+                    className="mt-2 text-label text-primary hover:underline"
                   >
                     Clear filters
                   </button>

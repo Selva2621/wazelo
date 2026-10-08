@@ -80,8 +80,8 @@ export default function ChatbotPage() {
             </div>
           </div>
           <div>
-            <h2 className="text-[18px] font-semibold text-on-surface">Create Your First Chatbot</h2>
-            <p className="text-[13px] text-on-surface-variant mt-2">
+            <h2 className="text-title font-semibold text-on-surface">Create Your First Chatbot</h2>
+            <p className="text-body text-on-surface-variant mt-2">
               Set up an AI-powered chatbot that automatically replies to customers, or build a custom flow with steps.
             </p>
           </div>
@@ -95,7 +95,7 @@ export default function ChatbotPage() {
               Create Custom Flow
             </Button>
           </div>
-          <div className="text-[11px] text-on-surface-variant/60 space-y-1">
+          <div className="text-caption text-on-surface-variant/60 space-y-1">
             <p><strong>AI Chatbot:</strong> Replies automatically using AI + your product docs. Ready in 2 min.</p>
             <p><strong>Custom Flow:</strong> Build step-by-step flows with conditions, questions, and actions.</p>
           </div>
@@ -110,7 +110,7 @@ export default function ChatbotPage() {
       <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
-          <h1 className="text-[18px] font-semibold text-on-surface">Chatbot Flows</h1>
+          <h1 className="text-title font-semibold text-on-surface">Chatbot Flows</h1>
           <Badge variant="muted">{flows.length}</Badge>
         </div>
         <div className="flex gap-2">
@@ -135,9 +135,9 @@ export default function ChatbotPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0">
-                  <h3 className="text-[14px] font-semibold text-on-surface truncate">{flow.name}</h3>
+                  <h3 className="text-body-lg font-semibold text-on-surface truncate">{flow.name}</h3>
                   {flow.description && (
-                    <p className="text-[12px] text-on-surface-variant mt-0.5 line-clamp-2">{flow.description}</p>
+                    <p className="text-label text-on-surface-variant mt-0.5 line-clamp-2">{flow.description}</p>
                   )}
                 </div>
                 {flow.aiEnabled && (
@@ -149,19 +149,19 @@ export default function ChatbotPage() {
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-caption">
                   {TRIGGER_LABELS[flow.trigger.type] || flow.trigger.type}
                 </Badge>
                 {flow.trigger.value && (
-                  <Badge variant="muted" className="text-[10px]">
+                  <Badge variant="muted" className="text-caption">
                     &ldquo;{flow.trigger.value}&rdquo;
                   </Badge>
                 )}
-                <Badge variant="muted" className="text-[10px]">
+                <Badge variant="muted" className="text-caption">
                   {flow.nodes.length} nodes
                 </Badge>
                 {flow._count?.sessions !== undefined && (
-                  <Badge variant="muted" className="text-[10px]">
+                  <Badge variant="muted" className="text-caption">
                     <BarChart3 className="h-3 w-3 mr-0.5" />
                     {flow._count.sessions} sessions
                   </Badge>

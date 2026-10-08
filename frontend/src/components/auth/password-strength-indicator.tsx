@@ -38,12 +38,12 @@ export function PasswordStrengthIndicator({
       {password.length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-on-surface-variant">
+            <span className="text-label text-on-surface-variant">
               Password strength
             </span>
             <span
               className={cn(
-                "text-[12px] font-medium",
+                "text-label font-medium",
                 strength < 0.4
                   ? "text-error"
                   : strength < 0.8
@@ -70,7 +70,7 @@ export function PasswordStrengthIndicator({
             <li
               key={check.label}
               className={cn(
-                "flex items-center gap-2 text-[12px]",
+                "flex items-center gap-2 text-label",
                 passes ? "text-success" : "text-on-surface-variant",
               )}
             >

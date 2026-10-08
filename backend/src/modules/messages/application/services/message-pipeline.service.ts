@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AutomationTriggerType } from '@prisma/client';
 import { ExecuteChatbotFlowUseCase } from '@/modules/chatbot/application/use-cases/execute-chatbot-flow.use-case';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
+import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 
 export interface IncomingWhatsAppMessage {
   messageId: string;
@@ -31,9 +32,16 @@ export class MessagePipelineService {
   constructor(
     private readonly executeChatbotFlow: ExecuteChatbotFlowUseCase,
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
+    private readonly orgStatus: OrgStatusService,
   ) {}
 
   async processIncoming(payload: IncomingWhatsAppMessage): Promise<void> {
+    // Suspended org: the inbound message is already stored, but nothing replies to it
+    if (await this.orgStatus.isSuspended(payload.orgId)) {
+      this.logger.debug(`Org ${payload.orgId} is suspended — skipping chatbot/automation`);
+      return;
+    }
+
     // Only text messages are eligible for chatbot flows
     if (!payload.type || payload.type === 'TEXT') {
       const chatbotResult = await this.runChatbot(payload);

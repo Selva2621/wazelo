@@ -61,6 +61,9 @@ import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
+// Org onboarding workers
+import { OrgOnboardingWorker } from './org/org-onboarding.worker';
+import { OrgModule } from '@/modules/org/org.module';
 
 @Module({
   imports: [
@@ -82,6 +85,7 @@ import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
     SequencesModule,
     ShopifyModule,
     LeadScraperModule,
+    OrgModule,
   ],
   providers: [
     SendEmailWorker,
@@ -130,6 +134,8 @@ import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
     ShopifyWebhookWorker,
     // Lead Scraper workers
     LeadScraperWorker,
+    // Org onboarding workers
+    OrgOnboardingWorker,
   ],
 })
 export class JobsModule {}

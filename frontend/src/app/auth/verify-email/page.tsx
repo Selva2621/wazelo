@@ -51,7 +51,7 @@ function VerifyEmailContent() {
       <AuthCard>
         <CardContent className="mt-0 flex flex-col items-center gap-4 py-12">
           <Spinner size="lg" className="text-primary" />
-          <p className="text-[15px] text-on-surface-variant">
+          <p className="text-body-lg text-on-surface-variant">
             Verifying your email...
           </p>
         </CardContent>
@@ -68,10 +68,10 @@ function VerifyEmailContent() {
             <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-on-surface">
+            <h2 className="text-title font-semibold text-on-surface">
               Email verified
             </h2>
-            <p className="mt-1 text-[14px] text-on-surface-variant">
+            <p className="mt-1 text-body-lg text-on-surface-variant">
               Your account is now active. You can sign in.
             </p>
           </div>
@@ -108,7 +108,7 @@ function VerifyEmailContent() {
         </Alert>
 
         <div className="mt-6 border-t border-outline-variant/20 pt-6">
-          <p className="mb-3 text-[13px] text-on-surface-variant">
+          <p className="mb-3 text-body text-on-surface-variant">
             Request a new verification email:
           </p>
           <form onSubmit={handleResend} className="space-y-3">
@@ -142,7 +142,7 @@ function VerifyEmailContent() {
       <CardFooter>
         <Link
           href="/auth/login"
-          className="text-[13px] text-primary hover:underline"
+          className="text-body text-primary hover:underline"
         >
           Back to login
         </Link>

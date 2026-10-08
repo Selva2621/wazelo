@@ -67,19 +67,19 @@ export function LeadAdsStatsCards({ analytics, isLoading }: LeadAdsStatsCardsPro
         >
           <div className="flex items-center gap-2 mb-2">
             <card.icon className="h-4 w-4 text-on-surface-variant/60" />
-            <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-wide">
+            <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
               {card.label}
             </span>
           </div>
           {isLoading ? (
             <div className="h-7 w-16 rounded bg-surface-container animate-pulse" />
           ) : (
-            <p className="text-[22px] font-semibold text-on-surface tabular-nums">
+            <p className="text-headline font-semibold text-on-surface tabular-nums">
               {card.value}
             </p>
           )}
           {card.rate && !isLoading && (
-            <p className={`text-[12px] font-medium truncate ${card.rateColor}`}>
+            <p className={`text-label font-medium truncate ${card.rateColor}`}>
               {card.rate}
             </p>
           )}

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import {
   Table, TableHeader, TableHeaderRow, TableHead, TableBody, TableRow, TableCell,
 } from "@/components/ui/table";
@@ -75,11 +76,11 @@ export default function ApiKeysPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-on-surface flex items-center gap-2">
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Key className="h-6 w-6 text-primary" />
             API Keys
           </h1>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">Manage API keys for third-party integrations</p>
+          <p className="text-body text-on-surface-variant mt-0.5">Manage API keys for third-party integrations</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1" /> New API Key
@@ -89,16 +90,16 @@ export default function ApiKeysPage() {
       {/* New key display banner */}
       {newKey && (
         <div className="rounded-2xl border border-success/30 bg-success/5 p-4">
-          <p className="text-[13px] font-medium text-success mb-2">New API key generated. Copy it now — it will never be shown again.</p>
+          <p className="text-body font-medium text-success mb-2">New API key generated. Copy it now — it will never be shown again.</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-surface px-3 py-2 text-[12px] font-mono text-on-surface break-all">
+            <code className="flex-1 rounded-lg bg-surface px-3 py-2 text-label font-mono text-on-surface break-all">
               {newKey}
             </code>
             <Button size="sm" variant="ghost" onClick={handleCopy}>
               {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          <button onClick={() => setNewKey(null)} className="text-[11px] text-on-surface-variant mt-2 hover:underline">
+          <button onClick={() => setNewKey(null)} className="text-caption text-on-surface-variant mt-2 hover:underline">
             Dismiss
           </button>
         </div>
@@ -132,31 +133,31 @@ export default function ApiKeysPage() {
               <TableRow key={k.id} className={!k.isActive ? "opacity-50" : ""}>
                 <TableCell>
                   <div>
-                    <p className="text-[13px] font-medium text-on-surface">{k.name}</p>
-                    <p className="text-[10px] text-on-surface-variant/50">
+                    <p className="text-body font-medium text-on-surface">{k.name}</p>
+                    <p className="text-caption text-on-surface-variant/50">
                       by {k.createdBy.firstName} {k.createdBy.lastName}
                     </p>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-[12px] text-on-surface-variant">{k.keyPrefix}...</TableCell>
+                <TableCell className="font-mono text-label text-on-surface-variant">{k.keyPrefix}...</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-0.5">
                     {k.scopes.map((s) => (
-                      <Badge key={s} variant="muted" className="text-[9px] px-1 py-0">{s}</Badge>
+                      <Badge key={s} variant="muted" className="text-caption px-1 py-0">{s}</Badge>
                     ))}
                   </div>
                 </TableCell>
                 <TableCell>
                   {k.isActive ? (
-                    <Badge variant="success" className="text-[10px]">Active</Badge>
+                    <Badge variant="success" className="text-caption">Active</Badge>
                   ) : (
-                    <Badge variant="error" className="text-[10px]">Revoked</Badge>
+                    <Badge variant="error" className="text-caption">Revoked</Badge>
                   )}
                 </TableCell>
-                <TableCell className="text-[11px] text-on-surface-variant">
+                <TableCell className="text-caption text-on-surface-variant">
                   {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : "Never"}
                 </TableCell>
-                <TableCell className="text-[11px] text-on-surface-variant">
+                <TableCell className="text-caption text-on-surface-variant">
                   {k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : "Never"}
                 </TableCell>
                 <TableCell>
@@ -165,7 +166,7 @@ export default function ApiKeysPage() {
                       <button
                         onClick={() => setConfirmAction({ type: "rotate", id: k.id, name: k.name })}
                         disabled={rotateMut.isPending}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
                       >
                         <RotateCcw className="h-3 w-3" />
                         Rotate
@@ -173,7 +174,7 @@ export default function ApiKeysPage() {
                       <button
                         onClick={() => setConfirmAction({ type: "revoke", id: k.id, name: k.name })}
                         disabled={revokeMut.isPending}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
                       >
                         <Trash2 className="h-3 w-3" />
                         Revoke
@@ -188,28 +189,34 @@ export default function ApiKeysPage() {
       )}
 
       {/* Create Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40">
-          <div className="w-full max-w-md rounded-3xl bg-surface shadow-2xl">
+      <Modal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        dismissible={!createMut.isPending}
+        aria-labelledby="api-key-modal-title"
+        className="max-w-md rounded-3xl bg-surface"
+      >
+        {() => (
+          <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-              <h2 className="text-lg font-semibold text-on-surface">New API Key</h2>
-              <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
+              <h2 id="api-key-modal-title" className="text-title font-semibold text-on-surface">New API Key</h2>
+              <button aria-label="Close" onClick={() => setShowCreate(false)} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
             </div>
             <div className="px-6 py-4 space-y-3">
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Key name (e.g. Zapier Integration)"
-                className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none"
               />
               <div>
-                <p className="text-[12px] font-medium text-on-surface-variant mb-1.5">Scopes</p>
+                <p className="text-label font-medium text-on-surface-variant mb-1.5">Scopes</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SCOPES.map((scope) => (
                     <button
                       key={scope}
                       onClick={() => toggleScope(scope)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                      className={`px-2.5 py-1 rounded-lg text-caption font-medium transition-colors ${
                         form.scopes.includes(scope)
                           ? "bg-primary text-on-primary"
                           : "bg-surface-container text-on-surface-variant hover:text-on-surface"
@@ -225,7 +232,7 @@ export default function ApiKeysPage() {
                 onChange={(e) => setForm((f) => ({ ...f, expiresInDays: e.target.value }))}
                 placeholder="Expires in days (empty = never)"
                 type="number"
-                className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-[13px] focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none"
               />
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-outline-variant/15">
@@ -241,9 +248,9 @@ export default function ApiKeysPage() {
                 Generate Key
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* Confirm Dialog */}
       <ConfirmDialog

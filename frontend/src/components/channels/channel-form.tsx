@@ -15,6 +15,7 @@ import type {
   UpdateChannelRequest,
 } from "@/lib/types/channels";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface ChannelFormProps {
   channel?: Channel;
@@ -60,10 +61,10 @@ export function ChannelForm({
   if (!isEdit && !selectedType) {
     return (
       <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-6 mb-4">
-        <h3 className="text-lg font-semibold text-on-surface mb-1">
+        <h3 className="text-title font-semibold text-on-surface mb-1">
           Add Channel
         </h3>
-        <p className="text-sm text-on-surface-variant mb-4">
+        <p className="text-body-lg text-on-surface-variant mb-4">
           Select a channel type to get started
         </p>
 
@@ -76,10 +77,10 @@ export function ChannelForm({
             >
               <ChannelIcon type={type} className="h-6 w-6 text-primary shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-on-surface">
+                <p className="text-body-lg font-medium text-on-surface">
                   {CHANNEL_TYPE_LABELS[type]}
                 </p>
-                <p className="text-xs text-on-surface-variant mt-0.5">
+                <p className="text-label text-on-surface-variant mt-0.5">
                   {CHANNEL_DESCRIPTIONS[type]}
                 </p>
               </div>
@@ -147,16 +148,14 @@ export function ChannelForm({
     <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-6 mb-4">
       <div className="flex items-center gap-3 mb-4">
         {!isEdit && (
-          <button
-            onClick={() => setSelectedType(null)}
-            className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg transition-colors"
-          >
+          <IconButton size="xs"
+            onClick={() => setSelectedType(null)} aria-label="Back">
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </IconButton>
         )}
         <div className="flex items-center gap-2">
           {selectedType && <ChannelIcon type={selectedType} className="h-5 w-5 text-primary" />}
-          <h3 className="text-lg font-semibold text-on-surface">
+          <h3 className="text-title font-semibold text-on-surface">
             {isEdit ? `Edit ${channel.name}` : `New ${CHANNEL_TYPE_LABELS[selectedType!]} Channel`}
           </h3>
         </div>
@@ -165,7 +164,7 @@ export function ChannelForm({
       <div className="space-y-4">
         {/* Channel Name */}
         <div>
-          <label className="block text-sm font-medium text-on-surface mb-1">
+          <label className="block text-body-lg font-medium text-on-surface mb-1">
             Channel Name <span className="text-error">*</span>
           </label>
           <Input
@@ -173,12 +172,12 @@ export function ChannelForm({
             onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: "" })); }}
             placeholder={`e.g. Main ${CHANNEL_TYPE_LABELS[selectedType!]}`}
           />
-          {errors.name && <p className="text-[11px] text-error mt-1">{errors.name}</p>}
+          {errors.name && <p className="text-caption text-error mt-1">{errors.name}</p>}
         </div>
 
         {/* Rate Limit */}
         <div>
-          <label className="block text-sm font-medium text-on-surface mb-1">
+          <label className="block text-body-lg font-medium text-on-surface mb-1">
             Rate Limit (msgs/min)
           </label>
           <Input
@@ -190,8 +189,8 @@ export function ChannelForm({
             max={1000}
           />
           {errors.rateLimitPerMin
-            ? <p className="text-[11px] text-error mt-1">{errors.rateLimitPerMin}</p>
-            : <p className="text-xs text-on-surface-variant mt-1">Leave empty for default (60/min)</p>
+            ? <p className="text-caption text-error mt-1">{errors.rateLimitPerMin}</p>
+            : <p className="text-label text-on-surface-variant mt-1">Leave empty for default (60/min)</p>
           }
         </div>
 
@@ -200,7 +199,7 @@ export function ChannelForm({
           <div>
             <button
               onClick={() => setShowConfigPanel(!showConfigPanel)}
-              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="text-body-lg font-medium text-primary hover:text-primary/80 transition-colors"
             >
               {showConfigPanel ? "Hide" : "Update"} Credentials
             </button>
@@ -224,7 +223,7 @@ export function ChannelForm({
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-on-surface">
+            <p className="text-body-lg font-medium text-on-surface">
               Provider Configuration
             </p>
             {configFields.map((field) => (
@@ -281,7 +280,7 @@ function ConfigFieldInput({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-on-surface mb-1">
+      <label className="block text-body-lg font-medium text-on-surface mb-1">
         {field.label}
         {field.required && <span className="text-error"> *</span>}
       </label>
@@ -293,7 +292,7 @@ function ConfigFieldInput({
           placeholder={field.placeholder}
         />
         {field.type === "password" && (
-          <button
+          <button aria-label="Show or hide password"
             type="button"
             onClick={togglePassword}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1"
@@ -302,7 +301,7 @@ function ConfigFieldInput({
           </button>
         )}
       </div>
-      {error && <p className="text-[11px] text-error mt-1">{error}</p>}
+      {error && <p className="text-caption text-error mt-1">{error}</p>}
     </div>
   );
 }

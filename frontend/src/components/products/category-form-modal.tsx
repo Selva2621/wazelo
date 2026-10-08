@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateProductCategory, useUpdateProductCategory, useProductCategories } from "@/hooks/use-products";
 import type { ProductCategory } from "@/lib/types/products";
+import { IconButton } from "@/components/ui/icon-button";
+import { Modal } from "@/components/ui/modal";
 
 interface CategoryFormModalProps {
   open: boolean;
@@ -22,7 +24,7 @@ const PRESET_COLORS = [
 ];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
 export function CategoryFormModal({ open, onClose, category }: CategoryFormModalProps) {
   const isEditing = !!category;
@@ -91,34 +93,28 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-xl max-h-[90vh] overflow-y-auto">
-
+    <Modal open={open} onClose={onClose} className="max-w-md border border-outline-variant/15 max-h-[90vh]">
+      {() => (
+      <>
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant/10 sticky top-0 bg-surface-container-lowest z-10">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Tag className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[15px] font-semibold text-on-surface">
+            <h2 className="text-body-lg font-semibold text-on-surface">
               {isEditing ? "Edit Category" : "New Category"}
             </h2>
-            <p className="text-[11px] text-on-surface-variant/60">
+            <p className="text-caption text-on-surface-variant/60">
               {isEditing ? "Update category details" : "Organise products into categories"}
             </p>
           </div>
-          <button
+          <IconButton size="sm"
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-          >
+            onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
@@ -186,7 +182,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
                   }}
                   placeholder="#6366f1"
                   maxLength={7}
-                  className="w-20 rounded-lg bg-surface-container-low px-2 py-1 text-[12px] font-mono text-on-surface outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10"
+                  className="w-20 rounded-lg bg-surface-container-low px-2 py-1 text-label font-mono text-on-surface outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10"
                 />
               </div>
             </div>
@@ -231,12 +227,12 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
           {isEditing && (
             <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-outline-variant/10 bg-surface-container">
               <div>
-                <p className="text-[13px] font-medium text-on-surface">Active</p>
-                <p className="text-[11px] text-on-surface-variant/60">
+                <p className="text-body font-medium text-on-surface">Active</p>
+                <p className="text-caption text-on-surface-variant/60">
                   Inactive categories are hidden from product forms
                 </p>
               </div>
-              <button
+              <button role="switch" aria-checked={isActive} aria-label="Active"
                 type="button"
                 onClick={() => setIsActive((v) => !v)}
                 className={`relative h-5 w-9 rounded-full transition-colors ${isActive ? "bg-primary" : "bg-surface-container-high"}`}
@@ -250,7 +246,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
 
           {/* Error */}
           {error && (
-            <p className="text-[12px] text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
+            <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
               {error}
             </p>
           )}
@@ -265,7 +261,8 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </>
+      )}
+    </Modal>
   );
 }

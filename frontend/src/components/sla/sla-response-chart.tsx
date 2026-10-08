@@ -35,10 +35,10 @@ export function SlaResponseChart({
   if (avgResponseByUser.length === 0) {
     return (
       <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-        <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+        <h3 className="text-body font-medium text-on-surface-variant mb-4">
           Response Time vs SLA
         </h3>
-        <div className="h-40 flex items-center justify-center text-[13px] text-on-surface-variant/40">
+        <div className="h-40 flex items-center justify-center text-body text-on-surface-variant/40">
           No response data for this period
         </div>
       </div>
@@ -52,7 +52,7 @@ export function SlaResponseChart({
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-      <h3 className="text-[13px] font-medium text-on-surface-variant mb-4">
+      <h3 className="text-body font-medium text-on-surface-variant mb-4">
         Response Time vs SLA
       </h3>
 
@@ -63,7 +63,7 @@ export function SlaResponseChart({
             className="absolute left-0 right-0 border-t-2 border-dashed border-error/40 z-10"
             style={{ bottom: `${(thresholdMs / maxMs) * 100}%` }}
           >
-            <span className="absolute -top-4 right-0 text-[10px] text-error/60">
+            <span className="absolute -top-4 right-0 text-caption text-error/60">
               SLA: {formatMs(thresholdMs)}
             </span>
           </div>
@@ -75,7 +75,7 @@ export function SlaResponseChart({
             className="absolute left-0 right-0 border-t border-dashed border-warning/30 z-10"
             style={{ bottom: `${(warningMs / maxMs) * 100}%` }}
           >
-            <span className="absolute -top-4 right-0 text-[10px] text-warning/50">
+            <span className="absolute -top-4 right-0 text-caption text-warning/50">
               Warn: {formatMs(warningMs)}
             </span>
           </div>
@@ -106,13 +106,13 @@ export function SlaResponseChart({
                 />
               </div>
               {/* Tooltip */}
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-2 rounded-lg shadow-lg text-[11px] text-on-surface whitespace-nowrap z-20">
+              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-container p-2 rounded-lg shadow-lg text-caption text-on-surface whitespace-nowrap z-20">
                 <div>Avg: {formatMs(user.avgMs)}</div>
                 <div className="text-on-surface-variant/60">
                   {user.count} conversation{user.count !== 1 ? "s" : ""}
                 </div>
               </div>
-              <span className="text-[10px] text-on-surface-variant/50 truncate w-full text-center">
+              <span className="text-caption text-on-surface-variant/50 truncate w-full text-center">
                 {user.assignedUserId.slice(0, 6)}
               </span>
             </div>
@@ -121,7 +121,7 @@ export function SlaResponseChart({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-on-surface-variant/50">
+      <div className="flex items-center gap-4 mt-3 text-caption text-on-surface-variant/50">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-success" /> Within SLA
         </span>

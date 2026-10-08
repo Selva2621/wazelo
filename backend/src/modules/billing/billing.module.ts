@@ -7,9 +7,11 @@ import { PlanRepository } from './infrastructure/repositories/plan.repository';
 import { SubscriptionRepository } from './infrastructure/repositories/subscription.repository';
 import { UsageRepository } from './infrastructure/repositories/usage.repository';
 import { PaymentRepository } from './infrastructure/repositories/payment.repository';
+import { EntitlementOverrideRepository } from './infrastructure/repositories/entitlement-override.repository';
 
 // Domain services
 import { UsageTrackingService } from './domain/services/usage-tracking.service';
+import { EntitlementOverrideService } from './domain/services/entitlement-override.service';
 import { ProrationService } from './domain/services/proration.service';
 import { StripePaymentService } from './domain/services/stripe-payment.service';
 import { RazorpayPaymentService } from './domain/services/razorpay-payment.service';
@@ -43,9 +45,11 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     SubscriptionRepository,
     UsageRepository,
     PaymentRepository,
+    EntitlementOverrideRepository,
 
     // Domain services
     UsageTrackingService,
+    EntitlementOverrideService,
     ProrationService,
     StripePaymentService,
     RazorpayPaymentService,
@@ -69,6 +73,9 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
   exports: [
     // Export for use in other modules (guards, workers)
     UsageTrackingService,
+    // Super admin per-org overrides (written only by the super-admin module)
+    EntitlementOverrideService,
+    EntitlementOverrideRepository,
     ProrationService,
     PlanRepository,
     SubscriptionRepository,

@@ -12,7 +12,9 @@ const superAdminPublicPaths = ["/super-admin/login"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.get("hasSession")?.value === "1";
+  // "1" = session, "r" = remembered session (see stores/auth-store.ts)
+  const sessionHint = request.cookies.get("hasSession")?.value;
+  const hasSession = sessionHint === "1" || sessionHint === "r";
   const hasSuperAdminSession = request.cookies.get("hasSuperAdminSession")?.value === "1";
 
   // Super admin routes — separate session cookie
