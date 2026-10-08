@@ -19,11 +19,11 @@ function MultiChannelMockup() {
   const FONT = "var(--font-geist-sans), sans-serif";
 
   const channels: { id: "all" | "whatsapp" | "instagram" | "messenger" | "email"; label: string; color: string; bg: string }[] = [
-    { id: "all",       label: "All",       color: "#e5e2e1",  bg: "rgba(255,255,255,0.1)" },
-    { id: "whatsapp",  label: "WhatsApp",  color: "#22c55e",  bg: "rgba(34,197,94,0.12)" },
+    { id: "all",       label: "All",       color: "var(--c-on-surface)",  bg: "rgb(var(--fx-ink) / 0.1)" },
+    { id: "whatsapp",  label: "WhatsApp",  color: "var(--c-success)",  bg: "color-mix(in srgb, var(--c-success) 12%, transparent)" },
     { id: "instagram", label: "Instagram", color: "#e1306c",  bg: "rgba(225,48,108,0.12)" },
     { id: "messenger", label: "Messenger", color: "#0084ff",  bg: "rgba(0,132,255,0.12)" },
-    { id: "email",     label: "Email",     color: "#94a3b8",  bg: "rgba(148,163,184,0.12)" },
+    { id: "email",     label: "Email",     color: "var(--c-placeholder)",  bg: "rgba(148,163,184,0.12)" },
   ];
 
   const conversations: { channel: "whatsapp" | "instagram" | "messenger" | "email"; name: string; preview: string; time: string; avatar: string; unread: number }[] = [
@@ -36,48 +36,48 @@ function MultiChannelMockup() {
   ];
 
   const channelColorMap: Record<string, string> = {
-    whatsapp:  "#22c55e",
+    whatsapp:  "var(--c-success)",
     instagram: "#e1306c",
     messenger: "#0084ff",
-    email:     "#94a3b8",
+    email:     "var(--c-placeholder)",
   };
 
   // Avatar gradient based on first letter
   const avatarGradients: Record<string, string> = {
-    A: "linear-gradient(135deg,#554336,#d97707)",
+    A: "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
     R: "linear-gradient(135deg,#e1306c,#f472b6)",
-    P: "linear-gradient(135deg,#22c55e,#16a34a)",
+    P: "linear-gradient(135deg,var(--c-success),#16a34a)",
     V: "linear-gradient(135deg,#0084ff,#3b82f6)",
-    M: "linear-gradient(135deg,#f59e0b,#d97706)",
-    K: "linear-gradient(135deg,#94a3b8,#64748b)",
+    M: "linear-gradient(135deg,var(--c-primary-container),var(--c-primary))",
+    K: "linear-gradient(135deg,var(--c-placeholder),#64748b)",
   };
 
   const filtered = activeChannel === "all" ? conversations : conversations.filter(c => c.channel === activeChannel);
 
   const connectedChannels = [
-    { id: "whatsapp",  color: "#22c55e" },
+    { id: "whatsapp",  color: "var(--c-success)" },
     { id: "instagram", color: "#e1306c" },
     { id: "messenger", color: "#0084ff" },
-    { id: "email",     color: "#94a3b8" },
+    { id: "email",     color: "var(--c-placeholder)" },
   ];
 
   return (
     <div>
       {/* Section header */}
       <div style={{ marginBottom: 0 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: FONT, display: "block", marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: FONT, display: "block", marginBottom: 12 }}>
           See it in action
         </span>
-        <h2 style={{ fontSize: "clamp(24px,2.8vw,32px)", fontWeight: 800, letterSpacing: "-0.04em", color: "#fff", fontFamily: FONT, margin: 0 }}>
+        <h2 style={{ fontSize: "clamp(24px,2.8vw,32px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c-on-surface)", fontFamily: FONT, margin: 0 }}>
           Build and send campaigns.
         </h2>
       </div>
 
       {/* Mockup container */}
-      <div style={{ background: "#1c1b1b", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", overflow: "hidden", marginTop: 32 }}>
+      <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 16, boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)", overflow: "hidden", marginTop: 32 }}>
 
         {/* App chrome bar */}
-        <div style={{ background: "#131313", height: 36, display: "flex", alignItems: "center", padding: "0 14px", gap: 7, flexShrink: 0 }}>
+        <div style={{ background: "var(--c-surface)", height: 36, display: "flex", alignItems: "center", padding: "0 14px", gap: 7, flexShrink: 0 }}>
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ffbd2e", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#28ca41", display: "inline-block" }} />
@@ -87,7 +87,7 @@ function MultiChannelMockup() {
         <div style={{ padding: 0 }}>
 
           {/* Channel tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", gap: 4, overflowX: "auto" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)", padding: "0 16px", gap: 4, overflowX: "auto" }}>
             {channels.map(ch => (
               <button
                 key={ch.id}
@@ -99,7 +99,7 @@ function MultiChannelMockup() {
                   cursor: "pointer",
                   border: "none",
                   background: "transparent",
-                  color: activeChannel === ch.id ? ch.color : "rgba(219,194,176,0.4)",
+                  color: activeChannel === ch.id ? ch.color : "var(--c-placeholder)",
                   borderBottom: activeChannel === ch.id ? `2px solid ${ch.color}` : "2px solid transparent",
                   display: "flex",
                   alignItems: "center",
@@ -118,21 +118,21 @@ function MultiChannelMockup() {
           {/* Conversation list */}
           <div style={{ padding: "8px 0", minHeight: 320 }}>
             {filtered.length === 0 ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "rgba(219,194,176,0.3)", fontSize: 13, fontFamily: FONT }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--c-placeholder)", fontSize: 13, fontFamily: FONT }}>
                 No conversations
               </div>
             ) : (
               filtered.map((conv, i) => (
-                <div key={i} style={{ padding: "12px 16px", display: "flex", gap: 12, alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
+                <div key={i} style={{ padding: "12px 16px", display: "flex", gap: 12, alignItems: "center", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", cursor: "pointer" }}>
                   {/* Channel dot */}
                   <span style={{ width: 10, height: 10, borderRadius: "50%", background: channelColorMap[conv.channel], display: "inline-block", flexShrink: 0 }} />
 
                   {/* Avatar */}
                   <div style={{
                     width: 32, height: 32, borderRadius: "50%",
-                    background: avatarGradients[conv.avatar[0]] ?? "linear-gradient(135deg,#554336,#d97707)",
+                    background: avatarGradients[conv.avatar[0]] ?? "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700, color: "#fff", fontFamily: FONT, flexShrink: 0,
+                    fontSize: 11, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: FONT, flexShrink: 0,
                   }}>
                     {conv.avatar}
                   </div>
@@ -140,10 +140,10 @@ function MultiChannelMockup() {
                   {/* Text column */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: FONT }}>{conv.name}</span>
-                      <span style={{ fontSize: 11, color: "rgba(219,194,176,0.35)", fontFamily: FONT, flexShrink: 0 }}>{conv.time}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: FONT }}>{conv.name}</span>
+                      <span style={{ fontSize: 11, color: "var(--c-placeholder)", fontFamily: FONT, flexShrink: 0 }}>{conv.time}</span>
                     </div>
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", fontFamily: FONT, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: FONT, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {conv.preview}
                     </span>
                   </div>
@@ -152,8 +152,8 @@ function MultiChannelMockup() {
                   {conv.unread > 0 && (
                     <div style={{
                       width: 18, height: 18, borderRadius: "50%",
-                      background: "#ffb77d", display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 10, fontWeight: 700, color: "#131313", fontFamily: FONT, flexShrink: 0,
+                      background: "var(--c-primary-container)", display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 700, color: "var(--c-surface)", fontFamily: FONT, flexShrink: 0,
                     }}>
                       {conv.unread}
                     </div>
@@ -165,8 +165,8 @@ function MultiChannelMockup() {
         </div>
 
         {/* Bottom status bar */}
-        <div style={{ padding: "8px 16px", background: "#0e0e0e", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 11, color: "rgba(219,194,176,0.35)", fontFamily: FONT }}>
+        <div style={{ padding: "8px 16px", background: "var(--c-surface)", borderTop: "1px solid rgb(var(--fx-ink) / 0.04)", display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 11, color: "var(--c-placeholder)", fontFamily: FONT }}>
             {filtered.length} conversation{filtered.length !== 1 ? "s" : ""}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
@@ -184,7 +184,7 @@ function MultiChannelMockup() {
 const data: FeatureDetailData = {
   slug: "multi-channel",
   tag: "Multi-Channel",
-  heroTitle: "Every channel.<br /><span style=\"color:#ffb77d\">One inbox.</span>",
+  heroTitle: "Every channel.<br /><span style=\"color:var(--c-primary-container)\">One inbox.</span>",
   heroSubtitle: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email conversations from a single shared inbox — with the same automations, routing, and analytics across all channels.",
   heroScreen: "",
   overviewTitle: "Your customers don't stay on one channel.",

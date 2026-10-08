@@ -34,10 +34,10 @@ function AnalyticsMockup() {
     <div ref={view.ref}>
       {/* Section header */}
       <div style={{ textAlign: "center", marginBottom: 0 }}>
-        <p style={{ fontSize: 11, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+        <p style={{ fontSize: 11, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
           See it in action
         </p>
-        <h3 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: 0 }}>
+        <h3 style={{ fontSize: 32, fontWeight: 700, color: "var(--c-on-surface)", margin: 0 }}>
           The analytics dashboard, live.
         </h3>
       </div>
@@ -45,8 +45,8 @@ function AnalyticsMockup() {
       {/* Mockup container */}
       <div style={{
         borderRadius: 16,
-        background: "#1c1b1b",
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        background: "var(--c-surface-container-lowest)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         padding: 28,
         marginTop: 32,
       }}>
@@ -59,27 +59,27 @@ function AnalyticsMockup() {
         }}>
           {kpis.map((kpi) => {
             const isPositiveDelta = kpi.delta.startsWith("+");
-            const deltaColor = isPositiveDelta ? "#34d399" : "#34d399"; // response time down = good too
+            const deltaColor = isPositiveDelta ? "var(--c-success)" : "var(--c-success)"; // response time down = good too
             // For "Avg Response", a "-" delta is actually good (faster)
             const deltaGood = kpi.delta.startsWith("+") || kpi.label === "Avg Response";
             const finalDeltaColor = kpi.label === "Avg Response"
-              ? (kpi.delta.startsWith("-") ? "#34d399" : "#f87171")
-              : (kpi.delta.startsWith("+") ? "#34d399" : "#f87171");
+              ? (kpi.delta.startsWith("-") ? "var(--c-success)" : "var(--c-error)")
+              : (kpi.delta.startsWith("+") ? "var(--c-success)" : "var(--c-error)");
 
             return (
               <div key={kpi.label} style={{
-                background: "#2a2a2a",
+                background: "var(--c-surface-container-high)",
                 borderRadius: 12,
                 padding: "16px 20px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#ffb77d" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)" }}>
                     {kpi.icon}
                   </span>
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.55)" }}>{kpi.label}</span>
+                  <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)" }}>{kpi.label}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{kpi.value}</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "var(--c-on-surface)" }}>{kpi.value}</span>
                   <span style={{ fontSize: 12, color: finalDeltaColor }}>{kpi.delta}</span>
                 </div>
               </div>
@@ -96,8 +96,8 @@ function AnalyticsMockup() {
         }}>
 
           {/* Left — Bar chart */}
-          <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "20px 20px 16px" }}>
-            <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", margin: 0 }}>
+          <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
+            <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
               Message Volume — Last 7 Days
             </p>
             <div style={{
@@ -113,20 +113,20 @@ function AnalyticsMockup() {
                     <div style={{
                       width: "100%",
                       height: `${bars[i]}%`,
-                      background: "linear-gradient(to top, #d97707, #ffb77d)",
+                      background: "linear-gradient(to top, var(--c-primary), var(--c-primary-container))",
                       borderRadius: "4px 4px 0 0",
                       transition: "height 0.8s ease",
                     }} />
                   </div>
-                  <span style={{ fontSize: 10, color: "rgba(219,194,176,0.4)" }}>{day}</span>
+                  <span style={{ fontSize: 10, color: "var(--c-placeholder)" }}>{day}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Right — Agent leaderboard */}
-          <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "20px 20px 16px" }}>
-            <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", margin: 0 }}>
+          <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
+            <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
               Top Agents
             </p>
             <div style={{ marginTop: 12 }}>
@@ -135,7 +135,7 @@ function AnalyticsMockup() {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  borderBottom: "1px solid rgb(var(--fx-ink) / 0.05)",
                   padding: "10px 0",
                 }}>
                   {/* Rank */}
@@ -143,31 +143,31 @@ function AnalyticsMockup() {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    background: "rgba(255,183,125,0.12)",
+                    background: "rgb(var(--fx-accent) / 0.12)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#ffb77d",
+                    color: "var(--c-primary-container)",
                     flexShrink: 0,
                   }}>
                     {i + 1}
                   </div>
                   {/* Name */}
-                  <span style={{ fontSize: 13, color: "#e5e2e1", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ fontSize: 13, color: "var(--c-on-surface)", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {agent.name}
                   </span>
                   {/* Convs */}
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", minWidth: 30, textAlign: "right" }}>
+                  <span style={{ fontSize: 12, color: "var(--c-placeholder)", minWidth: 30, textAlign: "right" }}>
                     {agent.convs}
                   </span>
                   {/* Avg time */}
-                  <span style={{ fontSize: 11, color: "rgba(219,194,176,0.35)", minWidth: 44, textAlign: "right" }}>
+                  <span style={{ fontSize: 11, color: "var(--c-placeholder)", minWidth: 44, textAlign: "right" }}>
                     {agent.time}
                   </span>
                   {/* Score */}
-                  <span style={{ fontSize: 12, color: "#ffb77d", minWidth: 32, textAlign: "right" }}>
+                  <span style={{ fontSize: 12, color: "var(--c-primary-container)", minWidth: 32, textAlign: "right" }}>
                     {agent.score} ★
                   </span>
                 </div>
@@ -184,7 +184,7 @@ function AnalyticsMockup() {
 const data: FeatureDetailData = {
   slug: "analytics",
   tag: "Analytics",
-  heroTitle: "Data that<br /><span style=\"color:#ffb77d\">drives deals.</span>",
+  heroTitle: "Data that<br /><span style=\"color:var(--c-primary-container)\">drives deals.</span>",
   heroSubtitle: "Track response times, delivery rates, agent performance, and CSAT scores — all in one real-time dashboard.",
   heroScreen: "/screens/04-analytics-dashboard.png",
   overviewTitle: "You can't improve what you can't measure.",

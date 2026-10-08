@@ -10,9 +10,9 @@ const nodes = [
     label: "Message Received",
     sub: "Contains 'price' or 'cost'",
     icon: "notifications_active",
-    color: "#22c55e",
-    bg: "rgba(34,197,94,0.1)",
-    border: "rgba(34,197,94,0.3)",
+    color: "var(--c-success)",
+    bg: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+    border: "color-mix(in srgb, var(--c-success) 30%, transparent)",
     typeLabel: "TRIGGER",
   },
   {
@@ -21,9 +21,9 @@ const nodes = [
     label: "Is Tagged as Lead?",
     sub: "Check contact tag",
     icon: "call_split",
-    color: "#f59e0b",
-    bg: "rgba(245,158,11,0.1)",
-    border: "rgba(245,158,11,0.3)",
+    color: "var(--c-primary-container)",
+    bg: "rgb(var(--fx-accent) / 0.1)",
+    border: "rgb(var(--fx-accent) / 0.3)",
     typeLabel: "CONDITION",
   },
   {
@@ -32,9 +32,9 @@ const nodes = [
     label: "Send Auto-Reply",
     sub: "\"Let me share our pricing...\"",
     icon: "send",
-    color: "#ffb77d",
-    bg: "rgba(255,183,125,0.1)",
-    border: "rgba(255,183,125,0.3)",
+    color: "var(--c-primary-container)",
+    bg: "rgb(var(--fx-accent) / 0.1)",
+    border: "rgb(var(--fx-accent) / 0.3)",
     typeLabel: "ACTION",
   },
   {
@@ -43,7 +43,7 @@ const nodes = [
     label: "Assign to Sales Team",
     sub: "Round-robin assignment",
     icon: "person_add",
-    color: "#0ea5e9",
+    color: "var(--c-code-cyan)",
     bg: "rgba(14,165,233,0.1)",
     border: "rgba(14,165,233,0.3)",
     typeLabel: "ACTION",
@@ -94,15 +94,15 @@ function NodeCard({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 18, color: node.color }}>{node.icon}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{node.label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{node.label}</span>
       </div>
-      <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 4 }}>{node.sub}</div>
+      <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 4 }}>{node.sub}</div>
     </div>
   );
 }
 
 // ─── Connector line ───────────────────────────────────────────────────────────
-function Connector({ color = "rgba(255,255,255,0.1)", height = 28 }: { color?: string; height?: number }) {
+function Connector({ color = "rgb(var(--fx-ink) / 0.1)", height = 28 }: { color?: string; height?: number }) {
   return (
     <div style={{ width: 2, height, background: color, margin: "0 auto" }} />
   );
@@ -133,14 +133,14 @@ function AutomationMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#f59e0b",
+          textTransform: "uppercase", color: "var(--c-primary-container)",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
-          letterSpacing: "-0.04em", color: "#e5e2e1",
+          letterSpacing: "-0.04em", color: "var(--c-on-surface)",
           fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Visual automations, zero code.
@@ -149,9 +149,9 @@ function AutomationMockup() {
 
       {/* Mockup container */}
       <div style={{
-        background: "#1c1b1b",
+        background: "var(--c-surface-container-lowest)",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         padding: "28px 40px",
         marginTop: 32,
       }}>
@@ -163,13 +163,13 @@ function AutomationMockup() {
           alignItems: "center",
           marginBottom: 28,
         }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
             Automation: Price Inquiry Flow
           </span>
           <span style={{
-            background: "rgba(34,197,94,0.1)",
-            color: "#22c55e",
-            border: "1px solid rgba(34,197,94,0.3)",
+            background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+            color: "var(--c-success)",
+            border: "1px solid color-mix(in srgb, var(--c-success) 30%, transparent)",
             borderRadius: 20,
             padding: "4px 12px",
             fontSize: 12,
@@ -214,12 +214,12 @@ function AutomationMockup() {
               flexDirection: "column",
               alignItems: "flex-end",
               paddingRight: 20,
-              borderRight: "1px dashed rgba(255,255,255,0.08)",
+              borderRight: "1px dashed rgb(var(--fx-ink) / 0.08)",
             }}>
-              <div style={{ height: 20, width: 2, background: "rgba(34,197,94,0.3)", margin: "0 0 0 auto" }} />
+              <div style={{ height: 20, width: 2, background: "color-mix(in srgb, var(--c-success) 30%, transparent)", margin: "0 0 0 auto" }} />
               <span style={{
-                background: "rgba(34,197,94,0.1)",
-                color: "#22c55e",
+                background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+                color: "var(--c-success)",
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
@@ -231,7 +231,7 @@ function AutomationMockup() {
               }}>
                 YES
               </span>
-              <div style={{ height: 12, width: 2, background: "rgba(34,197,94,0.3)", marginLeft: "auto" }} />
+              <div style={{ height: 12, width: 2, background: "color-mix(in srgb, var(--c-success) 30%, transparent)", marginLeft: "auto" }} />
               <div style={{ width: "100%" }}>
                 <NodeCard
                   node={yesNode}
@@ -253,7 +253,7 @@ function AutomationMockup() {
               <div style={{ height: 20, width: 2, background: "rgba(14,165,233,0.3)", margin: "0 auto 0 0" }} />
               <span style={{
                 background: "rgba(14,165,233,0.1)",
-                color: "#0ea5e9",
+                color: "var(--c-code-cyan)",
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
@@ -281,7 +281,7 @@ function AutomationMockup() {
             textAlign: "center",
             marginTop: 24,
             fontSize: 12,
-            color: "rgba(219,194,176,0.3)",
+            color: "var(--c-placeholder)",
             fontStyle: "italic",
             fontFamily: "var(--font-geist-sans), sans-serif",
           }}>
@@ -297,7 +297,7 @@ function AutomationMockup() {
 const data: FeatureDetailData = {
   slug: "automation",
   tag: "Automation",
-  heroTitle: "Build flows.<br /><span style=\"color:#ffb77d\">Not busywork.</span>",
+  heroTitle: "Build flows.<br /><span style=\"color:var(--c-primary-container)\">Not busywork.</span>",
   heroSubtitle: "Visual workflow builder for WhatsApp automation — follow-up sequences, lead qualification, smart routing, and more. No code, no limits.",
   heroScreen: "/screens/03-automation-workflow.png",
   overviewTitle: "Your best agent works 24/7 and never sleeps.",

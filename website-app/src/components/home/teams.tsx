@@ -85,7 +85,7 @@ function Packet({ path, onDone }: { path: SVGPathElement | null; onDone: () => v
     <motion.span
       aria-hidden
       style={{ left, top, opacity }}
-      className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-container shadow-[0_0_0_6px_rgb(245_158_11/0.18),0_0_18px_rgb(245_158_11/0.6)]"
+      className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-container shadow-[0_0_0_6px_rgb(var(--fx-accent)/0.18),0_0_18px_rgb(var(--fx-accent)/0.6)]"
     />
   );
 }
@@ -138,7 +138,7 @@ function RoutingPanel() {
               strokeWidth={1.5}
               strokeDasharray="4 6"
               vectorEffect="non-scaling-stroke"
-              className="stroke-white/15"
+              className="stroke-ink/25"
             />
           ))}
         </svg>
@@ -148,7 +148,7 @@ function RoutingPanel() {
 
         <Node x={SOURCE.x} y={SOURCE.y}>
           <div className="lg-glass flex items-center gap-2.5 rounded-2xl p-2 sm:pr-4">
-            <span className="grid size-9 place-items-center rounded-xl bg-[#24403b] text-[#8fd1bf]">
+            <span className="grid size-9 place-items-center rounded-xl bg-wa-out text-wa-label">
               <MessageCircle className="h-5 w-5" />
             </span>
             <span className="hidden leading-tight sm:block">
@@ -190,7 +190,7 @@ function RoutingPanel() {
         ))}
       </div>
 
-      <div className="flex min-h-12 items-center gap-2 border-t border-white/[0.06] px-5 text-sm text-on-surface-variant">
+      <div className="flex min-h-12 items-center gap-2 border-t border-ink/[0.06] px-5 text-sm text-on-surface-variant">
         <Workflow className="h-4 w-4 shrink-0 text-primary-container" />
         <AnimatePresence mode="wait" initial={false}>
           <motion.span

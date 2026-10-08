@@ -20,14 +20,14 @@ function SequenceMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#ffb77d",
+          textTransform: "uppercase", color: "var(--c-primary-container)",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-          color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
+          color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Drip sequences, on autopilot.
         </h2>
@@ -35,9 +35,9 @@ function SequenceMockup() {
 
       {/* Mockup container */}
       <div style={{
-        background: "#1c1b1b",
+        background: "var(--c-surface-container-lowest)",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         padding: 28,
         marginTop: 32,
         position: "relative",
@@ -45,20 +45,20 @@ function SequenceMockup() {
         {/* Enrolled badge */}
         <div style={{
           position: "absolute", top: 20, right: 20,
-          background: "rgba(52,211,153,0.1)",
-          border: "1px solid rgba(52,211,153,0.3)",
+          background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--c-success) 30%, transparent)",
           borderRadius: 20, padding: "6px 14px",
-          fontSize: 12, color: "#34d399",
+          fontSize: 12, color: "var(--c-success)",
           fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500,
           display: "flex", alignItems: "center", gap: 6,
         }}>
-          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
+          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--c-success)", flexShrink: 0 }} />
           3 contacts enrolled
         </div>
 
         {/* Header */}
         <div style={{
-          fontSize: 14, fontWeight: 700, color: "#fff",
+          fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)",
           fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
         }}>
           Sequence: Welcome Flow
@@ -77,7 +77,7 @@ function SequenceMockup() {
           {/* Vertical connector line */}
           <div style={{
             position: "absolute", left: 19, top: 0, bottom: 0, width: 2,
-            background: "linear-gradient(to bottom, rgba(255,183,125,0.4), rgba(255,183,125,0.06))",
+            background: "linear-gradient(to bottom, rgb(var(--fx-accent) / 0.4), rgb(var(--fx-accent) / 0.06))",
             pointerEvents: "none",
           }} />
 
@@ -89,12 +89,12 @@ function SequenceMockup() {
                 <div style={{
                   width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: step.type === "stop" ? "rgba(251,191,36,0.1)" : "rgba(255,183,125,0.12)",
-                  border: step.type === "stop" ? "2px solid #fbbf24" : "2px solid rgba(255,183,125,0.4)",
+                  background: step.type === "stop" ? "rgb(var(--fx-accent) / 0.1)" : "rgb(var(--fx-accent) / 0.12)",
+                  border: step.type === "stop" ? "2px solid var(--c-primary-container)" : "2px solid rgb(var(--fx-accent) / 0.4)",
                 }}>
                   <span className="material-symbols-outlined" style={{
                     fontSize: 18,
-                    color: step.type === "stop" ? "#fbbf24" : "#d97707",
+                    color: step.type === "stop" ? "var(--c-primary-container)" : "var(--c-primary)",
                   }}>
                     {step.type === "stop" ? "block" : "send"}
                   </span>
@@ -102,13 +102,13 @@ function SequenceMockup() {
 
                 {/* Card */}
                 <div style={{
-                  flex: 1, background: "#2a2a2a", borderRadius: 12, padding: "14px 18px",
+                  flex: 1, background: "var(--c-surface-container-high)", borderRadius: 12, padding: "14px 18px",
                 }}>
                   {/* Top row */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     {step.type === "stop" ? (
                       <span style={{
-                        background: "rgba(251,191,36,0.1)", color: "#fbbf24",
+                        background: "rgb(var(--fx-accent) / 0.1)", color: "var(--c-primary-container)",
                         padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700,
                         fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.06em",
                       }}>
@@ -116,7 +116,7 @@ function SequenceMockup() {
                       </span>
                     ) : (
                       <span style={{
-                        background: "rgba(255,183,125,0.1)", color: "#ffb77d",
+                        background: "rgb(var(--fx-accent) / 0.1)", color: "var(--c-primary-container)",
                         padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600,
                         fontFamily: "var(--font-geist-sans), sans-serif",
                       }}>
@@ -127,7 +127,7 @@ function SequenceMockup() {
 
                   {/* Title */}
                   <div style={{
-                    fontSize: 14, fontWeight: 700, color: "#fff",
+                    fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)",
                     fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6,
                   }}>
                     {step.title}
@@ -137,7 +137,7 @@ function SequenceMockup() {
                   <div style={{
                     fontSize: 12, lineHeight: 1.6,
                     fontFamily: "var(--font-geist-sans), sans-serif",
-                    color: step.type === "stop" ? "#fbbf24" : "rgba(219,194,176,0.5)",
+                    color: step.type === "stop" ? "var(--c-primary-container)" : "var(--c-on-surface-variant)",
                     fontStyle: step.type === "stop" ? "italic" : "normal",
                   }}>
                     {step.preview}
@@ -156,7 +156,7 @@ function SequenceMockup() {
 const data: FeatureDetailData = {
   slug: "sequences",
   tag: "Sequences",
-  heroTitle: "Follow up automatically.<br /><span style=\"color:#ffb77d\">Every time.</span>",
+  heroTitle: "Follow up automatically.<br /><span style=\"color:var(--c-primary-container)\">Every time.</span>",
   heroSubtitle: "Multi-step WhatsApp drip sequences that enrol contacts, space messages by hours or days, and stop automatically the moment a contact replies.",
   heroScreen: "",
   overviewTitle: "Your follow-up runs itself.",

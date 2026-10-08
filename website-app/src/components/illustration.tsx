@@ -19,29 +19,29 @@ if (typeof window !== "undefined") gsap.registerPlugin(DrawSVGPlugin);
 const ACCENT = "#f59e0b";
 const SHAPES = "path, circle, ellipse, rect, polygon, polyline, line";
 
-/** unDraw's standard neutrals are drawn for white pages; swap them for the
- *  site's dark-theme greys so outlines stay visible and light fills don't glare. */
+/** The scene neutrals from scripts/draw-illustrations.mjs, mapped to theme
+ *  variables (theme.css --illo-*) so backgrounds, desks and cards follow the
+ *  light / dark theme. People, props and the accent keep their own colours. */
 const THEME_MAP: Record<string, string> = {
-  "#3f3d56": "#8a91a5",
-  "#2f2e41": "#6e7594",
-  "#e6e6e6": "#2a2e40",
-  "#f2f2f2": "#1e2130",
-  "#e4e4e4": "#2a2e40",
-  "#cacaca": "#363a50",
-  "#ccc": "#363a50",
-  "#cccccc": "#363a50",
-  "#fff": "#262a38",
-  "#ffffff": "#262a38",
+  "#1b1f2c": "var(--illo-blob)",
+  "#20253a": "var(--illo-blob)",
+  "#2c3248": "var(--illo-floor)",
+  "#3a405a": "var(--illo-desk)",
+  "#3a4260": "var(--illo-desk)",
+  "#2e344a": "var(--illo-desk-leg)",
+  "#2b3146": "var(--illo-chair)",
+  "#262c3d": "var(--illo-card)",
+  "#2f3650": "var(--illo-card-2)",
+  "#30374f": "var(--illo-card-2)",
+  "#2a3144": "var(--illo-device)",
 };
 
 function retheme(svg: SVGSVGElement) {
   svg.querySelectorAll("*").forEach((el) => {
     for (const prop of ["fill", "stroke"] as const) {
       const v = el.getAttribute(prop)?.toLowerCase();
-      if (v && THEME_MAP[v]) el.setAttribute(prop, THEME_MAP[v]);
-      const s = (el as SVGElement).style;
-      const sv = s?.[prop]?.toLowerCase();
-      if (sv && THEME_MAP[sv]) s[prop] = THEME_MAP[sv];
+      // A CSS property (not the attribute) so var() resolves and flips with the theme.
+      if (v && THEME_MAP[v]) (el as SVGElement).style.setProperty(prop, THEME_MAP[v]);
     }
   });
 }

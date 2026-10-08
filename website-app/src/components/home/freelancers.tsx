@@ -19,11 +19,11 @@ const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-
 function BrowserFrame({ url, children }: { url: string; children: ReactNode }) {
   return (
     <div className="lg-glass overflow-hidden rounded-2xl">
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-        <span className="size-2.5 rounded-full bg-white/15" />
-        <span className="size-2.5 rounded-full bg-white/15" />
-        <span className="size-2.5 rounded-full bg-white/15" />
-        <span className="ml-3 truncate rounded-md bg-white/[0.05] px-3 py-1 font-mono text-xs text-on-surface-variant">{url}</span>
+      <div className="flex items-center gap-2 border-b border-ink/[0.06] px-4 py-3">
+        <span className="size-2.5 rounded-full bg-ink/15" />
+        <span className="size-2.5 rounded-full bg-ink/15" />
+        <span className="size-2.5 rounded-full bg-ink/15" />
+        <span className="ml-3 truncate rounded-md bg-ink/[0.05] px-3 py-1 font-mono text-xs text-on-surface-variant">{url}</span>
       </div>
       <div className="p-5 sm:p-6">{children}</div>
     </div>
@@ -155,7 +155,7 @@ export function Freelancers() {
       <div aria-hidden className="glass-stage">
         <span className="-left-20 top-1/4 h-96 w-96 bg-primary/25" />
         <span className="left-[60%] top-1/3 h-[28rem] w-[40rem] bg-primary-container/12" />
-        <span className="bottom-0 left-1/4 h-72 w-[36rem] bg-[#24403b]/50" />
+        <span className="bottom-0 left-1/4 h-72 w-[36rem] bg-wa-out/50" />
       </div>
 
       <div ref={track} className="relative flex flex-col px-4 will-change-transform sm:px-6 lg:w-max lg:flex-row lg:px-[max(2rem,calc((100vw-80rem)/2+2rem))]">
@@ -239,7 +239,7 @@ export function Freelancers() {
               </div>
             </div>
             <div data-pan="mock" className="relative overflow-hidden rounded-3xl p-6 sm:p-8">
-              <div aria-hidden className="absolute inset-0 bg-[radial-gradient(28rem_18rem_at_20%_10%,#f59e0b_0%,rgb(217_119_6/0.55)_40%,transparent_75%)]" />
+              <div aria-hidden className="absolute inset-0 bg-[radial-gradient(28rem_18rem_at_20%_10%,rgb(var(--fx-accent))_0%,rgb(var(--fx-accent)/0.55)_40%,transparent_75%)]" />
               <div className="lg-glass absolute inset-0 rounded-3xl" />
               <div className="relative">
                 <h3 className="text-xl font-semibold tracking-tight text-on-surface">Solo plan</h3>

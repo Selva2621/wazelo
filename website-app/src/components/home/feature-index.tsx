@@ -206,7 +206,7 @@ export function FeatureIndex() {
           {/* Hub */}
           <div data-hub className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <span aria-hidden className="absolute inset-0 rounded-full bg-primary/25 motion-safe:animate-ping [animation-duration:3s]" />
-            <span aria-hidden className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgb(217_119_6/0.35),transparent)]" />
+            <span aria-hidden className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgb(var(--fx-accent)/0.35),transparent)]" />
             <span className="lg-glass relative grid size-16 place-items-center rounded-full sm:size-24">
               <Image src="/logo/logo.png" alt="Wazelo" width={56} height={56} className="size-9 sm:size-14" />
             </span>
@@ -254,7 +254,7 @@ export function FeatureIndex() {
                               onPointerEnter={() => pick(f.href)}
                               onFocus={() => pick(f.href)}
                               className={`group relative grid size-10 place-items-center rounded-xl border bg-surface-container-lowest/90 backdrop-blur transition-[transform,border-color,box-shadow] duration-300 hover:scale-110 sm:size-12 ${focusRing} ${
-                                on ? "scale-110 border-primary/60 shadow-[0_0_24px_rgb(245_158_11/0.35)]" : "border-outline-variant"
+                                on ? "scale-110 border-primary/60 shadow-[0_0_24px_rgb(var(--fx-accent)/0.35)]" : "border-outline-variant"
                               }`}
                             >
                               <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${ring.tone}`} />

@@ -7,11 +7,11 @@ import SiteFooter from "@/components/Footer";
 import SiteNavbar from "@/components/Navbar";
 
 // ─── Stat Counter Card ────────────────────────────────────────────────────────
-function MetricCard({ value, suffix, label, active, color = "#ffb77d" }: { value: number; suffix: string; label: string; active: boolean; color?: string }) {
+function MetricCard({ value, suffix, label, active, color = "var(--c-primary-container)" }: { value: number; suffix: string; label: string; active: boolean; color?: string }) {
   const count = useCounter(value, 1800, active);
   return (
     <div style={{
-      background: "#1c1b1b", border: "1px solid rgba(255,183,125,0.12)",
+      background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-accent) / 0.12)",
       borderTop: `2px solid ${color}`,
       borderRadius: 12, padding: "28px 24px", textAlign: "center",
       flex: "1 1 160px",
@@ -19,7 +19,7 @@ function MetricCard({ value, suffix, label, active, color = "#ffb77d" }: { value
       <div style={{ fontSize: "clamp(32px,3.5vw,48px)", fontWeight: 900, letterSpacing: "-0.04em", color, fontFamily: "var(--font-geist-sans), sans-serif" }}>
         {count.toLocaleString("en-IN")}{suffix}
       </div>
-      <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", marginTop: 8, fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.04em" }}>{label}</div>
+      <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", marginTop: 8, fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.04em" }}>{label}</div>
     </div>
   );
 }
@@ -97,7 +97,7 @@ export default function CaseStudyPage() {
         padding: mobile ? "120px 20px 80px" : "120px 48px 80px",
         background: "var(--bg)", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgba(217,119,6,0.07) 0%,transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgb(var(--fx-accent) / 0.07) 0%,transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ maxWidth: 860, width: "100%", position: "relative", zIndex: 1 }}>
           {/* Breadcrumb */}
@@ -105,39 +105,39 @@ export default function CaseStudyPage() {
             display: "flex", alignItems: "center", gap: 8, marginBottom: 40,
             opacity: heroView.inView ? 1 : 0, transition: "opacity 0.8s ease",
           }}>
-            <a href="/" style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif" }}>Home</a>
-            <span style={{ color: "rgba(219,194,176,0.2)", fontSize: 12 }}>/</span>
-            <span style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Case Studies</span>
-            <span style={{ color: "rgba(219,194,176,0.2)", fontSize: 12 }}>/</span>
-            <span style={{ fontSize: 12, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>PropEdge Realty</span>
+            <a href="/" style={{ fontSize: 12, color: "var(--c-placeholder)", textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif" }}>Home</a>
+            <span style={{ color: "color-mix(in srgb, var(--c-on-surface-variant) 20%, transparent)", fontSize: 12 }}>/</span>
+            <span style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Case Studies</span>
+            <span style={{ color: "color-mix(in srgb, var(--c-on-surface-variant) 20%, transparent)", fontSize: 12 }}>/</span>
+            <span style={{ fontSize: 12, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif" }}>PropEdge Realty</span>
           </div>
 
           {/* Industry tag */}
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px",
-            borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
+            borderRadius: 100, background: "rgb(var(--fx-accent) / 0.08)", border: "1px solid rgb(var(--fx-accent) / 0.2)",
             marginBottom: 28,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(12px)",
             transition: "opacity 0.8s 0.05s ease, transform 0.8s 0.05s ease",
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Real Estate · Mumbai, India</span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--c-primary-container)", display: "inline-block" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-primary-container)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Real Estate · Mumbai, India</span>
           </div>
 
           <h1 style={{
             fontSize: mobile ? "clamp(32px,8vw,56px)" : "clamp(40px,5vw,72px)",
             fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.08,
-            color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>
             How PropEdge Realty<br />
-            <span style={{ color: "#ffb77d" }}>3× their lead conversions</span><br />
+            <span style={{ color: "var(--c-primary-container)" }}>3× their lead conversions</span><br />
             in 30 days
           </h1>
 
           <p style={{
-            fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.65)", lineHeight: 1.8,
+            fontSize: "clamp(15px,1.6vw,18px)", color: "var(--c-on-surface-variant)", lineHeight: 1.8,
             maxWidth: 620, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 48,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
@@ -152,17 +152,17 @@ export default function CaseStudyPage() {
             transition: "opacity 0.9s 0.3s ease, transform 0.9s 0.3s ease",
           }}>
             {[
-              { val: "↑ 340%", label: "Leads responded", color: "#ffb77d" },
-              { val: "↓ 87%", label: "Response time", color: "#a3defe" },
-              { val: "₹24L", label: "Revenue in month 1", color: "#86efac" },
-              { val: "3×", label: "Conversion rate", color: "#f9a8d4" },
+              { val: "↑ 340%", label: "Leads responded", color: "var(--c-primary-container)" },
+              { val: "↓ 87%", label: "Response time", color: "var(--c-info)" },
+              { val: "₹24L", label: "Revenue in month 1", color: "var(--c-code-green)" },
+              { val: "3×", label: "Conversion rate", color: "var(--c-code-pink)" },
             ].map(s => (
               <div key={s.label} style={{
-                background: "#1c1b1b", border: "1px solid rgba(255,183,125,0.1)",
+                background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-accent) / 0.1)",
                 borderRadius: 10, padding: "14px 20px", display: "flex", flexDirection: "column", gap: 4,
               }}>
                 <span style={{ fontSize: 22, fontWeight: 900, color: s.color, fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "-0.03em" }}>{s.val}</span>
-                <span style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", textTransform: "uppercase", letterSpacing: "0.07em" }}>{s.label}</span>
+                <span style={{ fontSize: 11, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", textTransform: "uppercase", letterSpacing: "0.07em" }}>{s.label}</span>
               </div>
             ))}
           </div>
@@ -170,12 +170,12 @@ export default function CaseStudyPage() {
       </section>
 
       {/* ── Company snapshot ──────────────────────────────────────────────── */}
-      <section style={{ background: "#131313", padding: mobile ? "48px 20px" : "56px 48px", borderTop: "1px solid rgba(255,183,125,0.06)" }}>
+      <section style={{ background: "var(--c-surface)", padding: mobile ? "48px 20px" : "56px 48px", borderTop: "1px solid rgb(var(--fx-accent) / 0.06)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{
             display: "grid",
             gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)",
-            gap: 1, background: "rgba(255,183,125,0.06)", borderRadius: 12, overflow: "hidden",
+            gap: 1, background: "rgb(var(--fx-accent) / 0.06)", borderRadius: 12, overflow: "hidden",
           }}>
             {[
               { label: "Industry", val: "Real Estate" },
@@ -183,9 +183,9 @@ export default function CaseStudyPage() {
               { label: "Location", val: "Mumbai, India" },
               { label: "Time to results", val: "30 days" },
             ].map(item => (
-              <div key={item.label} style={{ background: "#131313", padding: "24px 20px" }}>
-                <div style={{ fontSize: 11, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{item.label}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif" }}>{item.val}</div>
+              <div key={item.label} style={{ background: "var(--c-surface)", padding: "24px 20px" }}>
+                <div style={{ fontSize: 11, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{item.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{item.val}</div>
               </div>
             ))}
           </div>
@@ -200,11 +200,11 @@ export default function CaseStudyPage() {
             transition: "opacity 0.8s ease, transform 0.8s ease",
             marginBottom: 48,
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Challenge</span>
-            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Challenge</span>
+            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
               A thriving pipeline<br />hiding behind chaos
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
+            <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
               PropEdge Realty was generating strong inbound interest — Facebook ads, referrals, and IVR callbacks all funnelling into WhatsApp. But their internal processes couldn't keep up. Here's what we found in week one:
             </p>
           </div>
@@ -216,13 +216,13 @@ export default function CaseStudyPage() {
           }}>
             {challenges.map((c) => (
               <div key={c.title} style={{
-                background: "#1c1b1b", borderRadius: 12, padding: "24px",
-                border: "1px solid rgba(255,183,125,0.08)",
-                borderLeft: "3px solid rgba(239,68,68,0.5)",
+                background: "var(--c-surface-container-lowest)", borderRadius: 12, padding: "24px",
+                border: "1px solid rgb(var(--fx-accent) / 0.08)",
+                borderLeft: "3px solid color-mix(in srgb, var(--c-error) 50%, transparent)",
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 22, color: "rgba(239,68,68,0.7)", display: "block", marginBottom: 12 }}>{c.icon}</span>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>{c.title}</h3>
-                <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{c.desc}</p>
+                <span className="material-symbols-outlined" style={{ fontSize: 22, color: "color-mix(in srgb, var(--c-error) 70%, transparent)", display: "block", marginBottom: 12 }}>{c.icon}</span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>{c.title}</h3>
+                <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{c.desc}</p>
               </div>
             ))}
           </div>
@@ -230,40 +230,40 @@ export default function CaseStudyPage() {
       </section>
 
       {/* ── The Solution ──────────────────────────────────────────────────── */}
-      <section ref={solutionView.ref} style={{ background: "#131313", padding: mobile ? "80px 20px" : "100px 48px" }}>
+      <section ref={solutionView.ref} style={{ background: "var(--c-surface)", padding: mobile ? "80px 20px" : "100px 48px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{
             opacity: solutionView.inView ? 1 : 0, transform: solutionView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
             marginBottom: 48,
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Solution</span>
-            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Solution</span>
+            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
               Five Wazelo CRM features,<br />deployed in 72 hours
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
+            <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
               Onboarding took less than 3 days. No new hardware, no API procurement delay — PropEdge connected their existing WhatsApp Business number and went live immediately.
             </p>
           </div>
 
           <div style={{
             display: "flex", flexDirection: "column", gap: 0,
-            border: "1px solid rgba(255,183,125,0.08)", borderRadius: 12, overflow: "hidden",
+            border: "1px solid rgb(var(--fx-accent) / 0.08)", borderRadius: 12, overflow: "hidden",
             opacity: solutionView.inView ? 1 : 0, transform: solutionView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.15s ease, transform 0.9s 0.15s ease",
           }}>
             {solutions.map((s, i) => (
               <div key={s.title} style={{
                 display: "flex", gap: 20, padding: "24px 28px", alignItems: "flex-start",
-                background: i % 2 === 0 ? "#1c1b1b" : "#191918",
-                borderBottom: i < solutions.length - 1 ? "1px solid rgba(255,183,125,0.06)" : "none",
+                background: i % 2 === 0 ? "var(--c-surface-container-lowest)" : "var(--c-surface)",
+                borderBottom: i < solutions.length - 1 ? "1px solid rgb(var(--fx-accent) / 0.06)" : "none",
               }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,183,125,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#ffb77d" }}>{s.icon}</span>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgb(var(--fx-accent) / 0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)" }}>{s.icon}</span>
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>{s.title}</h3>
-                  <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{s.desc}</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>{s.title}</h3>
+                  <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -279,11 +279,11 @@ export default function CaseStudyPage() {
             transition: "opacity 0.8s ease, transform 0.8s ease",
             marginBottom: 48,
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Results</span>
-            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>The Results</span>
+            <h2 style={{ fontSize: mobile ? "clamp(26px,6vw,40px)" : "clamp(28px,3vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
               30 days. Measurable.<br />Undeniable.
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
+            <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 640 }}>
               At the end of month one, PropEdge ran a full audit comparing their pre-Wazelo CRM metrics against post-implementation numbers. The results were consistent across every metric that matters.
             </p>
           </div>
@@ -294,10 +294,10 @@ export default function CaseStudyPage() {
             opacity: resultsView.inView ? 1 : 0, transform: resultsView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.15s ease, transform 0.9s 0.15s ease",
           }}>
-            <MetricCard value={340} suffix="%" label="More leads responded to" active={resultsView.inView} color="#ffb77d" />
-            <MetricCard value={87} suffix="%" label="Faster first response" active={resultsView.inView} color="#a3defe" />
-            <MetricCard value={24} suffix="L" label="Revenue in month 1 (₹)" active={resultsView.inView} color="#86efac" />
-            <MetricCard value={94} suffix="%" label="Lead response rate" active={resultsView.inView} color="#f9a8d4" />
+            <MetricCard value={340} suffix="%" label="More leads responded to" active={resultsView.inView} color="var(--c-primary-container)" />
+            <MetricCard value={87} suffix="%" label="Faster first response" active={resultsView.inView} color="var(--c-info)" />
+            <MetricCard value={24} suffix="L" label="Revenue in month 1 (₹)" active={resultsView.inView} color="var(--c-code-green)" />
+            <MetricCard value={94} suffix="%" label="Lead response rate" active={resultsView.inView} color="var(--c-code-pink)" />
           </div>
 
           {/* Before / After comparison */}
@@ -305,8 +305,8 @@ export default function CaseStudyPage() {
             display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 16,
             opacity: resultsView.inView ? 1 : 0, transition: "opacity 0.9s 0.25s ease",
           }}>
-            <div style={{ background: "#1c1b1b", borderRadius: 12, padding: "28px", border: "1px solid rgba(239,68,68,0.15)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(239,68,68,0.7)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>Before Wazelo CRM</div>
+            <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 12, padding: "28px", border: "1px solid color-mix(in srgb, var(--c-error) 15%, transparent)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "color-mix(in srgb, var(--c-error) 70%, transparent)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>Before Wazelo CRM</div>
               {[
                 ["Avg. first response time", "4.2 hours"],
                 ["Lead response rate", "62%"],
@@ -314,14 +314,14 @@ export default function CaseStudyPage() {
                 ["Follow-up consistency", "Ad hoc"],
                 ["Pipeline visibility", "None"],
               ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,183,125,0.06)" }}>
-                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{k}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(239,68,68,0.8)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{v}</span>
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)" }}>
+                  <span style={{ fontSize: 13, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{k}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "color-mix(in srgb, var(--c-error) 80%, transparent)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{v}</span>
                 </div>
               ))}
             </div>
-            <div style={{ background: "#1c1b1b", borderRadius: 12, padding: "28px", border: "1px solid rgba(134,239,172,0.15)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(134,239,172,0.8)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>After Wazelo CRM</div>
+            <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 12, padding: "28px", border: "1px solid color-mix(in srgb, var(--c-success) 15%, transparent)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "color-mix(in srgb, var(--c-success) 80%, transparent)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>After Wazelo CRM</div>
               {[
                 ["Avg. first response time", "< 30 sec"],
                 ["Lead response rate", "94%"],
@@ -329,9 +329,9 @@ export default function CaseStudyPage() {
                 ["Follow-up consistency", "Automated"],
                 ["Pipeline visibility", "Real-time"],
               ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,183,125,0.06)" }}>
-                  <span style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{k}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(134,239,172,0.8)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{v}</span>
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)" }}>
+                  <span style={{ fontSize: 13, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{k}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "color-mix(in srgb, var(--c-success) 80%, transparent)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{v}</span>
                 </div>
               ))}
             </div>
@@ -340,30 +340,30 @@ export default function CaseStudyPage() {
       </section>
 
       {/* ── Quote ─────────────────────────────────────────────────────────── */}
-      <section ref={quoteView.ref} style={{ background: "#131313", padding: mobile ? "80px 20px" : "100px 48px", borderTop: "1px solid rgba(255,183,125,0.06)" }}>
+      <section ref={quoteView.ref} style={{ background: "var(--c-surface)", padding: mobile ? "80px 20px" : "100px 48px", borderTop: "1px solid rgb(var(--fx-accent) / 0.06)" }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-            <div style={{ width: 3, flexShrink: 0, background: "linear-gradient(to bottom,#ffb77d,transparent)", borderRadius: 4, alignSelf: "stretch" }} />
+            <div style={{ width: 3, flexShrink: 0, background: "linear-gradient(to bottom,var(--c-primary-container),transparent)", borderRadius: 4, alignSelf: "stretch" }} />
             <div style={{
               opacity: quoteView.inView ? 1 : 0, transform: quoteView.inView ? "translateX(0)" : "translateX(-20px)",
               transition: "opacity 0.9s ease, transform 0.9s ease",
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 44, color: "rgba(255,183,125,0.15)", display: "block", marginBottom: 20 }}>format_quote</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 44, color: "rgb(var(--fx-accent) / 0.15)", display: "block", marginBottom: 20 }}>format_quote</span>
               <blockquote style={{
                 fontStyle: "italic", fontWeight: 300,
                 fontSize: mobile ? "clamp(18px,5vw,26px)" : "clamp(20px,2.2vw,32px)",
                 lineHeight: 1.45, letterSpacing: "-0.02em",
-                color: "rgba(229,226,225,0.88)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 32,
+                color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 32,
               }}>
                 "We went from missing 40% of our leads to a 94% response rate in under 3 weeks. The shared inbox alone changed how our whole team works. Wazelo CRM is now non-negotiable for us."
               </blockquote>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#2a2a2a", border: "2px solid rgba(255,183,125,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span className="material-symbols-outlined" style={{ color: "#a38c7c", fontSize: 24 }}>person</span>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--c-surface-container-high)", border: "2px solid rgb(var(--fx-accent) / 0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span className="material-symbols-outlined" style={{ color: "var(--c-placeholder)", fontSize: 24 }}>person</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 2 }}>Rajesh M.</div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-geist-sans), sans-serif" }}>Head of Sales, PropEdge Realty</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 2 }}>Rajesh M.</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-geist-sans), sans-serif" }}>Head of Sales, PropEdge Realty</div>
                 </div>
               </div>
             </div>
@@ -374,20 +374,20 @@ export default function CaseStudyPage() {
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section ref={ctaView.ref} style={{
         background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.08)",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.08)",
       }}>
         <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{
             fontSize: mobile ? "clamp(26px,7vw,44px)" : "clamp(30px,3.5vw,52px)",
             fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
-            Write your own<br /><span style={{ color: "#ffb77d" }}>success story.</span>
+            Write your own<br /><span style={{ color: "var(--c-primary-container)" }}>success story.</span>
           </h2>
           <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
+            fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.7,
             fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease",
           }}>

@@ -18,27 +18,27 @@ const tagFilters: TagFilter[] = ["All", "Hot Lead", "Nurture", "Customer"];
 // Deterministic avatar gradient based on first letter
 function avatarGradient(name: string): string {
   const gradients: Record<string, string> = {
-    A: "linear-gradient(135deg, #554336, #d97707)",
-    V: "linear-gradient(135deg, #f59e0b, #fbbf24)",
-    S: "linear-gradient(135deg, #10b981, #34d399)",
-    K: "linear-gradient(135deg, #ef4444, #f87171)",
+    A: "linear-gradient(135deg, var(--c-outline-variant), var(--c-primary))",
+    V: "linear-gradient(135deg, var(--c-primary-container), var(--c-primary-container))",
+    S: "linear-gradient(135deg, #10b981, var(--c-success))",
+    K: "linear-gradient(135deg, #ef4444, var(--c-error))",
     D: "linear-gradient(135deg, #8b5cf6, #a78bfa)",
-    R: "linear-gradient(135deg, #06b6d4, #67e8f9)",
+    R: "linear-gradient(135deg, #06b6d4, var(--c-code-cyan))",
   };
-  return gradients[name[0]] ?? "linear-gradient(135deg, #554336, #d97707)";
+  return gradients[name[0]] ?? "linear-gradient(135deg, var(--c-outline-variant), var(--c-primary))";
 }
 
 function scoreStyle(score: number): React.CSSProperties {
-  if (score >= 70) return { background: "rgba(52,211,153,0.12)", color: "#34d399" };
-  if (score >= 40) return { background: "rgba(251,191,36,0.12)", color: "#fbbf24" };
-  return { background: "rgba(239,68,68,0.12)", color: "#ef4444" };
+  if (score >= 70) return { background: "color-mix(in srgb, var(--c-success) 12%, transparent)", color: "var(--c-success)" };
+  if (score >= 40) return { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)" };
+  return { background: "color-mix(in srgb, var(--c-error) 12%, transparent)", color: "#ef4444" };
 }
 
 function tagBadgeStyle(tag: string): React.CSSProperties {
   const map: Record<string, React.CSSProperties> = {
-    "Hot Lead": { background: "rgba(255,183,125,0.12)", color: "#ffb77d", border: "1px solid rgba(255,183,125,0.3)" },
-    "Nurture":  { background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" },
-    "Customer": { background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" },
+    "Hot Lead": { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)", border: "1px solid rgb(var(--fx-accent) / 0.3)" },
+    "Nurture":  { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)", border: "1px solid rgb(var(--fx-accent) / 0.25)" },
+    "Customer": { background: "color-mix(in srgb, var(--c-success) 12%, transparent)", color: "var(--c-success)", border: "1px solid color-mix(in srgb, var(--c-success) 25%, transparent)" },
   };
   return map[tag] ?? {};
 }
@@ -63,10 +63,10 @@ function ContactsMockup() {
     <div>
       {/* Section header */}
       <div style={{ textAlign: "center", marginBottom: 0 }}>
-        <p style={{ fontSize: 11, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+        <p style={{ fontSize: 11, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
           See it in action
         </p>
-        <h3 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: 0 }}>
+        <h3 style={{ fontSize: 32, fontWeight: 700, color: "var(--c-on-surface)", margin: 0 }}>
           The contacts dashboard, live.
         </h3>
       </div>
@@ -74,8 +74,8 @@ function ContactsMockup() {
       {/* Mockup container */}
       <div style={{
         borderRadius: 16,
-        background: "#1c1b1b",
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        background: "var(--c-surface-container-lowest)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         padding: 28,
         marginTop: 32,
       }}>
@@ -86,12 +86,12 @@ function ContactsMockup() {
             type="text"
             placeholder="Search contacts..."
             style={{
-              background: "#2a2a2a",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--c-surface-container-high)",
+              border: "1px solid rgb(var(--fx-ink) / 0.08)",
               borderRadius: 8,
               padding: "8px 14px",
               fontSize: 13,
-              color: "#e5e2e1",
+              color: "var(--c-on-surface)",
               flex: 1,
               minWidth: 160,
               outline: "none",
@@ -106,9 +106,9 @@ function ContactsMockup() {
                 borderRadius: 20,
                 fontSize: 12,
                 cursor: "pointer",
-                border: activeTag === tag ? "1px solid #ffb77d" : "1px solid rgba(255,255,255,0.1)",
-                background: activeTag === tag ? "#ffb77d" : "transparent",
-                color: activeTag === tag ? "#4d2600" : "rgba(219,194,176,0.6)",
+                border: activeTag === tag ? "1px solid var(--c-primary-container)" : "1px solid rgb(var(--fx-ink) / 0.1)",
+                background: activeTag === tag ? "var(--c-primary-container)" : "transparent",
+                color: activeTag === tag ? "var(--c-on-primary)" : "var(--c-on-surface-variant)",
                 transition: "all 0.15s ease",
               }}
             >
@@ -125,11 +125,11 @@ function ContactsMockup() {
                 {["Name", "Phone", "Tag", "Score", "Last Active"].map((h) => (
                   <th key={h} style={{
                     fontSize: 11,
-                    color: "rgba(219,194,176,0.35)",
+                    color: "var(--c-placeholder)",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
                     paddingBottom: 10,
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
                     textAlign: "left",
                     fontWeight: 600,
                     paddingRight: 16,
@@ -143,7 +143,7 @@ function ContactsMockup() {
               {filtered.map((contact) => (
                 <tr key={contact.name}>
                   {/* Name + avatar */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{
                         width: 28,
@@ -155,20 +155,20 @@ function ContactsMockup() {
                         justifyContent: "center",
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#fff",
+                        color: "var(--c-on-surface)",
                         flexShrink: 0,
                       }}>
                         {contact.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <span style={{ fontSize: 14, color: "#fff", whiteSpace: "nowrap" }}>{contact.name}</span>
+                      <span style={{ fontSize: 14, color: "var(--c-on-surface)", whiteSpace: "nowrap" }}>{contact.name}</span>
                     </div>
                   </td>
                   {/* Phone */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
-                    <span style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", whiteSpace: "nowrap" }}>{contact.phone}</span>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
+                    <span style={{ fontSize: 13, color: "var(--c-on-surface-variant)", whiteSpace: "nowrap" }}>{contact.phone}</span>
                   </td>
                   {/* Tag */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
                     <span style={{
                       fontSize: 11,
                       padding: "3px 10px",
@@ -180,7 +180,7 @@ function ContactsMockup() {
                     </span>
                   </td>
                   {/* Score */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
                     <span style={{
                       fontSize: 12,
                       padding: "2px 8px",
@@ -192,8 +192,8 @@ function ContactsMockup() {
                     </span>
                   </td>
                   {/* Last active */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.4)" }}>{contact.last}</span>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)" }}>
+                    <span style={{ fontSize: 12, color: "var(--c-placeholder)" }}>{contact.last}</span>
                   </td>
                 </tr>
               ))}
@@ -202,7 +202,7 @@ function ContactsMockup() {
         </div>
 
         {/* Row count */}
-        <p style={{ fontSize: 13, color: "rgba(219,194,176,0.35)", marginTop: 14, marginBottom: 0 }}>
+        <p style={{ fontSize: 13, color: "var(--c-placeholder)", marginTop: 14, marginBottom: 0 }}>
           Showing {filtered.length} contact{filtered.length !== 1 ? "s" : ""}
         </p>
 
@@ -214,7 +214,7 @@ function ContactsMockup() {
 const data: FeatureDetailData = {
   slug: "contacts",
   tag: "Contacts CRM",
-  heroTitle: "Every lead.<br /><span style=\"color:#ffb77d\">Always organised.</span>",
+  heroTitle: "Every lead.<br /><span style=\"color:var(--c-primary-container)\">Always organised.</span>",
   heroSubtitle: "Tag, segment, search, and manage all your WhatsApp contacts and customers in one place. Full conversation history. Zero spreadsheets.",
   heroScreen: "/screens/05-contacts-management.png",
   overviewTitle: "Your contacts are your business.",

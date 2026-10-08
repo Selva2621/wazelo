@@ -122,7 +122,7 @@ export function StorySection() {
                       onClick={() => goTo(i)}
                       aria-current={on ? "step" : undefined}
                       className={`group relative w-full overflow-hidden rounded-2xl px-4 py-3 text-left transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container ${
-                        on ? "lg-glass" : "hover:bg-white/[0.03]"
+                        on ? "lg-glass" : "hover:bg-ink/[0.03]"
                       }`}
                     >
                       <span className="flex items-baseline gap-3">

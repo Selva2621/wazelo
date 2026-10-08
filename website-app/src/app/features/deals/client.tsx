@@ -4,18 +4,18 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 
 // ─── KanbanMockup ─────────────────────────────────────────────────────────────
 const columns = [
-  { name: "Lead", color: "#94a3b8", total: "₹73,500", deals: [
+  { name: "Lead", color: "var(--c-placeholder)", total: "₹73,500", deals: [
     { id: 0, name: "Ananya Sharma", value: "₹45,000", owner: "PS", days: "Day 2" },
     { id: 1, name: "Rohan Verma",   value: "₹28,500", owner: "RK", days: "Day 5" },
   ]},
-  { name: "Qualified", color: "#d97707", total: "₹1,95,000", deals: [
+  { name: "Qualified", color: "var(--c-primary)", total: "₹1,95,000", deals: [
     { id: 2, name: "Vikram Patel",  value: "₹1,20,000", owner: "MJ", days: "Day 8" },
     { id: 3, name: "Meera Joshi",   value: "₹75,000",   owner: "PS", days: "Day 3" },
   ]},
-  { name: "Proposal", color: "#f59e0b", total: "₹2,50,000", deals: [
+  { name: "Proposal", color: "var(--c-primary-container)", total: "₹2,50,000", deals: [
     { id: 4, name: "Karan Mehta",   value: "₹2,50,000", owner: "AT", days: "Day 12" },
   ]},
-  { name: "Won", color: "#22c55e", total: "₹2,40,000", deals: [
+  { name: "Won", color: "var(--c-success)", total: "₹2,40,000", deals: [
     { id: 5, name: "Sneha Rao",     value: "₹90,000",   owner: "RK", days: "Day 18" },
     { id: 6, name: "Divya Nair",    value: "₹1,50,000", owner: "MJ", days: "Day 7"  },
   ]},
@@ -33,9 +33,9 @@ const dealDetails = [
 
 // Gradient pool for owner avatars
 const gradients = [
-  "linear-gradient(135deg,#554336,#d97707)",
-  "linear-gradient(135deg,#f59e0b,#fbbf24)",
-  "linear-gradient(135deg,#22c55e,#4ade80)",
+  "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
+  "linear-gradient(135deg,var(--c-primary-container),var(--c-primary-container))",
+  "linear-gradient(135deg,var(--c-success),var(--c-code-green))",
   "linear-gradient(135deg,#ec4899,#f472b6)",
 ];
 const ownerGrad: Record<string, string> = {
@@ -66,14 +66,14 @@ function KanbanMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#ffb77d",
+          textTransform: "uppercase", color: "var(--c-primary-container)",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-          color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
+          color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your pipeline, always in view.
         </h2>
@@ -81,24 +81,24 @@ function KanbanMockup() {
 
       {/* Mockup container */}
       <div style={{
-        background: "#1c1b1b",
+        background: "var(--c-surface-container-lowest)",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         overflow: "hidden",
         marginTop: 32,
         position: "relative",
       }}>
         {/* App chrome bar */}
         <div style={{
-          background: "#131313",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--c-surface)",
+          borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
           padding: "12px 18px",
           display: "flex", alignItems: "center", gap: 8,
         }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: "rgba(219,194,176,0.3)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
+          <span style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
             Deals Pipeline — Wazelo CRM
           </span>
         </div>
@@ -114,17 +114,17 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: col.color, display: "inline-block", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{col.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{col.name}</span>
                     <span style={{
                       marginLeft: "auto",
-                      background: "rgba(255,255,255,0.07)", borderRadius: 10,
+                      background: "rgb(var(--fx-ink) / 0.07)", borderRadius: 10,
                       padding: "1px 8px", fontSize: 11,
-                      color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
+                      color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
                     }}>
                       {col.deals.length}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif", paddingLeft: 17 }}>
+                  <div style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", paddingLeft: 17 }}>
                     {col.total}
                   </div>
                 </div>
@@ -138,19 +138,19 @@ function KanbanMockup() {
                         key={deal.id}
                         onClick={() => setSelectedDeal(isSelected ? null : deal.id)}
                         style={{
-                          background: isSelected ? "rgba(255,183,125,0.12)" : "#2a2a2a",
+                          background: isSelected ? "rgb(var(--fx-accent) / 0.12)" : "var(--c-surface-container-high)",
                           borderRadius: 10, padding: "12px 14px", cursor: "pointer",
-                          border: isSelected ? "1px solid #ffb77d" : "1px solid rgba(255,255,255,0.06)",
+                          border: isSelected ? "1px solid var(--c-primary-container)" : "1px solid rgb(var(--fx-ink) / 0.06)",
                           transition: "background 0.15s, border-color 0.15s",
                         }}
                         onMouseEnter={e => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
+                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "rgb(var(--fx-ink) / 0.04)";
                         }}
                         onMouseLeave={e => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#2a2a2a";
+                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "var(--c-surface-container-high)";
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>
                           {deal.name}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: col.color, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>
@@ -160,18 +160,18 @@ function KanbanMockup() {
                           {/* Owner avatar */}
                           <div style={{
                             width: 22, height: 22, borderRadius: "50%",
-                            background: ownerGrad[deal.owner] ?? "linear-gradient(135deg,#554336,#d97707)",
+                            background: ownerGrad[deal.owner] ?? "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 9, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif",
+                            fontSize: 9, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif",
                             flexShrink: 0,
                           }}>
                             {deal.owner}
                           </div>
                           {/* Days badge */}
                           <span style={{
-                            background: "rgba(255,255,255,0.06)", borderRadius: 10,
+                            background: "rgb(var(--fx-ink) / 0.06)", borderRadius: 10,
                             padding: "2px 8px", fontSize: 10,
-                            color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif",
+                            color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif",
                           }}>
                             {deal.days}
                           </span>
@@ -187,13 +187,13 @@ function KanbanMockup() {
           {/* Detail panel */}
           <div style={{
             width: 240, flexShrink: 0,
-            background: "#131313",
-            borderLeft: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--c-surface)",
+            borderLeft: "1px solid rgb(var(--fx-ink) / 0.06)",
             padding: "20px 18px",
           }}>
             {selected === null ? (
               <div style={{
-                fontSize: 12, color: "rgba(219,194,176,0.3)",
+                fontSize: 12, color: "var(--c-placeholder)",
                 fontFamily: "var(--font-geist-sans), sans-serif", textAlign: "center", paddingTop: 40,
               }}>
                 ↑ Click a deal to view details
@@ -206,7 +206,7 @@ function KanbanMockup() {
                   style={{
                     position: "absolute", top: 0, right: 0,
                     background: "none", border: "none", cursor: "pointer",
-                    fontSize: 16, color: "rgba(219,194,176,0.4)", lineHeight: 1,
+                    fontSize: 16, color: "var(--c-placeholder)", lineHeight: 1,
                     padding: 0,
                   }}
                 >
@@ -214,7 +214,7 @@ function KanbanMockup() {
                 </button>
 
                 {/* Deal Details heading */}
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
                   Deal Details
                 </div>
 
@@ -223,7 +223,7 @@ function KanbanMockup() {
                   <div style={{ marginBottom: 16 }}>
                     <span style={{
                       fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                      textTransform: "uppercase", color: "#ffb77d",
+                      textTransform: "uppercase", color: "var(--c-primary-container)",
                       fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 4,
                     }}>
                       STAGE
@@ -243,12 +243,12 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 16 }}>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "#ffb77d",
+                    textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     CONVERSATION
                   </span>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
                     {selected.conv}
                   </div>
                 </div>
@@ -257,15 +257,15 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 16 }}>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "#ffb77d",
+                    textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     ACTIVITY
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {selected.activity.map((item, i) => (
-                      <div key={i} style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
-                        <span style={{ color: "rgba(219,194,176,0.3)", flexShrink: 0 }}>•</span>
+                      <div key={i} style={{ fontSize: 11, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
+                        <span style={{ color: "var(--c-placeholder)", flexShrink: 0 }}>•</span>
                         {item}
                       </div>
                     ))}
@@ -276,12 +276,12 @@ function KanbanMockup() {
                 <div>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "#ffb77d",
+                    textTransform: "uppercase", color: "var(--c-primary-container)",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
                     CLOSE DATE
                   </span>
-                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
+                  <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
                     {selected.closeDate}
                   </div>
                 </div>
@@ -299,7 +299,7 @@ function KanbanMockup() {
 const data: FeatureDetailData = {
   slug: "deals",
   tag: "Deals Pipeline",
-  heroTitle: "Your pipeline.<br /><span style=\"color:#ffb77d\">Always full.</span>",
+  heroTitle: "Your pipeline.<br /><span style=\"color:var(--c-primary-container)\">Always full.</span>",
   heroSubtitle: "A full CRM-style sales pipeline built into your WhatsApp workflow. Track deal stages, values, close dates, and owners — without switching tools.",
   heroScreen: "",
   overviewTitle: "Stop losing deals in DMs.",

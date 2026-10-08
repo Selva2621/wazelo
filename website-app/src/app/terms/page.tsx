@@ -8,7 +8,7 @@ import SiteNavbar from "@/components/Navbar";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 48 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16, letterSpacing: "-0.02em" }}>{title}</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16, letterSpacing: "-0.02em" }}>{title}</h2>
       {children}
     </div>
   );
@@ -16,13 +16,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>
+    <p style={{ fontSize: 15, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>
   );
 }
 
 function Li({ children }: { children: React.ReactNode }) {
   return (
-    <li style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8, paddingLeft: 4 }}>{children}</li>
+    <li style={{ fontSize: 15, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8, paddingLeft: 4 }}>{children}</li>
   );
 }
 
@@ -37,20 +37,20 @@ export default function TermsPage() {
 
       <main style={{ background: "var(--bg)", paddingTop: 96 }}>
         {/* Hero */}
-        <div style={{ background: "#131313", borderBottom: "1px solid rgba(255,183,125,0.06)", padding: mobile ? "48px 20px" : "64px 48px" }}>
+        <div style={{ background: "var(--c-surface)", borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)", padding: mobile ? "48px 20px" : "64px 48px" }}>
           <div style={{ maxWidth: 800, margin: "0 auto" }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px",
-              borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
+              borderRadius: 100, background: "rgb(var(--fx-accent) / 0.08)", border: "1px solid rgb(var(--fx-accent) / 0.2)",
               marginBottom: 20,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Legal</span>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--c-primary-container)", display: "inline-block" }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-primary-container)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Legal</span>
             </div>
-            <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
+            <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
               Terms of Service
             </h1>
-            <p style={{ fontSize: 14, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
+            <p style={{ fontSize: 14, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
               Last updated: April 19, 2025 · Effective for all Wazelo CRM users
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function TermsPage() {
             <ul style={{ paddingLeft: 20, marginBottom: 14 }}>
               <Li>Maintaining the confidentiality of your account credentials</Li>
               <Li>All activity that occurs under your account</Li>
-              <Li>Notifying us immediately of any unauthorised access at <a href="mailto:support@wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>support@wazelo.in</a></Li>
+              <Li>Notifying us immediately of any unauthorised access at <a href="mailto:support@wazelo.in" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>support@wazelo.in</a></Li>
             </ul>
             <P>One account may not be shared across multiple organisations. Each organisation must maintain its own account.</P>
           </Section>
@@ -121,7 +121,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="9. Data & Privacy">
-            <P>Your use of the Service is also governed by our <a href="/privacy" style={{ color: "#ffb77d", textDecoration: "none" }}>Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you consent to the practices described therein.</P>
+            <P>Your use of the Service is also governed by our <a href="/privacy" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you consent to the practices described therein.</P>
           </Section>
 
           <Section title="10. Limitation of Liability">
@@ -148,10 +148,10 @@ export default function TermsPage() {
 
           <Section title="15. Contact Us">
             <P>For questions about these Terms, contact us at:</P>
-            <div style={{ background: "#1c1b1b", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 10, padding: "20px 24px" }}>
-              <p style={{ fontSize: 14, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4, fontWeight: 600 }}>Wazelo CRM</p>
-              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4 }}>Email: <a href="mailto:legal@wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>legal@wazelo.in</a></p>
-              <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Website: <a href="https://wazelo.in" style={{ color: "#ffb77d", textDecoration: "none" }}>wazelo.in</a></p>
+            <div style={{ background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-accent) / 0.1)", borderRadius: 10, padding: "20px 24px" }}>
+              <p style={{ fontSize: 14, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4, fontWeight: 600 }}>Wazelo CRM</p>
+              <p style={{ fontSize: 14, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 4 }}>Email: <a href="mailto:legal@wazelo.in" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>legal@wazelo.in</a></p>
+              <p style={{ fontSize: 14, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Website: <a href="https://wazelo.in" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>wazelo.in</a></p>
             </div>
           </Section>
 

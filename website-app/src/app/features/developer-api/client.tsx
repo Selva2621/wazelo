@@ -128,12 +128,12 @@ function ApiMockup() {
 
   const methodStyle = (method: string): React.CSSProperties =>
     method === "POST"
-      ? { background: "#22c55e1a", color: "#22c55e", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }
+      ? { background: "#22c55e1a", color: "var(--c-success)", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }
       : { background: "#3b82f61a", color: "#3b82f6", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 };
 
   const methodStyleLarge = (method: string): React.CSSProperties =>
     method === "POST"
-      ? { background: "#22c55e1a", color: "#22c55e", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }
+      ? { background: "#22c55e1a", color: "var(--c-success)", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }
       : { background: "#3b82f61a", color: "#3b82f6", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" };
 
   const fullResponse = endpoints[activeTab].response;
@@ -142,24 +142,24 @@ function ApiMockup() {
   return (
     <div>
       <div style={{ textAlign: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#ffb77d" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--c-primary-container)" }}>
           See it in action
         </span>
       </div>
-      <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "#e5e2e1", marginBottom: 0 }}>
+      <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 0 }}>
         REST API built for developers.
       </h2>
 
-      <div style={{ background: "#0e0e0e", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", overflow: "hidden", marginTop: 32 }}>
+      <div style={{ background: "var(--c-surface)", borderRadius: 16, boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)", overflow: "hidden", marginTop: 32 }}>
         {/* Chrome bar */}
-        <div style={{ background: "#0e0e0e", height: 36, display: "flex", alignItems: "center", paddingLeft: 14, gap: 6 }}>
+        <div style={{ background: "var(--c-surface)", height: 36, display: "flex", alignItems: "center", paddingLeft: 14, gap: 6 }}>
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", background: "#131313", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
+        <div style={{ display: "flex", background: "var(--c-surface)", borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)", overflowX: "auto" }}>
           {endpoints.map((ep, i) => {
             const isActive = activeTab === i;
             return (
@@ -174,9 +174,9 @@ function ApiMockup() {
                   alignItems: "center",
                   gap: 8,
                   whiteSpace: "nowrap",
-                  background: isActive ? "#1c1b1b" : "transparent",
-                  borderBottom: isActive ? "2px solid #ffb77d" : "2px solid transparent",
-                  color: isActive ? "#fff" : "rgba(219,194,176,0.4)",
+                  background: isActive ? "var(--c-surface-container-lowest)" : "transparent",
+                  borderBottom: isActive ? "2px solid var(--c-primary-container)" : "2px solid transparent",
+                  color: isActive ? "var(--c-on-surface)" : "var(--c-placeholder)",
                   transition: "background 0.15s, color 0.15s",
                 }}
               >
@@ -190,20 +190,20 @@ function ApiMockup() {
         {/* Code area */}
         <div style={{ display: "flex", minHeight: 320 }}>
           {/* Left: Request */}
-          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(219,194,176,0.4)" }}>
+              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--c-placeholder)" }}>
                 Request
               </span>
               <button
                 onClick={handleCopy}
                 style={{
-                  background: "#2a2a2a",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "var(--c-surface-container-high)",
+                  border: "1px solid rgb(var(--fx-ink) / 0.1)",
                   borderRadius: 6,
                   padding: "4px 10px",
                   fontSize: 11,
-                  color: copied ? "#22c55e" : "rgba(219,194,176,0.6)",
+                  color: copied ? "var(--c-success)" : "var(--c-on-surface-variant)",
                   cursor: "pointer",
                   transition: "color 0.2s",
                 }}
@@ -214,11 +214,11 @@ function ApiMockup() {
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontFamily: "monospace" }}>
               <span style={methodStyleLarge(endpoints[activeTab].method)}>{endpoints[activeTab].method}</span>
-              <span style={{ fontSize: 14, color: "#e5e2e1" }}>{endpoints[activeTab].path}</span>
+              <span style={{ fontSize: 14, color: "var(--c-on-surface)" }}>{endpoints[activeTab].path}</span>
             </div>
 
-            <div style={{ background: "#0e0e0e", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
-              <pre style={{ margin: 0, color: "#86efac", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            <div style={{ background: "var(--c-surface)", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
+              <pre style={{ margin: 0, color: "var(--c-code-green)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                 {endpoints[activeTab].request.split("\n").map((line, li) => {
                   const keyMatch = line.match(/^(\s*)("[\w_]+")(\s*:\s*)(.*)$/);
                   if (keyMatch) {
@@ -227,15 +227,15 @@ function ApiMockup() {
                     return (
                       <span key={li}>
                         {indent}
-                        <span style={{ color: "#7dd3fc" }}>{key}</span>
-                        <span style={{ color: "#94a3b8" }}>{colon}</span>
-                        <span style={{ color: isNumOrBool ? "#f9a8d4" : "#86efac" }}>{rest}</span>
+                        <span style={{ color: "var(--c-code-cyan)" }}>{key}</span>
+                        <span style={{ color: "var(--c-placeholder)" }}>{colon}</span>
+                        <span style={{ color: isNumOrBool ? "var(--c-code-pink)" : "var(--c-code-green)" }}>{rest}</span>
                         {"\n"}
                       </span>
                     );
                   }
                   return (
-                    <span key={li} style={{ color: "#94a3b8" }}>
+                    <span key={li} style={{ color: "var(--c-placeholder)" }}>
                       {line}
                       {"\n"}
                     </span>
@@ -248,13 +248,13 @@ function ApiMockup() {
           {/* Right: Response */}
           <div style={{ flex: 1, padding: "20px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(219,194,176,0.4)" }}>
+              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--c-placeholder)" }}>
                 Response
               </span>
               <span style={{
-                background: "rgba(34,197,94,0.1)",
-                color: "#22c55e",
-                border: "1px solid rgba(34,197,94,0.2)",
+                background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+                color: "var(--c-success)",
+                border: "1px solid color-mix(in srgb, var(--c-success) 20%, transparent)",
                 borderRadius: 6,
                 padding: "3px 8px",
                 fontSize: 11,
@@ -264,15 +264,15 @@ function ApiMockup() {
               </span>
             </div>
 
-            <div style={{ background: "#0e0e0e", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
-              <pre style={{ margin: 0, color: "#86efac", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            <div style={{ background: "var(--c-surface)", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
+              <pre style={{ margin: 0, color: "var(--c-code-green)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                 {displayedResponse}
                 {isTyping && (
                   <span style={{
                     display: "inline-block",
                     width: 7,
                     height: 14,
-                    background: "#ffb77d",
+                    background: "var(--c-primary-container)",
                     marginLeft: 2,
                     verticalAlign: "middle",
                     animation: "cursorBlink 1s ease-in-out infinite",
@@ -290,7 +290,7 @@ function ApiMockup() {
 const data: FeatureDetailData = {
   slug: "developer-api",
   tag: "Developer API",
-  heroTitle: "Build anything<br /><span style=\"color:#ffb77d\">on top of Wazelo.</span>",
+  heroTitle: "Build anything<br /><span style=\"color:var(--c-primary-container)\">on top of Wazelo.</span>",
   heroSubtitle: "Full REST API, webhook system, and API key management for teams that need to integrate Wazelo CRM with their own systems, automations, or data pipelines.",
   heroScreen: "",
   overviewTitle: "Your data, your way.",

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <html lang="en" className="dark">
-      <body style={{ margin: 0, background: "#131313", fontFamily: "sans-serif" }}>
+      <body style={{ margin: 0, background: "var(--c-surface)", fontFamily: "sans-serif" }}>
         <div
           style={{
             minHeight: "100vh",
@@ -20,7 +20,7 @@ export default function NotFound() {
             justifyContent: "center",
             padding: "40px 24px",
             textAlign: "center",
-            color: "#fff",
+            color: "var(--c-on-surface)",
           }}
         >
           {/* Logo */}
@@ -31,18 +31,18 @@ export default function NotFound() {
                   width: "40px",
                   height: "40px",
                   borderRadius: "10px",
-                  background: "#ffb77d",
+                  background: "var(--c-primary-container)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "20px",
                   fontWeight: "bold",
-                  color: "#131313",
+                  color: "var(--c-surface)",
                 }}
               >
                 W
               </div>
-              <span style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+              <span style={{ fontSize: "20px", fontWeight: "700", color: "var(--c-on-surface)" }}>
                 Wazelo CRM
               </span>
             </div>
@@ -54,7 +54,7 @@ export default function NotFound() {
               fontSize: "120px",
               fontWeight: "900",
               lineHeight: "1",
-              color: "#ffb77d",
+              color: "var(--c-primary-container)",
               marginBottom: "16px",
               letterSpacing: "-0.05em",
             }}
@@ -67,7 +67,7 @@ export default function NotFound() {
               fontSize: "28px",
               fontWeight: "700",
               marginBottom: "12px",
-              color: "#fff",
+              color: "var(--c-on-surface)",
             }}
           >
             Page not found
@@ -75,7 +75,7 @@ export default function NotFound() {
           <p
             style={{
               fontSize: "16px",
-              color: "rgba(255,255,255,0.5)",
+              color: "var(--c-on-surface-variant)",
               maxWidth: "440px",
               lineHeight: "1.6",
               marginBottom: "40px",
@@ -92,8 +92,8 @@ export default function NotFound() {
               style={{
                 padding: "12px 24px",
                 borderRadius: "8px",
-                background: "#ffb77d",
-                color: "#131313",
+                background: "var(--c-primary-container)",
+                color: "var(--c-surface)",
                 fontWeight: "600",
                 fontSize: "15px",
                 textDecoration: "none",
@@ -106,8 +106,8 @@ export default function NotFound() {
               style={{
                 padding: "12px 24px",
                 borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "#fff",
+                border: "1px solid rgb(var(--fx-ink) / 0.15)",
+                color: "var(--c-on-surface)",
                 fontWeight: "500",
                 fontSize: "15px",
                 textDecoration: "none",
@@ -120,8 +120,8 @@ export default function NotFound() {
               style={{
                 padding: "12px 24px",
                 borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "#fff",
+                border: "1px solid rgb(var(--fx-ink) / 0.15)",
+                color: "var(--c-on-surface)",
                 fontWeight: "500",
                 fontSize: "15px",
                 textDecoration: "none",
@@ -134,8 +134,8 @@ export default function NotFound() {
               style={{
                 padding: "12px 24px",
                 borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "#fff",
+                border: "1px solid rgb(var(--fx-ink) / 0.15)",
+                color: "var(--c-on-surface)",
                 fontWeight: "500",
                 fontSize: "15px",
                 textDecoration: "none",

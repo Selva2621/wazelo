@@ -358,7 +358,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
                   }
                   if (item.kind === "biz" || item.kind === "rich") {
                     return (
-                      <motion.div key={key} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={springs.gentle} className="max-w-[70%] self-end overflow-hidden rounded-xl rounded-tr-sm bg-[#4a3413] text-[12px] text-[#f3ede2]">
+                      <motion.div key={key} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={springs.gentle} className="max-w-[70%] self-end overflow-hidden rounded-xl rounded-tr-sm bg-bubble-out text-[12px] text-on-bubble-out">
                         {item.kind === "rich" && <ListingIllustration className="aspect-[3/1] w-full" />}
                         <p className="px-3 py-2">
                           {item.text}
@@ -367,7 +367,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
                           </span>
                         </p>
                         {item.kind === "rich" && (
-                          <p className="flex items-center gap-1 border-t border-white/10 px-3 py-1.5 text-[10px] opacity-80">
+                          <p className="flex items-center gap-1 border-t border-ink/10 px-3 py-1.5 text-[10px] opacity-80">
                             <Paperclip className="h-3 w-3" /> Baner-Heights-2BHK.pdf
                           </p>
                         )}

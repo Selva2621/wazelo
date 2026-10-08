@@ -38,9 +38,9 @@ function ScrollProgress() {
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, width: `${progress}%`, height: 2, zIndex: 100,
-      background: "linear-gradient(to right, #ffb77d, #d97707)",
+      background: "linear-gradient(to right, var(--c-primary-container), var(--c-primary))",
       transition: "width 0.1s linear",
-      boxShadow: "0 0 8px rgba(255,183,125,0.6)",
+      boxShadow: "0 0 8px rgb(var(--fx-accent) / 0.6)",
     }} />
   );
 }
@@ -52,11 +52,11 @@ function SectionLabel({ text, inView }: { text: string; inView: boolean }) {
     <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 14 }}>
       <span style={{
         fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
-        color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif",
+        color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif",
         opacity: inView ? 1 : 0, transition: "opacity 0.6s ease",
       }}>{text}</span>
       <div style={{
-        height: 1, background: "linear-gradient(to right,transparent,#ffb77d,transparent)",
+        height: 1, background: "linear-gradient(to right,transparent,var(--c-primary-container),transparent)",
         width: inView ? "100%" : "0%", transition: "width 0.7s 0.2s ease",
       }} />
     </div>
@@ -70,9 +70,9 @@ function CapabilityCard({ icon, title, desc }: { icon: string; title: string; de
       background: "var(--surface)", border: "1px solid var(--border)",
       borderRadius: 16, padding: "28px 24px", height: "100%",
     }}>
-      <span className="material-symbols-outlined card-icon" style={{ fontSize: 26, color: "#ffb77d", marginBottom: 14, display: "block" }}>{icon}</span>
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", marginBottom: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</p>
+      <span className="material-symbols-outlined card-icon" style={{ fontSize: 26, color: "var(--c-primary-container)", marginBottom: 14, display: "block" }}>{icon}</span>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{title}</h3>
+      <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</p>
     </div>
   );
 }
@@ -113,12 +113,12 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
           to   { transform:scaleX(1); }
         }
         @keyframes featureStepPing {
-          0%,100% { box-shadow: 0 0 0 0 rgba(255,183,125,0.4); }
-          50%     { box-shadow: 0 0 0 8px rgba(255,183,125,0); }
+          0%,100% { box-shadow: 0 0 0 0 rgb(var(--fx-accent) / 0.4); }
+          50%     { box-shadow: 0 0 0 8px rgb(var(--fx-accent) / 0); }
         }
         @keyframes featureCtaGlow {
-          0%,100% { box-shadow: 0 0 40px 0px rgba(255,183,125,0.15); }
-          50%     { box-shadow: 0 0 80px 20px rgba(255,183,125,0.25); }
+          0%,100% { box-shadow: 0 0 40px 0px rgb(var(--fx-accent) / 0.15); }
+          50%     { box-shadow: 0 0 80px 20px rgb(var(--fx-accent) / 0.25); }
         }
         @keyframes featureFloatUp {
           0%,100% { transform: translateY(0px); }
@@ -141,7 +141,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
         <div style={{
           position: "absolute", top: "35%", left: "50%",
           width: 800, height: 800, borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(217,119,6,0.09) 0%,transparent 70%)",
+          background: "radial-gradient(circle,rgb(var(--fx-accent) / 0.09) 0%,transparent 70%)",
           pointerEvents: "none",
           animation: "featureGlowPulse 6s ease-in-out infinite",
           transform: `translate(-50%,-50%) translateY(${scrollY * 0.15}px)`,
@@ -150,7 +150,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
         <div style={{
           position: "absolute", top: "60%", left: "30%",
           width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(217,119,6,0.04) 0%,transparent 70%)",
+          background: "radial-gradient(circle,rgb(var(--fx-accent) / 0.04) 0%,transparent 70%)",
           pointerEvents: "none",
           transform: `translateY(${scrollY * -0.08}px)`,
         }} />
@@ -164,18 +164,18 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             transition: "opacity 0.6s ease, transform 0.6s ease",
             animation: heroView.inView ? "featureBadgePop 0.5s ease forwards" : "none",
           }}>
-            <a href="/#features" style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif" }}>Features</a>
-            <span style={{ fontSize: 12, color: "rgba(219,194,176,0.2)", fontFamily: "var(--font-geist-sans), sans-serif" }}>/</span>
+            <a href="/#features" style={{ fontSize: 12, color: "var(--c-placeholder)", textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif" }}>Features</a>
+            <span style={{ fontSize: 12, color: "color-mix(in srgb, var(--c-on-surface-variant) 20%, transparent)", fontFamily: "var(--font-geist-sans), sans-serif" }}>/</span>
             <span style={{
-              fontSize: 12, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
-              background: "rgba(255,183,125,0.08)", padding: "3px 10px", borderRadius: 20,
-              border: "1px solid rgba(255,183,125,0.2)",
+              fontSize: 12, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
+              background: "rgb(var(--fx-accent) / 0.08)", padding: "3px 10px", borderRadius: 20,
+              border: "1px solid rgb(var(--fx-accent) / 0.2)",
             }}>{data.tag}</span>
           </div>
 
           <h1 style={{
             fontSize: "clamp(36px,5.5vw,76px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.06, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
+            lineHeight: 1.06, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(28px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}
@@ -183,7 +183,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
           />
 
           <p style={{
-            fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
+            fontSize: "clamp(15px,1.6vw,18px)", color: "var(--c-on-surface-variant)", lineHeight: 1.8,
             maxWidth: 580, margin: "0 auto 40px", fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.9s 0.22s ease, transform 0.9s 0.22s ease",
@@ -216,7 +216,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             transition: "opacity 1.1s 0.45s ease, transform 1.1s 0.45s ease",
             animation: heroView.inView ? "featureFloatUp 5s 1.5s ease-in-out infinite" : "none",
           }}>
-            <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,183,125,0.15)", boxShadow: "0 40px 120px rgba(0,0,0,0.6)" }}>
+            <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgb(var(--fx-accent) / 0.15)", boxShadow: "0 40px 120px rgb(var(--fx-shadow) / 0.35)" }}>
               <Image src={data.heroScreen} alt={data.tag} width={1280} height={720} style={{ width: "100%", height: "auto", display: "block" }} priority />
             </div>
           </div>
@@ -228,38 +228,38 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
           display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
           opacity: heroView.inView ? 0.5 : 0, transition: "opacity 1s 1.2s ease",
         }}>
-          <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#dbc2b0", fontFamily: "var(--font-geist-sans), sans-serif" }}>scroll</span>
-          <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom,#ffb77d,transparent)" }} />
+          <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>scroll</span>
+          <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom,var(--c-primary-container),transparent)" }} />
         </div>
       </section>
 
       {/* ── Overview ──────────────────────────────────────────────────────── */}
       <section ref={overView.ref} style={{
         background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.06)", position: "relative", overflow: "hidden",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.06)", position: "relative", overflow: "hidden",
       }}>
         {/* Decorative corner accent */}
         <div style={{
           position: "absolute", top: -1, left: "50%", transform: "translateX(-50%)",
           width: overView.inView ? 120 : 0, height: 2,
-          background: "linear-gradient(to right,transparent,#ffb77d,transparent)",
+          background: "linear-gradient(to right,transparent,var(--c-primary-container),transparent)",
           transition: "width 1s ease",
         }} />
         <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
           <div style={{
             width: overView.inView ? 60 : 0, height: 2,
-            background: "linear-gradient(to right,#ffb77d,#d97707)",
+            background: "linear-gradient(to right,var(--c-primary-container),var(--c-primary))",
             margin: "0 auto 32px",
             transition: "width 0.8s ease",
           }} />
           <h2 style={{
             fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2,
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20,
             opacity: overView.inView ? 1 : 0, transform: overView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>{data.overviewTitle}</h2>
           <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif",
+            fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: overView.inView ? 1 : 0, transform: overView.inView ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
           }}>{data.overviewDesc}</p>
@@ -275,7 +275,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             <SectionLabel text="What you can do" inView={capsView.inView} />
             <h2 style={{
               fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
+              color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif",
               opacity: capsView.inView ? 1 : 0, transform: capsView.inView ? "translateY(0)" : "translateY(16px)",
               transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
             }}>Key capabilities</h2>
@@ -307,7 +307,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             <SectionLabel text="How it works" inView={howView.inView} />
             <h2 style={{
               fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
+              color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif",
               opacity: howView.inView ? 1 : 0, transform: howView.inView ? "translateY(0)" : "translateY(16px)",
               transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
             }}>Up and running in minutes</h2>
@@ -326,7 +326,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
                   <div style={{
                     position: "absolute", left: mobile ? 19 : 27, top: mobile ? 44 : 60,
                     width: 2, height: "calc(100% - 24px)",
-                    background: "linear-gradient(to bottom,rgba(255,183,125,0.35),rgba(255,183,125,0.04))",
+                    background: "linear-gradient(to bottom,rgb(var(--fx-accent) / 0.35),rgb(var(--fx-accent) / 0.04))",
                     transformOrigin: "top",
                     transform: howView.inView ? "scaleY(1)" : "scaleY(0)",
                     transition: `transform 0.6s ${0.13 * i + 0.3}s ease`,
@@ -335,15 +335,15 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
                 {/* Step circle with ping animation */}
                 <div style={{
                   width: mobile ? 40 : 56, height: mobile ? 40 : 56, borderRadius: "50%",
-                  background: "rgba(255,183,125,0.1)", border: "1px solid rgba(255,183,125,0.35)",
+                  background: "rgb(var(--fx-accent) / 0.1)", border: "1px solid rgb(var(--fx-accent) / 0.35)",
                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   animation: howView.inView ? `featureStepPing 2.5s ${0.3 * i}s ease-in-out infinite` : "none",
                 }}>
-                  <span style={{ fontSize: mobile ? 13 : 16, fontWeight: 800, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.step}</span>
+                  <span style={{ fontSize: mobile ? 13 : 16, fontWeight: 800, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.step}</span>
                 </div>
                 <div style={{ paddingTop: mobile ? 8 : 14 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>{step.title}</h3>
-                  <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.desc}</p>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>{step.title}</h3>
+                  <p style={{ fontSize: 14, color: "var(--c-on-surface-variant)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -355,7 +355,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       {data.interactiveSection && (
         <section ref={interactView.ref} style={{
           background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-          borderTop: "1px solid rgba(255,183,125,0.06)",
+          borderTop: "1px solid rgb(var(--fx-accent) / 0.06)",
         }}>
           <div style={{
             maxWidth: 1100, margin: "0 auto",
@@ -371,13 +371,13 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       {/* ── Related Features ──────────────────────────────────────────────── */}
       <section ref={relatedView.ref} style={{
         background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.06)",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.06)",
       }}>
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <SectionLabel text="Keep exploring" inView={relatedView.inView} />
           <h2 style={{
             fontSize: "clamp(22px,2.5vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: relatedView.inView ? 1 : 0, transform: relatedView.inView ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
           }}>Related features</h2>
@@ -391,11 +391,11 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
                 transform: relatedView.inView ? "translateY(0) scale(1)" : "translateY(20px) scale(0.94)",
                 transition: `opacity 0.6s ${0.07 * i}s ease, transform 0.6s ${0.07 * i}s ease, border-color 0.2s, background 0.2s`,
               }}
-                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,183,125,0.35)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-high)"; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgb(var(--fx-accent) / 0.35)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-high)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface)"; }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#ffb77d" }}>{f.icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#dbc2b0", fontFamily: "var(--font-geist-sans), sans-serif" }}>{f.label}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: "var(--c-primary-container)" }}>{f.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{f.label}</span>
               </a>
             ))}
           </div>
@@ -405,27 +405,27 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section ref={ctaView.ref} style={{
         background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.08)", position: "relative", overflow: "hidden",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.08)", position: "relative", overflow: "hidden",
       }}>
         {/* Animated CTA glow */}
         <div style={{
           position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
           width: 600, height: 300, borderRadius: "50%",
-          background: "radial-gradient(ellipse,rgba(217,119,6,0.08) 0%,transparent 70%)",
+          background: "radial-gradient(ellipse,rgb(var(--fx-accent) / 0.08) 0%,transparent 70%)",
           pointerEvents: "none",
           animation: ctaView.inView ? "featureCtaGlow 3s ease-in-out infinite" : "none",
         }} />
         <div style={{ maxWidth: 660, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
           <h2 style={{
             fontSize: "clamp(26px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
-            Ready to try <span style={{ color: "#ffb77d" }}>{data.tag}?</span>
+            Ready to try <span style={{ color: "var(--c-primary-container)" }}>{data.tag}?</span>
           </h2>
           <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
+            fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.7,
             fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.8s 0.12s ease, transform 0.8s 0.12s ease",

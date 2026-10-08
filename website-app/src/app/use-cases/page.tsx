@@ -52,7 +52,7 @@ function ScrollProgress() {
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, height: 3, zIndex: 200,
-      width: `${pct}%`, background: "linear-gradient(90deg,#d97707,#ffb77d)",
+      width: `${pct}%`, background: "linear-gradient(90deg,var(--c-primary),var(--c-primary-container))",
       transition: "width 0.1s linear", pointerEvents: "none",
     }} />
   );
@@ -64,7 +64,7 @@ import SiteNavbar from "@/components/Navbar";
 
 function EcommerceMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       {/* Chrome bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
@@ -72,43 +72,43 @@ function EcommerceMockup() {
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
       </div>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid rgba(255,183,125,0.08)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid rgb(var(--fx-accent) / 0.08)" }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#25D366,#128C7E)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontSize: 14 }}>🛒</span>
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>Ananya Sharma</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)" }}>online</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Ananya Sharma</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)" }}>online</div>
         </div>
       </div>
       {/* Bot message */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ alignSelf: "flex-start", maxWidth: "82%" }}>
-          <div style={{ background: "#1a1a1a", border: "1px solid rgba(255,183,125,0.1)", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
-            <div style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", marginBottom: 4 }}>Wazelo Bot · just now</div>
-            <div style={{ fontSize: 12, color: "#e5e2e1", lineHeight: 1.6 }}>
-              Hey Ananya! 👋 You left <span style={{ color: "#ffb77d", fontWeight: 700 }}>3 items</span> in your cart worth ₹2,499.
+          <div style={{ background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-accent) / 0.1)", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
+            <div style={{ fontSize: 11, color: "var(--c-on-surface-variant)", marginBottom: 4 }}>Wazelo Bot · just now</div>
+            <div style={{ fontSize: 12, color: "var(--c-on-surface)", lineHeight: 1.6 }}>
+              Hey Ananya! 👋 You left <span style={{ color: "var(--c-primary-container)", fontWeight: 700 }}>3 items</span> in your cart worth ₹2,499.
             </div>
           </div>
         </div>
         {/* Second message with floating */}
         <div style={{ alignSelf: "flex-start", maxWidth: "90%", animation: "usecaseFloat 3s ease-in-out infinite", animationDelay: "0.5s" }}>
-          <div style={{ background: "#1a1a1a", border: "1px solid rgba(255,183,125,0.12)", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
-            <div style={{ fontSize: 12, color: "#e5e2e1", lineHeight: 1.6, marginBottom: 10 }}>
-              Complete your purchase now and get <span style={{ color: "#22c55e", fontWeight: 700 }}>10% off</span> — offer expires in 2 hrs!
+          <div style={{ background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-accent) / 0.12)", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
+            <div style={{ fontSize: 12, color: "var(--c-on-surface)", lineHeight: 1.6, marginBottom: 10 }}>
+              Complete your purchase now and get <span style={{ color: "var(--c-success)", fontWeight: 700 }}>10% off</span> — offer expires in 2 hrs!
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ padding: "6px 14px", borderRadius: 100, background: "#25D366", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Shop Now →</span>
-              <span style={{ padding: "6px 14px", borderRadius: 100, background: "rgba(255,183,125,0.1)", border: "1px solid rgba(255,183,125,0.2)", color: "#ffb77d", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>View Cart</span>
+              <span style={{ padding: "6px 14px", borderRadius: 100, background: "#25D366", color: "var(--c-on-surface)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Shop Now →</span>
+              <span style={{ padding: "6px 14px", borderRadius: 100, background: "rgb(var(--fx-accent) / 0.1)", border: "1px solid rgb(var(--fx-accent) / 0.2)", color: "var(--c-primary-container)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>View Cart</span>
             </div>
           </div>
         </div>
         {/* Delivery stats row */}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           {[["2.1k", "Sent"], ["1.8k", "Read"], ["312", "Clicked"]].map(([n, l]) => (
-            <div key={l} style={{ flex: 1, background: "#131313", border: "1px solid rgba(255,183,125,0.07)", borderRadius: 10, padding: "8px", textAlign: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#ffb77d", letterSpacing: "-0.03em" }}>{n}</div>
-              <div style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>{l}</div>
+            <div key={l} style={{ flex: 1, background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.07)", borderRadius: 10, padding: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--c-primary-container)", letterSpacing: "-0.03em" }}>{n}</div>
+              <div style={{ fontSize: 9, color: "var(--c-placeholder)", marginTop: 2 }}>{l}</div>
             </div>
           ))}
         </div>
@@ -119,48 +119,48 @@ function EcommerceMockup() {
 
 function RealEstateMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
       </div>
       {/* Property card */}
-      <div style={{ background: "#131313", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 14, overflow: "hidden", marginBottom: 14 }}>
+      <div style={{ background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.1)", borderRadius: 14, overflow: "hidden", marginBottom: 14 }}>
         {/* Thumbnail placeholder */}
-        <div style={{ height: 90, background: "linear-gradient(135deg,#1a1a1a,#222)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-          <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,183,125,0.03) 10px,rgba(255,183,125,0.03) 11px)" }} />
+        <div style={{ height: 90, background: "linear-gradient(135deg,var(--c-surface-container-lowest),var(--c-surface-container-high))", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgb(var(--fx-accent) / 0.03) 10px,rgb(var(--fx-accent) / 0.03) 11px)" }} />
           <span style={{ fontSize: 28, opacity: 0.6 }}>🏢</span>
-          <div style={{ position: "absolute", top: 10, right: 10, background: "#ffb77d", color: "#131313", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>NEW</div>
+          <div style={{ position: "absolute", top: 10, right: 10, background: "var(--c-primary-container)", color: "var(--c-surface)", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>NEW</div>
         </div>
         <div style={{ padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>Prestige Lakefront</div>
-              <div style={{ fontSize: 11, color: "rgba(219,194,176,0.45)", marginTop: 2 }}>Koramangala, Bengaluru</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Prestige Lakefront</div>
+              <div style={{ fontSize: 11, color: "var(--c-placeholder)", marginTop: 2 }}>Koramangala, Bengaluru</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#ffb77d" }}>₹1.2Cr</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--c-primary-container)" }}>₹1.2Cr</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {["3 BHK", "1,850 sqft", "Ready to Move"].map(tag => (
-              <span key={tag} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.15)", color: "rgba(219,194,176,0.65)" }}>{tag}</span>
+              <span key={tag} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 100, background: "rgb(var(--fx-accent) / 0.08)", border: "1px solid rgb(var(--fx-accent) / 0.15)", color: "var(--c-on-surface-variant)" }}>{tag}</span>
             ))}
           </div>
         </div>
       </div>
       {/* Site visit reminder */}
-      <div style={{ background: "#131313", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, animation: "usecaseFloat 3.5s ease-in-out infinite" }}>
+      <div style={{ background: "var(--c-surface)", border: "1px solid color-mix(in srgb, var(--c-success) 20%, transparent)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, animation: "usecaseFloat 3.5s ease-in-out infinite" }}>
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "color-mix(in srgb, var(--c-success) 12%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 16 }}>📅</span>
           </div>
-          <div style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "#22c55e", animation: "usecasePing 1.5s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "var(--c-success)", animation: "usecasePing 1.5s ease-in-out infinite" }} />
         </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e" }}>Site Visit Confirmed</div>
-          <div style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", marginTop: 2 }}>Rahul Gupta · Tomorrow, 11:00 AM</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--c-success)" }}>Site Visit Confirmed</div>
+          <div style={{ fontSize: 11, color: "var(--c-on-surface-variant)", marginTop: 2 }}>Rahul Gupta · Tomorrow, 11:00 AM</div>
         </div>
-        <div style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.1)", padding: "4px 8px", borderRadius: 6 }}>✓ Sent</div>
+        <div style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--c-success)", background: "color-mix(in srgb, var(--c-success) 10%, transparent)", padding: "4px 8px", borderRadius: 6 }}>✓ Sent</div>
       </div>
     </div>
   );
@@ -168,51 +168,51 @@ function RealEstateMockup() {
 
 function HealthcareMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
       </div>
       {/* Appointment card */}
-      <div style={{ background: "#131313", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
+      <div style={{ background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.1)", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🩺</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>Dr. Priya Menon</div>
-            <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)" }}>General Physician · Apollo Clinic</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Dr. Priya Menon</div>
+            <div style={{ fontSize: 10, color: "var(--c-placeholder)" }}>General Physician · Apollo Clinic</div>
           </div>
-          <div style={{ marginLeft: "auto", background: "rgba(255,183,125,0.1)", border: "1px solid rgba(255,183,125,0.2)", borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "#ffb77d" }}>Tomorrow</div>
+          <div style={{ marginLeft: "auto", background: "rgb(var(--fx-accent) / 0.1)", border: "1px solid rgb(var(--fx-accent) / 0.2)", borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--c-primary-container)" }}>Tomorrow</div>
         </div>
-        <div style={{ background: "#0e0e0e", borderRadius: 10, padding: "10px 12px", marginBottom: 14, display: "flex", justifyContent: "space-between" }}>
+        <div style={{ background: "var(--c-surface)", borderRadius: 10, padding: "10px 12px", marginBottom: 14, display: "flex", justifyContent: "space-between" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#e5e2e1", letterSpacing: "-0.04em" }}>10:30</div>
-            <div style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>TIME</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "var(--c-on-surface)", letterSpacing: "-0.04em" }}>10:30</div>
+            <div style={{ fontSize: 9, color: "var(--c-placeholder)", marginTop: 2 }}>TIME</div>
           </div>
-          <div style={{ width: 1, background: "rgba(255,183,125,0.08)" }} />
+          <div style={{ width: 1, background: "rgb(var(--fx-accent) / 0.08)" }} />
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#e5e2e1", letterSpacing: "-0.04em" }}>OPD 3</div>
-            <div style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>ROOM</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "var(--c-on-surface)", letterSpacing: "-0.04em" }}>OPD 3</div>
+            <div style={{ fontSize: 9, color: "var(--c-placeholder)", marginTop: 2 }}>ROOM</div>
           </div>
-          <div style={{ width: 1, background: "rgba(255,183,125,0.08)" }} />
+          <div style={{ width: 1, background: "rgb(var(--fx-accent) / 0.08)" }} />
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 18, fontWeight: 900, color: "#3b82f6", letterSpacing: "-0.04em" }}>Riya</div>
-            <div style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>PATIENT</div>
+            <div style={{ fontSize: 9, color: "var(--c-placeholder)", marginTop: 2 }}>PATIENT</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={{ flex: 1, padding: "9px", borderRadius: 100, background: "#22c55e", border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✓ Confirm</button>
-          <button style={{ flex: 1, padding: "9px", borderRadius: 100, background: "transparent", border: "1px solid rgba(255,183,125,0.2)", color: "#ffb77d", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Reschedule</button>
+          <button style={{ flex: 1, padding: "9px", borderRadius: 100, background: "var(--c-success)", border: "none", color: "var(--c-on-surface)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✓ Confirm</button>
+          <button style={{ flex: 1, padding: "9px", borderRadius: 100, background: "transparent", border: "1px solid rgb(var(--fx-accent) / 0.2)", color: "var(--c-primary-container)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Reschedule</button>
         </div>
       </div>
       {/* Reminder sent badge */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#131313", borderRadius: 10, border: "1px solid rgba(255,183,125,0.07)", animation: "usecaseFloat 4s ease-in-out infinite", animationDelay: "1s" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--c-surface)", borderRadius: 10, border: "1px solid rgb(var(--fx-accent) / 0.07)", animation: "usecaseFloat 4s ease-in-out infinite", animationDelay: "1s" }}>
         <span style={{ fontSize: 16 }}>💊</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#e5e2e1" }}>Prescription ready for pickup</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>WhatsApp reminder sent · 2m ago</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--c-on-surface)" }}>Prescription ready for pickup</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 2 }}>WhatsApp reminder sent · 2m ago</div>
         </div>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ffb77d", animation: "usecasePulse 2s ease-in-out infinite" }} />
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--c-primary-container)", animation: "usecasePulse 2s ease-in-out infinite" }} />
       </div>
     </div>
   );
@@ -220,7 +220,7 @@ function HealthcareMockup() {
 
 function EducationMockup() {
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -229,29 +229,29 @@ function EducationMockup() {
       {/* Broadcast panel header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>Exam Schedule Broadcast</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>Sent to 1,240 students · 5 mins ago</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Exam Schedule Broadcast</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 2 }}>Sent to 1,240 students · 5 mins ago</div>
         </div>
-        <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "#22c55e" }}>Live</div>
+        <div style={{ background: "color-mix(in srgb, var(--c-success) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--c-success) 20%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--c-success)" }}>Live</div>
       </div>
       {/* Message preview */}
-      <div style={{ background: "#131313", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 12, padding: "14px", marginBottom: 14 }}>
-        <div style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", marginBottom: 8 }}>📢 Message Preview</div>
-        <div style={{ fontSize: 12, color: "#e5e2e1", lineHeight: 1.7 }}>
+      <div style={{ background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.1)", borderRadius: 12, padding: "14px", marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: "var(--c-on-surface-variant)", marginBottom: 8 }}>📢 Message Preview</div>
+        <div style={{ fontSize: 12, color: "var(--c-on-surface)", lineHeight: 1.7 }}>
           Dear students,<br />
-          Your <span style={{ color: "#ffb77d", fontWeight: 700 }}>Term 2 exam schedule</span> is now available. Physics: June 12 | Math: June 14 | Chemistry: June 16.<br />
-          <span style={{ color: "rgba(219,194,176,0.5)" }}>Download hall ticket from the link below. 📎</span>
+          Your <span style={{ color: "var(--c-primary-container)", fontWeight: 700 }}>Term 2 exam schedule</span> is now available. Physics: June 12 | Math: June 14 | Chemistry: June 16.<br />
+          <span style={{ color: "var(--c-on-surface-variant)" }}>Download hall ticket from the link below. 📎</span>
         </div>
-        <div style={{ marginTop: 10, padding: "8px 12px", background: "#0e0e0e", borderRadius: 8, fontSize: 11, color: "#3b82f6", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--c-surface)", borderRadius: 8, fontSize: 11, color: "#3b82f6", display: "flex", alignItems: "center", gap: 6 }}>
           <span>🔗</span> Download Hall Ticket
         </div>
       </div>
       {/* Delivery stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-        {[["1,240", "Delivered", "#22c55e"], ["1,087", "Read", "#3b82f6"], ["203", "Replied", "#ffb77d"]].map(([n, l, c], i) => (
-          <div key={l} style={{ background: "#131313", border: "1px solid rgba(255,183,125,0.07)", borderRadius: 10, padding: "10px 8px", textAlign: "center", animation: "usecaseFloat 3s ease-in-out infinite", animationDelay: `${i * 0.3}s` }}>
+        {[["1,240", "Delivered", "var(--c-success)"], ["1,087", "Read", "#3b82f6"], ["203", "Replied", "var(--c-primary-container)"]].map(([n, l, c], i) => (
+          <div key={l} style={{ background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.07)", borderRadius: 10, padding: "10px 8px", textAlign: "center", animation: "usecaseFloat 3s ease-in-out infinite", animationDelay: `${i * 0.3}s` }}>
             <div style={{ fontSize: 16, fontWeight: 900, color: c as string, letterSpacing: "-0.04em" }}>{n}</div>
-            <div style={{ fontSize: 9, color: "rgba(219,194,176,0.4)", marginTop: 3 }}>{l}</div>
+            <div style={{ fontSize: 9, color: "var(--c-placeholder)", marginTop: 3 }}>{l}</div>
           </div>
         ))}
       </div>
@@ -267,7 +267,7 @@ function TravelMockup() {
     { icon: "🏄", label: "Desert Safari", detail: "Pickup from hotel", time: "15:00 Tomorrow", done: false },
   ];
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -275,10 +275,10 @@ function TravelMockup() {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>Dubai Trip · Jun 12–16</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>Itinerary sent via WhatsApp</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Dubai Trip · Jun 12–16</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 2 }}>Itinerary sent via WhatsApp</div>
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "#ffb77d", background: "rgba(255,183,125,0.1)", border: "1px solid rgba(255,183,125,0.2)", padding: "4px 10px", borderRadius: 8 }}>4 Days</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-primary-container)", background: "rgb(var(--fx-accent) / 0.1)", border: "1px solid rgb(var(--fx-accent) / 0.2)", padding: "4px 10px", borderRadius: 8 }}>4 Days</div>
       </div>
       {/* Timeline */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -288,36 +288,36 @@ function TravelMockup() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
-                background: s.done ? "rgba(34,197,94,0.15)" : "rgba(255,183,125,0.1)",
-                border: s.done ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,183,125,0.2)",
+                background: s.done ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "rgb(var(--fx-accent) / 0.1)",
+                border: s.done ? "1px solid color-mix(in srgb, var(--c-success) 30%, transparent)" : "1px solid rgb(var(--fx-accent) / 0.2)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, flexShrink: 0,
                 animation: !s.done ? "usecaseFloat 3s ease-in-out infinite" : "none",
                 animationDelay: `${i * 0.4}s`,
               }}>{s.icon}</div>
-              {i < steps.length - 1 && <div style={{ width: 1, height: 20, background: s.done ? "rgba(34,197,94,0.2)" : "rgba(255,183,125,0.08)", margin: "3px 0" }} />}
+              {i < steps.length - 1 && <div style={{ width: 1, height: 20, background: s.done ? "color-mix(in srgb, var(--c-success) 20%, transparent)" : "rgb(var(--fx-accent) / 0.08)", margin: "3px 0" }} />}
             </div>
             {/* Content */}
             <div style={{ flex: 1, paddingBottom: i < steps.length - 1 ? 10 : 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: s.done ? "#22c55e" : "#e5e2e1" }}>{s.label}</div>
-                  <div style={{ fontSize: 10, color: "rgba(219,194,176,0.45)", marginTop: 2 }}>{s.detail}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: s.done ? "var(--c-success)" : "var(--c-on-surface)" }}>{s.label}</div>
+                  <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 2 }}>{s.detail}</div>
                 </div>
-                <div style={{ fontSize: 10, color: s.done ? "#22c55e" : "rgba(219,194,176,0.4)", textAlign: "right", flexShrink: 0 }}>{s.time}</div>
+                <div style={{ fontSize: 10, color: s.done ? "var(--c-success)" : "var(--c-placeholder)", textAlign: "right", flexShrink: 0 }}>{s.time}</div>
               </div>
             </div>
           </div>
         ))}
       </div>
       {/* Upsell */}
-      <div style={{ marginTop: 14, padding: "10px 12px", background: "#131313", border: "1px solid rgba(255,183,125,0.12)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10, animation: "usecaseFloat 4s ease-in-out infinite", animationDelay: "0.8s" }}>
+      <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.12)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10, animation: "usecaseFloat 4s ease-in-out infinite", animationDelay: "0.8s" }}>
         <span style={{ fontSize: 18 }}>🌟</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#ffb77d" }}>Upgrade to Business Class</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)", marginTop: 1 }}>+₹8,500 · Tap to add</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-primary-container)" }}>Upgrade to Business Class</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 1 }}>+₹8,500 · Tap to add</div>
         </div>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ffb77d", animation: "usecasePulse 2s ease-in-out infinite" }} />
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--c-primary-container)", animation: "usecasePulse 2s ease-in-out infinite" }} />
       </div>
     </div>
   );
@@ -331,7 +331,7 @@ function FinanceMockup() {
     { label: "Video KYC", done: false, active: false },
   ];
   return (
-    <div style={{ background: "#0e0e0e", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
+    <div style={{ background: "var(--c-surface)", borderRadius: 20, padding: "20px", fontFamily: "var(--font-geist-sans), sans-serif", width: "100%" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
         <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
@@ -340,14 +340,14 @@ function FinanceMockup() {
       {/* KYC header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>KYC Completion</div>
-          <div style={{ fontSize: 10, color: "rgba(219,194,176,0.4)", marginTop: 2 }}>Home Loan Application · #HL-2024-8821</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>KYC Completion</div>
+          <div style={{ fontSize: 10, color: "var(--c-placeholder)", marginTop: 2 }}>Home Loan Application · #HL-2024-8821</div>
         </div>
-        <div style={{ fontSize: 11, fontWeight: 800, color: "#ffb77d" }}>2 / 4</div>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--c-primary-container)" }}>2 / 4</div>
       </div>
       {/* Progress bar */}
-      <div style={{ height: 4, background: "rgba(255,183,125,0.1)", borderRadius: 100, marginBottom: 20, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: "50%", background: "linear-gradient(90deg,#d97707,#ffb77d)", borderRadius: 100, transition: "width 1.5s ease" }} />
+      <div style={{ height: 4, background: "rgb(var(--fx-accent) / 0.1)", borderRadius: 100, marginBottom: 20, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: "50%", background: "linear-gradient(90deg,var(--c-primary),var(--c-primary-container))", borderRadius: 100, transition: "width 1.5s ease" }} />
       </div>
       {/* Steps */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -355,45 +355,45 @@ function FinanceMockup() {
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: 12,
             padding: "10px 12px",
-            background: s.active ? "rgba(255,183,125,0.06)" : "#131313",
-            border: s.active ? "1px solid rgba(255,183,125,0.2)" : "1px solid rgba(255,183,125,0.05)",
+            background: s.active ? "rgb(var(--fx-accent) / 0.06)" : "var(--c-surface)",
+            border: s.active ? "1px solid rgb(var(--fx-accent) / 0.2)" : "1px solid rgb(var(--fx-accent) / 0.05)",
             borderRadius: 10,
             animation: s.active ? "usecaseFloat 3s ease-in-out infinite" : "none",
           }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-              background: s.done ? "rgba(34,197,94,0.15)" : s.active ? "rgba(255,183,125,0.15)" : "rgba(255,255,255,0.04)",
-              border: s.done ? "1.5px solid #22c55e" : s.active ? "1.5px solid #ffb77d" : "1.5px solid rgba(255,255,255,0.1)",
+              background: s.done ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : s.active ? "rgb(var(--fx-accent) / 0.15)" : "rgb(var(--fx-ink) / 0.04)",
+              border: s.done ? "1.5px solid var(--c-success)" : s.active ? "1.5px solid var(--c-primary-container)" : "1.5px solid rgb(var(--fx-ink) / 0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12,
             }}>
               {s.done ? (
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2.5 7L5.5 10L11.5 4" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  <path d="M2.5 7L5.5 10L11.5 4" stroke="var(--c-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                     style={{ strokeDasharray: 20, strokeDashoffset: 0, animation: "usecaseCheckDraw 0.4s ease forwards" }} />
                 </svg>
               ) : s.active ? (
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ffb77d", animation: "usecasePulse 1.5s ease-in-out infinite" }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--c-primary-container)", animation: "usecasePulse 1.5s ease-in-out infinite" }} />
               ) : (
-                <span style={{ fontSize: 9, color: "rgba(219,194,176,0.3)", fontWeight: 700 }}>{i + 1}</span>
+                <span style={{ fontSize: 9, color: "var(--c-placeholder)", fontWeight: 700 }}>{i + 1}</span>
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: s.active ? 700 : 500, color: s.done ? "#22c55e" : s.active ? "#ffb77d" : "rgba(219,194,176,0.4)" }}>{s.label}</div>
+              <div style={{ fontSize: 12, fontWeight: s.active ? 700 : 500, color: s.done ? "var(--c-success)" : s.active ? "var(--c-primary-container)" : "var(--c-placeholder)" }}>{s.label}</div>
             </div>
             {s.active && (
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#ffb77d", background: "rgba(255,183,125,0.1)", padding: "3px 8px", borderRadius: 6 }}>Pending</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-primary-container)", background: "rgb(var(--fx-accent) / 0.1)", padding: "3px 8px", borderRadius: 6 }}>Pending</div>
             )}
             {s.done && (
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.1)", padding: "3px 8px", borderRadius: 6 }}>Done</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-success)", background: "color-mix(in srgb, var(--c-success) 10%, transparent)", padding: "3px 8px", borderRadius: 6 }}>Done</div>
             )}
           </div>
         ))}
       </div>
       {/* WhatsApp nudge */}
-      <div style={{ marginTop: 14, padding: "10px 12px", background: "#131313", border: "1px solid rgba(37,211,102,0.15)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--c-surface)", border: "1px solid rgba(37,211,102,0.15)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 16 }}>💬</span>
-        <div style={{ fontSize: 11, color: "rgba(219,194,176,0.65)" }}>
+        <div style={{ fontSize: 11, color: "var(--c-on-surface-variant)" }}>
           <span style={{ color: "#25D366", fontWeight: 700 }}>WhatsApp reminder</span> sent to upload bank statement
         </div>
       </div>
@@ -414,7 +414,7 @@ function UseCaseSection({
     <section id={id} ref={view.ref} style={{
       padding: mobile ? "80px 20px" : "100px 48px",
       background: "var(--bg)",
-      borderBottom: "1px solid rgba(255,183,125,0.05)",
+      borderBottom: "1px solid rgb(var(--fx-accent) / 0.05)",
     }}>
       <div style={{
         maxWidth: 1100, margin: "0 auto",
@@ -431,9 +431,9 @@ function UseCaseSection({
           transition: "opacity 0.9s ease, transform 0.9s ease",
           display: "flex", flexDirection: "column", justifyContent: "center",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>{tag}</span>
-          <h2 style={{ fontSize: "clamp(26px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 18 }}>{title}</h2>
-          <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 28 }}>{desc}</p>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>{tag}</span>
+          <h2 style={{ fontSize: "clamp(26px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 18 }}>{title}</h2>
+          <p style={{ fontSize: 15, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 28 }}>{desc}</p>
           <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
             {bullets.map((b, bi) => (
               <li key={b} style={{
@@ -442,10 +442,10 @@ function UseCaseSection({
                 transform: view.inView ? "translateX(0)" : "translateX(-16px)",
                 transition: `opacity 0.7s ${0.2 + bi * 0.07}s ease, transform 0.7s ${0.2 + bi * 0.07}s ease`,
               }}>
-                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "rgba(255,183,125,0.15)", border: "1px solid rgba(255,183,125,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "block" }} />
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "rgb(var(--fx-accent) / 0.15)", border: "1px solid rgb(var(--fx-accent) / 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--c-primary-container)", display: "block" }} />
                 </span>
-                <span style={{ fontSize: 14, color: "rgba(219,194,176,0.75)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{b}</span>
+                <span style={{ fontSize: 14, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{b}</span>
               </li>
             ))}
           </ul>
@@ -467,9 +467,9 @@ function UseCaseSection({
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{
-            background: "var(--surface)", border: "1px solid rgba(255,183,125,0.1)",
+            background: "var(--surface)", border: "1px solid rgb(var(--fx-accent) / 0.1)",
             borderRadius: 24, padding: "24px",
-            boxShadow: "0 0 80px rgba(217,119,6,0.08), 0 32px 64px rgba(0,0,0,0.4)",
+            boxShadow: "0 0 80px rgb(var(--fx-accent) / 0.08), 0 32px 64px rgb(var(--fx-shadow) / 0.35)",
             width: "100%",
           }}>
             {mockup}
@@ -583,14 +583,14 @@ function WhyStats({ active }: { active: boolean }) {
     }}>
       {stats.map((s, i) => (
         <div key={s.label} style={{
-          background: "var(--surface)", border: "1px solid rgba(255,183,125,0.12)",
+          background: "var(--surface)", border: "1px solid rgb(var(--fx-accent) / 0.12)",
           borderRadius: 16, padding: "40px 32px",
           opacity: active ? 1 : 0,
           transform: active ? "translateY(0)" : "translateY(24px)",
           transition: `opacity 0.7s ${0.1 + i * 0.1}s ease, transform 0.7s ${0.1 + i * 0.1}s ease`,
         }}>
-          <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>{s.value}</div>
-          <div style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{s.label}</div>
+          <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-0.04em", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>{s.value}</div>
+          <div style={{ fontSize: 14, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -645,32 +645,32 @@ export default function UseCasesPage() {
         padding: mobile ? "120px 20px 80px" : "120px 48px 80px",
         background: "var(--bg)", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgba(217,119,6,0.07) 0%,transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgb(var(--fx-accent) / 0.07) 0%,transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ textAlign: "center", maxWidth: 860, position: "relative", zIndex: 1 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px",
-            borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
+            borderRadius: 100, background: "rgb(var(--fx-accent) / 0.08)", border: "1px solid rgb(var(--fx-accent) / 0.2)",
             marginBottom: 32,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block", animation: "usecasePulse 2s ease-in-out infinite" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Use Cases</span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--c-primary-container)", display: "inline-block", animation: "usecasePulse 2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--c-primary-container)", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Use Cases</span>
           </div>
 
           <h1 style={{
             fontSize: "clamp(38px,5.5vw,80px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.08, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
+            lineHeight: 1.08, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
           }}>
             One platform.<br />
-            <span style={{ color: "#ffb77d" }}>Every industry.</span>
+            <span style={{ color: "var(--c-primary-container)" }}>Every industry.</span>
           </h1>
 
           <p style={{
-            fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
+            fontSize: "clamp(15px,1.6vw,18px)", color: "var(--c-on-surface-variant)", lineHeight: 1.8,
             maxWidth: 580, margin: "0 auto 48px", fontFamily: "var(--font-geist-sans), sans-serif",
             opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
@@ -686,15 +686,15 @@ export default function UseCasesPage() {
             {industries.map((ind, i) => (
               <button key={ind.id} onClick={() => scrollToIndustry(ind.id)} style={{
                 padding: "8px 18px", borderRadius: 100, fontSize: 13, fontWeight: 600,
-                background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
-                color: "#dbc2b0", cursor: "pointer", fontFamily: "var(--font-geist-sans), sans-serif",
+                background: "rgb(var(--fx-accent) / 0.08)", border: "1px solid rgb(var(--fx-accent) / 0.2)",
+                color: "var(--c-on-surface-variant)", cursor: "pointer", fontFamily: "var(--font-geist-sans), sans-serif",
                 transition: "all 0.2s ease",
                 opacity: heroView.inView ? 1 : 0,
                 transform: heroView.inView ? "translateY(0)" : "translateY(12px)",
                 transitionDelay: `${0.35 + i * 0.05}s`,
               }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,183,125,0.18)"; (e.currentTarget as HTMLButtonElement).style.color = "#fff"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,183,125,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#dbc2b0"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)"; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgb(var(--fx-accent) / 0.18)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--c-on-surface)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgb(var(--fx-accent) / 0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--c-on-surface-variant)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)"; }}
               >{ind.tag}</button>
             ))}
           </div>
@@ -702,11 +702,11 @@ export default function UseCasesPage() {
       </section>
 
       {/* ── Marquee ticker ────────────────────────────────────────────────── */}
-      <div style={{ background: "var(--surface-low)", borderTop: "1px solid rgba(255,183,125,0.06)", borderBottom: "1px solid rgba(255,183,125,0.06)", padding: "14px 0", overflow: "hidden" }}>
+      <div style={{ background: "var(--surface-low)", borderTop: "1px solid rgb(var(--fx-accent) / 0.06)", borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)", padding: "14px 0", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 40, whiteSpace: "nowrap", animation: "marqueeScroll 20s linear infinite" }}>
           {[...industries, ...industries].map((ind, i) => (
-            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 12, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(219,194,176,0.35)", fontFamily: "var(--font-geist-sans), sans-serif", flexShrink: 0 }}>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(255,183,125,0.4)", display: "inline-block" }} />
+            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 12, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", flexShrink: 0 }}>
+              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgb(var(--fx-accent) / 0.4)", display: "inline-block" }} />
               {ind.tag}
             </span>
           ))}
@@ -717,17 +717,17 @@ export default function UseCasesPage() {
       {!mobile && (
         <div style={{
           position: "sticky", top: 64, zIndex: 40,
-          background: "rgba(13,13,13,0.95)", backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255,183,125,0.06)",
+          background: "color-mix(in srgb, var(--c-surface) 95%, transparent)", backdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)",
           padding: "12px 48px",
         }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
             {industries.map(ind => (
               <button key={ind.id} onClick={() => scrollToIndustry(ind.id)} style={{
                 padding: "7px 16px", borderRadius: 100, fontSize: 12, fontWeight: 600,
-                background: activeIndustry === ind.id ? "rgba(255,183,125,0.18)" : "transparent",
-                border: activeIndustry === ind.id ? "1px solid rgba(255,183,125,0.4)" : "1px solid transparent",
-                color: activeIndustry === ind.id ? "#ffb77d" : "rgba(219,194,176,0.5)",
+                background: activeIndustry === ind.id ? "rgb(var(--fx-accent) / 0.18)" : "transparent",
+                border: activeIndustry === ind.id ? "1px solid rgb(var(--fx-accent) / 0.4)" : "1px solid transparent",
+                color: activeIndustry === ind.id ? "var(--c-primary-container)" : "var(--c-on-surface-variant)",
                 cursor: "pointer", fontFamily: "var(--font-geist-sans), sans-serif",
                 transition: "all 0.25s ease",
               }}>{ind.tag}</button>
@@ -744,18 +744,18 @@ export default function UseCasesPage() {
       {/* ── Why WhatsApp ──────────────────────────────────────────────────── */}
       <section ref={whyView.ref} style={{
         background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.06)",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.06)",
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>The numbers</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>The numbers</span>
           <h2 style={{
             fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 56,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 56,
             opacity: whyView.inView ? 1 : 0, transform: whyView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
             Why WhatsApp is the<br />
-            <span style={{ color: "#ffb77d" }}>highest ROI channel</span>
+            <span style={{ color: "var(--c-primary-container)" }}>highest ROI channel</span>
           </h2>
           <WhyStats active={whyView.inView} />
         </div>
@@ -764,19 +764,19 @@ export default function UseCasesPage() {
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section ref={ctaView.ref} style={{
         background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.08)",
+        borderTop: "1px solid rgb(var(--fx-accent) / 0.08)",
       }}>
         <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{
             fontSize: "clamp(28px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
+            color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
             opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(20px)",
             transition: "opacity 0.8s ease, transform 0.8s ease",
           }}>
             Start your WhatsApp CRM<br />journey today.
           </h2>
           <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
+            fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.7,
             fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
             opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease",
           }}>

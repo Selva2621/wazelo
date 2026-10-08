@@ -146,7 +146,7 @@ export function Pricing() {
         <div className="mt-14 grid gap-4 lg:grid-cols-12">
           {/* Solo: freelancers */}
           <div data-plan className="lg:col-span-4">
-            <article className="flex h-full flex-col rounded-2xl border border-primary/50 bg-surface-container-lowest bg-[radial-gradient(40rem_18rem_at_0%_0%,rgb(217_119_6/0.2),transparent_65%)] p-8">
+            <article className="flex h-full flex-col rounded-2xl border border-primary/50 bg-surface-container-lowest bg-[radial-gradient(40rem_18rem_at_0%_0%,rgb(var(--fx-accent)/0.2),transparent_65%)] p-8">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-on-surface">{SOLO.name}</h3>
                 <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary-container">For freelancers</span>
@@ -158,7 +158,7 @@ export function Pricing() {
               <Features items={SOLO.features} />
               <a
                 href={APP_REGISTER_URL}
-                className={`mt-auto inline-flex justify-center rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-[#fbbf24] active:scale-[0.98] ${focusRing}`}
+                className={`mt-auto inline-flex justify-center rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary active:scale-[0.98] ${focusRing}`}
               >
                 Start free trial
               </a>
@@ -182,7 +182,7 @@ export function Pricing() {
                   <a
                     href={APP_REGISTER_URL}
                     className={`mt-auto inline-flex justify-center rounded-full px-6 py-3 text-sm font-semibold transition-colors active:scale-[0.98] ${focusRing} ${
-                      p.popular ? "bg-on-surface text-surface hover:bg-white" : "border border-outline-variant text-on-surface hover:border-outline"
+                      p.popular ? "bg-on-surface text-surface hover:bg-on-surface/85" : "border border-outline-variant text-on-surface hover:border-outline"
                     }`}
                   >
                     Start free trial

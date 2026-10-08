@@ -7,21 +7,21 @@ import SiteNavbar from "@/components/Navbar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const METHOD_COLORS: Record<string, string> = {
-  GET: "#86efac", POST: "#a3defe", PUT: "#fbbf24", PATCH: "#f9a8d4", DELETE: "#f87171",
+  GET: "var(--c-code-green)", POST: "var(--c-info)", PUT: "var(--c-primary-container)", PATCH: "var(--c-code-pink)", DELETE: "var(--c-error)",
 };
 
 function MethodBadge({ method }: { method: string }) {
   return (
-    <span style={{ fontSize: 11, fontWeight: 800, color: METHOD_COLORS[method] ?? "#e5e2e1", background: `${METHOD_COLORS[method]}18`, border: `1px solid ${METHOD_COLORS[method]}44`, borderRadius: 4, padding: "2px 8px", fontFamily: "'Courier New', monospace", letterSpacing: "0.06em" }}>
+    <span style={{ fontSize: 11, fontWeight: 800, color: METHOD_COLORS[method] ?? "var(--c-on-surface)", background: `${METHOD_COLORS[method]}18`, border: `1px solid ${METHOD_COLORS[method]}44`, borderRadius: 4, padding: "2px 8px", fontFamily: "'Courier New', monospace", letterSpacing: "0.06em" }}>
       {method}
     </span>
   );
 }
 
 function Code({ children, lang = "json" }: { children: string; lang?: string }) {
-  const color = lang === "bash" ? "#fbbf24" : lang === "json" ? "#a3defe" : "#86efac";
+  const color = lang === "bash" ? "var(--c-primary-container)" : lang === "json" ? "var(--c-info)" : "var(--c-code-green)";
   return (
-    <pre style={{ background: "#0a0a0a", border: "1px solid rgba(255,183,125,0.08)", borderRadius: 8, padding: "16px 20px", overflowX: "auto", marginBottom: 20 }}>
+    <pre style={{ background: "var(--c-surface)", border: "1px solid rgb(var(--fx-accent) / 0.08)", borderRadius: 8, padding: "16px 20px", overflowX: "auto", marginBottom: 20 }}>
       <code style={{ fontSize: 13, color, fontFamily: "'Courier New', monospace", lineHeight: 1.75 }}>{children}</code>
     </pre>
   );
@@ -36,29 +36,29 @@ function Endpoint({ method, path, desc, params, bodyFields, responseExample, not
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ border: "1px solid rgba(255,183,125,0.08)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+    <div style={{ border: "1px solid rgb(var(--fx-accent) / 0.08)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
       <button onClick={() => setOpen((o: boolean) => !o)} style={{
-        width: "100%", background: open ? "#1c1b1b" : "#161616", border: "none", cursor: "pointer",
+        width: "100%", background: open ? "var(--c-surface-container-lowest)" : "var(--c-surface)", border: "none", cursor: "pointer",
         padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
       }}>
         <MethodBadge method={method} />
-        <code style={{ fontSize: 13, color: "#e5e2e1", fontFamily: "'Courier New', monospace", flex: 1 }}>{path}</code>
-        <span style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif", marginRight: 8 }}>{desc}</span>
-        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "rgba(219,194,176,0.4)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>expand_more</span>
+        <code style={{ fontSize: 13, color: "var(--c-on-surface)", fontFamily: "'Courier New', monospace", flex: 1 }}>{path}</code>
+        <span style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", marginRight: 8 }}>{desc}</span>
+        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--c-placeholder)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>expand_more</span>
       </button>
       {open && (
-        <div style={{ padding: "20px 24px", background: "#131313", borderTop: "1px solid rgba(255,183,125,0.06)" }}>
-          <p style={{ fontSize: 14, color: "rgba(219,194,176,0.65)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20, lineHeight: 1.7 }}>{desc}</p>
+        <div style={{ padding: "20px 24px", background: "var(--c-surface)", borderTop: "1px solid rgb(var(--fx-accent) / 0.06)" }}>
+          <p style={{ fontSize: 14, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20, lineHeight: 1.7 }}>{desc}</p>
 
           {params && params.length > 0 && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Path / Query Parameters</p>
-              <div style={{ background: "#0e0e0e", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "var(--c-primary-container)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Path / Query Parameters</p>
+              <div style={{ background: "var(--c-surface)", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
                 {params.map(([name, type, pdesc], i) => (
-                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < params.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap" }}>
-                    <code style={{ fontSize: 12, color: "#ffb77d", fontFamily: "'Courier New', monospace", minWidth: 120 }}>{name}</code>
-                    <span style={{ fontSize: 11, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{pdesc}</span>
+                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < params.length - 1 ? "1px solid rgb(var(--fx-ink) / 0.04)" : "none", flexWrap: "wrap" }}>
+                    <code style={{ fontSize: 12, color: "var(--c-primary-container)", fontFamily: "'Courier New', monospace", minWidth: 120 }}>{name}</code>
+                    <span style={{ fontSize: 11, color: "var(--c-info)", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
+                    <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{pdesc}</span>
                   </div>
                 ))}
               </div>
@@ -67,24 +67,24 @@ function Endpoint({ method, path, desc, params, bodyFields, responseExample, not
 
           {bodyFields && bodyFields.length > 0 && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Request Body</p>
-              <div style={{ background: "#0e0e0e", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "var(--c-primary-container)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Request Body</p>
+              <div style={{ background: "var(--c-surface)", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
                 {bodyFields.map(([name, type, bdesc, required], i) => (
-                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < bodyFields.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap", alignItems: "center" }}>
-                    <code style={{ fontSize: 12, color: "#ffb77d", fontFamily: "'Courier New', monospace", minWidth: 140 }}>{name}</code>
-                    <span style={{ fontSize: 11, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
-                    {required && <span style={{ fontSize: 10, color: "#f87171", border: "1px solid #f8717144", borderRadius: 4, padding: "1px 6px", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.05em" }}>required</span>}
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{bdesc}</span>
+                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < bodyFields.length - 1 ? "1px solid rgb(var(--fx-ink) / 0.04)" : "none", flexWrap: "wrap", alignItems: "center" }}>
+                    <code style={{ fontSize: 12, color: "var(--c-primary-container)", fontFamily: "'Courier New', monospace", minWidth: 140 }}>{name}</code>
+                    <span style={{ fontSize: 11, color: "var(--c-info)", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
+                    {required && <span style={{ fontSize: 10, color: "var(--c-error)", border: "1px solid #f8717144", borderRadius: 4, padding: "1px 6px", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.05em" }}>required</span>}
+                    <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{bdesc}</span>
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Response Example</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--c-primary-container)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Response Example</p>
           <Code>{responseExample}</Code>
 
-          {notes && <p style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.7, borderLeft: "2px solid rgba(255,183,125,0.2)", paddingLeft: 12 }}>{notes}</p>}
+          {notes && <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.7, borderLeft: "2px solid rgb(var(--fx-accent) / 0.2)", paddingLeft: 12 }}>{notes}</p>}
         </div>
       )}
     </div>
@@ -106,19 +106,19 @@ const apiSections = [
 function ApiSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <div id={id} style={{ marginBottom: 64, scrollMarginTop: 88 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "-0.03em", marginBottom: 12 }}>{title}</h2>
-      <div style={{ width: 40, height: 2, background: "linear-gradient(to right,#ffb77d,transparent)", marginBottom: 24, borderRadius: 2 }} />
+      <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "-0.03em", marginBottom: 12 }}>{title}</h2>
+      <div style={{ width: 40, height: 2, background: "linear-gradient(to right,var(--c-primary-container),transparent)", marginBottom: 24, borderRadius: 2 }} />
       {children}
     </div>
   );
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>;
+  return <p style={{ fontSize: 15, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>;
 }
 
 function H3({ children }: { children: React.ReactNode }) {
-  return <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10, marginTop: 24 }}>{children}</h3>;
+  return <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10, marginTop: 24 }}>{children}</h3>;
 }
 
 // ─── API Reference Page ───────────────────────────────────────────────────────
@@ -143,23 +143,23 @@ export default function ApiReferencePage() {
       <SiteNavbar />
 
       {/* Hero */}
-      <div style={{ background: "#131313", borderBottom: "1px solid rgba(255,183,125,0.06)", padding: mobile ? "100px 20px 48px" : "100px 48px 56px" }}>
+      <div style={{ background: "var(--c-surface)", borderBottom: "1px solid rgb(var(--fx-accent) / 0.06)", padding: mobile ? "100px 20px 48px" : "100px 48px 56px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(163,222,254,0.08)", border: "1px solid rgba(163,222,254,0.2)", marginBottom: 20 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 14, color: "#a3defe" }}>api</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#a3defe", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>REST API · v1</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgb(var(--fx-info) / 0.08)", border: "1px solid rgb(var(--fx-info) / 0.2)", marginBottom: 20 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: "var(--c-info)" }}>api</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-info)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>REST API · v1</span>
           </div>
-          <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
+          <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
             API Reference
           </h1>
-          <p style={{ fontSize: 16, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 560 }}>
+          <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 560 }}>
             Integrate Wazelo CRM into your own systems. Send messages, manage contacts, trigger automations, and listen to real-time events via webhooks.
           </p>
           <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <code style={{ fontSize: 13, color: "#a3defe", background: "#0e0e0e", border: "1px solid rgba(163,222,254,0.15)", borderRadius: 6, padding: "8px 14px", fontFamily: "'Courier New', monospace" }}>
+            <code style={{ fontSize: 13, color: "var(--c-info)", background: "var(--c-surface)", border: "1px solid rgb(var(--fx-info) / 0.15)", borderRadius: 6, padding: "8px 14px", fontFamily: "'Courier New', monospace" }}>
               Base URL: {baseUrl}
             </code>
-            <a href="/docs" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
+            <a href="/docs" style={{ fontSize: 13, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
               <span className="material-symbols-outlined" style={{ fontSize: 15 }}>menu_book</span>
               Read the Docs →
             </a>
@@ -173,20 +173,20 @@ export default function ApiReferencePage() {
         {/* Sidebar */}
         {!mobile && (
           <aside style={{ width: 220, flexShrink: 0, paddingTop: 40, paddingRight: 32, position: "sticky", top: 64, alignSelf: "flex-start", height: "calc(100vh - 64px)", overflowY: "auto" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(219,194,176,0.3)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>Endpoints</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--c-placeholder)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>Endpoints</p>
             {apiSections.map(s => (
               <a key={s.id} href={`#${s.id}`} onClick={() => setActive(s.id)} style={{
                 display: "block", padding: "7px 12px", borderRadius: 6, marginBottom: 2,
                 fontSize: 13, fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none",
                 fontWeight: active === s.id ? 600 : 400,
-                color: active === s.id ? "#a3defe" : "rgba(219,194,176,0.5)",
-                background: active === s.id ? "rgba(163,222,254,0.07)" : "transparent",
-                borderLeft: active === s.id ? "2px solid #a3defe" : "2px solid transparent",
+                color: active === s.id ? "var(--c-info)" : "var(--c-on-surface-variant)",
+                background: active === s.id ? "rgb(var(--fx-info) / 0.07)" : "transparent",
+                borderLeft: active === s.id ? "2px solid var(--c-info)" : "2px solid transparent",
                 transition: "all 0.15s",
               }}>{s.label}</a>
             ))}
-            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,183,125,0.08)" }}>
-              <a href="/docs" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgb(var(--fx-accent) / 0.08)" }}>
+              <a href="/docs" style={{ fontSize: 13, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 15 }}>menu_book</span>
                 Full Docs →
               </a>
@@ -195,7 +195,7 @@ export default function ApiReferencePage() {
         )}
 
         {/* Content */}
-        <main style={{ flex: 1, padding: mobile ? "40px 20px 80px" : "40px 0 100px 40px", borderLeft: mobile ? "none" : "1px solid rgba(255,183,125,0.06)", minWidth: 0 }}>
+        <main style={{ flex: 1, padding: mobile ? "40px 20px 80px" : "40px 0 100px 40px", borderLeft: mobile ? "none" : "1px solid rgb(var(--fx-accent) / 0.06)", minWidth: 0 }}>
 
           {/* ── Overview ── */}
           <ApiSection id="overview" title="Overview">
@@ -220,7 +220,7 @@ Accept: application/json`}</Code>
 
           {/* ── Auth ── */}
           <ApiSection id="auth" title="Authentication">
-            <P>Wazelo CRM uses API keys for authentication. Generate your key from <strong style={{ color: "#e5e2e1" }}>Settings → API Keys</strong> in your dashboard. Keep your API key secret — treat it like a password.</P>
+            <P>Wazelo CRM uses API keys for authentication. Generate your key from <strong style={{ color: "var(--c-on-surface)" }}>Settings → API Keys</strong> in your dashboard. Keep your API key secret — treat it like a password.</P>
             <H3>Generating an API key</H3>
             <P>Go to Settings → API Keys → New Key. Give it a name and select the permission scope. Keys can be scoped to read-only, read-write, or specific resources.</P>
             <H3>Using the key</H3>
@@ -477,9 +477,9 @@ Accept: application/json`}</Code>
           <ApiSection id="webhooks" title="Webhooks">
             <P>Receive real-time event notifications by registering a webhook URL. Wazelo CRM sends a POST request to your endpoint when events occur.</P>
             <H3>Registering a webhook</H3>
-            <P>Go to <strong style={{ color: "#e5e2e1" }}>Settings → Webhooks → New Webhook</strong>. Enter your endpoint URL and select the events to subscribe to.</P>
+            <P>Go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → Webhooks → New Webhook</strong>. Enter your endpoint URL and select the events to subscribe to.</P>
             <H3>Supported events</H3>
-            <div style={{ background: "#1c1b1b", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
               {[
                 ["message.received", "A new inbound message arrived"],
                 ["message.delivered", "A sent message was delivered"],
@@ -489,9 +489,9 @@ Accept: application/json`}</Code>
                 ["contact.created", "A new contact was created"],
                 ["campaign.completed", "A campaign finished sending"],
               ].map(([event, desc], i) => (
-                <div key={event} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < 6 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <code style={{ fontSize: 12, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 200 }}>{event}</code>
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
+                <div key={event} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < 6 ? "1px solid rgb(var(--fx-ink) / 0.04)" : "none" }}>
+                  <code style={{ fontSize: 12, color: "var(--c-info)", fontFamily: "'Courier New', monospace", minWidth: 200 }}>{event}</code>
+                  <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
                 </div>
               ))}
             </div>
@@ -510,7 +510,7 @@ Accept: application/json`}</Code>
   }
 }`}</Code>
             <H3>Webhook security</H3>
-            <P>Each webhook request includes an <code style={{ background: "#1c1b1b", padding: "1px 6px", borderRadius: 4, color: "#ffb77d", fontSize: 13 }}>X-Wazelo-Signature</code> header — an HMAC-SHA256 signature of the request body using your webhook secret. Always verify this before processing the payload.</P>
+            <P>Each webhook request includes an <code style={{ background: "var(--c-surface-container-lowest)", padding: "1px 6px", borderRadius: 4, color: "var(--c-primary-container)", fontSize: 13 }}>X-Wazelo-Signature</code> header — an HMAC-SHA256 signature of the request body using your webhook secret. Always verify this before processing the payload.</P>
             <Code lang="js">{`const crypto = require("crypto");
 
 function verifySignature(payload, signature, secret) {
@@ -536,7 +536,7 @@ function verifySignature(payload, signature, secret) {
     "status": 404
   }
 }`}</Code>
-            <div style={{ background: "#1c1b1b", borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 8, overflow: "hidden" }}>
               {[
                 ["400", "BAD_REQUEST", "Missing or invalid request parameters"],
                 ["401", "UNAUTHORIZED", "Missing or invalid API key"],
@@ -547,10 +547,10 @@ function verifySignature(payload, signature, secret) {
                 ["429", "RATE_LIMITED", "Too many requests — back off and retry after the Retry-After header"],
                 ["500", "INTERNAL_ERROR", "Something went wrong on our side — contact support if this persists"],
               ].map(([code, name, desc], i) => (
-                <div key={code} style={{ display: "flex", gap: 16, padding: "12px 16px", borderBottom: i < 7 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: parseInt(code) >= 500 ? "#f87171" : parseInt(code) >= 400 ? "#fbbf24" : "#86efac", fontFamily: "'Courier New', monospace", minWidth: 36 }}>{code}</span>
-                  <code style={{ fontSize: 12, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 180 }}>{name}</code>
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
+                <div key={code} style={{ display: "flex", gap: 16, padding: "12px 16px", borderBottom: i < 7 ? "1px solid rgb(var(--fx-ink) / 0.04)" : "none", flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: parseInt(code) >= 500 ? "var(--c-error)" : parseInt(code) >= 400 ? "var(--c-primary-container)" : "var(--c-code-green)", fontFamily: "'Courier New', monospace", minWidth: 36 }}>{code}</span>
+                  <code style={{ fontSize: 12, color: "var(--c-info)", fontFamily: "'Courier New', monospace", minWidth: 180 }}>{name}</code>
+                  <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
                 </div>
               ))}
             </div>

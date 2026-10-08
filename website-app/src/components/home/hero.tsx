@@ -83,7 +83,7 @@ export function Hero() {
             <a
               data-hero="cta"
               href={APP_REGISTER_URL}
-              className="group inline-flex items-center gap-2 rounded-full bg-primary-container px-6 py-3.5 text-sm font-semibold text-on-primary transition-colors duration-200 hover:bg-[#fbbf24] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary-container px-6 py-3.5 text-sm font-semibold text-on-primary transition-colors duration-200 hover:bg-primary active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
             >
               Start free trial
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />

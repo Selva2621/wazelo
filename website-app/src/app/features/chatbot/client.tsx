@@ -15,7 +15,7 @@ function TypingIndicator() {
     <>
       <style>{dotKeyframes}</style>
       <div style={{
-        background: "#2a2a2a",
+        background: "var(--c-surface-container-high)",
         borderRadius: "10px 10px 10px 3px",
         padding: "10px 14px",
         display: "inline-flex",
@@ -24,7 +24,7 @@ function TypingIndicator() {
       }}>
         {[0, 1, 2].map((i) => (
           <span key={i} style={{
-            background: "#94a3b8",
+            background: "var(--c-placeholder)",
             width: 6,
             height: 6,
             borderRadius: "50%",
@@ -42,8 +42,8 @@ function TypingIndicator() {
 function BotBubble({ text }: { text: string }) {
   return (
     <div style={{
-      background: "#2a2a2a",
-      color: "#e5e2e1",
+      background: "var(--c-surface-container-high)",
+      color: "var(--c-on-surface)",
       borderRadius: "10px 10px 10px 3px",
       padding: "9px 12px",
       maxWidth: "80%",
@@ -60,8 +60,8 @@ function BotBubble({ text }: { text: string }) {
 function UserBubble({ text }: { text: string }) {
   return (
     <div style={{
-      background: "#d97707",
-      color: "#4d2600",
+      background: "var(--c-primary)",
+      color: "var(--c-on-primary)",
       borderRadius: "10px 10px 3px 10px",
       padding: "9px 12px",
       maxWidth: "80%",
@@ -80,9 +80,9 @@ function QuickReplyBtn({ label, onClick }: { label: string; onClick: () => void 
     <button
       onClick={onClick}
       style={{
-        background: "rgba(255,183,125,0.1)",
-        border: "1px solid rgba(255,183,125,0.3)",
-        color: "#ffb77d",
+        background: "rgb(var(--fx-accent) / 0.1)",
+        border: "1px solid rgb(var(--fx-accent) / 0.3)",
+        color: "var(--c-primary-container)",
         borderRadius: 16,
         padding: "6px 12px",
         fontSize: 11,
@@ -145,14 +145,14 @@ function ChatbotMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "#ffb77d",
+          textTransform: "uppercase", color: "var(--c-primary-container)",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
-          letterSpacing: "-0.04em", color: "#e5e2e1",
+          letterSpacing: "-0.04em", color: "var(--c-on-surface)",
           fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your 24/7 WhatsApp chatbot.
@@ -164,11 +164,11 @@ function ChatbotMockup() {
         <div style={{
           width: 300,
           height: 540,
-          background: "#131313",
+          background: "var(--c-surface)",
           borderRadius: 36,
           overflow: "hidden",
-          border: "8px solid #1c1b1b",
-          boxShadow: "0 40px 80px rgba(0,0,0,0.7)",
+          border: "8px solid var(--c-surface-container-lowest)",
+          boxShadow: "0 40px 80px rgb(var(--fx-shadow) / 0.35)",
           marginTop: 32,
           display: "flex",
           flexDirection: "column",
@@ -176,25 +176,25 @@ function ChatbotMockup() {
 
           {/* WhatsApp header bar */}
           <div style={{
-            background: "#131313",
+            background: "var(--c-surface)",
             padding: "10px 14px",
             display: "flex",
             alignItems: "center",
             gap: 10,
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 16, color: "#fff", lineHeight: 1 }}>‹</span>
+            <span style={{ fontSize: 16, color: "var(--c-on-surface)", lineHeight: 1 }}>‹</span>
             <div style={{
               width: 32, height: 32, borderRadius: "50%",
-              background: "#ffb77d",
+              background: "var(--c-primary-container)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#fff" }}>smart_toy</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "var(--c-on-surface)" }}>smart_toy</span>
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
-              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
+              <div style={{ fontSize: 10, color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
             </div>
           </div>
 
@@ -203,7 +203,7 @@ function ChatbotMockup() {
             flex: 1,
             overflowY: "auto",
             padding: "12px 10px",
-            background: "#0e0e0e",
+            background: "var(--c-surface)",
             display: "flex",
             flexDirection: "column",
             gap: 8,
@@ -262,7 +262,7 @@ function ChatbotMockup() {
 
           {/* Input bar */}
           <div style={{
-            background: "#1c1b1b",
+            background: "var(--c-surface-container-lowest)",
             padding: "8px 12px",
             display: "flex",
             gap: 8,
@@ -271,18 +271,18 @@ function ChatbotMockup() {
           }}>
             <div style={{
               flex: 1,
-              background: "#2a2a2a",
+              background: "var(--c-surface-container-high)",
               border: "none",
               borderRadius: 20,
               padding: "8px 12px",
               fontSize: 12,
-              color: "#9ca3af",
+              color: "var(--c-placeholder)",
               fontFamily: "var(--font-geist-sans), sans-serif",
               lineHeight: 1,
             }}>
               Type a message...
             </div>
-            <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#ffb77d" }}>send</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)" }}>send</span>
           </div>
 
         </div>
@@ -295,7 +295,7 @@ function ChatbotMockup() {
 const data: FeatureDetailData = {
   slug: "chatbot",
   tag: "Chatbot Builder",
-  heroTitle: "Build bots.<br /><span style=\"color:#ffb77d\">No code needed.</span>",
+  heroTitle: "Build bots.<br /><span style=\"color:var(--c-primary-container)\">No code needed.</span>",
   heroSubtitle: "Create WhatsApp chatbots that qualify leads, answer FAQs, capture data, and hand off to your team — all without writing a single line of code.",
   heroScreen: "/screens/06-chatbot-builder.png",
   overviewTitle: "Automate the first conversation.",

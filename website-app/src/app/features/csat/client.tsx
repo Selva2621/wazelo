@@ -10,9 +10,9 @@ const agents = [
 
 function getAgentScoreStyle(score: number): React.CSSProperties {
   if (score >= 4.5) {
-    return { fontSize: 12, fontWeight: 700, color: "#34d399" };
+    return { fontSize: 12, fontWeight: 700, color: "var(--c-success)" };
   } else if (score >= 4.0) {
-    return { fontSize: 12, fontWeight: 700, color: "#fbbf24" };
+    return { fontSize: 12, fontWeight: 700, color: "var(--c-primary-container)" };
   } else {
     return { fontSize: 12, fontWeight: 700, color: "#ef4444" };
   }
@@ -35,34 +35,34 @@ function CsatMockup() {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           See it in action
         </span>
       </div>
-      <h3 style={{ fontSize: 24, fontWeight: 700, color: "#fff", margin: "0 0 0 0" }}>
+      <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--c-on-surface)", margin: "0 0 0 0" }}>
         CSAT surveys, automatically.
       </h3>
 
       <div style={{
-        background: "#1c1b1b",
+        background: "var(--c-surface-container-lowest)",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         overflow: "hidden",
         marginTop: 32,
       }}>
         {/* App chrome bar */}
         <div style={{
-          background: "#13131f",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--c-surface)",
+          borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
           padding: "10px 16px",
           display: "flex",
           alignItems: "center",
           gap: 8,
         }}>
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fbbf24" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#34d399" }} />
-          <span style={{ marginLeft: 12, fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-primary-container)" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-success)" }} />
+          <span style={{ marginLeft: 12, fontSize: 12, color: "var(--c-placeholder)", fontFamily: "monospace" }}>
             wazelo.in — CSAT Surveys
           </span>
         </div>
@@ -71,11 +71,11 @@ function CsatMockup() {
         <div style={{ display: "flex", minHeight: 380 }}>
 
           {/* LEFT PANEL */}
-          <div style={{ flex: 1, padding: "24px 20px", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ flex: 1, padding: "24px 20px", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)" }}>
             <div style={{
               fontSize: 11,
               fontWeight: 600,
-              color: "#fbbf24",
+              color: "var(--c-primary-container)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               marginBottom: 16,
@@ -85,16 +85,16 @@ function CsatMockup() {
 
             {/* Agent bubble */}
             <div style={{
-              background: "#2a2a2a",
+              background: "var(--c-surface-container-high)",
               borderRadius: "12px 12px 12px 4px",
               padding: "12px 14px",
               maxWidth: "85%",
               marginBottom: 16,
             }}>
-              <div style={{ fontSize: 13, color: "#fff", lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, color: "var(--c-on-surface)", lineHeight: 1.6 }}>
                 Hi! We&apos;ve resolved your issue. How was your experience today?
               </div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textAlign: "right", marginTop: 6 }}>
+              <div style={{ fontSize: 10, color: "var(--c-placeholder)", textAlign: "right", marginTop: 6 }}>
                 Wazelo CRM &nbsp;✓✓
               </div>
             </div>
@@ -117,7 +117,7 @@ function CsatMockup() {
                     border: "none",
                     padding: 0,
                     lineHeight: 1,
-                    color: i <= selectedStar ? "#fbbf24" : "rgba(219,194,176,0.3)",
+                    color: i <= selectedStar ? "var(--c-primary-container)" : "var(--c-placeholder)",
                     transition: "color 0.15s",
                   }}
                 >
@@ -132,12 +132,12 @@ function CsatMockup() {
                 <input
                   placeholder="Add a comment (optional)..."
                   style={{
-                    background: "#2a2a2a",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "var(--c-surface-container-high)",
+                    border: "1px solid rgb(var(--fx-ink) / 0.1)",
                     borderRadius: 8,
                     padding: "10px 14px",
                     fontSize: 12,
-                    color: "#e5e2e1",
+                    color: "var(--c-on-surface)",
                     width: "100%",
                     outline: "none",
                     marginBottom: 12,
@@ -146,8 +146,8 @@ function CsatMockup() {
                 />
                 <button
                   style={{
-                    background: "#ffb77d",
-                    color: "#4d2600",
+                    background: "var(--c-primary-container)",
+                    color: "var(--c-on-primary)",
                     borderRadius: 8,
                     padding: "10px 20px",
                     fontSize: 13,
@@ -164,20 +164,20 @@ function CsatMockup() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div style={{ width: 260, flexShrink: 0, padding: "24px 18px", background: "#131313" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 20 }}>
+          <div style={{ width: 260, flexShrink: 0, padding: "24px 18px", background: "var(--c-surface)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 20 }}>
               CSAT Dashboard
             </div>
 
             {/* Big score */}
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <div>
-                <span style={{ fontSize: 48, fontWeight: 700, color: "#fbbf24" }}>4.2</span>
-                <span style={{ fontSize: 20, color: "rgba(255,255,255,0.35)" }}>/5</span>
+                <span style={{ fontSize: 48, fontWeight: 700, color: "var(--c-primary-container)" }}>4.2</span>
+                <span style={{ fontSize: 20, color: "var(--c-placeholder)" }}>/5</span>
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>avg score</div>
-              <div style={{ fontSize: 11, color: "#fbbf24", letterSpacing: 2 }}>★★★★☆</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>68% response rate</div>
+              <div style={{ fontSize: 11, color: "var(--c-placeholder)", marginBottom: 4 }}>avg score</div>
+              <div style={{ fontSize: 11, color: "var(--c-primary-container)", letterSpacing: 2 }}>★★★★☆</div>
+              <div style={{ fontSize: 12, color: "var(--c-placeholder)", marginTop: 4 }}>68% response rate</div>
             </div>
 
             {/* Agent table */}
@@ -188,9 +188,9 @@ function CsatMockup() {
                 gap: "4px 12px",
                 marginBottom: 8,
               }}>
-                <span style={{ fontSize: 11, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em" }}>Agent</span>
-                <span style={{ fontSize: 11, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", textAlign: "center" }}>Surveys</span>
-                <span style={{ fontSize: 11, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", textAlign: "right" }}>Score</span>
+                <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--c-placeholder)", letterSpacing: "0.06em" }}>Agent</span>
+                <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--c-placeholder)", letterSpacing: "0.06em", textAlign: "center" }}>Surveys</span>
+                <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--c-placeholder)", letterSpacing: "0.06em", textAlign: "right" }}>Score</span>
               </div>
 
               {agents.map((agent, i) => (
@@ -201,12 +201,12 @@ function CsatMockup() {
                     gridTemplateColumns: "1fr auto auto",
                     gap: "4px 12px",
                     padding: "8px 0",
-                    borderBottom: i < agents.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    borderBottom: i < agents.length - 1 ? "1px solid rgb(var(--fx-ink) / 0.04)" : "none",
                     alignItems: "center",
                   }}
                 >
-                  <span style={{ fontSize: 12, color: "#fff" }}>{agent.name}</span>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>{agent.surveys}</span>
+                  <span style={{ fontSize: 12, color: "var(--c-on-surface)" }}>{agent.name}</span>
+                  <span style={{ fontSize: 12, color: "var(--c-placeholder)", textAlign: "center" }}>{agent.surveys}</span>
                   <span style={{ ...getAgentScoreStyle(agent.score), textAlign: "right" }}>{agent.score.toFixed(1)}</span>
                 </div>
               ))}
@@ -216,8 +216,8 @@ function CsatMockup() {
             <div style={{
               marginTop: 16,
               padding: "10px 12px",
-              background: "rgba(239,68,68,0.08)",
-              border: "1px solid rgba(239,68,68,0.15)",
+              background: "color-mix(in srgb, var(--c-error) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--c-error) 15%, transparent)",
               borderRadius: 8,
             }}>
               <span style={{ fontSize: 12, color: "#ef4444" }}>
@@ -234,7 +234,7 @@ function CsatMockup() {
 const data: FeatureDetailData = {
   slug: "csat",
   tag: "CSAT Surveys",
-  heroTitle: "Know how customers<br /><span style=\"color:#ffb77d\">really feel.</span>",
+  heroTitle: "Know how customers<br /><span style=\"color:var(--c-primary-container)\">really feel.</span>",
   heroSubtitle: "Automatically send satisfaction surveys after every resolved WhatsApp conversation. Collect scores, read responses, and identify your best and worst-performing agents.",
   heroScreen: "/screens/09-csat-surveys.png",
   overviewTitle: "Every resolved conversation is a data point.",

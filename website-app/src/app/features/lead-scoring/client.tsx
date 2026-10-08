@@ -11,27 +11,27 @@ const leads = [
 ];
 
 const rules = [
-  { id: "opened",       label: "+20 Opened message",       points: "+20", matchTag: "opened",       color: "#34d399" },
-  { id: "replied",      label: "+15 Replied within 5min",  points: "+15", matchTag: "replied",      color: "#34d399" },
-  { id: "hasPhone",     label: "+10 Has phone number",     points: "+10", matchTag: "hasPhone",     color: "#34d399" },
-  { id: "isLead",       label: "+5 Tagged as Lead",        points: "+5",  matchTag: "isLead",       color: "#34d399" },
+  { id: "opened",       label: "+20 Opened message",       points: "+20", matchTag: "opened",       color: "var(--c-success)" },
+  { id: "replied",      label: "+15 Replied within 5min",  points: "+15", matchTag: "replied",      color: "var(--c-success)" },
+  { id: "hasPhone",     label: "+10 Has phone number",     points: "+10", matchTag: "hasPhone",     color: "var(--c-success)" },
+  { id: "isLead",       label: "+5 Tagged as Lead",        points: "+5",  matchTag: "isLead",       color: "var(--c-success)" },
   { id: "unresponsive", label: "−10 Unresponsive 7 days",  points: "−10", matchTag: "unresponsive", color: "#ef4444" },
 ];
 
 const avatarGradients = [
-  "linear-gradient(135deg, #554336, #d97707)",
-  "linear-gradient(135deg, #f59e0b, #ef4444)",
+  "linear-gradient(135deg, var(--c-outline-variant), var(--c-primary))",
+  "linear-gradient(135deg, var(--c-primary-container), #ef4444)",
   "linear-gradient(135deg, #10b981, #06b6d4)",
   "linear-gradient(135deg, #ec4899, #8b5cf6)",
-  "linear-gradient(135deg, #3b82f6, #d97707)",
+  "linear-gradient(135deg, #3b82f6, var(--c-primary))",
 ];
 
 function getScoreBadgeStyle(score: number): React.CSSProperties {
   if (score >= 70) {
     return {
-      background: "rgba(52,211,153,0.12)",
-      color: "#34d399",
-      border: "1px solid rgba(52,211,153,0.3)",
+      background: "color-mix(in srgb, var(--c-success) 12%, transparent)",
+      color: "var(--c-success)",
+      border: "1px solid color-mix(in srgb, var(--c-success) 30%, transparent)",
       padding: "4px 10px",
       borderRadius: 12,
       fontSize: 13,
@@ -39,9 +39,9 @@ function getScoreBadgeStyle(score: number): React.CSSProperties {
     };
   } else if (score >= 40) {
     return {
-      background: "rgba(251,191,36,0.12)",
-      color: "#fbbf24",
-      border: "1px solid rgba(251,191,36,0.3)",
+      background: "rgb(var(--fx-accent) / 0.12)",
+      color: "var(--c-primary-container)",
+      border: "1px solid rgb(var(--fx-accent) / 0.3)",
       padding: "4px 10px",
       borderRadius: 12,
       fontSize: 13,
@@ -49,9 +49,9 @@ function getScoreBadgeStyle(score: number): React.CSSProperties {
     };
   } else {
     return {
-      background: "rgba(239,68,68,0.12)",
+      background: "color-mix(in srgb, var(--c-error) 12%, transparent)",
       color: "#ef4444",
-      border: "1px solid rgba(239,68,68,0.3)",
+      border: "1px solid color-mix(in srgb, var(--c-error) 30%, transparent)",
       padding: "4px 10px",
       borderRadius: 12,
       fontSize: 13,
@@ -76,34 +76,34 @@ function LeadScoringMockup() {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           See it in action
         </span>
       </div>
-      <h3 style={{ fontSize: 24, fontWeight: 700, color: "#fff", margin: "0 0 0 0" }}>
+      <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--c-on-surface)", margin: "0 0 0 0" }}>
         Score leads automatically.
       </h3>
 
       <div style={{
-        background: "#1c1b1b",
+        background: "var(--c-surface-container-lowest)",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
         overflow: "hidden",
         marginTop: 32,
       }}>
         {/* App chrome bar */}
         <div style={{
-          background: "#13131f",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--c-surface)",
+          borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
           padding: "10px 16px",
           display: "flex",
           alignItems: "center",
           gap: 8,
         }}>
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fbbf24" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#34d399" }} />
-          <span style={{ marginLeft: 12, fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-primary-container)" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-success)" }} />
+          <span style={{ marginLeft: 12, fontSize: 12, color: "var(--c-placeholder)", fontFamily: "monospace" }}>
             wazelo.in — Lead Scoring
           </span>
         </div>
@@ -112,8 +112,8 @@ function LeadScoringMockup() {
         <div style={{ display: "flex", minHeight: 380 }}>
 
           {/* LEFT PANEL */}
-          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 16 }}>
+          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 16 }}>
               Leads — Sorted by Score
             </div>
 
@@ -128,7 +128,7 @@ function LeadScoringMockup() {
                       alignItems: "center",
                       gap: 12,
                       padding: "10px 0",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)",
                       opacity: isHighlighted ? 1 : 0.25,
                       transition: "opacity 0.2s",
                     }}
@@ -138,13 +138,13 @@ function LeadScoringMockup() {
                       width: 20,
                       height: 20,
                       borderRadius: "50%",
-                      background: "#2a2a2a",
+                      background: "var(--c-surface-container-high)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "rgba(255,255,255,0.35)",
+                      color: "var(--c-placeholder)",
                       flexShrink: 0,
                     }}>
                       {i + 1}
@@ -161,7 +161,7 @@ function LeadScoringMockup() {
                       justifyContent: "center",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "#fff",
+                      color: "var(--c-on-surface)",
                       flexShrink: 0,
                     }}>
                       {lead.name.split(" ").map(n => n[0]).join("")}
@@ -169,8 +169,8 @@ function LeadScoringMockup() {
 
                     {/* Name + phone */}
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{lead.name}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{lead.phone}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>{lead.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--c-placeholder)" }}>{lead.phone}</div>
                     </div>
 
                     {/* Score badge */}
@@ -179,7 +179,7 @@ function LeadScoringMockup() {
                     </div>
 
                     {/* Last active */}
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "right", minWidth: 60 }}>
+                    <div style={{ fontSize: 11, color: "var(--c-placeholder)", textAlign: "right", minWidth: 60 }}>
                       {lead.last}
                     </div>
                   </div>
@@ -189,8 +189,8 @@ function LeadScoringMockup() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div style={{ width: 240, flexShrink: 0, padding: "20px 18px", background: "#131313" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 16 }}>
+          <div style={{ width: 240, flexShrink: 0, padding: "20px 18px", background: "var(--c-surface)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 16 }}>
               Scoring Rules
             </div>
 
@@ -208,8 +208,8 @@ function LeadScoringMockup() {
                       padding: "10px 12px",
                       borderRadius: 8,
                       cursor: "pointer",
-                      background: isActive ? "rgba(255,183,125,0.1)" : "#2a2a2a",
-                      border: isActive ? "1px solid rgba(255,183,125,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                      background: isActive ? "rgb(var(--fx-accent) / 0.1)" : "var(--c-surface-container-high)",
+                      border: isActive ? "1px solid rgb(var(--fx-accent) / 0.3)" : "1px solid rgb(var(--fx-ink) / 0.06)",
                       transition: "background 0.15s, border 0.15s",
                     }}
                     onMouseEnter={() => setHoveredRule(rule.matchTag)}
@@ -221,14 +221,14 @@ function LeadScoringMockup() {
                       fontSize: 12,
                       fontWeight: 700,
                       color: rule.color,
-                      background: isPositive ? "rgba(52,211,153,0.1)" : "rgba(239,68,68,0.1)",
+                      background: isPositive ? "color-mix(in srgb, var(--c-success) 10%, transparent)" : "color-mix(in srgb, var(--c-error) 10%, transparent)",
                       borderRadius: 6,
                       padding: "3px 6px",
                       flexShrink: 0,
                     }}>
                       {rule.points}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", flex: 1 }}>
+                    <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", flex: 1 }}>
                       {rule.label}
                     </div>
                   </div>
@@ -236,7 +236,7 @@ function LeadScoringMockup() {
               })}
             </div>
 
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic", marginTop: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: "var(--c-placeholder)", fontStyle: "italic", marginTop: 16, textAlign: "center" }}>
               Hover a rule to highlight matching leads
             </div>
           </div>
@@ -249,7 +249,7 @@ function LeadScoringMockup() {
 const data: FeatureDetailData = {
   slug: "lead-scoring",
   tag: "Lead Scoring",
-  heroTitle: "Know who to call<br /><span style=\"color:#ffb77d\">first. Always.</span>",
+  heroTitle: "Know who to call<br /><span style=\"color:var(--c-primary-container)\">first. Always.</span>",
   heroSubtitle: "Automatic lead scoring based on engagement, profile completeness, and behaviour — so your team focuses on the hottest leads, not the longest queue.",
   heroScreen: "",
   overviewTitle: "Not every lead deserves equal attention.",

@@ -118,7 +118,7 @@ export function LeadScraperDemo() {
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={springs.gentle}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-ink/[0.06] bg-ink/[0.03] px-4 py-2.5"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-on-surface">{r.title}</p>
@@ -136,7 +136,7 @@ export function LeadScraperDemo() {
                   {view.added ? "In pipeline" : "Add"}
                 </motion.span>
               ) : (
-                <span className="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs text-on-surface-variant">
+                <span className="flex shrink-0 items-center gap-1 rounded-lg border border-ink/10 px-2.5 py-1 text-xs text-on-surface-variant">
                   <Plus className="h-3.5 w-3.5" /> Add
                 </span>
               )}
@@ -153,7 +153,7 @@ export function LeadScraperDemo() {
             onClick={() => pick(i)}
             aria-pressed={i === src}
             className={`relative rounded-full px-3.5 py-1.5 text-sm transition-[background-color] ${focusRing} ${
-              i === src ? "text-on-primary" : "lg-glass-pill text-on-surface hover:bg-white/10"
+              i === src ? "text-on-primary" : "lg-glass-pill text-on-surface hover:bg-ink/10"
             }`}
           >
             {i === src && <motion.span layoutId="scraper-source" transition={springs.layout} className="absolute inset-0 rounded-full bg-primary-container" />}
@@ -219,7 +219,7 @@ export function PipelineDemo() {
           </li>
         ))}
       </ol>
-      <p className="mt-5 flex items-baseline justify-between border-t border-white/[0.06] pt-4 text-sm text-on-surface-variant">
+      <p className="mt-5 flex items-baseline justify-between border-t border-ink/[0.06] pt-4 text-sm text-on-surface-variant">
         Won this month
         <span ref={valueRef} className={`font-mono text-lg tabular-nums ${won ? "text-success" : "text-on-surface-variant"}`}>
           ₹0
@@ -244,9 +244,9 @@ const SWIPE_VELOCITY = 400;
 
 function TemplateCard({ t }: { t: (typeof TEMPLATES)[number] }) {
   return (
-    <div className="h-full rounded-2xl border border-white/10 bg-[#1b2a28] p-5 shadow-[0_18px_40px_-20px_rgb(0_0_0/0.8)]">
-      <p className="text-xs font-medium text-[#8fd1bf]">{t.name}</p>
-      <p className="mt-3 text-[15px] leading-relaxed text-[#e9edef]">
+    <div className="h-full rounded-2xl border border-ink/10 bg-wa-in p-5 shadow-[0_18px_40px_-20px_rgb(var(--fx-shadow)/0.25)]">
+      <p className="text-xs font-medium text-wa-label">{t.name}</p>
+      <p className="mt-3 text-[15px] leading-relaxed text-wa-text">
         {t.body.map((part, i) =>
           part.startsWith("{") ? (
             <span key={i} className="rounded bg-primary/20 px-1 text-primary-container">
@@ -337,7 +337,7 @@ export function TemplateDeck() {
             setTouched(true);
             advance(1);
           }}
-          className={`lg-glass-pill flex items-center gap-1 rounded-full px-3 py-1.5 text-on-surface transition-colors hover:bg-white/10 active:scale-[0.97] ${focusRing}`}
+          className={`lg-glass-pill flex items-center gap-1 rounded-full px-3 py-1.5 text-on-surface transition-colors hover:bg-ink/10 active:scale-[0.97] ${focusRing}`}
         >
           Next <ChevronRight className="h-4 w-4" />
         </button>
