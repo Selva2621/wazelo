@@ -41,7 +41,9 @@ interface PhoneFrameProps {
   children: ReactNode;
 }
 
-export function PhoneFrame({ contact, typing, children }: PhoneFrameProps) {
+/** Phone hardware: bezel, side buttons and a status bar tinted like WhatsApp's header.
+    Children fill the screen below the status bar. */
+export function PhoneShell({ children }: { children: ReactNode }) {
   return (
     <div className="wa-phone relative" inert aria-hidden>
       {/* side buttons */}
@@ -61,52 +63,59 @@ export function PhoneFrame({ contact, typing, children }: PhoneFrameProps) {
               <BatteryFull className="h-3.5 w-3.5" />
             </span>
           </div>
-
-          {/* chat header */}
-          <div className="flex h-12 shrink-0 items-center gap-2 bg-[var(--wa-header)] px-2 text-[var(--wa-on-header)]">
-            <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-label font-semibold text-on-primary">
-              {contact.initials}
-            </span>
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="flex items-center gap-1 truncate text-label font-semibold">
-                {contact.name}
-                {contact.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--wa-accent)]" />}
-              </p>
-              <p className="truncate text-caption font-normal opacity-75">{typing ? "typing…" : contact.subtitle}</p>
-            </div>
-            <Video className="h-4 w-4 shrink-0" />
-            <Phone className="h-4 w-4 shrink-0" />
-            <MoreVertical className="h-4 w-4 shrink-0" />
-          </div>
-
-          {/* conversation */}
-          <div className="wa-wallpaper flex flex-1 flex-col justify-end gap-1.5 overflow-hidden px-2.5 py-3">
-            <span className="mb-1 self-center rounded-md bg-[var(--wa-chip)] px-2 py-0.5 text-caption font-normal uppercase text-[var(--wa-meta)] shadow-sm">
-              Today
-            </span>
-            {children}
-          </div>
-
-          {/* composer */}
-          <div className="flex shrink-0 items-center gap-1.5 bg-[var(--wa-bg)] px-2 pb-2 pt-1">
-            <div className="flex h-9 flex-1 items-center gap-2 rounded-full bg-[var(--wa-input)] px-3 text-label font-normal text-[var(--wa-meta)] shadow-sm">
-              <Smile className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Message</span>
-              <Paperclip className="h-4 w-4 shrink-0" />
-              <Camera className="h-4 w-4 shrink-0" />
-            </div>
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--wa-accent)] text-white">
-              <Mic className="h-4 w-4" />
-            </span>
-          </div>
-          {/* home indicator */}
-          <div className="flex h-4 shrink-0 items-start justify-center bg-[var(--wa-bg)]">
-            <span className="h-1 w-20 rounded-full bg-[var(--wa-meta)]/50" />
-          </div>
+          {children}
         </div>
       </div>
     </div>
+  );
+}
+
+export function PhoneFrame({ contact, typing, children }: PhoneFrameProps) {
+  return (
+    <PhoneShell>
+      {/* chat header */}
+      <div className="flex h-12 shrink-0 items-center gap-2 bg-[var(--wa-header)] px-2 text-[var(--wa-on-header)]">
+        <ArrowLeft className="h-4 w-4 shrink-0" />
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-label font-semibold text-on-primary">
+          {contact.initials}
+        </span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="flex items-center gap-1 truncate text-label font-semibold">
+            {contact.name}
+            {contact.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--wa-accent)]" />}
+          </p>
+          <p className="truncate text-caption font-normal opacity-75">{typing ? "typing…" : contact.subtitle}</p>
+        </div>
+        <Video className="h-4 w-4 shrink-0" />
+        <Phone className="h-4 w-4 shrink-0" />
+        <MoreVertical className="h-4 w-4 shrink-0" />
+      </div>
+
+      {/* conversation */}
+      <div className="wa-wallpaper flex flex-1 flex-col justify-end gap-1.5 overflow-hidden px-2.5 py-3">
+        <span className="mb-1 self-center rounded-md bg-[var(--wa-chip)] px-2 py-0.5 text-caption font-normal uppercase text-[var(--wa-meta)] shadow-sm">
+          Today
+        </span>
+        {children}
+      </div>
+
+      {/* composer */}
+      <div className="flex shrink-0 items-center gap-1.5 bg-[var(--wa-bg)] px-2 pb-2 pt-1">
+        <div className="flex h-9 flex-1 items-center gap-2 rounded-full bg-[var(--wa-input)] px-3 text-label font-normal text-[var(--wa-meta)] shadow-sm">
+          <Smile className="h-4 w-4 shrink-0" />
+          <span className="flex-1">Message</span>
+          <Paperclip className="h-4 w-4 shrink-0" />
+          <Camera className="h-4 w-4 shrink-0" />
+        </div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--wa-accent)] text-white">
+          <Mic className="h-4 w-4" />
+        </span>
+      </div>
+      {/* home indicator */}
+      <div className="flex h-4 shrink-0 items-start justify-center bg-[var(--wa-bg)]">
+        <span className="h-1 w-20 rounded-full bg-[var(--wa-meta)]/50" />
+      </div>
+    </PhoneShell>
   );
 }
 

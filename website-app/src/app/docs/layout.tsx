@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     // Long-tail
     "WhatsApp CRM documentation India",
     "Wazelo CRM setup guide",
-    "WhatsApp Business API integration guide India",
+    "connect WhatsApp with QR code guide",
     "WhatsApp automation setup guide",
     "WhatsApp chatbot tutorial India",
     "how to set up WhatsApp CRM India",

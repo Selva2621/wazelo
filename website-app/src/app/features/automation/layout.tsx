@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Automation & No-Code Workflow Builder",
   description:
-    "Build no-code WhatsApp automation workflows. Auto-replies, lead routing, drip sequences, and follow-up flows that run 24/7. Best WhatsApp marketing automation for India.",
+    "No-code WhatsApp automation rules. Trigger on new messages, new contacts, status changes, schedules, no reply, Meta lead ads, or Shopify orders, then send a message, assign, tag, or update status. Included from the Growth plan, ₹999/mo.",
   keywords: [
     // Short-keys
     "WhatsApp automation",
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Automation & No-Code Workflow Builder | Wazelo CRM",
     description:
-      "Build no-code WhatsApp workflows: auto-replies, lead routing, drip sequences. Runs 24/7. Best WhatsApp marketing automation for Indian businesses.",
+      "No-code WhatsApp automation rules: auto-replies, chat assignment, tags, and status updates. Draft rules with AI and check execution logs. Included from the Growth plan, ₹999/mo.",
     url: "https://wazelo.in/features/automation",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "WhatsApp Automation — Wazelo CRM",
+        alt: "WhatsApp Automation | Wazelo CRM",
       },
     ],
   },
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Automation | Wazelo CRM",
     description:
-      "No-code WhatsApp workflows: auto-replies, lead routing, drip sequences. Runs 24/7. Starts ₹999/mo.",
+      "No-code WhatsApp automation rules: auto-replies, assignment, tags, status updates. Automation is included from the Growth plan, ₹999/mo.",
     images: ["/opengraph-image"],
   },
 };

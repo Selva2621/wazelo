@@ -99,7 +99,7 @@ export function FinalCta() {
             </h2>
 
             <div className="lg:col-span-4">
-              <p className="max-w-[36ch] text-lg leading-relaxed opacity-85">Set up in minutes. Try every feature of your plan free for 14 days.</p>
+              <p className="max-w-[36ch] text-lg leading-relaxed opacity-85">Scan a QR code to connect your WhatsApp. Try Wazelo free for 14 days.</p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <MagneticLink
                   href={APP_REGISTER_URL}

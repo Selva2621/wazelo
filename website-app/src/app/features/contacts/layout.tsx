@@ -11,9 +11,9 @@ const breadcrumbSchema = {
 };
 
 export const metadata: Metadata = {
-  title: "WhatsApp Contacts CRM — Lead Management for India",
+  title: "WhatsApp Contacts CRM | Lead Management",
   description:
-    "Tag, segment, and manage all your WhatsApp contacts and leads in one place. Import from CSV, sync from integrations, or capture via chatbot. Best WhatsApp lead management for Indian businesses.",
+    "Manage your WhatsApp contacts and leads in one place. Tags, custom fields, notes, owners, CSV import and export, merge, and list or kanban views. Meta lead ads flow in as contacts.",
   keywords: [
     // Short-keys
     "WhatsApp contacts",
@@ -45,16 +45,16 @@ export const metadata: Metadata = {
     canonical: "https://wazelo.in/features/contacts",
   },
   openGraph: {
-    title: "WhatsApp Contacts CRM — Lead Management | Wazelo CRM",
+    title: "WhatsApp Contacts CRM | Wazelo CRM",
     description:
-      "Tag, segment, and manage all your WhatsApp leads in one place. Import from CSV or capture via chatbot. Best WhatsApp lead management for India.",
+      "Tags, custom fields, notes, owners, CSV import and export, and list or kanban views for your WhatsApp leads.",
     url: "https://wazelo.in/features/contacts",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Contacts CRM — Wazelo CRM",
+        alt: "Contacts CRM | Wazelo CRM",
       },
     ],
   },
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Contacts CRM | Wazelo CRM",
     description:
-      "Tag, segment, manage all WhatsApp leads. CSV import, chatbot capture, integrations. Best WhatsApp CRM for India.",
+      "Tags, custom fields, CSV import and export, and list or kanban views for your WhatsApp leads.",
     images: ["/opengraph-image"],
   },
 };

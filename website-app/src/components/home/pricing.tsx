@@ -9,6 +9,7 @@ import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
 // Prices and limits from backend/prisma/seed-plans.js (INR). Yearly = 10x monthly.
+// Each WhatsApp number is one QR-linked session. Automation is Growth and up.
 interface Plan {
   name: string;
   monthly: number;
@@ -22,7 +23,7 @@ const SOLO: Plan = {
   monthly: 299,
   yearly: 2990,
   limits: "1 user, 1 WhatsApp number, 3,000 messages a month",
-  features: ["Lead Scraper and client pipeline", "26 freelancer templates", "Follow-up sequences", "5 campaigns a month"],
+  features: ["Lead Scraper and lead pipeline", "20 message templates", "Drip sequences", "5 campaigns a month"],
 };
 
 const TEAM_PLANS: (Plan & { popular?: boolean })[] = [
@@ -30,23 +31,23 @@ const TEAM_PLANS: (Plan & { popular?: boolean })[] = [
     name: "Starter",
     monthly: 499,
     yearly: 4990,
-    limits: "5 users, 5 numbers, 5,000 messages a month",
-    features: ["Shared inbox", "10 campaigns a month", "50 AI credits", "1 Shopify store", "Email support"],
+    limits: "5 users, 5 WhatsApp numbers, 5,000 messages a month",
+    features: ["Shared inbox", "10 campaigns a month", "10 message templates", "50 AI credits", "1 Shopify store", "1,000 API calls"],
   },
   {
     name: "Growth",
     monthly: 999,
     yearly: 9990,
-    limits: "15 users, 15 numbers, 25,000 messages a month",
-    features: ["Everything in Starter", "50 campaigns a month", "200 AI credits", "Automation workflows", "Priority support"],
+    limits: "15 users, 15 WhatsApp numbers, 25,000 messages a month",
+    features: ["Everything in Starter", "Automation rules", "50 campaigns a month", "50 message templates", "200 AI credits", "3 Shopify stores", "10,000 API calls"],
     popular: true,
   },
   {
     name: "Pro",
     monthly: 1999,
     yearly: 19990,
-    limits: "50 users, 50 numbers, 1,00,000 messages a month",
-    features: ["Everything in Growth", "200 campaigns a month", "500 AI credits", "Full API access", "Dedicated account manager"],
+    limits: "50 users, 50 WhatsApp numbers, 1,00,000 messages a month",
+    features: ["Everything in Growth", "200 campaigns a month", "200 message templates", "500 AI credits", "5 Shopify stores", "Full API access"],
   },
 ];
 
@@ -199,7 +200,7 @@ export function Pricing() {
             <div>
               <h3 className="text-lg font-semibold text-on-surface">Enterprise</h3>
               <p className="mt-2 max-w-[60ch] text-sm text-on-surface-variant">
-                From {inr(3999)} a month for 200 users and 200 numbers, with unlimited messages and campaigns, a custom SLA and white-label options.
+                From {inr(3999)} a month for 200 users and 200 WhatsApp numbers, with unlimited messages, campaigns, templates and Shopify stores, full API access and custom AI credits.
               </p>
             </div>
             <Link

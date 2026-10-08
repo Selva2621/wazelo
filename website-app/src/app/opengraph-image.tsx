@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Wazelo CRM — WhatsApp CRM for Growing Teams";
+export const alt = "Wazelo CRM, the WhatsApp CRM for freelancers and teams";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -103,8 +103,8 @@ export default async function OGImage() {
               maxWidth: "700px",
             }}
           >
-            Close Every{" "}
-            <span style={{ color: "#ffb77d" }}>Deal</span>{" "}
+            Win and serve{" "}
+            <span style={{ color: "#ffb77d" }}>customers</span>{" "}
             on WhatsApp
           </div>
           <div
@@ -116,7 +116,7 @@ export default async function OGImage() {
               fontWeight: "400",
             }}
           >
-            Shared inbox · Bulk campaigns · Automation · Analytics
+            Shared inbox · Lead scraper · Campaigns · Automation
           </div>
         </div>
 
@@ -138,7 +138,7 @@ export default async function OGImage() {
             wazelo.in
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
-            {["500+ Teams", "94% Delivery", "14-day Free Trial"].map((label) => (
+            {["Scan a QR to connect", "14-day free trial", "From ₹299/mo"].map((label) => (
               <div
                 key={label}
                 style={{

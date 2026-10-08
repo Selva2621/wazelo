@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "WhatsApp Bulk Campaigns & Broadcast Messaging",
   description:
-    "Send personalised WhatsApp bulk messages to thousands of contacts. Real-time delivery tracking, smart retry logic, and analytics. Best WhatsApp broadcast software for Indian businesses.",
+    "Send WhatsApp campaigns with text, media, or templates. Pick your audience by status, tags, source, or scraper run, schedule with a timezone, and see Sent, Delivered, Read, or Failed for each recipient.",
   keywords: [
     // Short-keys
     "WhatsApp bulk campaign",
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WhatsApp Bulk Campaigns & Broadcast Messaging | Wazelo CRM",
     description:
-      "Broadcast personalised WhatsApp messages to thousands. Real-time delivery tracking and smart retry logic. Best bulk WhatsApp campaign tool in India.",
+      "WhatsApp campaigns with audience filters, scheduling, pause and resume, and per-recipient delivery and read status.",
     url: "https://wazelo.in/features/campaigns",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "WhatsApp Bulk Campaigns — Wazelo CRM",
+        alt: "WhatsApp Bulk Campaigns | Wazelo CRM",
       },
     ],
   },
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Bulk Campaigns | Wazelo CRM",
     description:
-      "Send personalised WhatsApp broadcasts to thousands. Real-time delivery tracking. Starts ₹499/mo.",
+      "WhatsApp campaigns with scheduling and per-recipient delivery status. From ₹299/mo.",
     images: ["/opengraph-image"],
   },
 };

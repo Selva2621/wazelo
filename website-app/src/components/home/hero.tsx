@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { ArrowRight, CheckCheck, UserPlus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { LaptopFrame } from "@/components/mocks/laptop-frame";
-import { TeamScreen } from "@/components/mocks/app-screens";
-import { ProposalLoopPhone } from "@/components/mocks/phone-chats";
+import { ScanStoryLaptopScreen, ScanStoryPhone, useScanStory } from "@/components/mocks/scan-story";
+import { useLoopActive } from "@/components/home/use-loop";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 
@@ -26,31 +26,43 @@ function Word({ children, accent }: { children: string; accent?: boolean }) {
   );
 }
 
+function joinWords(nodes: React.ReactNode[]) {
+  return nodes.reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, " ", el] : [el]), []);
+}
+
 export function Hero() {
   const root = useRef<HTMLElement>(null);
+  // One clock for both devices: scan the QR, get connected, find a lead, message it.
+  const { ref: stage, active, reduce } = useLoopActive(0.3);
+  const step = useScanStory(active, reduce);
 
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
 
-      // Entrance: words rise, copy follows, devices settle in.
+      // Entrance: words rise, the button follows, the laptop opens toward you, the phone slides in.
       mm.add(MQ_MOTION, () => {
-        const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.9 } });
-        tl.from("[data-hero=word]", { yPercent: 110, stagger: 0.06 })
-          .from("[data-hero=sub]", { y: 16, autoAlpha: 0 }, "-=0.55")
-          .from("[data-hero=cta]", { y: 16, autoAlpha: 0, stagger: 0.08 }, "<0.1")
-          .from("[data-hero=laptop]", { y: 70, rotationX: 24, autoAlpha: 0, transformPerspective: 1400, transformOrigin: "50% 100%", duration: 1.3 }, 0.15)
-          .from("[data-hero=phone]", { x: 90, autoAlpha: 0, duration: 1.1 }, 0.45)
-          .from("[data-hero=chip]", { scale: 0.6, autoAlpha: 0, ease: "back.out(2)", duration: 0.6, stagger: 0.12 }, "-=0.35");
+        gsap
+          .timeline({ defaults: { ease: "power3.out", duration: 0.9 } })
+          .from("[data-hero=word]", { yPercent: 110, stagger: 0.07, duration: 1 })
+          .from("[data-hero=cta]", { y: 16, autoAlpha: 0 }, "-=0.5")
+          .from(
+            "[data-hero=laptop]",
+            { y: 70, rotationX: 24, autoAlpha: 0, transformPerspective: 1400, transformOrigin: "50% 100%", duration: 1.3 },
+            0.3,
+          )
+          .from("[data-hero=phone]", { x: 90, autoAlpha: 0, duration: 1.1 }, 0.6);
       });
 
-      // Leaving the hero: devices drift at different speeds, copy fades back.
+      // Leaving the hero: the headline lifts away fastest, then the phone, then the
+      // laptop (furthest back), so the layers separate in depth.
       mm.add(MQ_FULL, () => {
         gsap
           .timeline({ scrollTrigger: { trigger: root.current, start: "top top", end: "bottom top", scrub: 0.8 } })
-          .to("[data-hero=laptop-drift]", { y: -60, scale: 0.94, ease: "none" }, 0)
-          .to("[data-hero=phone-drift]", { y: -150, ease: "none" }, 0)
-          .to("[data-hero=copy]", { y: -50, autoAlpha: 0.2, ease: "none" }, 0);
+          .to("[data-hero=copy]", { y: -160, autoAlpha: 0.15, ease: "none" }, 0)
+          .to("[data-hero=cta]", { y: -100, autoAlpha: 0, ease: "none" }, 0)
+          .to("[data-hero=laptop-drift]", { y: -40, scale: 0.96, ease: "none" }, 0)
+          .to("[data-hero=phone-drift]", { y: -130, ease: "none" }, 0);
       });
     },
     { scope: root },
@@ -59,79 +71,48 @@ export function Hero() {
   return (
     <section ref={root} className="relative overflow-hidden">
       <div aria-hidden className="site-aurora" />
-      <div className="relative mx-auto grid min-h-[100dvh] max-w-7xl items-center gap-14 px-4 pb-20 pt-28 sm:px-6 lg:grid-cols-12 lg:gap-6 lg:px-8 lg:pb-16 lg:pt-24">
-        {/* copy */}
-        <div data-hero="copy" className="lg:col-span-6">
-          <h1 className="text-[2.5rem] font-semibold leading-[1.06] tracking-tight text-on-surface sm:text-5xl lg:text-[2.75rem] xl:text-[3.25rem]">
-            <span className="block">
-              {LINE_1.map((w) => (
-                <Word key={w}>{w}</Word>
-              )).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, " ", el] : [el]), [])}
-            </span>
-            <span className="block lg:whitespace-nowrap">
-              {LINE_2.map(({ w, accent }) => (
+      <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pb-10 lg:pt-24">
+        <h1
+          data-hero="copy"
+          className="text-[clamp(2.125rem,9.6vw,2.75rem)] font-semibold leading-[0.95] tracking-tighter text-on-surface sm:text-[4rem] lg:text-[clamp(4.5rem,7.6vw,7.5rem)]"
+        >
+          <span className="block">{joinWords(LINE_1.map((w) => <Word key={w}>{w}</Word>))}</span>
+          <span className="block lg:whitespace-nowrap">
+            {joinWords(
+              LINE_2.map(({ w, accent }) => (
                 <Word key={w} accent={accent}>
                   {w}
                 </Word>
-              )).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, " ", el] : [el]), [])}
-            </span>
-          </h1>
-          <p data-hero="sub" className="mt-6 max-w-[46ch] text-lg leading-relaxed text-on-surface-variant">
-            Find clients, send proposals, share one inbox and run campaigns. Built on the official WhatsApp Business API.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <a
-              data-hero="cta"
-              href={APP_REGISTER_URL}
-              className="group inline-flex items-center gap-2 rounded-full bg-primary-container px-6 py-3.5 text-sm font-semibold text-on-primary transition-colors duration-200 hover:bg-primary active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
-            >
-              Start free trial
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </a>
-            <a
-              data-hero="cta"
-              href="#stories"
-              className="inline-flex items-center rounded-full border border-outline-variant px-6 py-3.5 text-sm font-semibold text-on-surface transition-colors hover:border-outline hover:bg-surface-container-lowest active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
-            >
-              See how it works
-            </a>
-          </div>
-        </div>
+              )),
+            )}
+          </span>
+        </h1>
 
-        {/* devices */}
-        <div className="relative lg:col-span-6">
-          {/* Bleeds off the right edge; the section clips it. */}
-          <div data-hero="laptop-drift" className="hidden will-change-transform lg:block lg:w-[128%] xl:w-[132%]">
-            <div data-hero="laptop">
-              <LaptopFrame>
-                <TeamScreen beat={2} revealed={2} />
-              </LaptopFrame>
-            </div>
-          </div>
+        <div className="mt-10 grid flex-1 items-start gap-14 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10">
+          <a
+            data-hero="cta"
+            href={APP_REGISTER_URL}
+            className="group inline-flex w-max items-center gap-2 rounded-full bg-primary-container px-7 py-4 text-base font-semibold text-on-primary transition-colors duration-200 hover:bg-primary active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container lg:mt-6"
+          >
+            Start free trial
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </a>
 
-          <div data-hero="phone-drift" className="relative mx-auto w-max will-change-transform lg:absolute lg:-bottom-16 lg:right-[-10%] xl:right-[-14%]">
-            <div data-hero="phone" className="relative lg:origin-bottom-right lg:scale-[0.74] xl:scale-[0.82]">
-              <div aria-hidden className="device-glow" />
-              <ProposalLoopPhone />
-
-              {/* Same status chips as the app's sign-in page */}
-              <div data-hero="chip" className="glass-panel absolute -right-6 -top-8 flex w-max items-center gap-2.5 rounded-xl py-2 pl-2 pr-3.5 sm:-right-20 lg:-left-28 lg:-top-10 lg:right-auto">
-                <span className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary-container">
-                  <UserPlus className="h-4 w-4" />
-                </span>
-                <div className="leading-tight">
-                  <p className="text-xs font-semibold text-on-surface">New lead found</p>
-                  <p className="text-[11px] text-on-surface-variant">Bloom Bakery, Chennai</p>
-                </div>
+          {/* stage: Wazelo on the laptop, WhatsApp on the phone in front of its
+              right edge, both on the same story clock. Mobile shows the phone only. */}
+          <div ref={stage} className="relative flex justify-center lg:items-start">
+            <div data-hero="laptop-drift" className="hidden w-[34rem] will-change-transform lg:block xl:w-[42rem]">
+              <div data-hero="laptop">
+                <LaptopFrame>
+                  <ScanStoryLaptopScreen step={step} />
+                </LaptopFrame>
               </div>
-              <div data-hero="chip" className="glass-panel absolute -bottom-5 -left-6 flex w-max items-center gap-2.5 rounded-xl py-2 pl-2 pr-3.5 sm:-left-24 lg:hidden">
-                <span className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary-container">
-                  <CheckCheck className="h-4 w-4" />
-                </span>
-                <div className="leading-tight">
-                  <p className="text-xs font-semibold text-on-surface">Proposal viewed</p>
-                  <p className="text-[11px] text-on-surface-variant">2 min ago</p>
-                </div>
+            </div>
+
+            <div data-hero="phone-drift" className="relative z-10 will-change-transform lg:-ml-28 lg:mt-10">
+              <div data-hero="phone" className="relative lg:origin-top-right lg:scale-[0.86] xl:scale-100">
+                <div aria-hidden className="device-glow" />
+                <ScanStoryPhone step={step} />
               </div>
             </div>
           </div>

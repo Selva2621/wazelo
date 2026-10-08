@@ -447,20 +447,6 @@ body {
   }
 }
 
-/* ── Feature orbit (feature-index.tsx) ─────────────────────────────────────────
-   Rings spin; chips run the same animation in reverse so icons stay upright.
-   Duration and direction are set inline per ring. */
-@keyframes orbitSpin {
-  to { transform: rotate(360deg); }
-}
-.orbit-ring,
-.orbit-chip {
-  animation-name: orbitSpin;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee { animation: none; }
-  .orbit-ring, .orbit-chip { animation: none; }
 }

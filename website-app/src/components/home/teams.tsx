@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Bot,
   ClipboardList,
+  Globe,
   Inbox,
   KeyRound,
   Megaphone,
@@ -30,8 +31,8 @@ import { Illustration } from "@/components/illustration";
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
 
 /* ─── Routing visual ─────────────────────────────────────────────────────────
-   Chats arrive on the business number, pass through Wazelo and go round-robin
-   to agents. SVG paths share one command structure; packets follow them via
+   Chats arrive on the business number, pass through Wazelo's automation rules
+   and go to the agent each rule names. SVG paths share one command structure; packets follow them via
    getPointAtLength, driven by motion values (no re-render per frame). */
 
 const VB = { w: 1000, h: 300 };
@@ -40,10 +41,18 @@ const HUB = { x: 500, y: 150 };
 const AGENTS = [
   { name: "Meera Joshi", role: "Sales", initials: "MJ", y: 58, start: 3 },
   { name: "Arjun Iyer", role: "Support", initials: "AI", y: 150, start: 5 },
-  { name: "Sana Khan", role: "Sales", initials: "SK", y: 242, start: 4 },
+  { name: "Sana Khan", role: "Rentals", initials: "SK", y: 242, start: 4 },
 ];
 const AGENT_X = 880;
-const CUSTOMERS = ["Kunal Deshpande", "Sneha Patil", "Rohit Kulkarni", "Anjali Rao", "Vikram Shah", "Pooja Nair"];
+/** Each incoming chat and the rule that routes it; `agent` indexes AGENTS. */
+const CHATS = [
+  { customer: "Kunal Deshpande", rule: "keyword \"2BHK\"", agent: 0 },
+  { customer: "Sneha Patil", rule: "keyword \"refund\"", agent: 1 },
+  { customer: "Rohit Kulkarni", rule: "keyword \"rent\"", agent: 2 },
+  { customer: "Anjali Rao", rule: "status Interested", agent: 0 },
+  { customer: "Vikram Shah", rule: "keyword \"support\"", agent: 1 },
+  { customer: "Pooja Nair", rule: "keyword \"lease\"", agent: 2 },
+];
 const ARRIVE_EVERY_MS = 1700;
 const TRAVEL_S = 2.2;
 
@@ -55,6 +64,7 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 interface PacketData {
   id: number;
   agent: number;
+  chat: number;
 }
 
 // HTML dot (not an SVG circle) so it stays round when the SVG stretches.
@@ -103,14 +113,15 @@ function RoutingPanel() {
   const paths = useRef<(SVGPathElement | null)[]>([]);
   const [packets, setPackets] = useState<PacketData[]>([]);
   const [counts, setCounts] = useState(AGENTS.map((a) => a.start));
-  const [last, setLast] = useState<{ customer: string; agent: number } | null>(null);
+  const [last, setLast] = useState<number | null>(null);
   const seq = useRef(0);
 
   useEffect(() => {
     if (!active) return;
     const spawn = () => {
       const id = seq.current++;
-      setPackets((p) => [...p, { id, agent: id % AGENTS.length }]);
+      const chat = id % CHATS.length;
+      setPackets((p) => [...p, { id, chat, agent: CHATS[chat].agent }]);
     };
     spawn();
     const t = setInterval(spawn, ARRIVE_EVERY_MS);
@@ -120,8 +131,9 @@ function RoutingPanel() {
   const arrive = (p: PacketData) => {
     setPackets((list) => list.filter((x) => x.id !== p.id));
     setCounts((c) => c.map((n, i) => (i === p.agent ? n + 1 : n)));
-    setLast({ customer: CUSTOMERS[p.id % CUSTOMERS.length], agent: p.agent });
+    setLast(p.chat);
   };
+  const lastChat = last === null ? null : CHATS[last];
 
   return (
     <div ref={ref} className="lg-glass overflow-hidden rounded-3xl">
@@ -162,7 +174,7 @@ function RoutingPanel() {
           <div className="lg-glass flex flex-col items-center gap-1 rounded-2xl px-3 py-2.5 sm:px-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo/logo.png" alt="" className="size-7 object-contain" />
-            <span className="hidden text-xs font-medium text-on-surface sm:block">Round robin</span>
+            <span className="hidden text-xs font-medium text-on-surface sm:block">Automation rules</span>
           </div>
         </Node>
 
@@ -194,19 +206,19 @@ function RoutingPanel() {
         <Workflow className="h-4 w-4 shrink-0 text-primary-container" />
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
-            key={last ? `${last.customer}-${counts.join()}` : "idle"}
+            key={lastChat ? `${lastChat.customer}-${counts.join()}` : "idle"}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2 }}
             className="truncate"
           >
-            {last ? (
+            {lastChat ? (
               <>
-                <span className="text-on-surface">{last.customer}</span> assigned to {AGENTS[last.agent].name}
+                <span className="text-on-surface">{lastChat.customer}</span> assigned to {AGENTS[lastChat.agent].name}, rule: {lastChat.rule}
               </>
             ) : (
-              "New chats are shared out evenly across the team"
+              "Your rules decide who gets each new chat"
             )}
           </motion.span>
         </AnimatePresence>
@@ -220,7 +232,7 @@ function RoutingPanel() {
    status toasts pop around it in sequence. */
 
 const TOASTS = [
-  { icon: UsersRound, title: "Kunal assigned to Meera", text: "Automation, 2 seconds after the first message", pos: "-left-32 top-[34%]" },
+  { icon: UsersRound, title: "Kunal assigned to Meera", text: "By an automation rule, on his first message", pos: "-left-32 top-[34%]" },
   { icon: Star, title: "CSAT 5 out of 5", text: "Site visit at Baner Heights", pos: "-right-28 top-[4%]" },
   { icon: Megaphone, title: "Weekend open-house campaign", text: "Sent to the Baner buyers segment", pos: "-right-24 bottom-[12%]" },
 ];
@@ -280,27 +292,27 @@ const GROUPS: { title: string; items: { icon: LucideIcon; name: string; text: st
   {
     title: "Share one inbox",
     items: [
-      { icon: Inbox, name: "Shared inbox", text: "Every agent works the same WhatsApp number, with no shared phone.", href: "/features/shared-inbox" },
-      { icon: UsersRound, name: "Assignments and My Team", text: "Route chats to the right person. Managers see their team's queue.", href: "/features/shared-inbox" },
-      { icon: Sparkles, name: "AI replies and summaries", text: "Draft answers and catch up on long threads in a click." },
+      { icon: Inbox, name: "Shared inbox", text: "All, Unread and Mine tabs. Assign chats, add labels, type / for quick replies.", href: "/features/shared-inbox" },
+      { icon: Sparkles, name: "AI in the inbox", text: "AI Summary, AI Insights and suggested replies. Uses AI credits." },
+      { icon: Globe, name: "Website chat widget", text: "Add a chat box to your site with one script." },
     ],
   },
   {
     title: "Reach people at scale",
     items: [
-      { icon: Megaphone, name: "Campaigns", text: "Broadcast approved templates and track delivery live.", href: "/features/campaigns" },
-      { icon: Workflow, name: "Automation", text: "Auto-replies, routing rules and drip flows that run 24/7.", href: "/features/automation" },
-      { icon: Bot, name: "Chatbot and chat widget", text: "Answer FAQs on WhatsApp and capture visitors from your site.", href: "/features/chatbot" },
-      { icon: Repeat, name: "Sequences", text: "Timed follow-ups that stop as soon as a lead replies.", href: "/features/sequences" },
+      { icon: Megaphone, name: "Campaigns", text: "Track every recipient: Sent, Delivered, Read or Failed.", href: "/features/campaigns" },
+      { icon: Workflow, name: "Automation rules", text: "Assign, tag, reply or update status on a trigger. Growth plan and up.", href: "/features/automation" },
+      { icon: Bot, name: "Chatbot", text: "Start from an AI chatbot or build a custom flow.", href: "/features/chatbot" },
+      { icon: Repeat, name: "Sequences", text: "Timed follow-ups that stop when the contact replies.", href: "/features/sequences" },
     ],
   },
   {
     title: "Stay in control",
     items: [
-      { icon: KeyRound, name: "Roles and permissions", text: "Admin, Manager and Employee access, set per person." },
-      { icon: Phone, name: "Multiple WhatsApp numbers", text: "Connect a number per branch, brand or team." },
-      { icon: Star, name: "CSAT surveys", text: "Ask for a rating after every resolved chat.", href: "/features/csat" },
-      { icon: ClipboardList, name: "Audit logs and GDPR tools", text: "See who changed what, and handle data requests." },
+      { icon: KeyRound, name: "Roles and audit logs", text: "Admin, Manager and Employee roles. Every change is logged." },
+      { icon: Phone, name: "Team WhatsApp sessions", text: "Admins see each member's WhatsApp session." },
+      { icon: Star, name: "CSAT and SLA", text: "Send a 1 to 5 survey. SLA policies alert on breaches.", href: "/features/csat" },
+      { icon: ClipboardList, name: "GDPR tools", text: "Record consent, export or erase a contact's data." },
     ],
   },
 ];
@@ -395,7 +407,7 @@ export function Teams() {
             Built for teams that share one number.
           </h2>
           <p className="mt-5 max-w-[60ch] text-base leading-relaxed text-on-surface-variant">
-            Sales and support work the same chats, with clear owners and a record of every reply. Team plans start at ₹499 a month for 5 users.
+            Sales and support work the same chats, each with a clear owner. Team plans start at ₹499 a month for 5 users.
           </p>
         </Reveal>
 
@@ -406,7 +418,7 @@ export function Teams() {
         <Reveal className="mt-20 flex items-end justify-between gap-8">
           <div>
             <h3 className="text-2xl font-semibold tracking-tight text-on-surface">Every chat gets an owner.</h3>
-            <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-on-surface-variant">New conversations are shared out evenly, so nobody is buried and nobody is idle.</p>
+            <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-on-surface-variant">Rules route every chat by keyword or status. Leads from Meta ads go round-robin.</p>
           </div>
           <Illustration name="team" label="A team working together on shared conversations" className="hidden h-36 w-56 shrink-0 md:block" />
         </Reveal>

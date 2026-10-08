@@ -11,9 +11,9 @@ const breadcrumbSchema = {
 };
 
 export const metadata: Metadata = {
-  title: "WhatsApp Chatbot Builder — No-Code AI Chatbot for Business",
+  title: "WhatsApp Chatbot Builder | AI and No-Code Flows",
   description:
-    "Build no-code WhatsApp chatbots in minutes. Qualify leads, answer FAQs, capture form data, and hand off to agents automatically. Best WhatsApp chatbot builder for Indian businesses.",
+    "Build a WhatsApp AI chatbot or a no-code custom flow. Trigger on keywords, first messages, or button replies. Ask questions, branch on conditions, tag contacts, call an API, and assign the chat to an agent.",
   keywords: [
     // Short-keys
     "WhatsApp chatbot",
@@ -46,16 +46,16 @@ export const metadata: Metadata = {
     canonical: "https://wazelo.in/features/chatbot",
   },
   openGraph: {
-    title: "WhatsApp Chatbot Builder — No-Code AI Chatbot | Wazelo CRM",
+    title: "WhatsApp Chatbot Builder | Wazelo CRM",
     description:
-      "Build no-code WhatsApp chatbots in minutes: qualify leads, answer FAQs, capture data, hand off to agents. Best WhatsApp chatbot for Indian businesses.",
+      "Build a WhatsApp AI chatbot or a no-code flow: ask questions, branch on answers, tag contacts, and assign the chat to an agent.",
     url: "https://wazelo.in/features/chatbot",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "WhatsApp Chatbot Builder — Wazelo CRM",
+        alt: "WhatsApp Chatbot Builder | Wazelo CRM",
       },
     ],
   },
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WhatsApp Chatbot Builder | Wazelo CRM",
     description:
-      "No-code WhatsApp chatbots in minutes: lead qualification, FAQs, form capture, agent handoff. Starts ₹999/mo.",
+      "WhatsApp AI chatbot or no-code flows: questions, conditions, tags, agent handoff. 14-day free trial.",
     images: ["/opengraph-image"],
   },
 };

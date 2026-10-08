@@ -90,17 +90,18 @@ function useDelayedFlag(when: boolean, delay: number) {
 const COLUMNS = ["New", "Contacted", "Interested", "Converted", "Closed"] as const;
 const STATIC_CARDS: Record<(typeof COLUMNS)[number], { name: string; meta: string }[]> = {
   New: [{ name: "Kaapi Corner", meta: "Café · Google Maps" }],
-  Contacted: [{ name: "Thread & Loom", meta: "Boutique · Instagram" }],
+  Contacted: [{ name: "Thread & Loom", meta: "Boutique · CSV import" }],
   Interested: [{ name: "Mehta Dental", meta: "Clinic · Referral" }],
   Converted: [{ name: "FitNest Studio", meta: "Gym · Upwork" }],
-  Closed: [{ name: "Nila Organics", meta: "₹24,000 · Paid" }],
+  Closed: [{ name: "Nila Organics", meta: "Website · Closed" }],
 };
+/** One entry per story beat; beat N also moves Bloom Bakery to COLUMNS[N]. */
 const ACTIVITY = [
-  "Bloom Bakery added from Google Maps",
+  "Bloom Bakery imported from Google Maps",
   "Intro template sent to Arjun",
-  "Proposal sent, call booked for Tue",
-  "Sequence sent the meeting reminder",
-  "Invoice INV-0142 paid, ₹18,000",
+  "Call booked, moved to Interested",
+  "Arjun replied, sequence stopped. Moved to Converted",
+  "Site delivered. Moved to Closed",
 ];
 
 export function FreelancerScreen({ beat, revealed }: { beat: number; revealed: number }) {
@@ -150,7 +151,7 @@ export function FreelancerScreen({ beat, revealed }: { beat: number; revealed: n
                     >
                       <p className="text-[12px] font-semibold">Bloom Bakery</p>
                       <p className="mt-0.5 text-[10px] text-on-surface-variant">Bakery · Google Maps</p>
-                      {beat >= 2 && <p className="mt-1.5 text-[10px] font-medium text-primary-container">₹36,000 website</p>}
+                      {beat >= 2 && <p className="mt-1.5 text-[10px] font-medium text-primary-container">Website project</p>}
                     </motion.div>
                   )}
                   {STATIC_CARDS[col].map((c) => (
@@ -250,7 +251,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
   const notes = items.flatMap(({ item }) => (item.kind === "note" ? [item.text] : []));
   const has = (start: string) => notes.some((n) => n.startsWith(start));
   const assigned = has("Auto-assigned");
-  const siteVisit = has("Lead status");
+  const interested = has("Lead status");
   const resolved = has("CSAT");
   const last = items[items.length - 1]?.item;
   const drafting = last?.kind === "typing";
@@ -267,7 +268,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
           {/* conversation list */}
           <div className="flex w-[250px] shrink-0 flex-col border-r border-outline-variant">
             <div className="flex gap-1 px-3 py-2.5 text-[11px]">
-              {[["All", 24], ["Mine", 6], ["Unassigned", assigned || !arrived ? 1 : 2]].map(([label, n], i) => (
+              {[["All", arrived ? 24 : 23], ["Unread", arrived && !assigned ? 3 : 2], ["Mine", assigned ? 7 : 6]].map(([label, n], i) => (
                 <span key={label} className={`rounded-md px-2 py-1 ${i === 0 ? "bg-primary/15 text-primary-container" : "text-on-surface-variant"}`}>
                   {label} <span className="tabular-nums opacity-70">{n}</span>
                 </span>
@@ -333,7 +334,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
                 {assigned ? "Meera J." : "Unassigned"}
               </motion.span>
               <span className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${resolved ? "bg-success/15 text-success" : "bg-surface-container-high text-on-surface-variant"}`}>
-                {resolved ? "Resolved" : "Open"}
+                {resolved ? "Closed" : "Open"}
               </span>
             </div>
 
@@ -408,20 +409,20 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
               <span className="grid size-12 place-items-center rounded-full bg-chart-2/25 text-[14px] font-semibold text-chart-2">KD</span>
               <p className="text-[13px] font-semibold">Kunal Deshpande</p>
               <motion.span
-                key={siteVisit ? "visit" : assigned ? "contacted" : "new"}
+                key={interested ? "interested" : assigned ? "contacted" : "new"}
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={springs.snappy}
                 className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[10px] font-medium text-primary-container"
               >
-                {siteVisit ? "Site visit" : assigned ? "Contacted" : "New lead"}
+                {interested ? "Interested" : assigned ? "Contacted" : "New"}
               </motion.span>
             </div>
             <dl className="flex flex-col gap-2.5 text-[11px]">
               {[
                 ["Source", "Property ad"],
-                ["Owner", assigned ? "Meera Joshi" : "None"],
-                ["Interest", "2BHK, Baner"],
+                ["Assigned to", assigned ? "Meera Joshi" : "None"],
+                ["Notes", "Wants a 2BHK in Baner"],
               ].map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-on-surface-variant">{k}</dt>
@@ -432,7 +433,7 @@ export function TeamScreen({ beat, revealed }: { beat: number; revealed: number 
             <div>
               <p className="text-[11px] text-on-surface-variant">Tags</p>
               <div className="mt-1.5 flex flex-wrap gap-1">
-                {["Baner", "2BHK", ...(siteVisit ? ["Site visit"] : [])].map((t) => (
+                {["Baner", "2BHK", ...(interested ? ["Site visit"] : [])].map((t) => (
                   <span key={t} className="rounded-md bg-surface-container-high px-1.5 py-0.5 text-[10px] text-on-surface-variant">{t}</span>
                 ))}
               </div>

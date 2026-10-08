@@ -21,7 +21,6 @@ const cols = [
       ["Documentation", "/docs"],
       ["API reference", "/api-reference"],
       ["Use cases", "/use-cases"],
-      ["Case study", "/case-study/propedge-realty"],
       ["Security", "/security"],
     ],
   },
@@ -49,7 +48,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-on-surface-variant">
-              The WhatsApp CRM for freelancers winning clients and teams sharing one inbox.
+              The WhatsApp CRM for freelancers finding clients and teams sharing one inbox. Connect your number with a QR scan.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 md:col-span-1 lg:col-span-7">

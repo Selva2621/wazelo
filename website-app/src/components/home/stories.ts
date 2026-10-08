@@ -2,7 +2,9 @@
 // the phone shows the customer's WhatsApp, the laptop shows Wazelo.
 // Features used here match what each account type gets in the app
 // (OrgType FREELANCER vs TEAM): freelancers get Lead Scraper, pipeline,
-// templates and sequences; teams add shared inbox routing, automation, AI and CSAT.
+// templates, button messages and sequences; teams add shared inbox, automation
+// rules, AI and CSAT. Only claims listed as Real in
+// reference/website-product-facts.md belong here.
 
 export type ChatItem =
   /** From the business (freelancer or agent) to the customer. */
@@ -40,43 +42,43 @@ export const freelancerStory: Story = {
   beats: [
     {
       title: "Find the client",
-      body: "Lead Scraper pulls Bloom Bakery from Google Maps with its WhatsApp number. One click adds it to your pipeline.",
+      body: "Lead Scraper finds Bloom Bakery on Google Maps. One click imports it as a New lead.",
       chat: [],
     },
     {
       title: "Say hello",
-      body: "Send a ready-made intro template. The chat is saved against the lead, so nothing lives only on your phone.",
+      body: "Send an intro template. The chat is saved on the lead, not just on your phone.",
       chat: [
         { kind: "biz", text: "Hi Arjun, I'm Riya, a UI/UX designer in Chennai. Loved Bloom Bakery's reviews. Can I share an idea for your website?", time: "10:38" },
         { kind: "customer", text: "Sure, send it over", time: "10:40" },
       ],
     },
     {
-      title: "Send the proposal",
-      body: "A proposal template with buttons. Arjun opens it and books a call without leaving WhatsApp.",
+      title: "Send a message with buttons",
+      body: "Arjun answers in one tap. The lead moves to Interested.",
       chat: [
-        { kind: "rich", id: "proposal", art: "proposal", text: "Here is my proposal for the Bloom Bakery website.", time: "10:42", buttons: ["View proposal", "Book a call"] },
+        { kind: "rich", id: "proposal", art: "proposal", text: "Here's my idea for the Bloom Bakery homepage. Want to talk it through?", time: "10:42", buttons: ["Book a call", "Maybe later"] },
         { kind: "press", target: "proposal", button: "Book a call" },
         { kind: "customer", text: "Book a call", time: "10:43" },
-        { kind: "biz", text: "Booked for Tue, 11 AM. Calendar invite sent!", time: "10:43" },
+        { kind: "biz", text: "Great, booked for Tue, 11 AM. Talk then!", time: "10:43" },
       ],
     },
     {
       title: "Follow up on autopilot",
-      body: "A sequence sends the meeting reminder and nudges again if Arjun goes quiet. You just show up for the call.",
+      body: "A sequence nudges Arjun after the call. It stops when he replies, and you move him to Converted.",
       chat: [
-        { kind: "biz", text: "Reminder: our call is tomorrow at 11 AM. The Meet link is in your invite.", time: "18:00" },
-        { kind: "customer", text: "Loved the call. Let's go ahead!", time: "12:10" },
+        { kind: "biz", text: "Hi Arjun, any thoughts on the homepage plan from our call?", time: "18:00" },
+        { kind: "customer", text: "Loved it. Let's go ahead!", time: "12:10" },
       ],
     },
     {
-      title: "Invoice and get paid",
-      body: "Invoice and payment templates close the loop. The deal moves to Closed and your monthly total updates.",
+      title: "Deliver and close",
+      body: "Share the finished site, then drag the lead to Closed. Closed This Month ticks up.",
       chat: [
-        { kind: "biz", text: "Invoice INV-0142: ₹18,000 advance for the Bloom Bakery website. Pay by UPI or card from the link.", time: "12:14" },
-        { kind: "customer", text: "Paid. Excited to see the designs!", time: "12:31" },
+        { kind: "biz", text: "The new Bloom Bakery website is live! Thanks for the project, Arjun.", time: "12:14" },
+        { kind: "customer", text: "Looks great, thank you!", time: "12:31" },
         { kind: "typing" },
-        { kind: "biz", text: "Payment received, thank you! First drafts by Friday.", time: "12:32" },
+        { kind: "biz", text: "Glad you like it! Would you share a two-line review?", time: "12:32" },
       ],
     },
   ],
@@ -95,7 +97,7 @@ export const teamStory: Story = {
     },
     {
       title: "Route it instantly",
-      body: "Automation replies in seconds and assigns the chat to Meera on the sales team, so no lead waits overnight.",
+      body: "An automation rule replies in seconds and assigns the chat to Meera in sales.",
       chat: [
         { kind: "biz", text: "Hi Kunal, thanks for reaching Harbor Homes! Meera from our sales team will help you shortly.", time: "19:52" },
         { kind: "note", text: "Auto-assigned to Meera Joshi" },
@@ -103,7 +105,7 @@ export const teamStory: Story = {
     },
     {
       title: "Reply with AI help",
-      body: "AI drafts a reply from the listing details. Meera checks it and sends it with the brochure.",
+      body: "AI suggests a reply. Meera checks it and sends it with the brochure.",
       chat: [
         { kind: "typing" },
         { kind: "rich", id: "listing", art: "listing", text: "Yes, it's available! 2BHK, 1,050 sq ft, ₹78 L. Want to visit this weekend?", time: "19:56", buttons: ["Sat, 11 AM", "Sun, 4 PM"] },
@@ -111,21 +113,21 @@ export const teamStory: Story = {
     },
     {
       title: "Book the site visit",
-      body: "Kunal picks a slot. The lead status updates and a reminder goes out on Saturday morning.",
+      body: "Kunal picks a slot. His lead status moves to Interested.",
       chat: [
         { kind: "press", target: "listing", button: "Sat, 11 AM" },
         { kind: "customer", text: "Sat, 11 AM", time: "19:58" },
         { kind: "biz", text: "Done! See you Saturday, 11 AM at Baner Heights.", time: "19:58" },
-        { kind: "note", text: "Lead status changed to Site visit" },
+        { kind: "note", text: "Lead status changed to Interested" },
       ],
     },
     {
       title: "Close the loop",
-      body: "After the visit, a CSAT survey asks how it went. Ratings roll up into each agent's report.",
+      body: "After the visit, Meera sends a CSAT survey. Ratings show up per agent.",
       chat: [
-        { kind: "biz", text: "How was your visit with Meera? Reply 1 to 5.", time: "13:05" },
+        { kind: "biz", text: "How was your visit with Meera? Rate us 1 to 5.", time: "13:05" },
         { kind: "customer", text: "5, she was really helpful", time: "13:09" },
-        { kind: "note", text: "CSAT 5/5 recorded. Conversation resolved" },
+        { kind: "note", text: "CSAT 5/5 recorded. Chat closed" },
       ],
     },
   ],

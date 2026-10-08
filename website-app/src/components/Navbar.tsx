@@ -14,10 +14,7 @@ import {
   ChevronDown,
   Code2,
   Contact,
-  Gauge,
   Inbox,
-  KanbanSquare,
-  Layers,
   Megaphone,
   Menu,
   Repeat,
@@ -51,28 +48,25 @@ const FEATURE_GROUPS: { title: string; items: { icon: LucideIcon; name: string; 
   {
     title: "Conversations",
     items: [
-      { icon: Inbox, name: "Shared inbox", text: "One number, the whole team", href: "/features/shared-inbox" },
-      { icon: Bot, name: "Chatbot builder", text: "No-code flows for FAQs", href: "/features/chatbot" },
-      { icon: Layers, name: "Multi-channel", text: "Instagram, Messenger, email", href: "/features/multi-channel" },
-      { icon: Star, name: "CSAT surveys", text: "Ratings after every chat", href: "/features/csat" },
+      { icon: Inbox, name: "Shared inbox", text: "Assign, label, and reply as a team", href: "/features/shared-inbox" },
+      { icon: Bot, name: "Chatbot builder", text: "AI or no-code flows", href: "/features/chatbot" },
+      { icon: Star, name: "CSAT surveys", text: "1 to 5 ratings, sent from a chat", href: "/features/csat" },
     ],
   },
   {
     title: "Growth",
     items: [
-      { icon: Megaphone, name: "Campaigns", text: "Broadcasts with delivery tracking", href: "/features/campaigns" },
-      { icon: Repeat, name: "Sequences", text: "Follow-ups on a timer", href: "/features/sequences" },
-      { icon: Workflow, name: "Automation", text: "Rules that run around the clock", href: "/features/automation" },
-      { icon: Gauge, name: "Lead scoring", text: "Know who to call first", href: "/features/lead-scoring" },
+      { icon: Megaphone, name: "Campaigns", text: "Broadcasts with per-recipient status", href: "/features/campaigns" },
+      { icon: Repeat, name: "Sequences", text: "Follow-ups that stop on reply", href: "/features/sequences" },
+      { icon: Workflow, name: "Automation", text: "Trigger and action rules", href: "/features/automation" },
     ],
   },
   {
     title: "Data and dev",
     items: [
-      { icon: Contact, name: "Contacts", text: "Tags, segments, custom fields", href: "/features/contacts" },
-      { icon: KanbanSquare, name: "Deals pipeline", text: "Stages and forecasts", href: "/features/deals" },
+      { icon: Contact, name: "Contacts", text: "Tags, custom fields, CSV import", href: "/features/contacts" },
       { icon: BarChart3, name: "Analytics", text: "Team and campaign reports", href: "/features/analytics" },
-      { icon: Code2, name: "Developer API", text: "REST API and webhooks", href: "/features/developer-api" },
+      { icon: Code2, name: "Developer API", text: "API keys and webhooks", href: "/features/developer-api" },
     ],
   },
 ];

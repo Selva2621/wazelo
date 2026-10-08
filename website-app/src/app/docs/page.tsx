@@ -130,53 +130,47 @@ export default function DocsPage() {
 
           {/* ── Getting Started ── */}
           <DocSection id="getting-started" title="Getting Started">
-            <P>Welcome to Wazelo CRM. This guide walks you through creating your account, connecting your WhatsApp Business number, and sending your first message — all in under 15 minutes.</P>
+            <P>Welcome to Wazelo CRM. This guide walks you through creating your account, connecting your WhatsApp number and sending your first message.</P>
             <H3>1. Create your account</H3>
-            <P>Sign up at <a href={APP_REGISTER_URL} style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>wazelo.in/register</a>. You'll need a valid business email. No credit card is required for the 14-day free trial.</P>
-            <H3>2. Set up your organisation</H3>
-            <P>After signup, you'll be prompted to name your organisation and invite team members. You can skip invitations and do this later from Settings → Team.</P>
+            <P>Sign up at <a href={APP_REGISTER_URL} style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>wazelo.in/register</a>. No credit card is required for the 14-day free trial.</P>
+            <H3>2. Choose how you work</H3>
+            <P>After signup, pick <strong style={{ color: "var(--c-on-surface)" }}>Team / Company</strong> or <strong style={{ color: "var(--c-on-surface)" }}>Solo / Freelancer</strong>. Your dashboard then shows a &quot;Complete your setup&quot; checklist: connect WhatsApp, add your products, create a message template and import your contacts.</P>
             <H3>3. Connect WhatsApp</H3>
-            <P>Go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → WhatsApp</strong> and follow the guided flow to connect your WhatsApp Business API number via Meta. See the <a href="#whatsapp-setup" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>WhatsApp Setup</a> section for full details.</P>
-            <Callout icon="info" color="var(--c-primary-container)">You need a WhatsApp Business API account (via Meta Business Manager) to use Wazelo CRM. Personal WhatsApp numbers are not supported.</Callout>
+            <P>Go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → WhatsApp</strong>, click <strong style={{ color: "var(--c-on-surface)" }}>Connect WhatsApp</strong> and scan the QR code with your phone. See <a href="#whatsapp-setup" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>WhatsApp Setup</a> for the steps.</P>
           </DocSection>
 
           {/* ── WhatsApp Setup ── */}
           <DocSection id="whatsapp-setup" title="WhatsApp Setup">
-            <P>Wazelo CRM uses the official Meta WhatsApp Business API. You'll need a Meta Business Manager account and a verified phone number.</P>
-            <H3>Prerequisites</H3>
-            <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
-              <Li>A Facebook Business Manager account (business.facebook.com)</Li>
-              <Li>A phone number not previously registered on WhatsApp (or one that's been fully deleted)</Li>
-              <Li>A verified business name and website</Li>
-            </ul>
+            <P>Wazelo links to your existing WhatsApp number as a linked device, the same way WhatsApp Web does. Your number and chats stay on your phone.</P>
             <H3>Connection steps</H3>
             <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
-              <Li><strong style={{ color: "var(--c-on-surface)" }}>Step 1:</strong> Go to Settings → Channels → WhatsApp</Li>
-              <Li><strong style={{ color: "var(--c-on-surface)" }}>Step 2:</strong> Click "Connect via Meta" — you'll be redirected to Meta's embedded signup flow</Li>
-              <Li><strong style={{ color: "var(--c-on-surface)" }}>Step 3:</strong> Select your Business Manager, create or select a WhatsApp Business Account, and verify your phone number via OTP</Li>
-              <Li><strong style={{ color: "var(--c-on-surface)" }}>Step 4:</strong> Return to Wazelo CRM — your number will appear as Connected within 60 seconds</Li>
+              <Li>In Wazelo, go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → WhatsApp</strong> and click <strong style={{ color: "var(--c-on-surface)" }}>Connect WhatsApp</strong>. A QR code appears with a short countdown.</Li>
+              <Li>Open WhatsApp on your phone.</Li>
+              <Li>Go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → Linked Devices</strong>.</Li>
+              <Li>Tap <strong style={{ color: "var(--c-on-surface)" }}>Link a Device</strong> and scan the QR code.</Li>
             </ul>
-            <Callout icon="check_circle" color="var(--c-code-green)">Once connected, your inbox goes live immediately. All inbound messages will appear in the Shared Inbox.</Callout>
-            <H3>Message Templates</H3>
-            <P>For outbound messages to contacts who haven't messaged you in the last 24 hours, you must use pre-approved Meta message templates. Go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → Templates</strong> to create and submit templates for approval. Approval typically takes 5–10 minutes for standard templates.</P>
+            <Callout icon="check_circle" color="var(--c-code-green)">When the card shows &quot;WhatsApp Connected&quot;, your inbox is live. New messages appear in the Inbox.</Callout>
+            <H3>If the QR expires or the session drops</H3>
+            <P>Click <strong style={{ color: "var(--c-on-surface)" }}>Refresh QR Code</strong> to get a new one. After a short drop, Wazelo reconnects by itself; if it can&apos;t, click <strong style={{ color: "var(--c-on-surface)" }}>Reconnect</strong>. You only need to scan again if you logged out from WhatsApp on your phone.</P>
+            <H3>One number per user</H3>
+            <P>Each user links one WhatsApp number. Your plan sets how many numbers your organisation can connect. Admins can see and disconnect every session under <strong style={{ color: "var(--c-on-surface)" }}>Admin → WA Sessions</strong>.</P>
           </DocSection>
 
           {/* ── Shared Inbox ── */}
           <DocSection id="shared-inbox" title="Shared Inbox">
             <P>The Shared Inbox is the core of Wazelo CRM. Every inbound WhatsApp message from any contact lands here, visible to your whole team.</P>
             <H3>Conversation assignment</H3>
-            <P>Conversations can be assigned manually or automatically via routing rules. To assign manually, open a conversation and click <strong style={{ color: "var(--c-on-surface)" }}>Assign</strong> in the top-right panel. To set up auto-routing, go to <strong style={{ color: "var(--c-on-surface)" }}>Settings → Routing</strong>.</P>
-            <H3>Conversation statuses</H3>
+            <P>Admins and managers assign a chat from the <strong style={{ color: "var(--c-on-surface)" }}>Contact Info</strong> panel (Assigned To). To assign chats automatically, create a rule under <strong style={{ color: "var(--c-on-surface)" }}>Automation</strong> with the &quot;assign&quot; action. Leads from Meta lead ads are shared round-robin.</P>
+            <H3>Conversation tabs and actions</H3>
             <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
-              <Li><strong style={{ color: "var(--c-primary-container)" }}>Open</strong> — active conversation requiring attention</Li>
-              <Li><strong style={{ color: "var(--c-info)" }}>Pending</strong> — waiting for customer reply</Li>
-              <Li><strong style={{ color: "var(--c-code-green)" }}>Resolved</strong> — marked done, removed from active queue</Li>
-              <Li><strong style={{ color: "var(--c-on-surface-variant)" }}>Snoozed</strong> — hidden until a specified time</Li>
+              <Li><strong style={{ color: "var(--c-on-surface)" }}>All, Unread, Mine</strong>: filter the conversation list.</Li>
+              <Li><strong style={{ color: "var(--c-on-surface)" }}>Close, Reopen, Archive</strong>: from the chat header.</Li>
+              <Li><strong style={{ color: "var(--c-on-surface)" }}>Labels</strong>: tag a conversation so your team can find it later.</Li>
             </ul>
-            <H3>Internal notes</H3>
-            <P>Use the <strong style={{ color: "var(--c-on-surface)" }}>Note</strong> tab in the reply box to leave internal comments visible only to your team — not sent to the customer.</P>
+            <H3>Notes</H3>
+            <P>Notes live on the contact, in the <strong style={{ color: "var(--c-on-surface)" }}>Contact Info</strong> panel. They are visible to your team and never sent to the customer.</P>
             <H3>Quick replies</H3>
-            <P>Save frequently used messages as Quick Replies under <strong style={{ color: "var(--c-on-surface)" }}>Settings → Quick Replies</strong>. Access them in any conversation by typing <code style={{ background: "var(--c-surface-container-lowest)", padding: "1px 6px", borderRadius: 4, color: "var(--c-primary-container)", fontSize: 13 }}>/</code> in the reply box.</P>
+            <P>Type <code style={{ background: "var(--c-surface-container-lowest)", padding: "1px 6px", borderRadius: 4, color: "var(--c-primary-container)", fontSize: 13 }}>/</code> in the message box to open your Quick Replies.</P>
           </DocSection>
 
           {/* ── Contacts ── */}
@@ -195,18 +189,17 @@ export default function DocsPage() {
 
           {/* ── Campaigns ── */}
           <DocSection id="campaigns" title="Campaigns">
-            <P>Campaigns let you send bulk WhatsApp messages to a segment of your contacts. All outbound campaign messages use approved Meta templates.</P>
+            <P>Campaigns send one message to many contacts from your connected WhatsApp number.</P>
             <H3>Creating a campaign</H3>
             <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
-              <Li>Go to <strong style={{ color: "var(--c-on-surface)" }}>Campaigns → New Campaign</strong></Li>
-              <Li>Choose a contact segment (by tag, custom field, or all contacts)</Li>
-              <Li>Select an approved message template</Li>
-              <Li>Map template variables to contact fields (e.g. <code style={{ background: "var(--c-surface-container-lowest)", padding: "1px 6px", borderRadius: 4, color: "var(--c-primary-container)", fontSize: 13 }}>{`{{1}}`}</code> → <code style={{ background: "var(--c-surface-container-lowest)", padding: "1px 6px", borderRadius: 4, color: "var(--c-primary-container)", fontSize: 13 }}>contact.name</code>)</Li>
-              <Li>Schedule or send immediately</Li>
+              <Li>Go to <strong style={{ color: "var(--c-on-surface)" }}>Campaigns → New Campaign</strong>.</Li>
+              <Li>Write the message (text, image, video, document or audio) or pick a template.</Li>
+              <Li>Choose the audience: all contacts, or filter by lead status, tags, source, products or a Lead Scraper run.</Li>
+              <Li>Send now, or schedule it with a time zone.</Li>
             </ul>
-            <H3>Campaign analytics</H3>
-            <P>After sending, track <strong style={{ color: "var(--c-on-surface)" }}>Sent → Delivered → Read → Replied</strong> in real time from the campaign detail screen. Replies automatically open conversations in the Shared Inbox.</P>
-            <Callout icon="warning" color="var(--c-primary-container)">Meta enforces rate limits on campaign messages. Wazelo CRM handles queuing and retry automatically — do not send the same campaign twice.</Callout>
+            <H3>Tracking</H3>
+            <P>The campaign page shows Total Recipients, Delivered, Read and Failed, with each recipient&apos;s status. You can pause, resume or cancel a running campaign. Replies arrive in the Inbox.</P>
+            <Callout icon="info" color="var(--c-primary-container)">Wazelo sends campaigns in small batches with rate limits to protect your number, and retries failed messages up to three times.</Callout>
           </DocSection>
 
           {/* ── Automation ── */}

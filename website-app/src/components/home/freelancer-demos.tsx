@@ -1,7 +1,8 @@
 "use client";
 
 // Interactive freelancer demos used inside the homepage's freelancer panels:
-// Lead Scraper search, pipeline walk, draggable template deck and Solo price.
+// Lead Scraper search, pipeline walk, draggable template deck (some with
+// buttons) and Solo price.
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, animate, motion, useInView, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
@@ -133,7 +134,7 @@ export function LeadScraperDemo() {
                   }`}
                 >
                   {view.added ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                  {view.added ? "In pipeline" : "Add"}
+                  {view.added ? "Imported" : "Add"}
                 </motion.span>
               ) : (
                 <span className="flex shrink-0 items-center gap-1 rounded-lg border border-ink/10 px-2.5 py-1 text-xs text-on-surface-variant">
@@ -172,7 +173,6 @@ const STAGES = ["New", "Contacted", "Interested", "Converted", "Closed"];
 export function PipelineDemo() {
   const { ref, active, reduce } = useLoopActive();
   const [stage, setStage] = useState(0);
-  const valueRef = useRef<HTMLSpanElement>(null);
   const current = reduce ? STAGES.length - 1 : stage;
   const won = current === STAGES.length - 1;
 
@@ -181,26 +181,6 @@ export function PipelineDemo() {
     const t = setTimeout(() => setStage((s) => (s + 1) % STAGES.length), stage === STAGES.length - 1 ? 2600 : 1300);
     return () => clearTimeout(t);
   }, [active, stage]);
-
-  // Count the deal value up when it closes; DOM text only, no re-renders.
-  useEffect(() => {
-    const el = valueRef.current;
-    if (!el) return;
-    if (!won) {
-      el.textContent = "₹0";
-      return;
-    }
-    if (reduce) {
-      el.textContent = "₹36,000";
-      return;
-    }
-    const controls = animate(0, 36000, {
-      duration: 0.9,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => (el.textContent = `₹${Math.round(v).toLocaleString("en-IN")}`),
-    });
-    return () => controls.stop();
-  }, [won, reduce]);
 
   return (
     <div ref={ref}>
@@ -220,10 +200,16 @@ export function PipelineDemo() {
         ))}
       </ol>
       <p className="mt-5 flex items-baseline justify-between border-t border-ink/[0.06] pt-4 text-sm text-on-surface-variant">
-        Won this month
-        <span ref={valueRef} className={`font-mono text-lg tabular-nums ${won ? "text-success" : "text-on-surface-variant"}`}>
-          ₹0
-        </span>
+        Closed this month
+        <motion.span
+          key={won ? "won" : "open"}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springs.snappy}
+          className={`font-mono text-lg tabular-nums ${won ? "text-success" : "text-on-surface-variant"}`}
+        >
+          {won ? 4 : 3}
+        </motion.span>
       </p>
     </div>
   );
@@ -231,12 +217,12 @@ export function PipelineDemo() {
 
 /* ─── Template deck (drag to browse) ─────────────────────────────────────── */
 
-const TEMPLATES = [
-  { name: "Proposal sent", body: ["Hi ", "{Arjun}", ", here's my proposal for ", "{Bloom Bakery}", ". Tap below to view it or book a call."] },
-  { name: "Meeting reminder", body: ["Reminder: our call is tomorrow at ", "{11 AM}", ". The link is in your invite."] },
-  { name: "Invoice sent", body: ["Invoice ", "{INV-0142}", " for ", "{₹18,000}", " is ready. Pay by UPI or card from the link."] },
-  { name: "Payment received", body: ["Payment received, thank you! Next update by ", "{Friday}", "."] },
-  { name: "Testimonial request", body: ["Loved working with you, ", "{Arjun}", ". Would you share a two-line review?"] },
+const TEMPLATES: { name: string; body: string[]; buttons?: string[] }[] = [
+  { name: "Intro", body: ["Hi ", "{Arjun}", ", I'm Riya, a designer in Chennai. Can I share an idea for ", "{Bloom Bakery}", "?"], buttons: ["Yes, send it", "Not now"] },
+  { name: "Book a call", body: ["Want to talk it through? Pick a time that suits you."], buttons: ["Tue, 11 AM", "Wed, 4 PM"] },
+  { name: "Meeting reminder", body: ["Reminder: our call is tomorrow at ", "{11 AM}", "."] },
+  { name: "Project update", body: ["First drafts for ", "{Bloom Bakery}", " are ready. Next update by ", "{Friday}", "."] },
+  { name: "Review request", body: ["Loved working with you, ", "{Arjun}", ". Would you share a two-line review?"] },
 ];
 
 const SWIPE_OFFSET = 80;
@@ -257,6 +243,15 @@ function TemplateCard({ t }: { t: (typeof TEMPLATES)[number] }) {
           ),
         )}
       </p>
+      {t.buttons && (
+        <div className="mt-3 flex gap-2">
+          {t.buttons.map((b) => (
+            <span key={b} className="flex-1 rounded-lg border border-ink/10 py-1.5 text-center text-xs font-medium text-wa-label">
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -290,7 +285,7 @@ export function TemplateDeck() {
 
   return (
     <div ref={ref}>
-      <div className="relative h-44">
+      <div className="relative h-52">
         {[...visible].reverse().map((idx) => {
           const depth = visible.indexOf(idx);
           const t = TEMPLATES[idx];

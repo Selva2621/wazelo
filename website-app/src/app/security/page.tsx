@@ -32,12 +32,12 @@ export default function SecurityPage() {
   const ctaView    = useInView(0.2);
 
   const pillars = [
-    { icon: "lock", title: "Data encryption", desc: "All your data — in transit and at rest — is encrypted. Your conversations and contact information are never stored in plain text." },
-    { icon: "shield", title: "Meta-approved platform", desc: "Wazelo CRM uses the official WhatsApp Business API via Meta's Cloud API. All message handling complies with Meta's policies." },
-    { icon: "manage_accounts", title: "Role-based access control", desc: "Admins, managers, and agents each have scoped permissions. Agents see only their assigned conversations — nothing more." },
-    { icon: "corporate_fare", title: "Multi-tenant isolation", desc: "Each organisation's data is completely isolated. No other customer can ever see your conversations, contacts, or settings." },
-    { icon: "history", title: "Full audit logs", desc: "Every user action — login, message sent, contact edited, settings changed — is logged for compliance review." },
-    { icon: "verified_user", title: "Secure authentication", desc: "Strong authentication with short-lived sessions, automatic token rotation, and rate-limited login to prevent brute-force attacks." },
+    { icon: "qr_code_2", title: "QR-linked WhatsApp", desc: "You link your number the same way you link WhatsApp Web: Settings, Linked Devices, Link a Device. Admins can see and disconnect any team member's WhatsApp session." },
+    { icon: "privacy_tip", title: "GDPR tools", desc: "Record a contact's consent, export the data you hold on them, or erase it when they ask." },
+    { icon: "manage_accounts", title: "Role-based access control", desc: "Admin, Manager, and Employee roles with permissions you can edit, plus teams to group your people." },
+    { icon: "corporate_fare", title: "Separate data per organisation", desc: "Every record is scoped to your organisation, so other customers cannot see your conversations, contacts, or settings." },
+    { icon: "history", title: "Audit logs", desc: "User actions are recorded in audit logs that admins can review." },
+    { icon: "verified_user", title: "Secure sign-in", desc: "Passwords are hashed, sessions use short-lived access tokens with refresh tokens, and login attempts are rate limited." },
   ];
 
   return (
@@ -57,7 +57,7 @@ export default function SecurityPage() {
             Your data is safe<br /><span style={{ color: "var(--c-success)" }}>with us.</span>
           </h1>
           <p style={{ fontSize: "clamp(15px,1.6vw,18px)", color: "var(--c-on-surface-variant)", lineHeight: 1.8, maxWidth: 540, margin: "0 auto", fontFamily: "var(--font-geist-sans), sans-serif", opacity: heroView.inView ? 1 : 0, transition: "opacity 0.9s 0.2s ease" }}>
-            Wazelo CRM is built on enterprise-grade infrastructure with encryption, access controls, and compliance at every layer.
+            Wazelo CRM keeps each organisation&apos;s data separate and gives admins roles, permissions, audit logs, and GDPR tools.
           </p>
         </div>
       </section>
@@ -79,15 +79,15 @@ export default function SecurityPage() {
       <section ref={infraView.ref} style={{ background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
           <div style={{ opacity: infraView.inView ? 1 : 0, transform: infraView.inView ? "translateY(0)" : "translateY(20px)", transition: "opacity 0.9s ease, transform 0.9s ease" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>Infrastructure</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 14 }}>Connection</span>
             <h2 style={{ fontSize: "clamp(26px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24 }}>
-              Enterprise-grade infrastructure.
+              Sessions that reconnect on their own.
             </h2>
             <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 560, margin: "0 auto 32px" }}>
-              Wazelo CRM is hosted on reliable cloud infrastructure with high availability, automatic backups, and network-level protection — so your team stays connected and your data stays safe, around the clock.
+              Your linked WhatsApp session reconnects after short drops, so your team does not need to rescan the QR code. Campaign messages go out in batches with rate limits.
             </p>
             <p style={{ fontSize: 15, color: "var(--c-placeholder)", lineHeight: 1.8, fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 500, margin: "0 auto" }}>
-              Want a detailed security briefing for your procurement or compliance team? <a href="/contact" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>Contact us</a> and we&apos;ll walk you through our architecture privately.
+              Have questions from your procurement or compliance team? <a href="/contact" style={{ color: "var(--c-primary-container)", textDecoration: "none" }}>Contact us</a> and we&apos;ll answer them.
             </p>
           </div>
         </div>
@@ -98,16 +98,16 @@ export default function SecurityPage() {
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--c-primary-container)", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>Compliance</span>
           <h2 style={{ fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20, opacity: compView.inView ? 1 : 0, transition: "opacity 0.8s ease" }}>
-            Built for regulated industries.
+            Tools for your data requests.
           </h2>
           <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.8, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 48, opacity: compView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease" }}>
-            Wazelo CRM is designed with compliance in mind — whether you&apos;re in healthcare, finance, or education.
+            Handle consent, access, and deletion requests from inside Wazelo.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)", gap: 16, opacity: compView.inView ? 1 : 0, transition: "opacity 0.9s 0.15s ease" }}>
             {[
-              { icon: "policy", title: "WhatsApp Business Policy", desc: "All messaging complies with Meta's WhatsApp Business Policy and Commerce Policy." },
-              { icon: "gavel", title: "Data localisation ready", desc: "Infrastructure can be configured for data residency requirements in India and other jurisdictions." },
-              { icon: "receipt_long", title: "Audit trail", desc: "Full activity logs for every user action. Export logs for internal compliance review at any time." },
+              { icon: "fact_check", title: "Consent records", desc: "Record whether a contact has given consent to be messaged." },
+              { icon: "download", title: "Data export and erasure", desc: "Export a contact's data or erase it when they ask." },
+              { icon: "receipt_long", title: "Audit trail", desc: "Audit logs record user actions so admins can review who changed what." },
             ].map(c => (
               <div key={c.title} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "28px 24px", textAlign: "left" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 26, color: "var(--c-primary-container)", marginBottom: 14, display: "block" }}>{c.icon}</span>
@@ -126,7 +126,7 @@ export default function SecurityPage() {
             Questions about security?
           </h2>
           <p style={{ fontSize: 16, color: "var(--c-on-surface-variant)", lineHeight: 1.7, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36, opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease" }}>
-            Our team is happy to walk you through our security architecture, answer compliance questions, or provide documentation for your procurement process.
+            Write to us and we will answer your questions about how Wazelo handles your data.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.2s ease" }}>
             <a href="/contact" className="btn-primary" style={{ padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 800, textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block" }}>Contact our team</a>

@@ -3,7 +3,7 @@ import LeadScoringClient from "./client";
 
 export const metadata: Metadata = {
   title: "WhatsApp Lead Scoring",
-  description: "Automatically score and rank leads based on engagement, profile, and behaviour — so your team focuses on the hottest leads.",
+  description: "Score and rank leads with rules based on engagement, profile, and behaviour, so your team knows who to follow up first.",
   keywords: [
     "WhatsApp lead scoring", "automatic lead qualification", "lead score WhatsApp CRM",
     "lead priority WhatsApp", "WhatsApp lead ranking",
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://wazelo.in/features/lead-scoring" },
   openGraph: {
     title: "WhatsApp Lead Scoring | Wazelo CRM",
-    description: "Automatically score and rank leads based on engagement, profile, and behaviour — so your team focuses on the hottest leads.",
+    description: "Score and rank leads with rules based on engagement, profile, and behaviour, so your team knows who to follow up first.",
     url: "https://wazelo.in/features/lead-scoring",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "WhatsApp Lead Scoring | Wazelo CRM",
-    description: "Automatically score and rank leads based on engagement, profile, and behaviour — so your team focuses on the hottest leads.",
+    description: "Score and rank leads with rules based on engagement, profile, and behaviour, so your team knows who to follow up first.",
   },
 };
 

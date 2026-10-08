@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import MultiChannelClient from "./client";
 
 export const metadata: Metadata = {
-  title: "Multi-Channel Inbox — WhatsApp, Instagram, Email",
+  title: "Multi-Channel Inbox: WhatsApp, Instagram, Email",
   description: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email from one shared inbox with unified automations and analytics.",
   keywords: [
     "multi-channel inbox", "WhatsApp Instagram inbox", "unified messaging inbox",
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "https://wazelo.in/features/multi-channel" },
   openGraph: {
-    title: "Multi-Channel Inbox — WhatsApp, Instagram, Email | Wazelo CRM",
+    title: "Multi-Channel Inbox: WhatsApp, Instagram, Email | Wazelo CRM",
     description: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email from one shared inbox with unified automations and analytics.",
     url: "https://wazelo.in/features/multi-channel",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Multi-Channel Inbox — WhatsApp, Instagram, Email | Wazelo CRM",
+    title: "Multi-Channel Inbox: WhatsApp, Instagram, Email | Wazelo CRM",
     description: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email from one shared inbox with unified automations and analytics.",
   },
 };

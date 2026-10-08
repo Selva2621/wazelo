@@ -232,9 +232,9 @@ const data: FeatureDetailData = {
     { icon: "history", title: "Full conversation history", desc: "Every message, note, and file ever exchanged — searchable, forever. Context at your fingertips." },
   ],
   howItWorks: [
-    { step: "01", title: "Connect your WhatsApp Business number", desc: "Link your Meta-approved WhatsApp Business API number to Wazelo CRM in under 5 minutes." },
-    { step: "02", title: "Invite your team", desc: "Add agents and set their roles. Admins get full access; agents see only their assigned conversations." },
-    { step: "03", title: "Set routing rules", desc: "Define how incoming messages are assigned — round-robin, keyword-based, or manual." },
+    { step: "01", title: "Connect your WhatsApp number", desc: "Scan a QR from WhatsApp, Settings, Linked Devices. Your number stays on your phone." },
+    { step: "02", title: "Invite your team", desc: "Add people as Admin, Manager or Employee, and edit what each role can do." },
+    { step: "03", title: "Set routing rules", desc: "Automation rules assign chats by keyword or status. Meta lead-ad leads go round-robin." },
     { step: "04", title: "Reply, resolve, grow", desc: "Your team works from the shared inbox — responding faster, collaborating better, and never missing a message." },
   ],
   screens: [

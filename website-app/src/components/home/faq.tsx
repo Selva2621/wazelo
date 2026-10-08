@@ -15,36 +15,36 @@ import { Illustration } from "@/components/illustration";
 
 const FAQ = [
   {
+    q: "How do I connect my WhatsApp number?",
+    a: "Click Connect WhatsApp in Wazelo. On your phone, open WhatsApp, go to Settings, Linked Devices, tap Link a Device and scan the QR code. It reconnects on its own after short drops.",
+  },
+  {
     q: "I'm a freelancer. Do I need a team plan?",
-    a: "No. Choose “Solo / Freelancer” at sign-up and take the Solo plan at ₹299 a month. You get Lead Scraper, a client pipeline, 26 ready templates and follow-up sequences. You can switch to a team setup later in Settings.",
+    a: "No. Pick Solo / Freelancer at sign-up and take Solo at ₹299 a month: 1 user, 1 number, Lead Scraper, a lead pipeline, 20 templates and drip sequences.",
   },
   {
-    q: "What do teams get that freelancers don't?",
-    a: "Team accounts add assignments and a My Team view, automation, the chatbot and chat widget, CSAT surveys, roles for Admin, Manager and Employee, audit logs and multiple WhatsApp numbers.",
+    q: "What do team plans add?",
+    a: "A shared inbox with assignment for more users and numbers, roles for Admin, Manager and Employee, audit logs, CSAT surveys and AI credits. Automation rules start on Growth.",
   },
   {
-    q: "How much does it cost?",
-    a: "Solo is ₹299 a month. Team plans are Starter at ₹499, Growth at ₹999 and Pro at ₹1,999 a month. Enterprise starts at ₹3,999 a month. Every plan has a 14-day free trial with no credit card.",
+    q: "What does the free trial include?",
+    a: "14 days, no card needed. You get 3 users, 3 WhatsApp numbers, 1,000 messages, 5 campaigns and 50 AI credits to try Wazelo with real chats.",
   },
   {
-    q: "Does it use the official WhatsApp Business API?",
-    a: "Yes. Wazelo is built on the official WhatsApp Business API from Meta. It supports multiple WhatsApp numbers, approved message templates and Meta's compliance requirements.",
+    q: "Where does the Lead Scraper find leads?",
+    a: "Google Maps, Upwork Jobs, Freelancer.in, Truelancer and LinkedIn Jobs. Each run returns up to 200 results that you can import to contacts and target with a campaign.",
   },
   {
-    q: "Can several people use the same WhatsApp number?",
-    a: "Yes. The shared inbox lets your whole team work one number at the same time. Chats are assigned to agents, tracked to resolution and reported on.",
+    q: "How do the AI features work?",
+    a: "AI Summary, AI Insights and reply suggestions in the inbox use AI credits. Starter includes 50, Growth 200 and Pro 500. The Solo plan has no AI credits.",
   },
   {
     q: "Can I send bulk WhatsApp messages?",
-    a: "Yes. Campaigns send personalised template messages to your segments, with live delivery tracking. Growth includes 25,000 messages a month and Pro includes 1,00,000.",
+    a: "Yes. Campaigns send text, media or templates to a filtered audience in rate-limited batches, and show Sent, Delivered, Read and Failed for each recipient.",
   },
   {
-    q: "How is Wazelo different from Interakt, Wati or AiSensy?",
-    a: "Wazelo puts the shared inbox, campaigns, automation, chatbot and analytics in one product, and adds a Solo plan with lead finding and proposals for freelancers.",
-  },
-  {
-    q: "Is my data secure?",
-    a: "Wazelo runs on Meta's official API infrastructure, with role-based access, audit logs and GDPR tools for data requests.",
+    q: "How is my data handled?",
+    a: "Admins set roles and permissions for Admin, Manager and Employee, and audit logs record activity. GDPR tools cover consent, export and erase requests.",
   },
 ];
 
@@ -76,7 +76,7 @@ function SupportPhone({ index }: { index: number }) {
 
   const item = FAQ[index];
   return (
-    <PhoneFrame contact={{ name: "Wazelo Support", initials: "WZ", subtitle: "Business account", verified: true }} typing={phase === "typing"}>
+    <PhoneFrame contact={{ name: "Wazelo Support", initials: "WZ", subtitle: "Business account" }} typing={phase === "typing"}>
       <div className="flex flex-col">
         <Incoming>
           Hi! Ask us anything about Wazelo.

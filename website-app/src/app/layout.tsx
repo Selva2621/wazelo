@@ -42,6 +42,21 @@ const organizationSchema = {
   },
 };
 
+const plan = (name: string, price: string, description: string) => ({
+  "@type": "Offer",
+  name,
+  description,
+  price,
+  priceCurrency: "INR",
+  priceSpecification: {
+    "@type": "UnitPriceSpecification",
+    price,
+    priceCurrency: "INR",
+    unitText: "MONTH",
+  },
+  eligibleRegion: { "@type": "Country", name: "India" },
+});
+
 const softwareApplicationSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -49,93 +64,32 @@ const softwareApplicationSchema = {
   alternateName: "Wazelo WhatsApp CRM",
   applicationCategory: "BusinessApplication",
   applicationSubCategory: "CRM Software",
-  operatingSystem: "Web, Android, iOS",
+  operatingSystem: "Web",
   url: "https://wazelo.in",
   description:
-    "Wazelo CRM is the best WhatsApp CRM for Indian businesses. Shared team inbox, bulk campaign broadcasts, no-code automation workflows, AI chatbot builder, analytics dashboard, and contacts management — all in one platform.",
+    "Wazelo CRM is a WhatsApp CRM for freelancers and teams in India. Connect your WhatsApp number by scanning a QR code, then use a shared inbox, lead scraper, campaigns, drip sequences, automation rules, and an AI chatbot builder.",
   featureList: [
-    "Shared WhatsApp inbox for teams",
-    "Bulk WhatsApp campaign broadcasting",
-    "No-code automation workflows",
-    "AI-powered WhatsApp chatbot builder",
-    "WhatsApp analytics dashboard",
-    "Contacts CRM with tagging and segmentation",
-    "WhatsApp Business API integration",
-    "Multi-agent support",
-    "Real-time delivery tracking",
+    "Connect WhatsApp by scanning a QR code",
+    "Shared WhatsApp inbox with assignment, labels, and quick replies",
+    "Lead scraper for Google Maps, Upwork, Freelancer.in, Truelancer, and LinkedIn Jobs",
+    "Lead pipeline kanban",
+    "WhatsApp campaigns with per-recipient delivery and read status",
+    "Drip sequences that stop when the contact replies",
+    "Automation rules",
+    "AI chatbot and no-code flow builder",
+    "AI reply suggestions and conversation summaries",
+    "Contacts with tags, custom fields, and CSV import",
     "CSAT surveys",
-    "Lead scoring",
-    "API access",
+    "Analytics dashboard",
+    "Developer API and webhooks",
   ],
   screenshot: "https://wazelo.in/screens/01-inbox-shared-team.jpeg",
   offers: [
-    {
-      "@type": "Offer",
-      name: "Starter Plan",
-      description: "5 users, 5 WhatsApp sessions, 5,000 messages/month, 10 campaigns. Shared inbox, bulk campaigns, basic CRM, email support.",
-      price: "499",
-      priceCurrency: "INR",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "499",
-        priceCurrency: "INR",
-        unitText: "MONTH",
-      },
-      eligibleRegion: { "@type": "Country", name: "India" },
-    },
-    {
-      "@type": "Offer",
-      name: "Growth Plan",
-      description: "15 users, 15 WhatsApp sessions, 25,000 messages/month, 50 campaigns. Everything in Starter plus automation workflows, advanced analytics, priority support.",
-      price: "999",
-      priceCurrency: "INR",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "999",
-        priceCurrency: "INR",
-        unitText: "MONTH",
-      },
-      eligibleRegion: { "@type": "Country", name: "India" },
-    },
-    {
-      "@type": "Offer",
-      name: "Pro Plan",
-      description: "50 users, 50 WhatsApp sessions, 1,00,000 messages/month, 200 campaigns. Full API access, dedicated account manager, 24/7 phone support.",
-      price: "1999",
-      priceCurrency: "INR",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "1999",
-        priceCurrency: "INR",
-        unitText: "MONTH",
-      },
-      eligibleRegion: { "@type": "Country", name: "India" },
-    },
-  ],
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    reviewCount: "127",
-    bestRating: "5",
-    worstRating: "1",
-  },
-  review: [
-    {
-      "@type": "Review",
-      reviewRating: {
-        "@type": "Rating",
-        ratingValue: "5",
-        bestRating: "5",
-      },
-      author: {
-        "@type": "Person",
-        name: "Rajesh M.",
-        jobTitle: "Head of Sales",
-        worksFor: { "@type": "Organization", name: "PropEdge Realty" },
-      },
-      reviewBody:
-        "We went from missing 40% of leads to a 94% response rate in 3 weeks. Wazelo CRM is the only tool that actually works for WhatsApp sales.",
-    },
+    plan("Solo Plan", "299", "1 user, 1 WhatsApp number, 3,000 messages/month, 5 campaigns/month, 20 templates."),
+    plan("Starter Plan", "499", "5 users, 5 WhatsApp numbers, 5,000 messages/month, 10 campaigns/month, 50 AI credits, 1,000 API calls, 1 Shopify store."),
+    plan("Growth Plan", "999", "15 users, 15 WhatsApp numbers, 25,000 messages/month, 50 campaigns/month, 200 AI credits, 10,000 API calls, 3 Shopify stores. Includes automation rules."),
+    plan("Pro Plan", "1999", "50 users, 50 WhatsApp numbers, 1,00,000 messages/month, 200 campaigns/month, 500 AI credits, API access, 5 Shopify stores. Includes automation rules."),
+    plan("Enterprise Plan", "3999", "200 users, 200 WhatsApp numbers, unlimited messages and campaigns, custom AI credits, API access, unlimited Shopify stores. Includes automation rules."),
   ],
 };
 
@@ -148,7 +102,7 @@ const faqSchema = {
       name: "What is Wazelo CRM?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Wazelo CRM is the best WhatsApp CRM software for Indian businesses. It provides a shared team inbox, bulk WhatsApp campaign broadcasting, no-code automation workflows, AI chatbot builder, analytics dashboard, and contacts management — all in one platform. Trusted by 500+ growing businesses across real estate, e-commerce, healthcare, and education.",
+        text: "Wazelo CRM is a WhatsApp CRM for freelancers and teams in India. It includes a shared team inbox, a lead scraper, a lead pipeline, WhatsApp campaigns, drip sequences, automation rules, an AI chatbot builder, contacts, and analytics.",
       },
     },
     {
@@ -156,15 +110,15 @@ const faqSchema = {
       name: "How much does Wazelo CRM cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Wazelo CRM pricing starts at ₹499/month for the Starter plan (5 users, 5 WhatsApp sessions, 5,000 messages/month). The Growth plan is ₹999/month and the Pro plan is ₹1,999/month. Enterprise plans with custom limits are available from ₹3,999/month. All plans include a 14-day free trial with no credit card required.",
+        text: "The Solo plan is ₹299/month (1 user, 1 WhatsApp number, 3,000 messages/month). The Starter plan is ₹499/month (5 users, 5 numbers, 5,000 messages/month). Growth is ₹999/month, Pro is ₹1,999/month, and Enterprise is ₹3,999/month. Yearly billing costs 10 times the monthly price. Every account starts with a 14-day free trial and no card is required.",
       },
     },
     {
       "@type": "Question",
-      name: "Does Wazelo CRM work with WhatsApp Business API?",
+      name: "How do I connect my WhatsApp number to Wazelo CRM?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Wazelo CRM is built on the WhatsApp Business API (Meta BSP). It supports multiple WhatsApp sessions, official message templates, and all Meta compliance requirements. Unlike the free WhatsApp Business App, the API enables unlimited team access, bulk messaging, automation, and chatbots.",
+        text: "You connect by scanning a QR code. In Wazelo, click Connect WhatsApp. On your phone, open WhatsApp, go to Settings, Linked Devices, tap Link a Device, and scan the QR code. The session reconnects on its own after short drops, so you do not need to rescan.",
       },
     },
     {
@@ -172,23 +126,15 @@ const faqSchema = {
       name: "Can I send bulk WhatsApp messages with Wazelo CRM?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. The Bulk Campaigns feature lets you broadcast personalised WhatsApp messages to thousands of contacts at once. You get real-time delivery tracking, smart retry logic, and detailed analytics. The Growth plan includes 25,000 messages/month and the Pro plan includes 1,00,000 messages/month.",
+        text: "Yes. Campaigns send text, image, video, document, audio, or template messages to an audience you pick by lead status, tags, source, products, owner, team, or scraper run. You can schedule them with a timezone, pause, resume, or cancel them, and see Sent, Delivered, Read, or Failed for each recipient. Messages go out in batches with rate limits.",
       },
     },
     {
       "@type": "Question",
-      name: "Is Wazelo CRM better than Interakt, Wati, or AiSensy?",
+      name: "Can multiple team members work from one shared inbox?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Wazelo CRM offers a complete WhatsApp CRM suite purpose-built for Indian SMEs — combining shared inbox, campaigns, automation, chatbot, and analytics in one affordable platform starting at ₹499/month. Compared to Interakt, Wati, and AiSensy, Wazelo CRM provides more features per rupee with India-first pricing and dedicated support.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Can multiple team members use the same WhatsApp number?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes. Wazelo CRM's shared WhatsApp inbox lets your entire team collaborate on the same WhatsApp number simultaneously. Conversations can be assigned to specific agents, tracked to resolution, and monitored with real-time analytics. The Starter plan supports 5 users and 5 WhatsApp sessions.",
+        text: "Yes. The shared inbox has All, Unread, and Mine tabs. You can assign chats, add labels, close, reopen, or archive them, and use quick replies by typing \"/\". Each user connects one WhatsApp number, and your plan sets how many numbers your organisation can connect.",
       },
     },
     {
@@ -196,15 +142,15 @@ const faqSchema = {
       name: "Is there a free trial for Wazelo CRM?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes, all Wazelo CRM plans include a 14-day free trial. No credit card is required to get started. You can access all features of your chosen plan during the trial period.",
+        text: "Yes. Every account gets a 14-day free trial with no card required. The trial includes 3 users, 3 WhatsApp numbers, 1,000 messages, 5 campaigns, and 50 AI credits.",
       },
     },
     {
       "@type": "Question",
-      name: "Which industries can use Wazelo CRM?",
+      name: "Does Wazelo CRM work for freelancers?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Wazelo CRM works for any business that uses WhatsApp for customer communication. It is especially popular in real estate (lead management), e-commerce (order updates, abandoned cart recovery), healthcare (appointment reminders), education (student communication, admissions), and financial services (loan applications, policy renewals) across India.",
+        text: "Yes. The Solo plan at ₹299/month includes a lead scraper for Google Maps, Upwork Jobs, Freelancer.in, Truelancer, and LinkedIn Jobs (up to 200 results per run), a lead pipeline, 20 message templates, and drip sequences that stop when a lead replies.",
       },
     },
     {
@@ -212,15 +158,15 @@ const faqSchema = {
       name: "How does WhatsApp automation work in Wazelo CRM?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Wazelo CRM's no-code automation builder lets you create WhatsApp workflow rules without any coding. You can set up auto-replies, lead routing based on keywords or time, drip message sequences, follow-up flows, and chatbot triggers. Automations run 24/7 and can be combined with the chatbot builder for complete self-service experiences.",
+        text: "Automation rules run when something happens, such as a message received, a contact created, a status change, a time-based schedule, no reply, a Meta lead ad, or a Shopify order or abandoned cart. Rules can send a message, assign the chat, add a tag, or update the lead status. You can draft rules with AI and check execution logs. Automation is included from the Growth plan.",
       },
     },
     {
       "@type": "Question",
-      name: "Is Wazelo CRM safe and secure?",
+      name: "How does Wazelo CRM protect my data?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Wazelo CRM is built on Meta's official WhatsApp Business API infrastructure with end-to-end encryption. All data is stored with enterprise-grade security, role-based access controls, and audit logs. Wazelo CRM is fully compliant with Meta BSP requirements and data protection regulations applicable in India.",
+        text: "Each organisation's data is kept separate from other customers. Admins control access with Admin, Manager, and Employee roles and editable permissions, and audit logs record user actions. GDPR tools let you record consent, export a contact's data, or erase it.",
       },
     },
   ],
@@ -228,19 +174,20 @@ const faqSchema = {
 
 // ── Root Metadata ──────────────────────────────────────────────────────────────
 
+const DEFAULT_TITLE = "Wazelo CRM | WhatsApp CRM for Freelancers and Teams";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://wazelo.in"),
   title: {
     template: "%s | Wazelo CRM",
-    default: "Wazelo CRM — Best WhatsApp CRM for Indian Businesses",
+    default: DEFAULT_TITLE,
   },
   description:
-    "Best WhatsApp CRM for Indian businesses. Shared inbox, bulk campaigns, automation & AI chatbot. Starts ₹499/mo. 14-day free trial.",
+    "WhatsApp CRM for freelancers and teams in India. Connect by scanning a QR code. Shared inbox, lead scraper, campaigns, sequences, automation, and AI chatbot. From ₹299/mo solo, ₹499/mo for teams. 14-day free trial.",
   keywords: [
     // ── Primary high-intent ──────────────────────────────────────────────────
     "WhatsApp CRM",
     "WhatsApp CRM India",
-    "best WhatsApp CRM for Indian businesses",
     "WhatsApp CRM software",
     "WhatsApp business CRM",
     "WhatsApp CRM tool",
@@ -251,16 +198,20 @@ export const metadata: Metadata = {
     "WhatsApp CRM system",
     "WhatsApp CRM solution",
     "WhatsApp customer relationship management",
+    "WhatsApp CRM for freelancers",
 
     // ── Feature short-keys ───────────────────────────────────────────────────
     "shared WhatsApp inbox",
     "WhatsApp bulk messaging software",
     "WhatsApp marketing automation",
     "WhatsApp chatbot builder",
+    "WhatsApp AI chatbot",
     "WhatsApp automation platform",
     "WhatsApp campaign tool",
     "WhatsApp team inbox",
     "WhatsApp lead management",
+    "WhatsApp lead scraper",
+    "Google Maps lead scraper",
     "WhatsApp broadcast tool",
     "WhatsApp multi agent",
     "WhatsApp shared inbox",
@@ -274,25 +225,9 @@ export const metadata: Metadata = {
     "WhatsApp sales tool",
     "WhatsApp support tool",
     "WhatsApp business inbox",
-    "WhatsApp API platform",
     "WhatsApp CSAT survey",
     "WhatsApp analytics tool",
     "WhatsApp reporting dashboard",
-
-    // ── Competitor / alternative short-keys ──────────────────────────────────
-    "Interakt alternative",
-    "Wati alternative",
-    "AiSensy alternative",
-    "Gallabox alternative",
-    "Respond io alternative",
-    "Zoko alternative",
-    "Freshchat WhatsApp alternative",
-    "Trengo alternative",
-    "best Interakt alternative India",
-    "best Wati alternative India",
-    "WhatsApp CRM vs Wati",
-    "WhatsApp CRM vs Interakt",
-    "WhatsApp CRM vs AiSensy",
 
     // ── Industry long-tail ───────────────────────────────────────────────────
     "WhatsApp CRM for real estate India",
@@ -308,11 +243,9 @@ export const metadata: Metadata = {
     "WhatsApp CRM for small business India",
     "WhatsApp CRM for agencies India",
 
-    // ── Technical / API ──────────────────────────────────────────────────────
-    "WhatsApp business API CRM India",
-    "WhatsApp business API provider India",
-    "Meta BSP WhatsApp India",
-    "WhatsApp API integration India",
+    // ── Developer ────────────────────────────────────────────────────────────
+    "WhatsApp CRM API",
+    "WhatsApp CRM webhooks",
 
     // ── Commercial intent ────────────────────────────────────────────────────
     "bulk WhatsApp messages India",
@@ -322,11 +255,8 @@ export const metadata: Metadata = {
     "WhatsApp CRM SME India",
     "free WhatsApp CRM trial India",
     "WhatsApp CRM pricing India",
-    "cheap WhatsApp CRM India",
     "WhatsApp CRM free trial",
     "WhatsApp CRM demo",
-    "best WhatsApp tool for business India",
-    "top WhatsApp CRM 2025",
     "WhatsApp business software India",
     "WhatsApp business management software",
     "WhatsApp sales management India",
@@ -339,15 +269,15 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: "https://wazelo.in",
     siteName: "Wazelo CRM",
-    title: "Wazelo CRM — Best WhatsApp CRM for Indian Businesses",
+    title: DEFAULT_TITLE,
     description:
-      "Shared inbox, bulk campaigns, automation & chatbot for WhatsApp. Starts ₹499/mo. Trusted by 500+ Indian businesses. 14-day free trial.",
+      "Scan a QR code to connect WhatsApp. Shared inbox, lead scraper, campaigns, sequences, automation, and AI chatbot. From ₹299/mo. 14-day free trial, no card.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Wazelo CRM — WhatsApp CRM dashboard for Indian businesses",
+        alt: "Wazelo CRM, the WhatsApp CRM for freelancers and teams",
         type: "image/png",
       },
     ],
@@ -356,9 +286,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@wazelocrm",
     creator: "@wazelocrm",
-    title: "Wazelo CRM — Best WhatsApp CRM for Indian Businesses",
+    title: DEFAULT_TITLE,
     description:
-      "Shared inbox, bulk campaigns, automation & chatbot for WhatsApp. Starts ₹499/mo. 14-day free trial.",
+      "Scan a QR code to connect WhatsApp. Shared inbox, lead scraper, campaigns, sequences, automation, and AI chatbot. From ₹299/mo. 14-day free trial.",
     images: ["/opengraph-image"],
   },
   icons: {

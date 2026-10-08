@@ -13,7 +13,7 @@ const breadcrumbSchema = {
 export const metadata: Metadata = {
   title: "Shared WhatsApp Inbox for Teams",
   description:
-    "Manage all WhatsApp conversations in one shared team inbox. Assign chats to agents, resolve tickets, collaborate in real-time — no lead lost. Best WhatsApp team inbox for Indian businesses.",
+    "One shared WhatsApp inbox for your team. Assign chats, add labels, close, reopen, or archive, and reply faster with quick replies and AI suggestions. Teams from ₹499/mo.",
   keywords: [
     // Short-keys
     "shared WhatsApp inbox",
@@ -46,14 +46,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
     description:
-      "Give your entire team one WhatsApp number. Assign, resolve, and collaborate in real-time. No lead ever lost. Best multi-agent WhatsApp inbox for India.",
+      "A shared WhatsApp inbox with All, Unread, and Mine tabs, chat assignment, labels, and quick replies. Teams from ₹499/mo.",
     url: "https://wazelo.in/features/shared-inbox",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Shared WhatsApp Inbox — Wazelo CRM",
+        alt: "Shared WhatsApp Inbox | Wazelo CRM",
       },
     ],
   },
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
     description:
-      "One WhatsApp number, entire team. Assign chats, resolve tickets, real-time collaboration. Starts ₹499/mo.",
+      "A shared WhatsApp inbox for your team. Assign chats, add labels, use quick replies. Teams from ₹499/mo.",
     images: ["/opengraph-image"],
   },
 };

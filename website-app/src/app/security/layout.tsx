@@ -1,39 +1,32 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Security — Enterprise-Grade WhatsApp Data Protection",
+  title: "Security and Data Protection",
   description:
-    "How Wazelo CRM keeps your data safe. End-to-end encryption, Meta BSP compliance, SOC-2 aligned infrastructure, role-based access controls, and audit logs for WhatsApp CRM.",
+    "How Wazelo CRM protects your data. Separate data for each organisation, Admin, Manager, and Employee roles with editable permissions, audit logs, and GDPR tools for consent, export, and erasure.",
   keywords: [
     // Short-keys
     "WhatsApp CRM security",
     "WhatsApp data security",
-    "WhatsApp encryption",
-    "WhatsApp compliance",
-    "Meta BSP compliant",
     "WhatsApp GDPR",
     "secure WhatsApp CRM",
     "WA data protection",
     // Long-tail
     "WhatsApp data protection India",
-    "WhatsApp business API compliance India",
-    "Meta BSP compliant CRM India",
     "WhatsApp CRM data security India",
-    "enterprise WhatsApp security India",
     "WhatsApp GDPR compliance India",
     "secure WhatsApp CRM India",
-    "WhatsApp end to end encryption CRM",
     "WhatsApp CRM audit log India",
     "WhatsApp CRM access control India",
-    "safe WhatsApp CRM India",
+    "WhatsApp CRM role based access",
   ],
   alternates: {
     canonical: "https://wazelo.in/security",
   },
   openGraph: {
-    title: "Security — Enterprise-Grade WhatsApp Data Protection | Wazelo CRM",
+    title: "Security and Data Protection | Wazelo CRM",
     description:
-      "End-to-end encryption, Meta BSP compliance, SOC-2 aligned infrastructure, and role-based access controls for your WhatsApp CRM data.",
+      "Separate data for each organisation, role-based permissions, audit logs, and GDPR tools for your WhatsApp CRM data.",
     url: "https://wazelo.in/security",
     images: [
       {
@@ -48,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Security | Wazelo CRM",
     description:
-      "End-to-end encryption, Meta BSP compliance, SOC-2 aligned infrastructure for your WhatsApp CRM.",
+      "Separate data for each organisation, role-based permissions, audit logs, and GDPR tools.",
     images: ["/opengraph-image"],
   },
 };
