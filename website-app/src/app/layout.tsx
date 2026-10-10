@@ -322,13 +322,11 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
-        {/* Theme follows the device (prefers-color-scheme), applied before first
-            paint so there's no flash, and re-applied live when the device switches.
-            A toggle choice ({theme, sys}) overrides it only while the device stays
-            in the mode it was made against; once the device switches, it's dropped. */}
+        {/* Light by default, whatever the device theme. Applies the visitor's saved
+            toggle choice before first paint so there's no flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var K="wazelo-theme",r=document.documentElement,q=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)"),sys=q&&q.matches?"dark":"light",t=sys;function drop(){try{localStorage.removeItem(K)}catch(e){}}try{var s=JSON.parse(localStorage.getItem(K));if(s&&s.sys===sys&&(s.theme==="dark"||s.theme==="light"))t=s.theme;else drop()}catch(e){drop()}r.dataset.theme=t;if(q){var f=function(e){drop();r.dataset.theme=e.matches?"dark":"light"};q.addEventListener?q.addEventListener("change",f):q.addListener(f)}})()`,
+            __html: `try{document.documentElement.dataset.theme=localStorage.getItem("wazelo-theme")==="dark"?"dark":"light"}catch(e){}`,
           }}
         />
         {/* Icon font for the older inner pages; text fonts are self-hosted via next/font. */}
