@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Users, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
@@ -33,6 +33,17 @@ export default function ContactsPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
+
+  // "Add Lead" links land here with ?action=new — open the create form, then
+  // drop the param so a refresh doesn't reopen it
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("action") !== "new") return;
+    url.searchParams.delete("action");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    const frame = requestAnimationFrame(() => setShowCreate(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [showImport, setShowImport] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
   const [view, setView] = useState<"list" | "kanban">("list");

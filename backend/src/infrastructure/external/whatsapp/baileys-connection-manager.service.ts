@@ -7,25 +7,63 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import makeWASocket, {
   WASocket,
-  DisconnectReason,
+  WAMessageKey,
+  CacheStore,
   makeCacheableSignalKeyStore,
   fetchLatestBaileysVersion,
   getContentType,
   WAMessage,
+  proto,
+  decryptPollVote,
+  jidNormalizedUser,
 } from '@whiskeysockets/baileys';
+import { createHash } from 'crypto';
 import { Boom } from '@hapi/boom';
 import * as QRCode from 'qrcode';
 import pino from 'pino';
 import { BaileysAuthStateService } from './baileys-auth-state.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
+import { classifyDisconnect } from '@/modules/whatsapp/domain/services/disconnect-classifier';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { EVENT_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
+
+/** Looks up the text of a message this platform sent, by WhatsApp message id. */
+export type SentMessageLookup = (whatsappMessageId: string) => Promise<string | undefined>;
+
+/** Looks up a poll this platform sent: its secret (base64) and option texts. */
+export type PollLookup = (
+  pollMessageId: string,
+) => Promise<{ secretBase64: string; options: string[] } | null>;
+
+/** Minimal in-memory CacheStore for Baileys' message retry counters. */
+class MemoryCacheStore implements CacheStore {
+  private readonly store = new Map<string, unknown>();
+  get<T>(key: string): T | undefined {
+    return this.store.get(key) as T | undefined;
+  }
+  set<T>(key: string, value: T): void {
+    if (this.store.size > 10_000) this.store.clear();
+    this.store.set(key, value);
+  }
+  del(key: string): void {
+    this.store.delete(key);
+  }
+  flushAll(): void {
+    this.store.clear();
+  }
+}
 
 @Injectable()
 export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BaileysConnectionManager.name);
   private readonly connections = new Map<string, WASocket>();
+  /** Sockets whose connection actually opened — a socket in `connections` may still be pairing */
+  private readonly openSockets = new Set<string>();
   private readonly initializing = new Set<string>();
+  private readonly msgRetryCounterCache = new MemoryCacheStore();
+  private cachedVersion: { version: [number, number, number]; fetchedAt: number } | null = null;
+  private sentMessageLookup: SentMessageLookup | null = null;
+  private pollLookup: PollLookup | null = null;
 
   constructor(
     private readonly authStateService: BaileysAuthStateService,
@@ -53,7 +91,11 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    for (const [sessionId, sock] of this.connections) {
+    const sockets = [...this.connections];
+    // Untrack first so shutdown closes aren't handled as disconnects
+    this.connections.clear();
+    this.openSockets.clear();
+    for (const [sessionId, sock] of sockets) {
       try {
         sock.end(undefined);
         this.logger.log(`Closed socket for session ${sessionId}`);
@@ -61,7 +103,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`Error closing socket ${sessionId}`, error);
       }
     }
-    this.connections.clear();
   }
 
   async createConnection(
@@ -81,7 +122,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     try {
       const { state, saveCreds } =
         await this.authStateService.getAuthState(sessionId);
-      const { version } = await fetchLatestBaileysVersion();
+      const version = await this.getWaVersion();
 
       const sock = makeWASocket({
         version,
@@ -96,6 +137,11 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
         logger: pino({ level: 'silent' }) as any,
         browser: ['Wazelo CRM', 'Chrome', '120.0.0'],
         syncFullHistory: false,
+        // Don't appear permanently online — it also stops notifications on the user's phone
+        markOnlineOnConnect: false,
+        // Lets Baileys re-send a message the recipient couldn't decrypt ("waiting for this message")
+        msgRetryCounterCache: this.msgRetryCounterCache,
+        getMessage: (key) => this.getSentMessage(key),
         connectTimeoutMs: WHATSAPP_CONFIG.DISCONNECT_DETECTION_TIMEOUT_MS,
         keepAliveIntervalMs: WHATSAPP_CONFIG.HEARTBEAT_INTERVAL_MS,
       });
@@ -117,8 +163,91 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     return this.connections.get(sessionId);
   }
 
+  /** True only once the connection is open — not while the socket is still pairing or connecting. */
   isConnected(sessionId: string): boolean {
-    return this.connections.has(sessionId);
+    return this.openSockets.has(sessionId);
+  }
+
+  /** Registered by the messages module so Baileys can re-send messages on retry receipts. */
+  registerSentMessageLookup(lookup: SentMessageLookup): void {
+    this.sentMessageLookup = lookup;
+  }
+
+  /** Registered by the deals module so votes on its polls can be decrypted. */
+  registerPollLookup(lookup: PollLookup): void {
+    this.pollLookup = lookup;
+  }
+
+  /**
+   * Decrypt a vote on one of our polls and emit it. Baileys v7 no longer does
+   * this itself. The voter/creator ids used for the key can be the phone-number
+   * JID or the LID, so each pairing is tried — AES-GCM rejects the wrong ones.
+   */
+  private async handlePollVote(sock: WASocket, msg: WAMessage, sessionId: string): Promise<void> {
+    const update = msg.message?.pollUpdateMessage;
+    const pollId = update?.pollCreationMessageKey?.id;
+    if (!update?.vote?.encPayload || !update.vote.encIv || !pollId || !this.pollLookup) return;
+
+    const poll = await this.pollLookup(pollId);
+    if (!poll) return;
+
+    const pollEncKey = Buffer.from(poll.secretBase64, 'base64');
+    const creatorIds = [sock.user?.id, sock.user?.lid].filter(Boolean).map((id) => jidNormalizedUser(id!));
+    const key = msg.key as WAMessageKey & { remoteJidAlt?: string; participantAlt?: string };
+    const voterIds = [key.participantAlt, key.remoteJidAlt, key.participant, key.remoteJid]
+      .filter(Boolean)
+      .map((id) => jidNormalizedUser(id!));
+
+    for (const pollCreatorJid of new Set(creatorIds)) {
+      for (const voterJid of new Set(voterIds)) {
+        try {
+          const vote = decryptPollVote(update.vote as { encPayload: Uint8Array; encIv: Uint8Array }, {
+            pollCreatorJid,
+            pollMsgId: pollId,
+            pollEncKey,
+            voterJid,
+          });
+          const selected = (vote.selectedOptions ?? []).map((hash) => Buffer.from(hash).toString('hex'));
+          const selectedOptions = poll.options.filter((option) =>
+            selected.includes(createHash('sha256').update(Buffer.from(option)).digest('hex')),
+          );
+          this.eventEmitter.emit(EVENT_NAMES.BAILEYS_POLL_VOTE, {
+            sessionId,
+            pollMessageId: pollId,
+            selectedOptions,
+            voterJid,
+            votedAt: new Date(),
+          });
+          return;
+        } catch {
+          // wrong id pairing — try the next one
+        }
+      }
+    }
+    this.logger.warn(`Could not decrypt vote on poll ${pollId} (session ${sessionId})`);
+  }
+
+  private async getSentMessage(key: WAMessageKey): Promise<proto.IMessage | undefined> {
+    if (!key.id || !this.sentMessageLookup) return undefined;
+    try {
+      const text = await this.sentMessageLookup(key.id);
+      return text ? { conversation: text } : undefined;
+    } catch (error) {
+      this.logger.warn(`getMessage lookup failed for ${key.id}: ${(error as Error).message}`);
+      return undefined;
+    }
+  }
+
+  /** WhatsApp Web version, fetched at most once a day instead of on every connect. */
+  private async getWaVersion(): Promise<[number, number, number]> {
+    const fresh =
+      this.cachedVersion &&
+      Date.now() - this.cachedVersion.fetchedAt < WHATSAPP_CONFIG.VERSION_CACHE_TTL_MS;
+    if (!fresh) {
+      const { version } = await fetchLatestBaileysVersion();
+      this.cachedVersion = { version, fetchedAt: Date.now() };
+    }
+    return this.cachedVersion!.version;
   }
 
   /**
@@ -144,6 +273,12 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     const sock = this.connections.get(sessionId);
     if (!sock) return;
 
+    // Forget the socket BEFORE closing it: end()/logout() emit the close event
+    // synchronously, and the close handler ignores sockets no longer tracked —
+    // otherwise a deliberate disconnect looks like a ban (401) or a network drop.
+    this.connections.delete(sessionId);
+    this.openSockets.delete(sessionId);
+
     try {
       if (logout) {
         await sock.logout();
@@ -153,8 +288,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.warn(`Error destroying connection ${sessionId}`, error);
     }
-
-    this.connections.delete(sessionId);
 
     if (logout) {
       await this.authStateService.clearAuthState(sessionId);
@@ -194,6 +327,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       }
 
       if (connection === 'open') {
+        this.openSockets.add(sessionId);
         const phoneNumber = sock.user?.id?.split(':')[0] || null;
 
         this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
@@ -206,42 +340,52 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       }
 
       if (connection === 'close') {
+        // Ignore a close from a socket that has already been replaced
+        if (this.connections.get(sessionId) !== sock) return;
+
         this.connections.delete(sessionId);
+        this.openSockets.delete(sessionId);
 
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        const decision = classifyDisconnect(statusCode);
+        // `creds.me` is set once a QR scan (or pairing code) links the device;
+        // `creds.registered` is only set by the pairing-code flow, so it can't be used here.
+        const paired = Boolean(sock.authState?.creds?.me);
 
-        if (loggedOut) {
-          // Explicit logout from WhatsApp mobile — clear creds, no reconnect
-          await this.authStateService.clearAuthState(sessionId);
-          this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
-            sessionId,
-            orgId,
-            userId,
-            event: 'logout',
-            reason: 'Logged out from WhatsApp mobile app',
-          });
-        } else {
-          // ALL other codes: network loss, phone offline, restartRequired, timedOut, etc.
-          // Always attempt reconnect — health worker will handle exhaustion
-          this.logger.log(
-            `Auto-reconnecting session ${sessionId} (statusCode: ${statusCode ?? 'unknown'})`,
-          );
+        this.logger.log(
+          `Session ${sessionId} closed (statusCode: ${statusCode ?? 'unknown'} → ${decision.reason}/${decision.action})`,
+        );
+
+        // Still pairing (QR not scanned yet): keep refreshing the QR, as before
+        const reconnectNow =
+          decision.action === 'reconnect_now' ||
+          (!paired && decision.action === 'reconnect_backoff');
+
+        if (reconnectNow) {
           setTimeout(() => {
             this.createConnection(sessionId, userId, orgId).catch((err) => {
-              this.logger.error(
-                `Auto-reconnect failed for session ${sessionId}: ${err.message}`,
-              );
-              this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
-                sessionId,
-                orgId,
-                userId,
-                event: 'disconnected',
-                reason: `Auto-reconnect failed: ${err.message}`,
-              });
+              this.logger.error(`Reconnect failed for session ${sessionId}: ${err.message}`);
+              this.emitDisconnect(sessionId, orgId, userId, 'disconnected', statusCode, 'NETWORK', `Reconnect failed: ${err.message}`);
             });
           }, 1500);
+          return;
         }
+
+        if (decision.clearCreds) {
+          await this.authStateService.clearAuthState(sessionId);
+        }
+
+        // NETWORK → the session-event use case reconnects with exponential backoff.
+        // LOGGED_OUT / BANNED / REPLACED / BAD_SESSION → stop; the user has to act.
+        const event =
+          decision.action === 'reconnect_backoff'
+            ? 'disconnected'
+            : decision.reason === 'LOGGED_OUT'
+              ? 'logout'
+              : decision.reason === 'BANNED'
+                ? 'banned'
+                : 'stopped';
+        this.emitDisconnect(sessionId, orgId, userId, event, statusCode, decision.reason, decision.message);
       }
     });
 
@@ -263,6 +407,10 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
       for (const msg of messages) {
         try {
+          if (msg.message?.pollUpdateMessage) {
+            if (!msg.key.fromMe) await this.handlePollVote(sock, msg, sessionId);
+            continue;
+          }
           const payload = this.extractMessagePayload(msg, sessionId);
           if (payload) {
             this.eventEmitter.emit(EVENT_NAMES.BAILEYS_MESSAGE_UPSERT, payload);
@@ -304,6 +452,26 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
+    });
+  }
+
+  private emitDisconnect(
+    sessionId: string,
+    orgId: string,
+    userId: string,
+    event: 'disconnected' | 'logout' | 'banned' | 'stopped',
+    statusCode: number | undefined,
+    disconnectReason: string,
+    reason: string,
+  ): void {
+    this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
+      sessionId,
+      orgId,
+      userId,
+      event,
+      statusCode,
+      disconnectReason,
+      reason,
     });
   }
 

@@ -130,6 +130,50 @@ export interface WhatsAppSessionDisconnectedEvent {
   orgId: string;
   userId: string;
   reason: string;
+  /** NETWORK | LOGGED_OUT | BANNED | REPLACED | BAD_SESSION */
+  disconnectReason?: string;
+}
+
+export interface DealFollowUpDueEvent {
+  dealId: string;
+  orgId: string;
+  pipelineId: string;
+  title: string;
+  contactId: string;
+  contactName: string;
+  note: string | null;
+  /** Deal assignee, else the contact owner; null → notify org admins */
+  userId: string | null;
+}
+
+export interface DealScopeRespondedEvent {
+  dealId: string;
+  orgId: string;
+  pipelineId: string;
+  title: string;
+  contactId: string;
+  contactName: string;
+  approved: boolean;
+  userId: string | null;
+}
+
+export interface WhatsAppSendingPausedEvent {
+  sessionId: string;
+  orgId: string;
+  userId: string;
+  phoneNumber: string | null;
+  reason: string;
+  /** ISO timestamp */
+  pausedUntil: string;
+}
+
+export interface WhatsAppNumberLostEvent {
+  sessionId: string;
+  orgId: string;
+  userId: string;
+  /** LOGGED_OUT | BANNED */
+  disconnectReason: string;
+  reason: string;
 }
 
 export interface WhatsAppSessionReconnectingEvent {
@@ -741,14 +785,16 @@ export interface SubscriptionReactivatedEvent {
 export interface PaymentSucceededEvent {
   paymentId: string;
   orgId: string;
-  subscriptionId: string;
+  /** Null for manual (subscription-less) invoices and their payments */
+  subscriptionId: string | null;
   amountInCents: number;
 }
 
 export interface PaymentFailedEvent {
   paymentId: string;
   orgId: string;
-  subscriptionId: string;
+  /** Null for manual (subscription-less) invoices and their payments */
+  subscriptionId: string | null;
   reason: string;
   retryCount: number;
 }
@@ -756,7 +802,8 @@ export interface PaymentFailedEvent {
 export interface InvoiceGeneratedEvent {
   invoiceId: string;
   orgId: string;
-  subscriptionId: string;
+  /** Null for manual (subscription-less) invoices and their payments */
+  subscriptionId: string | null;
   invoiceNumber: string;
   amountInCents: number;
 }

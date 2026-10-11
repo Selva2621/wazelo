@@ -71,7 +71,10 @@ export function usePayment(id: string | null) {
 export function useSubscribeToPlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (planId: string) => billingApi.subscribe(planId),
+    mutationFn: (input: string | { planId: string; couponCode?: string }) =>
+      typeof input === "string"
+        ? billingApi.subscribe(input)
+        : billingApi.subscribe(input.planId, undefined, input.couponCode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingKeys.all });
     },
@@ -110,7 +113,14 @@ export function useReactivateSubscription() {
 
 export function useCreateOrder() {
   return useMutation({
-    mutationFn: (planId: string) => billingApi.createOrder(planId),
+    mutationFn: (input: string | { planId: string; couponCode?: string }) =>
+      typeof input === "string" ? billingApi.createOrder(input) : billingApi.createOrder(input.planId, input.couponCode),
+  });
+}
+
+export function useValidateCoupon() {
+  return useMutation({
+    mutationFn: ({ code, planId }: { code: string; planId: string }) => billingApi.validateCoupon(code, planId),
   });
 }
 

@@ -61,7 +61,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
           <div className="flex items-center gap-2">
             <h2 className="text-title-sm font-semibold text-on-surface">Deal Details</h2>
-            <Badge variant={statusColor as any}>{deal.status}</Badge>
+            <Badge variant={statusColor}>{deal.status}</Badge>
           </div>
           <button aria-label="Close" onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <X className="h-4 w-4" />

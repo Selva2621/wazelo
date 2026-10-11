@@ -5,6 +5,9 @@ import { QueueService } from '@/infrastructure/queue/queue.service';
 import { AutomationRepository } from '@/modules/automation/infrastructure/repositories/automation.repository';
 import { ActionExecutorService } from '@/modules/automation/domain/services/action-executor.service';
 import { QUEUE_NAMES, EVENT_NAMES, AUTOMATION_CONFIG } from '@/common/constants';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+
+const KILL_SWITCH_SKIP_REASON = 'Automation is temporarily disabled platform-wide';
 
 export interface AutomationEvaluateJobData {
   executionId: string;
@@ -23,6 +26,7 @@ export class AutomationEvaluatorWorker implements OnModuleInit {
     private readonly automationRepo: AutomationRepository,
     private readonly actionExecutor: ActionExecutorService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -46,6 +50,19 @@ export class AutomationEvaluatorWorker implements OnModuleInit {
     this.logger.debug(
       `Processing automation execution: ${data.executionId} rule=${data.ruleId} job=${jobId}`,
     );
+
+    // Platform kill switch: record a clear SKIPPED reason instead of running
+    // (automations react to live events; replaying them later would be stale).
+    if (await this.killSwitches.isDisabled('automation')) {
+      this.logger.warn(`Automation switched off platform-wide — skipping execution ${data.executionId}`);
+      await this.automationRepo.updateExecutionLog(data.executionId, {
+        status: AutomationExecutionStatus.SKIPPED,
+        completedAt: new Date(),
+        error: KILL_SWITCH_SKIP_REASON,
+        executionTimeMs: Date.now() - startTime,
+      });
+      return;
+    }
 
     try {
       // 1. Mark execution as RUNNING

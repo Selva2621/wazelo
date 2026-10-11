@@ -29,6 +29,7 @@ import { Alert } from "@/components/ui/alert";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { QrCodeDisplay } from "@/components/whatsapp/qr-code-display";
 import { DisconnectButton } from "@/components/whatsapp/disconnect-button";
+import { AccountHealthCard } from "@/components/whatsapp/account-health";
 
 export default function WhatsAppSettingsPage() {
   usePageTitle("WhatsApp");
@@ -216,6 +217,8 @@ export default function WhatsAppSettingsPage() {
                 loading={disconnectSession.isPending}
               />
             </div>
+
+            <AccountHealthCard className="mt-8 bg-surface-container-low" />
           </div>
         )}
 
@@ -246,7 +249,35 @@ export default function WhatsAppSettingsPage() {
                 {session.phoneNumber}
               </p>
             )}
-            {session?.hasCreds ? (
+            {session?.disconnectReason === "BANNED" || session?.disconnectReason === "LOGGED_OUT" ? (
+              <>
+                <p className="text-body text-on-surface-variant max-w-[400px] mb-4">
+                  {session.disconnectReason === "BANNED"
+                    ? "WhatsApp blocked this number."
+                    : "This number was logged out — from your phone, or restricted by WhatsApp."}{" "}
+                  Campaigns and sequences on it are paused. Your contacts and chats are safe.
+                </p>
+                <ol className="text-label text-on-surface-variant text-left max-w-[400px] mb-6 list-decimal pl-5 space-y-1">
+                  <li>Open WhatsApp on your phone. If it shows a ban notice, tap “Request a review”.</li>
+                  <li>Link this number again, or a different one, below.</li>
+                  <li>Resume your paused campaigns and sequences — they move to the new number.</li>
+                </ol>
+                <Button onClick={handleConnect} loading={initiateSession.isPending}>
+                  <ScanLine className="h-4 w-4" />
+                  Link WhatsApp number
+                </Button>
+              </>
+            ) : session?.disconnectReason === "REPLACED" && session?.hasCreds ? (
+              <>
+                <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
+                  This number was opened in another session, so we disconnected. Reconnect when the other session is closed.
+                </p>
+                <Button onClick={handleReconnect} loading={reconnectSession.isPending}>
+                  <RefreshCw className="h-4 w-4" />
+                  Reconnect
+                </Button>
+              </>
+            ) : session?.hasCreds ? (
               <>
                 <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
                   Your session was disconnected. Click Reconnect to restore it — no QR scan needed.

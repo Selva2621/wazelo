@@ -8,6 +8,7 @@ import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decora
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { UsageMetricType } from '@prisma/client';
 import { GetSmartRepliesUseCase } from '../../application/use-cases/get-smart-replies.use-case';
 import { SummarizeConversationUseCase } from '../../application/use-cases/summarize-conversation.use-case';
@@ -27,6 +28,7 @@ class KbSearchQueryDto {
 }
 
 @Controller('ai')
+@PlatformFeature('ai')
 export class AiController {
   constructor(
     private readonly getSmartReplies: GetSmartRepliesUseCase,

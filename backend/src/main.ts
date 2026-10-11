@@ -56,7 +56,8 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-trace-id', 'x-requested-with'],
-    exposedHeaders: ['x-trace-id'],
+    // Content-Disposition + X-Export-Truncated: CSV export downloads (super admin lists)
+    exposedHeaders: ['x-trace-id', 'Content-Disposition', 'X-Export-Truncated'],
   });
 
   // Files are served through the authenticated FileServeController

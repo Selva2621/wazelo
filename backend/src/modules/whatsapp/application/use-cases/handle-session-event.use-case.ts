@@ -11,9 +11,18 @@ export interface SessionEventPayload {
   sessionId: string;
   orgId: string;
   userId: string;
-  event: 'connected' | 'disconnected' | 'logout' | 'heartbeat';
+  /**
+   * disconnected = network drop (reconnect with backoff)
+   * logout / banned = the number is gone (hold queued work, user must link again)
+   * stopped = replaced elsewhere or bad session (no auto-reconnect)
+   */
+  event: 'connected' | 'disconnected' | 'logout' | 'banned' | 'stopped' | 'heartbeat';
   phoneNumber?: string;
   reason?: string;
+  /** Baileys DisconnectReason status code */
+  statusCode?: number;
+  /** Classified reason: NETWORK | LOGGED_OUT | BANNED | REPLACED | BAD_SESSION */
+  disconnectReason?: string;
 }
 
 @Injectable()
@@ -45,7 +54,11 @@ export class HandleSessionEventUseCase {
         await this.handleDisconnected(session, payload, previousStatus);
         break;
       case 'logout':
-        await this.handleLogout(session, payload);
+      case 'banned':
+        await this.handleNumberLost(session, payload);
+        break;
+      case 'stopped':
+        await this.handleStopped(session, payload);
         break;
       case 'heartbeat':
         await this.handleHeartbeat(session);
@@ -65,6 +78,10 @@ export class HandleSessionEventUseCase {
       lastActiveAt: new Date(),
       lastHeartbeatAt: new Date(),
       reconnectCount: 0,
+      disconnectCode: null,
+      disconnectReason: null,
+      // First successful link starts the send warm-up clock
+      ...(!session.linkedAt && { linkedAt: new Date() }),
     });
 
     await this.auditService.log({
@@ -89,6 +106,14 @@ export class HandleSessionEventUseCase {
     payload: SessionEventPayload,
     previousStatus: string,
   ) {
+    if (payload.disconnectReason) {
+      await this.sessionRepo.updateStatus(session.id, {
+        status: session.status,
+        disconnectCode: payload.statusCode ?? null,
+        disconnectReason: payload.disconnectReason,
+      });
+    }
+
     // Attempt auto-reconnect if possible
     if (this.sessionService.canRetryReconnect(session.reconnectCount)) {
       await this.sessionRepo.incrementReconnectCount(session.id);
@@ -142,12 +167,24 @@ export class HandleSessionEventUseCase {
     });
   }
 
-  private async handleLogout(
+  /**
+   * Logged out (401) or banned (403): the number is gone. Wipe creds, never
+   * reconnect, and tell the rest of the platform to hold work queued on it.
+   */
+  private async handleNumberLost(
     session: Record<string, any>,
     payload: SessionEventPayload,
   ) {
-    // Mobile logout = immediate termination, no reconnect
+    const disconnectReason =
+      payload.disconnectReason ?? (payload.event === 'banned' ? 'BANNED' : 'LOGGED_OUT');
+    const reason = payload.reason || 'Logged out from mobile device';
+
     await this.sessionRepo.disconnectSession(session.id);
+    await this.sessionRepo.updateStatus(session.id, {
+      status: WhatsAppSessionStatus.DISCONNECTED,
+      disconnectCode: payload.statusCode ?? null,
+      disconnectReason,
+    });
 
     await this.auditService.log({
       orgId: session.orgId,
@@ -155,14 +192,57 @@ export class HandleSessionEventUseCase {
       action: AuditAction.WHATSAPP_SESSION_DISCONNECTED,
       targetType: 'WhatsAppSession',
       targetId: session.id,
-      metadata: { reason: payload.reason || 'Logged out from mobile device' },
+      metadata: { reason, disconnectReason, statusCode: payload.statusCode },
+    });
+
+    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_NUMBER_LOST, {
+      sessionId: session.id,
+      orgId: session.orgId,
+      userId: session.userId,
+      disconnectReason,
+      reason,
     });
 
     this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED, {
       sessionId: session.id,
       orgId: session.orgId,
       userId: session.userId,
-      reason: payload.reason || 'Logged out from mobile device',
+      reason,
+      disconnectReason,
+    });
+  }
+
+  /** Replaced by another session (440) or invalid session (411/500): stop, the user reconnects. */
+  private async handleStopped(
+    session: Record<string, any>,
+    payload: SessionEventPayload,
+  ) {
+    await this.sessionRepo.markAsDisconnected(session.id);
+    await this.sessionRepo.updateStatus(session.id, {
+      status: WhatsAppSessionStatus.DISCONNECTED,
+      disconnectCode: payload.statusCode ?? null,
+      disconnectReason: payload.disconnectReason ?? null,
+    });
+
+    await this.auditService.log({
+      orgId: session.orgId,
+      userId: session.userId,
+      action: AuditAction.WHATSAPP_SESSION_DISCONNECTED,
+      targetType: 'WhatsAppSession',
+      targetId: session.id,
+      metadata: {
+        reason: payload.reason,
+        disconnectReason: payload.disconnectReason,
+        statusCode: payload.statusCode,
+      },
+    });
+
+    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED, {
+      sessionId: session.id,
+      orgId: session.orgId,
+      userId: session.userId,
+      reason: payload.reason || 'WhatsApp session stopped',
+      disconnectReason: payload.disconnectReason,
     });
   }
 

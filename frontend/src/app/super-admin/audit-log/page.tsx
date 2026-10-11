@@ -6,9 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useSAAuditLogs } from "@/hooks/use-super-admin";
 import type { PlatformAuditEntry } from "@/lib/api/super-admin";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Spinner } from "@/components/ui/spinner";
+import { SearchInput } from "@/components/ui/search-input";
 import { IconButton } from "@/components/ui/icon-button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
+import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
 
 const ACTIONS: Record<string, string> = {
   SUPER_ADMIN_LOGIN: "Signed in",
@@ -18,6 +23,9 @@ const ACTIONS: Record<string, string> = {
   TWO_FACTOR_DISABLED: "Turned off 2FA",
   PLAN_CREATED: "Created plan",
   PLAN_UPDATED: "Updated plan",
+  PLAN_ARCHIVED: "Archived plan",
+  PLAN_UNARCHIVED: "Unarchived plan",
+  PLAN_DELETED: "Deleted plan",
   TICKET_CREATED: "Created ticket",
   TICKET_REPLIED: "Replied to ticket",
   TICKET_STATUS_CHANGED: "Changed ticket status",
@@ -30,22 +38,50 @@ const ACTIONS: Record<string, string> = {
   TICKET_ASSIGNED: "Assigned ticket",
   ANNOUNCEMENT_CREATED: "Published announcement",
   ANNOUNCEMENT_ARCHIVED: "Archived announcement",
+  ANNOUNCEMENT_RESTORED: "Restored announcement",
+  ANNOUNCEMENT_UPDATED: "Edited announcement",
   ENTITLEMENT_OVERRIDE_SET: "Set limit/feature override",
   ENTITLEMENT_OVERRIDE_REMOVED: "Removed limit/feature override",
+  KILL_SWITCH_ON: "Turned feature off platform-wide",
+  KILL_SWITCH_OFF: "Turned feature back on platform-wide",
+  SUPER_ADMIN_LOCKED: "Account locked (failed attempts)",
+  SUPER_ADMIN_REFRESH_REUSED: "Stolen session token blocked",
+  SUPER_ADMIN_SESSION_REVOKED: "Signed out a device",
+  TWO_FACTOR_SETUP_STARTED: "Started 2FA setup",
+  TWO_FACTOR_RECOVERY_CODE_USED: "Signed in with recovery code",
+  TWO_FACTOR_RECOVERY_CODES_REGENERATED: "Created new recovery codes",
+  CREDIT_GRANTED: "Credit granted",
+  CREDIT_REVOKED: "Credit revoked",
+  INVOICE_CREATED: "Invoice created",
+  INVOICE_MARKED_PAID: "Invoice marked paid",
+  INVOICE_VOIDED: "Invoice voided",
+  COUPON_CREATED: "Coupon created",
+  COUPON_DEACTIVATED: "Coupon deactivated",
 };
+
+/** Humanises an action the map doesn't know yet (e.g. after a backend release). */
+function actionLabel(action: string): string {
+  return ACTIONS[action] ?? action.toLowerCase().replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+}
 
 const ATTENTION = new Set([
   "SUPER_ADMIN_LOGIN_FAILED",
   "TWO_FACTOR_DISABLED",
   "ORG_SUSPENDED",
   "SUBSCRIPTION_CANCELLED",
+  "SUPER_ADMIN_LOCKED",
+  "SUPER_ADMIN_REFRESH_REUSED",
+  "TWO_FACTOR_RECOVERY_CODE_USED",
+  "KILL_SWITCH_ON",
+  "INVOICE_VOIDED",
+  "CREDIT_REVOKED",
 ]);
 const inputClass =
   "bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary";
 
 function targetLabel(entry: PlatformAuditEntry): string {
   const meta = entry.metadata ?? {};
-  const name = (meta.planName ?? meta.title ?? meta.email) as string | undefined;
+  const name = (meta.planName ?? meta.title ?? meta.email ?? meta.label) as string | undefined;
   if (name) return `${entry.targetType ?? ""} · ${name}`.replace(/^ · /, "");
   return entry.targetType ?? "—";
 }
@@ -102,15 +138,29 @@ export default function SuperAdminAuditLogPage() {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search.trim(), 350);
 
-  const { data, isLoading, isFetching } = useSAAuditLogs({
-    page,
-    limit: 25,
+  // Back to the first page whenever the settled search term changes
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch);
+  if (prevSearch !== debouncedSearch) {
+    setPrevSearch(debouncedSearch);
+    setPage(1);
+  }
+
+  const [sort, setSort] = useState<ListSort>(NEWEST_FIRST);
+  const changeSort = (next: ListSort) => { setSort(next); setPage(1); };
+
+  const filters = {
     action: action || undefined,
     orgId,
     from: from || undefined,
     to: to || undefined,
-  });
+    search: debouncedSearch || undefined,
+    sort: sort.field,
+    order: sort.order,
+  };
+  const { data, isLoading, isFetching, isError, refetch } = useSAAuditLogs({ page, limit: 25, ...filters });
 
   const resetPage = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1); };
 
@@ -125,6 +175,15 @@ export default function SuperAdminAuditLogPage() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:max-w-xs">
+          <label htmlFor="audit-search" className="block text-label text-on-surface-variant mb-1">Admin</label>
+          <SearchInput
+            id="audit-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search admin email…"
+          />
+        </div>
         <div>
           <label htmlFor="audit-action" className="block text-label text-on-surface-variant mb-1">Action</label>
           <select id="audit-action" value={action} onChange={(e) => resetPage(setAction)(e.target.value)} className={inputClass}>
@@ -143,15 +202,17 @@ export default function SuperAdminAuditLogPage() {
         {isFetching && !isLoading && (
           <span role="status" className="text-label text-on-surface-variant pb-2.5">Updating…</span>
         )}
+        <ExportCsvButton list="audit-logs" params={filters} className="sm:ml-auto" />
       </div>
 
       <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
         <table className="w-full text-body-lg">
-          <caption className="sr-only">Audit log entries, newest first</caption>
+          <caption className="sr-only">Audit log entries</caption>
           <thead>
             <tr className="border-b border-outline-variant text-left">
               <th scope="col" className="w-10"><span className="sr-only">Details</span></th>
-              {["When", "Who", "Action", "Target", "IP address"].map((h) => (
+              <SortableTh label="When" field="createdAt" sort={sort} onSort={changeSort} />
+              {["Who", "Action", "Target", "IP address"].map((h) => (
                 <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium">{h}</th>
               ))}
             </tr>
@@ -164,8 +225,19 @@ export default function SuperAdminAuditLogPage() {
                   <span className="sr-only">Loading audit log…</span>
                 </td>
               </tr>
+            ) : isError ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-error" role="alert">
+                  Could not load the audit log.{" "}
+                  <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+                    Try again
+                  </button>
+                </td>
+              </tr>
             ) : !data?.items.length ? (
-              <tr><td colSpan={6} className="py-12 text-center text-on-surface-variant">No entries match these filters</td></tr>
+              <tr><td colSpan={6} className="py-12 text-center text-on-surface-variant">
+                {debouncedSearch ? `No entries match “${debouncedSearch}”` : "No entries match these filters"}
+              </td></tr>
             ) : data.items.map((entry) => {
               const expanded = open === entry.id;
               return (
@@ -189,10 +261,9 @@ export default function SuperAdminAuditLogPage() {
                       {entry.actorEmail ?? (entry.actorType === "SYSTEM" ? "System" : (entry.metadata?.email as string) ?? "Unknown")}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn("text-label px-2 py-0.5 rounded-full font-medium",
-                        ATTENTION.has(entry.action) ? "bg-error/10 text-error" : "bg-surface-container text-on-surface-variant")}>
-                        {ACTIONS[entry.action] ?? entry.action}
-                      </span>
+                      <Badge variant={ATTENTION.has(entry.action) ? "error" : "muted"}>
+                        {actionLabel(entry.action)}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant">{targetLabel(entry)}</td>
                     <td className="px-4 py-3 text-on-surface-variant font-mono text-body">{entry.ipAddress ?? "—"}</td>

@@ -15,6 +15,44 @@ import { useSuperAdminAuthStore } from "@/stores/super-admin-auth-store";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FIRST_RESPONSE_HOURS,
+  TicketSlaBadge,
+  WaitingOnUs,
+  computeTicketSla,
+  formatDuration,
+  useNow,
+} from "@/components/super-admin/ticket-sla";
+
+/** First-response SLA line under the ticket header (detail responses carry no `sla`, so it's computed here). */
+function TicketSlaInfo({ ticket }: { ticket: Parameters<typeof computeTicketSla>[0] }) {
+  const now = useNow();
+  const sla = computeTicketSla(ticket, now);
+  const target = FIRST_RESPONSE_HOURS[ticket.priority] ?? 24;
+  const createdMs = new Date(ticket.createdAt).getTime();
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-label text-on-surface-variant">
+      <span className="font-medium text-on-surface">First reply</span>
+      <TicketSlaBadge sla={sla} now={now} />
+      <span>
+        Target {target}h ·{" "}
+        {ticket.firstResponseAt ? (
+          <>
+            answered in {formatDuration(new Date(ticket.firstResponseAt).getTime() - createdMs)} (
+            <time dateTime={ticket.firstResponseAt}>{new Date(ticket.firstResponseAt).toLocaleString()}</time>)
+          </>
+        ) : (
+          <>
+            due <time dateTime={sla.dueAt}>{new Date(sla.dueAt).toLocaleString()}</time>
+          </>
+        )}
+      </span>
+      {sla.waitingOnSupport && <WaitingOnUs />}
+    </div>
+  );
+}
 
 function errorMessage(err: any, fallback: string): string {
   const message = err?.response?.data?.message;
@@ -42,7 +80,7 @@ const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 
 export default function SATicketDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: ticket, isLoading } = useSATicket(id);
+  const { data: ticket, isLoading, isError, error, refetch } = useSATicket(id);
   const replyMutation = useSAReplyToTicket(id);
   const statusMutation = useSAUpdateTicketStatus(id);
   const assignMutation = useSAAssignTicket(id);
@@ -50,43 +88,54 @@ export default function SATicketDetailPage() {
   const me = useSuperAdminAuthStore((s) => s.superAdmin);
   const [replyBody, setReplyBody] = useState("");
   const [internal, setInternal] = useState(false);
-  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const handleReply = (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyBody.trim()) return;
-    setStatus(null);
     replyMutation.mutate(
       { body: replyBody, internal },
       {
         onSuccess: () => {
           setReplyBody("");
-          setStatus({
-            kind: "success",
-            text: internal ? "Internal note added. The customer can't see it." : "Reply sent. The customer has been notified.",
-          });
+          toast.success(
+            internal ? "Internal note added. The customer can't see it." : "Reply sent. The customer has been notified.",
+          );
           setInternal(false);
         },
-        onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not send the reply") }),
+        onError: (err) => toast.error(errorMessage(err, "Could not send the reply")),
       },
     );
   };
 
   const handleAssign = (assigneeId: string | null) => {
-    setStatus(null);
     assignMutation.mutate(assigneeId, {
       onSuccess: (res: any) =>
-        setStatus({ kind: "success", text: res?.assignedTo ? `Assigned to ${res.assignedTo.name}.` : "Ticket unassigned." }),
-      onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not assign the ticket") }),
+        toast.success(res?.assignedTo ? `Assigned to ${res.assignedTo.name}.` : "Ticket unassigned."),
+      onError: (err) => toast.error(errorMessage(err, "Could not assign the ticket")),
     });
   };
 
-  const handleStatusChange = (next: string) => {
-    setStatus(null);
+  const applyStatus = (next: string) => {
     statusMutation.mutate(next, {
-      onSuccess: () => setStatus({ kind: "success", text: `Status changed to ${next.replace("_", " ")}.` }),
-      onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not change the status") }),
+      onSuccess: () => {
+        setConfirmClose(false);
+        toast.success(`Status changed to ${next.replace("_", " ")}.`);
+      },
+      onError: (err) => {
+        setConfirmClose(false);
+        toast.error(errorMessage(err, "Could not change the status"));
+      },
     });
+  };
+
+  // Closing hides the reply box, so it gets a confirmation; other changes apply directly
+  const handleStatusChange = (next: string) => {
+    if (next === "CLOSED") {
+      setConfirmClose(true);
+      return;
+    }
+    applyStatus(next);
   };
 
   if (isLoading) {
@@ -94,6 +143,18 @@ export default function SATicketDetailPage() {
       <div className="flex items-center justify-center h-64" role="status">
         <Spinner className="text-primary" />
         <span className="sr-only">Loading ticket…</span>
+      </div>
+    );
+  }
+  if (isError && (error as { response?: { status?: number } } | null)?.response?.status !== 404) {
+    return (
+      <div className="p-6 max-w-3xl">
+        <Alert variant="error">
+          Could not load this ticket.{" "}
+          <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+            Try again
+          </button>
+        </Alert>
       </div>
     );
   }
@@ -119,6 +180,9 @@ export default function SATicketDetailPage() {
             <span>{ticket.category}</span>
             <span aria-hidden>·</span>
             <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div className="mt-2">
+            <TicketSlaInfo ticket={ticket} />
           </div>
         </div>
         <div>
@@ -156,8 +220,6 @@ export default function SATicketDetailPage() {
           </Button>
         )}
       </div>
-
-      {status && <Alert variant={status.kind}>{status.text}</Alert>}
 
       {/* Description */}
       <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
@@ -253,6 +315,17 @@ export default function SATicketDetailPage() {
           </div>
         </form>
       )}
+
+      <ConfirmDialog
+        open={confirmClose}
+        title="Close this ticket?"
+        message="The customer won't be able to reply anymore, and the reply box here is hidden. Change the status again to reopen it."
+        confirmLabel="Close ticket"
+        variant="warning"
+        loading={statusMutation.isPending}
+        onConfirm={() => applyStatus("CLOSED")}
+        onCancel={() => setConfirmClose(false)}
+      />
     </div>
   );
 }

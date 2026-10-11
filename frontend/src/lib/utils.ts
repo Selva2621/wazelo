@@ -35,3 +35,15 @@ export function formatMoney(minorUnits: number, currency = "USD"): string {
     return `${code} ${(minorUnits / 100).toLocaleString()}`;
   }
 }
+
+/**
+ * Parse a major-unit amount typed by a user ("12.50") into integer minor units (1250).
+ * Returns null unless it is a plain non-negative number with at most 2 decimals.
+ */
+export function parseMoneyInput(value: string): number | null {
+  const text = value.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
+  const [whole, frac = ""] = text.split(".");
+  const minor = Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+  return Number.isSafeInteger(minor) ? minor : null;
+}

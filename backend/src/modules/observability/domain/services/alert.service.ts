@@ -169,4 +169,32 @@ export class AlertService {
   }) {
     return this.alertsRepository.createRule(input);
   }
+
+  getAlertRule(id: string) {
+    return this.alertsRepository.findRuleById(id);
+  }
+
+  updateAlertRule(
+    id: string,
+    input: Partial<{
+      name: string;
+      metric: string;
+      condition: string;
+      threshold: number;
+      windowSeconds: number;
+      channels: string[];
+      channelConfig: Record<string, unknown>;
+      enabled: boolean;
+      cooldownSeconds: number;
+    }>,
+  ) {
+    return this.alertsRepository.updateRule(id, input);
+  }
+
+  /** Rules that have fired keep their history, so only never-fired rules can be deleted. */
+  async deleteAlertRuleIfUnused(id: string): Promise<'deleted' | 'has_history'> {
+    if ((await this.alertsRepository.countRuleEvents(id)) > 0) return 'has_history';
+    await this.alertsRepository.deleteRule(id);
+    return 'deleted';
+  }
 }

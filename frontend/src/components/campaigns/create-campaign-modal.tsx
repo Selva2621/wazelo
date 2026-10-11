@@ -25,6 +25,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
+import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { Modal } from "@/components/ui/modal";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -42,6 +43,23 @@ const MSG_TYPES: { value: MessageType; label: string }[] = [
   { value: "DOCUMENT", label: "Document" },
   { value: "AUDIO", label: "Audio" },
 ];
+
+/** Placeholders the backend fills per contact; anything else must be filled in here */
+const CONTACT_PLACEHOLDERS = new Set([
+  "name", "phone", "email", "leadStatus",
+  "contact.name", "contact.phone", "contact.email", "contact.leadStatus",
+]);
+
+function customPlaceholders(body: string): string[] {
+  const keys = Array.from(body.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g), (m) => m[1]);
+  return [...new Set(keys.filter((k) => !CONTACT_PLACEHOLDERS.has(k)))];
+}
+
+function fillPlaceholders(body: string, values: Record<string, string>): string {
+  return body.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) =>
+    values[key]?.trim() ? values[key].trim() : match,
+  );
+}
 
 function extractTemplateBody(template: MessageTemplate): string {
   return template.components.find((c) => c.type === "BODY")?.text ?? "";
@@ -121,6 +139,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
   const messageBody = watch("messageBody") || "";
   const audienceFilters = watch("audienceFilters");
 
+  // Template placeholders like {{lead.service}} aren't contact fields — the
+  // user fills them once for the whole campaign
+  const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
+  const extraPlaceholders = useMemo(() => customPlaceholders(messageBody), [messageBody]);
+  const unfilledPlaceholders = extraPlaceholders.filter((k) => !placeholderValues[k]?.trim());
+
   const filteredTemplates = useMemo(() => {
     if (!templates) return [];
     if (!templateSearch.trim()) return templates;
@@ -139,12 +163,13 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
   }
 
   function onSubmit(data: CreateCampaignFormData) {
+    if (unfilledPlaceholders.length > 0) return;
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
     createCampaign.mutate(
       {
         ...data,
         description: data.description || undefined,
-        messageBody: data.messageBody || undefined,
+        messageBody: data.messageBody ? fillPlaceholders(data.messageBody, placeholderValues) : undefined,
         mediaUrl: data.mediaUrl || undefined,
         mediaMimeType: data.mediaMimeType || undefined,
         scheduledAt: isScheduled ? data.scheduledAt : undefined,
@@ -158,6 +183,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
           setSelectedTemplate(null);
           setTemplateSearch("");
           setShowTemplatePicker(false);
+          setPlaceholderValues({});
           onClose();
           router.push(`/campaigns/${created.id}`);
         },
@@ -196,6 +222,8 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
           {/* LEFT PANEL — Campaign details + Message content */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 border-r border-outline-variant/10">
+
+            <CampaignCapacityNotice />
 
             {/* Campaign name + description */}
             <div className="space-y-3">
@@ -360,6 +388,33 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   <p className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
               </div>
+
+              {extraPlaceholders.length > 0 && (
+                <div className="space-y-2 rounded-xl bg-surface-container-low p-3">
+                  <p className="text-label font-medium text-on-surface">
+                    Fill in the template details
+                  </p>
+                  <p className="text-caption text-on-surface-variant">
+                    The same value goes to every recipient.
+                  </p>
+                  {extraPlaceholders.map((key) => (
+                    <div key={key}>
+                      <Label htmlFor={`ph-${key}`}>{key.replace(/^lead\./, "").replace(/_/g, " ")}</Label>
+                      <Input
+                        id={`ph-${key}`}
+                        placeholder={`Value for {{${key}}}`}
+                        value={placeholderValues[key] ?? ""}
+                        onChange={(e) => setPlaceholderValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                  {unfilledPlaceholders.length > 0 && (
+                    <p className="text-caption text-error">
+                      Fill in all {unfilledPlaceholders.length} field{unfilledPlaceholders.length !== 1 ? "s" : ""} — otherwise contacts would see the raw {"{{…}}"} text.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {messageType !== "TEXT" && (
                 <div>

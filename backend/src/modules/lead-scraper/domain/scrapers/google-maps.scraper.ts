@@ -155,8 +155,8 @@ export class GoogleMapsScraper extends BaseScraper {
 
       await context.close();
       return results;
-    } catch {
-      return [];
+    } catch (error) {
+      return this.fail('Google Maps', error);
     } finally {
       if (browser) await browser.close().catch(() => undefined);
     }

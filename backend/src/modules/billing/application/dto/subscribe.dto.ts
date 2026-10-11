@@ -19,6 +19,12 @@ export class SubscribeDto {
   @IsString()
   @MaxLength(255)
   idempotencyKey?: string;
+
+  /** Optional coupon; without a payment it only works when it covers the full price */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  couponCode?: string;
 }
 
 export class ChangePlanDto {

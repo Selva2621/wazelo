@@ -8,6 +8,7 @@ import {
   DEFAULT_CANNED_RESPONSES,
   DEFAULT_LEAD_SCORING_RULES,
   DEFAULT_PIPELINE,
+  FREELANCER_PIPELINE,
   DEFAULT_SLA_POLICIES,
   DEFAULT_TAGS,
 } from '@/shared/constants/org-defaults';
@@ -57,6 +58,7 @@ export class OnboardOrgUseCase {
 
     if (mode === 'org-type-changed') {
       await this.seedSystemTemplates(orgId, org.orgType);
+      await this.seedFreelancerPipeline(orgId, org.orgType);
       return;
     }
 
@@ -73,6 +75,7 @@ export class OnboardOrgUseCase {
     await this.rbacService.seedDefaultPermissionsForOrg(orgId);
     await this.initAiMemory(orgId);
     await this.seedPipeline(orgId);
+    await this.seedFreelancerPipeline(orgId, org.orgType);
     await this.seedTags(orgId);
     await this.seedLeadScoringRules(orgId);
     await this.seedSystemTemplates(orgId, org.orgType);
@@ -126,6 +129,13 @@ export class OnboardOrgUseCase {
   private async seedPipeline(orgId: string): Promise<void> {
     if (await this.onboardingRepository.hasAnyPipeline(orgId)) return;
     await this.onboardingRepository.createDefaultPipeline(orgId, DEFAULT_PIPELINE);
+  }
+
+  /** Freelancers get their own client pipeline as the default, once. */
+  private async seedFreelancerPipeline(orgId: string, orgType: OrgType): Promise<void> {
+    if (orgType !== OrgType.FREELANCER) return;
+    if (await this.onboardingRepository.hasPipelineNamed(orgId, FREELANCER_PIPELINE.name)) return;
+    await this.onboardingRepository.createPipelineAsDefault(orgId, FREELANCER_PIPELINE);
   }
 
   private async seedTags(orgId: string): Promise<void> {

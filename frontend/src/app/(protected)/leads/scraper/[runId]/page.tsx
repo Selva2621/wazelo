@@ -501,7 +501,12 @@ export default function ScrapeRunResultsPage() {
 
   const results = resultsData?.results ?? [];
   const phones = results.map((r) => r.phone).filter(Boolean) as string[];
-  const { statusMap: waStatusMap, isLoading: waLoading } = useWhatsAppChecks(phones);
+  const {
+    statusMap: waStatusMap,
+    isChecking: waChecking,
+    checkPhones,
+    stopChecking,
+  } = useWhatsAppChecks(phones);
 
   // Derive unique categories from results for dynamic filter chips
   const categories = useMemo(() => {
@@ -641,6 +646,14 @@ export default function ScrapeRunResultsPage() {
 
   const importedSelected = filteredResults.filter((r) => selected.has(r.id) && r.imported && r.phone);
 
+  // Unchecked phones to look up on WhatsApp: the selected rows, or all visible rows
+  const waCheckTargets = (selected.size > 0
+    ? filteredResults.filter((r) => selected.has(r.id))
+    : filteredResults
+  )
+    .map((r) => r.phone)
+    .filter((phone): phone is string => Boolean(phone) && !waStatusMap[phone!]);
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
       {/* Back nav */}
@@ -714,7 +727,7 @@ export default function ScrapeRunResultsPage() {
                 filters={filters}
                 onChange={updateFilters}
                 categories={categories}
-                waChecksLoaded={!waLoading && phones.length > 0}
+                waChecksLoaded={!waChecking && Object.keys(waStatusMap).length > 0}
                 resultCount={results.length}
                 visibleCount={filteredResults.length}
               />
@@ -738,6 +751,17 @@ export default function ScrapeRunResultsPage() {
                 </label>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {waCheckTargets.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => (waChecking ? stopChecking() : checkPhones(waCheckTargets))}
+                      title="Checks one number at a time to keep your WhatsApp number safe"
+                    >
+                      {waChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+                      {waChecking ? "Stop checking" : `Check WhatsApp (${waCheckTargets.length})`}
+                    </Button>
+                  )}
+
                   <Button variant="secondary"
                     onClick={exportCsv}
                    

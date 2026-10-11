@@ -23,6 +23,8 @@ import {
   HandleStatusUpdateUseCase,
 } from './application/use-cases';
 
+import { SendHealthUseCase } from './application/use-cases/send-health.use-case';
+
 // Controllers
 import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-session.controller';
 
@@ -47,6 +49,7 @@ import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-ses
     HandleSessionEventUseCase,
     HandleIncomingMessageUseCase,
     HandleStatusUpdateUseCase,
+    SendHealthUseCase,
   ],
   exports: [
     WhatsAppSessionRepository,

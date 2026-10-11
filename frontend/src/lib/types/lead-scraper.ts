@@ -82,4 +82,6 @@ export interface ImportScrapeResultsRequest {
 export interface ImportScrapeResultsResponse {
   imported: number;
   skipped: number;
+  /** Results without a phone number — not imported; bid via their job link */
+  noPhone: number;
 }

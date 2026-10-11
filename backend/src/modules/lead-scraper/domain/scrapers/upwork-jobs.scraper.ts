@@ -98,8 +98,8 @@ export class UpworkJobsScraper extends BaseScraper {
         sourceUrl: searchUrl,
         scrapedAt: new Date().toISOString(),
       }));
-    } catch {
-      return [];
+    } catch (error) {
+      return this.fail('Upwork', error);
     } finally {
       if (browser) {
         await browser.close().catch(() => undefined);

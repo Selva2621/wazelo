@@ -53,8 +53,8 @@ export class TruelancerScraper extends BaseScraper {
       });
 
       return leads;
-    } catch {
-      return [];
+    } catch (error) {
+      return this.fail('Truelancer', error);
     }
   }
 }

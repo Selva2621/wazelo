@@ -12,7 +12,9 @@ import type {
 export interface CheckWhatsAppResult {
   phone: string;
   exists: boolean | null;
-  reason?: string;
+  reason?: "no_session" | "rate_limited";
+  /** Served from the server-side cache — no WhatsApp lookup was made */
+  cached?: boolean;
 }
 
 export const leadScraperApi = {

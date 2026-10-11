@@ -12,6 +12,7 @@ import { AuthEventsHandler } from './handlers/auth-events.handler';
 import { OrgUserEventsHandler } from './handlers/org-user-events.handler';
 import { WhatsAppEventsHandler } from './handlers/whatsapp-events.handler';
 import { BaileysBridgeHandler } from './handlers/baileys-bridge.handler';
+import { WhatsAppNumberLostHandler } from './handlers/whatsapp-number-lost.handler';
 import { ContactEventsHandler } from './handlers/contact-events.handler';
 import { CampaignEventsHandler } from './handlers/campaign-events.handler';
 // EPIC 7 — Scheduling & Automation events
@@ -83,6 +84,7 @@ import { OrgModule } from '@/modules/org/org.module';
     OrgUserEventsHandler,
     WhatsAppEventsHandler,
     BaileysBridgeHandler,
+    WhatsAppNumberLostHandler,
     ContactEventsHandler,
     // EPIC 6 — Campaign Management events
     CampaignEventsHandler,

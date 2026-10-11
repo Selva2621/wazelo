@@ -16,6 +16,9 @@ export interface UpdateSessionStatusInput {
   lastHeartbeatAt?: Date;
   reconnectCount?: number;
   disconnectedAt?: Date;
+  disconnectCode?: number | null;
+  disconnectReason?: string | null;
+  linkedAt?: Date;
 }
 
 @Injectable()
@@ -110,6 +113,9 @@ export class WhatsAppSessionRepository {
         ...(input.lastHeartbeatAt !== undefined && { lastHeartbeatAt: input.lastHeartbeatAt }),
         ...(input.reconnectCount !== undefined && { reconnectCount: input.reconnectCount }),
         ...(input.disconnectedAt !== undefined && { disconnectedAt: input.disconnectedAt }),
+        ...(input.disconnectCode !== undefined && { disconnectCode: input.disconnectCode }),
+        ...(input.disconnectReason !== undefined && { disconnectReason: input.disconnectReason }),
+        ...(input.linkedAt !== undefined && { linkedAt: input.linkedAt }),
       },
     });
   }

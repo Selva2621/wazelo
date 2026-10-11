@@ -315,11 +315,21 @@ export class SequencesController {
   @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
   async resume(
     @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const seq = await this.repo.findByIdAndOrg(id, orgId);
     if (!seq) throw new NotFoundException('Sequence not found');
     if (seq.status !== 'PAUSED') throw new BadRequestException('Only PAUSED sequences can be resumed');
+
+    // Its WhatsApp number may have been logged out or banned — continue on a connected one
+    const sessionId = await this.repo.resolveConnectedSessionId(seq.sessionId, orgId, userId);
+    if (!sessionId) {
+      throw new BadRequestException(
+        'The WhatsApp number for this sequence is disconnected. Link a WhatsApp number, then resume.',
+      );
+    }
+    if (sessionId !== seq.sessionId) await this.repo.moveToSession(id, orgId, sessionId);
 
     await this.repo.updateStatus(id, orgId, SequenceStatus.ACTIVE);
     return this.repo.findByIdAndOrg(id, orgId);

@@ -3,8 +3,10 @@ import { SendEmailWorker } from './email/send-email.worker';
 import { SendInviteEmailWorker } from './invitation/send-invite-email.worker';
 import { SessionCleanupWorker } from './auth/session-cleanup.worker';
 import { SessionRepository } from '@/modules/auth/infrastructure/repositories/session.repository';
+import { SuperAdminSessionRepository } from '@/modules/super-admin/infrastructure/repositories/super-admin-session.repository';
 import { SendMessageWorker } from './whatsapp/send-message.worker';
 import { SessionHealthWorker } from './whatsapp/session-health.worker';
+import { SendHealthWorker } from './whatsapp/send-health.worker';
 import { IncomingMessageWorker } from './messaging/incoming-message.worker';
 import { MessageRecoveryWorker } from './messaging/message-recovery.worker';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
@@ -64,6 +66,9 @@ import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
 import { OrgOnboardingWorker } from './org/org-onboarding.worker';
 import { OrgModule } from '@/modules/org/org.module';
+// Deal follow-up reminders
+import { DealFollowUpWorker } from './deals/deal-follow-up.worker';
+import { DealsModule } from '@/modules/deals/deals.module';
 
 @Module({
   imports: [
@@ -86,15 +91,19 @@ import { OrgModule } from '@/modules/org/org.module';
     ShopifyModule,
     LeadScraperModule,
     OrgModule,
+    DealsModule,
   ],
   providers: [
+    DealFollowUpWorker,
     SendEmailWorker,
     SendInviteEmailWorker,
     SessionCleanupWorker,
     SessionRepository,
+    SuperAdminSessionRepository,
     // WhatsApp workers
     SendMessageWorker,
     SessionHealthWorker,
+    SendHealthWorker,
     // EPIC 5 — Messaging Engine workers
     IncomingMessageWorker,
     MessageRecoveryWorker,

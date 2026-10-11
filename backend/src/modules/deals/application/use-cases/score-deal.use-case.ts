@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 
 export interface DealScoreResult {
   dealId: string;
@@ -16,6 +17,7 @@ export class ScoreDealUseCase {
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
     private readonly orgContext: OrgContextService,
+    private readonly messageRepo: MessageRepository,
   ) {}
 
   async execute(dealId: string, orgId: string): Promise<DealScoreResult> {
@@ -43,19 +45,10 @@ export class ScoreDealUseCase {
         : null,
     ]);
 
-    // Get latest conversation for this contact
-    const conversation = await this.prisma.conversation.findFirst({
-      where: { orgId, contactId: deal.contactId },
-      orderBy: { updatedAt: 'desc' },
-    });
-
-    const messages = conversation
-      ? await this.prisma.message.findMany({
-          where: { conversationId: conversation.id, orgId },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          select: { body: true, direction: true },
-        })
+    // Latest messages with this contact — through the repository, which decrypts
+    // bodies (they're encrypted at rest; raw rows would feed the AI ciphertext)
+    const messages = contact?.phoneNumber
+      ? await this.messageRepo.findRecentByContactPhone(orgId, contact.phoneNumber, 10)
       : [];
 
     const messagesText = messages.length

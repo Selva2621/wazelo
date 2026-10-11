@@ -58,8 +58,8 @@ export class FreelancerInScraper extends BaseScraper {
           scrapedAt: new Date().toISOString(),
         };
       });
-    } catch {
-      return [];
+    } catch (error) {
+      return this.fail('Freelancer.com', error);
     }
   }
 }

@@ -101,6 +101,37 @@ export class OrgOnboardingRepository {
     return (await this.prisma.pipeline.count({ where: { orgId } })) > 0;
   }
 
+  async hasPipelineNamed(orgId: string, name: string): Promise<boolean> {
+    return (await this.prisma.pipeline.count({ where: { orgId, name, deletedAt: null } })) > 0;
+  }
+
+  /** Create a pipeline and make it the org's only default one. */
+  async createPipelineAsDefault(
+    orgId: string,
+    data: { name: string; description: string; stages: DefaultPipelineStage[] },
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.pipeline.updateMany({ where: { orgId, isDefault: true }, data: { isDefault: false } }),
+      this.prisma.pipeline.create({
+        data: {
+          orgId,
+          name: data.name,
+          description: data.description,
+          isDefault: true,
+          stages: {
+            create: data.stages.map((s) => ({
+              name: s.name,
+              order: s.order,
+              color: s.color,
+              isWonStage: s.isWonStage ?? false,
+              isLostStage: s.isLostStage ?? false,
+            })),
+          },
+        },
+      }),
+    ]);
+  }
+
   async createDefaultPipeline(
     orgId: string,
     data: { name: string; description: string; stages: DefaultPipelineStage[] },

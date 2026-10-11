@@ -1,36 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useSAInvoices, useSAPayments } from "@/hooks/use-super-admin";
+import { toast } from "sonner";
+import { useSAInvoiceActions, useSAInvoices, useSAPayments, useSARecordPaymentRefund } from "@/hooks/use-super-admin";
+import type { PaymentRefund } from "@/lib/api/super-admin";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Spinner } from "@/components/ui/spinner";
+import { SearchInput } from "@/components/ui/search-input";
+import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/super-admin/status-badge";
+import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
+import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
 import { cn, formatMoney } from "@/lib/utils";
 
 type Tab = "payments" | "invoices";
 
-const PAYMENT_STATUSES = ["", "SUCCEEDED", "PENDING", "PROCESSING", "FAILED", "REFUNDED"];
-const INVOICE_STATUSES = ["", "PAID", "OPEN", "DRAFT", "VOID", "UNCOLLECTIBLE"];
-
-const STATUS_STYLE: Record<string, string> = {
-  SUCCEEDED: "bg-success/10 text-success",
-  PAID: "bg-success/10 text-success",
-  PENDING: "bg-warning/10 text-warning",
-  PROCESSING: "bg-warning/10 text-warning",
-  OPEN: "bg-warning/10 text-warning",
-  FAILED: "bg-error/10 text-error",
-  UNCOLLECTIBLE: "bg-error/10 text-error",
+/** Sortable column header → server sort field, per tab (server whitelist) */
+const SORT_FIELDS: Record<Tab, Record<string, string>> = {
+  payments: { Amount: "amountInCents", Paid: "paidAt", Created: "createdAt" },
+  invoices: { Amount: "amountInCents", Created: "createdAt" },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={cn("text-label px-2 py-0.5 rounded-full font-medium", STATUS_STYLE[status] ?? "bg-surface-container text-on-surface-variant")}>
-      {status}
-    </span>
-  );
-}
+const PAYMENT_STATUSES =["", "SUCCEEDED", "PENDING", "PROCESSING", "FAILED", "REFUNDED"];
+const INVOICE_STATUSES = ["", "PAID", "OPEN", "DRAFT", "VOID", "UNCOLLECTIBLE"];
 
 function fmtDate(value?: string | null) {
   return value ? new Date(value).toLocaleDateString() : "—";
@@ -39,23 +40,341 @@ function fmtDate(value?: string | null) {
 const selectClass =
   "bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary";
 
+/** Deleted orgs keep their billing history but have no detail page, so no link. */
+function OrgCell({ org }: { org?: { id: string; name: string; deletedAt?: string | null } | null }) {
+  if (!org) return <span className="text-on-surface-variant">—</span>;
+  if (org.deletedAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
+        {org.name}
+        <Badge variant="muted">Deleted</Badge>
+      </span>
+    );
+  }
+  return (
+    <Link href={`/super-admin/organizations/${org.id}`} className="text-on-surface hover:text-primary">
+      {org.name}
+    </Link>
+  );
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  if (Array.isArray(message)) return message[0];
+  return message ?? fallback;
+}
+
+interface RefundablePayment {
+  id: string;
+  amountInCents: number;
+  currency: string;
+  status: string;
+  refunds?: PaymentRefund[];
+  organization?: { name: string } | null;
+  invoice?: { invoiceNumber?: string } | null;
+}
+
+function refundedTotal(p: RefundablePayment) {
+  return (p.refunds ?? []).reduce((sum, r) => sum + r.amountInCents, 0);
+}
+
+function remainingRefundable(p: RefundablePayment) {
+  return Math.max(0, p.amountInCents - refundedTotal(p));
+}
+
+const labelClass = "block text-body-lg font-medium text-on-surface-variant mb-1";
+
+function RecordRefundForm({ payment, titleId, onDone }: { payment: RefundablePayment; titleId: string; onDone: () => void }) {
+  const record = useSARecordPaymentRefund();
+  const remaining = remainingRefundable(payment);
+  const [amount, setAmount] = useState((remaining / 100).toFixed(2));
+  const [reason, setReason] = useState("");
+  const [externalId, setExternalId] = useState("");
+  const [errors, setErrors] = useState<{ amount?: string; reason?: string; externalId?: string }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const refunds = payment.refunds ?? [];
+  const money = (minor: number) => formatMoney(minor, payment.currency);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = Number(amount);
+    const minor = Math.round(value * 100);
+    const next: typeof errors = {};
+    if (!amount.trim() || !Number.isFinite(value) || minor < 1) next.amount = "Enter an amount greater than zero";
+    else if (minor > remaining) next.amount = `Can't exceed the remaining ${money(remaining)}`;
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 3) next.reason = "Give a reason (at least 3 characters)";
+    else if (trimmedReason.length > 500) next.reason = "Keep the reason under 500 characters";
+    const trimmedId = externalId.trim();
+    if (trimmedId.length > 255) next.externalId = "Refund ID is too long (max 255 characters)";
+    setErrors(next);
+    setServerError(null);
+    if (Object.keys(next).length) return;
+
+    record.mutate(
+      {
+        paymentId: payment.id,
+        body: { amountInCents: minor, reason: trimmedReason, ...(trimmedId ? { externalRefundId: trimmedId } : {}) },
+      },
+      {
+        onSuccess: ({ fullyRefunded }) => {
+          toast.success("Refund recorded" + (fullyRefunded ? " — payment fully refunded" : ""));
+          onDone();
+        },
+        onError: (err) => setServerError(errorMessage(err, "Could not record the refund")),
+      },
+    );
+  };
+
+  return (
+    <form onSubmit={submit} className="p-6 space-y-4" noValidate>
+      <div>
+        <h2 id={titleId} className="text-title-sm font-semibold text-on-surface">Record a refund</h2>
+        <p className="text-body text-on-surface-variant mt-0.5">
+          {payment.organization?.name ?? "Payment"} · {money(payment.amountInCents)}
+          {payment.invoice?.invoiceNumber && <> · <span className="font-mono">{payment.invoice.invoiceNumber}</span></>}
+        </p>
+      </div>
+
+      <Alert variant="info">
+        Refund the customer in the Razorpay/Stripe dashboard first. This only records it here — no money is moved.
+      </Alert>
+
+      <div>
+        <label htmlFor="refund-amount" className={labelClass}>Amount ({payment.currency.toUpperCase()})</label>
+        <Input
+          id="refund-amount"
+          type="number"
+          inputMode="decimal"
+          min={0.01}
+          max={remaining / 100}
+          step={0.01}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          error={errors.amount}
+          disabled={record.isPending}
+        />
+        <p className="text-label text-on-surface-variant mt-1">Remaining refundable: {money(remaining)}</p>
+      </div>
+
+      <div>
+        <label htmlFor="refund-reason" className={labelClass}>Reason</label>
+        <Input
+          id="refund-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={500}
+          placeholder="e.g. Duplicate charge"
+          error={errors.reason}
+          disabled={record.isPending}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="refund-external-id" className={labelClass}>
+          Gateway refund ID <span className="font-normal">(optional)</span>
+        </label>
+        <Input
+          id="refund-external-id"
+          value={externalId}
+          onChange={(e) => setExternalId(e.target.value)}
+          maxLength={255}
+          placeholder="e.g. rfnd_ABC123"
+          className="font-mono"
+          error={errors.externalId}
+          disabled={record.isPending}
+        />
+      </div>
+
+      {refunds.length > 0 && (
+        <div>
+          <h3 className="text-body-lg font-medium text-on-surface-variant mb-1">Previous refunds</h3>
+          <ul className="divide-y divide-outline-variant/40 rounded-lg border border-outline-variant">
+            {refunds.map((r) => (
+              <li key={r.id} className="px-3 py-2 text-body">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-on-surface tabular-nums">{money(r.amountInCents)}</span>
+                  <span className="text-label text-on-surface-variant">{fmtDate(r.createdAt)}</span>
+                </div>
+                <p className="text-on-surface-variant truncate" title={r.reason}>{r.reason}</p>
+                {r.externalRefundId && (
+                  <p className="text-label text-on-surface-variant font-mono truncate">{r.externalRefundId}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {serverError && <Alert variant="error">{serverError}</Alert>}
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onDone} disabled={record.isPending}>Cancel</Button>
+        <Button type="submit" loading={record.isPending}>Record refund</Button>
+      </div>
+    </form>
+  );
+}
+
+function RefundSummary({ payment }: { payment: RefundablePayment }) {
+  const refunded = refundedTotal(payment);
+  if (refunded <= 0) return null;
+  const label = `Refunded ${formatMoney(refunded, payment.currency)}`;
+  if (refunded < payment.amountInCents) {
+    return (
+      <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+        <Badge variant="warning">Partly refunded</Badge>
+        <span className="text-label text-on-surface-variant">{label}</span>
+      </span>
+    );
+  }
+  return <p className="text-label text-on-surface-variant mt-0.5">{label}</p>;
+}
+
+interface InvoiceTarget {
+  id: string;
+  invoiceNumber: string;
+  amountInCents: number;
+  currency: string;
+}
+
+const textareaClass =
+  "w-full px-3 py-2 text-body-lg rounded-lg border border-outline-variant bg-surface-container-low text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 resize-none";
+
+/** Mark paid (optional note) and void (required reason) for OPEN/DRAFT invoices. */
+function InvoiceActionDialogs({
+  target,
+  mode,
+  onDone,
+}: {
+  target: InvoiceTarget | null;
+  mode: "paid" | "void" | null;
+  onDone: () => void;
+}) {
+  const actions = useSAInvoiceActions();
+  const fieldId = useId();
+  const [text, setText] = useState("");
+  const [prevKey, setPrevKey] = useState<string | null>(null);
+  const key = target && mode ? `${mode}:${target.id}` : null;
+  if (key !== prevKey) {
+    setPrevKey(key);
+    setText("");
+  }
+  const pending = actions.markPaid.isPending || actions.void.isPending;
+  const trimmed = text.trim();
+  const label = target ? `${target.invoiceNumber} · ${formatMoney(target.amountInCents, target.currency)}` : "";
+
+  const confirm = () => {
+    if (!target) return;
+    const onError = (err: unknown) => toast.error(errorMessage(err, "The action failed"));
+    if (mode === "paid") {
+      actions.markPaid.mutate(
+        { id: target.id, note: trimmed || undefined },
+        { onSuccess: () => { toast.success(`${target.invoiceNumber} marked paid`); onDone(); }, onError },
+      );
+    } else if (mode === "void") {
+      actions.void.mutate(
+        { id: target.id, reason: trimmed },
+        { onSuccess: () => { toast.success(`${target.invoiceNumber} voided`); onDone(); }, onError },
+      );
+    }
+  };
+
+  return (
+    <>
+      <ConfirmDialog
+        open={mode === "paid" && !!target}
+        title="Mark invoice paid?"
+        message={`${label}. Use this for payments received outside the gateway.`}
+        confirmLabel="Mark paid"
+        variant="default"
+        loading={pending}
+        confirmDisabled={trimmed.length > 500}
+        onConfirm={confirm}
+        onCancel={onDone}
+      >
+        <label htmlFor={`${fieldId}-note`} className={labelClass}>
+          Note <span className="font-normal">(optional)</span>
+        </label>
+        <textarea
+          id={`${fieldId}-note`}
+          rows={2}
+          maxLength={500}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="e.g. Bank transfer ref"
+          className={textareaClass}
+        />
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={mode === "void" && !!target}
+        title="Void invoice?"
+        message={`${label}. It can't be paid afterwards.`}
+        confirmLabel="Void invoice"
+        variant="danger"
+        loading={pending}
+        confirmDisabled={trimmed.length < 3 || trimmed.length > 500}
+        onConfirm={confirm}
+        onCancel={onDone}
+      >
+        <label htmlFor={`${fieldId}-reason`} className={labelClass}>Reason</label>
+        <textarea
+          id={`${fieldId}-reason`}
+          rows={2}
+          maxLength={500}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className={textareaClass}
+        />
+      </ConfirmDialog>
+    </>
+  );
+}
+
 export default function SuperAdminBillingPage() {
   const searchParams = useSearchParams();
   const orgId = searchParams.get("orgId") ?? undefined;
   const [tab, setTab] = useState<Tab>("payments");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [refundTarget, setRefundTarget] = useState<RefundablePayment | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<InvoiceTarget | null>(null);
+  const [invoiceMode, setInvoiceMode] = useState<"paid" | "void" | null>(null);
+  const openInvoiceAction = (inv: InvoiceTarget, mode: "paid" | "void") => {
+    setInvoiceTarget(inv);
+    setInvoiceMode(mode);
+  };
+  const refundTitleId = useId();
+  const debouncedSearch = useDebounce(search.trim(), 350);
+  // A cleared box (e.g. on tab switch) applies at once instead of waiting out the debounce
+  const searchTerm = search.trim() ? debouncedSearch : "";
 
-  const query = { page, limit: 25, status: status || undefined, orgId };
-  const payments = useSAPayments(query);
-  const invoices = useSAInvoices(query);
+  // Back to the first page whenever the settled search term changes
+  const [prevSearch, setPrevSearch] = useState(searchTerm);
+  if (prevSearch !== searchTerm) {
+    setPrevSearch(searchTerm);
+    setPage(1);
+  }
+
+  const [sort, setSort] = useState<ListSort>(NEWEST_FIRST);
+  const changeSort = (next: ListSort) => { setSort(next); setPage(1); };
+
+  const filters = { status: status || undefined, orgId, search: searchTerm || undefined, sort: sort.field, order: sort.order };
+  const query = { page, limit: 25, ...filters };
+  // Only the visible tab fetches: each tab has its own status values
+  const payments = useSAPayments(query, tab === "payments");
+  const invoices = useSAInvoices(query, tab === "invoices");
   const active = tab === "payments" ? payments : invoices;
   const data = active.data;
   const rows: any[] = (tab === "payments" ? data?.payments : data?.invoices) ?? [];
+  const colCount = tab === "payments" ? 8 : 9;
 
   const switchTab = (next: Tab) => {
     setTab(next);
     setStatus("");
+    setSearch("");
+    setSort(NEWEST_FIRST);
     setPage(1);
   };
 
@@ -64,7 +383,7 @@ export default function SuperAdminBillingPage() {
       <div>
         <h1 className="text-title font-semibold text-on-surface">Billing</h1>
         <p className="text-body-lg text-on-surface-variant">
-          Payments and invoices across all organizations (read-only).
+          Payments and invoices across all organizations.
           {orgId && <> Showing one organization · <Link href="/super-admin/billing" className="text-primary hover:underline">show all</Link></>}
         </p>
       </div>
@@ -86,6 +405,13 @@ export default function SuperAdminBillingPage() {
             </button>
           ))}
         </div>
+        <SearchInput
+          aria-label={`Search ${tab} by organization or invoice number`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search organization or invoice #…"
+          className="w-full sm:max-w-xs"
+        />
         <select
           aria-label={`Filter ${tab} by status`}
           value={status}
@@ -96,40 +422,59 @@ export default function SuperAdminBillingPage() {
             <option key={s} value={s}>{s || "All statuses"}</option>
           ))}
         </select>
+        <ExportCsvButton list={tab} params={filters} className="sm:ml-auto" />
       </div>
 
       <div role="tabpanel" className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
         <table className="w-full text-body-lg">
-          <caption className="sr-only">{tab === "payments" ? "Payments" : "Invoices"}, newest first</caption>
+          <caption className="sr-only">{tab === "payments" ? "Payments" : "Invoices"}</caption>
           <thead>
             <tr className="border-b border-outline-variant text-left">
               {(tab === "payments"
-                ? ["Organization", "Amount", "Status", "Method", "Invoice", "Paid", "Created"]
-                : ["Invoice", "Organization", "Amount", "Status", "Period", "Due", "Paid"]
-              ).map((h) => (
-                <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">{h}</th>
-              ))}
+                ? ["Organization", "Amount", "Status", "Method", "Invoice", "Paid", "Created", "Actions"]
+                : ["Invoice", "Organization", "Amount", "Status", "Period", "Due", "Paid", "Created", "Actions"]
+              ).map((h) =>
+                SORT_FIELDS[tab][h] ? (
+                  <SortableTh key={h} label={h} field={SORT_FIELDS[tab][h]} sort={sort} onSort={changeSort} />
+                ) : (
+                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
+                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/40">
             {active.isLoading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center" role="status">
+                <td colSpan={colCount} className="py-12 text-center" role="status">
                   <Spinner className="mx-auto text-primary" />
                   <span className="sr-only">Loading…</span>
                 </td>
               </tr>
+            ) : active.isError ? (
+              <tr>
+                <td colSpan={colCount} className="py-12 text-center text-error" role="alert">
+                  Could not load {tab}.{" "}
+                  <button type="button" onClick={() => active.refetch()} className="underline hover:no-underline">
+                    Try again
+                  </button>
+                </td>
+              </tr>
             ) : !rows.length ? (
-              <tr><td colSpan={7} className="py-12 text-center text-on-surface-variant">No {tab} found</td></tr>
+              <tr><td colSpan={colCount} className="py-12 text-center text-on-surface-variant">
+                {searchTerm ? `No ${tab} match “${searchTerm}”` : `No ${tab} found`}
+              </td></tr>
             ) : tab === "payments" ? (
               rows.map((p) => (
                 <tr key={p.id} className="hover:bg-surface-container transition-colors">
                   <td className="px-4 py-3">
-                    <Link href={`/super-admin/organizations/${p.organization?.id}`} className="text-on-surface hover:text-primary">
-                      {p.organization?.name ?? "—"}
-                    </Link>
+                    <OrgCell org={p.organization} />
                   </td>
-                  <td className="px-4 py-3 text-on-surface tabular-nums">{formatMoney(p.amountInCents, p.currency)}</td>
+                  <td className="px-4 py-3 text-on-surface tabular-nums">
+                    {formatMoney(p.amountInCents, p.currency)}
+                    <RefundSummary payment={p} />
+                  </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={p.status} />
                     {p.failedReason && <p className="text-label text-error mt-0.5 max-w-xs truncate" title={p.failedReason}>{p.failedReason}</p>}
@@ -138,6 +483,13 @@ export default function SuperAdminBillingPage() {
                   <td className="px-4 py-3 text-on-surface-variant font-mono text-body">{p.invoice?.invoiceNumber ?? "—"}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{fmtDate(p.paidAt)}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{fmtDate(p.createdAt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {p.status === "SUCCEEDED" && remainingRefundable(p) > 0 && (
+                      <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => setRefundTarget(p)}>
+                        Record refund
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
@@ -149,17 +501,31 @@ export default function SuperAdminBillingPage() {
                         {inv.invoiceNumber}<span className="sr-only"> (PDF, opens in a new tab)</span>
                       </a>
                     ) : inv.invoiceNumber}
+                    {inv.metadata?.manual === true && <Badge variant="info" className="ml-1.5 font-sans">Manual</Badge>}
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/super-admin/organizations/${inv.organization?.id}`} className="text-on-surface hover:text-primary">
-                      {inv.organization?.name ?? "—"}
-                    </Link>
+                    <OrgCell org={inv.organization} />
                   </td>
                   <td className="px-4 py-3 text-on-surface tabular-nums">{formatMoney(inv.amountInCents, inv.currency)}</td>
                   <td className="px-4 py-3"><StatusBadge status={inv.status} /></td>
-                  <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{fmtDate(inv.periodStart)} – {fmtDate(inv.periodEnd)}</td>
+                  <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
+                    {inv.periodStart || inv.periodEnd ? `${fmtDate(inv.periodStart)} – ${fmtDate(inv.periodEnd)}` : "—"}
+                  </td>
                   <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.dueDate)}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.paidAt)}</td>
+                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.createdAt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {(inv.status === "OPEN" || inv.status === "DRAFT") && (
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => openInvoiceAction(inv, "paid")}>
+                          Mark paid
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-error" onClick={() => openInvoiceAction(inv, "void")}>
+                          Void
+                        </Button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -181,6 +547,25 @@ export default function SuperAdminBillingPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={!!refundTarget}
+        onClose={() => setRefundTarget(null)}
+        aria-labelledby={refundTitleId}
+        className="max-w-md"
+      >
+        {() =>
+          refundTarget && (
+            <RecordRefundForm payment={refundTarget} titleId={refundTitleId} onDone={() => setRefundTarget(null)} />
+          )
+        }
+      </Modal>
+
+      <InvoiceActionDialogs
+        target={invoiceTarget}
+        mode={invoiceMode}
+        onDone={() => setInvoiceMode(null)}
+      />
     </div>
   );
 }

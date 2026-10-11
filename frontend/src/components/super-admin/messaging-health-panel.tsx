@@ -3,13 +3,14 @@
 import { AlertTriangle, CheckCircle2, MinusCircle, XCircle } from "lucide-react";
 import { useSAOrgMessagingHealth } from "@/hooks/use-super-admin";
 import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const STATUS: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  HEALTHY: { label: "Healthy", icon: CheckCircle2, className: "bg-success/10 text-success" },
-  DEGRADED: { label: "Degraded", icon: AlertTriangle, className: "bg-warning/10 text-warning" },
-  DOWN: { label: "Down", icon: XCircle, className: "bg-error/10 text-error" },
-  NOT_CONNECTED: { label: "Not connected", icon: MinusCircle, className: "bg-surface-container text-on-surface-variant" },
+const STATUS: Record<string, { label: string; icon: typeof CheckCircle2; variant: "success" | "warning" | "error" | "muted" }> = {
+  HEALTHY: { label: "Healthy", icon: CheckCircle2, variant: "success" },
+  DEGRADED: { label: "Degraded", icon: AlertTriangle, variant: "warning" },
+  DOWN: { label: "Down", icon: XCircle, variant: "error" },
+  NOT_CONNECTED: { label: "Not connected", icon: MinusCircle, variant: "muted" },
 };
 
 const CONNECTION_STYLE: Record<string, string> = {
@@ -61,10 +62,10 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
       <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-3" aria-labelledby="wa-health-heading">
         <div className="flex flex-wrap items-center gap-3">
           <h2 id="wa-health-heading" className="text-body-lg font-medium text-on-surface">WhatsApp health</h2>
-          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label font-medium", overall.className)}>
+          <Badge variant={overall.variant}>
             <OverallIcon className="h-3.5 w-3.5" aria-hidden />
             {overall.label}
-          </span>
+          </Badge>
         </div>
         {data.assessment.reasons.length > 0 && (
           <ul className="list-disc pl-5 text-body-lg text-on-surface space-y-0.5">

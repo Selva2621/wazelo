@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { SequenceRepository } from '@/modules/sequences/infrastructure/repositories/sequence.repository';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
@@ -19,6 +20,7 @@ export class SequenceStepWorker implements OnModuleInit {
     private readonly sequenceRepo: SequenceRepository,
     private readonly messageRepo: MessageRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly prisma: PrismaService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -97,7 +99,7 @@ export class SequenceStepWorker implements OnModuleInit {
     sequenceId: string;
     sessionId: string;
   }): Promise<void> {
-    const { recipientId, orgId, sequenceId, sessionId } = data;
+    const { recipientId, orgId, sequenceId } = data;
 
     // Get all steps for sequence
     const steps = await this.sequenceRepo.getStepsBySequence(sequenceId);
@@ -108,6 +110,11 @@ export class SequenceStepWorker implements OnModuleInit {
     const recipient = recipients.find((r) => r.id === recipientId);
     if (!recipient || recipient.status !== 'ACTIVE') return;
 
+    // Step jobs published before a pause must not send; and use the sequence's
+    // current number — it may have moved off a logged-out or banned one
+    if (recipient.sequence.status !== SequenceStatus.ACTIVE) return;
+    const sessionId = recipient.sequence.sessionId;
+
     const nextStepIndex = recipient.currentStep; // 0-based: currentStep is the NEXT step to send
     if (nextStepIndex >= steps.length) {
       // All steps completed
@@ -117,6 +124,18 @@ export class SequenceStepWorker implements OnModuleInit {
     }
 
     const step = steps[nextStepIndex];
+
+    // Never send to someone who replied STOP / unsubscribe
+    const digits = recipient.contactPhone.replace(/^\+/, '');
+    const optedOut = await this.prisma.contact.findFirst({
+      where: { orgId, deletedAt: null, optedOut: true, phoneNumber: { in: [digits, `+${digits}`] } },
+      select: { id: true },
+    });
+    if (optedOut) {
+      await this.sequenceRepo.exitRecipient(recipientId, 'Contact opted out');
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      return;
+    }
 
     try {
       // Create message
@@ -132,6 +151,7 @@ export class SequenceStepWorker implements OnModuleInit {
         idempotencyKey: `seq-${sequenceId}-${recipientId}-step-${step.stepOrder}`,
         priority: -1, // lower than direct messages
         maxRetries: 3,
+        metadata: { sequenceId },
       });
 
       // Record recipient step

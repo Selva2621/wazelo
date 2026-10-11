@@ -2,8 +2,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { AnnouncementSeverity, AnnouncementTarget, PlatformAuditAction } from '@prisma/client';
 import { SubscriptionRepository } from '@/modules/billing/infrastructure/repositories/subscription.repository';
 import { AnnouncementRepository } from '../../infrastructure/repositories/announcement.repository';
-import { announcementApplies } from '../../domain/services/announcements';
-import { CreateAnnouncementDto } from '../dto/announcement.dto';
+import { PlatformRepository } from '../../infrastructure/repositories/platform.repository';
+import { announcementApplies, AnnouncementContent, applyAnnouncementPatch } from '../../domain/services/announcements';
+import { diffChanges } from '../../domain/services/audit-diff';
+import { CreateAnnouncementDto, UpdateAnnouncementDto } from '../dto/announcement.dto';
 import { AuditActor, PlatformAuditService, RequestMeta } from '../services/platform-audit.service';
 
 // ─── Super admin ─────────────────────────────────────────────────────────────
@@ -62,13 +64,94 @@ export class CreateAnnouncementUseCase {
   }
 }
 
+/** Dates as ISO strings, so the audit diff is plain JSON. */
+function auditView(a: AnnouncementContent): Record<string, unknown> {
+  return { ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt?.toISOString() ?? null };
+}
+
+/**
+ * Partial edit with the same rules as creation, checked on the merged result.
+ * Archived announcements are read-only (restore first).
+ */
+@Injectable()
+export class UpdateAnnouncementUseCase {
+  constructor(
+    private readonly repo: AnnouncementRepository,
+    private readonly audit: PlatformAuditService,
+  ) {}
+
+  async execute(id: string, dto: UpdateAnnouncementDto, actor: AuditActor, meta: RequestMeta) {
+    const announcement = await this.repo.findById(id);
+    if (!announcement) throw new NotFoundException('Announcement not found');
+    if (announcement.archivedAt) {
+      throw new BadRequestException('Archived announcements cannot be edited — restore it first');
+    }
+
+    const current: AnnouncementContent = {
+      title: announcement.title,
+      body: announcement.body,
+      severity: announcement.severity,
+      targetType: announcement.targetType,
+      targetPlanSlug: announcement.targetPlanSlug,
+      targetOrgId: announcement.targetOrgId,
+      startsAt: announcement.startsAt,
+      endsAt: announcement.endsAt,
+      dismissible: announcement.dismissible,
+    };
+    const merged = applyAnnouncementPatch(current, dto);
+    if (!merged.ok) throw new BadRequestException(merged.error);
+    const next = merged.next;
+
+    if (next.targetOrgId && next.targetOrgId !== current.targetOrgId && !(await this.repo.orgExists(next.targetOrgId))) {
+      throw new BadRequestException('Organization not found');
+    }
+    if (
+      next.targetPlanSlug &&
+      next.targetPlanSlug !== current.targetPlanSlug &&
+      !(await this.repo.planSlugExists(next.targetPlanSlug))
+    ) {
+      throw new BadRequestException('Plan not found');
+    }
+
+    const diff = diffChanges(auditView(current), auditView(next));
+    const changed = Object.keys(diff.after) as (keyof AnnouncementContent)[];
+    if (!changed.length) return announcement;
+
+    const data = Object.fromEntries(changed.map((k) => [k, next[k]])) as Partial<AnnouncementContent>;
+    const updated = await this.repo.update(id, data);
+
+    await this.audit.record({
+      action: PlatformAuditAction.ANNOUNCEMENT_UPDATED,
+      actor,
+      targetType: 'Announcement',
+      targetId: id,
+      orgId: updated.targetOrgId ?? announcement.targetOrgId,
+      metadata: { title: updated.title, ...diff },
+      meta,
+    });
+    return updated;
+  }
+}
+
 @Injectable()
 export class ListAnnouncementsUseCase {
-  constructor(private readonly repo: AnnouncementRepository) {}
+  constructor(
+    private readonly repo: AnnouncementRepository,
+    private readonly platformRepo: PlatformRepository,
+  ) {}
 
+  /** Org-targeted rows carry the org's name (one batched lookup; deleted orgs are marked). */
   async execute() {
     const items = await this.repo.findAll();
-    return { announcements: items.map(({ _count, ...a }) => ({ ...a, dismissals: _count.dismissals })) };
+    const orgIds = [...new Set(items.map((a) => a.targetOrgId).filter((id): id is string => !!id))];
+    const names = await this.platformRepo.orgNames(orgIds);
+    return {
+      announcements: items.map(({ _count, ...a }) => ({
+        ...a,
+        dismissals: _count.dismissals,
+        targetOrgName: a.targetOrgId ? (names.get(a.targetOrgId) ?? null) : null,
+      })),
+    };
   }
 }
 
@@ -95,6 +178,36 @@ export class ArchiveAnnouncementUseCase {
       meta,
     });
     return archived;
+  }
+}
+
+/**
+ * Undoes an archive. Users who dismissed it before keep it dismissed; it shows again
+ * only if its schedule window is still open.
+ */
+@Injectable()
+export class RestoreAnnouncementUseCase {
+  constructor(
+    private readonly repo: AnnouncementRepository,
+    private readonly audit: PlatformAuditService,
+  ) {}
+
+  async execute(id: string, actor: AuditActor, meta: RequestMeta) {
+    const announcement = await this.repo.findById(id);
+    if (!announcement) throw new NotFoundException('Announcement not found');
+    if (!announcement.archivedAt) return announcement;
+
+    const restored = await this.repo.restore(id);
+    await this.audit.record({
+      action: PlatformAuditAction.ANNOUNCEMENT_RESTORED,
+      actor,
+      targetType: 'Announcement',
+      targetId: id,
+      orgId: announcement.targetOrgId,
+      metadata: { title: announcement.title, archivedAt: announcement.archivedAt.toISOString() },
+      meta,
+    });
+    return restored;
   }
 }
 

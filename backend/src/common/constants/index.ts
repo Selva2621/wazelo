@@ -114,6 +114,16 @@ export const EVENT_NAMES = {
   WHATSAPP_QR_GENERATED: 'whatsapp.qr_generated',
   WHATSAPP_SESSION_CONNECTED: 'whatsapp.session_connected',
   WHATSAPP_SESSION_DISCONNECTED: 'whatsapp.session_disconnected',
+  /** Number logged out or banned — hold all bulk work queued on it */
+  WHATSAPP_NUMBER_LOST: 'whatsapp.number_lost',
+  /** Safety governor paused bulk sending on a number (low delivery / opt-outs) */
+  WHATSAPP_SENDING_PAUSED: 'whatsapp.sending_paused',
+  /** A deal's follow-up time has come */
+  DEAL_FOLLOW_UP_DUE: 'deal.follow_up_due',
+  /** Client answered a deal's scope-approval poll */
+  DEAL_SCOPE_RESPONDED: 'deal.scope_responded',
+  /** A decrypted vote on a WhatsApp poll we sent */
+  BAILEYS_POLL_VOTE: 'baileys.poll_vote',
   WHATSAPP_SESSION_RECONNECTING: 'whatsapp.session_reconnecting',
   WHATSAPP_SESSION_FORCE_DISCONNECTED: 'whatsapp.session_force_disconnected',
 
@@ -319,17 +329,68 @@ export const WHATSAPP_CONFIG = {
   MAX_MESSAGE_RETRY_COUNT: 3,
   MESSAGE_RETRY_DELAY_SECONDS: 5,
   SESSION_ENCRYPTION_ALGORITHM: 'aes-256-gcm',
+  /** Cached WhatsApp Web version is refetched after this long */
+  VERSION_CACHE_TTL_MS: 24 * 60 * 60 * 1000,
+} as const;
+
+/**
+ * Human-pace sending for Baileys numbers. These are community heuristics —
+ * WhatsApp publishes no limits for linked-device clients.
+ */
+export const SEND_SAFETY_CONFIG = {
+  /** Gap between any two sends on one number (inbox replies) */
+  DIRECT_GAP_MIN_MS: 1_500,
+  DIRECT_GAP_MAX_MS: 3_500,
+  /** Gap between bulk sends (campaigns, sequences — priority < 0) */
+  BULK_GAP_MIN_MS: 10_000,
+  BULK_GAP_MAX_MS: 40_000,
+  /** Waits up to this long in-worker; longer waits are re-queued with a delay */
+  MAX_INLINE_WAIT_MS: 4_000,
+  /** "typing…" shown before a bulk message */
+  TYPING_MIN_MS: 1_000,
+  TYPING_MAX_MS: 4_000,
+  /** "Is this number on WhatsApp?" lookups per number */
+  WA_CHECK_PER_MINUTE: 10,
+  WA_CHECK_PER_DAY: 150,
+  WA_CHECK_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
+  /**
+   * Warm-up: daily bulk caps by how long the number has been linked.
+   * `cold` = messages to people who never messaged first.
+   */
+  WARMUP_TIERS: [
+    { maxAgeDays: 7, cold: 20, bulk: 50 },
+    { maxAgeDays: 14, cold: 50, bulk: 150 },
+    { maxAgeDays: 21, cold: 100, bulk: 300 },
+    { maxAgeDays: Infinity, cold: 200, bulk: 500 },
+  ],
+  /** Bulk messages only go out between these local hours (org time zone) */
+  BULK_SEND_START_HOUR: 9,
+  BULK_SEND_END_HOUR: 20,
+  /** Spread the morning restart so held messages don't all fire at 9:00 */
+  BULK_RESUME_JITTER_MS: 20 * 60 * 1000,
+  /** Auto-pause: judge delivery only once this many bulk messages are old enough */
+  HEALTH_MIN_SAMPLE: 20,
+  /** Bulk messages must be at least this old before "not delivered" counts against the number */
+  HEALTH_DELIVERY_GRACE_MS: 60 * 60 * 1000,
+  HEALTH_MIN_DELIVERY_RATE: 0.6,
+  /** This many opt-out replies in 24h pauses bulk sending */
+  HEALTH_MAX_OPT_OUTS_24H: 3,
+  HEALTH_PAUSE_MS: 24 * 60 * 60 * 1000,
+  /** Inbound replies that opt a contact out of bulk messages */
+  OPT_OUT_KEYWORDS: ['stop', 'unsubscribe', 'stop all', 'opt out', 'optout', 'remove me', 'spam'],
 } as const;
 
 export const CAMPAIGN_CONFIG = {
   /** Number of recipients per batch job */
   BATCH_SIZE: 50,
-  /** Delay in seconds between batch dispatches to avoid rate limit spikes */
-  BATCH_DELAY_SECONDS: 2,
+  /** Delay in seconds between batch dispatches — roughly how long the send pacer needs for one batch */
+  BATCH_DELAY_SECONDS: 50 * 25,
   /** Concurrent campaign batch workers */
   WORKER_CONCURRENCY: 3,
-  /** Maximum recipients per campaign */
-  MAX_RECIPIENTS: 100_000,
+  /** Maximum recipients per campaign (unofficial WhatsApp numbers can't safely send more) */
+  MAX_RECIPIENTS: 500,
+  /** Baileys campaigns only go to contacts who have messaged this org before */
+  WARM_CONTACTS_ONLY: true,
   /** Campaign messages get lower priority than direct messages */
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
@@ -377,12 +438,12 @@ export const MESSAGING_CONFIG = {
   RETRY_BASE_DELAY_SECONDS: 5,
   /** Maximum backoff delay cap in seconds */
   RETRY_MAX_DELAY_SECONDS: 300,
-  /** Per-session messages per minute */
-  RATE_LIMIT_PER_SESSION_PER_MINUTE: 30,
-  /** Global org-level messages per minute */
-  RATE_LIMIT_PER_ORG_PER_MINUTE: 200,
+  /** Per-session messages actually SENT per minute (Baileys numbers get banned above human pace) */
+  RATE_LIMIT_PER_SESSION_PER_MINUTE: 8,
+  /** Global org-level messages sent per minute */
+  RATE_LIMIT_PER_ORG_PER_MINUTE: 60,
   /** Max burst allowed above sustained rate */
-  RATE_LIMIT_BURST_MULTIPLIER: 2,
+  RATE_LIMIT_BURST_MULTIPLIER: 1,
   /** How long a message can stay in PROCESSING before considered stale (ms) */
   PROCESSING_STALE_THRESHOLD_MS: 120_000,
   /** How long a message can stay in QUEUED before recovery picks it up (ms) */

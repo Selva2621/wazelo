@@ -101,7 +101,7 @@ export default function OrgTypePage() {
               Solo / Freelancer
             </h2>
             <p className="text-label text-on-surface-variant leading-relaxed">
-              Client pipeline, proposal tracking, follow-up sequences, and a
+              Client pipeline, lead finder, follow-up sequences, and a
               personal WhatsApp inbox.
             </p>
           </button>

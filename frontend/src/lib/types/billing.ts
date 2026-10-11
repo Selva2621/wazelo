@@ -51,6 +51,10 @@ export interface Plan {
   trialMaxCampaignsPerMonth?: number | null;
   // Thresholds
   softLimitPercent: number;
+  /** Live subscriptions on this exact version (super admin plan list only) */
+  liveSubscribers?: number;
+  /** Set when archived: off sale, hidden by default, existing subscribers keep it (super admin list only) */
+  archivedAt?: string | null;
   gracePeriodDays: number;
   createdAt: string;
 }
@@ -190,7 +194,8 @@ export interface Payment {
 export interface Invoice {
   id: string;
   orgId: string;
-  subscriptionId: string;
+  /** Null for manual invoices */
+  subscriptionId: string | null;
   invoiceNumber: string;
   amountInCents: number;
   currency: string;
@@ -202,6 +207,8 @@ export interface Invoice {
   dueDate: string;
   paidAt?: string;
   createdAt: string;
+  /** `manual: true` for invoices raised by Wazelo staff */
+  metadata?: { manual?: boolean; note?: string } & Record<string, unknown> | null;
 }
 
 export interface PaginatedResponse<T> {

@@ -11,9 +11,11 @@ import { OrgController } from './interfaces/controllers/org.controller';
 import { AuditModule } from '../audit/audit.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 import { AiProviderService } from '../ai/domain/services/ai-provider.service';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [AuditModule, KnowledgeBaseModule],
+  // BillingModule: KillSwitchService for this module's AiProviderService
+  imports: [AuditModule, KnowledgeBaseModule, BillingModule],
   controllers: [OrgController],
   providers: [
     OrgRepository,

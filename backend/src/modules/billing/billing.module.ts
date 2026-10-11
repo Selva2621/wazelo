@@ -8,10 +8,14 @@ import { SubscriptionRepository } from './infrastructure/repositories/subscripti
 import { UsageRepository } from './infrastructure/repositories/usage.repository';
 import { PaymentRepository } from './infrastructure/repositories/payment.repository';
 import { EntitlementOverrideRepository } from './infrastructure/repositories/entitlement-override.repository';
+import { KillSwitchRepository } from './infrastructure/repositories/kill-switch.repository';
+import { CreditRepository } from './infrastructure/repositories/credit.repository';
+import { CouponRepository } from './infrastructure/repositories/coupon.repository';
 
 // Domain services
 import { UsageTrackingService } from './domain/services/usage-tracking.service';
 import { EntitlementOverrideService } from './domain/services/entitlement-override.service';
+import { KillSwitchService } from './domain/services/kill-switch.service';
 import { ProrationService } from './domain/services/proration.service';
 import { StripePaymentService } from './domain/services/stripe-payment.service';
 import { RazorpayPaymentService } from './domain/services/razorpay-payment.service';
@@ -26,10 +30,16 @@ import { CancelSubscriptionUseCase } from './application/use-cases/cancel-subscr
 import { ReactivateSubscriptionUseCase } from './application/use-cases/reactivate-subscription.use-case';
 import { GetSubscriptionUseCase } from './application/use-cases/get-subscription.use-case';
 import { ListInvoicesUseCase, ListPaymentsUseCase } from './application/use-cases/list-invoices.use-case';
+import { ApplyRenewalCreditUseCase } from './application/use-cases/apply-renewal-credit.use-case';
+import { CreateCheckoutOrderUseCase, ResolveCheckoutOrderUseCase } from './application/use-cases/checkout-order.use-cases';
+import { ActivateTrialPaymentUseCase } from './application/use-cases/activate-trial-payment.use-case';
+import { ValidateCouponUseCase } from './application/use-cases/validate-coupon.use-case';
+import { CouponCheckoutService } from './application/services/coupon-checkout.service';
 
 // Guards
 import { UsageLimitGuard } from './interfaces/guards/usage-limit.guard';
 import { FeatureFlagGuard } from './interfaces/guards/feature-flag.guard';
+import { PlatformFeatureGuard } from './interfaces/guards/platform-feature.guard';
 
 // Controllers
 import { BillingController } from './interfaces/controllers/billing.controller';
@@ -46,10 +56,17 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     UsageRepository,
     PaymentRepository,
     EntitlementOverrideRepository,
+    KillSwitchRepository,
+    CreditRepository,
+    CouponRepository,
+
+    // Application services
+    CouponCheckoutService,
 
     // Domain services
     UsageTrackingService,
     EntitlementOverrideService,
+    KillSwitchService,
     ProrationService,
     StripePaymentService,
     RazorpayPaymentService,
@@ -65,10 +82,16 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     GetSubscriptionUseCase,
     ListInvoicesUseCase,
     ListPaymentsUseCase,
+    ApplyRenewalCreditUseCase,
+    CreateCheckoutOrderUseCase,
+    ResolveCheckoutOrderUseCase,
+    ActivateTrialPaymentUseCase,
+    ValidateCouponUseCase,
 
     // Guards
     UsageLimitGuard,
     FeatureFlagGuard,
+    PlatformFeatureGuard,
   ],
   exports: [
     // Export for use in other modules (guards, workers)
@@ -76,6 +99,9 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     // Super admin per-org overrides (written only by the super-admin module)
     EntitlementOverrideService,
     EntitlementOverrideRepository,
+    // Platform kill switches (read by guards + workers, written by super-admin)
+    KillSwitchService,
+    KillSwitchRepository,
     ProrationService,
     PlanRepository,
     SubscriptionRepository,
@@ -83,12 +109,17 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     PaymentRepository,
     UsageLimitGuard,
     FeatureFlagGuard,
+    PlatformFeatureGuard,
     StripePaymentService,
     RazorpayPaymentService,
     // Plan management — used by super-admin module
     ListPlansUseCase,
     CreatePlanUseCase,
     UpdatePlanUseCase,
+    // Account credits + coupons (renewal worker, super-admin)
+    CreditRepository,
+    CouponRepository,
+    ApplyRenewalCreditUseCase,
   ],
 })
 export class BillingModule {}

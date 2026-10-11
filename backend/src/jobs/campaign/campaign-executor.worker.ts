@@ -5,6 +5,8 @@ import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositor
 import { CampaignRecipientRepository } from '@/modules/campaigns/infrastructure/repositories/campaign-recipient.repository';
 import { AudienceResolverService } from '@/modules/campaigns/domain/services/audience-resolver.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+import { pauseCampaignForKillSwitch } from './kill-switch-pause';
 import {
   QUEUE_NAMES,
   EVENT_NAMES,
@@ -35,6 +37,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
     private readonly audienceResolver: AudienceResolverService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -52,6 +55,19 @@ export class CampaignExecutorWorker implements OnModuleInit {
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {
       this.logger.warn(`Campaign ${campaignId} not found, skipping job ${jobId}`);
+      return;
+    }
+
+    // Platform kill switch: a SCHEDULED campaign stays SCHEDULED (the scheduler
+    // safety net starts it once the switch is off); a RUNNING one is paused with
+    // its PENDING recipients intact, so a normal resume continues it.
+    if (await this.killSwitches.isDisabled('campaigns')) {
+      if (campaign.status === CampaignStatus.RUNNING) {
+        await pauseCampaignForKillSwitch(this.campaignRepo, campaignId, orgId, this.eventEmitter);
+        this.logger.warn(`Campaigns switched off platform-wide — paused campaign ${campaignId} (job ${jobId})`);
+      } else {
+        this.logger.warn(`Campaigns switched off platform-wide — not starting campaign ${campaignId} (${campaign.status}, job ${jobId})`);
+      }
       return;
     }
 
@@ -149,7 +165,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
   ): Promise<void> {
     // Resolve audience
     const filters = campaign.audienceFilters as Record<string, unknown> | null;
-    const { contacts, total } = await this.audienceResolver.resolveAudience(
+    const resolved = await this.audienceResolver.resolveAudience(
       orgId,
       campaign.audienceType as CampaignAudienceType,
       filters ? {
@@ -160,8 +176,26 @@ export class CampaignExecutorWorker implements OnModuleInit {
       } : undefined,
     );
 
-    if (total === 0) {
+    if (resolved.total === 0) {
       throw new Error('No eligible recipients found for this campaign');
+    }
+
+    // Campaigns run on the user's own WhatsApp number (Baileys): only message
+    // people who have written to us before, cold blasts get numbers banned.
+    const contacts = CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY
+      ? await this.audienceResolver.keepWarmContacts(orgId, resolved.contacts)
+      : resolved.contacts;
+    const total = contacts.length;
+
+    if (total === 0) {
+      throw new Error(
+        'None of the selected contacts has messaged you before. To protect your WhatsApp number from a ban, campaigns only go to contacts who have chatted with you.',
+      );
+    }
+    if (total < resolved.total) {
+      this.logger.log(
+        `Campaign ${campaignId}: skipped ${resolved.total - total} contacts who never messaged first`,
+      );
     }
 
     if (total > CAMPAIGN_CONFIG.MAX_RECIPIENTS) {

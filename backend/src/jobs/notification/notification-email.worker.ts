@@ -125,6 +125,8 @@ export class NotificationEmailWorker implements OnModuleInit {
       AUTOMATION_FAILED:            { label: 'View Automations',   url: `${this.frontendUrl}/automation` },
       USAGE_LIMIT_WARNING:          { label: 'View Usage',         url: `${this.frontendUrl}/settings/billing` },
       USAGE_LIMIT_REACHED:          { label: 'Upgrade Plan',       url: `${this.frontendUrl}/settings/billing` },
+      DEAL_FOLLOW_UP_DUE:           { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
+      DEAL_SCOPE_RESPONSE:          { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
     };
 
     const action = actions[type] ?? {

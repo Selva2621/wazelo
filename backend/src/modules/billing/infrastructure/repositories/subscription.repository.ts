@@ -25,8 +25,9 @@ export interface CreateSubscriptionInput {
 export class SubscriptionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(input: CreateSubscriptionInput): Promise<Subscription> {
-    return this.prisma.subscription.create({
+  /** @param tx run inside the caller's transaction */
+  async create(input: CreateSubscriptionInput, tx?: Prisma.TransactionClient): Promise<Subscription> {
+    return (tx ?? this.prisma).subscription.create({
       data: {
         orgId: input.orgId,
         planId: input.planId,
@@ -101,27 +102,32 @@ export class SubscriptionRepository {
     expectedStatus: SubscriptionStatus | SubscriptionStatus[],
     newStatus: SubscriptionStatus,
     extra?: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
   ): Promise<Subscription | null> {
     const statusFilter = Array.isArray(expectedStatus)
       ? { in: expectedStatus }
       : expectedStatus;
+    const db = tx ?? this.prisma;
 
-    const result = await this.prisma.subscription.updateMany({
+    const result = await db.subscription.updateMany({
       where: { id, status: statusFilter as any },
       data: { status: newStatus, ...extra },
     });
 
     if (result.count === 0) return null;
-    return this.findById(id);
+    return db.subscription.findUnique({ where: { id }, include: { plan: true } });
   }
 
+  /** @param tx run inside the caller's transaction (the re-read uses it too) */
   async updatePlan(
     id: string,
     planId: string,
     priceInCents: number,
     extra?: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
   ): Promise<Subscription | null> {
-    const result = await this.prisma.subscription.updateMany({
+    const db = tx ?? this.prisma;
+    const result = await db.subscription.updateMany({
       where: {
         id,
         status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] },
@@ -130,7 +136,7 @@ export class SubscriptionRepository {
     });
 
     if (result.count === 0) return null;
-    return this.findById(id);
+    return db.subscription.findUnique({ where: { id }, include: { plan: true } });
   }
 
   async scheduleDowngrade(
@@ -207,8 +213,8 @@ export class SubscriptionRepository {
     triggeredById?: string;
     reason?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<void> {
-    await this.prisma.subscriptionEvent.create({
+  }, tx?: Prisma.TransactionClient): Promise<void> {
+    await (tx ?? this.prisma).subscriptionEvent.create({
       data: {
         orgId: data.orgId,
         subscriptionId: data.subscriptionId,

@@ -7,12 +7,14 @@ import {
   Check, ChevronRight, Users, MessageSquare, Zap, Bot, Code2,
   Sparkles, CreditCard, Clock, ArrowRight,
 } from "lucide-react";
-import { usePlans, useSubscribeToPlan, useCreateOrder, useVerifyPayment, useSubscription } from "@/hooks/use-billing";
+import { usePlans, useSubscribeToPlan, useCreateOrder, useVerifyPayment, useSubscription, useValidateCoupon } from "@/hooks/use-billing";
 import { useAuthStore } from "@/stores/auth-store";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
-import type { Plan, BillingCycle } from "@/lib/types/billing";
+import type { Plan, BillingCycle, SubscriptionPlanSummary } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,12 @@ function formatLimit(val: number) {
   if (val >= 100000) return `${(val / 100000).toFixed(0)}L`;
   if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
   return `${val}`;
+}
+
+/** First server error message from an API error, if any */
+function apiMessage(err: unknown): string | undefined {
+  const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  return Array.isArray(message) ? message[0] : message;
 }
 
 function daysRemaining(endsAt?: string | null) {
@@ -87,12 +95,16 @@ function Steps({ current, labels }: { current: number; labels: string[] }) {
 function TrialActiveStep({
   firstName,
   daysLeft,
+  plan,
   onContinue,
 }: {
   firstName: string;
   daysLeft: number;
+  /** The trial plan — its real limits, not hardcoded copy */
+  plan?: SubscriptionPlanSummary;
   onContinue: () => void;
 }) {
+  const fmt = (n: number) => n.toLocaleString("en-IN");
   return (
     <div className="text-center">
       <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -108,10 +120,14 @@ function TrialActiveStep({
 
       <div className="bg-surface-container rounded-xl p-4 mb-6 max-w-sm mx-auto space-y-2 text-left">
         {[
-          { icon: Users, label: "Agents included", value: "3 users" },
-          { icon: MessageSquare, label: "Messages/month", value: "1,000" },
-          { icon: Zap, label: "Campaigns/month", value: "5" },
-          { icon: Bot, label: "Automation", value: "Included" },
+          ...(plan
+            ? [
+                { icon: Users, label: "Users included", value: `${fmt(plan.maxUsers)} user${plan.maxUsers !== 1 ? "s" : ""}` },
+                { icon: MessageSquare, label: "Messages/month", value: fmt(plan.maxMessagesPerMonth) },
+                { icon: Zap, label: "Campaigns/month", value: plan.campaignsEnabled ? fmt(plan.maxCampaignsPerMonth) : "Not included" },
+                { icon: Bot, label: "Automation", value: plan.automationEnabled ? "Included" : "Not included" },
+              ]
+            : []),
           { icon: Clock, label: "Trial duration", value: `${daysLeft} days remaining` },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} className="flex items-center justify-between text-body-lg">
@@ -137,7 +153,17 @@ function TrialActiveStep({
 
 // ─── Step 0: Welcome ─────────────────────────────────────────────────────────
 
-function WelcomeStep({ orgName, onNext }: { orgName: string; onNext: () => void }) {
+function WelcomeStep({
+  orgName,
+  trialExpired,
+  isFreelancer,
+  onNext,
+}: {
+  orgName: string;
+  trialExpired: boolean;
+  isFreelancer: boolean;
+  onNext: () => void;
+}) {
   return (
     <div className="text-center">
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -147,15 +173,24 @@ function WelcomeStep({ orgName, onNext }: { orgName: string; onNext: () => void 
         Welcome to Wazelo CRM{orgName ? `, ${orgName}` : ""}!
       </h1>
       <p className="text-on-surface-variant mb-8 max-w-md mx-auto">
-        Your free trial has expired. Choose a paid plan to continue using all features.
+        {trialExpired
+          ? "Your free trial has ended. Choose a plan to keep using all features."
+          : "Choose a plan to get started."}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 text-left max-w-lg mx-auto">
-        {[
-          { icon: MessageSquare, title: "Shared Inbox", desc: "Your whole team in one WhatsApp inbox" },
-          { icon: Zap, title: "Campaigns", desc: "Broadcast messages to thousands at once" },
-          { icon: Bot, title: "Automation", desc: "Auto-reply and workflow rules" },
-        ].map(({ icon: Icon, title, desc }) => (
+        {(isFreelancer
+          ? [
+              { icon: MessageSquare, title: "WhatsApp Inbox", desc: "Every client chat in one place" },
+              { icon: Users, title: "Client Pipeline", desc: "Track leads from first message to won" },
+              { icon: Zap, title: "Follow-ups", desc: "Sequences that nudge leads for you" },
+            ]
+          : [
+              { icon: MessageSquare, title: "Shared Inbox", desc: "Your whole team in one WhatsApp inbox" },
+              { icon: Zap, title: "Campaigns", desc: "Message your contacts in one go" },
+              { icon: Bot, title: "Automation", desc: "Auto-reply and workflow rules" },
+            ]
+        ).map(({ icon: Icon, title, desc }) => (
           <div key={title} className="bg-surface-container rounded-xl p-4">
             <Icon className="w-5 h-5 text-primary mb-2" />
             <div className="font-semibold text-body-lg text-on-surface">{title}</div>
@@ -258,9 +293,11 @@ function ChoosePlanStep({
   isFreelancer?: boolean;
 }) {
   const cycle: BillingCycle = yearly ? "YEARLY" : "MONTHLY";
-  // Filter out free-trial plan — it's only auto-assigned on signup
+  // Free trial is only auto-assigned on signup. Freelancers see Solo plans,
+  // everyone else the team plans — same rule as Settings › Billing.
   const filtered = plans
     .filter((p) => p.billingCycle === cycle && p.isActive && p.slug !== "free-trial")
+    .filter((p) => (isFreelancer ? p.slug.startsWith("solo-") : !p.slug.startsWith("solo-")))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
@@ -322,6 +359,13 @@ function ChoosePlanStep({
 
 // ─── Step 2: Confirm ─────────────────────────────────────────────────────────
 
+interface AppliedCoupon {
+  code: string;
+  discountInCents: number;
+  finalAmountInCents: number;
+  currency: string;
+}
+
 function ConfirmStep({
   plan,
   onConfirm,
@@ -330,11 +374,39 @@ function ConfirmStep({
   error,
 }: {
   plan: Plan;
-  onConfirm: () => void;
+  onConfirm: (coupon: AppliedCoupon | null) => void;
   onBack: () => void;
   loading: boolean;
   error: string | null;
 }) {
+  const validate = useValidateCoupon();
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  const applyCoupon = () => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    setCouponError(null);
+    validate.mutate(
+      { code: trimmed, planId: plan.id },
+      {
+        onSuccess: (res) => {
+          if (res.valid) {
+            setCoupon({ code: trimmed, discountInCents: res.discountInCents, finalAmountInCents: res.finalAmountInCents, currency: res.currency });
+          } else {
+            setCoupon(null);
+            setCouponError(res.message || "This coupon can't be used.");
+          }
+        },
+        onError: (err) => setCouponError(apiMessage(err) ?? "Could not check the coupon."),
+      },
+    );
+  };
+
+  const dueToday = coupon ? formatMoney(coupon.finalAmountInCents, coupon.currency) : formatINR(plan.priceInCents);
+
   return (
     <div className="text-center">
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -360,11 +432,61 @@ function ConfirmStep({
           <span className="text-on-surface-variant">Messages/mo</span>
           <span className="font-medium text-on-surface">{formatLimit(plan.maxMessagesPerMonth)}</span>
         </div>
+        {coupon && (
+          <div className="flex justify-between text-body-lg">
+            <span className="text-on-surface-variant">
+              Coupon <span className="font-mono">{coupon.code}</span>{" "}
+              <button
+                type="button"
+                onClick={() => { setCoupon(null); setCode(""); }}
+                disabled={loading}
+                className="text-label text-primary hover:underline"
+              >
+                Remove
+              </button>
+            </span>
+            <span className="font-medium text-success">−{formatMoney(coupon.discountInCents, coupon.currency)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-body-lg border-t border-outline-variant pt-2 mt-2">
           <span className="text-on-surface-variant">Due today</span>
-          <span className="font-semibold text-on-surface">{formatINR(plan.priceInCents)}</span>
+          <span className="font-semibold text-on-surface">{dueToday}</span>
         </div>
       </div>
+
+      {!coupon && (
+        <div className="max-w-sm mx-auto mb-6 text-left">
+          {couponOpen ? (
+            <form
+              onSubmit={(e) => { e.preventDefault(); applyCoupon(); }}
+              className="flex gap-2 items-start"
+            >
+              <Input
+                aria-label="Coupon code"
+                autoFocus
+                value={code}
+                onChange={(e) => { setCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                placeholder="Coupon code"
+                className="font-mono"
+                maxLength={40}
+                error={couponError ?? undefined}
+                disabled={loading || validate.isPending}
+              />
+              <Button type="submit" variant="secondary" loading={validate.isPending} disabled={loading || !code.trim()}>
+                Apply
+              </Button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCouponOpen(true)}
+              className="text-body-lg text-primary hover:underline"
+            >
+              Have a coupon?
+            </button>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-body-lg text-error text-left max-w-sm mx-auto">
@@ -381,8 +503,8 @@ function ConfirmStep({
           Back
         </button>
         <Button size="lg"
-          onClick={onConfirm}
-          disabled={loading}
+          onClick={() => onConfirm(coupon)}
+          disabled={loading || validate.isPending}
           className="flex-1"
         >
           {loading ? (
@@ -393,7 +515,7 @@ function ConfirmStep({
           ) : (
             <>
               <CreditCard className="w-4 h-4" />
-              Pay {formatINR(plan.priceInCents)}
+              {coupon?.finalAmountInCents === 0 ? "Activate plan" : `Pay ${dueToday}`}
             </>
           )}
         </Button>
@@ -412,6 +534,7 @@ export default function OnboardingPage() {
   const { data: plans, isLoading: plansLoading } = usePlans();
   const createOrder = useCreateOrder();
   const verifyPayment = useVerifyPayment();
+  const subscribe = useSubscribeToPlan();
 
   // Redirect to type selector if org type not yet explicitly chosen.
   // orgType defaults to "CRM" in the DB — treat "CRM" as "not yet chosen".
@@ -428,7 +551,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedPlan = plans?.find((p) => p.id === selectedPlanId) ?? null;
-  const isLoading = createOrder.isPending || verifyPayment.isPending;
+  const isLoading = createOrder.isPending || verifyPayment.isPending || subscribe.isPending;
 
   const isOnTrial = subData?.subscription?.status === "TRIAL";
   const trialDaysLeft = daysRemaining(subData?.subscription?.trialEndsAt);
@@ -439,13 +562,14 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
         <div className="w-full max-w-xl">
           <div className="text-center mb-8">
-            <span className="font-semibold text-on-surface text-title">CRM-<span className="text-primary">WA</span></span>
+            <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
           </div>
           <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
             <TrialActiveStep
               firstName={user?.firstName ?? ""}
               daysLeft={trialDaysLeft}
-              onContinue={() => router.push("/inbox")}
+              plan={subData?.subscription?.plan}
+              onContinue={() => router.push("/dashboard")}
             />
           </div>
         </div>
@@ -453,9 +577,21 @@ export default function OnboardingPage() {
     );
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (coupon: AppliedCoupon | null) => {
     if (!selectedPlanId || !selectedPlan) return;
     setError(null);
+
+    // Coupon covers the full price: no payment, subscribe directly
+    if (coupon && coupon.finalAmountInCents === 0) {
+      subscribe.mutate(
+        { planId: selectedPlanId, couponCode: coupon.code },
+        {
+          onSuccess: () => router.push("/dashboard"),
+          onError: (err) => setError(apiMessage(err) ?? "Could not activate the plan. Please try again."),
+        },
+      );
+      return;
+    }
 
     const loaded = await loadRazorpayScript();
     if (!loaded) {
@@ -463,7 +599,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    createOrder.mutate(selectedPlanId, {
+    createOrder.mutate({ planId: selectedPlanId, couponCode: coupon?.code }, {
       onSuccess: (order) => {
         const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
         const options = {
@@ -483,7 +619,7 @@ export default function OnboardingPage() {
                 idempotencyKey: `onboarding-${user?.orgId ?? ""}-${selectedPlanId}`,
               },
               {
-                onSuccess: () => router.push("/inbox"),
+                onSuccess: () => router.push("/dashboard"),
                 onError: (err: any) => {
                   setError(err?.response?.data?.message ?? "Payment verification failed. Contact support.");
                 },
@@ -516,7 +652,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="font-semibold text-on-surface text-title">CRM-<span className="text-primary">WA</span></span>
+          <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
         </div>
 
         <Steps current={step} labels={["Welcome", "Choose Plan", "Confirm"]} />
@@ -529,6 +665,8 @@ export default function OnboardingPage() {
           ) : step === 0 ? (
             <WelcomeStep
               orgName={user?.firstName ?? ""}
+              trialExpired={subData?.subscription?.status === "EXPIRED"}
+              isFreelancer={orgSettings?.orgType === "FREELANCER"}
               onNext={() => setStep(1)}
             />
           ) : step === 1 ? (

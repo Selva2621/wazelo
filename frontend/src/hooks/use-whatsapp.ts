@@ -105,6 +105,26 @@ export function useReconnectSession() {
   });
 }
 
+// ─── Send Health (account safety meter) ─────────────────
+export function useSendHealth(enabled = true) {
+  return useQuery({
+    queryKey: ["whatsapp", "send-health"],
+    queryFn: () => whatsappApi.getMySendHealth(),
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useResumeSending() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => whatsappApi.resumeMySending(),
+    onSuccess: (health) => {
+      queryClient.setQueryData(["whatsapp", "send-health"], health);
+    },
+  });
+}
+
 // ─── Admin: List Sessions ────────────────────────────────
 export function useAdminSessions(params?: {
   status?: string;
@@ -194,6 +214,10 @@ export function useWhatsAppSocket() {
 
     socket.on("whatsapp:session:reconnecting", () => {
       setStatus("reconnecting");
+    });
+
+    socket.on("whatsapp:sending:paused", () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "send-health"] });
     });
 
     return () => {

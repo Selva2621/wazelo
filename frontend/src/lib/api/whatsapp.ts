@@ -8,6 +8,8 @@ export interface WhatsAppSession {
   createdAt: string;
   userId: string;
   hasCreds?: boolean;
+  /** Why the number stopped: NETWORK | LOGGED_OUT | BANNED | REPLACED | BAD_SESSION */
+  disconnectReason?: string | null;
   user?: {
     id: string;
     firstName: string;
@@ -15,6 +17,19 @@ export interface WhatsAppSession {
     email: string;
     role: string;
   };
+}
+
+/** Send-safety snapshot for the user's own WhatsApp number */
+export interface SendHealth {
+  sessionId: string;
+  warmup: { stage: number; linkedDays: number; coldCap: number; bulkCap: number };
+  today: { bulkSent: number; coldSent: number };
+  delivery: { sampled: number; delivered: number; rate: number | null };
+  optOuts24h: number;
+  withinSendingHours: boolean;
+  sendingHours: { start: number; end: number; timeZone: string };
+  paused: { until: string; reason: string | null } | null;
+  risk: "ok" | "warning" | "paused";
 }
 
 export interface InitiateSessionResponse {
@@ -33,6 +48,16 @@ export const whatsappApi = {
 
   getMySession: async () => {
     const r = await apiClient.get<WhatsAppSession>("/whatsapp/sessions/me");
+    return r.data;
+  },
+
+  getMySendHealth: async () => {
+    const r = await apiClient.get<SendHealth | null>("/whatsapp/sessions/me/health");
+    return r.data;
+  },
+
+  resumeMySending: async () => {
+    const r = await apiClient.post<SendHealth | null>("/whatsapp/sessions/me/resume-sending");
     return r.data;
   },
 

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { SequenceRecipientStatus, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
+import {
+  SequenceRecipientStatus,
+  SequenceStatus,
+  CampaignRecipientStatus,
+  WhatsAppSessionStatus,
+} from '@prisma/client';
 
 @Injectable()
 export class SequenceRepository {
@@ -60,6 +65,39 @@ export class SequenceRepository {
     return this.prisma.campaignSequence.updateMany({
       where: { id, orgId },
       data: { status, ...extra },
+    });
+  }
+
+  /**
+   * The WhatsApp number a sequence should send from: its own if still connected,
+   * otherwise the user's connected number, then any connected number in the org.
+   * Returns null when no number in the org is connected.
+   */
+  async resolveConnectedSessionId(sessionId: string, orgId: string, userId: string): Promise<string | null> {
+    // Keep the sequence's own number unless it is actually gone (not just reconnecting)
+    const current = await this.prisma.whatsAppSession.findFirst({
+      where: { id: sessionId, orgId, deletedAt: null },
+      select: { status: true },
+    });
+    if (current && current.status !== WhatsAppSessionStatus.DISCONNECTED) return sessionId;
+
+    const candidates = await this.prisma.whatsAppSession.findMany({
+      where: { orgId, deletedAt: null, status: WhatsAppSessionStatus.CONNECTED },
+      select: { id: true, userId: true },
+      orderBy: { lastActiveAt: 'desc' },
+    });
+    return (
+      candidates.find((s) => s.id === sessionId)?.id ??
+      candidates.find((s) => s.userId === userId)?.id ??
+      candidates[0]?.id ??
+      null
+    );
+  }
+
+  async moveToSession(id: string, orgId: string, sessionId: string) {
+    return this.prisma.campaignSequence.updateMany({
+      where: { id, orgId },
+      data: { sessionId },
     });
   }
 

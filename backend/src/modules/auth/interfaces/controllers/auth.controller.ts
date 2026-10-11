@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { Public, CurrentUser, JwtPayload, Roles } from '@/common/decorators';
+import { Public, CurrentUser, JwtPayload, Roles, CsrfProtected } from '@/common/decorators';
 import {
   RegisterDto,
   LoginDto,
@@ -141,6 +141,8 @@ export class AuthController {
   }
 
   @Public()
+  // Acts on the SameSite=None refresh cookie: keep the x-requested-with check
+  @CsrfProtected()
   @Post('refresh')
   // Every page load and open tab refreshes once; 3/min logged people out on quick reloads.
   @Throttle({ default: { ttl: 60000, limit: 20 } })

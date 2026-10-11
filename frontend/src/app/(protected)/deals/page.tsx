@@ -15,7 +15,11 @@ export default function DealsPage() {
   const createPipeline = useCreatePipeline();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
 
-  const activePipeline = pipelines?.find((p) => p.id === selectedPipelineId) ?? pipelines?.[0] ?? null;
+  const activePipeline =
+    pipelines?.find((p) => p.id === selectedPipelineId) ??
+    pipelines?.find((p) => p.isDefault) ??
+    pipelines?.[0] ??
+    null;
 
   if (isLoading) {
     return (

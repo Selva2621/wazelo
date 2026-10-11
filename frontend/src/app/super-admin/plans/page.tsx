@@ -1,16 +1,19 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Package, Plus, Pencil, ToggleLeft, ToggleRight, X, Check } from "lucide-react";
-import { useSAPlans, useSACreatePlan, useSAUpdatePlan } from "@/hooks/use-super-admin";
+import { Package, Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { useSAPlans, useSACreatePlan, useSAUpdatePlan, useSAPlanLifecycle } from "@/hooks/use-super-admin";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import type { Plan, BillingCycle } from "@/lib/types/billing";
+import type { PlanEditMode, PlanUpdateResult } from "@/lib/api/super-admin";
 import { formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -69,6 +72,17 @@ const UPDATABLE_FIELDS = [
   "aiCreditsPerMonth", "aiEnabled", "maxMessageTemplates", "shopifyEnabled", "maxShopifyStores",
   "softLimitPercent", "gracePeriodDays", "sortOrder",
 ] as const satisfies readonly (keyof PlanForm)[];
+
+/**
+ * Mirrors the backend rule (super-admin plan-edit.ts): these never change what an existing
+ * subscriber gets — price and trial are locked on each subscription when it starts.
+ */
+const NEW_SIGNUPS_ONLY = new Set<string>(["name", "description", "priceInCents", "trialDays", "sortOrder"]);
+
+/** Changed fields that would alter existing subscribers' limits or features. */
+function subscriberAffectingChanges(before: PlanForm, after: PlanForm): string[] {
+  return UPDATABLE_FIELDS.filter((k) => !NEW_SIGNUPS_ONLY.has(k) && before[k] !== after[k]);
+}
 
 function toUpdatePayload(form: PlanForm): Record<string, unknown> {
   return Object.fromEntries(UPDATABLE_FIELDS.map((k) => [k, form[k]]));
@@ -306,8 +320,9 @@ function PlanFormBody({
 
         {isEdit && (
           <p id={fid("fixed-hint")} className="sm:col-span-2 text-label text-on-surface-variant">
-            Slug, billing cycle and currency can't change on an existing plan. Changes apply to new
-            subscriptions only; existing subscribers keep their locked-in price.
+            Slug, billing cycle and currency can&apos;t change on an existing plan. Existing subscribers keep
+            their locked-in price. If you change limits or features, you&apos;ll choose whether they apply to
+            existing subscribers or only to a new version.
           </p>
         )}
       </div>
@@ -325,54 +340,208 @@ function PlanFormBody({
   );
 }
 
+// ─── Edit choice ─────────────────────────────────────────────────────────────
+
+function PlanEditChoiceBody({
+  plan,
+  changedCount,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  plan: Plan;
+  changedCount: number;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: (mode: PlanEditMode) => void;
+}) {
+  const [mode, setMode] = useState<PlanEditMode>("new_version");
+  const subs = plan.liveSubscribers ?? 0;
+  const who = `${subs} subscriber${subs === 1 ? "" : "s"}`;
+  const options: { value: PlanEditMode; title: string; detail: string }[] = [
+    {
+      value: "new_version",
+      title: `Publish as v${plan.version + 1}`,
+      detail: `New sign-ups get the new limits. The ${who} on v${plan.version} keep their current limits; v${plan.version} is retired from sale.`,
+    },
+    {
+      value: "apply_to_all",
+      title: `Apply to all ${who} now`,
+      detail: "Their limits and features change immediately.",
+    },
+  ];
+
+  return (
+    <div className="p-6 space-y-4">
+      <div>
+        <h2 id="plan-choice-title" className="text-title-sm font-semibold text-on-surface">
+          {plan.name} has {who}
+        </h2>
+        <p className="text-body text-on-surface-variant mt-1">
+          You changed {changedCount} limit or feature setting{changedCount === 1 ? "" : "s"}. Existing prices stay
+          the same either way.
+        </p>
+      </div>
+      <fieldset className="space-y-2">
+        <legend className="sr-only">How to apply this change</legend>
+        {options.map((o) => (
+          <label
+            key={o.value}
+            className={`flex gap-3 rounded-lg border p-3 cursor-pointer ${
+              mode === o.value ? "border-primary bg-primary/5" : "border-outline-variant"
+            }`}
+          >
+            <input
+              type="radio"
+              name="plan-edit-mode"
+              value={o.value}
+              checked={mode === o.value}
+              onChange={() => setMode(o.value)}
+              className="mt-1 h-4 w-4 accent-primary"
+            />
+            <span>
+              <span className="block text-body-lg font-medium text-on-surface">{o.title}</span>
+              <span className="block text-body text-on-surface-variant">{o.detail}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel} disabled={loading}>Back to editing</Button>
+        <Button onClick={() => onConfirm(mode)} loading={loading}>
+          {mode === "new_version" ? "Publish new version" : "Apply to all"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminPlansPage() {
-  const { data, isLoading } = useSAPlans();
+  const { data, isLoading, isError, refetch } = useSAPlans();
   const createPlan = useSACreatePlan();
   const updatePlan = useSAUpdatePlan();
   const titleId = useId();
 
   const allPlans: Plan[] = data?.plans ?? [];
   const [showInactive, setShowInactive] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const plans = allPlans
-    .filter((p) => showInactive || p.isActive)
+    .filter((p) => (p.archivedAt ? showArchived : showInactive || p.isActive))
     .sort((a, b) => a.sortOrder - b.sortOrder);
-  const inactiveCount = allPlans.filter((p) => !p.isActive).length;
+  const inactiveCount = allPlans.filter((p) => !p.isActive && !p.archivedAt).length;
+  const archivedCount = allPlans.filter((p) => p.archivedAt).length;
+
+  const lifecycle = useSAPlanLifecycle();
+  /** Plans waiting for the archive / delete confirmation */
+  const [archiving, setArchiving] = useState<Plan | null>(null);
+  const [deleting, setDeleting] = useState<Plan | null>(null);
+  const lifecycleBusy = lifecycle.archive.isPending || lifecycle.unarchive.isPending || lifecycle.remove.isPending;
+
+  const confirmArchive = (plan: Plan) => {
+    lifecycle.archive.mutate(plan.id, {
+      onSuccess: () => toast.success(`"${plan.name}" archived.`),
+      onError: (err) => toast.error(errorMessage(err, "Could not archive the plan")),
+      onSettled: () => setArchiving(null),
+    });
+  };
+
+  const handleUnarchive = (plan: Plan) => {
+    lifecycle.unarchive.mutate(plan.id, {
+      onSuccess: () => toast.success(`"${plan.name}" unarchived. It stays inactive until you activate it.`),
+      onError: (err) => toast.error(errorMessage(err, "Could not unarchive the plan")),
+    });
+  };
+
+  const confirmDelete = (plan: Plan) => {
+    lifecycle.remove.mutate(plan.id, {
+      onSuccess: () => toast.success(`"${plan.name}" deleted.`),
+      onError: (err) => toast.error(errorMessage(err, "Could not delete the plan")),
+      onSettled: () => setDeleting(null),
+    });
+  };
 
   const [modal, setModal] = useState<{ open: boolean; editing: Plan | null }>({ open: false, editing: null });
   const [formError, setFormError] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const openCreate = () => { setFormError(null); setModal({ open: true, editing: null }); };
   const openEdit = (plan: Plan) => { setFormError(null); setModal({ open: true, editing: plan }); };
   const closeModal = () => setModal({ open: false, editing: null });
 
-  const handleSave = (form: PlanForm) => {
-    setFormError(null);
-    const onSuccess = () => {
-      setStatus({ kind: "success", text: `Plan "${form.name}" saved.` });
-      closeModal();
-    };
-    const onError = (err: unknown) => setFormError(errorMessage(err, "Could not save the plan"));
+  /** Pending edit waiting for the apply-to-all / new-version choice */
+  const [choice, setChoice] = useState<{ plan: Plan; form: PlanForm; changedCount: number } | null>(null);
 
-    if (modal.editing) {
-      updatePlan.mutate({ id: modal.editing.id, data: toUpdatePayload(form) }, { onSuccess, onError });
-    } else {
-      createPlan.mutate(toCreatePayload(form), { onSuccess, onError });
-    }
+  const submitUpdate = (plan: Plan, form: PlanForm, mode?: PlanEditMode) => {
+    updatePlan.mutate(
+      { id: plan.id, data: toUpdatePayload(form), mode },
+      {
+        onSuccess: (result: PlanUpdateResult) => {
+          const subs = plan.liveSubscribers ?? 0;
+          const text =
+            mode === "new_version"
+              ? `"${form.name}" published as v${result.plan.version}. ${subs} subscriber${subs === 1 ? "" : "s"} stay on v${plan.version}.`
+              : result.subscribersAffected > 0
+                ? `"${form.name}" saved and applied to ${result.subscribersAffected} subscriber${result.subscribersAffected === 1 ? "" : "s"}.`
+                : `Plan "${form.name}" saved.`;
+          toast.success(text);
+          setChoice(null);
+          closeModal();
+        },
+        onError: (err) => {
+          setChoice(null);
+          setFormError(errorMessage(err, "Could not save the plan"));
+        },
+      },
+    );
   };
 
-  const handleToggle = (plan: Plan) => {
-    setStatus(null);
+  const handleSave = (form: PlanForm) => {
+    setFormError(null);
+    const editing = modal.editing;
+    if (!editing) {
+      createPlan.mutate(toCreatePayload(form), {
+        onSuccess: () => {
+          toast.success(`Plan "${form.name}" saved.`);
+          closeModal();
+        },
+        onError: (err) => setFormError(errorMessage(err, "Could not save the plan")),
+      });
+      return;
+    }
+    const changed = subscriberAffectingChanges(planToForm(editing), form);
+    if ((editing.liveSubscribers ?? 0) > 0 && changed.length > 0) {
+      setChoice({ plan: editing, form, changedCount: changed.length });
+      return;
+    }
+    submitUpdate(editing, form);
+  };
+
+  /** Plan waiting for the deactivate confirmation (activating needs none) */
+  const [deactivating, setDeactivating] = useState<Plan | null>(null);
+
+  const applyToggle = (plan: Plan) => {
     updatePlan.mutate(
       { id: plan.id, data: { isActive: !plan.isActive } },
       {
-        onSuccess: () =>
-          setStatus({ kind: "success", text: `"${plan.name}" ${plan.isActive ? "deactivated" : "activated"}.` }),
-        onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not update the plan") }),
+        onSuccess: () => {
+          setDeactivating(null);
+          toast.success(`"${plan.name}" ${plan.isActive ? "deactivated" : "activated"}.`);
+        },
+        onError: (err) => {
+          setDeactivating(null);
+          toast.error(errorMessage(err, "Could not update the plan"));
+        },
       },
     );
+  };
+
+  const handleToggle = (plan: Plan) => {
+    if (plan.isActive) {
+      setDeactivating(plan);
+      return;
+    }
+    applyToggle(plan);
   };
 
   const isSaving = createPlan.isPending || updatePlan.isPending;
@@ -395,8 +564,6 @@ export default function SuperAdminPlansPage() {
         </Button>
       </div>
 
-      {status && <Alert variant={status.kind} className="mb-4">{status.text}</Alert>}
-
       <label className="mb-3 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
         <input
           type="checkbox"
@@ -406,12 +573,30 @@ export default function SuperAdminPlansPage() {
         />
         Show inactive plans ({inactiveCount})
       </label>
+      <label className="mb-3 ml-6 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showArchived}
+          onChange={(e) => setShowArchived(e.target.checked)}
+          className="h-4 w-4 rounded border-outline accent-primary"
+        />
+        Show archived ({archivedCount})
+      </label>
 
       <Card>
         {isLoading ? (
           <div className="flex items-center justify-center h-32" role="status">
             <Spinner />
             <span className="sr-only">Loading plans…</span>
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center h-32 text-body-lg text-error" role="alert">
+            <p>
+              Could not load plans.{" "}
+              <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+                Try again
+              </button>
+            </p>
           </div>
         ) : !plans.length ? (
           <div className="flex flex-col items-center justify-center h-40 text-on-surface-variant">
@@ -426,7 +611,7 @@ export default function SuperAdminPlansPage() {
               <caption className="sr-only">Subscription plans</caption>
               <thead>
                 <tr className="border-b border-outline-variant text-left">
-                  {["Plan", "Cycle", "Price", "Users", "Sessions", "Messages", "Features", "Status", "Actions"].map((h) => (
+                  {["Plan", "Cycle", "Price", "Subscribers", "Users", "Sessions", "Messages", "Features", "Status", "Actions"].map((h) => (
                     <th key={h} scope="col" className="px-4 py-3 text-label font-medium text-on-surface-variant">{h}</th>
                   ))}
                 </tr>
@@ -444,6 +629,7 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3 font-medium text-on-surface">
                       {formatMoney(plan.priceInCents, plan.currency)}
                     </td>
+                    <td className="px-4 py-3 text-on-surface-variant">{(plan.liveSubscribers ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxUsers)}</td>
                     <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxWhatsappSessions)}</td>
                     <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxMessagesPerMonth)}</td>
@@ -457,8 +643,12 @@ export default function SuperAdminPlansPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {plan.isActive ? (
+                      {plan.archivedAt ? (
+                        <Badge variant="muted" className="text-label">Archived</Badge>
+                      ) : plan.isActive ? (
                         <Badge className="text-label bg-success-container text-success border-success/30">Active</Badge>
+                      ) : (plan.liveSubscribers ?? 0) > 0 ? (
+                        <Badge variant="warning" className="text-label">Retired · grandfathered</Badge>
                       ) : (
                         <Badge variant="muted" className="text-label">Inactive</Badge>
                       )}
@@ -476,20 +666,56 @@ export default function SuperAdminPlansPage() {
                         >
                           <Pencil className="w-4 h-4" aria-hidden />
                         </IconButton>
-                        <IconButton
-                          size="sm"
-                          role="switch"
-                          aria-checked={plan.isActive}
-                          aria-label={`${plan.name} active`}
-                          disabled={updatePlan.isPending}
-                          onClick={() => handleToggle(plan)}
-                        >
-                          {plan.isActive ? (
-                            <ToggleRight className="w-4 h-4 text-success" aria-hidden />
-                          ) : (
-                            <ToggleLeft className="w-4 h-4" aria-hidden />
-                          )}
-                        </IconButton>
+                        {plan.archivedAt ? (
+                          <IconButton
+                            size="sm"
+                            onClick={() => handleUnarchive(plan)}
+                            disabled={lifecycleBusy}
+                            className="hover:text-primary-container hover:bg-primary/10"
+                            aria-label={`Unarchive ${plan.name}`}
+                            title="Unarchive"
+                          >
+                            <ArchiveRestore className="w-4 h-4" aria-hidden />
+                          </IconButton>
+                        ) : (
+                          <>
+                            <IconButton
+                              size="sm"
+                              role="switch"
+                              aria-checked={plan.isActive}
+                              aria-label={`${plan.name} active`}
+                              disabled={updatePlan.isPending}
+                              onClick={() => handleToggle(plan)}
+                            >
+                              {plan.isActive ? (
+                                <ToggleRight className="w-4 h-4 text-success" aria-hidden />
+                              ) : (
+                                <ToggleLeft className="w-4 h-4" aria-hidden />
+                              )}
+                            </IconButton>
+                            <IconButton
+                              size="sm"
+                              onClick={() => setArchiving(plan)}
+                              disabled={lifecycleBusy}
+                              aria-label={`Archive ${plan.name}`}
+                              title="Archive"
+                            >
+                              <Archive className="w-4 h-4" aria-hidden />
+                            </IconButton>
+                          </>
+                        )}
+                        {(plan.liveSubscribers ?? 0) === 0 && (
+                          <IconButton
+                            size="sm"
+                            onClick={() => setDeleting(plan)}
+                            disabled={lifecycleBusy}
+                            className="hover:text-error hover:bg-error/10"
+                            aria-label={`Delete ${plan.name}`}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden />
+                          </IconButton>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -520,6 +746,63 @@ export default function SuperAdminPlansPage() {
           />
         )}
       </Modal>
+
+      <Modal
+        open={!!choice}
+        onClose={() => setChoice(null)}
+        dismissible={!updatePlan.isPending}
+        aria-labelledby="plan-choice-title"
+        className="max-w-lg"
+      >
+        {() =>
+          choice && (
+            <PlanEditChoiceBody
+              plan={choice.plan}
+              changedCount={choice.changedCount}
+              loading={updatePlan.isPending}
+              onCancel={() => setChoice(null)}
+              onConfirm={(mode) => submitUpdate(choice.plan, choice.form, mode)}
+            />
+          )
+        }
+      </Modal>
+
+      <ConfirmDialog
+        open={!!deactivating}
+        title={`Deactivate "${deactivating?.name ?? ""}"?`}
+        message="New sign-ups won't be able to choose this plan. Existing subscribers keep it."
+        confirmLabel="Deactivate"
+        variant="warning"
+        loading={updatePlan.isPending}
+        onConfirm={() => deactivating && applyToggle(deactivating)}
+        onCancel={() => setDeactivating(null)}
+      />
+
+      <ConfirmDialog
+        open={!!archiving}
+        title={`Archive "${archiving?.name ?? ""}"?`}
+        message={
+          (archiving?.liveSubscribers ?? 0) > 0
+            ? `It comes off sale and is hidden from this list. Its ${archiving?.liveSubscribers} existing subscriber${archiving?.liveSubscribers === 1 ? "" : "s"} keep the plan and keep renewing on it.`
+            : "It comes off sale and is hidden from this list. Any existing subscribers keep the plan. You can unarchive it later."
+        }
+        confirmLabel="Archive"
+        variant="warning"
+        loading={lifecycle.archive.isPending}
+        onConfirm={() => archiving && confirmArchive(archiving)}
+        onCancel={() => setArchiving(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deleting}
+        title={`Delete "${deleting?.name ?? ""}"?`}
+        message="This permanently removes the plan. Only plans that never had a subscription can be deleted; plans with history must be archived."
+        confirmLabel="Delete plan"
+        variant="danger"
+        loading={lifecycle.remove.isPending}
+        onConfirm={() => deleting && confirmDelete(deleting)}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

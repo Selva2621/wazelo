@@ -12,6 +12,9 @@ import {
   AutomationExecutedEvent,
   AutomationFailedEvent,
   WhatsAppSessionDisconnectedEvent,
+  WhatsAppSendingPausedEvent,
+  DealFollowUpDueEvent,
+  DealScopeRespondedEvent,
   PaymentFailedEvent,
   UsageLimitReachedEvent,
   UsageSoftLimitWarningEvent,
@@ -223,6 +226,77 @@ export class NotificationEventsHandler {
 
   // ─── Critical Alerts (Admin-only) ───
 
+  @OnEvent(EVENT_NAMES.DEAL_FOLLOW_UP_DUE)
+  async handleDealFollowUpDue(event: DealFollowUpDueEvent): Promise<void> {
+    try {
+      // The deal's owner; with nobody assigned, the org's admins
+      const targetUsers = event.userId ? [event.userId] : await this.getOrgAdminsAndManagers(event.orgId);
+
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        targetUsers,
+        'DEAL_FOLLOW_UP_DUE',
+        'HIGH',
+        `Follow up with ${event.contactName}`,
+        event.note ? `${event.title} — ${event.note}` : event.title,
+        {
+          dealId: event.dealId,
+          pipelineId: event.pipelineId,
+          contactId: event.contactId,
+        },
+        `deal-follow-up:${event.dealId}:${Date.now()}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch DEAL_FOLLOW_UP_DUE notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.DEAL_SCOPE_RESPONDED)
+  async handleDealScopeResponded(event: DealScopeRespondedEvent): Promise<void> {
+    try {
+      const targetUsers = event.userId ? [event.userId] : await this.getOrgAdminsAndManagers(event.orgId);
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        targetUsers,
+        'DEAL_SCOPE_RESPONSE',
+        'HIGH',
+        event.approved
+          ? `${event.contactName} approved the scope ✅`
+          : `${event.contactName} wants changes to the scope`,
+        event.title,
+        { dealId: event.dealId, pipelineId: event.pipelineId, contactId: event.contactId, approved: event.approved },
+        `deal-scope:${event.dealId}:${Date.now()}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch DEAL_SCOPE_RESPONSE notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.WHATSAPP_SENDING_PAUSED)
+  async handleSendingPaused(event: WhatsAppSendingPausedEvent): Promise<void> {
+    try {
+      const admins = await this.getOrgAdminsAndManagers(event.orgId);
+      const targetUsers = [...new Set([...admins, event.userId])];
+
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        targetUsers,
+        'SYSTEM_ALERT',
+        'CRITICAL',
+        'Campaign sending paused to protect your WhatsApp number',
+        `${event.reason}. Campaigns and sequences on ${event.phoneNumber ?? 'this number'} are paused for 24 hours — inbox replies still work.`,
+        {
+          sessionId: event.sessionId,
+          reason: event.reason,
+          pausedUntil: event.pausedUntil,
+        },
+        `wa-sending-paused:${event.sessionId}:${event.pausedUntil}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch SENDING_PAUSED notification: ${error}`);
+    }
+  }
+
   @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED)
   async handleSessionDisconnected(
     event: WhatsAppSessionDisconnectedEvent,
@@ -237,11 +311,18 @@ export class NotificationEventsHandler {
         targetUsers,
         'WHATSAPP_SESSION_DISCONNECTED',
         'CRITICAL',
-        'WhatsApp session disconnected',
-        `WhatsApp session disconnected: ${event.reason}`,
+        event.disconnectReason === 'BANNED'
+          ? 'WhatsApp number blocked'
+          : event.disconnectReason === 'LOGGED_OUT'
+            ? 'WhatsApp number logged out'
+            : 'WhatsApp session disconnected',
+        event.disconnectReason === 'BANNED' || event.disconnectReason === 'LOGGED_OUT'
+          ? `${event.reason}. Campaigns and sequences on this number are paused — link a WhatsApp number again to resume.`
+          : `WhatsApp session disconnected: ${event.reason}`,
         {
           sessionId: event.sessionId,
           reason: event.reason,
+          disconnectReason: event.disconnectReason,
         },
         `wa-disconnected:${event.sessionId}:${Date.now()}`,
       );

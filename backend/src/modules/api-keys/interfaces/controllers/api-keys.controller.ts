@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Body, Param, ParseUUIDPipe, Req,
+  Controller, Get, Post, Delete, Body, Param, ParseUUIDPipe, Req, SetMetadata, UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { AuditAction } from '@prisma/client';
 import { ApiKeysRepository } from '../../infrastructure/repositories/api-keys.repository';
+import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces/guards/feature-flag.guard';
 
 @Controller('api-keys')
 export class ApiKeysController {
@@ -16,8 +17,11 @@ export class ApiKeysController {
     private readonly auditService: AuditService,
   ) {}
 
+  /** New keys need the API feature on the org's plan (listing and revoking stay open). */
   @Post()
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @SetMetadata(FEATURE_FLAG_KEY, 'api')
+  @UseGuards(FeatureFlagGuard)
   async createKey(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('sub') userId: string,
@@ -78,6 +82,8 @@ export class ApiKeysController {
 
   @Post(':id/rotate')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @SetMetadata(FEATURE_FLAG_KEY, 'api')
+  @UseGuards(FeatureFlagGuard)
   async rotateKey(
     @CurrentUser('orgId') orgId: string,
     @CurrentUser('sub') userId: string,

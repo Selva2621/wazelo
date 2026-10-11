@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./button";
 import { Modal } from "./modal";
@@ -13,6 +14,10 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: "danger" | "warning" | "default";
   loading?: boolean;
+  /** Disables the confirm button (e.g. until a required field is filled) */
+  confirmDisabled?: boolean;
+  /** Extra content under the message, e.g. a required reason field */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,6 +30,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   variant = "danger",
   loading = false,
+  confirmDisabled = false,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -65,6 +72,7 @@ export function ConfirmDialog({
             <p className="mt-2 text-center text-body text-on-surface-variant leading-relaxed">
               {message}
             </p>
+            {children && <div className="mt-4">{children}</div>}
           </div>
 
           {/* Actions */}
@@ -82,6 +90,7 @@ export function ConfirmDialog({
               className="flex-1"
               onClick={onConfirm}
               loading={loading}
+              disabled={confirmDisabled}
             >
               {confirmLabel}
             </Button>

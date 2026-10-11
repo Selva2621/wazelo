@@ -4,11 +4,17 @@ import {
   FREELANCER_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
 } from '@/shared/constants/system-templates';
+import { FREELANCER_PIPELINE } from '@/shared/constants/org-defaults';
 
 const ORG_ID = 'org-1';
 
 function setup(
-  overrides: { org?: Record<string, unknown> | null; hasAny?: boolean; existingTemplates?: string[] } = {},
+  overrides: {
+    org?: Record<string, unknown> | null;
+    hasAny?: boolean;
+    existingTemplates?: string[];
+    hasFreelancerPipeline?: boolean;
+  } = {},
 ) {
   const hasAny = jest.fn().mockResolvedValue(overrides.hasAny ?? false);
   const orgRepository = {
@@ -41,6 +47,8 @@ function setup(
     hasAiMemory: jest.fn().mockResolvedValue(false),
     hasAnyPipeline: hasAny,
     createDefaultPipeline: jest.fn(),
+    hasPipelineNamed: jest.fn().mockResolvedValue(overrides.hasFreelancerPipeline ?? false),
+    createPipelineAsDefault: jest.fn(),
     hasAnyTag: hasAny,
     createTags: jest.fn(),
     hasAnyCannedResponse: hasAny,
@@ -131,6 +139,24 @@ describe('OnboardOrgUseCase', () => {
     expect(rbacService.seedDefaultPermissionsForOrg).not.toHaveBeenCalled();
     expect(repo.createTags).not.toHaveBeenCalled();
     expect(repo.markOnboarded).not.toHaveBeenCalled();
+  });
+
+  it('org-type-changed to FREELANCER: adds the Client Deals pipeline as the default', async () => {
+    const { useCase, repo } = setup({ org: { orgType: OrgType.FREELANCER, onboardedAt: new Date() } });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    expect(repo.createPipelineAsDefault).toHaveBeenCalledWith(ORG_ID, FREELANCER_PIPELINE);
+  });
+
+  it('does not add the freelancer pipeline twice, or for team orgs', async () => {
+    const freelancer = setup({ org: { orgType: OrgType.FREELANCER }, hasFreelancerPipeline: true });
+    await freelancer.useCase.execute(ORG_ID, 'org-type-changed');
+    expect(freelancer.repo.createPipelineAsDefault).not.toHaveBeenCalled();
+
+    const team = setup();
+    await team.useCase.execute(ORG_ID, 'org-type-changed');
+    expect(team.repo.createPipelineAsDefault).not.toHaveBeenCalled();
   });
 
   it('does nothing when the org no longer exists', async () => {

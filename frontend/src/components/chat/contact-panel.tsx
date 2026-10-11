@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck, FileText } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { SendProposalModal } from "./send-proposal-modal";
+import { ContactDealCard } from "@/components/deals/contact-deal-card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,8 @@ interface ContactPanelProps {
   onAssign?: (assignedToId: string | null) => void;
   /** Conversation id used for quick actions like Send Proposal */
   conversationId?: string;
+  /** Put a suggested message into the chat box (user edits, then sends) */
+  onUseMessage?: (text: string) => void;
 }
 
 const LEAD_STATUSES: { value: LeadStatus; label: string; dot: string }[] = [
@@ -71,6 +74,7 @@ export function ContactPanel({
   isAssigning = false,
   onAssign,
   conversationId,
+  onUseMessage,
 }: ContactPanelProps) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -258,6 +262,9 @@ export function ContactPanel({
             </div>
           )}
         </div>
+
+        {/* Deal + next follow-up */}
+        <ContactDealCard contactId={contact.id} contactName={contact.name} onUseMessage={onUseMessage} />
 
         {/* Quick Actions */}
         {conversationId && (

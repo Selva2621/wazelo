@@ -27,6 +27,7 @@ const config = {
 } as unknown as ConfigService;
 
 const superAdminTokens = new SuperAdminTokenService(jwtService, config);
+const FAMILY = '22222222-2222-2222-2222-222222222222';
 
 const admin: SuperAdmin = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -36,6 +37,13 @@ const admin: SuperAdmin = {
   tokenVersion: 3,
   totpSecret: null,
   totpEnabled: false,
+  totpLastUsedStep: null,
+  recoveryCodes: [],
+  failedLoginAttempts: 0,
+  lockedUntil: null,
+  mustChangePassword: false,
+  disabledAt: null,
+  createdById: null,
   lastLoginAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -73,9 +81,10 @@ function tenantJwtGuard() {
   return new JwtAuthGuard(new Reflector(), tenantTokenService as any);
 }
 
-function superAdminGuard(stored: SuperAdmin | null = admin) {
+function superAdminGuard(stored: SuperAdmin | null = admin, sessionActive = true) {
   const repo = { findById: jest.fn().mockResolvedValue(stored) };
-  return new SuperAdminGuard(superAdminTokens, repo as any);
+  const sessions = { familyHasActiveSession: jest.fn().mockResolvedValue(sessionActive) };
+  return new SuperAdminGuard(superAdminTokens, repo as any, sessions as any);
 }
 
 describe('Super admin / tenant auth boundary', () => {
@@ -87,7 +96,7 @@ describe('Super admin / tenant auth boundary', () => {
     });
 
     it('rejects a super admin access token', async () => {
-      const { accessToken } = await superAdminTokens.generateAccessToken(admin);
+      const { accessToken } = await superAdminTokens.generateAccessToken(admin, FAMILY);
       const { context } = makeContext(accessToken);
       await expect(tenantJwtGuard().canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
     });
@@ -95,10 +104,27 @@ describe('Super admin / tenant auth boundary', () => {
 
   describe('super admin routes (SuperAdminGuard)', () => {
     it('accepts a current super admin access token', async () => {
-      const { accessToken } = await superAdminTokens.generateAccessToken(admin);
+      const { accessToken } = await superAdminTokens.generateAccessToken(admin, FAMILY);
       const { context, request } = makeContext(accessToken);
       await expect(superAdminGuard().canActivate(context)).resolves.toBe(true);
-      expect(request.user).toMatchObject({ sub: admin.id, isSuperAdmin: true, orgId: '' });
+      expect(request.user).toMatchObject({ sub: admin.id, isSuperAdmin: true, orgId: '', sessionFamilyId: FAMILY });
+    });
+
+    it('rejects a token whose session was signed out on that device', async () => {
+      const { accessToken } = await superAdminTokens.generateAccessToken(admin, FAMILY);
+      await expect(
+        superAdminGuard(admin, false).canActivate(makeContext(accessToken).context),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('rejects a legacy access token without a session family', async () => {
+      const legacy = await jwtService.signAsync(
+        { sub: admin.id, email: admin.email, tv: admin.tokenVersion, typ: 'access', isSuperAdmin: true },
+        { secret: SUPER_ADMIN_SECRET, expiresIn: '15m', audience: 'wazelo-platform' },
+      );
+      await expect(superAdminGuard().canActivate(makeContext(legacy).context)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
 
     it('rejects a tenant token', async () => {
@@ -107,7 +133,7 @@ describe('Super admin / tenant auth boundary', () => {
     });
 
     it('rejects a refresh or 2FA-challenge token used as an access token', async () => {
-      const refresh = await superAdminTokens.generateRefreshToken(admin);
+      const refresh = await superAdminTokens.generateRefreshToken(admin, FAMILY, '33333333-3333-3333-3333-333333333333');
       const challenge = await superAdminTokens.generateChallengeToken(admin);
       await expect(superAdminGuard().canActivate(makeContext(refresh).context)).rejects.toBeInstanceOf(
         UnauthorizedException,
@@ -118,7 +144,7 @@ describe('Super admin / tenant auth boundary', () => {
     });
 
     it('rejects a token issued before logout (tokenVersion bumped)', async () => {
-      const { accessToken } = await superAdminTokens.generateAccessToken(admin);
+      const { accessToken } = await superAdminTokens.generateAccessToken(admin, FAMILY);
       const { context } = makeContext(accessToken);
       await expect(
         superAdminGuard({ ...admin, tokenVersion: admin.tokenVersion + 1 }).canActivate(context),
@@ -126,7 +152,7 @@ describe('Super admin / tenant auth boundary', () => {
     });
 
     it('rejects a token for a deleted super admin', async () => {
-      const { accessToken } = await superAdminTokens.generateAccessToken(admin);
+      const { accessToken } = await superAdminTokens.generateAccessToken(admin, FAMILY);
       await expect(superAdminGuard(null).canActivate(makeContext(accessToken).context)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );

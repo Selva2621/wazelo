@@ -46,6 +46,16 @@ export const authConfig = registerAs('auth', () => ({
     process.env.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES || '15',
     10,
   ),
+  // Super admin portal: 2FA is mandatory unless explicitly turned off (local dev only)
+  superAdminRequire2fa: process.env.SUPER_ADMIN_REQUIRE_2FA !== 'false',
+  superAdminMaxFailedAttempts: parseInt(
+    process.env.SUPER_ADMIN_MAX_FAILED_ATTEMPTS || '5',
+    10,
+  ),
+  superAdminLockMinutes: parseInt(
+    process.env.SUPER_ADMIN_LOCK_MINUTES || '15',
+    10,
+  ),
 }));
 
 export const throttleConfig = registerAs('throttle', () => ({

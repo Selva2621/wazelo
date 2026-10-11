@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Briefcase } from "lucide-react";
+import { usePipelines, useCreateDeal } from "@/hooks/use-deals";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { LeadStatusBadge } from "@/components/contacts/lead-status-badge";
+import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
 import { useContacts, useChangeLeadStatus } from "@/hooks/use-contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import type { LeadStatus, Contact, ContactSource, ListContactsParams } from "@/lib/types/contacts";
@@ -33,10 +37,12 @@ function PipelineCard({
   contact,
   onDragStart,
   onClick,
+  onConvert,
 }: {
   contact: Contact;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onClick: (id: string) => void;
+  onConvert?: (contact: Contact) => void;
 }) {
   const meta = contact.metadata as Record<string, unknown> | null;
   const scrapeSource = meta?.scrapeSource as string | undefined;
@@ -72,6 +78,20 @@ function PipelineCard({
         )}
         <LeadStatusBadge status={contact.leadStatus} />
       </div>
+
+      {onConvert && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onConvert(contact);
+          }}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-outline-variant/20 py-1 text-caption font-medium text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <Briefcase className="h-3 w-3" />
+          Convert to deal
+        </button>
+      )}
     </div>
   );
 }
@@ -86,6 +106,7 @@ function PipelineColumn({
   onDragStart,
   onDrop,
   onCardClick,
+  onConvert,
 }: {
   status: LeadStatus;
   label: string;
@@ -94,6 +115,7 @@ function PipelineColumn({
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDrop: (e: React.DragEvent, status: LeadStatus) => void;
   onCardClick: (id: string) => void;
+  onConvert?: (contact: Contact) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const { data, isLoading } = useContacts({ ...baseFilter, leadStatus: status, take: 100 });
@@ -115,7 +137,7 @@ function PipelineColumn({
         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <span className="text-body font-semibold text-on-surface">{label}</span>
         <Badge variant="muted" className="text-caption ml-auto">
-          {isLoading ? "…" : contacts.length}
+          {isLoading ? "…" : data?.total ?? contacts.length}
         </Badge>
       </div>
 
@@ -134,6 +156,7 @@ function PipelineColumn({
               contact={c}
               onDragStart={onDragStart}
               onClick={onCardClick}
+              onConvert={onConvert}
             />
           ))
         )}
@@ -148,10 +171,33 @@ export default function LeadPipelinePage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const changeLeadStatus = useChangeLeadStatus();
   const openContactDetail = useContactsStore((s) => s.openContactDetail);
+  const closeContactDetail = useContactsStore((s) => s.closeContactDetail);
+  const selectedContactId = useContactsStore((s) => s.selectedContactId);
+  const detailDrawerOpen = useContactsStore((s) => s.detailDrawerOpen);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
     e.dataTransfer.effectAllowed = "move";
+  };
+
+  // A lead that's turning into paid work becomes a deal in the default pipeline
+  const { data: pipelines } = usePipelines();
+  const createDeal = useCreateDeal();
+  const router = useRouter();
+  const convertPipeline = pipelines?.find((p) => p.isDefault) ?? pipelines?.[0];
+  const firstStage = convertPipeline?.stages.slice().sort((a, b) => a.order - b.order)[0];
+
+  const handleConvert = (contact: Contact) => {
+    if (!convertPipeline || !firstStage || createDeal.isPending) return;
+    createDeal.mutate(
+      {
+        pipelineId: convertPipeline.id,
+        stageId: firstStage.id,
+        contactId: contact.id,
+        title: `${contact.name || contact.phoneNumber} — project`,
+      },
+      { onSuccess: () => router.push("/deals") },
+    );
   };
 
   const handleDrop = (e: React.DragEvent, targetStatus: LeadStatus) => {
@@ -187,10 +233,17 @@ export default function LeadPipelinePage() {
               onDragStart={handleDragStart}
               onDrop={handleDrop}
               onCardClick={openContactDetail}
+              onConvert={convertPipeline ? handleConvert : undefined}
             />
           ))}
         </div>
       </div>
+
+      <ContactDetailDrawer
+        contactId={selectedContactId}
+        open={detailDrawerOpen}
+        onClose={closeContactDetail}
+      />
     </div>
   );
 }

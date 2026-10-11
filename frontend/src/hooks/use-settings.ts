@@ -106,8 +106,16 @@ export function useUpdateOrgSettings() {
   return useMutation({
     mutationFn: (data: UpdateOrgSettingsRequest) =>
       settingsApi.updateOrgSettings(data),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: settingsKeys.org() });
+      // The logged-in user carries orgType too (dashboard routing, plan list);
+      // update it now instead of waiting for the next token refresh
+      if (variables.orgType) {
+        const orgType = variables.orgType;
+        useAuthStore.setState((state) =>
+          state.user ? { user: { ...state.user, orgType } } : state,
+        );
+      }
     },
   });
 }

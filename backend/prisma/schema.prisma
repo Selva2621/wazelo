@@ -197,6 +197,8 @@ enum AuditAction {
   WHATSAPP_UNAUTHORIZED_ATTEMPT
   WHATSAPP_MESSAGE_SENT
   WHATSAPP_MESSAGE_FAILED
+  WHATSAPP_BULK_SENDING_PAUSED
+  WHATSAPP_BULK_SENDING_RESUMED
 
   // Messaging Engine actions (EPIC 5)
   MESSAGE_QUEUED
@@ -517,6 +519,8 @@ model Organization {
   productCategories        ProductCategory[]
   helpTickets              HelpTicket[]
   aiMemory                 OrgAiMemory?
+  creditEntries            OrgCreditEntry[]
+  couponRedemptions        CouponRedemption[]
 
   @@index([slug])
   @@index([deletedAt])
@@ -773,6 +777,17 @@ model WhatsAppSession {
   reconnectCount  Int                   @default(0) @map("reconnect_count")
   idempotencyKey  String?               @unique @map("idempotency_key") @db.VarChar(255)
   disconnectedAt  DateTime?             @map("disconnected_at")
+  /// Last Baileys DisconnectReason status code (401, 403, 440, ...)
+  disconnectCode   Int?                 @map("disconnect_code")
+  /// Why the session stopped: LOGGED_OUT | BANNED | REPLACED | BAD_SESSION | NETWORK
+  disconnectReason String?              @map("disconnect_reason") @db.VarChar(30)
+  /// First time this number connected — drives send warm-up
+  linkedAt         DateTime?            @map("linked_at")
+  /// Bulk sending (campaigns, sequences) held until this time by the safety governor
+  sendingPausedUntil  DateTime?         @map("sending_paused_until")
+  sendingPausedReason String?           @map("sending_paused_reason") @db.VarChar(300)
+  /// Set when the user resumes early — health is judged only on data after this
+  healthResetAt       DateTime?         @map("health_reset_at")
   createdAt       DateTime              @default(now()) @map("created_at")
   updatedAt       DateTime              @updatedAt @map("updated_at")
   deletedAt       DateTime?             @map("deleted_at")
@@ -855,6 +870,9 @@ model Message {
   @@index([sessionId, contactPhone, createdAt])
   @@index([status, nextRetryAt])
   @@index([orgId, status, direction])
+  @@index([sessionId, sentAt])
+  @@index([orgId, sentAt])
+  @@index([orgId, contactPhone, direction])
   @@index([channelId])
   @@index([channelType])
   @@index([orgId, channelId, createdAt])
@@ -1719,6 +1737,9 @@ model Plan {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
+  // Archived: off sale and hidden from the admin list by default, but NOT deleted —
+  // existing subscriptions keep resolving and renewing on it
+  archivedAt DateTime? @map("archived_at")
 
   subscriptions Subscription[]
 
@@ -1814,7 +1835,8 @@ model UsageRecord {
 model Payment {
   id             String        @id @default(uuid()) @db.Uuid
   orgId          String        @map("org_id") @db.Uuid
-  subscriptionId String        @map("subscription_id") @db.Uuid
+  // Null for manual payments recorded against a manual (subscription-less) invoice
+  subscriptionId String?       @map("subscription_id") @db.Uuid
   amountInCents  Int           @map("amount_in_cents")
   currency       String        @default("USD") @db.VarChar(3)
   status         PaymentStatus @default(PENDING)
@@ -1830,9 +1852,11 @@ model Payment {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  organization Organization  @relation(fields: [orgId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
   invoice      Invoice?
+
+  refunds      PaymentRefund[]
 
   @@index([orgId])
   @@index([subscriptionId])
@@ -1850,7 +1874,8 @@ model Payment {
 model Invoice {
   id             String        @id @default(uuid()) @db.Uuid
   orgId          String        @map("org_id") @db.Uuid
-  subscriptionId String        @map("subscription_id") @db.Uuid
+  // Null for manual invoices raised by a super admin for an org without a subscription
+  subscriptionId String?       @map("subscription_id") @db.Uuid
   paymentId      String?       @unique @map("payment_id") @db.Uuid
   invoiceNumber  String        @unique @map("invoice_number") @db.VarChar(50)
   amountInCents  Int           @map("amount_in_cents")
@@ -1867,9 +1892,11 @@ model Invoice {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
-  payment      Payment?     @relation(fields: [paymentId], references: [id])
+  organization Organization  @relation(fields: [orgId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  payment      Payment?      @relation(fields: [paymentId], references: [id])
+  creditEntries     OrgCreditEntry[]
+  couponRedemptions CouponRedemption[]
 
   @@index([orgId])
   @@index([subscriptionId])
@@ -1923,6 +1950,8 @@ enum NotificationType {
   SLA_BREACH
   TICKET_REPLY
   TICKET_RESOLVED
+  DEAL_FOLLOW_UP_DUE
+  DEAL_SCOPE_RESPONSE
 }
 
 enum TicketStatus {
@@ -2888,6 +2917,20 @@ model Deal {
   aiScore       Int?       @map("ai_score")
   aiScoreReason String?    @map("ai_score_reason") @db.VarChar(500)
   aiScoredAt    DateTime?  @map("ai_scored_at")
+  /// When to follow up with the client next (one reminder per deal)
+  nextFollowUpAt     DateTime? @map("next_follow_up_at")
+  followUpNote       String?   @map("follow_up_note") @db.VarChar(500)
+  /// Set once the "follow-up due" notification went out for the current nextFollowUpAt
+  followUpNotifiedAt DateTime? @map("follow_up_notified_at")
+  /// Scope lock: the agreed scope, and the client's answer to the approval poll
+  scopeSummary       String?   @map("scope_summary") @db.Text
+  /// DRAFT | SENT | APPROVED | CHANGES_REQUESTED
+  scopeStatus        String?   @map("scope_status") @db.VarChar(20)
+  scopeSentAt        DateTime? @map("scope_sent_at")
+  scopeRespondedAt   DateTime? @map("scope_responded_at")
+  /// WhatsApp id of the approval poll, and its secret (needed to decrypt votes)
+  scopePollMessageId String?   @unique @map("scope_poll_message_id") @db.VarChar(255)
+  scopePollSecret    String?   @map("scope_poll_secret") @db.VarChar(128)
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
   deletedAt     DateTime?  @map("deleted_at")
@@ -2905,6 +2948,7 @@ model Deal {
   @@index([orgId, stageId])
   @@index([orgId, assignedToId])
   @@index([orgId, status])
+  @@index([orgId, nextFollowUpAt])
   @@map("deals")
 }
 
@@ -3290,14 +3334,72 @@ model SuperAdmin {
   // TOTP secret, AES-256-GCM encrypted; set during 2FA setup, active once totpEnabled
   totpSecret   String?       @map("totp_secret") @db.VarChar(512)
   totpEnabled  Boolean       @default(false) @map("totp_enabled")
+  // Last TOTP time step accepted — a code can never be used twice
+  totpLastUsedStep Int?      @map("totp_last_used_step")
+  // SHA-256 hex of each unused one-time recovery code
+  recoveryCodes    String[]  @default([]) @map("recovery_codes")
+  // Password and 2FA failures since the last successful login
+  failedLoginAttempts Int    @default(0) @map("failed_login_attempts")
+  lockedUntil  DateTime?     @map("locked_until")
+  // Set on accounts created with a temporary password: the next sign-in must choose a new one
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  // Disabled accounts can't sign in; all their sessions were revoked when disabled
+  disabledAt   DateTime?     @map("disabled_at")
+  createdById  String?       @map("created_by_id") @db.Uuid
   lastLoginAt  DateTime?     @map("last_login_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
   ticketReplies   TicketReply[]
   assignedTickets HelpTicket[] @relation("TicketAssignee")
+  sessions        SuperAdminSession[]
+  notifications   SuperAdminNotification[]
 
   @@map("super_admins")
+}
+
+// In-portal inbox for super admins (e.g. new ticket / customer reply).
+// Separate from Notification, whose userId is a FK to tenant users.
+model SuperAdminNotification {
+  id           String    @id @default(uuid()) @db.Uuid
+  superAdminId String    @map("super_admin_id") @db.Uuid
+  type         String    @db.VarChar(50)
+  title        String    @db.VarChar(255)
+  body         String    @db.Text
+  // Portal path to open, e.g. /super-admin/tickets/<id>
+  link         String?   @db.VarChar(500)
+  readAt       DateTime? @map("read_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([superAdminId, readAt])
+  @@index([superAdminId, createdAt])
+  @@map("super_admin_notifications")
+}
+
+// One row per issued super admin refresh token. Mirrors Session (tenant):
+// rotation keeps the familyId, and a rotated token replayed later revokes the family.
+model SuperAdminSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  superAdminId String    @map("super_admin_id") @db.Uuid
+  /// SHA-256 hex of the refresh JWT, never the token itself
+  refreshToken String    @unique @map("refresh_token") @db.VarChar(64)
+  familyId     String    @map("family_id") @db.Uuid
+  userAgent    String?   @map("user_agent") @db.VarChar(512)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  /// Set when exchanged for a new token (vs. revoked by logout)
+  rotatedAt    DateTime? @map("rotated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([superAdminId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("super_admin_sessions")
 }
 
 // ─────────────────────────────────────────────
@@ -3333,11 +3435,63 @@ enum PlatformAuditAction {
   SUBSCRIPTION_PLAN_CHANGED
   SUBSCRIPTION_TRIAL_EXTENDED
   ALERT_RULE_CREATED
+  ALERT_RULE_UPDATED
+  ALERT_RULE_DELETED
   TICKET_ASSIGNED
   ANNOUNCEMENT_CREATED
   ANNOUNCEMENT_ARCHIVED
+  ANNOUNCEMENT_RESTORED
+  JOB_RETRIED
+  SUPER_ADMIN_CREATED
+  SUPER_ADMIN_DISABLED
+  SUPER_ADMIN_ENABLED
+  SUPER_ADMIN_PASSWORD_CHANGED
+  TWO_FACTOR_RESET
+  ORG_UPDATED
+  ORG_DELETED
+  ORG_RESTORED
+  ORG_EXPORTED
+  PAYMENT_REFUND_RECORDED
   ENTITLEMENT_OVERRIDE_SET
   ENTITLEMENT_OVERRIDE_REMOVED
+  SUPER_ADMIN_LOCKED
+  SUPER_ADMIN_REFRESH_REUSED
+  SUPER_ADMIN_SESSION_REVOKED
+  TWO_FACTOR_SETUP_STARTED
+  TWO_FACTOR_RECOVERY_CODE_USED
+  TWO_FACTOR_RECOVERY_CODES_REGENERATED
+  PLAN_ARCHIVED
+  PLAN_UNARCHIVED
+  PLAN_DELETED
+  ANNOUNCEMENT_UPDATED
+  KILL_SWITCH_ON
+  KILL_SWITCH_OFF
+  CREDIT_GRANTED
+  CREDIT_REVOKED
+  INVOICE_CREATED
+  INVOICE_MARKED_PAID
+  INVOICE_VOIDED
+  COUPON_CREATED
+  COUPON_DEACTIVATED
+}
+
+// ─────────────────────────────────────────────
+// PLATFORM KILL SWITCHES (super admin only)
+// Incident OFF switch per feature (campaigns | automation | api | ai | shopify).
+// When disabled the feature is denied for every org, regardless of plan or override.
+// A missing row means the feature is on.
+// ─────────────────────────────────────────────
+
+model PlatformKillSwitch {
+  feature      String    @id @db.VarChar(50)
+  disabled     Boolean   @default(false)
+  reason       String?   @db.VarChar(500)
+  // SuperAdmin id — no FK
+  disabledById String?   @map("disabled_by_id") @db.Uuid
+  disabledAt   DateTime? @map("disabled_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("platform_kill_switches")
 }
 
 // ─────────────────────────────────────────────
@@ -3474,6 +3628,10 @@ model HelpTicket {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   closedAt      DateTime?      @map("closed_at")
+  // SLA: first visible support reply, and who spoke last (CUSTOMER | SUPPORT)
+  firstResponseAt DateTime?    @map("first_response_at")
+  lastReplyBy     String?      @map("last_reply_by") @db.VarChar(10)
+  lastReplyAt     DateTime?    @map("last_reply_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
   user         User          @relation(fields: [userId], references: [id])
@@ -3483,6 +3641,7 @@ model HelpTicket {
   @@index([orgId, status])
   @@index([status, createdAt])
   @@index([assignedToId, status])
+  @@index([lastReplyBy, status])
   @@map("help_tickets")
 }
 
@@ -3530,3 +3689,119 @@ model OrgAiMemory {
   @@map("org_ai_memories")
 }
 
+// Refunds recorded by a super admin after refunding in the gateway dashboard (Razorpay/
+// Stripe). Record-only: nothing here calls a gateway. Partial refunds are separate rows;
+// the payment turns REFUNDED once they cover its full amount.
+model PaymentRefund {
+  id               String   @id @default(uuid()) @db.Uuid
+  paymentId        String   @map("payment_id") @db.Uuid
+  orgId            String   @map("org_id") @db.Uuid
+  amountInCents    Int      @map("amount_in_cents")
+  currency         String   @db.VarChar(3)
+  reason           String   @db.VarChar(500)
+  /// The gateway's refund id (e.g. rfnd_...), for reconciliation
+  externalRefundId String?  @map("external_refund_id") @db.VarChar(255)
+  /// SuperAdmin id
+  createdById      String   @map("created_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@index([orgId])
+  @@map("payment_refunds")
+}
+
+// ─────────────────────────────────────────────
+// ACCOUNT CREDITS (super admin grants, applied at renewal)
+// Append-only ledger. Balance = sum(amountInCents) per org + currency.
+// ─────────────────────────────────────────────
+
+enum CreditEntryKind {
+  GRANT
+  APPLIED
+  REVOKED
+}
+
+model OrgCreditEntry {
+  id             String          @id @default(uuid()) @db.Uuid
+  orgId          String          @map("org_id") @db.Uuid
+  currency       String          @db.VarChar(3)
+  // Minor units, signed: + GRANT, − APPLIED / REVOKED
+  amountInCents  Int             @map("amount_in_cents")
+  kind           CreditEntryKind
+  reason         String          @db.VarChar(500)
+  invoiceId      String?         @map("invoice_id") @db.Uuid
+  // Makes an application idempotent (e.g. one APPLIED entry per renewal)
+  idempotencyKey String?         @unique @map("idempotency_key") @db.VarChar(255)
+  // SuperAdmin id — no FK; null for system entries
+  createdById    String?         @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  invoice      Invoice?     @relation(fields: [invoiceId], references: [id])
+
+  @@index([orgId, currency])
+  @@index([orgId, createdAt])
+  @@index([invoiceId])
+  @@map("org_credit_entries")
+}
+
+// ─────────────────────────────────────────────
+// COUPONS (super admin managed, redeemed at checkout)
+// ─────────────────────────────────────────────
+
+enum CouponKind {
+  PERCENT
+  FIXED
+}
+
+model Coupon {
+  id               String     @id @default(uuid()) @db.Uuid
+  // Uppercase A-Z 0-9 _ -, 3-40 chars
+  code             String     @unique @db.VarChar(40)
+  kind             CouponKind
+  // PERCENT only, 1-100
+  percentOff       Int?       @map("percent_off")
+  // FIXED only — minor units in `currency`
+  amountOffInCents Int?       @map("amount_off_in_cents")
+  currency         String?    @db.VarChar(3)
+  // Null = unlimited
+  maxRedemptions   Int?       @map("max_redemptions")
+  redemptionCount  Int        @default(0) @map("redemption_count")
+  validFrom        DateTime?  @map("valid_from")
+  validUntil       DateTime?  @map("valid_until")
+  // Empty = all plans
+  appliesToPlanIds String[]   @default([]) @map("applies_to_plan_ids") @db.Uuid
+  firstPaymentOnly Boolean    @default(true) @map("first_payment_only")
+  active           Boolean    @default(true)
+  // SuperAdmin id — no FK
+  createdById      String     @map("created_by_id") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  redemptions CouponRedemption[]
+
+  @@index([active])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id              String   @id @default(uuid()) @db.Uuid
+  couponId        String   @map("coupon_id") @db.Uuid
+  orgId           String   @map("org_id") @db.Uuid
+  subscriptionId  String?  @map("subscription_id") @db.Uuid
+  invoiceId       String?  @map("invoice_id") @db.Uuid
+  discountInCents Int      @map("discount_in_cents")
+  currency        String   @db.VarChar(3)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  coupon       Coupon       @relation(fields: [couponId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
+  invoice      Invoice?     @relation(fields: [invoiceId], references: [id])
+
+  // One redemption per org per coupon
+  @@unique([couponId, orgId])
+  @@index([orgId])
+  @@map("coupon_redemptions")
+}

@@ -656,6 +656,7 @@ export function InboxView({
               }
             }}
             conversationId={selectedId ?? undefined}
+            onUseMessage={setAiSuggestionText}
           />
         </div>
       )}

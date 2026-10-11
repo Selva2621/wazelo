@@ -15,9 +15,12 @@ import { MessageEventRepository } from './infrastructure/repositories/message-ev
 import { DeadLetterRepository } from './infrastructure/repositories/dead-letter.repository';
 import { CannedResponseRepository } from './infrastructure/repositories/canned-response.repository';
 import { TemplateRepository } from './infrastructure/repositories/template.repository';
+import { BaileysSentMessageLookup } from './infrastructure/baileys-sent-message-lookup';
 
 // Domain services
 import { RateLimiterService } from './domain/services/rate-limiter.service';
+import { SendPacerService } from './domain/services/send-pacer.service';
+import { AccountSafetyService } from './domain/services/account-safety.service';
 import { MessageEncryptionService } from './domain/services/message-encryption.service';
 
 // Use cases
@@ -52,11 +55,14 @@ import { TemplatesController } from './interfaces/controllers/templates.controll
     ConversationRepository,
     MessageEventRepository,
     DeadLetterRepository,
+    BaileysSentMessageLookup,
 
     // Domain services
     EncryptionService,
     MessageEncryptionService,
     RateLimiterService,
+    SendPacerService,
+    AccountSafetyService,
 
     // Use cases
     SendMessageUseCase,
@@ -82,6 +88,8 @@ import { TemplatesController } from './interfaces/controllers/templates.controll
     MessageEventRepository,
     DeadLetterRepository,
     RateLimiterService,
+    SendPacerService,
+    AccountSafetyService,
     MessageEncryptionService,
     OutboundMessageService,
   ],

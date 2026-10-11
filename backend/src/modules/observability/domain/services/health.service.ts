@@ -23,6 +23,20 @@ export interface SystemHealth {
   };
 }
 
+const QUEUE_STATS_WINDOW_HOURS = 24;
+
+export interface QueueStatus {
+  /** Same as `waiting`; kept for existing consumers */
+  depth: number;
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  /** The period `completed` and `failed` cover */
+  windowHours: number;
+  status: 'healthy' | 'warning' | 'critical';
+}
+
 export interface ComponentHealth {
   status: 'up' | 'down' | 'degraded';
   latency?: number;
@@ -92,20 +106,23 @@ export class HealthService {
   }
 
   /**
-   * Get detailed queue status for each queue.
+   * Per-queue job counts (waiting, active, and completed/failed over the last 24h)
+   * plus a status from the waiting depth. Every known queue is listed, even when idle.
    */
-  async getQueueStatus(): Promise<Record<string, { depth: number; status: string }>> {
-    const depths = await this.getQueueDepths();
-    const result: Record<string, { depth: number; status: string }> = {};
+  async getQueueStatus(): Promise<Record<string, QueueStatus>> {
+    const names = Object.values(QUEUE_NAMES) as string[];
+    const stats = await this.queueService.getJobStats(names, QUEUE_STATS_WINDOW_HOURS);
+    const result: Record<string, QueueStatus> = {};
 
-    for (const [name, depth] of Object.entries(depths)) {
-      let status = 'healthy';
-      if (depth >= OBSERVABILITY_CONFIG.QUEUE_DEPTH_CRITICAL) {
+    for (const name of names) {
+      const s = stats[name] ?? { waiting: 0, active: 0, completed: 0, failed: 0 };
+      let status: QueueStatus['status'] = 'healthy';
+      if (s.waiting >= OBSERVABILITY_CONFIG.QUEUE_DEPTH_CRITICAL) {
         status = 'critical';
-      } else if (depth >= OBSERVABILITY_CONFIG.QUEUE_DEPTH_WARNING) {
+      } else if (s.waiting >= OBSERVABILITY_CONFIG.QUEUE_DEPTH_WARNING) {
         status = 'warning';
       }
-      result[name] = { depth, status };
+      result[name] = { ...s, depth: s.waiting, windowHours: QUEUE_STATS_WINDOW_HOURS, status };
     }
 
     return result;

@@ -19,6 +19,7 @@ import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { UsageMetricType } from '@prisma/client';
 import { TemplateRepository } from '../../infrastructure/repositories/template.repository';
 import { SyncTemplatesUseCase } from '../../application/use-cases/sync-templates.use-case';
@@ -153,6 +154,7 @@ export class TemplatesController {
 
   @Post('generate')
   @Permissions(PERMISSIONS.MESSAGES_SEND)
+  @PlatformFeature('ai')
   async generate(
     @CurrentUser() user: JwtPayload,
     @Body() dto: GenerateTemplateDto,

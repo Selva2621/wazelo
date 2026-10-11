@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { UsageRecord, UsageMetricType } from '@prisma/client';
+import { Prisma, UsageRecord, UsageMetricType } from '@prisma/client';
 
 @Injectable()
 export class UsageRepository {
@@ -80,40 +80,44 @@ export class UsageRepository {
     });
   }
 
+  /** @param tx run inside the caller's transaction instead of opening one */
   async resetUsageForOrg(
     orgId: string,
     newPeriodStart: Date,
     newPeriodEnd: Date,
     limits: Record<UsageMetricType, number>,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
     const metricTypes = Object.values(UsageMetricType);
-
-    // Create new usage records for the new period
-    await this.prisma.$transaction(
-      metricTypes.map((metricType) =>
-        this.prisma.usageRecord.upsert({
-          where: {
-            unique_usage_per_org_metric_period: {
-              orgId,
-              metricType,
-              periodStart: newPeriodStart,
-            },
-          },
-          update: {
-            limitValue: limits[metricType] ?? 0,
-            periodEnd: newPeriodEnd,
-          },
-          create: {
+    const upsert = (db: Prisma.TransactionClient, metricType: UsageMetricType) =>
+      db.usageRecord.upsert({
+        where: {
+          unique_usage_per_org_metric_period: {
             orgId,
             metricType,
             periodStart: newPeriodStart,
-            periodEnd: newPeriodEnd,
-            currentValue: 0,
-            limitValue: limits[metricType] ?? 0,
           },
-        }),
-      ),
-    );
+        },
+        update: {
+          limitValue: limits[metricType] ?? 0,
+          periodEnd: newPeriodEnd,
+        },
+        create: {
+          orgId,
+          metricType,
+          periodStart: newPeriodStart,
+          periodEnd: newPeriodEnd,
+          currentValue: 0,
+          limitValue: limits[metricType] ?? 0,
+        },
+      });
+
+    if (tx) {
+      for (const metricType of metricTypes) await upsert(tx, metricType);
+      return;
+    }
+    // Create new usage records for the new period
+    await this.prisma.$transaction(metricTypes.map((metricType) => upsert(this.prisma, metricType)));
   }
 
   /**

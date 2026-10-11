@@ -7,19 +7,26 @@ import {
 import { JwtPayload } from '@/common/decorators/current-user.decorator';
 import { SuperAdminTokenService } from '../../domain/services/super-admin-token.service';
 import { SuperAdminRepository } from '../../infrastructure/repositories/super-admin.repository';
+import { SuperAdminSessionRepository } from '../../infrastructure/repositories/super-admin-session.repository';
+
+/** request.user on super admin routes; `sessionFamilyId` identifies the current device. */
+export interface SuperAdminRequestUser extends JwtPayload {
+  sessionFamilyId: string;
+}
 
 /**
  * Authenticates super admin routes. Attached via `@SuperAdminOnly()`.
  *
  * Accepts only access tokens signed with the super admin secret, carrying the
- * platform audience, whose tokenVersion still matches the account — so logout
- * revokes every outstanding token immediately.
+ * platform audience, whose tokenVersion still matches the account (sign out
+ * everywhere) and whose session family is still active (per-device sign out).
  */
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   constructor(
     private readonly tokenService: SuperAdminTokenService,
     private readonly superAdminRepo: SuperAdminRepository,
+    private readonly sessionRepo: SuperAdminSessionRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -32,18 +39,23 @@ export class SuperAdminGuard implements CanActivate {
     }
 
     const payload = await this.tokenService.verify(token, 'access');
+    const familyId = payload.fid as string;
 
-    const superAdmin = await this.superAdminRepo.findById(payload.sub);
-    if (!superAdmin || superAdmin.tokenVersion !== payload.tv) {
+    const [superAdmin, sessionActive] = await Promise.all([
+      this.superAdminRepo.findById(payload.sub),
+      this.sessionRepo.familyHasActiveSession(familyId),
+    ]);
+    if (!superAdmin || superAdmin.disabledAt || superAdmin.tokenVersion !== payload.tv || !sessionActive) {
       throw new UnauthorizedException('Session revoked');
     }
 
-    const user: JwtPayload = {
+    const user: SuperAdminRequestUser = {
       sub: superAdmin.id,
       email: superAdmin.email,
       orgId: '',
       role: '',
       isSuperAdmin: true,
+      sessionFamilyId: familyId,
     };
     request.user = user;
     return true;
