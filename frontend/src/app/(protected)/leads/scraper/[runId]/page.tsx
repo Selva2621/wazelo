@@ -6,8 +6,9 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
   Phone, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, ChevronDown,
+  Filter, X, ChevronDown, Rocket,
 } from "lucide-react";
+import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
 import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "@/hooks/use-lead-scraper";
 import { useQuery } from "@tanstack/react-query";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
@@ -191,7 +192,7 @@ function FilterBar({
           options={[
             { value: "all", label: "Imported: All" },
             { value: "no", label: "Not imported" },
-            { value: "yes", label: "Imported ✓" },
+            { value: "yes", label: "Imported" },
           ]}
         />
 
@@ -226,10 +227,10 @@ function FilterBar({
           onChange={(v) => onChange({ minRating: Number(v) })}
           options={[
             { value: "0", label: "Rating: Any" },
-            { value: "3", label: "⭐ 3.0+" },
-            { value: "3.5", label: "⭐ 3.5+" },
-            { value: "4", label: "⭐ 4.0+" },
-            { value: "4.5", label: "⭐ 4.5+" },
+            { value: "3", label: "Rating 3.0+" },
+            { value: "3.5", label: "Rating 3.5+" },
+            { value: "4", label: "Rating 4.0+" },
+            { value: "4.5", label: "Rating 4.5+" },
           ]}
         />
 
@@ -282,6 +283,14 @@ function FilterBar({
 }
 
 // ─── Result table row ─────────────────────────────────────────────────────────
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="truncate text-caption text-on-surface-variant">
+      <span className="text-on-surface-variant/60">{label}:</span> {value}
+    </span>
+  );
+}
 
 function ResultRow({
   result, selected, onToggle, waStatus,
@@ -416,19 +425,19 @@ function ResultRow({
             <p className="text-caption text-on-surface-variant line-clamp-2">{result.description}</p>
           )}
           {result.openingHours && (
-            <span className="text-caption text-on-surface-variant">🕐 {result.openingHours}</span>
+            <DetailLine label="Hours" value={result.openingHours} />
           )}
           {result.email && (
-            <span className="text-caption text-on-surface-variant truncate">✉️ {result.email}</span>
+            <DetailLine label="Email" value={result.email} />
           )}
           {result.budget && (
-            <span className="text-caption text-on-surface-variant">💰 {result.budget}</span>
+            <DetailLine label="Budget" value={result.budget} />
           )}
           {result.jobTitle && (
-            <span className="text-caption text-on-surface-variant">🧑‍💼 {result.jobTitle}</span>
+            <DetailLine label="Role" value={result.jobTitle} />
           )}
           {result.company && (
-            <span className="text-caption text-on-surface-variant">🏢 {result.company}</span>
+            <DetailLine label="Company" value={result.company} />
           )}
           {result.skills && result.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -441,7 +450,7 @@ function ResultRow({
           {result.socialLinks && result.socialLinks.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               {result.socialLinks.map((url) => {
-                const domain = url.includes("facebook") ? "FB" : url.includes("instagram") ? "IG" : url.includes("linkedin") ? "LI" : url.includes("youtube") ? "YT" : "🔗";
+                const domain = url.includes("facebook") ? "FB" : url.includes("instagram") ? "IG" : url.includes("linkedin") ? "LI" : url.includes("youtube") ? "YT" : "Link";
                 return (
                   <a key={url} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                     className="text-caption text-primary hover:underline">{domain}</a>
@@ -480,6 +489,7 @@ export default function ScrapeRunResultsPage() {
   const { runId } = useParams<{ runId: string }>();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pitchOpen, setPitchOpen] = useState(false);
+  const [outreachOpen, setOutreachOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
 
   const updateFilters = (patch: Partial<ActiveFilters>) =>
@@ -762,6 +772,16 @@ export default function ScrapeRunResultsPage() {
                     </Button>
                   )}
 
+                  {run && run.importedCount > 0 && (
+                    <Button
+                      onClick={() => setOutreachOpen(true)}
+                      title="Automatic first message + follow-ups to this run's imported leads"
+                    >
+                      <Rocket className="w-4 h-4" />
+                      Start outreach ({run.importedCount})
+                    </Button>
+                  )}
+
                   <Button variant="secondary"
                     onClick={exportCsv}
                    
@@ -850,6 +870,14 @@ export default function ScrapeRunResultsPage() {
       )}
 
       {/* Pitch template modal */}
+      {run && (
+        <StartOutreachModal
+          open={outreachOpen}
+          onClose={() => setOutreachOpen(false)}
+          run={{ id: run.id, keywords: run.keywords, location: run.location, importedCount: run.importedCount }}
+        />
+      )}
+
       <PitchTemplateModal
         open={pitchOpen}
         onClose={() => setPitchOpen(false)}

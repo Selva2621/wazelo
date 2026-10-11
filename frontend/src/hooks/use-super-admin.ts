@@ -168,6 +168,21 @@ export function useSAOrg(id: string) {
   return useQuery({ queryKey: saKeys.org(id), queryFn: () => superAdminApi.getOrg(id), enabled: !!id });
 }
 
+const platformSettingsKey = ["sa", "platform-settings"] as const;
+
+/** Platform-wide settings (Settings page). */
+export function useSAPlatformSettings() {
+  return useQuery({ queryKey: platformSettingsKey, queryFn: superAdminApi.getPlatformSettings });
+}
+
+export function useSAUpdatePlatformSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: superAdminApi.updatePlatformSettings,
+    onSuccess: (data) => qc.setQueryData(platformSettingsKey, data),
+  });
+}
+
 const killSwitchesKey = ["sa", "kill-switches"] as const;
 
 /** Platform kill switches (System page + dashboard banner). Polled so the banner stays current. */

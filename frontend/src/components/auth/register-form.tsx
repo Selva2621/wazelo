@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { ContinueWithGoogle } from "@/components/auth/continue-with-google";
 
 export function RegisterForm() {
   const [success, setSuccess] = useState(false);
@@ -94,6 +95,8 @@ export function RegisterForm() {
           <Alert variant="error">{errorMessage}</Alert>
         </div>
       )}
+
+      <ContinueWithGoogle intent="signup" />
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

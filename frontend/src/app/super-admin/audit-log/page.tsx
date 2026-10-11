@@ -57,6 +57,7 @@ const ACTIONS: Record<string, string> = {
   INVOICE_VOIDED: "Invoice voided",
   COUPON_CREATED: "Coupon created",
   COUPON_DEACTIVATED: "Coupon deactivated",
+  PLATFORM_SETTING_CHANGED: "Platform setting changed",
 };
 
 /** Humanises an action the map doesn't know yet (e.g. after a backend release). */

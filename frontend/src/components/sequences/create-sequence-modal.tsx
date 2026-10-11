@@ -5,6 +5,9 @@ import { X, Plus, Trash2, Clock, ArrowDown, GripVertical, GitBranch, Filter } fr
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useProducts } from "@/hooks/use-products";
+import { useScrapeRuns } from "@/hooks/use-lead-scraper";
+import { OUTREACH_STEPS, getOutreachSteps, hasOutreachBlanks } from "@/lib/constants/outreach";
+import { useOrgSettings } from "@/hooks/use-settings";
 import type { CreateSequenceRequest, CreateSequenceStepRequest, StepCondition } from "@/lib/types/sequences";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
@@ -20,8 +23,14 @@ interface CreateSequenceModalProps {
 
 const SEQUENCE_PRESETS = [
   {
+    label: "Scraped lead outreach",
+    name: "Scraped lead outreach",
+    description: "First contact with leads from the lead scraper",
+    exitOnReply: true,
+    steps: OUTREACH_STEPS.map((s) => ({ ...s, messageType: "TEXT" })),
+  },
+  {
     label: "Welcome Series",
-    icon: "👋",
     name: "Welcome Series",
     description: "Onboard new contacts with a warm welcome sequence",
     exitOnReply: true,
@@ -33,7 +42,6 @@ const SEQUENCE_PRESETS = [
   },
   {
     label: "Follow-up Series",
-    icon: "📞",
     name: "Follow-up Series",
     description: "Follow up after a conversation or meeting",
     exitOnReply: true,
@@ -45,7 +53,6 @@ const SEQUENCE_PRESETS = [
   },
   {
     label: "Re-engagement",
-    icon: "🔄",
     name: "Re-engagement Campaign",
     description: "Win back inactive contacts",
     exitOnReply: true,
@@ -85,14 +92,20 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [exitOnReply, setExitOnReply] = useState(true);
-  const [audienceType, setAudienceType] = useState<"ALL" | "FILTERED">("ALL");
+  // SCRAPED is a UI choice — it's sent as FILTERED with a scrape-run filter
+  const [audienceType, setAudienceType] = useState<"ALL" | "FILTERED" | "SCRAPED">("ALL");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [scrapeRunId, setScrapeRunId] = useState("");
+  const [onlyNewLeads, setOnlyNewLeads] = useState(true);
+  const { data: scrapeRunsData } = useScrapeRuns({ take: 50 });
+  const scrapeRuns = (scrapeRunsData?.runs ?? []).filter((r) => r.status === "COMPLETED" && r.importedCount > 0);
   const [steps, setSteps] = useState<(CreateSequenceStepRequest & { _key: number; conditions?: StepCondition[] })[]>([
     { _key: 0, messageType: "TEXT", messageBody: "", delayMinutes: 0 },
     { _key: 1, messageType: "TEXT", messageBody: "", delayMinutes: 1440 },
   ]);
 
   const { data: products } = useProducts();
+  const { data: orgSettings } = useOrgSettings();
   let nextKey = steps.length;
 
   const addStep = () => {
@@ -125,7 +138,20 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
     updateStep(stepIndex, "conditions", conditions.length > 0 ? conditions : undefined);
   };
 
-  const canSubmit = name.trim() && steps.length > 0 && steps.every((s) => s.messageBody?.trim());
+  const hasBlanks = steps.some((s) => hasOutreachBlanks(s.messageBody ?? ""));
+  const canSubmit =
+    name.trim() &&
+    steps.length > 0 &&
+    steps.every((s) => s.messageBody?.trim()) &&
+    !hasBlanks &&
+    (audienceType !== "SCRAPED" || !!scrapeRunId);
+
+  const audienceFilters =
+    audienceType === "SCRAPED"
+      ? { scrapeRunId, ...(onlyNewLeads && { leadStatuses: ["NEW"] }) }
+      : audienceType === "FILTERED" && selectedProductIds.length > 0
+        ? { productIds: selectedProductIds }
+        : undefined;
 
   const handleSubmit = () => {
     if (!canSubmit || submitting) return;
@@ -133,10 +159,8 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
       name: name.trim(),
       description: description.trim() || undefined,
       sessionId,
-      audienceType,
-      audienceFilters: audienceType === "FILTERED" && selectedProductIds.length > 0
-        ? { productIds: selectedProductIds }
-        : undefined,
+      audienceType: audienceType === "SCRAPED" ? "FILTERED" : audienceType,
+      audienceFilters,
       exitOnReply,
       steps: steps.map((s) => ({
         messageType: s.messageType || "TEXT",
@@ -165,7 +189,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
             <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
               Quick Start
             </label>
-            <div className="flex gap-2 mt-1.5">
+            <div className="flex flex-wrap gap-2 mt-1.5">
               {SEQUENCE_PRESETS.map((preset) => (
                 <Button variant="secondary" size="sm"
                   key={preset.label}
@@ -174,11 +198,15 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                     setName(preset.name);
                     setDescription(preset.description);
                     setExitOnReply(preset.exitOnReply);
-                    setSteps(preset.steps.map((s, i) => ({ ...s, _key: i })));
+                    // The outreach preset is written for the freelancer's line of work
+                    const presetSteps =
+                      preset.label === "Scraped lead outreach"
+                        ? getOutreachSteps(orgSettings?.freelancerType, orgSettings?.freelancerService).map((s) => ({ ...s, messageType: "TEXT" }))
+                        : preset.steps;
+                    setSteps(presetSteps.map((s, i) => ({ ...s, _key: i })));
                   }}
                   className="hover:bg-primary/5 hover:border-primary/30"
                 >
-                  <span>{preset.icon}</span>
                   {preset.label}
                 </Button>
               ))}
@@ -254,7 +282,56 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
               >
                 Filtered by Product
               </button>
+              <button
+                type="button"
+                onClick={() => setAudienceType("SCRAPED")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-label border transition-colors",
+                  audienceType === "SCRAPED"
+                    ? "bg-primary text-on-primary border-primary"
+                    : "bg-surface border-outline-variant/20 text-on-surface hover:bg-surface-container",
+                )}
+              >
+                Scraped leads
+              </button>
             </div>
+
+            {audienceType === "SCRAPED" && (
+              <div className="space-y-2 pl-2 border-l-2 border-primary/30">
+                {scrapeRuns.length === 0 ? (
+                  <p className="text-caption text-on-surface-variant/60">
+                    No scrape runs with imported leads yet. Import leads from the Lead Scraper first.
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      value={scrapeRunId}
+                      onChange={(e) => setScrapeRunId(e.target.value)}
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface px-2.5 py-1.5 text-label text-on-surface focus:border-primary focus:outline-none"
+                    >
+                      <option value="">Choose a scrape run…</option>
+                      {scrapeRuns.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.keywords}{r.location ? ` – ${r.location}` : ""} ({r.importedCount} imported)
+                        </option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={onlyNewLeads}
+                        onChange={(e) => setOnlyNewLeads(e.target.checked)}
+                        className="rounded border-outline-variant/30 text-primary focus:ring-primary"
+                      />
+                      <span className="text-label text-on-surface">Only leads not contacted yet</span>
+                    </label>
+                    <p className="text-caption text-on-surface-variant/60">
+                      New contacts are capped per day to protect your WhatsApp number — the rest go out on the following days.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {audienceType === "FILTERED" && products && products.length > 0 && (
               <div className="space-y-1.5 pl-2 border-l-2 border-primary/30">

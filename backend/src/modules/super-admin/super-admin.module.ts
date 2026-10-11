@@ -4,6 +4,13 @@ import { ConfigModule } from '@nestjs/config';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { ObservabilityModule } from '@/modules/observability/observability.module';
 import { EncryptionService } from '@/common/services/encryption.service';
+import { PlatformSettingsModule } from '@/modules/platform-settings/platform-settings.module';
+import { GoogleOAuthModule } from '@/infrastructure/external/google/google-oauth.module';
+import {
+  GetPlatformSettingsUseCase,
+  UpdatePlatformSettingsUseCase,
+} from './application/use-cases/platform-settings.use-cases';
+import { SuperAdminSettingsController } from './interfaces/controllers/super-admin-settings.controller';
 
 // Repositories
 import { SuperAdminRepository } from './infrastructure/repositories/super-admin.repository';
@@ -148,7 +155,7 @@ import { ManualInvoiceRepository } from './infrastructure/repositories/manual-in
 import { SuperAdminBillingOpsController } from './interfaces/controllers/super-admin-billing-ops.controller';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule],
+  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule],
   controllers: [
     SuperAdminAuthController,
     SuperAdminAccountsController,
@@ -163,6 +170,7 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     SuperAdminAnnouncementsController,
     AnnouncementsController,
     SuperAdminNotificationsController,
+    SuperAdminSettingsController,
   ],
   providers: [
     // Repositories
@@ -268,6 +276,8 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     ListSuperAdminNotificationsUseCase,
     MarkSuperAdminNotificationReadUseCase,
     MarkAllSuperAdminNotificationsReadUseCase,
+    GetPlatformSettingsUseCase,
+    UpdatePlatformSettingsUseCase,
     // Guards
     SuperAdminGuard,
   ],

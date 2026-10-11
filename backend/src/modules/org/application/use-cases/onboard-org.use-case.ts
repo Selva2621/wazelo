@@ -13,10 +13,10 @@ import {
   DEFAULT_TAGS,
 } from '@/shared/constants/org-defaults';
 import {
-  FREELANCER_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
   SystemTemplate,
 } from '@/shared/constants/system-templates';
+import { buildFreelancerTemplates } from '@/shared/constants/freelancer-profiles';
 
 /**
  * - signup           — new org: full onboarding including the free trial
@@ -57,7 +57,7 @@ export class OnboardOrgUseCase {
     }
 
     if (mode === 'org-type-changed') {
-      await this.seedSystemTemplates(orgId, org.orgType);
+      await this.seedSystemTemplates(orgId, org.orgType, org.freelancerType, org.freelancerService);
       await this.seedFreelancerPipeline(orgId, org.orgType);
       return;
     }
@@ -78,7 +78,7 @@ export class OnboardOrgUseCase {
     await this.seedFreelancerPipeline(orgId, org.orgType);
     await this.seedTags(orgId);
     await this.seedLeadScoringRules(orgId);
-    await this.seedSystemTemplates(orgId, org.orgType);
+    await this.seedSystemTemplates(orgId, org.orgType, org.freelancerType, org.freelancerService);
 
     const adminId = await this.onboardingRepository.findFirstAdminId(orgId);
     if (adminId) {
@@ -158,10 +158,16 @@ export class OnboardOrgUseCase {
     await this.onboardingRepository.createSlaPolicies(orgId, adminId, timezone, DEFAULT_SLA_POLICIES);
   }
 
-  private async seedSystemTemplates(orgId: string, orgType: OrgType): Promise<void> {
+  private async seedSystemTemplates(
+    orgId: string,
+    orgType: OrgType,
+    freelancerType?: string | null,
+    freelancerService?: string | null,
+  ): Promise<void> {
     const templates: SystemTemplate[] = [
       ...SHOPIFY_SYSTEM_TEMPLATES,
-      ...(orgType === OrgType.FREELANCER ? FREELANCER_SYSTEM_TEMPLATES : []),
+      // Worded for their line of work (service filled in, plus pitch templates)
+      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerType, freelancerService) : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(

@@ -96,6 +96,7 @@ import type {
   IntegrationProvider,
   WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
+import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
 import type {
   NotificationType,
   NotificationPreference,
@@ -262,6 +263,9 @@ function OrganizationSection() {
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+  const [freelancerType, setFreelancerType] = useState("");
+  const [freelancerService, setFreelancerService] = useState("");
+  const isFreelancer = data?.orgType === "FREELANCER";
 
   useEffect(() => {
     if (data) {
@@ -271,11 +275,25 @@ function OrganizationSection() {
       setIndustry(data.industry ?? "");
       setDescription(data.description ?? "");
       setWebsite(data.website ?? "");
+      setFreelancerType(data.freelancerType ?? "");
+      setFreelancerService(data.freelancerService ?? "");
     }
   }, [data]);
 
   const handleSave = () => {
-    const payload: UpdateOrgSettingsRequest = { name, timezone, language, industry, description, website };
+    const payload: UpdateOrgSettingsRequest = {
+      name,
+      timezone,
+      language,
+      industry,
+      description,
+      website,
+      // Choosing what they do adds the matching pitch templates (existing ones are kept)
+      ...(isFreelancer && freelancerType && {
+        freelancerType,
+        freelancerService: freelancerType === "OTHER" ? freelancerService.trim() : "",
+      }),
+    };
     updateMutation.mutate(payload);
   };
 
@@ -349,6 +367,38 @@ function OrganizationSection() {
             Business Profile
           </p>
           <div className="space-y-4">
+            {isFreelancer && (
+              <div className="space-y-1.5">
+                <label className="text-label font-medium text-on-surface-variant">
+                  What do you do?
+                </label>
+                <select
+                  value={freelancerType}
+                  onChange={(e) => setFreelancerType(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Choose your line of work…</option>
+                  {FREELANCER_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {freelancerType === "OTHER" && (
+                  <input
+                    type="text"
+                    value={freelancerService}
+                    onChange={(e) => setFreelancerService(e.target.value)}
+                    placeholder="Your service, e.g. interior design"
+                    maxLength={120}
+                    className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                <p className="text-caption text-on-surface-variant/60">
+                  Adds message templates and outreach written for your work. Templates you already have are not changed.
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 Industry

@@ -18,7 +18,7 @@ const GHOST_STYLE: Record<GhostLevel, { label: string; dot: string; text: string
 const SCOPE_LABEL: Record<ScopeStatus, { label: string; className: string }> = {
   DRAFT: { label: "Draft", className: "bg-surface-container-high text-on-surface-variant" },
   SENT: { label: "Waiting for client", className: "bg-warning-container text-warning" },
-  APPROVED: { label: "Approved ✅", className: "bg-success-container text-success" },
+  APPROVED: { label: "Approved", className: "bg-success-container text-success" },
   CHANGES_REQUESTED: { label: "Changes requested", className: "bg-error-container text-error" },
 };
 
@@ -81,7 +81,7 @@ function TrustRow({ guard }: { guard: DealGuard }) {
         <ul className="mt-2 space-y-1.5">
           {trust.flags.map((flag) => (
             <li key={flag.label} className="text-label">
-              <span className="font-medium text-error">⚠ {flag.label}</span>
+              <span className="font-medium text-error">{flag.label}</span>
               <span className="block truncate text-on-surface-variant" title={flag.excerpt}>
                 “{flag.excerpt}”
               </span>

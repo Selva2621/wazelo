@@ -79,7 +79,7 @@ export class EmailService {
         Confirm your email address
       </h1>
       <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">
-        Hi <strong>${firstName}</strong>, welcome to Wazelo CRM! 🎉
+        Hi <strong>${firstName}</strong>, welcome to Wazelo CRM.
       </p>
       <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;">
         You're one step away from your WhatsApp CRM. Click below to verify your email and activate your account.
@@ -136,11 +136,11 @@ export class EmailService {
     const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
     const orgText   = orgName ? ` to <strong>${orgName}</strong>` : '';
     const featuresByRole: Record<string, string> = {
-      ADMIN:    '✓ Full account management &nbsp; ✓ Billing &amp; settings &nbsp; ✓ All team features',
-      MANAGER:  '✓ Team management &nbsp; ✓ Campaigns &nbsp; ✓ Reports &amp; analytics',
-      EMPLOYEE: '✓ Shared inbox &nbsp; ✓ Contact management &nbsp; ✓ Conversations',
+      ADMIN:    'Full account management &nbsp;·&nbsp; Billing &amp; settings &nbsp;·&nbsp; All team features',
+      MANAGER:  'Team management &nbsp;·&nbsp; Campaigns &nbsp;·&nbsp; Reports &amp; analytics',
+      EMPLOYEE: 'Shared inbox &nbsp;·&nbsp; Contact management &nbsp;·&nbsp; Conversations',
     };
-    const features = featuresByRole[role] ?? '✓ Access to Wazelo CRM workspace';
+    const features = featuresByRole[role] ?? 'Access to your Wazelo CRM workspace';
 
     const body = `
       <h1 style="margin:0 0 12px;font-size:24px;font-weight:700;color:#111827;line-height:1.3;">

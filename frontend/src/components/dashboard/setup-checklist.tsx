@@ -121,7 +121,7 @@ export function SetupChecklist() {
             ))}
             {pending.length === 0 && (
               <p className="px-4 text-body text-on-surface-variant/50">
-                All done! 🎉
+                All set.
               </p>
             )}
           </div>

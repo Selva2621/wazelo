@@ -8,6 +8,23 @@ import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
 
 /**
+ * Fill {{name}} / {{phone}} / {{email}} (and contact.* forms) for one recipient.
+ * A contact without a name gets "there" so "Hi {{name}}" still reads naturally.
+ */
+export function fillContactPlaceholders(
+  body: string,
+  contact: { name: string | null; phoneNumber: string; email: string | null } | null,
+): string {
+  const firstName = contact?.name?.trim().split(/\s+/)[0];
+  const values: Record<string, string> = {
+    name: firstName || 'there',
+    phone: contact?.phoneNumber ?? '',
+    email: contact?.email ?? '',
+  };
+  return body.replace(/\{\{\s*(?:contact\.)?(name|phone|email)\s*\}\}/g, (_, key: string) => values[key]);
+}
+
+/**
  * Periodic worker that checks for sequence recipients whose next step is due,
  * creates the message, and advances them to the next step.
  */
@@ -131,6 +148,10 @@ export class SequenceStepWorker implements OnModuleInit {
       where: { orgId, deletedAt: null, optedOut: true, phoneNumber: { in: [digits, `+${digits}`] } },
       select: { id: true },
     });
+    const contact = await this.prisma.contact.findUnique({
+      where: { id: recipient.contactId },
+      select: { name: true, phoneNumber: true, email: true },
+    });
     if (optedOut) {
       await this.sequenceRepo.exitRecipient(recipientId, 'Contact opted out');
       await this.sequenceRepo.updateSequenceCounters(sequenceId);
@@ -145,7 +166,7 @@ export class SequenceStepWorker implements OnModuleInit {
         direction: MessageDirection.OUTBOUND,
         type: (step.messageType as MessageType) || MessageType.TEXT,
         contactPhone: recipient.contactPhone,
-        body: step.messageBody ?? undefined,
+        body: step.messageBody ? fillContactPlaceholders(step.messageBody, contact) : undefined,
         mediaUrl: step.mediaUrl ?? undefined,
         mediaMimeType: step.mediaMimeType ?? undefined,
         idempotencyKey: `seq-${sequenceId}-${recipientId}-step-${step.stepOrder}`,

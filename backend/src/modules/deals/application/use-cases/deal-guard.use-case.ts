@@ -24,7 +24,7 @@ import {
 } from '../../domain/services/deal-guard.policy';
 
 /** The two answers on a scope-approval poll. Their text is hashed into votes — don't change it. */
-export const SCOPE_POLL_OPTIONS = ['✅ Approve', '✏️ Need changes'] as const;
+export const SCOPE_POLL_OPTIONS = ['Approve', 'Request changes'] as const;
 const SCOPE_POLL_QUESTION = 'Do you approve the scope above?';
 
 export type ScopeStatus = 'DRAFT' | 'SENT' | 'APPROVED' | 'CHANGES_REQUESTED';
@@ -196,7 +196,7 @@ export class DealGuardUseCase implements OnModuleInit {
     }
 
     const phone = deal.contact.phoneNumber;
-    const scopeText = `📋 *Scope — ${deal.title}*\n\n${deal.scopeSummary.trim()}`;
+    const scopeText = `*Project scope: ${deal.title}*\n\n${deal.scopeSummary.trim()}`;
     const secret = randomBytes(32);
 
     const textResult = await this.whatsappApi.sendTextMessage(session.id, phone, scopeText);
@@ -221,7 +221,7 @@ export class DealGuardUseCase implements OnModuleInit {
     const conversation = await this.conversationRepo.findOrCreate({ orgId, sessionId: session.id, contactPhone: phone });
     for (const [body, sent] of [
       [scopeText, textResult],
-      [`📊 ${SCOPE_POLL_QUESTION}\n${SCOPE_POLL_OPTIONS.join(' / ')}`, pollResult],
+      [`Poll: ${SCOPE_POLL_QUESTION}\n${SCOPE_POLL_OPTIONS.join(' / ')}`, pollResult],
     ] as const) {
       const message = await this.messageRepo.create({
         orgId,
@@ -235,7 +235,7 @@ export class DealGuardUseCase implements OnModuleInit {
       });
       await this.messageRepo.setWhatsAppMessageId(message.id, sent.whatsappMessageId);
     }
-    await this.conversationRepo.updateLastMessage(conversation.id, `📊 ${SCOPE_POLL_QUESTION}`, false);
+    await this.conversationRepo.updateLastMessage(conversation.id, `Poll: ${SCOPE_POLL_QUESTION}`, false);
 
     return this.getGuard(orgId, dealId);
   }

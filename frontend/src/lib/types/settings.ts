@@ -13,6 +13,10 @@ export interface OrgSettings {
   description?: string;
   website?: string;
   orgType?: OrgType;
+  /** For freelancers: WEB_DEVELOPER, DESIGNER, DIGITAL_MARKETER, VIDEO_PHOTO, CONTENT_WRITER or OTHER */
+  freelancerType?: string | null;
+  /** Their own description of the service, when freelancerType is OTHER */
+  freelancerService?: string | null;
   brandColors?: {
     primary?: string;
     secondary?: string;
@@ -29,6 +33,8 @@ export interface UpdateOrgSettingsRequest {
   description?: string;
   website?: string;
   orgType?: OrgType;
+  freelancerType?: string;
+  freelancerService?: string;
   brandColors?: {
     primary?: string;
     secondary?: string;

@@ -6,7 +6,7 @@ import axios, {
 import { toast } from "sonner";
 import type { ApiResponse, ApiErrorResponse } from "@/lib/types/api";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 export class ApiError extends Error {
@@ -107,6 +107,7 @@ const NO_REFRESH_PATHS = [
   "/auth/resend-verification",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/providers",
 ];
 
 // Response interceptor: unwrap envelope + handle 401 refresh

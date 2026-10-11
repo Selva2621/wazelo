@@ -243,6 +243,30 @@ export interface KillSwitch {
   updatedAt: string | null;
 }
 
+/** Platform-wide settings (Super Admin → Settings) */
+export interface PlatformSettings {
+  /** New users may sign up with "Continue with Google" */
+  googleSignupEnabled: boolean;
+  google: {
+    clientId: string | null;
+    /** A client secret is stored (the secret itself is never returned) */
+    clientSecretSet: boolean;
+    redirectUri: string | null;
+    /** Client ID, secret and redirect URI are all set */
+    configured: boolean;
+    /** The backend's own callback URL, to paste into Google Cloud Console */
+    suggestedRedirectUri: string;
+  };
+}
+
+export interface UpdatePlatformSettingsBody {
+  googleSignupEnabled?: boolean;
+  googleClientId?: string;
+  /** Write-only: "" keeps the stored secret, null removes it */
+  googleClientSecret?: string | null;
+  googleRedirectUri?: string;
+}
+
 export const superAdminApi = {
   login: (email: string, password: string) =>
     superAdminClient
@@ -406,6 +430,12 @@ export const superAdminApi = {
 
   getOrg: (id: string) =>
     superAdminClient.get<any>(`/super-admin/organizations/${id}`).then((r) => r.data.data),
+
+  getPlatformSettings: () =>
+    superAdminClient.get<{ data: PlatformSettings }>("/super-admin/settings").then((r) => r.data.data),
+
+  updatePlatformSettings: (body: UpdatePlatformSettingsBody) =>
+    superAdminClient.patch<{ data: PlatformSettings }>("/super-admin/settings", body).then((r) => r.data.data),
 
   listKillSwitches: () =>
     superAdminClient

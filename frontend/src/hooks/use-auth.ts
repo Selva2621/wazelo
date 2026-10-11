@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
@@ -27,6 +27,16 @@ export function useLogin() {
       // Go straight to the right dashboard instead of bouncing through /dashboard
       router.push(data.user.orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard");
     },
+  });
+}
+
+/** External sign-in options for the auth pages. Hidden (not an error) when the call fails. */
+export function useAuthProviders() {
+  return useQuery({
+    queryKey: ["auth", "providers"],
+    queryFn: authApi.getProviders,
+    staleTime: 60_000,
+    retry: 1,
   });
 }
 

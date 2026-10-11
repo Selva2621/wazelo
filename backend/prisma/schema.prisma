@@ -174,6 +174,8 @@ enum AuditAction {
   SESSION_REVOKED
   TOKEN_REFRESHED
   REFRESH_TOKEN_REUSED
+  // A Google (SSO) identity was linked to an existing account
+  AUTH_IDENTITY_LINKED
 
   // Org/User management actions (EPIC 2)
   USER_INVITED
@@ -446,6 +448,10 @@ model Organization {
   slug      String    @unique @db.VarChar(255)
   timezone    String    @default("UTC") @db.VarChar(100)
   orgType     OrgType   @default(CRM) @map("org_type")
+  /// For FREELANCER orgs: what they do (WEB_DEVELOPER, DESIGNER, …) — shapes default templates
+  freelancerType    String? @map("freelancer_type") @db.VarChar(30)
+  /// Free-text service when freelancerType is OTHER
+  freelancerService String? @map("freelancer_service") @db.VarChar(120)
   branding    Json?     @db.JsonB
   industry    String?   @db.VarChar(100)
   description String?   @db.VarChar(2000)
@@ -571,6 +577,7 @@ model User {
   helpTickets             HelpTicket[]
   ticketReplies           TicketReply[]            @relation("TicketReplyUser")
   scrapeRuns              ScrapeRun[]              @relation("ScrapeRunCreatedBy")
+  identities              UserIdentity[]
 
   @@unique([email, deletedAt], name: "unique_email_active")
   @@index([orgId])
@@ -579,6 +586,28 @@ model User {
   @@index([deletedAt])
   @@index([orgId, role, deletedAt])
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// USER IDENTITY (external sign-in: "Continue with Google")
+// ─────────────────────────────────────────────
+
+model UserIdentity {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  /// e.g. "google"
+  provider       String   @db.VarChar(20)
+  /// The provider's stable account id (Google `sub`), never the email
+  providerUserId String   @map("provider_user_id") @db.VarChar(255)
+  /// Email the provider reported when the identity was linked (informational)
+  email          String   @db.VarChar(320)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_identities")
 }
 
 // ─────────────────────────────────────────────
@@ -3473,6 +3502,7 @@ enum PlatformAuditAction {
   INVOICE_VOIDED
   COUPON_CREATED
   COUPON_DEACTIVATED
+  PLATFORM_SETTING_CHANGED
 }
 
 // ─────────────────────────────────────────────
@@ -3492,6 +3522,18 @@ model PlatformKillSwitch {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("platform_kill_switches")
+}
+
+// Platform-wide settings changed from the super admin portal, e.g.
+// "auth.googleSignupEnabled" → boolean. A missing row means the default.
+model PlatformSetting {
+  key         String   @id @db.VarChar(100)
+  value       Json     @db.JsonB
+  // SuperAdmin id — no FK
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
 }
 
 // ─────────────────────────────────────────────

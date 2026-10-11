@@ -12,8 +12,46 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  ArrayMinSize,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class OutreachStepDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4096)
+  messageBody: string;
+
+  /** Wait after the previous step (first step: 0 = send right away) */
+  @IsInt()
+  @Min(0)
+  @Max(60 * 24 * 30)
+  delayMinutes: number;
+}
+
+/** One-click outreach to a scrape run's imported leads */
+export class StartOutreachDto {
+  @IsUUID()
+  scrapeRunId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => OutreachStepDto)
+  steps: OutreachStepDto[];
+
+  /** Only leads still in NEW status (default true) */
+  @IsOptional()
+  @IsBoolean()
+  onlyNew?: boolean;
+}
 
 export class StepConditionDto {
   @IsString()

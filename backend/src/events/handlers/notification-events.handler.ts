@@ -261,7 +261,7 @@ export class NotificationEventsHandler {
         'DEAL_SCOPE_RESPONSE',
         'HIGH',
         event.approved
-          ? `${event.contactName} approved the scope ✅`
+          ? `${event.contactName} approved the scope`
           : `${event.contactName} wants changes to the scope`,
         event.title,
         { dealId: event.dealId, pipelineId: event.pipelineId, contactId: event.contactId, approved: event.approved },

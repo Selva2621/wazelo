@@ -73,13 +73,15 @@ export class SequenceRepository {
    * otherwise the user's connected number, then any connected number in the org.
    * Returns null when no number in the org is connected.
    */
-  async resolveConnectedSessionId(sessionId: string, orgId: string, userId: string): Promise<string | null> {
+  async resolveConnectedSessionId(sessionId: string | null, orgId: string, userId: string): Promise<string | null> {
     // Keep the sequence's own number unless it is actually gone (not just reconnecting)
-    const current = await this.prisma.whatsAppSession.findFirst({
-      where: { id: sessionId, orgId, deletedAt: null },
-      select: { status: true },
-    });
-    if (current && current.status !== WhatsAppSessionStatus.DISCONNECTED) return sessionId;
+    if (sessionId) {
+      const current = await this.prisma.whatsAppSession.findFirst({
+        where: { id: sessionId, orgId, deletedAt: null },
+        select: { status: true },
+      });
+      if (current && current.status !== WhatsAppSessionStatus.DISCONNECTED) return sessionId;
+    }
 
     const candidates = await this.prisma.whatsAppSession.findMany({
       where: { orgId, deletedAt: null, status: WhatsAppSessionStatus.CONNECTED },

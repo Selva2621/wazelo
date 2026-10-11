@@ -8,6 +8,10 @@ const publicPaths = [
   "/auth/reset-password",
 ];
 
+// Session hand-off after "Continue with Google": reachable with or without a session hint
+// (it creates the session, and must not be bounced to /dashboard by a stale hint).
+const sessionHandoffPaths = ["/auth/google/complete"];
+
 const superAdminPublicPaths = ["/super-admin/login"];
 
 export function proxy(request: NextRequest) {
@@ -28,6 +32,8 @@ export function proxy(request: NextRequest) {
     }
     return NextResponse.next();
   }
+
+  if (sessionHandoffPaths.includes(pathname)) return NextResponse.next();
 
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),

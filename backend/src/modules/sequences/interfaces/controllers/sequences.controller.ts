@@ -19,12 +19,13 @@ import { AudienceResolverService } from '@/modules/campaigns/domain/services/aud
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES } from '@/common/constants';
-import { SequenceStatus } from '@prisma/client';
+import { CampaignAudienceType, SequenceStatus } from '@prisma/client';
 import {
   CreateSequenceDto,
   UpdateSequenceDto,
   AddSequenceStepDto,
   UpdateSequenceStepDto,
+  StartOutreachDto,
 } from '../../application/dto';
 import { CreateSequenceTemplateDto, UpdateSequenceTemplateDto } from '../../application/dto/sequence-template.dto';
 import { SequenceTemplateRepository } from '../../infrastructure/repositories/sequence-template.repository';
@@ -253,6 +254,67 @@ export class SequencesController {
     if (!seq) throw new NotFoundException('Sequence not found');
     if (seq.status !== 'DRAFT') throw new BadRequestException('Only DRAFT sequences can be started');
     if (!seq.steps.length) throw new BadRequestException('Sequence must have at least one step');
+
+    return this.enrollAndActivate(seq, orgId);
+  }
+
+  /**
+   * One click from the lead scraper: create an outreach sequence for a scrape
+   * run's imported leads and start it. Sends ride the bulk lane, so the
+   * new-contact daily cap, sending hours and pacing all apply.
+   */
+  @Post('outreach')
+  @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
+  async startOutreach(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: StartOutreachDto,
+  ) {
+    const sessionId = await this.repo.resolveConnectedSessionId(null, orgId, userId);
+    if (!sessionId) throw new BadRequestException('Connect WhatsApp first');
+
+    const sequence = await this.repo.create({
+      orgId,
+      sessionId,
+      name: dto.name,
+      description: 'Outreach to scraped leads',
+      audienceType: CampaignAudienceType.FILTERED,
+      audienceFilters: {
+        scrapeRunId: dto.scrapeRunId,
+        // Only leads nobody has talked to yet
+        ...(dto.onlyNew !== false && { leadStatuses: ['NEW'] }),
+      },
+      exitOnReply: true,
+      createdById: userId,
+    });
+
+    for (let i = 0; i < dto.steps.length; i++) {
+      await this.repo.addStep({
+        sequenceId: sequence.id,
+        orgId,
+        stepOrder: i,
+        name: `Step ${i + 1}`,
+        messageType: 'TEXT',
+        messageBody: dto.steps[i].messageBody,
+        delayMinutes: dto.steps[i].delayMinutes,
+      });
+    }
+
+    const created = await this.repo.findByIdAndOrg(sequence.id, orgId);
+    try {
+      return await this.enrollAndActivate(created!, orgId);
+    } catch (error) {
+      // Nobody to message — don't leave an empty draft behind
+      await this.repo.softDelete(sequence.id, orgId);
+      throw error;
+    }
+  }
+
+  private async enrollAndActivate(
+    seq: NonNullable<Awaited<ReturnType<SequenceRepository['findByIdAndOrg']>>>,
+    orgId: string,
+  ) {
+    const id = seq.id;
 
     // Resolve audience
     const audience = await this.audienceResolver.resolveAudience(

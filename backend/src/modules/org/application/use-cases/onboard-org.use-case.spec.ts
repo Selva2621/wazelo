@@ -5,6 +5,7 @@ import {
   SHOPIFY_SYSTEM_TEMPLATES,
 } from '@/shared/constants/system-templates';
 import { FREELANCER_PIPELINE } from '@/shared/constants/org-defaults';
+import { buildFreelancerTemplates } from '@/shared/constants/freelancer-profiles';
 
 const ORG_ID = 'org-1';
 
@@ -135,10 +136,33 @@ describe('OnboardOrgUseCase', () => {
 
     await useCase.execute(ORG_ID, 'org-type-changed');
 
-    expect(repo.createSystemTemplates).toHaveBeenCalledWith(ORG_ID, FREELANCER_SYSTEM_TEMPLATES);
+    expect(repo.createSystemTemplates).toHaveBeenCalledWith(ORG_ID, buildFreelancerTemplates(undefined));
     expect(rbacService.seedDefaultPermissionsForOrg).not.toHaveBeenCalled();
     expect(repo.createTags).not.toHaveBeenCalled();
     expect(repo.markOnboarded).not.toHaveBeenCalled();
+  });
+
+  it('words the freelancer templates for their line of work', async () => {
+    const { useCase, repo } = setup({
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerType: 'WEB_DEVELOPER' },
+      existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
+    });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string; body: string }[];
+    const intro = seeded.find((t) => t.name === 'freelancer_lead_intro')!;
+    expect(intro.body).toContain('website and app development');
+    expect(intro.body).not.toContain('{{lead.service}}');
+    expect(seeded.map((t) => t.name)).toEqual(
+      expect.arrayContaining(['pitch_intro', 'pitch_portfolio', 'pitch_followup', 'pitch_packages']),
+    );
+    expect(seeded.find((t) => t.name === 'pitch_packages')!.body).toContain('website packages');
+  });
+
+  it('uses the typed-in service for OTHER', () => {
+    const intro = buildFreelancerTemplates('OTHER', 'interior design').find((t) => t.name === 'freelancer_lead_intro')!;
+    expect(intro.body).toContain('interior design');
   });
 
   it('org-type-changed to FREELANCER: adds the Client Deals pipeline as the default', async () => {

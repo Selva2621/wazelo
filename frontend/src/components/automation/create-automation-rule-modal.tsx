@@ -101,7 +101,7 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
           <textarea
             {...register(`actions.${idx}.actionConfig.messageBody` as any)}
             rows={4}
-            placeholder={"Hi {{contact.name}}, your order {{shopify.order_name}} for ₹{{shopify.total_price}} is confirmed! 🎉"}
+            placeholder={"Hi {{contact.name}}, your order {{shopify.order_name}} for ₹{{shopify.total_price}} is confirmed."}
             className={`${inputCls} resize-none`}
           />
           {/* Variable chips */}

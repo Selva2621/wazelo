@@ -74,7 +74,7 @@ function PipelineCard({
           </span>
         )}
         {rating != null && (
-          <span className="text-caption text-warning font-medium">★ {rating.toFixed(1)}</span>
+          <span className="text-caption text-on-surface-variant font-medium">Rating {rating.toFixed(1)}</span>
         )}
         <LeadStatusBadge status={contact.leadStatus} />
       </div>

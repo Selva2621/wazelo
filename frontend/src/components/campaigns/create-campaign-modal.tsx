@@ -622,10 +622,10 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                           onChange={(v) => setValue("audienceFilters", { ...audienceFilters, minRating: v ? Number(v) : undefined })}
                         >
                           <option value="">Rating: Any</option>
-                          <option value="3">⭐ 3.0+</option>
-                          <option value="3.5">⭐ 3.5+</option>
-                          <option value="4">⭐ 4.0+</option>
-                          <option value="4.5">⭐ 4.5+</option>
+                          <option value="3">Rating 3.0+</option>
+                          <option value="3.5">Rating 3.5+</option>
+                          <option value="4">Rating 4.0+</option>
+                          <option value="4.5">Rating 4.5+</option>
                         </FilterSelect>
                       )}
                     </div>

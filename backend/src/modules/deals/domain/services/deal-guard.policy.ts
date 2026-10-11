@@ -75,7 +75,7 @@ export function evaluateGhostRadar(input: {
 export function nudgeFor(stageName: string, firstName: string): string {
   const stage = stageName.toLowerCase();
   if (stage.includes('proposal') || stage.includes('quote')) {
-    return `Hi ${firstName}, did you get a chance to look at the proposal? Happy to adjust anything or jump on a quick call 🙂`;
+    return `Hi ${firstName}, did you get a chance to look at the proposal? Happy to adjust anything or jump on a quick call.`;
   }
   if (stage.includes('call') || stage.includes('discovery')) {
     return `Hi ${firstName}, shall we fix a time for a quick call this week? Let me know what suits you.`;
@@ -86,7 +86,7 @@ export function nudgeFor(stageName: string, firstName: string): string {
   if (stage.includes('advance')) {
     return `Hi ${firstName}, once the advance is in, I can start right away. Sharing the payment details again if needed!`;
   }
-  return `Hi ${firstName}, just following up — let me know if you have any questions 🙂`;
+  return `Hi ${firstName}, just following up. Let me know if you have any questions.`;
 }
 
 function ago(now: Date, then: Date): string {

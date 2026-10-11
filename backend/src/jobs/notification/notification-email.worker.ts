@@ -72,8 +72,8 @@ export class NotificationEmailWorker implements OnModuleInit {
     firstName: string,
     data?: Record<string, unknown>,
   ): { subject: string; html: string } {
-    const priorityEmoji = priority === 'CRITICAL' ? '🚨 ' : priority === 'HIGH' ? '⚠️ ' : '';
-    const subject = `${priorityEmoji}${title} — Wazelo CRM`;
+    const priorityPrefix = priority === 'CRITICAL' ? '[Urgent] ' : priority === 'HIGH' ? '[Important] ' : '';
+    const subject = `${priorityPrefix}${title} — Wazelo CRM`;
 
     const priorityBanner =
       priority === 'CRITICAL'
