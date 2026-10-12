@@ -153,13 +153,13 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   if (!sessionChecked && refreshFailed) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-surface p-4 text-center">
-        <p className="text-sm text-on-surface-variant">
+        <p className="text-body text-on-surface-variant">
           Couldn&apos;t reach the server to restore your session.
         </p>
         <button
           type="button"
           onClick={() => setRefreshAttempt((n) => n + 1)}
-          className="rounded-md border border-outline-variant px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container"
+          className="rounded-lg border border-outline-variant px-4 py-2 text-body font-medium text-on-surface hover:bg-surface-container"
         >
           Retry
         </button>

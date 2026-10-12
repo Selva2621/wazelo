@@ -1,5 +1,7 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { ApiKeysRepository } from '../../infrastructure/repositories/api-keys.repository';
+import { API_KEY_RESOURCE_KEY, type ApiKeyResource } from './api-key-scope.decorator';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { orgSuspendedException } from '@/modules/org/interfaces/guards/org-status.guard';
 
@@ -12,6 +14,7 @@ export class ApiKeyGuard implements CanActivate {
   constructor(
     private readonly repo: ApiKeysRepository,
     private readonly orgStatus: OrgStatusService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -30,6 +33,20 @@ export class ApiKeyGuard implements CanActivate {
     // The global OrgStatusGuard runs before the key is resolved, so check here too
     if (await this.orgStatus.isSuspended(keyData.orgId)) {
       throw orgSuspendedException();
+    }
+
+    // Scopes: read for GET, write for anything that changes data, plus the
+    // endpoint's resource scope (messages / contacts) when it declares one
+    const accessScope = request.method === 'GET' ? 'read' : 'write';
+    if (!keyData.scopes.includes(accessScope)) {
+      throw new ForbiddenException(`This API key needs the '${accessScope}' scope`);
+    }
+    const resource = this.reflector.getAllAndOverride<ApiKeyResource | undefined>(
+      API_KEY_RESOURCE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (resource && !keyData.scopes.includes(resource)) {
+      throw new ForbiddenException(`This API key needs the '${resource}' scope`);
     }
 
     // Attach org context to request (similar to JWT auth)

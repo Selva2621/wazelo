@@ -102,10 +102,11 @@ export function Drawer({
   side = "right",
   children,
   ...aria
-}: OverlayProps & { side?: "left" | "right" }) {
+}: OverlayProps & { side?: "left" | "right" | "bottom" }) {
   const reduceMotion = useReducedMotion();
   useEscape(open && dismissible, onClose);
-  const offscreen = side === "right" ? "100%" : "-100%";
+  const isBottom = side === "bottom";
+  const offscreen = isBottom ? { y: "100%" } : { x: side === "right" ? "100%" : "-100%" };
 
   return (
     <AnimatePresence propagate>
@@ -122,17 +123,18 @@ export function Drawer({
             aria-modal="true"
             {...aria}
             className={cn(
-              "absolute top-0 flex h-full w-full flex-col bg-surface-container-lowest shadow-modal",
-              side === "right" ? "right-0 border-l" : "left-0 border-r",
-              "border-outline-variant",
+              "absolute flex w-full flex-col bg-surface-container-lowest shadow-modal border-outline-variant",
+              isBottom
+                ? "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl border-t"
+                : cn("top-0 h-full", side === "right" ? "right-0 border-l" : "left-0 border-r"),
               className,
             )}
-            initial={reduceMotion ? { opacity: 0 } : { x: offscreen }}
-            animate={{ x: 0, opacity: 1, transition: { duration: motionTokens.duration.slow * 1.25, ease: motionTokens.easing.standard } }}
+            initial={reduceMotion ? { opacity: 0 } : offscreen}
+            animate={{ x: 0, y: 0, opacity: 1, transition: { duration: motionTokens.duration.slow * 1.25, ease: motionTokens.easing.standard } }}
             exit={
               reduceMotion
                 ? { opacity: 0, transition: { duration: motionTokens.duration.fast } }
-                : { x: offscreen, transition: { duration: motionTokens.duration.base, ease: motionTokens.easing.exit } }
+                : { ...offscreen, transition: { duration: motionTokens.duration.base, ease: motionTokens.easing.exit } }
             }
           >
             {children()}

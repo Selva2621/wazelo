@@ -1,10 +1,10 @@
 export interface DeveloperDashboardStats {
   totalMessages: number;
-  messagesSentThisMonth: number;
-  messagesLimit: number;
+  /** Messages sent in the current billing period */
   messagesUsed: number;
+  /** null when the plan has no message cap */
+  messagesLimit: number | null;
   totalContacts: number;
-  activeWebhooks: number;
   activeSessions: number;
   activeApiKeys: number;
 }
@@ -23,13 +23,18 @@ export interface DeveloperApiKey {
   createdBy?: { id: string; firstName: string; lastName: string };
 }
 
-export interface DeveloperMessageLog {
+/** One Developer API request, from Settings → API Logs. */
+export interface DeveloperApiRequestLog {
   id: string;
-  contactPhone: string;
-  type: string;
-  status: string;
-  body?: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  errorMessage: string | null;
+  ipAddress: string | null;
   createdAt: string;
+  apiKeyName: string | null;
+  apiKeyPrefix: string | null;
 }
 
 export interface PaginatedResponse<T> {

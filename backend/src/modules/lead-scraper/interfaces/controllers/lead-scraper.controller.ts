@@ -18,11 +18,13 @@ import { TriggerScrapeRunUseCase } from '../../application/use-cases/trigger-scr
 import { ListScrapeRunsUseCase } from '../../application/use-cases/list-scrape-runs.use-case';
 import { ImportScrapeResultsUseCase } from '../../application/use-cases/import-scrape-results.use-case';
 import { CheckWhatsAppUseCase } from '../../application/use-cases/check-whatsapp.use-case';
+import { WhatsAppCheckRunUseCase } from '../../application/use-cases/whatsapp-check-run.use-case';
 import { ScrapeRunRepository } from '../../infrastructure/repositories/scrape-run.repository';
-import { TriggerScrapeDto } from '../../application/dto/trigger-scrape.dto';
+import { TriggerScrapeDto, LeadFiltersDto } from '../../application/dto/trigger-scrape.dto';
 import { ListScrapeRunsQueryDto } from '../../application/dto/list-scrape-runs-query.dto';
 import { ImportScrapeResultsDto } from '../../application/dto/import-scrape-results.dto';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { ScrapeRunStatus } from '@prisma/client';
 
 @Controller('lead-scraper')
 export class LeadScraperController {
@@ -32,6 +34,7 @@ export class LeadScraperController {
     private readonly scrapeRunRepository: ScrapeRunRepository,
     private readonly importScrapeResultsUseCase: ImportScrapeResultsUseCase,
     private readonly checkWhatsAppUseCase: CheckWhatsAppUseCase,
+    private readonly whatsAppCheckRunUseCase: WhatsAppCheckRunUseCase,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -71,6 +74,23 @@ export class LeadScraperController {
     return { success: true };
   }
 
+  @Post('runs/:id/cancel')
+  @Permissions(PERMISSIONS.CONTACTS_CREATE)
+  async cancelRun(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const run = await this.scrapeRunRepository.findById(id);
+    if (!run || run.orgId !== user.orgId) throw new NotFoundException('Scrape run not found');
+    const cancelled = await this.scrapeRunRepository.transition(
+      id,
+      [ScrapeRunStatus.PENDING, ScrapeRunStatus.RUNNING],
+      { status: ScrapeRunStatus.CANCELLED, completedAt: new Date() },
+    );
+    if (!cancelled) throw new BadRequestException('Only pending or running runs can be cancelled');
+    return { success: true };
+  }
+
   @Post('runs/:id/re-run')
   @Permissions(PERMISSIONS.CONTACTS_CREATE)
   async reRun(
@@ -84,6 +104,7 @@ export class LeadScraperController {
       keywords: run.keywords,
       location: run.location ?? undefined,
       maxResults: run.maxResults,
+      filters: (run.filters as LeadFiltersDto | null) ?? undefined,
     });
   }
 
@@ -114,8 +135,9 @@ export class LeadScraperController {
     const [results, total] = await Promise.all([
       this.prisma.scrapeResult.findMany({
         where: { scrapeRunId: id },
-        skip: skip ? Number(skip) : 0,
-        take: take ? Number(take) : 100,
+        skip: Math.max(Number(skip) || 0, 0),
+        // A run holds at most 200 results (TriggerScrapeDto.maxResults)
+        take: Math.min(Math.max(Number(take) || 200, 1), 200),
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.scrapeResult.count({ where: { scrapeRunId: id } }),
@@ -134,6 +156,27 @@ export class LeadScraperController {
     const run = await this.scrapeRunRepository.findById(id);
     if (!run || run.orgId !== user.orgId) throw new NotFoundException('Scrape run not found');
     return this.importScrapeResultsUseCase.execute(user.orgId, user.sub, id, dto.resultIds ?? []);
+  }
+
+  /** Start a background WhatsApp check of this run's numbers (all, or only `resultIds`) */
+  @Post('runs/:id/wa-check')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async startWhatsAppCheck(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ImportScrapeResultsDto,
+  ) {
+    return this.whatsAppCheckRunUseCase.start(user.orgId, id, dto.resultIds);
+  }
+
+  @Post('runs/:id/wa-check/stop')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async stopWhatsAppCheck(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.whatsAppCheckRunUseCase.stop(user.orgId, id);
+    return { success: true };
   }
 
   @Get('check-whatsapp')

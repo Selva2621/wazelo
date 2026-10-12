@@ -1,10 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { MessageDirection, MessageStatus, Prisma } from '@prisma/client';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 @Injectable()
 export class DeveloperApiRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly enc: MessageEncryptionService,
+  ) {}
+
+  /** Bodies and media URLs may be encrypted at rest; return them readable. */
+  private decrypt<T extends { body: string | null; mediaUrl: string | null }>(msg: T): T {
+    return {
+      ...msg,
+      body: this.enc.decryptIfEncrypted(msg.body),
+      mediaUrl: this.enc.decryptIfEncrypted(msg.mediaUrl),
+    };
+  }
 
   /**
    * List messages for an org with cursor-based pagination.
@@ -54,7 +67,7 @@ export class DeveloperApiRepository {
     });
 
     const hasMore = messages.length > options.limit;
-    const data = hasMore ? messages.slice(0, options.limit) : messages;
+    const data = (hasMore ? messages.slice(0, options.limit) : messages).map((m) => this.decrypt(m));
     const nextCursor = hasMore ? data[data.length - 1]?.id : null;
 
     return { data, nextCursor, hasMore };
@@ -64,7 +77,7 @@ export class DeveloperApiRepository {
    * Get a single message by ID and org.
    */
   async getMessageById(id: string, orgId: string) {
-    return this.prisma.message.findFirst({
+    const message = await this.prisma.message.findFirst({
       where: { id, orgId, deletedAt: null },
       select: {
         id: true,
@@ -84,6 +97,7 @@ export class DeveloperApiRepository {
         },
       },
     });
+    return message ? this.decrypt(message) : null;
   }
 
   /**
@@ -297,26 +311,66 @@ export class DeveloperApiRepository {
     return { totalMessages, totalContacts, activeSessions, activeApiKeys };
   }
 
-  /**
-   * Get API access logs for the developer portal with cursor-based pagination.
-   * Uses AuditLog filtered by source='api'.
-   */
-  async getApiLogs(orgId: string, limit: number, cursor?: string) {
-    const logs = await this.prisma.auditLog.findMany({
-      where: { orgId, source: 'api' },
-      take: limit + 1,
-      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        action: true,
-        targetType: true,
-        targetId: true,
-        ipAddress: true,
-        duration: true,
-        createdAt: true,
+  /** Record one Developer API request for the API Logs view. */
+  async logApiRequest(data: {
+    orgId: string;
+    apiKeyId: string;
+    method: string;
+    path: string;
+    statusCode: number;
+    durationMs: number;
+    ipAddress?: string;
+    errorMessage?: string;
+  }) {
+    await this.prisma.apiRequestLog.create({
+      data: {
+        ...data,
+        path: data.path.slice(0, 255),
+        ipAddress: data.ipAddress?.slice(0, 45),
+        errorMessage: data.errorMessage?.slice(0, 500),
       },
     });
+  }
+
+  async deleteApiRequestLogsBefore(cutoff: Date): Promise<number> {
+    const result = await this.prisma.apiRequestLog.deleteMany({
+      where: { createdAt: { lt: cutoff } },
+    });
+    return result.count;
+  }
+
+  /**
+   * Get Developer API request logs with cursor-based pagination, newest first.
+   * Includes the key's name so the UI can show which key made the call.
+   */
+  async getApiLogs(orgId: string, limit: number, cursor?: string) {
+    const rows = await this.prisma.apiRequestLog.findMany({
+      where: { orgId },
+      take: limit + 1,
+      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const keyIds = [...new Set(rows.map((r) => r.apiKeyId))];
+    const keys = keyIds.length
+      ? await this.prisma.apiKey.findMany({
+          where: { orgId, id: { in: keyIds } },
+          select: { id: true, name: true, keyPrefix: true },
+        })
+      : [];
+    const keyById = new Map(keys.map((k) => [k.id, k]));
+    const logs = rows.map((r) => ({
+      id: r.id,
+      method: r.method,
+      path: r.path,
+      statusCode: r.statusCode,
+      durationMs: r.durationMs,
+      errorMessage: r.errorMessage,
+      ipAddress: r.ipAddress,
+      createdAt: r.createdAt,
+      apiKeyName: keyById.get(r.apiKeyId)?.name ?? null,
+      apiKeyPrefix: keyById.get(r.apiKeyId)?.keyPrefix ?? null,
+    }));
 
     const hasMore = logs.length > limit;
     const data = hasMore ? logs.slice(0, limit) : logs;

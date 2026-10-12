@@ -7,9 +7,24 @@ interface TableProps {
   className?: string;
 }
 
-export function Table({ children, className }: TableProps) {
+interface TableRootProps extends TableProps {
+  /**
+   * Pin the header while rows scroll. The table wrapper becomes the scroll container
+   * (both axes), so give it a bounded height, e.g. `flex-1 min-h-0` in a flex column.
+   */
+  stickyHeader?: boolean;
+}
+
+export function Table({ children, className, stickyHeader = false }: TableRootProps) {
   return (
-    <div className={cn("overflow-x-auto", className)}>
+    <div
+      className={cn(
+        stickyHeader
+          ? "overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-surface-container-low"
+          : "overflow-x-auto",
+        className,
+      )}
+    >
       <table className="w-full text-body-lg">{children}</table>
     </div>
   );

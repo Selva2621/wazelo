@@ -30,6 +30,10 @@ import {
   MergeContactsDto,
   AddNoteDto,
   AddTagDto,
+  BulkContactIdsDto,
+  BulkChangeLeadStatusDto,
+  BulkAssignContactsDto,
+  BulkAddTagDto,
 } from '../../application/dto';
 import {
   CreateContactUseCase,
@@ -45,6 +49,7 @@ import {
   AddTagUseCase,
   RemoveTagUseCase,
   GetContactHistoryUseCase,
+  BulkContactsUseCase,
 } from '../../application/use-cases';
 import { ExportContactsUseCase } from '../../application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from '../../application/use-cases/import-contacts.use-case';
@@ -69,6 +74,7 @@ export class ContactsController {
     private readonly contactRepository: ContactRepository,
     private readonly exportContactsUseCase: ExportContactsUseCase,
     private readonly importContactsUseCase: ImportContactsUseCase,
+    private readonly bulkContactsUseCase: BulkContactsUseCase,
   ) {}
 
   // ───── Contact CRUD ─────
@@ -117,6 +123,64 @@ export class ContactsController {
     @Body('csv') csv: string,
   ) {
     return this.importContactsUseCase.execute(user.orgId, user.sub, csv);
+  }
+
+  // ───── Bulk actions ─────
+  // Declared before the ':contactId' routes so 'bulk' isn't captured as a contact id.
+
+  @Post('bulk/status')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  async bulkChangeStatus(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: BulkChangeLeadStatusDto,
+    @Req() req: Request,
+  ) {
+    return this.bulkContactsUseCase.changeStatus(dto, this.bulkMeta(user, req));
+  }
+
+  @Post('bulk/assign')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CONTACTS_ASSIGN)
+  @HttpCode(HttpStatus.OK)
+  async bulkAssign(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: BulkAssignContactsDto,
+    @Req() req: Request,
+  ) {
+    return this.bulkContactsUseCase.assign(dto, this.bulkMeta(user, req));
+  }
+
+  @Post('bulk/tags')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  async bulkAddTag(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: BulkAddTagDto,
+    @Req() req: Request,
+  ) {
+    return this.bulkContactsUseCase.addTag(dto, this.bulkMeta(user, req));
+  }
+
+  @Post('bulk/delete')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CONTACTS_DELETE)
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: BulkContactIdsDto,
+    @Req() req: Request,
+  ) {
+    return this.bulkContactsUseCase.delete(dto, this.bulkMeta(user, req));
+  }
+
+  private bulkMeta(user: JwtPayload, req: Request) {
+    return {
+      orgId: user.orgId,
+      userId: user.sub,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
   }
 
   @Get(':contactId')

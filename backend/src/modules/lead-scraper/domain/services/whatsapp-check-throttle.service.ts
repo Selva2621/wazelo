@@ -31,19 +31,19 @@ export class WhatsAppCheckThrottleService {
 
   /** Take one lookup slot for a session. Returns false when the minute or day cap is used up. */
   tryAcquire(sessionId: string, now = Date.now()): boolean {
+    return this.acquire(sessionId, now) === 'ok';
+  }
+
+  /** Like tryAcquire, but says which cap blocked it — a minute cap clears soon, a day cap doesn't. */
+  acquire(sessionId: string, now = Date.now()): 'ok' | 'minute_limit' | 'day_limit' {
     const recent = (this.lookups.get(sessionId) ?? []).filter((t) => now - t < DAY_MS);
     const lastMinute = recent.filter((t) => now - t < MINUTE_MS).length;
+    this.lookups.set(sessionId, recent);
 
-    if (
-      lastMinute >= SEND_SAFETY_CONFIG.WA_CHECK_PER_MINUTE ||
-      recent.length >= SEND_SAFETY_CONFIG.WA_CHECK_PER_DAY
-    ) {
-      this.lookups.set(sessionId, recent);
-      return false;
-    }
+    if (recent.length >= SEND_SAFETY_CONFIG.WA_CHECK_PER_DAY) return 'day_limit';
+    if (lastMinute >= SEND_SAFETY_CONFIG.WA_CHECK_PER_MINUTE) return 'minute_limit';
 
     recent.push(now);
-    this.lookups.set(sessionId, recent);
-    return true;
+    return 'ok';
   }
 }

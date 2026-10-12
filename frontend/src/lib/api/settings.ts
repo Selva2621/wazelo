@@ -12,6 +12,7 @@ import type {
   WebhookListResponse,
   CreateWebhookRequest,
   UpdateWebhookRequest,
+  WebhookDelivery,
   WebhookDeliveryListResponse,
   WebhookTestResult,
   IntegrationConfig,
@@ -141,8 +142,11 @@ export const settingsApi = {
 
   // ─── Webhooks (EPIC 12 Enhanced) ───
 
-  listWebhooks: () =>
-    apiClient.get<WebhookListResponse>("/settings/webhooks").then((r) => r.data),
+  // The backend returns a bare array; shape it like the other list responses
+  listWebhooks: (): Promise<WebhookListResponse> =>
+    apiClient
+      .get<Webhook[]>("/settings/webhooks")
+      .then((r) => ({ data: r.data, total: r.data.length })),
 
   getWebhook: (id: string) =>
     apiClient.get<Webhook>(`/settings/webhooks/${id}`).then((r) => r.data),
@@ -166,13 +170,13 @@ export const settingsApi = {
   listWebhookDeliveries: (
     webhookId: string,
     params?: { status?: string; eventType?: string; limit?: number; offset?: number },
-  ) =>
+  ): Promise<WebhookDeliveryListResponse> =>
     apiClient
-      .get<WebhookDeliveryListResponse>(
+      .get<{ deliveries: WebhookDelivery[]; total: number }>(
         `/settings/webhooks/${webhookId}/deliveries`,
         { params },
       )
-      .then((r) => r.data),
+      .then((r) => ({ data: r.data.deliveries, total: r.data.total })),
 
   // ─── AI Memory ───
 

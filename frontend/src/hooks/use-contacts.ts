@@ -13,6 +13,7 @@ import type {
   MergeContactsRequest,
   AddNoteRequest,
   AddTagRequest,
+  BulkContactAction,
 } from "@/lib/types/contacts";
 
 // ─── Query Key Factory ───
@@ -169,6 +170,34 @@ export function useAssignContact() {
       toast.success("Owner assigned");
     },
     onError: (err: Error) => toast.error(err.message || "Failed to assign owner"),
+  });
+}
+
+const BULK_VERB: Record<BulkContactAction["action"], string> = {
+  status: "Status updated",
+  assign: "Owner assigned",
+  tags: "Tag added",
+  delete: "Deleted",
+};
+
+export function useBulkContactAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BulkContactAction) => contactsApi.bulk(input),
+    onSuccess: (res, input) => {
+      queryClient.invalidateQueries({ queryKey: contactKeys.all });
+      const ok = res.succeeded.length;
+      const failed = res.failed.length;
+      const noun = (n: number) => `${n} contact${n === 1 ? "" : "s"}`;
+      if (failed === 0) {
+        toast.success(`${BULK_VERB[input.action]} for ${noun(ok)}`);
+      } else if (ok === 0) {
+        toast.error(`Couldn't update ${noun(failed)}: ${res.failed[0].error}`);
+      } else {
+        toast.warning(`${BULK_VERB[input.action]} for ${noun(ok)} · ${failed} failed`);
+      }
+    },
+    onError: (err: Error) => toast.error(err.message || "Bulk action failed"),
   });
 }
 

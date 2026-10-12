@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
   Phone, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, ChevronDown, Rocket,
+  Filter, X, ChevronDown, Rocket, Ban,
 } from "lucide-react";
 import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
 import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "@/hooks/use-lead-scraper";
@@ -33,6 +33,8 @@ interface ActiveFilters {
   hasWebsite: "all" | "yes" | "no";
   minRating: number; // 0 = any
   categories: string[]; // empty = all
+  tier: "all" | ScoreTier;
+  sortByScore: boolean;
 }
 
 const DEFAULT_FILTERS: ActiveFilters = {
@@ -43,7 +45,37 @@ const DEFAULT_FILTERS: ActiveFilters = {
   hasWebsite: "all",
   minRating: 0,
   categories: [],
+  tier: "all",
+  sortByScore: false,
 };
+
+// ─── Lead score ───────────────────────────────────────────────────────────────
+
+type ScoreTier = "hot" | "warm" | "cold";
+
+function scoreTier(score: number): ScoreTier {
+  if (score >= 7) return "hot";
+  if (score >= 4) return "warm";
+  return "cold";
+}
+
+const TIER_STYLE: Record<ScoreTier, { label: string; className: string }> = {
+  hot:  { label: "Hot",  className: "bg-error/10 text-error" },
+  warm: { label: "Warm", className: "bg-warning/10 text-warning" },
+  cold: { label: "Cold", className: "bg-surface-container text-on-surface-variant" },
+};
+
+function ScoreBadge({ score }: { score: number }) {
+  const { label, className } = TIER_STYLE[scoreTier(score)];
+  return (
+    <span
+      title={`Lead score ${score}/10`}
+      className={`shrink-0 text-caption font-semibold px-1.5 py-0.5 rounded-full ${className}`}
+    >
+      {label} · {score}
+    </span>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +93,7 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
     RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                  icon: <Loader2 className="w-3 h-3 animate-spin" /> },
     COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                  icon: <CheckCircle2 className="w-3 h-3" /> },
     FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                      icon: <XCircle className="w-3 h-3" /> },
+    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
   };
   const { label, className, icon } = config[status];
   return (
@@ -111,6 +144,7 @@ function FilterBar({
   onChange,
   categories,
   waChecksLoaded,
+  hasScores,
   resultCount,
   visibleCount,
 }: {
@@ -118,6 +152,7 @@ function FilterBar({
   onChange: (f: Partial<ActiveFilters>) => void;
   categories: string[];
   waChecksLoaded: boolean;
+  hasScores: boolean;
   resultCount: number;
   visibleCount: number;
 }) {
@@ -129,6 +164,7 @@ function FilterBar({
     filters.hasWebsite !== "all",
     filters.minRating > 0,
     filters.categories.length > 0,
+    filters.tier !== "all",
   ].filter(Boolean).length;
 
   return (
@@ -172,6 +208,34 @@ function FilterBar({
 
       {/* Filter chips row */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Lead score */}
+        {hasScores && (
+          <>
+            <FilterSelect
+              label="Score"
+              value={filters.tier}
+              onChange={(v) => onChange({ tier: v as ActiveFilters["tier"] })}
+              options={[
+                { value: "all", label: "Score: All" },
+                { value: "hot", label: "Hot (7+)" },
+                { value: "warm", label: "Warm (4–6)" },
+                { value: "cold", label: "Cold (0–3)" },
+              ]}
+            />
+            <button
+              onClick={() => onChange({ sortByScore: !filters.sortByScore })}
+              aria-pressed={filters.sortByScore}
+              className={`text-label px-3 py-1.5 rounded-lg border transition-colors ${
+                filters.sortByScore
+                  ? "bg-primary text-on-primary border-primary"
+                  : "bg-surface-container text-on-surface border-outline-variant hover:border-primary/50"
+              }`}
+            >
+              Best leads first
+            </button>
+          </>
+        )}
+
         {/* WA Status */}
         <FilterSelect
           label="WA Status"
@@ -285,6 +349,30 @@ function FilterBar({
 
 // ─── Result table row ─────────────────────────────────────────────────────────
 
+function timeAgo(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+/** Extra facts from the source page, only the ones it showed */
+function detailLines(result: ScrapeResult): [string, string][] {
+  const d = result.details;
+  if (!d) return [];
+  const lines: [string, string][] = [];
+  if (d.postedAt) lines.push(["Posted", timeAgo(d.postedAt)]);
+  if (d.budgetType) lines.push(["Type", d.budgetType === "hourly" ? "Hourly" : "Fixed price"]);
+  if (d.proposals != null) lines.push(["Proposals", String(d.proposals)]);
+  if (d.paymentVerified != null) lines.push(["Payment", d.paymentVerified ? "Verified" : "Not verified"]);
+  if (d.clientCountry && d.clientCountry !== result.location) lines.push(["Client", d.clientCountry]);
+  if (d.priceLevel) lines.push(["Price", "₹".repeat(d.priceLevel)]);
+  if (d.photoCount != null) lines.push(["Photos", String(d.photoCount)]);
+  if (d.lastReviewAt) lines.push(["Last review", timeAgo(d.lastReviewAt)]);
+  return lines;
+}
+
 function DetailLine({ label, value }: { label: string; value: string }) {
   return (
     <span className="truncate text-caption text-on-surface-variant">
@@ -328,9 +416,17 @@ function ResultRow({
 
       {/* Name + category */}
       <TableCell>
-        <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
-          {result.name ?? "—"}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
+            {result.name ?? "—"}
+          </p>
+          {result.score != null && <ScoreBadge score={result.score} />}
+        </div>
+        {result.tags?.length > 0 && (
+          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px]">
+            {result.tags.join(" · ")}
+          </p>
+        )}
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
           {result.category && (
             <span className="text-caption bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
@@ -435,6 +531,9 @@ function ResultRow({
           {result.company && (
             <DetailLine label="Company" value={result.company} />
           )}
+          {detailLines(result).map(([label, value]) => (
+            <DetailLine key={label} label={label} value={value} />
+          ))}
           {result.skills && result.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {result.skills.slice(0, 3).map((s) => (
@@ -498,22 +597,23 @@ export default function ScrapeRunResultsPage() {
     queryFn: () => leadScraperApi.getRun(runId),
     enabled: Boolean(runId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === "PENDING" || status === "RUNNING" ? 5000 : false;
+      const data = query.state.data;
+      const active = data?.status === "PENDING" || data?.status === "RUNNING" || data?.waCheck?.state === "running";
+      return active ? 5000 : false;
     },
   });
 
-  const { data: resultsData, isLoading: resultsLoading } = useScrapeRunResults(runId ?? null);
+  const waCheckRunning = run?.waCheck?.state === "running";
+  const { data: resultsData, isLoading: resultsLoading } = useScrapeRunResults(runId ?? null, waCheckRunning ? 5000 : false);
   const importMutation = useImportScrapeResults(runId ?? "");
 
-  const results = resultsData?.results ?? [];
-  const phones = results.map((r) => r.phone).filter(Boolean) as string[];
+  const results = useMemo(() => resultsData?.results ?? [], [resultsData]);
   const {
     statusMap: waStatusMap,
     isChecking: waChecking,
     checkPhones,
     stopChecking,
-  } = useWhatsAppChecks(phones);
+  } = useWhatsAppChecks(runId, run?.waCheck, results);
 
   // Derive unique categories from results for dynamic filter chips
   const categories = useMemo(() => {
@@ -526,7 +626,7 @@ export default function ScrapeRunResultsPage() {
 
   // Apply all filters
   const filteredResults = useMemo(() => {
-    return results.filter((r) => {
+    const matched = results.filter((r) => {
       // Search
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -564,8 +664,14 @@ export default function ScrapeRunResultsPage() {
       // Category chips
       if (filters.categories.length > 0 && !filters.categories.includes(r.category ?? "")) return false;
 
+      // Lead score tier
+      if (filters.tier !== "all" && (r.score == null || scoreTier(r.score) !== filters.tier)) return false;
+
       return true;
     });
+    return filters.sortByScore
+      ? [...matched].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+      : matched;
   }, [results, filters, waStatusMap]);
 
   const allSelected = filteredResults.length > 0 && filteredResults.every((r) => selected.has(r.id));
@@ -615,7 +721,7 @@ export default function ScrapeRunResultsPage() {
     // Export currently visible filtered rows
     const rows = filteredResults;
     if (rows.length === 0) return;
-    const headers = ["Name", "Category", "Phone", "Email", "Address", "Website", "Rating", "Reviews", "Budget", "Skills", "Job Title", "Company", "Source URL", "Scraped At", "Imported", "WA Active"];
+    const headers = ["Name", "Category", "Phone", "Email", "Address", "Website", "Rating", "Reviews", "Lead Score", "Tags", "Budget", "Skills", "Job Title", "Company", "Source URL", "Scraped At", "Imported", "WA Active"];
     const csvRows = rows.map((r) => {
       const wa = r.phone ? waStatusMap[r.phone] : undefined;
       const waLabel = wa?.exists === true ? "Yes" : wa?.exists === false ? "No" : "Unknown";
@@ -624,6 +730,7 @@ export default function ScrapeRunResultsPage() {
         r.address ?? r.location ?? "", r.website ?? "",
         r.rating != null ? r.rating.toFixed(1) : "",
         r.reviewCount != null ? String(r.reviewCount) : "",
+        r.score != null ? String(r.score) : "", (r.tags ?? []).join("; "),
         r.budget ?? "", (r.skills ?? []).join("; "),
         r.jobTitle ?? "", r.company ?? "",
         r.sourceUrl, r.createdAt,
@@ -644,13 +751,15 @@ export default function ScrapeRunResultsPage() {
 
   const importedSelected = filteredResults.filter((r) => selected.has(r.id) && r.imported && r.phone);
 
-  // Unchecked phones to look up on WhatsApp: the selected rows, or all visible rows
+  // Rows still without a WhatsApp answer: the selected rows, or all visible rows
   const waCheckTargets = (selected.size > 0
     ? filteredResults.filter((r) => selected.has(r.id))
     : filteredResults
   )
-    .map((r) => r.phone)
-    .filter((phone): phone is string => Boolean(phone) && !waStatusMap[phone!]);
+    .filter((r) => r.phone && r.waExists == null)
+    .map((r) => r.id);
+  const phoneCount = results.filter((r) => r.phone).length;
+  const checkedCount = results.filter((r) => r.phone && r.waCheckedAt).length;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -726,6 +835,7 @@ export default function ScrapeRunResultsPage() {
                 onChange={updateFilters}
                 categories={categories}
                 waChecksLoaded={!waChecking && Object.keys(waStatusMap).length > 0}
+                hasScores={results.some((r) => r.score != null)}
                 resultCount={results.length}
                 visibleCount={filteredResults.length}
               />
@@ -749,14 +859,16 @@ export default function ScrapeRunResultsPage() {
                 </label>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {waCheckTargets.length > 0 && (
+                  {(waChecking || waCheckTargets.length > 0) && (
                     <Button
                       variant="secondary"
                       onClick={() => (waChecking ? stopChecking() : checkPhones(waCheckTargets))}
-                      title="Checks one number at a time to keep your WhatsApp number safe"
+                      title="Runs in the background, one number at a time, to keep your WhatsApp number safe"
                     >
                       {waChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
-                      {waChecking ? "Stop checking" : `Check WhatsApp (${waCheckTargets.length})`}
+                      {waChecking
+                        ? `Checking ${checkedCount}/${phoneCount} · Stop`
+                        : `Check WhatsApp (${waCheckTargets.length})`}
                     </Button>
                   )}
 

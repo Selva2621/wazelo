@@ -27,6 +27,7 @@ import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const SOURCE_LABELS: Record<string, string> = {
   GOOGLE_MAPS: "Google Maps",
@@ -169,8 +170,29 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
     setValue("audienceFilters", { ...audienceFilters, [key]: next.length ? next : undefined });
   }
 
-  function onSubmit(data: CreateCampaignFormData) {
+  // "Send now" goes out to the whole audience at once, so confirm the count first
+  const [pendingSend, setPendingSend] = useState<{ data: CreateCampaignFormData; recipients: number | null } | null>(null);
+
+  async function onSubmit(data: CreateCampaignFormData) {
     if (unfilledPlaceholders.length > 0) return;
+    if (scheduleMode !== "immediate") {
+      submitCampaign(data);
+      return;
+    }
+    let recipients: number | null = null;
+    try {
+      const preview = await previewAudience.mutateAsync({
+        audienceType: data.audienceType,
+        audienceFilters: data.audienceType === "FILTERED" ? data.audienceFilters : undefined,
+      });
+      recipients = preview.estimatedRecipients ?? null;
+    } catch {
+      // Still let them confirm without a count
+    }
+    setPendingSend({ data, recipients });
+  }
+
+  function submitCampaign(data: CreateCampaignFormData) {
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
     createCampaign.mutate(
       {
@@ -193,6 +215,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
           setTemplateSearch("");
           setShowTemplatePicker(false);
           setPlaceholderValues({});
+          setPendingSend(null);
           onClose();
           router.push(`/campaigns/${created.id}`);
         },
@@ -203,9 +226,11 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
   const completedRuns = scrapeRunsData?.runs.filter((r) => r.status === "COMPLETED") ?? [];
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
+      dismissible={!pendingSend}
       aria-label="New Campaign"
       className="max-w-4xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
     >
@@ -767,7 +792,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
             <Button
               type="submit"
               form="campaign-form"
-              loading={createCampaign.isPending}
+              loading={createCampaign.isPending || previewAudience.isPending}
               onClick={handleSubmit(onSubmit)}
             >
               {scheduleMode === "immediate" ? "Create & send" : scheduleMode === "scheduled" ? "Schedule campaign" : "Save draft"}
@@ -777,5 +802,21 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
       </>
       )}
     </Modal>
+
+    <ConfirmDialog
+      open={!!pendingSend}
+      title="Send this campaign now?"
+      message={
+        pendingSend?.recipients != null
+          ? `It goes out to about ${pendingSend.recipients.toLocaleString()} contact${pendingSend.recipients === 1 ? "" : "s"} right away. You can pause it from the campaign page.`
+          : "It goes out to your whole audience right away. You can pause it from the campaign page."
+      }
+      confirmLabel="Send now"
+      variant="warning"
+      loading={createCampaign.isPending}
+      onCancel={() => setPendingSend(null)}
+      onConfirm={() => pendingSend && submitCampaign(pendingSend.data)}
+    />
+    </>
   );
 }

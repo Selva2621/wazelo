@@ -81,6 +81,8 @@ export const QUEUE_NAMES = {
   PROCESS_SHOPIFY_WEBHOOK: 'process-shopify-webhook',
   // Lead Scraper queues
   SCRAPE_LEADS: 'scrape-leads',
+  // One "is this number on WhatsApp?" lookup per job; each job queues the next
+  SCRAPE_WA_CHECK: 'scrape-wa-check',
   // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
   ORG_ONBOARDING: 'org-onboarding',
 } as const;

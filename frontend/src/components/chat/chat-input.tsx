@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, type KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react";
 import { Paperclip, Smile, Send, X, FileText, Image, Film, Music, MousePointerClick } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CannedResponsePicker } from "./canned-response-picker";
 import { InteractiveMessageBuilder } from "./interactive-message-builder";
+import { EmojiPicker } from "./emoji-picker";
 import type { InteractivePayload } from "@/lib/types/inbox";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -68,9 +69,27 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   }, [prefillText, onPrefillApplied]);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showInteractiveBuilder, setShowInteractiveBuilder] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [cannedFilter, setCannedFilter] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const closeEmojiPicker = useCallback(() => setShowEmojiPicker(false), []);
+
+  // Insert at the caret (or replace the selection) so emojis land where the agent is typing
+  const insertEmoji = (emoji: string) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    setValue(value.slice(0, start) + emoji + value.slice(end));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const caret = start + emoji.length;
+      el.setSelectionRange(caret, caret);
+      handleInput();
+    });
+  };
 
   const handleSend = () => {
     const trimmed = value.trim();
@@ -206,12 +225,23 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             attachment && "text-primary-container",
           )}
           title="Attach file"
+          aria-label="Attach file"
         >
           <Paperclip className="h-5 w-5" />
         </button>
+        {showEmojiPicker && (
+          <EmojiPicker
+            onSelect={insertEmoji}
+            onClose={closeEmojiPicker}
+          />
+        )}
         <IconButton size="sm"
           type="button"
-         
+          data-emoji-trigger
+          onClick={() => setShowEmojiPicker((o) => !o)}
+          disabled={disabled || uploading}
+          aria-expanded={showEmojiPicker}
+          className={cn(showEmojiPicker && "text-primary bg-primary/10")}
           title="Emoji" aria-label="Emoji">
           <Smile className="h-5 w-5" />
         </IconButton>
@@ -227,6 +257,8 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
                 : "text-on-surface-variant hover:text-on-surface",
             )}
             title="Interactive message (buttons / list)"
+            aria-label="Interactive message"
+            aria-pressed={showInteractiveBuilder}
           >
             <MousePointerClick className="h-5 w-5" />
           </button>
@@ -262,6 +294,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
               : "text-on-surface-variant opacity-50 cursor-not-allowed",
           )}
           title="Send"
+          aria-label="Send message"
         >
           {uploading ? (
             <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

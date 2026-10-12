@@ -80,6 +80,8 @@ export class ImportScrapeResultsUseCase {
           reviewCount: result.reviewCount,
           category: result.category,
           address: result.address,
+          leadScore: result.score,
+          leadTags: result.tags,
           sourceUrl: result.sourceUrl,
           scrapeSource: run.source,
           scrapeRunId: run.id,

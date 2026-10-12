@@ -2425,6 +2425,7 @@ enum ScrapeRunStatus {
   RUNNING
   COMPLETED
   FAILED
+  CANCELLED
 }
 
 enum ScrapeSource {
@@ -2442,6 +2443,10 @@ model ScrapeRun {
   keywords       String          @db.VarChar(500)
   location       String?         @db.VarChar(255)
   maxResults     Int             @default(50) @map("max_results")
+  /// LeadFilters chosen before the scrape (minRating, hasPhone, findEmails, …)
+  filters        Json?
+  /// Background WhatsApp check progress: { state, token, startedAt, resultIds? }
+  waCheck        Json?           @map("wa_check")
   status         ScrapeRunStatus @default(PENDING)
   resultCount    Int             @default(0) @map("result_count")
   importedCount  Int             @default(0) @map("imported_count")
@@ -2482,6 +2487,15 @@ model ScrapeResult {
   description  String?  @db.VarChar(2000)
   openingHours String?  @map("opening_hours") @db.VarChar(500)
   socialLinks  String[] @map("social_links")
+  /// 0–10 prospect score (Google Maps only); null for job-board leads
+  score        Int?
+  tags         String[] @default([])
+  /// Source-specific extras: Maps (claimed, photoCount, priceLevel, weeklyHours, lat/lng,
+  /// lastReviewAt, site signals) and job boards (budgetMin/Max, budgetType, postedAt, …)
+  details      Json?
+  /// null = not checked or lookup failed (see waCheckedAt)
+  waExists     Boolean?  @map("wa_exists")
+  waCheckedAt  DateTime? @map("wa_checked_at")
   sourceUrl    String   @map("source_url") @db.VarChar(2000)
   imported    Boolean  @default(false)
   contactId   String?  @map("contact_id") @db.Uuid
@@ -2492,6 +2506,7 @@ model ScrapeResult {
   @@index([scrapeRunId])
   @@index([orgId])
   @@index([scrapeRunId, imported])
+  @@index([orgId, phone])
   @@map("scrape_results")
 }
 
@@ -3347,6 +3362,24 @@ model ApiKey {
   @@index([keyHash])
   @@index([orgId, isActive])
   @@map("api_keys")
+}
+
+// One row per Developer API request, shown in Settings → API Logs.
+// Short-lived (pruned daily), so no soft delete or relations.
+model ApiRequestLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  apiKeyId     String   @map("api_key_id") @db.Uuid
+  method       String   @db.VarChar(10)
+  path         String   @db.VarChar(255)
+  statusCode   Int      @map("status_code")
+  durationMs   Int      @map("duration_ms")
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  errorMessage String?  @map("error_message") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([orgId, createdAt(sort: Desc)])
+  @@map("api_request_logs")
 }
 
 // ─────────────────────────────────────────────

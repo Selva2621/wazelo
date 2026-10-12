@@ -6,16 +6,17 @@ import {
   Map, Briefcase, Globe, Search, Linkedin, Play, Clock,
   CheckCircle2, XCircle, Loader2, Users, ArrowRight,
   Trash2, RotateCcw, Copy, ChevronLeft, ChevronRight,
-  Filter, StickyNote, X, ChevronDown,
+  Filter, StickyNote, X, ChevronDown, Ban,
 } from "lucide-react";
 import {
   useScrapeRuns, useTriggerScrapeRun,
-  useDeleteScrapeRun, useReRunScrape,
+  useDeleteScrapeRun, useReRunScrape, useCancelScrapeRun,
 } from "@/hooks/use-lead-scraper";
 import { Spinner } from "@/components/ui/spinner";
-import type { ScrapeSource, ScrapeRunStatus, ScrapeRun } from "@/lib/types/lead-scraper";
+import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { ScrapeFilters, countActiveFilters } from "@/components/lead-scraper/scrape-filters";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -102,6 +103,7 @@ const STATUS_OPTIONS = [
   { value: "RUNNING", label: "Running" },
   { value: "PENDING", label: "Pending" },
   { value: "FAILED", label: "Failed" },
+  { value: "CANCELLED", label: "Cancelled" },
 ];
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -112,6 +114,7 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
     RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                    icon: <Loader2 className="w-3 h-3 animate-spin" /> },
     COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                    icon: <CheckCircle2 className="w-3 h-3" /> },
     FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                        icon: <XCircle className="w-3 h-3" /> },
+    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
   };
   const { label, className, icon } = config[status];
   return (
@@ -183,6 +186,7 @@ function RunRow({
 
   const deleteMutation = useDeleteScrapeRun();
   const reRunMutation = useReRunScrape();
+  const cancelMutation = useCancelScrapeRun();
 
   const handleDelete = () => {
     deleteMutation.mutate(run.id, { onSuccess: () => setConfirmDelete(false) });
@@ -208,6 +212,7 @@ function RunRow({
               <span className="text-label text-on-surface-variant">
                 {run.resultCount} found
                 {run.importedCount > 0 && ` · ${run.importedCount} imported`}
+                {run.skippedCount > 0 && ` · ${run.skippedCount} duplicates removed`}
               </span>
             )}
           </div>
@@ -257,6 +262,16 @@ function RunRow({
               <RotateCcw className="w-3.5 h-3.5" />
             )}
           </button>
+
+          {/* Cancel */}
+          {isActive && (
+            <IconButton size="xs" variant="danger"
+              onClick={() => cancelMutation.mutate(run.id)}
+              disabled={cancelMutation.isPending}
+              title="Cancel run" aria-label="Cancel run">
+              {cancelMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+            </IconButton>
+          )}
 
           {/* Delete */}
           {!isActive && (
@@ -332,6 +347,7 @@ export default function LeadScraperPage() {
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
+  const [leadFilters, setLeadFilters] = useState<LeadFilters>({});
 
   // Run list filters
   const [filterSource, setFilterSource] = useState<ScrapeSource | "">("");
@@ -359,11 +375,18 @@ export default function LeadScraperPage() {
   function handleRun() {
     if (!selected || !keywords.trim()) return;
     trigger.mutate(
-      { source: selected, keywords: keywords.trim(), location: location.trim() || undefined, maxResults },
+      {
+        source: selected,
+        keywords: keywords.trim(),
+        location: location.trim() || undefined,
+        maxResults,
+        ...(countActiveFilters(leadFilters) > 0 && { filters: leadFilters }),
+      },
       {
         onSuccess: () => {
           setKeywords("");
           setLocation("");
+          setLeadFilters({});
           setSelected(null);
           // Go back to page 0 to see the new run
           setPage(0);
@@ -379,6 +402,7 @@ export default function LeadScraperPage() {
     setKeywords(run.keywords);
     setLocation(run.location ?? "");
     setMaxResults(run.maxResults);
+    setLeadFilters(run.filters ?? {});
     // Scroll to top
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -402,7 +426,7 @@ export default function LeadScraperPage() {
           {SCRAPERS.map((s) => (
             <button
               key={s.source}
-              onClick={() => { setSelected(s.source); setKeywords(""); setLocation(""); setMaxResults(20); }}
+              onClick={() => { setSelected(s.source); setKeywords(""); setLocation(""); setMaxResults(20); setLeadFilters({}); }}
               className={`flex flex-col items-start gap-2 p-4 rounded-2xl border-2 text-left transition-all ${
                 selected === s.source
                   ? "border-primary bg-primary/5 shadow-md"
@@ -483,6 +507,14 @@ export default function LeadScraperPage() {
               </p>
             )}
           </div>
+
+          <ScrapeFilters
+            key={selectedScraper.source}
+            source={selectedScraper.source}
+            value={leadFilters}
+            onChange={setLeadFilters}
+            hasLocation={location.trim() !== ""}
+          />
 
           <Button size="lg"
             onClick={handleRun}

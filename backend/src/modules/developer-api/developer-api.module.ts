@@ -9,11 +9,22 @@ import { DevSendBulkMessageUseCase } from './application/use-cases/send-bulk-mes
 import { DevSendTemplateMessageUseCase } from './application/use-cases/send-template-message.use-case';
 import { DeveloperApiController } from './interfaces/controllers/developer-api.controller';
 import { DeveloperPortalController } from './interfaces/controllers/developer-portal.controller';
+import { DeveloperDocsController } from './interfaces/controllers/developer-docs.controller';
+import { GetDeveloperDashboardUseCase } from './application/use-cases/get-developer-dashboard.use-case';
+import { ApiRequestLogInterceptor } from './interfaces/interceptors/api-request-log.interceptor';
 
 @Module({
   imports: [ApiKeysModule, BillingModule, MessagesModule],
-  controllers: [DeveloperApiController, DeveloperPortalController],
-  providers: [DeveloperApiRepository, DevSendMessageUseCase, DevSendBulkMessageUseCase, DevSendTemplateMessageUseCase, ApiKeysRepository],
+  controllers: [DeveloperDocsController, DeveloperApiController, DeveloperPortalController],
+  providers: [
+    DeveloperApiRepository,
+    DevSendMessageUseCase,
+    DevSendBulkMessageUseCase,
+    DevSendTemplateMessageUseCase,
+    GetDeveloperDashboardUseCase,
+    ApiRequestLogInterceptor,
+    ApiKeysRepository,
+  ],
   exports: [DeveloperApiRepository],
 })
 export class DeveloperApiModule {}

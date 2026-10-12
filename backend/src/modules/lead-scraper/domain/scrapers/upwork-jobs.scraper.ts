@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { BaseScraper } from './base-scraper';
 import { ScrapedLead } from './scraper.interface';
+import { parseBudget, parseProposals, parseRelativeTime } from '../services/lead-parsing';
 
 export class UpworkJobsScraper extends BaseScraper {
   async scrape(
@@ -47,10 +48,17 @@ export class UpworkJobsScraper extends BaseScraper {
 
         const results: Array<{
           jobTitle: string;
+          jobUrl: string;
           budget: string;
+          jobType: string;
           skills: string[];
           location: string;
+          posted: string;
+          paymentVerified: boolean | null;
+          proposals: string;
         }> = [];
+        const textOf = (card: Element, selectors: string) =>
+          (card.querySelector(selectors) as HTMLElement | null)?.textContent?.trim() ?? '';
 
         cards.forEach((card) => {
           const titleEl =
@@ -58,6 +66,8 @@ export class UpworkJobsScraper extends BaseScraper {
             card.querySelector('[data-test="job-title"] a') ||
             card.querySelector('h3');
           const jobTitle = titleEl?.textContent?.trim() ?? '';
+          const href = titleEl?.getAttribute('href') ?? '';
+          const jobUrl = href ? new URL(href, 'https://www.upwork.com').toString() : '';
 
           const budgetEl =
             card.querySelector('[data-test="budget"]') ||
@@ -79,8 +89,15 @@ export class UpworkJobsScraper extends BaseScraper {
             card.querySelector('[class*="location"]');
           const loc = locEl?.textContent?.trim() ?? '';
 
+          const jobType = textOf(card, '[data-test="job-type-label"], [data-test="job-type"]');
+          const posted = textOf(card, '[data-test="job-pubilshed-date"], [data-test="job-published-date"], [data-test="posted-on"]');
+          const proposals = textOf(card, '[data-test="proposals-tier"], [data-test="proposals"]');
+          // Upwork marks verified clients; when the badge area renders but says unverified, it's false
+          const paymentText = textOf(card, '[data-test="payment-verified"], [data-test="payment-verification-status"]');
+          const paymentVerified = paymentText ? !/unverified|not verified/i.test(paymentText) : null;
+
           if (jobTitle) {
-            results.push({ jobTitle, budget, skills, location: loc });
+            results.push({ jobTitle, jobUrl, budget, jobType, skills, location: loc, posted, paymentVerified, proposals });
           }
         });
 
@@ -89,15 +106,25 @@ export class UpworkJobsScraper extends BaseScraper {
 
       await context.close();
 
-      return rawLeads.slice(0, maxResults).map((r) => ({
-        name: 'Upwork Client',
-        jobTitle: r.jobTitle,
-        budget: r.budget || undefined,
-        skills: r.skills.length > 0 ? r.skills : undefined,
-        location: r.location || undefined,
-        sourceUrl: searchUrl,
-        scrapedAt: new Date().toISOString(),
-      }));
+      return rawLeads.slice(0, maxResults).map((r): ScrapedLead => {
+        const budget = parseBudget(`${r.jobType} ${r.budget}`);
+        return {
+          name: 'Upwork Client',
+          jobTitle: r.jobTitle,
+          budget: [r.jobType, r.budget].filter(Boolean).join(' · ') || undefined,
+          budgetMin: budget.min,
+          budgetMax: budget.max,
+          budgetType: budget.type,
+          skills: r.skills.length > 0 ? r.skills : undefined,
+          location: r.location || undefined,
+          clientCountry: r.location || undefined,
+          postedAt: parseRelativeTime(r.posted)?.toISOString(),
+          paymentVerified: r.paymentVerified ?? undefined,
+          proposals: parseProposals(r.proposals),
+          sourceUrl: r.jobUrl || searchUrl,
+          scrapedAt: new Date().toISOString(),
+        };
+      });
     } catch (error) {
       return this.fail('Upwork', error);
     } finally {

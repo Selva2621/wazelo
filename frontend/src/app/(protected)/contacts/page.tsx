@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ContactFilters } from "@/components/contacts/contact-filters";
 import { ContactsTable } from "@/components/contacts/contacts-table";
+import { ContactsBulkBar } from "@/components/contacts/contacts-bulk-bar";
 import { ContactKanbanBoard } from "@/components/contacts/contact-kanban-board";
 import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
@@ -19,6 +20,7 @@ import { LoadError } from "@/components/ui/empty-state";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
 
 const TAKE = 20;
+const EMPTY_SELECTION: Set<string> = new Set();
 
 const STATUS_TABS: { id: string; label: string }[] = [
   { id: "ALL", label: "All" },
@@ -97,6 +99,16 @@ export default function ContactsPage() {
 
   const { data, isLoading, isError, refetch } = useContacts(params);
 
+  // Selection belongs to the current query: changing page, search or filters drops it,
+  // so a bulk action never hits rows the agent can no longer see
+  const paramsKey = JSON.stringify(params);
+  const [selection, setSelection] = useState<{ key: string; ids: Set<string> }>({
+    key: paramsKey,
+    ids: new Set(),
+  });
+  const selectedIds = selection.key === paramsKey ? selection.ids : EMPTY_SELECTION;
+  const setSelectedIds = (ids: Set<string>) => setSelection({ key: paramsKey, ids });
+
   // Add counts to status tabs
   const tabsWithCounts = STATUS_TABS.map((tab) => ({
     ...tab,
@@ -109,7 +121,7 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="relative flex flex-col h-[calc(100dvh-var(--header-height))]">
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
         <div className="flex items-center justify-between">
@@ -203,7 +215,7 @@ export default function ContactsPage() {
       {view === "kanban" ? (
         <ContactKanbanBoard />
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {isError ? (
             <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
           ) : (
@@ -216,9 +228,18 @@ export default function ContactsPage() {
               onRowClick={openContactDetail}
               onPageChange={setPage}
               onCreateClick={() => setShowCreate(true)}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
             />
           )}
         </div>
+      )}
+
+      {view === "list" && (
+        <ContactsBulkBar
+          selectedIds={selectedIds}
+          onClear={() => setSelectedIds(new Set())}
+        />
       )}
 
       {/* Detail Drawer */}

@@ -37,6 +37,8 @@ import { NotificationEmailWorker } from './notification/notification-email.worke
 import { WebhookDeliveryWorker } from './webhook/webhook-delivery.worker';
 import { UsersModule } from '@/modules/users/users.module';
 import { SettingsModule } from '@/modules/settings/settings.module';
+import { DeveloperApiModule } from '@/modules/developer-api/developer-api.module';
+import { ApiLogCleanupWorker } from './developer/api-log-cleanup.worker';
 import { AnalyticsModule } from '@/modules/analytics/analytics.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 // EPIC 13 — Analytics & Reporting workers
@@ -62,6 +64,7 @@ import { ShopifyWebhookWorker } from './shopify/shopify-webhook.worker';
 import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
+import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
 import { OrgOnboardingWorker } from './org/org-onboarding.worker';
@@ -82,6 +85,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     BillingModule,
     UsersModule,
     SettingsModule,
+    DeveloperApiModule,
     AnalyticsModule,
     SlaModule,
     NotificationsModule,
@@ -125,6 +129,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     NotificationEmailWorker,
     // EPIC 12 — Settings & Configuration workers
     WebhookDeliveryWorker,
+    ApiLogCleanupWorker,
     // EPIC 13 — Analytics & Reporting workers
     AnalyticsDailyWorker,
     AnalyticsHourlyWorker,
@@ -143,6 +148,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     ShopifyWebhookWorker,
     // Lead Scraper workers
     LeadScraperWorker,
+    ScrapeWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
   ],

@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useGlobalSearch } from "@/hooks/use-search";
+import { inboxChatHref } from "@/lib/inbox-link";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -37,7 +38,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         id: c.id,
         label: c.name || c.phoneNumber,
         sub: c.name ? c.phoneNumber : (c.email || ""),
-        href: `/contacts?id=${c.id}`,
+        href: `/contacts/${c.id}`,
       });
     }
     for (const c of data.conversations) {
@@ -48,7 +49,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         sub: c.lastMessageBody
           ? c.lastMessageBody.slice(0, 60)
           : `Conversation - ${c.status}`,
-        href: `/inbox?conversation=${c.id}`,
+        href: inboxChatHref(c),
       });
     }
     for (const c of data.campaigns) {

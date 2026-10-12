@@ -2,6 +2,7 @@
 
 import { Users, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,7 +29,13 @@ interface ContactsTableProps {
   onRowClick: (id: string) => void;
   onPageChange: (page: number) => void;
   onCreateClick: () => void;
+  /** Row selection for bulk actions; the checkbox column shows only when provided. */
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
+
+const checkboxClass =
+  "size-4 cursor-pointer rounded border-outline-variant accent-primary align-middle";
 
 const SOURCE_LABELS: Record<ContactSource, string> = {
   WHATSAPP: "WhatsApp",
@@ -65,9 +72,32 @@ export function ContactsTable({
   onRowClick,
   onPageChange,
   onCreateClick,
+  selectedIds,
+  onSelectionChange,
 }: ContactsTableProps) {
   const currentPage = Math.floor(skip / take) + 1;
   const totalPages = Math.ceil(total / take);
+  const selectable = !!selectedIds && !!onSelectionChange;
+  const selectedOnPage = selectable ? contacts.filter((c) => selectedIds.has(c.id)).length : 0;
+  const allSelected = contacts.length > 0 && selectedOnPage === contacts.length;
+
+  const toggleOne = (id: string) => {
+    if (!selectable) return;
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  };
+
+  const toggleAll = () => {
+    if (!selectable) return;
+    const next = new Set(selectedIds);
+    for (const c of contacts) {
+      if (allSelected) next.delete(c.id);
+      else next.add(c.id);
+    }
+    onSelectionChange(next);
+  };
 
   if (isLoading) {
     return (
@@ -105,10 +135,25 @@ export function ContactsTable({
   }
 
   return (
-    <div>
-      <Table>
+    <div className="flex h-full flex-col">
+      {/* Bottom room for the floating bulk bar so the last rows stay reachable */}
+      <Table stickyHeader className={cn("flex-1 min-h-0", selectedOnPage > 0 && "pb-24")}>
         <TableHeader>
           <TableHeaderRow>
+            {selectable && (
+              <TableHead className="w-10 pr-0">
+                <input
+                  type="checkbox"
+                  className={checkboxClass}
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selectedOnPage > 0 && !allSelected;
+                  }}
+                  onChange={toggleAll}
+                  aria-label={allSelected ? "Deselect all on this page" : "Select all on this page"}
+                />
+              </TableHead>
+            )}
             <TableHead>Contact</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Status</TableHead>
@@ -125,9 +170,23 @@ export function ContactsTable({
           {contacts.map((contact) => (
             <TableRow
               key={contact.id}
-              className="cursor-pointer"
+              className={cn(
+                "cursor-pointer",
+                selectable && selectedIds.has(contact.id) && "bg-primary/5 hover:bg-primary/8",
+              )}
               onClick={() => onRowClick(contact.id)}
             >
+              {selectable && (
+                <TableCell className="w-10 pr-0" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className={checkboxClass}
+                    checked={selectedIds.has(contact.id)}
+                    onChange={() => toggleOne(contact.id)}
+                    aria-label={`Select ${contact.name || contact.phoneNumber}`}
+                  />
+                </TableCell>
+              )}
               <TableCell>
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar
@@ -208,6 +267,7 @@ export function ContactsTable({
                   onClick={(e) => e.stopPropagation()}
                   className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors inline-flex"
                   title="View full profile"
+                  aria-label={`View ${contact.name || contact.phoneNumber} profile`}
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
