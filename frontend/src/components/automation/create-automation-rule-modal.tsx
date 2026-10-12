@@ -21,6 +21,7 @@ import type {
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
 
 interface CreateAutomationRuleModalProps {
   open: boolean;
@@ -82,17 +83,13 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
   if (actionType === "SEND_MESSAGE") {
     return (
       <div className="space-y-3">
-        {/* Session ID */}
+        {/* Sending number */}
         <div>
-          <Label>WhatsApp Session ID</Label>
-          <input
+          <Label>Send from</Label>
+          <SessionSelect
             {...register(`actions.${idx}.actionConfig.sessionId` as any)}
-            placeholder="e.g. sess_xxxxxxxxxx"
             className={inputCls}
           />
-          <p className="text-caption text-on-surface-variant/50 mt-1">
-            Leave blank to use the contact's active session automatically.
-          </p>
         </div>
 
         {/* Message Body */}
@@ -128,10 +125,9 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
   if (actionType === "ASSIGN_CONTACT") {
     return (
       <div>
-        <Label>Assign To User ID <span className="text-error">*</span></Label>
-        <input
+        <Label>Assign to <span className="text-error">*</span></Label>
+        <MemberSelect
           {...register(`actions.${idx}.actionConfig.assignToUserId` as any)}
-          placeholder="User UUID to assign contact to"
           className={inputCls}
         />
       </div>

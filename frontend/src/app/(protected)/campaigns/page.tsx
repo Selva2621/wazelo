@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { CreateCampaignModal } from "@/components/campaigns/create-campaign-modal";
 import { useSubscription } from "@/hooks/use-billing";
+import { LoadError } from "@/components/ui/empty-state";
 import type { CampaignStatus, ListCampaignsParams, MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 
 const TAKE = 20;
@@ -111,7 +112,7 @@ export default function CampaignsPage() {
     [page, effectiveStatus, sortBy, sortOrder],
   );
 
-  const { data, isLoading } = useCampaigns(params);
+  const { data, isLoading, isError, refetch } = useCampaigns(params);
 
   // ─── Client-side filtering ────────────────────────────────────────────────
   const filteredCampaigns = useMemo(() => {
@@ -307,6 +308,9 @@ export default function CampaignsPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-y-auto">
+        {isError ? (
+          <LoadError what="campaigns" onRetry={() => refetch()} className="m-6" />
+        ) : (
         <CampaignsTable
           campaigns={filteredCampaigns}
           total={data?.total ?? 0}
@@ -317,6 +321,7 @@ export default function CampaignsPage() {
           onPageChange={setPage}
           onCreateClick={() => setShowCreate(true)}
         />
+        )}
       </div>
 
       {/* Create Modal */}

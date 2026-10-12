@@ -114,7 +114,7 @@ export default function OrgTypePage() {
           </h1>
           <p className="text-body-lg text-on-surface-variant">
             {step === 1
-              ? "Choose your mode. You can change this later in Settings."
+              ? "Choose how you'll work. This sets up your dashboard and menus."
               : "Pick all that apply. We'll set up message templates and outreach written for your work."}
           </p>
         </div>

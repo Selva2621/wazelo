@@ -15,6 +15,7 @@ import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
 import { ImportContactsModal } from "@/components/contacts/import-contacts-modal";
+import { LoadError } from "@/components/ui/empty-state";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
 
 const TAKE = 20;
@@ -94,7 +95,7 @@ export default function ContactsPage() {
     ],
   );
 
-  const { data, isLoading } = useContacts(params);
+  const { data, isLoading, isError, refetch } = useContacts(params);
 
   // Add counts to status tabs
   const tabsWithCounts = STATUS_TABS.map((tab) => ({
@@ -203,16 +204,20 @@ export default function ContactsPage() {
         <ContactKanbanBoard />
       ) : (
         <div className="flex-1 overflow-y-auto">
-          <ContactsTable
-            contacts={data?.contacts ?? []}
-            total={data?.total ?? 0}
-            take={TAKE}
-            skip={page * TAKE}
-            isLoading={isLoading}
-            onRowClick={openContactDetail}
-            onPageChange={setPage}
-            onCreateClick={() => setShowCreate(true)}
-          />
+          {isError ? (
+            <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
+          ) : (
+            <ContactsTable
+              contacts={data?.contacts ?? []}
+              total={data?.total ?? 0}
+              take={TAKE}
+              skip={page * TAKE}
+              isLoading={isLoading}
+              onRowClick={openContactDetail}
+              onPageChange={setPage}
+              onCreateClick={() => setShowCreate(true)}
+            />
+          )}
         </div>
       )}
 

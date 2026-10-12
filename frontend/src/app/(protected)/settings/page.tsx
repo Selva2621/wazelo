@@ -132,17 +132,43 @@ type SettingsTab =
   | "sla"
   | "shopify";
 
-const TABS: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
-  { id: "organization", label: "Organization", icon: Building2 },
-  { id: "ai-memory", label: "AI Memory", icon: Zap },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-  { id: "working-hours", label: "Working Hours", icon: Clock },
-  { id: "features", label: "Feature Flags", icon: ToggleLeft },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "webhooks", label: "Webhooks", icon: Webhook },
-  { id: "developer-api", label: "Developer API", icon: Code },
-  { id: "sla", label: "SLA Policies", icon: Shield },
-  { id: "shopify", label: "Shopify", icon: ShoppingBag },
+// Tabs grouped by what the admin is trying to do, so related settings sit together
+const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] }[] = [
+  {
+    label: "Workspace",
+    tabs: [
+      { id: "organization", label: "Organization", icon: Building2 },
+      { id: "working-hours", label: "Working Hours", icon: Clock },
+      { id: "notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    label: "Channels",
+    tabs: [
+      { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+      { id: "shopify", label: "Shopify", icon: ShoppingBag },
+    ],
+  },
+  {
+    label: "AI",
+    tabs: [
+      { id: "features", label: "Features & AI", icon: ToggleLeft },
+      { id: "ai-memory", label: "AI Memory", icon: Zap },
+    ],
+  },
+  {
+    label: "Service",
+    tabs: [
+      { id: "sla", label: "SLA Policies", icon: Shield },
+    ],
+  },
+  {
+    label: "Developers",
+    tabs: [
+      { id: "developer-api", label: "API Keys & Docs", icon: Code },
+      { id: "webhooks", label: "Webhooks", icon: Webhook },
+    ],
+  },
 ];
 
 const TIMEZONES = [
@@ -205,26 +231,35 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
-        <div className="w-56 shrink-0">
-          <nav className="space-y-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              >
-                <tab.icon className="h-4 w-4 shrink-0" />
-                {tab.label}
-                {activeTab === tab.id && (
-                  <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                )}
-              </button>
+        <div className="md:w-56 shrink-0">
+          <nav className="space-y-4">
+            {TAB_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 mb-1 text-caption font-medium text-on-surface-variant">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                      }`}
+                    >
+                      <tab.icon className="h-4 w-4 shrink-0" />
+                      {tab.label}
+                      {activeTab === tab.id && (
+                        <ChevronRight className="h-3.5 w-3.5 ml-auto" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
         </div>

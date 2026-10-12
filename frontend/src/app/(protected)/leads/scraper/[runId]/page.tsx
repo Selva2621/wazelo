@@ -21,6 +21,7 @@ import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-mod
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -485,6 +486,7 @@ export default function ScrapeRunResultsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pitchOpen, setPitchOpen] = useState(false);
   const [outreachOpen, setOutreachOpen] = useState(false);
+  const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
 
   const updateFilters = (patch: Partial<ActiveFilters>) =>
@@ -683,7 +685,7 @@ export default function ScrapeRunResultsPage() {
             <div className="w-px h-8 bg-outline-variant" />
             <div>
               <p className="text-title font-semibold text-on-surface">{results.filter((r) => !r.imported).length}</p>
-              <p className="text-caption text-on-surface-variant">Pending</p>
+              <p className="text-caption text-on-surface-variant">Not imported</p>
             </div>
             <div className="w-px h-8 bg-outline-variant" />
             <div>
@@ -759,12 +761,9 @@ export default function ScrapeRunResultsPage() {
                   )}
 
                   {run && run.importedCount > 0 && (
-                    <Button
-                      onClick={() => setOutreachOpen(true)}
-                      title="Automatic first message + follow-ups to this run's imported leads"
-                    >
-                      <Rocket className="w-4 h-4" />
-                      Start outreach ({run.importedCount})
+                    <Button onClick={() => setMessageChoiceOpen(true)}>
+                      <Send className="w-4 h-4" />
+                      Message leads
                     </Button>
                   )}
 
@@ -776,28 +775,15 @@ export default function ScrapeRunResultsPage() {
                     Export {filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}
                   </Button>
 
-                  {selected.size > 0 && (
-                    <>
-                      {unimportedSelectedIds.length > 0 && (
-                        <Button variant="secondary"
-                          onClick={handleImport}
-                          disabled={importMutation.isPending}
-                          className="border-primary text-primary hover:bg-primary/5"
-                        >
-                          {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
-                          Import {unimportedSelectedIds.length}
-                        </Button>
-                      )}
-
-                      <Button
-                        onClick={() => setPitchOpen(true)}
-                        disabled={importedSelected.length === 0}
-                        title={importedSelected.length === 0 ? "Import the selected leads first" : undefined}
-                      >
-                        <Send className="w-4 h-4" />
-                        Send Pitch ({importedSelected.length})
-                      </Button>
-                    </>
+                  {unimportedSelectedIds.length > 0 && (
+                    <Button variant="secondary"
+                      onClick={handleImport}
+                      disabled={importMutation.isPending}
+                      className="border-primary text-primary hover:bg-primary/5"
+                    >
+                      {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+                      Import {unimportedSelectedIds.length}
+                    </Button>
                   )}
                 </div>
               </div>
@@ -856,7 +842,55 @@ export default function ScrapeRunResultsPage() {
         </>
       )}
 
-      {/* Pitch template modal */}
+      {/* One entry point for messaging leads: sequence for the run, or a one-time pitch */}
+      <Modal
+        open={messageChoiceOpen}
+        onClose={() => setMessageChoiceOpen(false)}
+        aria-labelledby="message-leads-title"
+        className="max-w-md p-6"
+      >
+        {() => (
+          <>
+            <h2 id="message-leads-title" className="text-title font-semibold text-on-surface mb-4">
+              Message leads
+            </h2>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { setMessageChoiceOpen(false); setOutreachOpen(true); }}
+                className="w-full flex items-start gap-3 rounded-xl border border-outline-variant p-4 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <Rocket className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-body-lg font-medium text-on-surface">
+                    Follow-up sequence <span className="text-label text-primary">(recommended)</span>
+                  </span>
+                  <span className="block text-label text-on-surface-variant mt-0.5">
+                    First message plus automatic follow-ups to all {run.importedCount} imported leads. Stops when they reply.
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={importedSelected.length === 0}
+                onClick={() => { setMessageChoiceOpen(false); setPitchOpen(true); }}
+                className="w-full flex items-start gap-3 rounded-xl border border-outline-variant p-4 text-left enabled:hover:border-primary enabled:hover:bg-primary/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Send className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-body-lg font-medium text-on-surface">One-time message</span>
+                  <span className="block text-label text-on-surface-variant mt-0.5">
+                    {importedSelected.length > 0
+                      ? `Send one pitch to the ${importedSelected.length} selected imported lead${importedSelected.length !== 1 ? "s" : ""}.`
+                      : "Select imported leads in the table first."}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
       {run && (
         <StartOutreachModal
           open={outreachOpen}

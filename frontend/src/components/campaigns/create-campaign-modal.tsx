@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   X, FileText, Search, ExternalLink, ChevronDown,
   Megaphone, MessageSquare, Users, Clock, Wifi,
@@ -134,6 +134,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
   });
+
+  // With a single connected number there is nothing to choose; preselect it
+  const onlySessionId = sessions.length === 1 ? sessions[0].id : null;
+  useEffect(() => {
+    if (open && onlySessionId) setValue("sessionId", onlySessionId);
+  }, [open, onlySessionId, setValue]);
 
   const messageType = watch("messageType") as MessageType;
   const audienceType = watch("audienceType") as CampaignAudienceType;
@@ -331,7 +337,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                             {templateSearch.trim() ? "No templates match" : "No templates yet"}
                           </p>
                           {!templateSearch.trim() && (
-                            <button type="button" onClick={() => { onClose(); router.push("/settings/templates"); }} className="flex items-center gap-1.5 text-label text-primary hover:underline">
+                            <button type="button" onClick={() => window.open("/settings/templates", "_blank", "noopener")} className="flex items-center gap-1.5 text-label text-primary hover:underline">
                               <ExternalLink className="h-3.5 w-3.5" /> Create a template
                             </button>
                           )}
@@ -676,16 +682,27 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
             {/* WhatsApp Session */}
             <div>
-              <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="WhatsApp Session" />
-              <select
-                {...register("sessionId")}
-                className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select a session</option>
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
-                ))}
-              </select>
+              <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="Send from" />
+              {sessions.length === 0 ? (
+                <div className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
+                  No WhatsApp number is connected.{" "}
+                  {/* New tab so the campaign being written isn't lost */}
+                  <a href="/settings/whatsapp" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-on-surface">
+                    Connect WhatsApp
+                  </a>
+                  , then come back and pick it here.
+                </div>
+              ) : (
+                <select
+                  {...register("sessionId")}
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+                >
+                  {sessions.length > 1 && <option value="">Choose a WhatsApp number</option>}
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
               {errors.sessionId && (
                 <p className="text-label text-error mt-1">{errors.sessionId.message}</p>
               )}

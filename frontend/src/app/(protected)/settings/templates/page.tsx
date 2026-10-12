@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, FileText, Trash2, Pencil, Search, Package, GripVertical, User, Sparkles, X, ShoppingBag, ShoppingCart, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, LoadError } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -76,7 +76,7 @@ function getProductId(tpl: MessageTemplate): string | null {
 
 export default function TemplatesPage() {
   usePageTitle("Message Templates");
-  const { data: templates, isLoading } = useTemplates();
+  const { data: templates, isLoading, isError, refetch } = useTemplates();
   const { data: products } = useProducts();
   const { data: customFields } = useQuery({
     queryKey: ["custom-fields", "contact"],
@@ -225,6 +225,10 @@ export default function TemplatesPage() {
         <Spinner size="lg" />
       </div>
     );
+  }
+
+  if (isError) {
+    return <LoadError what="templates" onRetry={() => refetch()} className="m-6" />;
   }
 
   return (
