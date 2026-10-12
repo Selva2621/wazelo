@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
+import type { OrgType } from "@/lib/types/auth";
 
 // Register design-system theme keys (globals.css @theme) so tailwind-merge
 // classifies `text-body` as a font size instead of a colour and does not drop it
@@ -16,6 +17,15 @@ const twMerge = extendTailwindMerge({
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Where to land after sign-in. "CRM" is the DB default, i.e. the org type was never
+ * picked — send new orgs straight to onboarding instead of flashing the dashboard first.
+ */
+export function homePathFor(orgType?: OrgType): string {
+  if (!orgType || orgType === "CRM") return "/onboarding/type";
+  return orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard";
 }
 
 /**

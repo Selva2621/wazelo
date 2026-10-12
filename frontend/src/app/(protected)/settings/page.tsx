@@ -97,6 +97,7 @@ import type {
   WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
 import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
+import { cn } from "@/lib/utils";
 import type {
   NotificationType,
   NotificationPreference,
@@ -263,9 +264,13 @@ function OrganizationSection() {
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
-  const [freelancerType, setFreelancerType] = useState("");
+  const [freelancerTypes, setFreelancerTypes] = useState<string[]>([]);
   const [freelancerService, setFreelancerService] = useState("");
   const isFreelancer = data?.orgType === "FREELANCER";
+  const hasOther = freelancerTypes.includes("OTHER");
+
+  const toggleFreelancerType = (value: string) =>
+    setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
 
   useEffect(() => {
     if (data) {
@@ -275,7 +280,7 @@ function OrganizationSection() {
       setIndustry(data.industry ?? "");
       setDescription(data.description ?? "");
       setWebsite(data.website ?? "");
-      setFreelancerType(data.freelancerType ?? "");
+      setFreelancerTypes(data.freelancerTypes ?? []);
       setFreelancerService(data.freelancerService ?? "");
     }
   }, [data]);
@@ -289,9 +294,9 @@ function OrganizationSection() {
       description,
       website,
       // Choosing what they do adds the matching pitch templates (existing ones are kept)
-      ...(isFreelancer && freelancerType && {
-        freelancerType,
-        freelancerService: freelancerType === "OTHER" ? freelancerService.trim() : "",
+      ...(isFreelancer && freelancerTypes.length > 0 && {
+        freelancerTypes,
+        freelancerService: hasOther ? freelancerService.trim() : "",
       }),
     };
     updateMutation.mutate(payload);
@@ -369,22 +374,32 @@ function OrganizationSection() {
           <div className="space-y-4">
             {isFreelancer && (
               <div className="space-y-1.5">
-                <label className="text-label font-medium text-on-surface-variant">
-                  What do you do?
-                </label>
-                <select
-                  value={freelancerType}
-                  onChange={(e) => setFreelancerType(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Choose your line of work…</option>
-                  {FREELANCER_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {freelancerType === "OTHER" && (
+                <p id="freelancer-types-label" className="text-label font-medium text-on-surface-variant">
+                  What do you do? <span className="text-on-surface-variant/60">(pick all that apply)</span>
+                </p>
+                <div role="group" aria-labelledby="freelancer-types-label" className="flex flex-wrap gap-2">
+                  {FREELANCER_TYPE_OPTIONS.map((option) => {
+                    const selected = freelancerTypes.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleFreelancerType(option.value)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 h-8 rounded-full border px-3 text-body transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-outline-variant/40 text-on-surface-variant hover:border-outline hover:text-on-surface",
+                        )}
+                      >
+                        {selected && <Check className="h-3.5 w-3.5" />}
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {hasOther && (
                   <input
                     type="text"
                     value={freelancerService}

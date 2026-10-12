@@ -182,6 +182,11 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // Hold the shell until the org type is known, so a new org never sees the dashboard
+  // before the org-type gate above sends it to onboarding
+  const needsOrgType = orgSettings !== undefined && (!orgSettings?.orgType || orgSettings.orgType === "CRM");
+  if (orgLoading || needsOrgType) return <AppShellSkeleton />;
+
   return (
     <AppShell>
       <AnnouncementBanner />

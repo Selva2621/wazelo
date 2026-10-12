@@ -36,8 +36,12 @@ const INTROS: Record<Exclude<FreelancerTypeValue, "OTHER">, string> = {
     "Hi {{name}}, I came across your business online. I write website copy, blogs and captions that help businesses get found and trusted. Would you be open to a quick chat this week?",
 };
 
-/** Ready-made outreach for a freelancer's line of work. Unknown type → a fill-in version. */
-export function getOutreachSteps(type?: string | null, service?: string | null): OutreachStep[] {
+/**
+ * Ready-made outreach for a freelancer's line of work. With several types the first
+ * one picked writes the intro; unknown type → a fill-in version.
+ */
+export function getOutreachSteps(types?: readonly string[] | null, service?: string | null): OutreachStep[] {
+  const type = types?.[0];
   const intro =
     type && type in INTROS
       ? INTROS[type as keyof typeof INTROS]

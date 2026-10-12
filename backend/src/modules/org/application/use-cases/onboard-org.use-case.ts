@@ -57,7 +57,7 @@ export class OnboardOrgUseCase {
     }
 
     if (mode === 'org-type-changed') {
-      await this.seedSystemTemplates(orgId, org.orgType, org.freelancerType, org.freelancerService);
+      await this.seedSystemTemplates(orgId, org.orgType, org.freelancerTypes, org.freelancerService);
       await this.seedFreelancerPipeline(orgId, org.orgType);
       return;
     }
@@ -78,7 +78,7 @@ export class OnboardOrgUseCase {
     await this.seedFreelancerPipeline(orgId, org.orgType);
     await this.seedTags(orgId);
     await this.seedLeadScoringRules(orgId);
-    await this.seedSystemTemplates(orgId, org.orgType, org.freelancerType, org.freelancerService);
+    await this.seedSystemTemplates(orgId, org.orgType, org.freelancerTypes, org.freelancerService);
 
     const adminId = await this.onboardingRepository.findFirstAdminId(orgId);
     if (adminId) {
@@ -161,13 +161,13 @@ export class OnboardOrgUseCase {
   private async seedSystemTemplates(
     orgId: string,
     orgType: OrgType,
-    freelancerType?: string | null,
+    freelancerTypes?: readonly string[] | null,
     freelancerService?: string | null,
   ): Promise<void> {
     const templates: SystemTemplate[] = [
       ...SHOPIFY_SYSTEM_TEMPLATES,
-      // Worded for their line of work (service filled in, plus pitch templates)
-      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerType, freelancerService) : []),
+      // Worded for their lines of work (services filled in, plus pitch templates per type)
+      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerTypes, freelancerService) : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(

@@ -144,7 +144,7 @@ describe('OnboardOrgUseCase', () => {
 
   it('words the freelancer templates for their line of work', async () => {
     const { useCase, repo } = setup({
-      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerType: 'WEB_DEVELOPER' },
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerTypes: ['WEB_DEVELOPER'] },
       existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
     });
 
@@ -155,13 +155,31 @@ describe('OnboardOrgUseCase', () => {
     expect(intro.body).toContain('website and app development');
     expect(intro.body).not.toContain('{{lead.service}}');
     expect(seeded.map((t) => t.name)).toEqual(
-      expect.arrayContaining(['pitch_intro', 'pitch_portfolio', 'pitch_followup', 'pitch_packages']),
+      expect.arrayContaining([
+        'pitch_intro_web_developer',
+        'pitch_portfolio_web_developer',
+        'pitch_followup_web_developer',
+        'pitch_packages_web_developer',
+      ]),
     );
-    expect(seeded.find((t) => t.name === 'pitch_packages')!.body).toContain('website packages');
+    expect(seeded.find((t) => t.name === 'pitch_packages_web_developer')!.body).toContain('website packages');
+  });
+
+  it('adds a pitch set per type and names every service when several are picked', () => {
+    const templates = buildFreelancerTemplates(['WEB_DEVELOPER', 'DESIGNER', 'OTHER'], 'tuition');
+    const names = templates.map((t) => t.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['pitch_intro_web_developer', 'pitch_intro_designer', 'pitch_intro_other']),
+    );
+    expect(new Set(names).size).toBe(names.length);
+    expect(templates.find((t) => t.name === 'freelancer_lead_intro')!.body).toContain(
+      'website and app development, branding and design and tuition',
+    );
+    expect(templates.find((t) => t.name === 'pitch_intro_other')!.body).toContain('tuition');
   });
 
   it('uses the typed-in service for OTHER', () => {
-    const intro = buildFreelancerTemplates('OTHER', 'interior design').find((t) => t.name === 'freelancer_lead_intro')!;
+    const intro = buildFreelancerTemplates(['OTHER'], 'interior design').find((t) => t.name === 'freelancer_lead_intro')!;
     expect(intro.body).toContain('interior design');
   });
 

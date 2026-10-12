@@ -201,7 +201,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                     // The outreach preset is written for the freelancer's line of work
                     const presetSteps =
                       preset.label === "Scraped lead outreach"
-                        ? getOutreachSteps(orgSettings?.freelancerType, orgSettings?.freelancerService).map((s) => ({ ...s, messageType: "TEXT" }))
+                        ? getOutreachSteps(orgSettings?.freelancerTypes, orgSettings?.freelancerService).map((s) => ({ ...s, messageType: "TEXT" }))
                         : preset.steps;
                     setSteps(presetSteps.map((s, i) => ({ ...s, _key: i })));
                   }}

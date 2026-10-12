@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/stores/auth-store";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useContacts } from "@/hooks/use-contacts";
 import { useConversations } from "@/hooks/use-conversations";
@@ -186,6 +187,8 @@ export default function FreelancerDashboard() {
         </Link>
       </div>
 
+      <SetupChecklist />
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
@@ -234,7 +237,7 @@ export default function FreelancerDashboard() {
             <div className="stagger grid grid-cols-2 gap-3">
               <QuickAction href="/contacts?action=new" icon={<Users className="h-5 w-5" />} label="Add Lead" hint="Into your CRM" />
               <QuickAction href="/inbox" icon={<MessageSquare className="h-5 w-5" />} label="Open Inbox" hint="WhatsApp chats" />
-              <QuickAction href="/campaigns/create" icon={<Megaphone className="h-5 w-5" />} label="New Campaign" hint="Broadcast" />
+              <QuickAction href="/campaigns?action=new" icon={<Megaphone className="h-5 w-5" />} label="New Campaign" hint="Broadcast" />
               <QuickAction href="/sequences" icon={<Repeat className="h-5 w-5" />} label="Sequence" hint="Auto follow-ups" />
             </div>
           </section>

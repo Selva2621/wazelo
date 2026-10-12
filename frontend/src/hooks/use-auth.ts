@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { homePathFor } from "@/lib/utils";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -24,8 +25,8 @@ export function useLogin() {
       // Never show a new user anything cached for whoever used this tab before.
       queryClient.clear();
       setAuth({ ...data, rememberMe: variables.rememberMe ?? false });
-      // Go straight to the right dashboard instead of bouncing through /dashboard
-      router.push(data.user.orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard");
+      // Go straight to the right page instead of bouncing through /dashboard
+      router.push(homePathFor(data.user.orgType));
     },
   });
 }

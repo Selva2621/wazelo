@@ -100,38 +100,60 @@ export function freelancerTypeLabel(type: string | null | undefined, customServi
   return customService?.trim() || 'Freelancer';
 }
 
+const profileFor = (type: string) => (type in PROFILES ? PROFILES[type as keyof typeof PROFILES] : null);
+
+/** "a", "a and b", "a, b and c" */
+const joinList = (items: string[]) =>
+  items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
 /**
  * The full freelancer template set for one org: the common lifecycle templates
- * with {{lead.service}} filled for their line of work, plus four pitch templates.
+ * with {{lead.service}} filled for all their lines of work, plus four pitch
+ * templates per selected type (named pitch_<key>_<type>, e.g. pitch_intro_designer).
  */
 export function buildFreelancerTemplates(
-  type: string | null | undefined,
+  types: readonly string[] | null | undefined,
   customService?: string | null,
 ): SystemTemplate[] {
-  const profile = type && type in PROFILES ? PROFILES[type as keyof typeof PROFILES] : null;
-  const service = profile?.serviceLabel ?? (customService?.trim() || null);
+  const custom = customService?.trim() || null;
+  const selected = [...new Set(types ?? [])];
+
+  const services = selected
+    .map((type) => profileFor(type)?.serviceLabel ?? (type === 'OTHER' ? custom : null))
+    .filter((s): s is string => !!s);
+  const service = services.length ? joinList(services) : custom;
 
   // Without a known service, keep {{lead.service}} so the user fills it in
   const common = service
     ? FREELANCER_SYSTEM_TEMPLATES.map((t) => ({ ...t, body: t.body.split('{{lead.service}}').join(service) }))
     : FREELANCER_SYSTEM_TEMPLATES;
 
-  const pitch = profile?.pitch ?? genericPitch(service ?? 'my services');
-  const pitchTemplate = (key: keyof FreelancerProfile['pitch'], category: string, description: string): SystemTemplate => ({
-    name: `pitch_${key}`,
-    category,
-    language: 'en',
-    body: pitch[key],
-    meta: { freelancerType: `pitch_${key}`, description, profile: type ?? 'OTHER' },
+  // No type picked yet: one generic pitch set under the plain names
+  const pitchSets = selected.length
+    ? selected.map((type) => ({
+        type,
+        suffix: `_${type.toLowerCase()}`,
+        pitch: profileFor(type)?.pitch ?? genericPitch(custom ?? 'my services'),
+      }))
+    : [{ type: 'OTHER', suffix: '', pitch: genericPitch(service ?? 'my services') }];
+
+  const pitchTemplates = pitchSets.flatMap(({ type, suffix, pitch }) => {
+    const pitchTemplate = (key: keyof FreelancerProfile['pitch'], description: string): SystemTemplate => ({
+      name: `pitch_${key}${suffix}`,
+      category: 'MARKETING',
+      language: 'en',
+      body: pitch[key],
+      meta: { freelancerType: `pitch_${key}`, description, profile: type },
+    });
+    return [
+      pitchTemplate('intro', 'First message to a new lead'),
+      pitchTemplate('portfolio', 'Share your portfolio'),
+      pitchTemplate('followup', 'Follow-up with a free offer'),
+      pitchTemplate('packages', 'Your service packages'),
+    ];
   });
 
-  return [
-    ...common,
-    pitchTemplate('intro', 'MARKETING', 'First message to a new lead'),
-    pitchTemplate('portfolio', 'MARKETING', 'Share your portfolio'),
-    pitchTemplate('followup', 'MARKETING', 'Follow-up with a free offer'),
-    pitchTemplate('packages', 'MARKETING', 'Your service packages'),
-  ];
+  return [...common, ...pitchTemplates];
 }
 
 function genericPitch(service: string): FreelancerProfile['pitch'] {

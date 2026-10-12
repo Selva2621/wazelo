@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCreateCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
+import { useCreateCampaign, useExecuteCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
 import { ProductSelectField } from "@/components/ui/product-select-field";
 import {
   createCampaignSchema,
@@ -109,9 +109,10 @@ interface CreateCampaignModalProps {
 export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignModalProps) {
   const router = useRouter();
   const createCampaign = useCreateCampaign();
+  const executeCampaign = useExecuteCampaign();
   const previewAudience = usePreviewAudience();
 
-  const [scheduleMode, setScheduleMode] = useState<"immediate" | "scheduled">("immediate");
+  const [scheduleMode, setScheduleMode] = useState<"immediate" | "scheduled" | "draft">("immediate");
   const [productId, setProductId] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -177,6 +178,8 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
       },
       {
         onSuccess: ({ campaign: created }) => {
+          // The backend saves unscheduled campaigns as drafts; "Send now" starts it right away
+          if (scheduleMode === "immediate") executeCampaign.mutate(created.id);
           reset();
           setScheduleMode("immediate");
           setProductId("");
@@ -699,8 +702,9 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
               <SectionHeading icon={<Clock className="h-3.5 w-3.5" />} label="Scheduling" />
               <div className="flex gap-2 mb-3">
                 {([
-                  { value: "immediate", label: "Send Now" },
+                  { value: "immediate", label: "Send now" },
                   { value: "scheduled", label: "Schedule" },
+                  { value: "draft", label: "Save as draft" },
                 ] as const).map((opt) => (
                   <button
                     key={opt.value}
@@ -749,7 +753,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
               loading={createCampaign.isPending}
               onClick={handleSubmit(onSubmit)}
             >
-              Create Campaign
+              {scheduleMode === "immediate" ? "Create & send" : scheduleMode === "scheduled" ? "Schedule campaign" : "Save draft"}
             </Button>
           </div>
         </div>

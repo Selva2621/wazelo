@@ -74,9 +74,12 @@ export class UpdateOrgSettingsUseCase {
       changes.orgType = { from: org.orgType, to: dto.orgType };
     }
 
-    if (dto.freelancerType !== undefined && dto.freelancerType !== org.freelancerType) {
-      updateData.freelancerType = dto.freelancerType;
-      changes.freelancerType = { from: org.freelancerType, to: dto.freelancerType };
+    if (
+      dto.freelancerTypes !== undefined &&
+      [...dto.freelancerTypes].sort().join(',') !== [...org.freelancerTypes].sort().join(',')
+    ) {
+      updateData.freelancerTypes = dto.freelancerTypes;
+      changes.freelancerTypes = { from: org.freelancerTypes, to: dto.freelancerTypes };
     }
 
     const service = dto.freelancerService?.trim() || null;
@@ -111,11 +114,12 @@ export class UpdateOrgSettingsUseCase {
     // written for their line of work. Onboarding only adds missing templates, so
     // anything the user already has or edited is left alone.
     const isFreelancer = (dto.orgType ?? org.orgType) === OrgType.FREELANCER;
-    if (isFreelancer && (changes.orgType || changes.freelancerType || changes.freelancerService)) {
+    if (isFreelancer && (changes.orgType || changes.freelancerTypes || changes.freelancerService)) {
+      const types = [...(dto.freelancerTypes ?? org.freelancerTypes)].sort().join('+') || 'none';
       await this.queueService.publishOnce(
         QUEUE_NAMES.ORG_ONBOARDING,
         { orgId, mode: 'org-type-changed' },
-        `org-templates:${orgId}:${dto.freelancerType ?? org.freelancerType ?? 'none'}`,
+        `org-templates:${orgId}:${types}`,
       );
     }
 

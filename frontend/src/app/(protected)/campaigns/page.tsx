@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Megaphone, ChevronDown, X, Filter } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -78,6 +78,17 @@ export default function CampaignsPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
+
+  // "New Campaign" shortcuts land here with ?action=new — open the create
+  // form, then drop the param so a refresh doesn't reopen it
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("action") !== "new") return;
+    url.searchParams.delete("action");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    const frame = requestAnimationFrame(() => setShowCreate(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const { page, setPage } = useCampaignsStore();
 

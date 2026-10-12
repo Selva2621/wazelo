@@ -300,15 +300,12 @@ function ResultRow({
   onToggle: () => void;
   waStatus?: CheckWhatsAppResult;
 }) {
-  const isDisabled = result.imported;
-
+  // Imported rows stay selectable so they can be pitched
   return (
     <TableRow
-      onClick={() => !isDisabled && onToggle()}
+      onClick={onToggle}
       className={
-        isDisabled
-          ? "opacity-50 cursor-default"
-          : selected
+        selected
           ? "bg-primary/5 cursor-pointer"
           : "cursor-pointer hover:bg-surface-container-low"
       }
@@ -317,14 +314,12 @@ function ResultRow({
       <TableCell>
         <div
           className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-            isDisabled
-              ? "border-success bg-success"
-              : selected
+            selected
               ? "border-primary bg-primary"
               : "border-outline-variant"
           }`}
         >
-          {(selected || isDisabled) && (
+          {selected && (
             <CheckCircle2 className="w-2.5 h-2.5 text-on-primary" />
           )}
         </div>
@@ -571,24 +566,14 @@ export default function ScrapeRunResultsPage() {
     });
   }, [results, filters, waStatusMap]);
 
-  const unimportedVisible = filteredResults.filter((r) => !r.imported);
-  const allSelected = unimportedVisible.length > 0 && unimportedVisible.every((r) => selected.has(r.id));
+  const allSelected = filteredResults.length > 0 && filteredResults.every((r) => selected.has(r.id));
 
   const toggleAll = () => {
-    if (allSelected) {
-      // deselect only visible unimported
-      setSelected((prev) => {
-        const next = new Set(prev);
-        unimportedVisible.forEach((r) => next.delete(r.id));
-        return next;
-      });
-    } else {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        unimportedVisible.forEach((r) => next.add(r.id));
-        return next;
-      });
-    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filteredResults.forEach((r) => (allSelected ? next.delete(r.id) : next.add(r.id)));
+      return next;
+    });
   };
 
   const toggleOne = (id: string) => {
@@ -599,11 +584,12 @@ export default function ScrapeRunResultsPage() {
     });
   };
 
+  // Selection is kept after import so the same leads can be pitched next
+  const unimportedSelectedIds = results.filter((r) => selected.has(r.id) && !r.imported).map((r) => r.id);
+
   const handleImport = () => {
-    if (selected.size === 0) return;
-    importMutation.mutate(Array.from(selected), {
-      onSuccess: () => setSelected(new Set()),
-    });
+    if (unimportedSelectedIds.length === 0) return;
+    importMutation.mutate(unimportedSelectedIds);
   };
 
   if (runLoading) {
@@ -753,10 +739,10 @@ export default function ScrapeRunResultsPage() {
                   />
                   <span className="text-body-lg text-on-surface-variant">
                     {allSelected
-                      ? `All ${unimportedVisible.length} visible selected`
+                      ? `All ${filteredResults.length} visible selected`
                       : selected.size > 0
                       ? `${selected.size} selected`
-                      : `Select to import`}
+                      : `Select leads`}
                   </span>
                 </label>
 
@@ -792,20 +778,21 @@ export default function ScrapeRunResultsPage() {
 
                   {selected.size > 0 && (
                     <>
-                      <Button variant="secondary"
-                        onClick={handleImport}
-                        disabled={importMutation.isPending}
-                        className="border-primary text-primary hover:bg-primary/5"
-                      >
-                        {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
-                        Import {selected.size}
-                      </Button>
+                      {unimportedSelectedIds.length > 0 && (
+                        <Button variant="secondary"
+                          onClick={handleImport}
+                          disabled={importMutation.isPending}
+                          className="border-primary text-primary hover:bg-primary/5"
+                        >
+                          {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+                          Import {unimportedSelectedIds.length}
+                        </Button>
+                      )}
 
                       <Button
                         onClick={() => setPitchOpen(true)}
                         disabled={importedSelected.length === 0}
-                        title={importedSelected.length === 0 ? "Import leads first before pitching" : undefined}
-                       
+                        title={importedSelected.length === 0 ? "Import the selected leads first" : undefined}
                       >
                         <Send className="w-4 h-4" />
                         Send Pitch ({importedSelected.length})
@@ -838,7 +825,7 @@ export default function ScrapeRunResultsPage() {
                             className="accent-primary w-4 h-4"
                             checked={allSelected}
                             onChange={toggleAll}
-                            title="Select all visible unimported"
+                            title="Select all visible"
                           />
                         </TableHead>
                         <TableHead>Name</TableHead>

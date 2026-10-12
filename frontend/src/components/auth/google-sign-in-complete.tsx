@@ -7,6 +7,7 @@ import axios from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshSession } from "@/lib/api/client";
 import { useAuthStore } from "@/stores/auth-store";
+import { homePathFor } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,7 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 /**
  * Landing page after "Continue with Google". The backend has already set the HttpOnly
  * refresh cookie; restore the session from it exactly like a page reload does, then go
- * where a password login goes (the protected layout sends new orgs on to onboarding).
+ * where a password login goes (new orgs straight to onboarding).
  */
 export function GoogleSignInComplete() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export function GoogleSignInComplete() {
         if (session.user) {
           useAuthStore.getState().setAuth({ ...session, user: session.user, rememberMe: remembered });
         }
-        router.replace(session.user?.orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard");
+        router.replace(homePathFor(session.user?.orgType));
       })
       .catch((err) => {
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;

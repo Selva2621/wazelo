@@ -55,7 +55,11 @@ export default function OrgTypePage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [mode, setMode] = useState<Mode | null>(null);
-  const [freelancerType, setFreelancerType] = useState<FreelancerTypeValue | null>(null);
+  const [freelancerTypes, setFreelancerTypes] = useState<FreelancerTypeValue[]>([]);
+  const hasOther = freelancerTypes.includes("OTHER");
+
+  const toggleFreelancerType = (value: FreelancerTypeValue) =>
+    setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
   const [otherService, setOtherService] = useState("");
   const [error, setError] = useState<string | null>(null);
   const updateOrgSettings = useUpdateOrgSettings();
@@ -67,8 +71,8 @@ export default function OrgTypePage() {
       mode === "FREELANCER"
         ? {
             orgType: "FREELANCER",
-            freelancerType: freelancerType ?? undefined,
-            freelancerService: freelancerType === "OTHER" ? otherService.trim() : undefined,
+            freelancerTypes,
+            freelancerService: hasOther ? otherService.trim() : undefined,
           }
         : { orgType: "TEAM" },
       {
@@ -89,7 +93,7 @@ export default function OrgTypePage() {
   const canContinue =
     step === 1
       ? !!mode
-      : !!freelancerType && (freelancerType !== "OTHER" || otherService.trim().length >= 2);
+      : freelancerTypes.length > 0 && (!hasOther || otherService.trim().length >= 2);
 
   return (
     <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
@@ -111,7 +115,7 @@ export default function OrgTypePage() {
           <p className="text-body-lg text-on-surface-variant">
             {step === 1
               ? "Choose your mode. You can change this later in Settings."
-              : "We'll set up message templates and outreach written for your work. You can edit them anytime."}
+              : "Pick all that apply. We'll set up message templates and outreach written for your work."}
           </p>
         </div>
 
@@ -138,14 +142,14 @@ export default function OrgTypePage() {
               {FREELANCER_TYPE_OPTIONS.map((option) => (
                 <ChoiceCard
                   key={option.value}
-                  selected={freelancerType === option.value}
-                  onClick={() => setFreelancerType(option.value)}
+                  selected={freelancerTypes.includes(option.value)}
+                  onClick={() => toggleFreelancerType(option.value)}
                   title={option.label}
                   description={option.description}
                 />
               ))}
             </div>
-            {freelancerType === "OTHER" && (
+            {hasOther && (
               <div>
                 <label htmlFor="other-service" className="text-label font-medium text-on-surface-variant">
                   Your service

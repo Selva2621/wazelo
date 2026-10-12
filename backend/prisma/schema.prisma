@@ -448,9 +448,9 @@ model Organization {
   slug      String    @unique @db.VarChar(255)
   timezone    String    @default("UTC") @db.VarChar(100)
   orgType     OrgType   @default(CRM) @map("org_type")
-  /// For FREELANCER orgs: what they do (WEB_DEVELOPER, DESIGNER, …) — shapes default templates
-  freelancerType    String? @map("freelancer_type") @db.VarChar(30)
-  /// Free-text service when freelancerType is OTHER
+  /// For FREELANCER orgs: what they do (WEB_DEVELOPER, DESIGNER, …), one or more — shapes default templates
+  freelancerTypes   String[] @default([]) @map("freelancer_types") @db.VarChar(30)
+  /// Free-text service when freelancerTypes includes OTHER
   freelancerService String? @map("freelancer_service") @db.VarChar(120)
   branding    Json?     @db.JsonB
   industry    String?   @db.VarChar(100)
