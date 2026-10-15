@@ -19,6 +19,7 @@ import {
   AddTagUseCase,
   RemoveTagUseCase,
   GetContactHistoryUseCase,
+  BulkContactsUseCase,
 } from './application/use-cases';
 import { ExportContactsUseCase } from './application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from './application/use-cases/import-contacts.use-case';
@@ -53,6 +54,7 @@ import { TeamsModule } from '../teams/teams.module';
     AddTagUseCase,
     RemoveTagUseCase,
     GetContactHistoryUseCase,
+    BulkContactsUseCase,
     ExportContactsUseCase,
     ImportContactsUseCase,
   ],

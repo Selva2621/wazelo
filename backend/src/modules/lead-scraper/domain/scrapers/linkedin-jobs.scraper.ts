@@ -54,11 +54,17 @@ export class LinkedInJobsScraper extends BaseScraper {
 
           if (!jobTitle) return;
 
+          // <time datetime="2026-10-10"> on each card
+          const listed = $(el).find('time').first().attr('datetime');
+          const postedAt = listed && !Number.isNaN(Date.parse(listed)) ? new Date(listed).toISOString() : undefined;
+
           leads.push({
             name: company || 'LinkedIn Client',
             jobTitle,
             company: company || undefined,
             location: loc || undefined,
+            clientCountry: loc || undefined,
+            postedAt,
             sourceUrl: jobUrl || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}`,
             scrapedAt: new Date().toISOString(),
           });

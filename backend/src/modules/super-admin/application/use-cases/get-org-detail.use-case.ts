@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { restoreDeadline } from '../../domain/services/org-lifecycle';
 import { EntitlementOverrideService } from '@/modules/billing/domain/services/entitlement-override.service';
 import { effectiveLimit } from '@/modules/billing/domain/services/entitlements';
 import {
@@ -45,6 +46,8 @@ export class GetOrgDetailUseCase {
         suspendedAt: org.suspendedAt,
         suspendReason: org.suspendReason,
         createdAt: org.createdAt,
+        deletedAt: org.deletedAt,
+        restorableUntil: org.deletedAt ? restoreDeadline(org.deletedAt) : null,
       },
       users: org.users,
       subscription,

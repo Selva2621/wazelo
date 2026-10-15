@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrgStatus, PlatformAuditAction, SubscriptionStatus, UsageMetricType } from '@prisma/client';
 import { EVENT_NAMES } from '@/common/constants';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { SubscriptionRepository } from '@/modules/billing/infrastructure/repositories/subscription.repository';
 import { PlanRepository } from '@/modules/billing/infrastructure/repositories/plan.repository';
@@ -169,6 +170,7 @@ export class AdminChangePlanUseCase {
     private readonly usageRepo: UsageRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly audit: PlatformAuditService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -187,16 +189,6 @@ export class AdminChangePlanUseCase {
     const newPlan = await this.planRepo.findById(newPlanId);
     if (!newPlan || !newPlan.isActive) throw new BadRequestException('Plan not found or inactive');
 
-    if (subscription.scheduledPlanId) {
-      await this.subscriptionRepo.clearScheduledDowngrade(subscription.id);
-    }
-
-    const updated = await this.subscriptionRepo.updatePlan(subscription.id, newPlan.id, newPlan.priceInCents, {
-      billingCycle: newPlan.billingCycle,
-      currency: newPlan.currency,
-    });
-    if (!updated) throw new BadRequestException('Subscription changed meanwhile — reload and try again');
-
     const limits: Record<UsageMetricType, number> = {
       [UsageMetricType.MESSAGES_SENT]: newPlan.maxMessagesPerMonth,
       [UsageMetricType.ACTIVE_USERS]: newPlan.maxUsers,
@@ -206,24 +198,55 @@ export class AdminChangePlanUseCase {
       [UsageMetricType.AI_CREDITS]: newPlan.aiCreditsPerMonth,
       [UsageMetricType.MESSAGE_TEMPLATES]: newPlan.maxMessageTemplates,
     };
-    await this.usageRepo.resetUsageForOrg(
-      orgId,
-      subscription.currentPeriodStart,
-      subscription.currentPeriodEnd,
-      limits,
-    );
-
     const oldPlan = subscription.plan;
-    await this.subscriptionRepo.recordEvent({
-      orgId,
-      subscriptionId: subscription.id,
-      previousStatus: subscription.status,
-      newStatus: subscription.status,
-      previousPlanId: oldPlan.id,
-      newPlanId: newPlan.id,
-      triggeredById: ctx.actor.id,
-      metadata: { by: 'SUPER_ADMIN', type: 'admin_plan_change' },
-    });
+
+    // Plan, usage limits and the history event commit together or not at all.
+    // Events and the audit entry go out only after the commit.
+    const updated = await this.prisma.$transaction(
+      async (tx) => {
+        // Same statement clears any scheduled downgrade: the admin's choice wins
+        const changed = await this.subscriptionRepo.updatePlan(
+          subscription.id,
+          newPlan.id,
+          newPlan.priceInCents,
+          {
+            billingCycle: newPlan.billingCycle,
+            currency: newPlan.currency,
+            scheduledPlanId: null,
+            scheduledChangeAt: null,
+          },
+          tx,
+        );
+        if (!changed) throw new BadRequestException('Subscription changed meanwhile — reload and try again');
+
+        await this.usageRepo.resetUsageForOrg(
+          orgId,
+          subscription.currentPeriodStart,
+          subscription.currentPeriodEnd,
+          limits,
+          tx,
+        );
+        await this.subscriptionRepo.recordEvent(
+          {
+            orgId,
+            subscriptionId: subscription.id,
+            previousStatus: subscription.status,
+            newStatus: subscription.status,
+            previousPlanId: oldPlan.id,
+            newPlanId: newPlan.id,
+            triggeredById: ctx.actor.id,
+            metadata: {
+              by: 'SUPER_ADMIN',
+              type: 'admin_plan_change',
+              clearedScheduledPlanId: subscription.scheduledPlanId ?? undefined,
+            },
+          },
+          tx,
+        );
+        return changed;
+      },
+      { timeout: 15_000 },
+    );
 
     const isUpgrade = newPlan.priceInCents > oldPlan.priceInCents;
     this.eventEmitter.emit(

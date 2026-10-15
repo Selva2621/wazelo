@@ -1,10 +1,11 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
-import type { ListScrapeRunsParams } from "@/lib/types/lead-scraper";
+import type { ListScrapeRunsParams, ScrapeResult, WaCheckState } from "@/lib/types/lead-scraper";
 
 export const scrapeRunKeys = {
   all: ["scrape-runs"] as const,
@@ -21,11 +22,12 @@ export function useScrapeRuns(params?: ListScrapeRunsParams, refetchInterval?: n
   });
 }
 
-export function useScrapeRunResults(runId: string | null) {
+export function useScrapeRunResults(runId: string | null, refetchInterval?: number | false) {
   return useQuery({
     queryKey: scrapeRunKeys.results(runId ?? ""),
     queryFn: () => leadScraperApi.getRunResults(runId!),
     enabled: Boolean(runId),
+    refetchInterval,
   });
 }
 
@@ -44,24 +46,58 @@ export function useTriggerScrapeRun() {
   });
 }
 
-export function useWhatsAppChecks(phones: string[]) {
-  const results = useQueries({
-    queries: phones.map((phone) => ({
-      queryKey: ["whatsapp-check", phone] as const,
-      queryFn: () => leadScraperApi.checkWhatsApp(phone),
-      staleTime: 5 * 60 * 1000, // cache for 5 min
-      retry: false,
-    })),
-  });
+const WA_CHECK_END_MESSAGES: Partial<Record<WaCheckState["state"], () => void>> = {
+  done: () => toast.success("WhatsApp check finished."),
+  day_limit: () => toast.info("Daily WhatsApp check limit reached — continue tomorrow. This protects your number from a ban."),
+  no_session: () => toast.error("WhatsApp disconnected — reconnect to continue checking."),
+};
 
-  const statusMap: Record<string, CheckWhatsAppResult> = {};
-  phones.forEach((phone, i) => {
-    if (results[i].data) {
-      statusMap[phone] = results[i].data!;
+/**
+ * "Is this number on WhatsApp?" checks run on the server, one number at a time
+ * within WhatsApp-safe limits — firing them all at once is a classic way to get
+ * a number banned. Answers are stored on the results, so they survive reloads.
+ */
+export function useWhatsAppChecks(runId: string, waCheck: WaCheckState | null | undefined, results: ScrapeResult[]) {
+  const queryClient = useQueryClient();
+  const isChecking = waCheck?.state === "running";
+
+  const statusMap = useMemo(() => {
+    const map: Record<string, CheckWhatsAppResult> = {};
+    for (const r of results) {
+      if (r.phone && r.waCheckedAt) map[r.phone] = { phone: r.phone, exists: r.waExists ?? null };
     }
+    return map;
+  }, [results]);
+
+  // Tell the user once when a check they watched ends
+  const prevState = useRef(waCheck?.state);
+  useEffect(() => {
+    if (prevState.current === "running" && waCheck?.state && waCheck.state !== "running") {
+      WA_CHECK_END_MESSAGES[waCheck.state]?.();
+      queryClient.invalidateQueries({ queryKey: scrapeRunKeys.results(runId) });
+    }
+    prevState.current = waCheck?.state;
+  }, [waCheck?.state, runId, queryClient]);
+
+  const start = useMutation({
+    mutationFn: (resultIds: string[]) => leadScraperApi.startWhatsAppCheck(runId, resultIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: scrapeRunKeys.detail(runId) }),
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message ?? "Could not start WhatsApp check");
+    },
   });
 
-  return { statusMap, isLoading: results.some((r) => r.isLoading) };
+  const stop = useMutation({
+    mutationFn: () => leadScraperApi.stopWhatsAppCheck(runId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: scrapeRunKeys.detail(runId) }),
+  });
+
+  return {
+    statusMap,
+    isChecking: isChecking || start.isPending,
+    checkPhones: (resultIds: string[]) => start.mutate(resultIds),
+    stopChecking: () => stop.mutate(),
+  };
 }
 
 export function useDeleteScrapeRun() {
@@ -74,6 +110,20 @@ export function useDeleteScrapeRun() {
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message ?? "Failed to delete run");
+    },
+  });
+}
+
+export function useCancelScrapeRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leadScraperApi.cancelRun(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scrapeRunKeys.all });
+      toast.success("Run cancelled.");
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message ?? "Failed to cancel run");
     },
   });
 }
@@ -101,6 +151,9 @@ export function useImportScrapeResults(runId: string) {
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.results(runId) });
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.all });
       toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} skipped` : ""}.`);
+      if (data.noPhone) {
+        toast.info(`${data.noPhone} lead${data.noPhone !== 1 ? "s have" : " has"} no phone number — open the job link to bid instead.`);
+      }
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message ?? "Failed to import contacts");

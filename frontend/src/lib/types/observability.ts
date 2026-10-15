@@ -30,8 +30,49 @@ export interface QueueHealth {
   name: string;
   active: number;
   waiting: number;
+  /** Finished in the last `windowHours` */
   completed: number;
+  /** Failed or expired in the last `windowHours` */
   failed: number;
+  windowHours: number;
+  /** From the waiting depth */
+  status: "healthy" | "warning" | "critical";
+}
+
+// ─── Failed jobs ───
+
+export interface FailedJob {
+  id: string;
+  queue: string;
+  state: "failed" | "expired";
+  attempts: number;
+  createdAt: string;
+  failedAt: string;
+  error: string | null;
+  /** Job payload; secrets are redacted by the server */
+  data: unknown;
+  /** True once this job has been re-queued, so it can't be retried again */
+  retried: boolean;
+}
+
+export interface FailedJobsResponse {
+  jobs: FailedJob[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface QueryFailedJobsParams {
+  page?: number;
+  limit?: number;
+  queue?: string;
+}
+
+export interface RetryJobResponse {
+  jobId: string;
+  newJobId: string;
+  queue: string;
 }
 
 // ─── Metrics ───
@@ -115,6 +156,9 @@ export interface CreateAlertRuleRequest {
   enabled?: boolean;
   cooldownSeconds?: number;
 }
+
+/** PATCH body: any subset of the create fields */
+export type UpdateAlertRuleRequest = Partial<CreateAlertRuleRequest>;
 
 export interface AlertListResponse {
   data: AlertEvent[];

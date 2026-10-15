@@ -11,8 +11,8 @@ import { LoginDto } from '../dto/login.dto';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
 import { OrgRepository } from '@/modules/org/infrastructure/repositories/org.repository';
 import { PasswordService } from '../../domain/services/password.service';
-import { TokenService, TokenPair } from '../../domain/services/token.service';
-import { SessionRepository } from '../../infrastructure/repositories/session.repository';
+import { TokenPair } from '../../domain/services/token.service';
+import { SessionIssuer } from '../services/session-issuer.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { EVENT_NAMES } from '@/common/constants';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
@@ -41,8 +41,7 @@ export class LoginUseCase {
     private readonly userRepository: UserRepository,
     private readonly orgRepository: OrgRepository,
     private readonly passwordService: PasswordService,
-    private readonly tokenService: TokenService,
-    private readonly sessionRepository: SessionRepository,
+    private readonly sessionIssuer: SessionIssuer,
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
@@ -127,23 +126,11 @@ export class LoginUseCase {
 
     const rememberMe = dto.rememberMe ?? false;
 
-    // Generate token pair
-    const tokenPair: TokenPair = await this.tokenService.generateTokenPair({
-      sub: user.id,
-      orgId: user.orgId,
-      role: user.role,
-      email: user.email,
-    }, rememberMe);
-
-    // Create session
-    await this.sessionRepository.create({
-      userId: user.id,
-      orgId: user.orgId,
-      refreshToken: tokenPair.refreshToken,
-      expiresAt: this.tokenService.getRefreshExpiryDate(rememberMe),
+    // Token pair + session row (shared with "Continue with Google")
+    const tokenPair: TokenPair = await this.sessionIssuer.issue(user, {
       rememberMe,
-      userAgent,
       ipAddress,
+      userAgent,
     });
 
     // Audit log

@@ -19,6 +19,7 @@ import {
   Target,
   Star,
   Kanban,
+  Briefcase,
   TrendingUp,
   Bot,
   Workflow,
@@ -52,6 +53,8 @@ interface NavItemDef {
   roles?: Role[];
   /** Plan feature flag required to see this item. */
   feature?: "campaigns" | "automation";
+  /** If true, only FREELANCER orgs see this item. */
+  freelancerOnly?: boolean;
 }
 
 interface NavGroup {
@@ -82,6 +85,7 @@ const navGroups: NavGroup[] = [
       { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts" },
       { href: "/leads/scraper", icon: <ScanSearch className="h-5 w-5" />, label: "Lead Scraper" },
       { href: "/leads/pipeline", icon: <Kanban className="h-5 w-5" />, label: "Lead Pipeline" },
+      { href: "/deals", icon: <Briefcase className="h-5 w-5" />, label: "Deals", freelancerOnly: true },
       { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
       // { href: "/deals", icon: <Kanban className="h-5 w-5" />, label: "Deals", roles: ["ADMIN", "MANAGER"] },
       // { href: "/lead-scoring", icon: <TrendingUp className="h-5 w-5" />, label: "Lead Scoring", roles: ["ADMIN", "MANAGER"] },
@@ -121,10 +125,11 @@ const navGroups: NavGroup[] = [
   {
     label: "Settings",
     items: [
+      // Everyone needs their own number connected before anything can be sent
+      { href: "/settings/whatsapp", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp" },
       { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"] },
       // { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
       { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"] },
-      { href: "/settings/whatsapp", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp", roles: ["EMPLOYEE", "MANAGER"] },
     ],
   },
   {
@@ -138,7 +143,7 @@ const navGroups: NavGroup[] = [
 const adminNavItems = [
   { href: "/admin/users", icon: <Users className="h-5 w-5" />, label: "Users" },
   { href: "/admin/teams", icon: <UsersRound className="h-5 w-5" />, label: "Teams" },
-  { href: "/admin/whatsapp-sessions", icon: <Wifi className="h-5 w-5" />, label: "WA Sessions" },
+  { href: "/admin/whatsapp-sessions", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp Sessions" },
   { href: "/admin/roles-permissions", icon: <Shield className="h-5 w-5" />, label: "Permissions" },
   { href: "/admin/audit-logs", icon: <FileText className="h-5 w-5" />, label: "Audit Logs" },
   { href: "/admin/gdpr", icon: <ShieldCheck className="h-5 w-5" />, label: "GDPR" },
@@ -229,6 +234,7 @@ export function Sidebar() {
             .map((item) =>
               isFreelancer && item.href === "/dashboard" ? { ...item, href: "/dashboard/freelancer" } : item,
             )
+            .filter((item) => !item.freelancerOnly || isFreelancer)
             .filter((item) => !item.roles || item.roles.includes(user?.role as Role))
             .filter((item) => isFeatureAllowed(item.feature));
 

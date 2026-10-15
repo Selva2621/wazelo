@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 
 export interface AiCompletionRequest {
   systemPrompt: string;
@@ -40,13 +41,23 @@ export class AiProviderService {
   private readonly provider: string;
   private readonly model: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly killSwitches: KillSwitchService,
+  ) {
     this.apiKey = this.config.get('AI_API_KEY', '');
     this.provider = this.config.get('AI_PROVIDER', 'groq');
     this.model = this.config.get('AI_MODEL', 'llama-3.3-70b-versatile');
   }
 
   async complete(req: AiCompletionRequest): Promise<AiCompletionResponse> {
+    // Platform kill switch: every caller (HTTP, chatbot, event handlers) already
+    // treats empty text as "no AI result" and falls back, so nothing crashes.
+    if (await this.killSwitches.isDisabled('ai')) {
+      this.logger.warn('AI is switched off platform-wide (kill switch), skipping completion');
+      return { text: '' };
+    }
+
     if (!this.apiKey) {
       this.logger.warn('AI_API_KEY not configured, returning fallback');
       return { text: '' };

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsUUID, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsUUID, IsDateString, IsIn, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePipelineDto {
@@ -92,6 +92,35 @@ export class UpdateDealDto {
   @IsOptional()
   @IsString()
   status?: 'OPEN' | 'WON' | 'LOST';
+
+  /** Next follow-up time; null clears it (marks the follow-up done) */
+  @IsOptional()
+  @IsDateString()
+  nextFollowUpAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  followUpNote?: string | null;
+}
+
+export class ListFollowUpsQueryDto {
+  /** due = overdue + due by end of today (default); upcoming = next 7 days */
+  @IsOptional()
+  @IsIn(['due', 'upcoming'])
+  scope?: 'due' | 'upcoming';
+
+  /** Viewer's IANA time zone, so "today" ends at their midnight */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  tz?: string;
+}
+
+export class SaveScopeDto {
+  @IsString()
+  @MaxLength(1500)
+  summary: string;
 }
 
 export class MoveDealDto {

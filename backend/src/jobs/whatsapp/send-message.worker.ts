@@ -7,21 +7,32 @@ import { MessageEventRepository } from '@/modules/messages/infrastructure/reposi
 import { DeadLetterRepository } from '@/modules/messages/infrastructure/repositories/dead-letter.repository';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { RateLimiterService } from '@/modules/messages/domain/services/rate-limiter.service';
+import { SendPacerService } from '@/modules/messages/domain/services/send-pacer.service';
+import { AccountSafetyService } from '@/modules/messages/domain/services/account-safety.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   QUEUE_NAMES,
   EVENT_NAMES,
   MESSAGING_CONFIG,
+  SEND_SAFETY_CONFIG,
 } from '@/common/constants';
 import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
+
+/** How long a queued campaign message waits before re-checking the campaigns kill switch. */
+const KILL_SWITCH_DEFER_SECONDS = 300;
 
 interface SendMessageJobData {
   messageId: string;
   sessionId: string;
   orgId: string;
+  /** Send slot (epoch ms) already reserved with the pacer for this message */
+  slotAt?: number;
 }
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Non-retryable errors that should immediately dead-letter the message.
@@ -68,9 +79,12 @@ export class SendMessageWorker implements OnModuleInit {
     private readonly deadLetterRepo: DeadLetterRepository,
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly rateLimiter: RateLimiterService,
+    private readonly pacer: SendPacerService,
+    private readonly accountSafety: AccountSafetyService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly orgStatus: OrgStatusService,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -119,6 +133,80 @@ export class SendMessageWorker implements OnModuleInit {
       return;
     }
 
+    // Campaigns kill switch: campaign messages already queued stay QUEUED and
+    // are re-checked later (sent once the switch is off). Other messages are unaffected.
+    const campaignId = (message.metadata as Record<string, unknown> | null)?.campaignId;
+    if (campaignId && (await this.killSwitches.isDisabled('campaigns'))) {
+      await this.queueService.publishDelayed(
+        QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+        data,
+        KILL_SWITCH_DEFER_SECONDS,
+      );
+      this.logger.warn(`Campaigns switched off platform-wide — deferred campaign message ${messageId} by ${KILL_SWITCH_DEFER_SECONDS}s`);
+      return;
+    }
+
+    const lane = this.pacer.laneFor(message.priority);
+
+    if (lane === 'bulk') {
+      // Paced/held bulk messages can wait hours: drop them if the campaign was
+      // cancelled or paused, or the contact opted out, in the meantime.
+      const relevance = await this.accountSafety.checkBulkRelevance(orgId, message);
+      if (relevance.action === 'drop') {
+        await this.accountSafety.dropBulkMessage(messageId, relevance.reason, relevance.recipientStatus);
+        await this.messageEventRepo.record({
+          messageId,
+          orgId,
+          status: MessageStatus.FAILED,
+          error: relevance.reason,
+          metadata: { jobId, droppedBeforeSend: true },
+        });
+        this.logger.log(`Bulk message ${messageId} not sent: ${relevance.reason}`);
+        return;
+      }
+      if (relevance.action === 'hold') {
+        await this.holdMessage(data, relevance.retryAt, relevance.reason);
+        return;
+      }
+
+      // Safety governor (bulk only — inbox replies are never held): auto-pause,
+      // sending hours and warm-up daily caps for this number. Re-checked when a
+      // paced message comes back for its slot, so a batch can't overshoot a cap.
+      const decision = await this.accountSafety.checkBulkSend(orgId, sessionId, message.contactPhone);
+      if (!decision.allowed) {
+        await this.holdMessage(data, decision.retryAt, decision.reason);
+        return;
+      }
+    }
+
+    // Human pacing: a WhatsApp number that sends faster than a person types gets banned.
+    // Long waits are re-queued holding their slot; short ones wait here. A slot
+    // that is already well in the past (worker downtime, restart) is stale —
+    // reserve a fresh one rather than letting every overdue job fire at once.
+    const holdsSlot =
+      data.slotAt !== undefined &&
+      Math.abs(Date.now() - data.slotAt) <= SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS;
+    if (holdsSlot) {
+      const remaining = data.slotAt! - Date.now();
+      if (remaining > 0) await sleep(remaining);
+    } else {
+      const { sendAt, waitMs } = this.pacer.reserve(sessionId, lane);
+      if (waitMs > SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS) {
+        // nextRetryAt keeps the stale-queue recovery from re-publishing it early
+        await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, {
+          nextRetryAt: new Date(sendAt),
+        });
+        await this.queueService.publishDelayed(
+          QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+          { messageId, sessionId, orgId, slotAt: sendAt },
+          Math.ceil(waitMs / 1000),
+          { singletonKey: `msg-paced-${messageId}-${sendAt}` },
+        );
+        return;
+      }
+      if (waitMs > 0) await sleep(waitMs);
+    }
+
     // 3. Atomically transition QUEUED → PROCESSING (prevents duplicate processing)
     const transitioned = await this.messageRepo.transitionStatus(
       messageId,
@@ -163,7 +251,9 @@ export class SendMessageWorker implements OnModuleInit {
         QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
         { messageId, sessionId, orgId },
         delaySeconds,
-        { singletonKey: `msg-delayed-${messageId}` },
+        // Unique per attempt: a fixed key collides with this message's earlier
+        // delayed job and the publish is silently dropped
+        { singletonKey: `msg-delayed-${messageId}-${Date.now()}` },
       );
       return;
     }
@@ -185,6 +275,15 @@ export class SendMessageWorker implements OnModuleInit {
     // 6. Send via WhatsApp API
     try {
       let result;
+
+      // Bulk messages show "typing…" first, like a person would
+      if (lane === 'bulk') {
+        await this.whatsappApi.showTyping(
+          sessionId,
+          message.contactPhone,
+          this.pacer.typingDelayMs(),
+        );
+      }
 
       if (message.type === 'TEXT') {
         result = await this.whatsappApi.sendTextMessage(
@@ -259,6 +358,22 @@ export class SendMessageWorker implements OnModuleInit {
 
       await this.handleFailure(message, jobId, reason, isRetryableError(reason));
     }
+  }
+
+  /** Keep a bulk message QUEUED and re-check it at `retryAt`. */
+  private async holdMessage(data: SendMessageJobData, retryAt: Date, reason: string): Promise<void> {
+    const { messageId, sessionId, orgId } = data;
+    const delaySeconds = Math.max(60, Math.ceil((retryAt.getTime() - Date.now()) / 1000));
+
+    // nextRetryAt keeps the stale-queue recovery from re-publishing it early
+    await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, { nextRetryAt: retryAt });
+    await this.queueService.publishDelayed(
+      QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+      { messageId, sessionId, orgId },
+      delaySeconds,
+      { singletonKey: `msg-held-${messageId}-${retryAt.getTime()}` },
+    );
+    this.logger.log(`Bulk message ${messageId} held until ${retryAt.toISOString()}: ${reason}`);
   }
 
   /**

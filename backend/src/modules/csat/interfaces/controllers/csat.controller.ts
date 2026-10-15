@@ -88,7 +88,7 @@ export class CsatController {
       const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
       const surveyUrl = `${frontendUrl}/csat/${conversationId}`;
       const message =
-        `⭐ How was your experience with us?\n\n` +
+        `How was your experience with us?\n\n` +
         `Please rate your satisfaction (1–5 stars):\n${surveyUrl}\n\n` +
         `Thank you for your feedback!`;
       try {

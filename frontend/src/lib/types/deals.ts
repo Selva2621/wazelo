@@ -34,6 +34,9 @@ export interface Deal {
   expectedClose: string | null;
   closedAt: string | null;
   notes: string | null;
+  /** Next time to follow up with the client */
+  nextFollowUpAt: string | null;
+  followUpNote: string | null;
   createdAt: string;
   updatedAt: string;
   stage: PipelineStage;
@@ -76,6 +79,45 @@ export interface UpdateDealRequest {
   expectedClose?: string;
   notes?: string;
   status?: DealStatus;
+  /** ISO time; null clears the follow-up */
+  nextFollowUpAt?: string | null;
+  followUpNote?: string | null;
+}
+
+/** A deal whose follow-up is due — from GET /pipelines/deals/follow-ups */
+export interface DealFollowUp {
+  id: string;
+  pipelineId: string;
+  title: string;
+  value: number | string | null;
+  currency: string;
+  nextFollowUpAt: string;
+  followUpNote: string | null;
+  stage: { id: string; name: string; color: string | null };
+  contact: { id: string; name: string | null; phoneNumber: string };
+}
+
+// ─── Deal Guard ───
+
+export type GhostLevel = "active" | "your_turn" | "slow" | "cold" | "no_chat";
+export type ScopeStatus = "DRAFT" | "SENT" | "APPROVED" | "CHANGES_REQUESTED";
+
+export interface DealGuard {
+  dealId: string;
+  ghost: { level: GhostLevel; reason: string; suggestion: string | null };
+  trust: {
+    flags: { label: string; excerpt: string; at: string }[];
+    history: { won: number; lost: number; open: number };
+    standing: "first_time" | "returning" | "risky";
+    suggestedAdvancePct: number;
+    summary: string;
+  };
+  scope: {
+    summary: string | null;
+    status: ScopeStatus | null;
+    sentAt: string | null;
+    respondedAt: string | null;
+  };
 }
 
 export interface MoveDealRequest {

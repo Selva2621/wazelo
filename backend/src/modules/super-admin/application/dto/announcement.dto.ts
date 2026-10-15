@@ -39,3 +39,34 @@ export class CreateAnnouncementDto {
   @IsOptional() @IsBoolean()
   dismissible?: boolean;
 }
+
+/** Any subset of the create fields; cross-field rules are checked against the merged result. */
+export class UpdateAnnouncementDto {
+  @IsOptional() @Transform(trim) @IsString() @MinLength(3) @MaxLength(200)
+  title?: string;
+
+  @IsOptional() @Transform(trim) @IsString() @MinLength(3) @MaxLength(2000)
+  body?: string;
+
+  @IsOptional() @IsEnum(AnnouncementSeverity)
+  severity?: AnnouncementSeverity;
+
+  @IsOptional() @IsEnum(AnnouncementTarget)
+  targetType?: AnnouncementTarget;
+
+  @IsOptional() @IsString() @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  targetPlanSlug?: string;
+
+  @IsOptional() @IsUUID()
+  targetOrgId?: string;
+
+  @IsOptional() @IsDateString()
+  startsAt?: string;
+
+  /** null clears the end time */
+  @IsOptional() @IsDateString()
+  endsAt?: string | null;
+
+  @IsOptional() @IsBoolean()
+  dismissible?: boolean;
+}

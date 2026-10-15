@@ -50,6 +50,9 @@ export class PaymentRetryWorker {
   }
 
   private async retryPayment(payment: any) {
+    // Manual payments (no subscription) are never charged through the gateway
+    if (!payment.subscriptionId) return;
+
     if (payment.retryCount >= payment.maxRetries) {
       // Max retries reached — mark subscription as PAST_DUE
       this.logger.warn(

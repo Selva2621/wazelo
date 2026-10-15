@@ -9,6 +9,7 @@ import { authApi } from "@/lib/api/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
+import { PushPromptBanner } from "@/components/notifications/push-prompt-banner";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
 
@@ -153,13 +154,13 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   if (!sessionChecked && refreshFailed) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-surface p-4 text-center">
-        <p className="text-sm text-on-surface-variant">
+        <p className="text-body text-on-surface-variant">
           Couldn&apos;t reach the server to restore your session.
         </p>
         <button
           type="button"
           onClick={() => setRefreshAttempt((n) => n + 1)}
-          className="rounded-md border border-outline-variant px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container"
+          className="rounded-lg border border-outline-variant px-4 py-2 text-body font-medium text-on-surface hover:bg-surface-container"
         >
           Retry
         </button>
@@ -182,9 +183,15 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // Hold the shell until the org type is known, so a new org never sees the dashboard
+  // before the org-type gate above sends it to onboarding
+  const needsOrgType = orgSettings !== undefined && (!orgSettings?.orgType || orgSettings.orgType === "CRM");
+  if (orgLoading || needsOrgType) return <AppShellSkeleton />;
+
   return (
     <AppShell>
       <AnnouncementBanner />
+      <PushPromptBanner />
       {children}
     </AppShell>
   );

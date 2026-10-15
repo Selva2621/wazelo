@@ -46,11 +46,28 @@ export const authConfig = registerAs('auth', () => ({
     process.env.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES || '15',
     10,
   ),
+  // Super admin portal: 2FA is mandatory unless explicitly turned off (local dev only)
+  superAdminRequire2fa: process.env.SUPER_ADMIN_REQUIRE_2FA !== 'false',
+  superAdminMaxFailedAttempts: parseInt(
+    process.env.SUPER_ADMIN_MAX_FAILED_ATTEMPTS || '5',
+    10,
+  ),
+  superAdminLockMinutes: parseInt(
+    process.env.SUPER_ADMIN_LOCK_MINUTES || '15',
+    10,
+  ),
 }));
 
 export const throttleConfig = registerAs('throttle', () => ({
   ttl: parseInt(process.env.THROTTLE_TTL || '60', 10),
   limit: parseInt(process.env.THROTTLE_LIMIT || '60', 10),
+}));
+
+/** Web Push (VAPID). Generate keys once with `npx web-push generate-vapid-keys`; push is off without them. */
+export const pushConfig = registerAs('push', () => ({
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
+  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:hello@wazelo.in',
 }));
 
 export const whatsappConfig = registerAs('whatsapp', () => ({

@@ -20,7 +20,13 @@ import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decora
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { SubscribeDto, ChangePlanDto, CancelSubscriptionDto } from '../../application/dto/subscribe.dto';
 import { ListInvoicesQueryDto, ListPaymentsQueryDto } from '../../application/dto/list-billing-query.dto';
-import { CreateOrderDto, VerifyPaymentDto } from '../../application/dto/create-order.dto';
+import { CreateOrderDto, ValidateCouponDto, VerifyPaymentDto } from '../../application/dto/create-order.dto';
+import {
+  CreateCheckoutOrderUseCase,
+  ResolveCheckoutOrderUseCase,
+} from '../../application/use-cases/checkout-order.use-cases';
+import { ActivateTrialPaymentUseCase } from '../../application/use-cases/activate-trial-payment.use-case';
+import { ValidateCouponUseCase } from '../../application/use-cases/validate-coupon.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { SubscribeUseCase } from '../../application/use-cases/subscribe.use-case';
 import { ChangePlanUseCase } from '../../application/use-cases/change-plan.use-case';
@@ -51,6 +57,10 @@ export class BillingController {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly paymentRepo: PaymentRepository,
     private readonly usageRepo: UsageRepository,
+    private readonly createCheckoutOrderUseCase: CreateCheckoutOrderUseCase,
+    private readonly resolveCheckoutOrderUseCase: ResolveCheckoutOrderUseCase,
+    private readonly activateTrialPaymentUseCase: ActivateTrialPaymentUseCase,
+    private readonly validateCouponUseCase: ValidateCouponUseCase,
   ) {}
 
   // Plans are platform-wide: create/update live only under /super-admin/plans.
@@ -77,29 +87,19 @@ export class BillingController {
     @Body() dto: CreateOrderDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    const plan = await this.planRepo.findById(dto.planId);
-    if (!plan || !plan.isActive || plan.deletedAt) {
-      throw new NotFoundException('Plan not found or is no longer available');
-    }
-    if (plan.priceInCents === 0) {
-      throw new BadRequestException('Free plans do not require a payment order');
-    }
+    return this.createCheckoutOrderUseCase.execute(user.orgId, dto);
+  }
 
-    // Razorpay receipt must be ≤ 40 chars
-    const receiptId = `sub-${user.orgId.slice(0, 8)}-${Date.now().toString(36)}`;
-    const order = await this.razorpayPayment.createOrder(
-      plan.priceInCents,
-      plan.currency,
-      receiptId,
-      { orgId: user.orgId, planId: dto.planId },
-    );
-
-    return {
-      orderId: order.orderId,
-      amount: order.amount,
-      currency: order.currency,
-      planName: plan.name,
-    };
+  /** Checkout preview: does this coupon apply to this plan for the caller's org? */
+  @Post('coupons/validate')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.BILLING_READ)
+  @HttpCode(HttpStatus.OK)
+  async validateCoupon(
+    @Body() dto: ValidateCouponDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.validateCouponUseCase.execute(user.orgId, dto.code, dto.planId);
   }
 
   /**
@@ -125,6 +125,10 @@ export class BillingController {
       throw new BadRequestException('Payment verification failed: invalid signature');
     }
 
+    // The order (read back from Razorpay) must be for this org + plan at the expected
+    // price; it also carries any coupon priced into it
+    const { coupon } = await this.resolveCheckoutOrderUseCase.execute(user.orgId, dto.orderId, dto.planId);
+
     // Check if the org already has an existing subscription
     const existing = await this.subscriptionRepo.findActiveByOrg(user.orgId);
 
@@ -132,6 +136,7 @@ export class BillingController {
     if (existing && existing.status === SubscriptionStatus.ACTIVE) {
       const plan = await this.planRepo.findById(dto.planId);
       if (!plan) throw new NotFoundException('Plan not found');
+      if (coupon) throw new BadRequestException('Coupons apply to a first payment only');
 
       if (existing.planId === dto.planId) {
         // Same plan — treat as manual renewal: extend billing period by one cycle
@@ -247,85 +252,13 @@ export class BillingController {
 
     // If a TRIAL subscription exists, activate it with this payment
     if (existing && existing.status === SubscriptionStatus.TRIAL) {
-      // Transition trial → active on payment
-      const plan = await this.planRepo.findById(dto.planId);
-      if (!plan) throw new NotFoundException('Plan not found');
-
-      const now = new Date();
-      const periodEnd = new Date(now);
-      periodEnd.setMonth(periodEnd.getMonth() + (plan.billingCycle === 'YEARLY' ? 12 : 1));
-
-      const activated = await this.subscriptionRepo.transitionStatus(
-        existing.id,
-        SubscriptionStatus.TRIAL,
-        SubscriptionStatus.ACTIVE,
-        {
-          planId: plan.id,
-          priceInCents: plan.priceInCents,
-          trialEndsAt: null,
-          currentPeriodStart: now,
-          currentPeriodEnd: periodEnd,
-        },
-      );
-
-      await this.subscriptionRepo.recordEvent({
-        orgId: user.orgId,
-        subscriptionId: existing.id,
-        previousStatus: SubscriptionStatus.TRIAL,
-        newStatus: SubscriptionStatus.ACTIVE,
-        triggeredById: user.sub,
-        metadata: {
-          planName: plan.name,
-          razorpayPaymentId: dto.razorpayPaymentId,
-          orderId: dto.orderId,
-        },
+      return this.activateTrialPaymentUseCase.execute(user.orgId, user.sub, existing, {
+        planId: dto.planId,
+        orderId: dto.orderId,
+        razorpayPaymentId: dto.razorpayPaymentId,
+        idempotencyKey: dto.idempotencyKey,
+        coupon,
       });
-
-      // Record payment in history
-      const payment = await this.paymentRepo.createPayment({
-        orgId: user.orgId,
-        subscriptionId: existing.id,
-        amountInCents: plan.priceInCents,
-        currency: plan.currency,
-        externalId: dto.razorpayPaymentId,
-        paymentMethod: 'razorpay',
-        idempotencyKey: dto.idempotencyKey || `rzp-${dto.razorpayPaymentId}`,
-      });
-      await this.paymentRepo.transitionPaymentStatus(payment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
-
-      // Create invoice and mark as PAID immediately
-      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
-      const invoice = await this.paymentRepo.createInvoice({
-        orgId: user.orgId,
-        subscriptionId: existing.id,
-        paymentId: payment.id,
-        invoiceNumber,
-        amountInCents: plan.priceInCents,
-        currency: plan.currency,
-        periodStart: now,
-        periodEnd,
-        lineItems: [{ description: `${plan.name} — ${plan.billingCycle}`, amount: plan.priceInCents, currency: plan.currency }],
-        dueDate: now,
-      });
-      await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
-
-      // Reset usage counters to full plan limits (trial limits no longer apply)
-      await this.usageRepo.resetUsageForOrg(
-        user.orgId,
-        now,
-        periodEnd,
-        {
-          [UsageMetricType.MESSAGES_SENT]: plan.maxMessagesPerMonth,
-          [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
-          [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
-          [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-          [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
-          [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
-          [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
-        },
-      );
-
-      return { subscription: activated, deduplicated: false };
     }
 
     return this.subscribeUseCase.execute(
@@ -335,6 +268,7 @@ export class BillingController {
         planId: dto.planId,
         razorpayPaymentId: dto.razorpayPaymentId,
         idempotencyKey: dto.idempotencyKey,
+        checkoutCoupon: coupon,
       },
       this.extractIp(req),
       this.extractUserAgent(req),

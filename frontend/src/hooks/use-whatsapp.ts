@@ -90,6 +90,23 @@ export function useRefreshQr() {
   });
 }
 
+// ─── Link by Phone Number (pairing code instead of QR) ───
+export function useRequestPairingCode() {
+  const queryClient = useQueryClient();
+  const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
+  const clearQr = useWhatsAppStore((s) => s.clearQr);
+
+  return useMutation({
+    mutationFn: (phoneNumber: string) => whatsappApi.requestPairingCode(phoneNumber),
+    // The socket switches to pairing mode, so any QR on screen is dead
+    onMutate: () => clearQr(),
+    onSuccess: (data) => {
+      setPairingCode(data.pairingCode);
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+    },
+  });
+}
+
 // ─── Reconnect Existing Session (no QR needed if creds intact) ───
 export function useReconnectSession() {
   const queryClient = useQueryClient();
@@ -102,6 +119,26 @@ export function useReconnectSession() {
       queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
     },
     onError: () => setStatus("disconnected"),
+  });
+}
+
+// ─── Send Health (account safety meter) ─────────────────
+export function useSendHealth(enabled = true) {
+  return useQuery({
+    queryKey: ["whatsapp", "send-health"],
+    queryFn: () => whatsappApi.getMySendHealth(),
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useResumeSending() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => whatsappApi.resumeMySending(),
+    onSuccess: (health) => {
+      queryClient.setQueryData(["whatsapp", "send-health"], health);
+    },
   });
 }
 
@@ -154,6 +191,7 @@ export function useWhatsAppSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const setQr = useWhatsAppStore((s) => s.setQr);
   const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
   const setSession = useWhatsAppStore((s) => s.setSession);
   const setStatus = useWhatsAppStore((s) => s.setStatus);
   const setError = useWhatsAppStore((s) => s.setError);
@@ -177,6 +215,11 @@ export function useWhatsAppSocket() {
       setQr(data.qrCode, expiresAtMs);
     });
 
+    // A new code is issued whenever the previous one expired unused
+    socket.on("whatsapp:pairing-code", (data: { sessionId: string; pairingCode: string }) => {
+      setPairingCode(data.pairingCode);
+    });
+
     socket.on("whatsapp:session:connected", () => {
       clearQr();
       queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
@@ -196,11 +239,15 @@ export function useWhatsAppSocket() {
       setStatus("reconnecting");
     });
 
+    socket.on("whatsapp:sending:paused", () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "send-health"] });
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, setQr, clearQr, setSession, setStatus, setError, queryClient]);
+  }, [accessToken, setQr, clearQr, setPairingCode, setSession, setStatus, setError, queryClient]);
 
   return socketRef;
 }

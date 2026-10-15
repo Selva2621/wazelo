@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
@@ -12,8 +12,17 @@ import {
   QueryErrorsDto,
   QueryMetricsDto,
   QueryTimeSeriesDto,
+  UpdateAlertRuleDto,
 } from '@/modules/observability/application/dto/observability.dto';
-import { CreateAlertRuleUseCase } from '../../application/use-cases/create-alert-rule.use-case';
+import {
+  CreateAlertRuleUseCase,
+  DeleteAlertRuleUseCase,
+  UpdateAlertRuleUseCase,
+} from '../../application/use-cases/create-alert-rule.use-case';
+import { ListFailedJobsUseCase, RetryFailedJobUseCase } from '../../application/use-cases/failed-jobs.use-cases';
+import { ListFailedJobsQueryDto } from '../../application/dto/failed-jobs.dto';
+import { ListKillSwitchesUseCase, SetKillSwitchUseCase } from '../../application/use-cases/kill-switches.use-cases';
+import { SetKillSwitchDto } from '../../application/dto/kill-switch.dto';
 import { requestMeta } from '../request-meta';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -38,7 +47,44 @@ export class SuperAdminSystemController {
     private readonly alertService: AlertService,
     private readonly errorTrackingService: ErrorTrackingService,
     private readonly createAlertRuleUseCase: CreateAlertRuleUseCase,
+    private readonly updateAlertRuleUseCase: UpdateAlertRuleUseCase,
+    private readonly deleteAlertRuleUseCase: DeleteAlertRuleUseCase,
+    private readonly listFailedJobsUseCase: ListFailedJobsUseCase,
+    private readonly retryFailedJobUseCase: RetryFailedJobUseCase,
+    private readonly listKillSwitchesUseCase: ListKillSwitchesUseCase,
+    private readonly setKillSwitchUseCase: SetKillSwitchUseCase,
   ) {}
+
+  /** Platform kill switch state for every feature (campaigns, automation, api, ai, shopify). */
+  @Get('kill-switches')
+  async listKillSwitches() {
+    return this.listKillSwitchesUseCase.execute();
+  }
+
+  /** Turn a feature off (or back on) for every org. `reason` is required when disabling. */
+  @Post('kill-switches/:feature')
+  @HttpCode(HttpStatus.OK)
+  async setKillSwitch(
+    @Param('feature') feature: string,
+    @Body() dto: SetKillSwitchDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.setKillSwitchUseCase.execute(feature, dto, { id: user.sub, email: user.email }, requestMeta(req));
+  }
+
+  /** Failed/expired background jobs across all queues (or one). */
+  @Get('jobs/failed')
+  async listFailedJobs(@Query() query: ListFailedJobsQueryDto) {
+    return this.listFailedJobsUseCase.execute(query);
+  }
+
+  /** Re-queues a failed job's payload as a new job — once per failed job. */
+  @Post('jobs/:id/retry')
+  @HttpCode(HttpStatus.OK)
+  async retryJob(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.retryFailedJobUseCase.execute(id, { id: user.sub, email: user.email }, requestMeta(req));
+  }
 
   @Get('health')
   async getHealth() {
@@ -86,5 +132,22 @@ export class SuperAdminSystemController {
   @Get('errors')
   async getErrors(@Query() query: QueryErrorsDto) {
     return this.errorTrackingService.getRecentErrors(query.windowMinutes);
+  }
+
+  /** Edit a rule, or pause/resume it with `{ enabled }`. */
+  @Patch('alerts/rules/:id')
+  async updateAlertRule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAlertRuleDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.updateAlertRuleUseCase.execute(id, dto, { id: user.sub, email: user.email }, requestMeta(req));
+  }
+
+  /** Only rules that never fired; others must be disabled to keep their history. */
+  @Delete('alerts/rules/:id')
+  async deleteAlertRule(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.deleteAlertRuleUseCase.execute(id, { id: user.sub, email: user.email }, requestMeta(req));
   }
 }

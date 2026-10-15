@@ -10,9 +10,13 @@ import type {
   AlertRule,
   AlertListResponse,
   CreateAlertRuleRequest,
+  UpdateAlertRuleRequest,
   QueryAlertsParams,
   ErrorGroup,
   QueryErrorsParams,
+  FailedJobsResponse,
+  QueryFailedJobsParams,
+  RetryJobResponse,
 } from "@/lib/types/observability";
 
 // Platform-wide health data — served only to super admins (/super-admin/system).
@@ -27,14 +31,16 @@ export const observabilityApi = {
 
   getQueueHealth: async (): Promise<QueueHealth[]> => {
     const r = await superAdminClient.get<{
-      data: Record<string, { depth: number; status: string }>;
+      data: Record<string, Omit<QueueHealth, "name"> & { depth: number }>;
     }>(`${BASE}/health/queues`);
-    return Object.entries(r.data.data).map(([name, info]) => ({
+    return Object.entries(r.data.data).map(([name, q]) => ({
       name,
-      active: 0,
-      waiting: info.depth,
-      completed: 0,
-      failed: 0,
+      active: q.active,
+      waiting: q.waiting,
+      completed: q.completed,
+      failed: q.failed,
+      windowHours: q.windowHours,
+      status: q.status,
     }));
   },
 
@@ -65,9 +71,33 @@ export const observabilityApi = {
       .post<{ data: AlertRule }>(`${BASE}/alerts/rules`, data)
       .then((r) => r.data.data),
 
+  updateAlertRule: (id: string, data: UpdateAlertRuleRequest) =>
+    superAdminClient
+      .patch<{ data: AlertRule }>(`${BASE}/alerts/rules/${id}`, data)
+      .then((r) => r.data.data),
+
+  /** 400 if the rule has alert history (disable it instead) */
+  deleteAlertRule: (id: string) =>
+    superAdminClient
+      .delete<{ data: { deleted: true } }>(`${BASE}/alerts/rules/${id}`)
+      .then((r) => r.data.data),
+
   getAlertHistory: (params?: QueryAlertsParams) =>
     superAdminClient
       .get<{ data: AlertListResponse }>(`${BASE}/alerts/history`, { params })
+      .then((r) => r.data.data),
+
+  // ─── Failed jobs ───
+
+  getFailedJobs: (params?: QueryFailedJobsParams) =>
+    superAdminClient
+      .get<{ data: FailedJobsResponse }>(`${BASE}/jobs/failed`, { params })
+      .then((r) => r.data.data),
+
+  /** Re-queues the job's data as a new job. 400 if already retried / not retryable, 404 if gone. */
+  retryJob: (id: string) =>
+    superAdminClient
+      .post<{ data: RetryJobResponse }>(`${BASE}/jobs/${id}/retry`)
       .then((r) => r.data.data),
 
   // ─── Errors ───

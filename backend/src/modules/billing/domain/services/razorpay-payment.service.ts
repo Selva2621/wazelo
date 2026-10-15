@@ -104,6 +104,20 @@ export class RazorpayPaymentService {
   }
 
   /**
+   * Fetch an order from Razorpay — its amount and the notes WE set at creation, so the
+   * server (not the client) decides what a checkout was priced at.
+   */
+  async fetchOrder(orderId: string): Promise<{ id: string; amount: number; currency: string; notes: Record<string, string> }> {
+    const order = await this.razorpay.orders.fetch(orderId);
+    return {
+      id: order.id,
+      amount: Number(order.amount),
+      currency: String(order.currency),
+      notes: (order.notes && typeof order.notes === 'object' ? order.notes : {}) as Record<string, string>,
+    };
+  }
+
+  /**
    * Fetch payment details from Razorpay.
    */
   async fetchPayment(paymentId: string) {

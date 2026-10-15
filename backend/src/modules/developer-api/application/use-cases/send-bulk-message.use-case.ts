@@ -3,9 +3,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DeveloperApiRepository } from '../../infrastructure/repositories/developer-api.repository';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
-import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
+import { QUEUE_NAMES, EVENT_NAMES, CAMPAIGN_CONFIG } from '@/common/constants';
 import { MessageDirection, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { DevSendBulkMessageDto } from '../dto';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class DevSendBulkMessageUseCase {
     private readonly queueService: QueueService,
     private readonly usageTracking: UsageTrackingService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly messageRepo: MessageRepository,
   ) {}
 
   async execute(orgId: string, dto: DevSendBulkMessageDto) {
@@ -72,34 +74,32 @@ export class DevSendBulkMessageUseCase {
         });
       }
 
-      // Create message record
-      const message = await this.prisma.message.create({
-        data: {
-          orgId,
-          conversationId: conversation.id,
-          sessionId: session.id,
-          direction: MessageDirection.OUTBOUND,
-          type: messageType,
-          body: dto.body,
-          mediaUrl: dto.mediaUrl,
-          contactPhone: to,
-          status: MessageStatus.QUEUED,
-        },
+      // Through the repository so body/media are encrypted at rest. Bulk priority
+      // puts it in the send worker's bulk lane: warm-up daily caps, sending hours,
+      // auto-pause, 10–40s human pacing and "typing…" — same as campaigns.
+      const message = await this.messageRepo.create({
+        orgId,
+        conversationId: conversation.id,
+        sessionId: session.id,
+        direction: MessageDirection.OUTBOUND,
+        type: messageType,
+        body: dto.body,
+        mediaUrl: dto.mediaUrl,
+        contactPhone: to,
+        priority: CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
+        metadata: { source: 'developer-api-bulk' },
       });
 
       await this.prisma.messageEvent.create({
         data: { messageId: message.id, orgId, status: MessageStatus.QUEUED },
       });
 
-      await this.queueService.publish(QUEUE_NAMES.SEND_WHATSAPP_MESSAGE, {
-        messageId: message.id,
-        sessionId: session.id,
-        orgId,
-        contactPhone: to,
-        type: messageType,
-        body: dto.body,
-        mediaUrl: dto.mediaUrl,
-      });
+      await this.queueService.publishOnce(
+        QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+        { messageId: message.id, sessionId: session.id, orgId },
+        `msg-${message.id}`,
+        { priority: CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY },
+      );
 
       results.push({ to, messageId: message.id, status: 'QUEUED' });
     }

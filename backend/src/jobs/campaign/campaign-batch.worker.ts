@@ -6,6 +6,9 @@ import { MessageRepository } from '@/modules/messages/infrastructure/repositorie
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+import { pauseCampaignForKillSwitch } from './kill-switch-pause';
 import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
@@ -38,6 +41,8 @@ export class CampaignBatchWorker implements OnModuleInit {
     private readonly conversationRepo: ConversationRepository,
     private readonly messageEventRepo: MessageEventRepository,
     private readonly prisma: PrismaService,
+    private readonly killSwitches: KillSwitchService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -52,7 +57,7 @@ export class CampaignBatchWorker implements OnModuleInit {
   }
 
   private async handle(data: CampaignBatchJobData, jobId: string): Promise<void> {
-    const { campaignId, batchNumber, orgId, sessionId } = data;
+    const { campaignId, batchNumber, orgId } = data;
 
     // 1. Load campaign, verify still RUNNING
     const campaign = await this.campaignRepo.findById(campaignId);
@@ -64,6 +69,20 @@ export class CampaignBatchWorker implements OnModuleInit {
     if (campaign.status !== CampaignStatus.RUNNING) {
       this.logger.log(
         `Campaign ${campaignId} is ${campaign.status}, skipping batch ${batchNumber}`,
+      );
+      return;
+    }
+
+    // The campaign's current number — a delayed batch job may predate a move to
+    // a new number (the old one was logged out or banned)
+    const sessionId = campaign.sessionId;
+
+    // Platform kill switch: pause the campaign; this batch's recipients stay
+    // PENDING and are re-dispatched when the campaign is resumed.
+    if (await this.killSwitches.isDisabled('campaigns')) {
+      await pauseCampaignForKillSwitch(this.campaignRepo, campaignId, orgId, this.eventEmitter);
+      this.logger.warn(
+        `Campaigns switched off platform-wide — paused campaign ${campaignId}, batch ${batchNumber} left pending`,
       );
       return;
     }

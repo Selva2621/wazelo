@@ -1,17 +1,21 @@
 "use client";
 
-import { useId, useState } from "react";
-import { Megaphone } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Megaphone, Save } from "lucide-react";
 import {
   useSAAnnouncements,
   useSAArchiveAnnouncement,
+  useSARestoreAnnouncement,
   useSACreateAnnouncement,
+  useSAUpdateAnnouncement,
   useSAOrgs,
   useSAPlans,
 } from "@/hooks/use-super-admin";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 type Target = "ALL" | "PLAN" | "ORG";
@@ -27,12 +31,12 @@ function errorMessage(err: any, fallback: string): string {
   return message ?? fallback;
 }
 
-function stateOf(a: any): { label: string; className: string } {
+function stateOf(a: any): { label: string; variant: "muted" | "info" | "success" } {
   const now = Date.now();
-  if (a.archivedAt) return { label: "Archived", className: "bg-surface-container text-on-surface-variant" };
-  if (new Date(a.startsAt).getTime() > now) return { label: "Scheduled", className: "bg-info/10 text-info" };
-  if (a.endsAt && new Date(a.endsAt).getTime() <= now) return { label: "Ended", className: "bg-surface-container text-on-surface-variant" };
-  return { label: "Live", className: "bg-success/10 text-success" };
+  if (a.archivedAt) return { label: "Archived", variant: "muted" };
+  if (new Date(a.startsAt).getTime() > now) return { label: "Scheduled", variant: "info" };
+  if (a.endsAt && new Date(a.endsAt).getTime() <= now) return { label: "Ended", variant: "muted" };
+  return { label: "Live", variant: "success" };
 }
 
 /** datetime-local value → ISO string (local time), or undefined when empty */
@@ -40,41 +44,215 @@ function toIso(value: string) {
   return value ? new Date(value).toISOString() : undefined;
 }
 
+/** ISO string → datetime-local value (local time, minute precision), or "" */
+function toLocalInput(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+type OrgRef = { id: string; name: string };
+
+/** The list row fields the edit form reads */
+type AnnouncementRow = {
+  id: string;
+  title: string;
+  body: string;
+  severity: Severity;
+  targetType: Target;
+  targetPlanSlug: string | null;
+  targetOrgId: string | null;
+  targetOrgName?: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  dismissible: boolean;
+};
+
+/** Searches all organizations server-side, so any org can be targeted, not just the first page. */
+function OrgPicker({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: OrgRef | null;
+  onChange: (org: OrgRef | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const { data, isLoading, isError, refetch } = useSAOrgs({ limit: 10, search: search || undefined });
+  const results: OrgRef[] = ((data?.orgs ?? []) as { id: string; name: string }[]).map((o) => ({ id: o.id, name: o.name }));
+
+  if (value) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className={cn(inputClass, "truncate")}>{value.name}</span>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+          Change
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <input
+        id={id}
+        type="search"
+        className={inputClass}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search by name or slug…"
+        autoComplete="off"
+      />
+      <div className="max-h-48 overflow-y-auto rounded-lg border border-outline-variant">
+        {isLoading ? (
+          <div className="flex justify-center py-3" role="status">
+            <Spinner className="text-primary" />
+            <span className="sr-only">Searching organizations…</span>
+          </div>
+        ) : isError ? (
+          <p className="px-3 py-2 text-body text-error" role="alert">
+            Could not search organizations.{" "}
+            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+              Try again
+            </button>
+          </p>
+        ) : !results.length ? (
+          <p className="px-3 py-2 text-body text-on-surface-variant">No organizations match.</p>
+        ) : (
+          <ul aria-label="Matching organizations">
+            {results.map((o) => (
+              <li key={o.id}>
+                <button
+                  type="button"
+                  onClick={() => onChange(o)}
+                  className="w-full text-left px-3 py-2 text-body-lg text-on-surface hover:bg-surface-container focus-visible:bg-surface-container focus-visible:outline-none"
+                >
+                  {o.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminAnnouncementsPage() {
   const uid = useId();
   const fid = (n: string) => `${uid}-${n}`;
-  const { data: announcements, isLoading } = useSAAnnouncements();
+  const { data: announcements, isLoading, isError, refetch } = useSAAnnouncements();
   const { data: plansData } = useSAPlans();
-  const { data: orgsData } = useSAOrgs({ limit: 100 });
   const create = useSACreateAnnouncement();
+  const update = useSAUpdateAnnouncement();
   const archive = useSAArchiveAnnouncement();
+  const restore = useSARestoreAnnouncement();
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [severity, setSeverity] = useState<Severity>("INFO");
   const [target, setTarget] = useState<Target>("ALL");
   const [planSlug, setPlanSlug] = useState("");
-  const [orgId, setOrgId] = useState("");
+  const [org, setOrg] = useState<OrgRef | null>(null);
+  /** Names of orgs picked in this session, for rows created before the list reloads */
+  const [knownOrgNames, setKnownOrgNames] = useState<Record<string, string>>({});
+  const [archiveTarget, setArchiveTarget] = useState<{ id: string; title: string } | null>(null);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [dismissible, setDismissible] = useState(true);
-  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  /** The announcement being edited in the form (null = creating a new one) */
+  const [editing, setEditing] = useState<AnnouncementRow | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const planSlugs: { slug: string; name: string }[] = [
     ...new Map(((plansData?.plans ?? []) as any[]).map((p) => [p.slug, { slug: p.slug, name: p.name }])).values(),
   ];
-  const orgs: any[] = orgsData?.orgs ?? [];
-  const orgName = (id: string) => orgs.find((o) => o.id === id)?.name ?? id.slice(0, 8);
+  const orgName = (a: { targetOrgId?: string | null; targetOrg?: { name?: string } | null; targetOrgName?: string | null }): string =>
+    a.targetOrg?.name ?? a.targetOrgName ?? (a.targetOrgId && knownOrgNames[a.targetOrgId]) ?? a.targetOrgId?.slice(0, 8) ?? "—";
+
+  const pickOrg = (next: OrgRef | null) => {
+    setOrg(next);
+    if (next) setKnownOrgNames((m) => ({ ...m, [next.id]: next.name }));
+  };
 
   const valid =
     title.trim().length >= 3 &&
     body.trim().length >= 3 &&
     (target !== "PLAN" || !!planSlug) &&
-    (target !== "ORG" || !!orgId);
+    (target !== "ORG" || !!org);
+
+  const resetForm = () => {
+    setTitle("");
+    setBody("");
+    setSeverity("INFO");
+    setTarget("ALL");
+    setPlanSlug("");
+    setOrg(null);
+    setStartsAt("");
+    setEndsAt("");
+    setDismissible(true);
+    setEditing(null);
+  };
+
+  /** Loads a row into the form for editing. */
+  const startEdit = (a: AnnouncementRow) => {
+    setEditing(a);
+    setTitle(a.title);
+    setBody(a.body);
+    setSeverity(a.severity);
+    setTarget(a.targetType);
+    setPlanSlug(a.targetPlanSlug ?? "");
+    setOrg(a.targetOrgId ? { id: a.targetOrgId, name: orgName(a) } : null);
+    setStartsAt(toLocalInput(a.startsAt));
+    setEndsAt(toLocalInput(a.endsAt));
+    setDismissible(a.dismissible);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  /** Only the fields that differ from the row being edited. */
+  const changedFields = (a: AnnouncementRow): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    if (title.trim() !== a.title) out.title = title;
+    if (body.trim() !== a.body) out.body = body;
+    if (severity !== a.severity) out.severity = severity;
+    if (dismissible !== a.dismissible) out.dismissible = dismissible;
+    if (target !== a.targetType) out.targetType = target;
+    if (target === "PLAN" && planSlug !== a.targetPlanSlug) out.targetPlanSlug = planSlug;
+    if (target === "ORG" && org && org.id !== a.targetOrgId) out.targetOrgId = org.id;
+    if (startsAt && startsAt !== toLocalInput(a.startsAt)) out.startsAt = toIso(startsAt);
+    if (endsAt !== toLocalInput(a.endsAt)) out.endsAt = toIso(endsAt) ?? null;
+    return out;
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus(null);
+    if (editing) {
+      const data = changedFields(editing);
+      if (!Object.keys(data).length) {
+        toast.info("No changes to save.");
+        return;
+      }
+      update.mutate(
+        { id: editing.id, data },
+        {
+          onSuccess: () => {
+            toast.success(`"${title.trim()}" updated.`);
+            resetForm();
+          },
+          onError: (err) => toast.error(errorMessage(err, "Could not save the announcement")),
+        },
+      );
+      return;
+    }
     create.mutate(
       {
         title,
@@ -82,29 +260,48 @@ export default function SuperAdminAnnouncementsPage() {
         severity,
         targetType: target,
         ...(target === "PLAN" && { targetPlanSlug: planSlug }),
-        ...(target === "ORG" && { targetOrgId: orgId }),
+        ...(target === "ORG" && org && { targetOrgId: org.id }),
         ...(toIso(startsAt) && { startsAt: toIso(startsAt) }),
         ...(toIso(endsAt) && { endsAt: toIso(endsAt) }),
         dismissible,
       },
       {
         onSuccess: () => {
-          setStatus({ kind: "success", text: "Announcement published." });
+          toast.success("Announcement published.");
           setTitle("");
           setBody("");
           setStartsAt("");
           setEndsAt("");
         },
-        onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not publish the announcement") }),
+        onError: (err) => toast.error(errorMessage(err, "Could not publish the announcement")),
       },
     );
   };
 
+  const doRestore = (a: { id: string; title: string; endsAt?: string | null }) => {
+    restore.mutate(a.id, {
+      onSuccess: () => {
+        const ended = a.endsAt && new Date(a.endsAt) < new Date();
+        toast.success(
+          ended
+            ? `"${a.title}" restored, but its end date has passed so tenants won't see it.`
+            : `"${a.title}" restored. People who dismissed it before won't see it again.`,
+        );
+      },
+      onError: (err) => toast.error(errorMessage(err, "Could not restore")),
+    });
+  };
+
   const doArchive = (a: any) => {
-    setStatus(null);
     archive.mutate(a.id, {
-      onSuccess: () => setStatus({ kind: "success", text: `"${a.title}" archived — tenants no longer see it.` }),
-      onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not archive") }),
+      onSuccess: () => {
+        setArchiveTarget(null);
+        toast.success(`"${a.title}" archived — tenants no longer see it.`);
+      },
+      onError: (err) => {
+        setArchiveTarget(null);
+        toast.error(errorMessage(err, "Could not archive"));
+      },
     });
   };
 
@@ -117,11 +314,11 @@ export default function SuperAdminAnnouncementsPage() {
         </p>
       </div>
 
-      {status && <Alert variant={status.kind}>{status.text}</Alert>}
-
       {/* Create */}
-      <form onSubmit={submit} className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4" aria-labelledby={fid("form")}>
-        <h2 id={fid("form")} className="text-body-lg font-medium text-on-surface">New announcement</h2>
+      <form ref={formRef} onSubmit={submit} className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4 scroll-mt-20" aria-labelledby={fid("form")}>
+        <h2 id={fid("form")} className="text-body-lg font-medium text-on-surface">
+          {editing ? "Edit announcement" : "New announcement"}
+        </h2>
 
         <div>
           <label htmlFor={fid("title")} className={labelClass}>Title</label>
@@ -161,10 +358,7 @@ export default function SuperAdminAnnouncementsPage() {
           {target === "ORG" && (
             <div>
               <label htmlFor={fid("org")} className={labelClass}>Organization</label>
-              <select id={fid("org")} className={inputClass} value={orgId} onChange={(e) => setOrgId(e.target.value)}>
-                <option value="">Choose an organization…</option>
-                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
+              <OrgPicker id={fid("org")} value={org} onChange={pickOrg} />
             </div>
           )}
         </div>
@@ -184,10 +378,21 @@ export default function SuperAdminAnnouncementsPage() {
           </label>
         </div>
 
-        <div className="flex justify-end">
-          <Button type="submit" loading={create.isPending} disabled={!valid || create.isPending}>
-            <Megaphone className="h-4 w-4" aria-hidden /> Publish
-          </Button>
+        <div className="flex justify-end gap-2">
+          {editing ? (
+            <>
+              <Button type="button" variant="ghost" onClick={resetForm} disabled={update.isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.isPending} disabled={!valid || update.isPending}>
+                <Save className="h-4 w-4" aria-hidden /> Save changes
+              </Button>
+            </>
+          ) : (
+            <Button type="submit" loading={create.isPending} disabled={!valid || create.isPending}>
+              <Megaphone className="h-4 w-4" aria-hidden /> Publish
+            </Button>
+          )}
         </div>
       </form>
 
@@ -196,6 +401,13 @@ export default function SuperAdminAnnouncementsPage() {
         <h2 id={fid("list")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">All announcements</h2>
         {isLoading ? (
           <div className="flex justify-center py-10" role="status"><Spinner className="text-primary" /><span className="sr-only">Loading…</span></div>
+        ) : isError ? (
+          <p className="px-4 pb-4 pt-1 text-body-lg text-error" role="alert">
+            Could not load announcements.{" "}
+            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+              Try again
+            </button>
+          </p>
         ) : !announcements?.length ? (
           <p className="px-4 pb-4 pt-1 text-body-lg text-on-surface-variant">No announcements yet.</p>
         ) : (
@@ -221,19 +433,35 @@ export default function SuperAdminAnnouncementsPage() {
                       <p className="text-label text-on-surface-variant mt-0.5">{a.severity}{a.dismissible ? "" : " · not dismissible"}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn("text-label px-2 py-0.5 rounded-full font-medium", state.className)}>{state.label}</span>
+                      <Badge variant={state.variant}>{state.label}</Badge>
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant">
-                      {a.targetType === "ALL" ? "Everyone" : a.targetType === "PLAN" ? `Plan: ${a.targetPlanSlug}` : orgName(a.targetOrgId)}
+                      {a.targetType === "ALL" ? "Everyone" : a.targetType === "PLAN" ? `Plan: ${a.targetPlanSlug}` : orgName(a)}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       {new Date(a.startsAt).toLocaleString()}
                       <span className="block text-label">{a.endsAt ? `until ${new Date(a.endsAt).toLocaleString()}` : "no end"}</span>
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant tabular-nums">{a.dismissals} users</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {!a.archivedAt && (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => doArchive(a)} disabled={archive.isPending}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEdit(a)}
+                          disabled={editing?.id === a.id}
+                          aria-label={`Edit ${a.title}`}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {a.archivedAt ? (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => doRestore(a)} disabled={restore.isPending}>
+                          Restore
+                        </Button>
+                      ) : (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setArchiveTarget(a)} disabled={archive.isPending}>
                           Archive
                         </Button>
                       )}
@@ -245,6 +473,16 @@ export default function SuperAdminAnnouncementsPage() {
           </table>
         )}
       </section>
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        title="Archive this announcement?"
+        message={`"${archiveTarget?.title ?? ""}" will stop showing to tenants right away. You can restore it later from this list.`}
+        confirmLabel="Archive"
+        loading={archive.isPending}
+        onConfirm={() => archiveTarget && doArchive(archiveTarget)}
+        onCancel={() => setArchiveTarget(null)}
+      />
     </div>
   );
 }

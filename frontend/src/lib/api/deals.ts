@@ -7,6 +7,8 @@ import type {
   UpdateDealRequest,
   MoveDealRequest,
   DealAnalytics,
+  DealFollowUp,
+  DealGuard,
 } from "@/lib/types/deals";
 
 export const dealsApi = {
@@ -48,6 +50,27 @@ export const dealsApi = {
   // Deals by Contact
   listDealsByContact: (contactId: string) =>
     apiClient.get<Deal[]>(`/pipelines/deals/by-contact/${contactId}`).then((r) => r.data),
+
+  // Follow-ups due (overdue + today), or upcoming (next 7 days)
+  listFollowUps: (scope: "due" | "upcoming" = "due") =>
+    apiClient
+      .get<DealFollowUp[]>("/pipelines/deals/follow-ups", {
+        params: { scope, tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
+      })
+      .then((r) => r.data),
+
+  // Deal Guard
+  getGuard: (pipelineId: string, dealId: string) =>
+    apiClient.get<DealGuard>(`/pipelines/${pipelineId}/deals/${dealId}/guard`).then((r) => r.data),
+
+  draftScope: (pipelineId: string, dealId: string) =>
+    apiClient.post<DealGuard>(`/pipelines/${pipelineId}/deals/${dealId}/scope/draft`).then((r) => r.data),
+
+  saveScope: (pipelineId: string, dealId: string, summary: string) =>
+    apiClient.patch<DealGuard>(`/pipelines/${pipelineId}/deals/${dealId}/scope`, { summary }).then((r) => r.data),
+
+  sendScope: (pipelineId: string, dealId: string) =>
+    apiClient.post<DealGuard>(`/pipelines/${pipelineId}/deals/${dealId}/scope/send`).then((r) => r.data),
 
   // Analytics
   getAnalytics: (pipelineId: string) =>

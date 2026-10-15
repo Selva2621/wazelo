@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   X, FileText, Search, ExternalLink, ChevronDown,
   Megaphone, MessageSquare, Users, Clock, Wifi,
@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCreateCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
+import { useCreateCampaign, useExecuteCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
 import { ProductSelectField } from "@/components/ui/product-select-field";
 import {
   createCampaignSchema,
@@ -25,7 +25,9 @@ import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
+import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const SOURCE_LABELS: Record<string, string> = {
   GOOGLE_MAPS: "Google Maps",
@@ -42,6 +44,23 @@ const MSG_TYPES: { value: MessageType; label: string }[] = [
   { value: "DOCUMENT", label: "Document" },
   { value: "AUDIO", label: "Audio" },
 ];
+
+/** Placeholders the backend fills per contact; anything else must be filled in here */
+const CONTACT_PLACEHOLDERS = new Set([
+  "name", "phone", "email", "leadStatus",
+  "contact.name", "contact.phone", "contact.email", "contact.leadStatus",
+]);
+
+function customPlaceholders(body: string): string[] {
+  const keys = Array.from(body.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g), (m) => m[1]);
+  return [...new Set(keys.filter((k) => !CONTACT_PLACEHOLDERS.has(k)))];
+}
+
+function fillPlaceholders(body: string, values: Record<string, string>): string {
+  return body.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) =>
+    values[key]?.trim() ? values[key].trim() : match,
+  );
+}
 
 function extractTemplateBody(template: MessageTemplate): string {
   return template.components.find((c) => c.type === "BODY")?.text ?? "";
@@ -91,9 +110,10 @@ interface CreateCampaignModalProps {
 export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignModalProps) {
   const router = useRouter();
   const createCampaign = useCreateCampaign();
+  const executeCampaign = useExecuteCampaign();
   const previewAudience = usePreviewAudience();
 
-  const [scheduleMode, setScheduleMode] = useState<"immediate" | "scheduled">("immediate");
+  const [scheduleMode, setScheduleMode] = useState<"immediate" | "scheduled" | "draft">("immediate");
   const [productId, setProductId] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -116,10 +136,22 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
     },
   });
 
+  // With a single connected number there is nothing to choose; preselect it
+  const onlySessionId = sessions.length === 1 ? sessions[0].id : null;
+  useEffect(() => {
+    if (open && onlySessionId) setValue("sessionId", onlySessionId);
+  }, [open, onlySessionId, setValue]);
+
   const messageType = watch("messageType") as MessageType;
   const audienceType = watch("audienceType") as CampaignAudienceType;
   const messageBody = watch("messageBody") || "";
   const audienceFilters = watch("audienceFilters");
+
+  // Template placeholders like {{lead.service}} aren't contact fields — the
+  // user fills them once for the whole campaign
+  const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
+  const extraPlaceholders = useMemo(() => customPlaceholders(messageBody), [messageBody]);
+  const unfilledPlaceholders = extraPlaceholders.filter((k) => !placeholderValues[k]?.trim());
 
   const filteredTemplates = useMemo(() => {
     if (!templates) return [];
@@ -138,13 +170,35 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
     setValue("audienceFilters", { ...audienceFilters, [key]: next.length ? next : undefined });
   }
 
-  function onSubmit(data: CreateCampaignFormData) {
+  // "Send now" goes out to the whole audience at once, so confirm the count first
+  const [pendingSend, setPendingSend] = useState<{ data: CreateCampaignFormData; recipients: number | null } | null>(null);
+
+  async function onSubmit(data: CreateCampaignFormData) {
+    if (unfilledPlaceholders.length > 0) return;
+    if (scheduleMode !== "immediate") {
+      submitCampaign(data);
+      return;
+    }
+    let recipients: number | null = null;
+    try {
+      const preview = await previewAudience.mutateAsync({
+        audienceType: data.audienceType,
+        audienceFilters: data.audienceType === "FILTERED" ? data.audienceFilters : undefined,
+      });
+      recipients = preview.estimatedRecipients ?? null;
+    } catch {
+      // Still let them confirm without a count
+    }
+    setPendingSend({ data, recipients });
+  }
+
+  function submitCampaign(data: CreateCampaignFormData) {
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
     createCampaign.mutate(
       {
         ...data,
         description: data.description || undefined,
-        messageBody: data.messageBody || undefined,
+        messageBody: data.messageBody ? fillPlaceholders(data.messageBody, placeholderValues) : undefined,
         mediaUrl: data.mediaUrl || undefined,
         mediaMimeType: data.mediaMimeType || undefined,
         scheduledAt: isScheduled ? data.scheduledAt : undefined,
@@ -152,12 +206,16 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
       },
       {
         onSuccess: ({ campaign: created }) => {
+          // The backend saves unscheduled campaigns as drafts; "Send now" starts it right away
+          if (scheduleMode === "immediate") executeCampaign.mutate(created.id);
           reset();
           setScheduleMode("immediate");
           setProductId("");
           setSelectedTemplate(null);
           setTemplateSearch("");
           setShowTemplatePicker(false);
+          setPlaceholderValues({});
+          setPendingSend(null);
           onClose();
           router.push(`/campaigns/${created.id}`);
         },
@@ -168,9 +226,11 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
   const completedRuns = scrapeRunsData?.runs.filter((r) => r.status === "COMPLETED") ?? [];
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
+      dismissible={!pendingSend}
       aria-label="New Campaign"
       className="max-w-4xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
     >
@@ -196,6 +256,8 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
           {/* LEFT PANEL — Campaign details + Message content */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 border-r border-outline-variant/10">
+
+            <CampaignCapacityNotice />
 
             {/* Campaign name + description */}
             <div className="space-y-3">
@@ -300,7 +362,7 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                             {templateSearch.trim() ? "No templates match" : "No templates yet"}
                           </p>
                           {!templateSearch.trim() && (
-                            <button type="button" onClick={() => { onClose(); router.push("/settings/templates"); }} className="flex items-center gap-1.5 text-label text-primary hover:underline">
+                            <button type="button" onClick={() => window.open("/settings/templates", "_blank", "noopener")} className="flex items-center gap-1.5 text-label text-primary hover:underline">
                               <ExternalLink className="h-3.5 w-3.5" /> Create a template
                             </button>
                           )}
@@ -360,6 +422,33 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   <p className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
               </div>
+
+              {extraPlaceholders.length > 0 && (
+                <div className="space-y-2 rounded-xl bg-surface-container-low p-3">
+                  <p className="text-label font-medium text-on-surface">
+                    Fill in the template details
+                  </p>
+                  <p className="text-caption text-on-surface-variant">
+                    The same value goes to every recipient.
+                  </p>
+                  {extraPlaceholders.map((key) => (
+                    <div key={key}>
+                      <Label htmlFor={`ph-${key}`}>{key.replace(/^lead\./, "").replace(/_/g, " ")}</Label>
+                      <Input
+                        id={`ph-${key}`}
+                        placeholder={`Value for {{${key}}}`}
+                        value={placeholderValues[key] ?? ""}
+                        onChange={(e) => setPlaceholderValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                  {unfilledPlaceholders.length > 0 && (
+                    <p className="text-caption text-error">
+                      Fill in all {unfilledPlaceholders.length} field{unfilledPlaceholders.length !== 1 ? "s" : ""} — otherwise contacts would see the raw {"{{…}}"} text.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {messageType !== "TEXT" && (
                 <div>
@@ -567,10 +656,10 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                           onChange={(v) => setValue("audienceFilters", { ...audienceFilters, minRating: v ? Number(v) : undefined })}
                         >
                           <option value="">Rating: Any</option>
-                          <option value="3">⭐ 3.0+</option>
-                          <option value="3.5">⭐ 3.5+</option>
-                          <option value="4">⭐ 4.0+</option>
-                          <option value="4.5">⭐ 4.5+</option>
+                          <option value="3">Rating 3.0+</option>
+                          <option value="3.5">Rating 3.5+</option>
+                          <option value="4">Rating 4.0+</option>
+                          <option value="4.5">Rating 4.5+</option>
                         </FilterSelect>
                       )}
                     </div>
@@ -618,16 +707,27 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
 
             {/* WhatsApp Session */}
             <div>
-              <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="WhatsApp Session" />
-              <select
-                {...register("sessionId")}
-                className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select a session</option>
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
-                ))}
-              </select>
+              <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="Send from" />
+              {sessions.length === 0 ? (
+                <div className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
+                  No WhatsApp number is connected.{" "}
+                  {/* New tab so the campaign being written isn't lost */}
+                  <a href="/settings/whatsapp" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-on-surface">
+                    Connect WhatsApp
+                  </a>
+                  , then come back and pick it here.
+                </div>
+              ) : (
+                <select
+                  {...register("sessionId")}
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+                >
+                  {sessions.length > 1 && <option value="">Choose a WhatsApp number</option>}
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
               {errors.sessionId && (
                 <p className="text-label text-error mt-1">{errors.sessionId.message}</p>
               )}
@@ -644,8 +744,9 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
               <SectionHeading icon={<Clock className="h-3.5 w-3.5" />} label="Scheduling" />
               <div className="flex gap-2 mb-3">
                 {([
-                  { value: "immediate", label: "Send Now" },
+                  { value: "immediate", label: "Send now" },
                   { value: "scheduled", label: "Schedule" },
+                  { value: "draft", label: "Save as draft" },
                 ] as const).map((opt) => (
                   <button
                     key={opt.value}
@@ -691,15 +792,31 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
             <Button
               type="submit"
               form="campaign-form"
-              loading={createCampaign.isPending}
+              loading={createCampaign.isPending || previewAudience.isPending}
               onClick={handleSubmit(onSubmit)}
             >
-              Create Campaign
+              {scheduleMode === "immediate" ? "Create & send" : scheduleMode === "scheduled" ? "Schedule campaign" : "Save draft"}
             </Button>
           </div>
         </div>
       </>
       )}
     </Modal>
+
+    <ConfirmDialog
+      open={!!pendingSend}
+      title="Send this campaign now?"
+      message={
+        pendingSend?.recipients != null
+          ? `It goes out to about ${pendingSend.recipients.toLocaleString()} contact${pendingSend.recipients === 1 ? "" : "s"} right away. You can pause it from the campaign page.`
+          : "It goes out to your whole audience right away. You can pause it from the campaign page."
+      }
+      confirmLabel="Send now"
+      variant="warning"
+      loading={createCampaign.isPending}
+      onCancel={() => setPendingSend(null)}
+      onConfirm={() => pendingSend && submitCampaign(pendingSend.data)}
+    />
+    </>
   );
 }

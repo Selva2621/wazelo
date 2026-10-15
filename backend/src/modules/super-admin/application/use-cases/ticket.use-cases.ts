@@ -11,8 +11,13 @@ import {
   ListTicketsQueryDto,
 } from '../dto/ticket.dto';
 import { EVENT_NAMES } from '@/common/constants';
+import { searchTerm } from '../../domain/services/search-term';
+import { ticketSla, TicketSla } from '../../domain/services/ticket-sla';
+import { listOrderBy } from '../../domain/services/list-sort';
+import { buildCsvExport, CSV_EXPORT_MAX_ROWS, CsvColumn, CsvExport } from '../../domain/services/csv';
 import { PlatformAuditAction, TicketStatus } from '@prisma/client';
 import { AuditActor, PlatformAuditService, RequestMeta } from '../services/platform-audit.service';
+import { SuperAdminTicketNotifier } from '../services/super-admin-ticket-notifier.service';
 
 /** Passed only on super admin paths — the action is then recorded in the platform audit log. */
 export interface SuperAdminAuditContext {
@@ -25,9 +30,15 @@ export class CreateTicketUseCase {
   constructor(
     private readonly ticketRepo: HelpTicketRepository,
     private readonly audit: PlatformAuditService,
+    private readonly notifier: SuperAdminTicketNotifier,
   ) {}
 
   async execute(orgId: string, userId: string, dto: CreateTicketDto, audit?: SuperAdminAuditContext) {
+    // Super admins pass both ids by hand: the user must really belong to that (live) org.
+    // Tenant callers take both from their own token, so this always holds for them.
+    if (audit && !(await this.ticketRepo.userBelongsToOrg(userId, orgId))) {
+      throw new BadRequestException('That user does not belong to this organization');
+    }
     const { orgId: _o, userId: _u, ...rest } = dto;
     const ticket = await this.ticketRepo.create({ orgId, userId, ...rest });
     if (audit) {
@@ -40,6 +51,9 @@ export class CreateTicketUseCase {
         metadata: { title: ticket.title, onBehalfOfUserId: userId },
         meta: audit.meta,
       });
+    } else {
+      // Opened by the tenant: tell support (best effort — never fails the request)
+      await this.notifier.notify('created', ticket, ticket.description);
     }
     return ticket;
   }
@@ -61,29 +75,80 @@ export class GetTicketUseCase {
   }
 }
 
+function baseTicketFilter(query: ListTicketsQueryDto): ListTicketsFilter {
+  return {
+    page: query.page,
+    limit: query.limit,
+    status: query.status,
+    category: query.category,
+    priority: query.priority,
+  };
+}
+
+/** Super admin queue filters: org, search, needs-reply, assignee ("me" → `superAdminId`) and sort. */
+function queueFilter(query: ListTicketsQueryDto, superAdminId?: string): ListTicketsFilter {
+  const filter = baseTicketFilter(query);
+  if (query.orgId) filter.orgId = query.orgId;
+  filter.search = searchTerm(query.search);
+  filter.needsReply = query.needsReply === true;
+  if (query.assignee === 'me') filter.assignedToId = superAdminId;
+  else if (query.assignee === 'unassigned') filter.assignedToId = null;
+  else if (query.assignee) filter.assignedToId = query.assignee;
+  filter.orderBy = listOrderBy('tickets', query.sort, query.order);
+  return filter;
+}
+
+type QueueTicket = Awaited<ReturnType<HelpTicketRepository['findAllForExport']>>[number] & { sla: TicketSla };
+
+function personName(p: { firstName: string | null; lastName: string | null }): string {
+  return [p.firstName, p.lastName].filter(Boolean).join(' ');
+}
+
+const TICKET_COLUMNS: CsvColumn<QueueTicket>[] = [
+  { header: 'Ticket ID', value: (t) => t.id },
+  { header: 'Title', value: (t) => t.title },
+  { header: 'Organization', value: (t) => t.organization.name },
+  { header: 'Status', value: (t) => t.status },
+  { header: 'Priority', value: (t) => t.priority },
+  { header: 'Category', value: (t) => t.category },
+  { header: 'Requester', value: (t) => personName(t.user) },
+  { header: 'Requester email', value: (t) => t.user.email },
+  { header: 'Assignee', value: (t) => t.assignedTo?.name ?? '' },
+  { header: 'Assignee email', value: (t) => t.assignedTo?.email ?? '' },
+  { header: 'Replies', value: (t) => t._count.replies },
+  { header: 'Last reply by', value: (t) => t.lastReplyBy },
+  { header: 'First response at', value: (t) => t.firstResponseAt },
+  { header: 'SLA', value: (t) => t.sla.state },
+  { header: 'SLA due at', value: (t) => t.sla.dueAt },
+  { header: 'Created at', value: (t) => t.createdAt },
+  { header: 'Updated at', value: (t) => t.updatedAt },
+  { header: 'Closed at', value: (t) => t.closedAt },
+];
+
 @Injectable()
 export class ListTicketsUseCase {
   constructor(private readonly ticketRepo: HelpTicketRepository) {}
 
   /** `superAdminId` resolves the "me" assignee filter on the super admin queue. */
   async execute(query: ListTicketsQueryDto, orgId?: string, isSuperAdmin?: boolean, superAdminId?: string) {
-    const filter: ListTicketsFilter = {
-      page: query.page,
-      limit: query.limit,
-      status: query.status,
-      category: query.category,
-      priority: query.priority,
-    };
-
     if (isSuperAdmin) {
-      if (query.orgId) filter.orgId = query.orgId;
-      if (query.assignee === 'me') filter.assignedToId = superAdminId;
-      else if (query.assignee === 'unassigned') filter.assignedToId = null;
-      else if (query.assignee) filter.assignedToId = query.assignee;
-      return this.ticketRepo.findAll(filter);
+      const result = await this.ticketRepo.findAll(queueFilter(query, superAdminId));
+      const now = new Date();
+      return { ...result, tickets: result.tickets.map((t) => ({ ...t, sla: ticketSla(t, now) })) };
     }
 
-    return this.ticketRepo.findByOrg(orgId!, filter);
+    return this.ticketRepo.findByOrg(orgId!, baseTicketFilter(query));
+  }
+
+  /** Super admin queue as CSV: same filters and sort, no paging; capped at CSV_EXPORT_MAX_ROWS. */
+  async exportCsv(query: ListTicketsQueryDto, superAdminId: string): Promise<CsvExport> {
+    const tickets = await this.ticketRepo.findAllForExport(queueFilter(query, superAdminId), CSV_EXPORT_MAX_ROWS + 1);
+    const now = new Date();
+    return buildCsvExport(
+      'tickets',
+      tickets.map((t) => ({ ...t, sla: ticketSla(t, now) })),
+      TICKET_COLUMNS,
+    );
   }
 }
 
@@ -134,6 +199,7 @@ export class ReplyToTicketUseCase {
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly audit: PlatformAuditService,
+    private readonly notifier: SuperAdminTicketNotifier,
   ) {}
 
   async execute(
@@ -148,6 +214,10 @@ export class ReplyToTicketUseCase {
     // Org users can only reply to their own org's tickets
     if (!ticket || (userId && ticket.orgId !== orgId)) {
       throw new NotFoundException('Ticket not found');
+    }
+    // A closed ticket is final for the customer; support can still add notes or replies
+    if (userId && ticket.status === TicketStatus.CLOSED) {
+      throw new BadRequestException('This ticket is closed. Please open a new ticket.');
     }
 
     // Only super admins can write internal notes (the tenant DTO rejects the field)
@@ -172,6 +242,11 @@ export class ReplyToTicketUseCase {
         userId: ticket.userId,
         orgId: ticket.orgId,
       });
+    }
+
+    // A customer reply notifies the assignee (or the whole team when unassigned)
+    if (userId && !superAdminId && !isInternal) {
+      await this.notifier.notify('customer_reply', ticket, dto.body);
     }
 
     if (audit) {

@@ -2,7 +2,7 @@ import apiClient from "./client";
 import type {
   DeveloperDashboardStats,
   DeveloperApiKey,
-  DeveloperMessageLog,
+  DeveloperApiRequestLog,
   PaginatedResponse,
   CreateApiKeyRequest,
 } from "@/lib/types/developer";
@@ -19,7 +19,7 @@ export async function getDeveloperDashboard(): Promise<DeveloperDashboardStats> 
 export async function getDeveloperLogs(
   limit = 20,
   cursor?: string,
-): Promise<PaginatedResponse<DeveloperMessageLog>> {
+): Promise<PaginatedResponse<DeveloperApiRequestLog>> {
   const params: Record<string, string> = { limit: String(limit) };
   if (cursor) params.cursor = cursor;
   const { data } = await apiClient.get("/developer/portal/logs", { params });

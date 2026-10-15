@@ -1,6 +1,21 @@
 // ─── Enums (match backend Prisma enums) ───
 
 export type LeadStatus = "NEW" | "CONTACTED" | "INTERESTED" | "CONVERTED" | "CLOSED";
+
+// ─── Bulk actions (POST /contacts/bulk/*, max 100 ids per request) ───
+
+export const BULK_CONTACTS_MAX = 100;
+
+export type BulkContactAction =
+  | { action: "status"; contactIds: string[]; status: LeadStatus }
+  | { action: "assign"; contactIds: string[]; ownerId: string }
+  | { action: "tags"; contactIds: string[]; name: string }
+  | { action: "delete"; contactIds: string[] };
+
+export interface BulkContactsResult {
+  succeeded: string[];
+  failed: { contactId: string; error: string }[];
+}
 export type ContactSource =
   | "WHATSAPP"
   | "INSTAGRAM"

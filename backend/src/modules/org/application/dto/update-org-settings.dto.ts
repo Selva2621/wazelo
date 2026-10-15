@@ -6,13 +6,33 @@ import {
   Matches,
   IsObject,
   IsEnum,
+  IsIn,
+  IsArray,
+  ArrayMinSize,
+  ArrayUnique,
 } from 'class-validator';
 import { OrgType } from '@prisma/client';
+import { FREELANCER_TYPES, FreelancerType } from '@/shared/constants/freelancer-profiles';
 
 export class UpdateOrgSettingsDto {
   @IsOptional()
   @IsEnum(OrgType)
   orgType?: OrgType;
+
+  /** For FREELANCER orgs: what they do, one or more — shapes the default templates */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsIn(FREELANCER_TYPES, { each: true })
+  freelancerTypes?: FreelancerType[];
+
+  /** Their service in their own words, when freelancerTypes includes OTHER */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  freelancerService?: string;
+
   @IsOptional()
   @IsString()
   @MinLength(1)

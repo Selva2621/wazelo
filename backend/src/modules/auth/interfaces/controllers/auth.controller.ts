@@ -10,11 +10,13 @@ import {
   Get,
   Param,
   Delete,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { Public, CurrentUser, JwtPayload, Roles } from '@/common/decorators';
+import { Public, CurrentUser, JwtPayload, Roles, CsrfProtected } from '@/common/decorators';
 import {
   RegisterDto,
   LoginDto,
@@ -36,6 +38,12 @@ import {
   SessionManagementUseCase,
   ChangePasswordUseCase,
 } from '../../application/use-cases';
+import {
+  CompleteGoogleAuthUseCase,
+  GetAuthProvidersUseCase,
+  StartGoogleAuthUseCase,
+} from '../../application/use-cases/google-auth.use-cases';
+import { GOOGLE_STATE_TTL_SECONDS } from '../../application/services/google-oauth-state.service';
 
 @Controller('auth')
 export class AuthController {
@@ -50,6 +58,10 @@ export class AuthController {
     private readonly logoutUseCase: LogoutUseCase,
     private readonly sessionManagementUseCase: SessionManagementUseCase,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
+    private readonly getAuthProvidersUseCase: GetAuthProvidersUseCase,
+    private readonly startGoogleAuthUseCase: StartGoogleAuthUseCase,
+    private readonly completeGoogleAuthUseCase: CompleteGoogleAuthUseCase,
+    private readonly configService: ConfigService,
   ) {}
 
   // ───────────────────────────────────────────
@@ -141,6 +153,8 @@ export class AuthController {
   }
 
   @Public()
+  // Acts on the SameSite=None refresh cookie: keep the x-requested-with check
+  @CsrfProtected()
   @Post('refresh')
   // Every page load and open tab refreshes once; 3/min logged people out on quick reloads.
   @Throttle({ default: { ttl: 60000, limit: 20 } })
@@ -166,6 +180,75 @@ export class AuthController {
     // Return only accessToken + expiresIn — never expose refreshToken or rememberMe
     const { refreshToken: _, rememberMe: __, ...jsonBody } = result;
     return jsonBody;
+  }
+
+  // ───────────────────────────────────────────
+  // CONTINUE WITH GOOGLE (top-level browser navigations, so GET + redirects)
+  // ───────────────────────────────────────────
+
+  /** Which external sign-in options the auth pages should show. */
+  @Public()
+  @Get('providers')
+  @Throttle({ default: { ttl: 60000, limit: 60 } })
+  async providers() {
+    return this.getAuthProvidersUseCase.execute();
+  }
+
+  /** Starts Google sign-in: sets the short-lived state cookie and redirects to Google. */
+  @Public()
+  @Get('google/start')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  async googleStart(
+    @Query('intent') intent: string | undefined,
+    @Query('remember') remember: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { redirectUrl, stateCookie } = await this.startGoogleAuthUseCase.execute({
+      intent: intent === 'signup' ? 'signup' : 'signin',
+      rememberMe: remember === '1' || remember === 'true',
+    });
+    res.cookie(this.GOOGLE_STATE_COOKIE, stateCookie, this.googleStateCookieOptions(GOOGLE_STATE_TTL_SECONDS * 1000));
+    res.setHeader('Cache-Control', 'no-store');
+    res.redirect(302, redirectUrl);
+  }
+
+  /** Google redirects here. Ends on the frontend: /auth/google/complete, or the login page with ?ssoError=… */
+  @Public()
+  @Get('google/callback')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  async googleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const stateCookie = (req as any).cookies?.[this.GOOGLE_STATE_COOKIE];
+    // One attempt per state: clear it whatever happens next
+    res.clearCookie(this.GOOGLE_STATE_COOKIE, this.googleStateCookieOptions());
+    res.setHeader('Cache-Control', 'no-store');
+
+    const result = await this.completeGoogleAuthUseCase.execute({
+      code: typeof code === 'string' ? code : undefined,
+      state: typeof state === 'string' ? state : undefined,
+      error: typeof error === 'string' ? error : undefined,
+      stateCookie: typeof stateCookie === 'string' ? stateCookie : undefined,
+      ipAddress: this.getIp(req),
+      userAgent: this.getUa(req),
+    });
+
+    const frontendUrl = this.configService.get<string>('app.frontendUrl', 'http://localhost:3001').replace(/\/$/, '');
+    if (!result.ok) {
+      res.redirect(302, `${frontendUrl}/auth/login?ssoError=${encodeURIComponent(result.code)}`);
+      return;
+    }
+    this.setRefreshCookie(res, result.refreshToken, result.rememberMe);
+    // Hints only (the session itself is the HttpOnly refresh cookie): new account, remembered session
+    const hints = new URLSearchParams();
+    if (result.isNewUser) hints.set('new', '1');
+    if (result.rememberMe) hints.set('r', '1');
+    const query = hints.toString();
+    res.redirect(302, `${frontendUrl}/auth/google/complete${query ? `?${query}` : ''}`);
   }
 
   // ───────────────────────────────────────────
@@ -296,6 +379,21 @@ export class AuthController {
       path: '/',
       maxAge,
     });
+  }
+
+  /** State/PKCE cookie for one Google sign-in attempt. Lax: it must ride along on Google's top-level redirect back. */
+  private get GOOGLE_STATE_COOKIE(): string {
+    return process.env.NODE_ENV === 'production' ? '__Secure-g_oauth' : 'g_oauth';
+  }
+
+  private googleStateCookieOptions(maxAge?: number) {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      ...(maxAge ? { maxAge } : {}),
+    };
   }
 
   private clearRefreshCookie(res: Response): void {

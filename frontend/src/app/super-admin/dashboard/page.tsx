@@ -7,10 +7,13 @@ import {
 } from "lucide-react";
 import { useSAStats, useSAOrgs, useSAActivity, useSAGrowth } from "@/hooks/use-super-admin";
 import { MonthlyBars } from "@/components/super-admin/monthly-bars";
+import { KillSwitchBanner } from "@/components/super-admin/kill-switches-panel";
 import type { PlatformActivityItem } from "@/lib/api/super-admin";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { StatusBadge } from "@/components/super-admin/status-badge";
 import { formatMoney } from "@/lib/utils";
 
 function timeAgo(iso: string): string {
@@ -47,7 +50,7 @@ function StatCard({ label, value, icon: Icon, iconColor, iconBg, trend }: StatCa
   return (
     <div className="group bg-surface-container-low border border-outline-variant hover:border-outline-variant/70 rounded-xl p-5 transition-all duration-200 flex flex-col gap-4">
       <div className="flex items-start justify-between">
-        <span className="text-label font-medium text-on-surface-variant uppercase tracking-wider">{label}</span>
+        <span className="text-label text-on-surface-variant">{label}</span>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
@@ -118,10 +121,10 @@ function SubBar({ label, count, total, color }: { label: string; count: number; 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminDashboard() {
-  const { data: stats, isLoading: statsLoading, refetch } = useSAStats();
-  const { data: orgsData, isLoading: orgsLoading } = useSAOrgs({ limit: 5 });
-  const { data: activity, isLoading: activityLoading, refetch: refetchActivity } = useSAActivity(8);
-  const { data: growth } = useSAGrowth(12);
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch } = useSAStats();
+  const { data: orgsData, isLoading: orgsLoading, isError: orgsError, refetch: refetchOrgs } = useSAOrgs({ limit: 5 });
+  const { data: activity, isLoading: activityLoading, isError: activityError, refetch: refetchActivity } = useSAActivity(8);
+  const { data: growth, isError: growthError, refetch: refetchGrowth } = useSAGrowth(12);
   // One revenue chart per currency — amounts in different currencies are never added together
   const revenueCurrencies = [...new Set((growth ?? []).flatMap((g) => Object.keys(g.revenue)))].sort();
 
@@ -139,7 +142,7 @@ export default function SuperAdminDashboard() {
 
   const statCards: StatCardProps[] = [
     {
-      label: "Total Organizations",
+      label: "Total organizations",
       value: stats?.totalOrgs ?? "—",
       icon: Building2,
       iconColor: "text-info",
@@ -147,7 +150,7 @@ export default function SuperAdminDashboard() {
       trend: { value: `${stats?.newOrgsLast30Days ?? 0} this month`, up: (stats?.newOrgsLast30Days ?? 0) > 0 ? true : null },
     },
     {
-      label: "Active Subscriptions",
+      label: "Active subscriptions",
       value: stats?.activeSubscriptions ?? "—",
       icon: CreditCard,
       iconColor: "text-success",
@@ -155,15 +158,18 @@ export default function SuperAdminDashboard() {
       trend: { value: `${paidActive} paid · ${freeActive} free`, up: paidActive > 0 ? true : null },
     },
     {
-      label: "Trial Accounts",
+      label: "Trial accounts",
       value: stats?.trialSubscriptions ?? "—",
       icon: Clock,
       iconColor: "text-warning",
       iconBg: "bg-warning/10",
-      trend: { value: "In trial", up: null },
+      trend: {
+        value: `${stats?.trialsEndingIn7Days ?? 0} ending in 7 days`,
+        up: (stats?.trialsEndingIn7Days ?? 0) > 0 ? false : null,
+      },
     },
     {
-      label: "Expired / Cancelled",
+      label: "Expired / cancelled",
       value: stats?.expiredSubscriptions ?? "—",
       icon: AlertCircle,
       iconColor: "text-error",
@@ -187,7 +193,7 @@ export default function SuperAdminDashboard() {
       },
     },
     {
-      label: "Open Tickets",
+      label: "Open tickets",
       value: stats?.openTickets ?? "—",
       icon: LifeBuoy,
       iconColor: "text-chart-5",
@@ -218,6 +224,8 @@ export default function SuperAdminDashboard() {
             onClick={() => {
               refetch();
               refetchActivity();
+              refetchOrgs();
+              refetchGrowth();
             }}
           >
             <RefreshCw className="h-3 w-3" />
@@ -225,6 +233,17 @@ export default function SuperAdminDashboard() {
           </Button>
         </div>
       </div>
+
+      <KillSwitchBanner />
+
+      {statsError && (
+        <Alert variant="error">
+          Could not load platform stats.{" "}
+          <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+            Try again
+          </button>
+        </Alert>
+      )}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -240,6 +259,14 @@ export default function SuperAdminDashboard() {
       )}
 
       {/* Growth — small multiples, one series each */}
+      {growthError && (
+        <Alert variant="error">
+          Could not load growth charts.{" "}
+          <button type="button" onClick={() => refetchGrowth()} className="underline hover:no-underline">
+            Try again
+          </button>
+        </Alert>
+      )}
       {growth && (
         <section aria-labelledby="growth-heading" className="space-y-3">
           <h2 id="growth-heading" className="text-body-lg font-semibold text-on-surface">
@@ -291,6 +318,13 @@ export default function SuperAdminDashboard() {
 
           {orgsLoading ? (
             <div className="flex items-center justify-center h-24"><Spinner className="text-primary" /></div>
+          ) : orgsError ? (
+            <p className="text-body-lg text-error text-center py-10" role="alert">
+              Could not load organizations.{" "}
+              <button type="button" onClick={() => refetchOrgs()} className="underline hover:no-underline">
+                Try again
+              </button>
+            </p>
           ) : orgsData?.orgs?.length === 0 ? (
             <p className="text-body-lg text-on-surface-variant text-center py-10">No organizations yet</p>
           ) : (
@@ -312,14 +346,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-4">
                     {org.subscription ? (
-                      <span className={`text-label px-2 py-0.5 rounded-full font-medium ${
-                        org.subscription.status === "ACTIVE" ? "bg-success/10 text-success" :
-                        org.subscription.status === "TRIAL" ? "bg-warning/10 text-warning" :
-                        org.subscription.status === "PAST_DUE" ? "bg-warning/10 text-warning" :
-                        "bg-surface-container text-on-surface-variant"
-                      }`}>
-                        {org.subscription.status}
-                      </span>
+                      <StatusBadge status={org.subscription.status} />
                     ) : (
                       <span className="text-label text-on-surface-variant/50">No plan</span>
                     )}
@@ -342,6 +369,13 @@ export default function SuperAdminDashboard() {
                 <Spinner className="text-primary" />
                 <span className="sr-only">Loading activity…</span>
               </div>
+            ) : activityError ? (
+              <p className="text-body-lg text-error py-6 text-center" role="alert">
+                Could not load activity.{" "}
+                <button type="button" onClick={() => refetchActivity()} className="underline hover:no-underline">
+                  Try again
+                </button>
+              </p>
             ) : !activity?.length ? (
               <p className="text-body-lg text-on-surface-variant py-6 text-center">No activity yet</p>
             ) : (

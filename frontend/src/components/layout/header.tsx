@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
 import { ThemeCycleButton, ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/notification-center";
+import { AccountHealthPill } from "@/components/whatsapp/account-health";
 import { CommandPalette } from "./command-palette";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -156,6 +157,8 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
               </span>
             </Link>
           )}
+
+          <AccountHealthPill />
 
           <ThemeCycleButton />
 

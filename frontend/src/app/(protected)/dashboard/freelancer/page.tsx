@@ -1,8 +1,12 @@
 "use client";
 
 import { useAuthStore } from "@/stores/auth-store";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useContacts } from "@/hooks/use-contacts";
+import { useConversations } from "@/hooks/use-conversations";
+import { useFollowUps, useSetFollowUp } from "@/hooks/use-deals";
+import { formatFollowUp } from "@/components/deals/contact-deal-card";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -18,6 +22,8 @@ import {
   Repeat,
   Filter,
   Zap,
+  AlarmClock,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +96,14 @@ function PipelineBar({
   );
 }
 
+/** "5m", "3h", "2d" — how long a chat has been waiting */
+function formatWaiting(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
+}
+
 function QuickAction({
   href,
   icon,
@@ -119,7 +133,8 @@ export default function FreelancerDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: orgSettings } = useOrgSettings();
-  const orgType = user?.orgType ?? orgSettings?.orgType;
+  // Org settings are fresher than the token's copy (the type can change after login)
+  const orgType = orgSettings?.orgType ?? user?.orgType;
 
   // Guard: redirect non-freelancers to the main dashboard
   useEffect(() => {
@@ -142,8 +157,16 @@ export default function FreelancerDashboard() {
   ];
   const totalLeads = stages.reduce((sum, s) => sum + s.count, 0);
   const maxStage = Math.max(...stages.map((s) => s.count));
-  const proposalCount = stages[2].count;
-  const closedCount = stages[4].count;
+  const interestedCount = stages[2].count;
+  // CONVERTED is the won status; CLOSED means the lead was closed without a deal
+  const wonCount = stages[3].count;
+
+  const { data: openConversations } = useConversations({ status: "OPEN", limit: 20 });
+  const { data: followUps } = useFollowUps("due");
+  const setFollowUp = useSetFollowUp();
+  const awaitingReply = (openConversations?.data ?? [])
+    .filter((c) => c.unreadCount > 0)
+    .slice(0, 5);
 
   const firstName = user?.firstName ?? "there";
 
@@ -164,15 +187,22 @@ export default function FreelancerDashboard() {
         </Link>
       </div>
 
+      <SetupChecklist />
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
           {/* KPI strip */}
           <div className={cn(CARD, "stagger grid grid-cols-2 gap-1 p-2 md:grid-cols-4 md:divide-x md:divide-outline-variant")}>
             <Kpi label="Total Leads" value={totalLeads} icon={<Users className="h-5 w-5" />} href="/contacts" />
-            <Kpi label="Open Conversations" value="—" icon={<MessageSquare className="h-5 w-5" />} href="/inbox" />
-            <Kpi label="Proposals Sent" value={proposalCount} icon={<Send className="h-5 w-5" />} href="/contacts" />
-            <Kpi label="Closed This Month" value={closedCount} icon={<CheckCircle2 className="h-5 w-5" />} href="/contacts" />
+            <Kpi
+              label="Open Conversations"
+              value={openConversations ? openConversations.total : "…"}
+              icon={<MessageSquare className="h-5 w-5" />}
+              href="/inbox"
+            />
+            <Kpi label="Interested" value={interestedCount} icon={<Send className="h-5 w-5" />} href="/leads/pipeline" />
+            <Kpi label="Clients Won" value={wonCount} icon={<CheckCircle2 className="h-5 w-5" />} href="/leads/pipeline" />
           </div>
 
           {/* Client Pipeline */}
@@ -207,28 +237,104 @@ export default function FreelancerDashboard() {
             <div className="stagger grid grid-cols-2 gap-3">
               <QuickAction href="/contacts?action=new" icon={<Users className="h-5 w-5" />} label="Add Lead" hint="Into your CRM" />
               <QuickAction href="/inbox" icon={<MessageSquare className="h-5 w-5" />} label="Open Inbox" hint="WhatsApp chats" />
-              <QuickAction href="/campaigns/create" icon={<Megaphone className="h-5 w-5" />} label="New Campaign" hint="Broadcast" />
+              <QuickAction href="/campaigns?action=new" icon={<Megaphone className="h-5 w-5" />} label="New Campaign" hint="Broadcast" />
               <QuickAction href="/sequences" icon={<Repeat className="h-5 w-5" />} label="Sequence" hint="Auto follow-ups" />
             </div>
           </section>
 
           <section className={cn(CARD, "p-5")}>
             <h2 className="mb-3 flex items-center gap-2 text-title-sm font-semibold text-on-surface">
-              <Clock className="h-4 w-4 text-primary-container" />
-              Follow-ups Due Today
+              <AlarmClock className="h-4 w-4 text-primary-container" />
+              Follow-ups due
             </h2>
-            <p className="text-body text-on-surface-variant">
-              No follow-ups scheduled for today.{" "}
-              <Link href="/sequences" className="text-primary-container hover:underline">
-                Set up a sequence
-              </Link>{" "}
-              to automate your outreach.
-            </p>
+            {!followUps || followUps.length === 0 ? (
+              <p className="text-body text-on-surface-variant">
+                Nothing due today. Set follow-ups from a chat&apos;s Deal card.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {followUps.slice(0, 5).map((f) => {
+                  const due = formatFollowUp(f.nextFollowUpAt);
+                  return (
+                    <li key={f.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-body font-medium text-on-surface">
+                          {f.contact.name || f.contact.phoneNumber}
+                        </span>
+                        <span className="block truncate text-label text-on-surface-variant">
+                          {f.followUpNote || `${f.title} · ${f.stage.name}`}
+                        </span>
+                      </span>
+                      <span className={cn("shrink-0 text-caption", due.overdue ? "text-error" : "text-on-surface-variant")}>
+                        {due.text}
+                      </span>
+                      <button
+                        type="button"
+                        title="Mark done"
+                        disabled={setFollowUp.isPending}
+                        onClick={() => setFollowUp.mutate({ pipelineId: f.pipelineId, dealId: f.id, nextFollowUpAt: null })}
+                        className="grid size-7 shrink-0 place-items-center rounded-full border border-outline-variant text-on-surface-variant transition-colors hover:border-success hover:text-success"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
             <Link
-              href="/sequences"
+              href="/deals"
               className="mt-4 flex items-center justify-center gap-1.5 rounded-2xl border border-outline-variant bg-surface-container-low py-2.5 text-body font-medium text-on-surface transition-colors hover:bg-surface-container"
             >
-              See all follow-ups <ArrowRight className="h-4 w-4" />
+              Open deals <ArrowRight className="h-4 w-4" />
+            </Link>
+          </section>
+
+          <section className={cn(CARD, "p-5")}>
+            <h2 className="mb-3 flex items-center gap-2 text-title-sm font-semibold text-on-surface">
+              <Clock className="h-4 w-4 text-primary-container" />
+              Waiting for your reply
+            </h2>
+            {awaitingReply.length === 0 ? (
+              <p className="text-body text-on-surface-variant">
+                You&apos;re all caught up — no unread chats.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {awaitingReply.map((c) => (
+                  <li key={c.id}>
+                    <Link
+                      href="/inbox"
+                      className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-container-low"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-body font-medium text-on-surface">
+                          {c.contactName || c.contactPhone}
+                        </span>
+                        <span className="block truncate text-label text-on-surface-variant">
+                          {c.lastMessageBody || "New message"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        {c.lastMessageAt && (
+                          <span className="block text-caption text-on-surface-variant">
+                            {formatWaiting(c.lastMessageAt)}
+                          </span>
+                        )}
+                        <span className="mt-0.5 inline-grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-caption font-semibold tabular-nums text-on-primary">
+                          {c.unreadCount}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link
+              href="/inbox"
+              className="mt-4 flex items-center justify-center gap-1.5 rounded-2xl border border-outline-variant bg-surface-container-low py-2.5 text-body font-medium text-on-surface transition-colors hover:bg-surface-container"
+            >
+              Open inbox <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
         </div>

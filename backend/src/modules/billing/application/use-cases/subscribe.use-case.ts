@@ -14,6 +14,9 @@ import { PaymentRepository } from '../../infrastructure/repositories/payment.rep
 import { SubscribeDto } from '../dto/subscribe.dto';
 import { EVENT_NAMES } from '@/common/constants';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { CheckoutCoupon, CouponCheckoutService } from '../services/coupon-checkout.service';
+import { couponLine } from '../../domain/services/coupons';
+import { ActivateTrialPaymentUseCase } from './activate-trial-payment.use-case';
 import {
   AuditAction,
   InvoiceStatus,
@@ -33,12 +36,18 @@ export class SubscribeUseCase {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
+    private readonly couponCheckout: CouponCheckoutService,
+    private readonly activateTrialPayment: ActivateTrialPaymentUseCase,
   ) {}
 
   async execute(
     orgId: string,
     userId: string,
-    dto: SubscribeDto & { razorpayPaymentId?: string },
+    /**
+     * `checkoutCoupon`: a coupon already priced into a paid gateway order (verify-payment).
+     * `couponCode`: tenant-entered; without a payment it only works when it covers the full price.
+     */
+    dto: SubscribeDto & { razorpayPaymentId?: string; checkoutCoupon?: CheckoutCoupon | null },
     ipAddress: string,
     userAgent: string,
   ) {
@@ -52,6 +61,27 @@ export class SubscribeUseCase {
 
     // 2. Check no active subscription exists
     const activeSubscription = await this.subscriptionRepo.findActiveByOrg(orgId);
+    // 2b. A trial converting to a paid plan with a coupon that covers the full price: nothing
+    //     to pay, so there is no checkout — activate the trial here
+    if (
+      activeSubscription?.status === SubscriptionStatus.TRIAL &&
+      dto.couponCode?.trim() &&
+      !dto.razorpayPaymentId
+    ) {
+      const trialPlan = await this.planRepo.findById(dto.planId);
+      if (!trialPlan || !trialPlan.isActive || trialPlan.deletedAt) {
+        throw new NotFoundException('Plan not found or is no longer available');
+      }
+      const quote = await this.couponCheckout.quote(orgId, dto.couponCode, trialPlan);
+      if (!quote.ok) throw new BadRequestException(quote.message);
+      if (quote.finalAmountInCents > 0) throw new BadRequestException('Payment is required: apply the coupon at checkout');
+      return this.activateTrialPayment.execute(orgId, userId, activeSubscription, {
+        planId: trialPlan.id,
+        idempotencyKey: dto.idempotencyKey,
+        coupon: { couponId: quote.coupon.id, code: quote.code, discountInCents: quote.discountInCents },
+      });
+    }
+
     if (activeSubscription) {
       throw new ConflictException(
         'Organization already has an active subscription. Use upgrade/downgrade instead.',
@@ -77,6 +107,25 @@ export class SubscribeUseCase {
       }
     }
 
+    // 3c. Coupon (first payment only)
+    const hasTrialPlan = plan.trialDays > 0;
+    const isFreePlan = plan.priceInCents === 0;
+    let coupon: CheckoutCoupon | null = dto.checkoutCoupon ?? null;
+    if (!coupon && dto.couponCode?.trim()) {
+      if (isFreePlan) throw new BadRequestException('Coupons do not apply to free plans');
+      if (hasTrialPlan) {
+        throw new BadRequestException('Coupons apply to the first payment: use it at checkout when the trial ends');
+      }
+      const quote = await this.couponCheckout.quote(orgId, dto.couponCode, plan);
+      if (!quote.ok) throw new BadRequestException(quote.message);
+      if (quote.finalAmountInCents > 0 && !dto.razorpayPaymentId) {
+        throw new BadRequestException('Payment is required: apply the coupon at checkout');
+      }
+      coupon = { couponId: quote.coupon.id, code: quote.code, discountInCents: quote.discountInCents };
+    }
+    const discountInCents = Math.min(coupon?.discountInCents ?? 0, plan.priceInCents);
+    const coveredByCoupon = coupon !== null && discountInCents >= plan.priceInCents;
+
     // 4. Calculate period dates
     const now = new Date();
     const periodStart = now;
@@ -96,7 +145,8 @@ export class SubscribeUseCase {
       initialStatus = SubscriptionStatus.ACTIVE;
     } else {
       // Paid plan without trial — payment must be pre-verified via Razorpay
-      if (!dto.razorpayPaymentId) {
+      // (unless a coupon covers the full price)
+      if (!dto.razorpayPaymentId && !coveredByCoupon) {
         throw new BadRequestException(
           'Payment is required for paid plans without a trial period. Complete checkout first.',
         );
@@ -104,48 +154,83 @@ export class SubscribeUseCase {
       initialStatus = SubscriptionStatus.ACTIVE;
     }
 
-    // 6. Create subscription first (needed for payment foreign key)
-    const subscription = await this.subscriptionRepo.create({
-      orgId,
-      planId: plan.id,
-      status: initialStatus,
-      billingCycle: plan.billingCycle,
-      priceInCents: plan.priceInCents,
-      currency: plan.currency,
-      trialEndsAt,
-      currentPeriodStart: periodStart,
-      currentPeriodEnd: hasTrial && trialEndsAt ? trialEndsAt : periodEnd,
-      idempotencyKey: dto.idempotencyKey,
+    // 6. Create subscription, its first payment + invoice, and the coupon redemption in ONE
+    //    transaction: if the coupon's atomic claim fails (limit reached / already used by
+    //    this org) nothing is created
+    const isPaidStart = initialStatus === SubscriptionStatus.ACTIVE && !hasTrial && !isFree;
+    const amountDue = plan.priceInCents - discountInCents;
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      const created = await this.subscriptionRepo.create(
+        {
+          orgId,
+          planId: plan.id,
+          status: initialStatus,
+          billingCycle: plan.billingCycle,
+          priceInCents: plan.priceInCents,
+          currency: plan.currency,
+          trialEndsAt,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: hasTrial && trialEndsAt ? trialEndsAt : periodEnd,
+          idempotencyKey: dto.idempotencyKey,
+        },
+        tx,
+      );
+
+      // 6b. Record payment + invoice for paid plans (now we have the subscription ID)
+      if (isPaidStart && (dto.razorpayPaymentId || coveredByCoupon)) {
+        let paymentId: string | undefined;
+        if (dto.razorpayPaymentId) {
+          const payment = await this.paymentRepo.createPayment(
+            {
+              orgId,
+              subscriptionId: created.id,
+              amountInCents: amountDue,
+              currency: plan.currency,
+              externalId: dto.razorpayPaymentId,
+              paymentMethod: 'razorpay',
+              idempotencyKey: `subscribe-${dto.idempotencyKey || `${orgId}-${dto.planId}-${Date.now()}`}`,
+            },
+            tx,
+          );
+          await this.paymentRepo.transitionPaymentStatus(payment.id, 'PENDING', 'SUCCEEDED', undefined, tx);
+          paymentId = payment.id;
+        }
+
+        const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber(tx);
+        const invoice = await this.paymentRepo.createInvoice(
+          {
+            orgId,
+            subscriptionId: created.id,
+            paymentId,
+            invoiceNumber,
+            amountInCents: amountDue,
+            currency: plan.currency,
+            periodStart,
+            periodEnd,
+            lineItems: [
+              { description: `${plan.name} — ${plan.billingCycle}`, amount: plan.priceInCents, currency: plan.currency },
+              ...(coupon ? [{ ...couponLine(coupon.code, discountInCents), currency: plan.currency }] : []),
+            ],
+            dueDate: now,
+            ...(coupon && { metadata: { couponId: coupon.couponId, couponCode: coupon.code, discountInCents } }),
+          },
+          tx,
+        );
+        await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID, { paidAt: now }, tx);
+
+        if (coupon) {
+          await this.couponCheckout.redeem(tx, {
+            couponId: coupon.couponId,
+            orgId,
+            subscriptionId: created.id,
+            invoiceId: invoice.id,
+            discountInCents,
+            currency: plan.currency,
+          });
+        }
+      }
+      return created;
     });
-
-    // 6b. Record payment + invoice for paid plans (now we have the subscription ID)
-    if (dto.razorpayPaymentId && initialStatus === SubscriptionStatus.ACTIVE && !hasTrial && !isFree) {
-      const payment = await this.paymentRepo.createPayment({
-        orgId,
-        subscriptionId: subscription.id,
-        amountInCents: plan.priceInCents,
-        currency: plan.currency,
-        externalId: dto.razorpayPaymentId,
-        paymentMethod: 'razorpay',
-        idempotencyKey: `subscribe-${dto.idempotencyKey || `${orgId}-${dto.planId}-${Date.now()}`}`,
-      });
-      await this.paymentRepo.transitionPaymentStatus(payment.id, 'PENDING', 'SUCCEEDED');
-
-      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
-      const invoice = await this.paymentRepo.createInvoice({
-        orgId,
-        subscriptionId: subscription.id,
-        paymentId: payment.id,
-        invoiceNumber,
-        amountInCents: plan.priceInCents,
-        currency: plan.currency,
-        periodStart,
-        periodEnd,
-        lineItems: [{ description: `${plan.name} — ${plan.billingCycle}`, amount: plan.priceInCents, currency: plan.currency }],
-        dueDate: now,
-      });
-      await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
-    }
 
     // 6c. Mark trial as used for this org (one trial per org lifetime)
     if (initialStatus === SubscriptionStatus.TRIAL) {

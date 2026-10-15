@@ -13,11 +13,11 @@ function normalizeE164(phone: string): string | null {
   return hasPlus ? `+${digits}` : digits;
 }
 
-function placeholderPhone(seed: string): string {
-  const hash = Math.abs(
-    seed.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0),
-  );
-  return `+00${hash.toString().padStart(10, '0')}`;
+export interface ImportScrapeResultsOutcome {
+  imported: number;
+  skipped: number;
+  /** Results with no usable phone number — a contact needs one to be messaged */
+  noPhone: number;
 }
 
 @Injectable()
@@ -33,43 +33,41 @@ export class ImportScrapeResultsUseCase {
   async execute(
     orgId: string,
     userId: string,
+    scrapeRunId: string,
     resultIds: string[] = [],
-  ): Promise<{ imported: number; skipped: number }> {
-    const where: Record<string, unknown> = { orgId, imported: false };
-    if (resultIds.length > 0) {
-      where['id'] = { in: resultIds };
-    }
+  ): Promise<ImportScrapeResultsOutcome> {
+    const run = await this.prisma.scrapeRun.findFirst({
+      where: { id: scrapeRunId, orgId },
+      select: { id: true, source: true },
+    });
+    if (!run) throw new NotFoundException('Scrape run not found');
 
-    const results = await this.prisma.scrapeResult.findMany({ where });
+    // Scoped to this run — without resultIds it imports the run's remaining
+    // results, never other runs' results
+    const results = await this.prisma.scrapeResult.findMany({
+      where: {
+        orgId,
+        scrapeRunId,
+        imported: false,
+        ...(resultIds.length > 0 && { id: { in: resultIds } }),
+      },
+    });
 
     if (!results.length) throw new NotFoundException('No unimported results found');
 
     let imported = 0;
     let skipped = 0;
+    let noPhone = 0;
 
     for (const result of results) {
       try {
-        const hasPhone = Boolean(result.phone);
-        const hasEmail = Boolean(result.email);
-
-        let phoneNumber: string;
-
-        if (hasPhone) {
-          const normalized = normalizeE164(result.phone!);
-          if (!normalized) { skipped++; continue; }
-          phoneNumber = normalized;
-        } else if (hasEmail) {
-          const existing = await this.prisma.contact.findFirst({
-            where: { orgId, email: result.email, deletedAt: null },
-          });
-          if (existing) {
-            await this.prisma.scrapeResult.update({ where: { id: result.id }, data: { imported: true, contactId: existing.id } });
-            skipped++;
-            continue;
-          }
-          phoneNumber = placeholderPhone(result.email!);
-        } else {
-          phoneNumber = placeholderPhone(result.sourceUrl);
+        // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
+        // Truelancer, Upwork) have no phone — bid on them via their link instead
+        // of creating a contact with a made-up number.
+        const phoneNumber = result.phone ? normalizeE164(result.phone) : null;
+        if (!phoneNumber) {
+          noPhone++;
+          continue;
         }
 
         const metadata: Record<string, unknown> = {
@@ -82,8 +80,11 @@ export class ImportScrapeResultsUseCase {
           reviewCount: result.reviewCount,
           category: result.category,
           address: result.address,
+          leadScore: result.score,
+          leadTags: result.tags,
           sourceUrl: result.sourceUrl,
-          scrapeSource: (result as any).scrapeRunId,
+          scrapeSource: run.source,
+          scrapeRunId: run.id,
         };
 
         const { contact, created } = await this.contactRepository.upsertByPhone(
@@ -121,18 +122,14 @@ export class ImportScrapeResultsUseCase {
       }
     }
 
-    // Update importedCount on the scrape run
-    if (results.length > 0) {
-      const scrapeRunId = results[0].scrapeRunId;
-      const totalImported = await this.prisma.scrapeResult.count({
-        where: { scrapeRunId, imported: true },
-      });
-      await this.prisma.scrapeRun.update({
-        where: { id: scrapeRunId },
-        data: { importedCount: totalImported },
-      });
-    }
+    const totalImported = await this.prisma.scrapeResult.count({
+      where: { scrapeRunId, imported: true },
+    });
+    await this.prisma.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: { importedCount: totalImported },
+    });
 
-    return { imported, skipped };
+    return { imported, skipped, noPhone };
   }
 }

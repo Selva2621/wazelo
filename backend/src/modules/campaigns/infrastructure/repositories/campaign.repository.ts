@@ -190,6 +190,14 @@ export class CampaignRepository {
     });
   }
 
+  /** Point a campaign at a different WhatsApp number (its old one was logged out or banned). */
+  async moveToSession(id: string, sessionId: string): Promise<void> {
+    await this.prisma.campaign.update({
+      where: { id },
+      data: { sessionId },
+    });
+  }
+
   async findScheduledCampaigns(beforeTime: Date): Promise<Campaign[]> {
     return this.prisma.campaign.findMany({
       where: {

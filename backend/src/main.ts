@@ -55,8 +55,10 @@ async function bootstrap() {
     origin: frontendUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-trace-id', 'x-requested-with'],
-    exposedHeaders: ['x-trace-id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-trace-id', 'x-requested-with', 'x-api-key', 'idempotency-key'],
+    // Content-Disposition + X-Export-Truncated: CSV export downloads (super admin lists)
+    // X-RateLimit-* / Retry-After: so API clients in the browser can read their limits
+    exposedHeaders: ['x-trace-id', 'Content-Disposition', 'X-Export-Truncated', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'],
   });
 
   // Files are served through the authenticated FileServeController

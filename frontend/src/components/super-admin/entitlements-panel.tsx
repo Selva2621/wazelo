@@ -4,7 +4,9 @@ import { useId, useState } from "react";
 import { useSAOrgEntitlements } from "@/hooks/use-super-admin";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +61,8 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
   const [reason, setReason] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  /** Override waiting for the remove confirmation */
+  const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
 
   const open = (next: Editing) => {
     setEditing(next);
@@ -84,7 +87,7 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
       },
       {
         onSuccess: () => {
-          setStatus({ kind: "success", text: `${label} override saved. It applies immediately.` });
+          toast.success(`${label} override saved. It applies immediately.`);
           setEditing(null);
         },
         onError: (err) => setFormError(errorMessage(err, "Could not save the override")),
@@ -93,10 +96,15 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
   };
 
   const doRemove = (overrideId: string, label: string) => {
-    setStatus(null);
     remove.mutate(overrideId, {
-      onSuccess: () => setStatus({ kind: "success", text: `${label} is back to the plan value.` }),
-      onError: (err) => setStatus({ kind: "error", text: errorMessage(err, "Could not remove the override") }),
+      onSuccess: () => {
+        setRemoving(null);
+        toast.success(`${label} is back to the plan value.`);
+      },
+      onError: (err) => {
+        setRemoving(null);
+        toast.error(errorMessage(err, "Could not remove the override"));
+      },
     });
   };
 
@@ -129,7 +137,6 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
         Plan: <span className="text-on-surface font-medium">{planName ?? "No live subscription"}</span>. Overrides apply
         on top of the plan right away, and the customer can&apos;t change them. Every change is recorded in the audit log.
       </p>
-      {status && <Alert variant={status.kind}>{status.text}</Alert>}
 
       {/* Limits */}
       <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby={fid("limits")}>
@@ -163,7 +170,7 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
                   </Button>
                   {l.override && (
                     <Button type="button" variant="ghost" size="sm" disabled={remove.isPending}
-                      onClick={() => doRemove(l.override.id, LIMIT_LABELS[l.key] ?? l.key)}>
+                      onClick={() => setRemoving({ id: l.override.id, label: LIMIT_LABELS[l.key] ?? l.key })}>
                       Remove
                     </Button>
                   )}
@@ -209,7 +216,7 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
                   </Button>
                   {f.override && (
                     <Button type="button" variant="ghost" size="sm" disabled={remove.isPending}
-                      onClick={() => doRemove(f.override.id, FEATURE_LABELS[f.key] ?? f.key)}>
+                      onClick={() => setRemoving({ id: f.override.id, label: FEATURE_LABELS[f.key] ?? f.key })}>
                       Use plan
                     </Button>
                   )}
@@ -252,6 +259,17 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
           )
         }
       </Modal>
+
+      <ConfirmDialog
+        open={!!removing}
+        title={`Remove the ${removing?.label ?? ""} override?`}
+        message={`${removing?.label ?? "This"} goes back to the plan value immediately. The change is recorded in the audit log.`}
+        confirmLabel="Remove override"
+        variant="warning"
+        loading={remove.isPending}
+        onConfirm={() => removing && doRemove(removing.id, removing.label)}
+        onCancel={() => setRemoving(null)}
+      />
     </div>
   );
 }

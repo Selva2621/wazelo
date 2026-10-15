@@ -6,6 +6,8 @@ import { SubscriptionRepository } from '../../infrastructure/repositories/subscr
 import { EVENT_NAMES } from '@/common/constants';
 import { EntitlementOverrideService } from './entitlement-override.service';
 import { effectiveFeature, effectiveLimit, FeatureKey } from './entitlements';
+import { KillSwitchService } from './kill-switch.service';
+import { decideFeatureAccess, FeatureDecisionSource } from './kill-switch';
 
 export interface UsageCheckResult {
   allowed: boolean;
@@ -25,6 +27,7 @@ export class UsageTrackingService {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly overrides: EntitlementOverrideService,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   /** Plan limit, unless a super admin set an active per-org override. */
@@ -149,12 +152,20 @@ export class UsageTrackingService {
   }
 
   /**
-   * Check if a feature is enabled for the org: a super admin override (on or
-   * off) wins, otherwise the org's current plan decides.
+   * Check if a feature is enabled for the org: a platform kill switch denies
+   * it for everyone; otherwise a super admin override (on or off) wins, and
+   * otherwise the org's current plan decides.
    */
   async isFeatureEnabled(orgId: string, feature: FeatureKey): Promise<boolean> {
+    return (await this.getFeatureAccess(orgId, feature)).enabled;
+  }
+
+  /** Same decision as isFeatureEnabled, plus which layer made it. */
+  async getFeatureAccess(orgId: string, feature: FeatureKey): Promise<{ enabled: boolean; source: FeatureDecisionSource }> {
+    if (await this.killSwitches.isDisabled(feature)) return decideFeatureAccess({ enabled: false, overridden: false }, true);
+
     const subscription = await this.subscriptionRepo.findByOrgWithPlan(orgId);
-    if (!subscription) return false;
+    if (!subscription) return { enabled: false, source: 'PLAN' };
 
     const plan = subscription.plan as any;
     const planEnabled: boolean =
@@ -165,7 +176,7 @@ export class UsageTrackingService {
       : feature === 'shopify' ? plan.shopifyEnabled ?? false
       : false;
 
-    return effectiveFeature(planEnabled, await this.overrides.forOrg(orgId), feature).enabled;
+    return decideFeatureAccess(effectiveFeature(planEnabled, await this.overrides.forOrg(orgId), feature), false);
   }
 
   private getLimitForMetric(plan: any, metricType: UsageMetricType): number {

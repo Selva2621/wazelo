@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
@@ -23,6 +24,7 @@ export class CampaignSchedulerWorker implements OnModuleInit {
   constructor(
     private readonly queueService: QueueService,
     private readonly campaignRepo: CampaignRepository,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -51,6 +53,13 @@ export class CampaignSchedulerWorker implements OnModuleInit {
 
   private async checkScheduledCampaigns(): Promise<void> {
     try {
+      // Platform kill switch: leave due campaigns SCHEDULED; the first check
+      // after the switch is turned off starts them.
+      if (await this.killSwitches.isDisabled('campaigns')) {
+        this.logger.debug('Campaigns switched off platform-wide — not starting scheduled campaigns');
+        return;
+      }
+
       const now = new Date();
       const campaigns = await this.campaignRepo.findScheduledCampaigns(now);
 

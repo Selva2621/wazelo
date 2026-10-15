@@ -11,7 +11,9 @@ export class GetPlatformStatsUseCase {
   async execute() {
     const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS);
 
-    const [totalOrgs, statusCounts, revenueRows, newOrgsLast30Days, churnedLast30Days, openTickets] =
+    const inSevenDays = new Date(Date.now() + 7 * DAY_MS);
+
+    const [totalOrgs, statusCounts, revenueRows, newOrgsLast30Days, churnedLast30Days, openTickets, trialsEndingIn7Days] =
       await Promise.all([
         this.platformRepo.countOrgs(),
         this.platformRepo.subscriptionStatusCounts(),
@@ -19,12 +21,15 @@ export class GetPlatformStatsUseCase {
         this.platformRepo.countOrgs(thirtyDaysAgo),
         this.platformRepo.countChurnedSince(thirtyDaysAgo),
         this.platformRepo.countOpenTickets(),
+        this.platformRepo.countTrialsEndingBefore(inSevenDays),
       ]);
 
     return {
       totalOrgs,
       activeSubscriptions: statusCounts.ACTIVE ?? 0,
       trialSubscriptions: statusCounts.TRIAL ?? 0,
+      /** Trials that convert or lapse within a week — the support follow-up list */
+      trialsEndingIn7Days,
       pastDueSubscriptions: (statusCounts.PAST_DUE ?? 0) + (statusCounts.GRACE_PERIOD ?? 0),
       expiredSubscriptions: (statusCounts.EXPIRED ?? 0) + (statusCounts.CANCELLED ?? 0),
       /** One entry per currency, largest MRR first — never summed across currencies */

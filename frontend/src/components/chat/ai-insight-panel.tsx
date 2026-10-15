@@ -202,7 +202,7 @@ export function AiInsightPanel({ conversationId }: AiInsightPanelProps) {
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {kbSuggest.data.sources.map((s) => (
                             <span key={s.articleId} className="text-caption text-primary/70 bg-primary/5 rounded px-1.5 py-0.5">
-                              📄 {s.title}
+                              {s.title}
                             </span>
                           ))}
                         </div>

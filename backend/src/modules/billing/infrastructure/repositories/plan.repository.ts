@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { Plan, BillingCycle, Prisma } from '@prisma/client';
+import { Plan, BillingCycle, Prisma, SubscriptionStatus } from '@prisma/client';
 
 export interface CreatePlanInput {
   name: string;
@@ -133,6 +133,75 @@ export class PlanRepository {
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
       },
     });
+  }
+
+  /** Live (not cancelled/expired) subscriptions per plan id — plans with none are absent. */
+  async countLiveSubscribers(planIds?: string[]): Promise<Map<string, number>> {
+    const rows = await this.prisma.subscription.groupBy({
+      by: ['planId'],
+      where: {
+        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAST_DUE, SubscriptionStatus.GRACE_PERIOD] },
+        ...(planIds && { planId: { in: planIds } }),
+      },
+      _count: { _all: true },
+    });
+    return new Map(rows.map((r) => [r.planId, r._count._all]));
+  }
+
+  /**
+   * Publishes `changes` as the next version of `current` (same slug + billing cycle) and
+   * retires `current` from sale. Its subscribers stay on it, keeping their limits and features.
+   * The default-plan flag moves to the new version.
+   */
+  async createNextVersion(current: Plan, changes: Partial<Plan>): Promise<Plan> {
+    return this.prisma.$transaction(async (tx) => {
+      const latest = await tx.plan.findFirst({
+        where: { slug: current.slug, billingCycle: current.billingCycle },
+        orderBy: { version: 'desc' },
+        select: { version: true },
+      });
+      const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, archivedAt: _a, version: _v, metadata, ...fields } =
+        current;
+      const next = await tx.plan.create({
+        data: {
+          ...fields,
+          ...changes,
+          // Json columns take Prisma.JsonNull, not null
+          metadata: metadata === null ? Prisma.JsonNull : (metadata as Prisma.InputJsonValue),
+          version: (latest?.version ?? current.version) + 1,
+          isDefault: current.isDefault,
+        } as Prisma.PlanUncheckedCreateInput,
+      });
+      await tx.plan.update({ where: { id: current.id }, data: { isActive: false, isDefault: false } });
+      return next;
+    });
+  }
+
+  /**
+   * Every subscription that has ever referenced the plan, in any status — as its plan or
+   * as a scheduled downgrade target. Non-zero means the plan must be archived, not deleted.
+   */
+  async countSubscriptionHistory(planId: string): Promise<number> {
+    return this.prisma.subscription.count({
+      where: { OR: [{ planId }, { scheduledPlanId: planId }] },
+    });
+  }
+
+  /**
+   * Takes the plan off sale (isActive=false) and stamps archivedAt.
+   * deletedAt is left alone, so findById and subscription.plan keep resolving for
+   * existing subscribers (renewals, usage limits, billing page).
+   */
+  async archive(id: string): Promise<Plan> {
+    return this.prisma.plan.update({
+      where: { id },
+      data: { archivedAt: new Date(), isActive: false },
+    });
+  }
+
+  /** Clears archivedAt only; the plan stays inactive until an admin activates it again. */
+  async unarchive(id: string): Promise<Plan> {
+    return this.prisma.plan.update({ where: { id }, data: { archivedAt: null } });
   }
 
   async softDelete(id: string): Promise<void> {

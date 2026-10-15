@@ -28,8 +28,9 @@ export class UpdatePlanUseCase {
       throw new NotFoundException('Plan not found');
     }
 
-    // Changes only apply to new subscriptions (existing subscriptions keep their locked-in plan).
-    // We update the plan record in place since plan is versioned.
+    // Edits in place: limits and features change for every subscriber on this plan at once
+    // (price stays locked on each subscription). To leave existing subscribers untouched, the
+    // super admin publishes a new version instead — see SuperAdminUpdatePlanUseCase.
     const updated = await this.planRepo.update(planId, dto);
 
     this.eventEmitter.emit(EVENT_NAMES.PLAN_UPDATED, {

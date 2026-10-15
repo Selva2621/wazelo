@@ -1,21 +1,28 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Ban, CalendarPlus, PlayCircle, Repeat, XCircle } from "lucide-react";
+import { Ban, CalendarPlus, FilePlus2, Pencil, PlayCircle, Repeat, Trash2, XCircle } from "lucide-react";
 import { useSAOrgActions, useSAPlans } from "@/hooks/use-super-admin";
 import type { Plan } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { Modal } from "@/components/ui/modal";
 import { formatMoney } from "@/lib/utils";
+import { DeleteOrgDialog, EditOrgDialog, ExportOrgButton } from "./org-lifecycle";
+import { CreateInvoiceModal } from "./create-invoice-modal";
 
 type Dialog = "suspend" | "reactivate" | "cancel" | "change-plan" | "extend-trial" | null;
 
 interface OrgActionsPanelProps {
   orgId: string;
   orgName: string;
+  orgSlug: string;
+  orgTimezone: string;
   orgStatus: "ACTIVE" | "SUSPENDED";
   subscription: { status: string; planId: string } | null;
+  /** Default currency for billing actions (the subscription's) */
+  currency?: string;
 }
 
 function errorMessage(err: any, fallback: string): string {
@@ -32,7 +39,7 @@ const inputClass =
  * Super admin actions for one org: suspend / reactivate, and subscription
  * cancel / change plan / extend trial. Every action is recorded in the audit log.
  */
-export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: OrgActionsPanelProps) {
+export function OrgActionsPanel({ orgId, orgName, orgSlug, orgTimezone, orgStatus, subscription, currency }: OrgActionsPanelProps) {
   const actions = useSAOrgActions(orgId);
   const { data: plansData } = useSAPlans();
   const titleId = useId();
@@ -43,7 +50,8 @@ export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: Org
   const [planId, setPlanId] = useState("");
   const [days, setDays] = useState(7);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [lifecycle, setLifecycle] = useState<"edit" | "delete" | null>(null);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   const live = subscription && LIVE.includes(subscription.status);
   const canChangePlan = subscription && (subscription.status === "ACTIVE" || subscription.status === "TRIAL");
@@ -64,7 +72,7 @@ export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: Org
   const run = (promise: Promise<unknown>, success: string) =>
     promise
       .then(() => {
-        setStatus({ kind: "success", text: success });
+        toast.success(success);
         setDialog(null);
       })
       .catch((err) => setDialogError(errorMessage(err, "The action failed")));
@@ -72,7 +80,6 @@ export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: Org
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setDialogError(null);
-    setStatus(null);
     switch (dialog) {
       case "suspend":
         return run(actions.suspend.mutateAsync(reason), `${orgName} is suspended. Its users were signed out.`);
@@ -109,8 +116,6 @@ export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: Org
     >
       <h2 id={`${titleId}-panel`} className="text-body-lg font-medium text-on-surface">Manage</h2>
 
-      {status && <Alert variant={status.kind}>{status.text}</Alert>}
-
       <div className="flex flex-wrap gap-2">
         {orgStatus === "SUSPENDED" ? (
           <Button variant="secondary" onClick={() => open("reactivate")}>
@@ -130,10 +135,48 @@ export function OrgActionsPanel({ orgId, orgName, orgStatus, subscription }: Org
         <Button variant="secondary" disabled={!live} onClick={() => open("cancel")}>
           <XCircle className="h-4 w-4" aria-hidden /> Cancel subscription
         </Button>
+        <Button variant="secondary" onClick={() => setInvoiceOpen(true)}>
+          <FilePlus2 className="h-4 w-4" aria-hidden /> Create invoice
+        </Button>
+        <Button variant="secondary" onClick={() => setLifecycle("edit")}>
+          <Pencil className="h-4 w-4" aria-hidden /> Edit details
+        </Button>
+        <ExportOrgButton orgId={orgId} orgSlug={orgSlug} />
       </div>
       <p className="text-label text-on-surface-variant">
         Billing changes update Wazelo&apos;s records only — no charge or refund is made with Razorpay or Stripe.
       </p>
+
+      <div className="border-t border-outline-variant pt-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-body-lg font-medium text-error">Danger zone</h3>
+          <p className="text-label text-on-surface-variant">
+            Locks out all users and cancels the subscription. Restorable for 30 days.
+          </p>
+        </div>
+        <Button variant="destructive" onClick={() => setLifecycle("delete")}>
+          <Trash2 className="h-4 w-4" aria-hidden /> Delete organization
+        </Button>
+      </div>
+
+      <EditOrgDialog
+        org={{ id: orgId, name: orgName, slug: orgSlug, timezone: orgTimezone }}
+        open={lifecycle === "edit"}
+        onClose={() => setLifecycle(null)}
+      />
+      <CreateInvoiceModal
+        orgId={orgId}
+        orgName={orgName}
+        defaultCurrency={currency}
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
+      />
+      <DeleteOrgDialog
+        orgId={orgId}
+        orgName={orgName}
+        open={lifecycle === "delete"}
+        onClose={() => setLifecycle(null)}
+      />
 
       <Modal open={dialog !== null} onClose={close} dismissible={!pending} aria-labelledby={titleId} className="max-w-md">
         {() => (

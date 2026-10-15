@@ -5,19 +5,18 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '@/common/decorators';
+import { CSRF_PROTECTED_KEY, IS_PUBLIC_KEY } from '@/common/decorators';
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // Public routes (login, register, refresh) are exempt
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
+    const targets = [context.getHandler(), context.getClass()];
+    // Public routes (login, register, webhooks) are exempt unless marked @CsrfProtected()
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets);
+    const forced = this.reflector.getAllAndOverride<boolean>(CSRF_PROTECTED_KEY, targets);
+    if (isPublic && !forced) return true;
 
     const req = context.switchToHttp().getRequest();
 

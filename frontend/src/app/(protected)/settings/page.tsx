@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiTryIt, publicApiBase } from "@/components/settings/api-try-it";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -80,6 +81,7 @@ import {
 } from "@/hooks/use-developer";
 import type { DeveloperApiKey } from "@/lib/types/developer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrowserPushCard } from "@/components/notifications/browser-push-card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -96,6 +98,8 @@ import type {
   IntegrationProvider,
   WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
+import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
+import { cn } from "@/lib/utils";
 import type {
   NotificationType,
   NotificationPreference,
@@ -130,17 +134,43 @@ type SettingsTab =
   | "sla"
   | "shopify";
 
-const TABS: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
-  { id: "organization", label: "Organization", icon: Building2 },
-  { id: "ai-memory", label: "AI Memory", icon: Zap },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-  { id: "working-hours", label: "Working Hours", icon: Clock },
-  { id: "features", label: "Feature Flags", icon: ToggleLeft },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "webhooks", label: "Webhooks", icon: Webhook },
-  { id: "developer-api", label: "Developer API", icon: Code },
-  { id: "sla", label: "SLA Policies", icon: Shield },
-  { id: "shopify", label: "Shopify", icon: ShoppingBag },
+// Tabs grouped by what the admin is trying to do, so related settings sit together
+const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] }[] = [
+  {
+    label: "Workspace",
+    tabs: [
+      { id: "organization", label: "Organization", icon: Building2 },
+      { id: "working-hours", label: "Working Hours", icon: Clock },
+      { id: "notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    label: "Channels",
+    tabs: [
+      { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+      { id: "shopify", label: "Shopify", icon: ShoppingBag },
+    ],
+  },
+  {
+    label: "AI",
+    tabs: [
+      { id: "features", label: "Features & AI", icon: ToggleLeft },
+      { id: "ai-memory", label: "AI Memory", icon: Zap },
+    ],
+  },
+  {
+    label: "Service",
+    tabs: [
+      { id: "sla", label: "SLA Policies", icon: Shield },
+    ],
+  },
+  {
+    label: "Developers",
+    tabs: [
+      { id: "developer-api", label: "API Keys & Docs", icon: Code },
+      { id: "webhooks", label: "Webhooks", icon: Webhook },
+    ],
+  },
 ];
 
 const TIMEZONES = [
@@ -203,26 +233,35 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
-        <div className="w-56 shrink-0">
-          <nav className="space-y-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              >
-                <tab.icon className="h-4 w-4 shrink-0" />
-                {tab.label}
-                {activeTab === tab.id && (
-                  <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                )}
-              </button>
+        <div className="md:w-56 shrink-0">
+          <nav className="space-y-4">
+            {TAB_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 mb-1 text-caption font-medium text-on-surface-variant">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                      }`}
+                    >
+                      <tab.icon className="h-4 w-4 shrink-0" />
+                      {tab.label}
+                      {activeTab === tab.id && (
+                        <ChevronRight className="h-3.5 w-3.5 ml-auto" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
         </div>
@@ -262,6 +301,13 @@ function OrganizationSection() {
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+  const [freelancerTypes, setFreelancerTypes] = useState<string[]>([]);
+  const [freelancerService, setFreelancerService] = useState("");
+  const isFreelancer = data?.orgType === "FREELANCER";
+  const hasOther = freelancerTypes.includes("OTHER");
+
+  const toggleFreelancerType = (value: string) =>
+    setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
 
   useEffect(() => {
     if (data) {
@@ -271,11 +317,25 @@ function OrganizationSection() {
       setIndustry(data.industry ?? "");
       setDescription(data.description ?? "");
       setWebsite(data.website ?? "");
+      setFreelancerTypes(data.freelancerTypes ?? []);
+      setFreelancerService(data.freelancerService ?? "");
     }
   }, [data]);
 
   const handleSave = () => {
-    const payload: UpdateOrgSettingsRequest = { name, timezone, language, industry, description, website };
+    const payload: UpdateOrgSettingsRequest = {
+      name,
+      timezone,
+      language,
+      industry,
+      description,
+      website,
+      // Choosing what they do adds the matching pitch templates (existing ones are kept)
+      ...(isFreelancer && freelancerTypes.length > 0 && {
+        freelancerTypes,
+        freelancerService: hasOther ? freelancerService.trim() : "",
+      }),
+    };
     updateMutation.mutate(payload);
   };
 
@@ -349,6 +409,48 @@ function OrganizationSection() {
             Business Profile
           </p>
           <div className="space-y-4">
+            {isFreelancer && (
+              <div className="space-y-1.5">
+                <p id="freelancer-types-label" className="text-label font-medium text-on-surface-variant">
+                  What do you do? <span className="text-on-surface-variant/60">(pick all that apply)</span>
+                </p>
+                <div role="group" aria-labelledby="freelancer-types-label" className="flex flex-wrap gap-2">
+                  {FREELANCER_TYPE_OPTIONS.map((option) => {
+                    const selected = freelancerTypes.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleFreelancerType(option.value)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 h-8 rounded-full border px-3 text-body transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-outline-variant/40 text-on-surface-variant hover:border-outline hover:text-on-surface",
+                        )}
+                      >
+                        {selected && <Check className="h-3.5 w-3.5" />}
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {hasOther && (
+                  <input
+                    type="text"
+                    value={freelancerService}
+                    onChange={(e) => setFreelancerService(e.target.value)}
+                    placeholder="Your service, e.g. interior design"
+                    maxLength={120}
+                    className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                <p className="text-caption text-on-surface-variant/60">
+                  Adds message templates and outreach written for your work. Templates you already have are not changed.
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 Industry
@@ -718,7 +820,7 @@ function WhatsAppSection() {
 
         {/* API Keys */}
         <Link
-          href="/settings/api-keys"
+          href="/settings?tab=developer-api&section=keys"
           className="flex items-center justify-between p-4 rounded-lg border border-outline-variant/20 bg-surface-container/10 hover:bg-surface-container/20 transition-colors group"
         >
           <div className="flex items-center gap-3">
@@ -1186,6 +1288,8 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, { label: string; descri
   AUTOMATION_EXECUTED: { label: "Automation Executed", description: "When an automation rule executes" },
   AUTOMATION_FAILED: { label: "Automation Failed", description: "Automation failure alerts" },
   WHATSAPP_SESSION_DISCONNECTED: { label: "Session Disconnected", description: "WhatsApp session disconnects" },
+  WHATSAPP_SESSION_UNSTABLE: { label: "Connection Unstable", description: "WhatsApp keeps failing to reconnect" },
+  WHATSAPP_PHONE_INACTIVE: { label: "Phone Inactive", description: "Your phone hasn't been online for days — WhatsApp may unlink" },
   PAYMENT_FAILED: { label: "Payment Failed", description: "Payment failure alerts" },
   USAGE_LIMIT_WARNING: { label: "Usage Warning", description: "Approaching plan limits" },
   USAGE_LIMIT_REACHED: { label: "Usage Limit Reached", description: "Plan limit reached alerts" },
@@ -1232,6 +1336,8 @@ function NotificationsSection() {
   }
 
   return (
+    <div className="space-y-6">
+    <BrowserPushCard />
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
@@ -1310,6 +1416,7 @@ function NotificationsSection() {
         </table>
       </CardContent>
     </Card>
+    </div>
   );
 }
 
@@ -1338,15 +1445,26 @@ function WebhooksSection() {
   const [newUrl, setNewUrl] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newEvents, setNewEvents] = useState<string[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [newHeaders, setNewHeaders] = useState<{ key: string; value: string }[]>([]);
+  const [newMaxRetries, setNewMaxRetries] = useState(3);
+  const [newTimeoutSec, setNewTimeoutSec] = useState(10);
   const [expandedWebhook, setExpandedWebhook] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; url: string } | null>(null);
 
   const handleCreate = () => {
     if (!newUrl || newEvents.length === 0) return;
+    const headers = Object.fromEntries(
+      newHeaders.filter((h) => h.key.trim()).map((h) => [h.key.trim(), h.value]),
+    );
     createMutation.mutate(
       {
         url: newUrl,
         events: newEvents as (typeof WEBHOOK_EVENT_TYPES)[number][],
         description: newDescription || undefined,
+        headers: Object.keys(headers).length ? headers : undefined,
+        maxRetries: newMaxRetries,
+        timeoutMs: newTimeoutSec * 1000,
       },
       {
         onSuccess: () => {
@@ -1354,6 +1472,10 @@ function WebhooksSection() {
           setNewUrl("");
           setNewDescription("");
           setNewEvents([]);
+          setShowAdvanced(false);
+          setNewHeaders([]);
+          setNewMaxRetries(3);
+          setNewTimeoutSec(10);
         },
       },
     );
@@ -1411,7 +1533,7 @@ function WebhooksSection() {
                       expandedWebhook === wh.id ? null : wh.id,
                     )
                   }
-                  onDelete={() => deleteMutation.mutate(wh.id)}
+                  onDelete={() => setPendingDelete({ id: wh.id, url: wh.url })}
                 />
               ))}
             </div>
@@ -1478,6 +1600,86 @@ function WebhooksSection() {
               </div>
             </div>
 
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                className="flex items-center gap-1 text-label font-medium text-primary hover:underline"
+              >
+                {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                Advanced: headers, retries, timeout
+              </button>
+              {showAdvanced && (
+                <div className="mt-3 space-y-4 rounded-lg border border-outline-variant/20 p-3">
+                  <div className="space-y-1.5">
+                    <p className="text-label font-medium text-on-surface-variant">Custom headers</p>
+                    <p className="text-caption text-on-surface-variant">Sent with every delivery, e.g. an Authorization header your endpoint expects.</p>
+                    {newHeaders.map((h, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          aria-label="Header name"
+                          value={h.key}
+                          onChange={(e) => setNewHeaders((prev) => prev.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
+                          placeholder="Header name"
+                          className="flex-1 h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <input
+                          aria-label="Header value"
+                          value={h.value}
+                          onChange={(e) => setNewHeaders((prev) => prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+                          placeholder="Value"
+                          className="flex-1 h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Remove header"
+                          onClick={() => setNewHeaders((prev) => prev.filter((_, j) => j !== i))}
+                          className="px-2 text-on-surface-variant hover:text-error"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNewHeaders((prev) => [...prev, { key: "", value: "" }])}
+                      className="flex items-center gap-1 text-label text-primary hover:underline"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add header
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor="wh-retries" className="text-label font-medium text-on-surface-variant">Retries on failure</label>
+                      <input
+                        id="wh-retries"
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={newMaxRetries}
+                        onChange={(e) => setNewMaxRetries(Math.min(10, Math.max(0, Number(e.target.value) || 0)))}
+                        className="w-full h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <p className="text-caption text-on-surface-variant">0 to 10, with growing waits between tries.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="wh-timeout" className="text-label font-medium text-on-surface-variant">Timeout (seconds)</label>
+                      <input
+                        id="wh-timeout"
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={newTimeoutSec}
+                        onChange={(e) => setNewTimeoutSec(Math.min(30, Math.max(1, Number(e.target.value) || 1)))}
+                        className="w-full h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <p className="text-caption text-on-surface-variant">1 to 30. Slower responses count as failed.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-2">
               <Button
                 size="sm"
@@ -1501,6 +1703,20 @@ function WebhooksSection() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete webhook"
+        message={`Events will stop being sent to ${pendingDelete?.url ?? "this URL"}. You can't undo this.`}
+        confirmLabel="Delete webhook"
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          deleteMutation.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) });
+        }}
+      />
     </div>
   );
 }
@@ -1614,6 +1830,7 @@ function WebhookCard({
             variant="ghost"
             size="sm"
             onClick={onDelete}
+            aria-label="Delete webhook"
             className="text-error hover:text-error"
           >
             <Trash2 className="h-4 w-4" />
@@ -1824,21 +2041,25 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
 function DeveloperApiSection() {
   const { data: stats, isLoading: statsLoading } = useDeveloperDashboard();
   const { data: keys, isLoading: keysLoading } = useApiKeys();
-  const { data: logs } = useDeveloperLogs(10);
+  const { data: logs } = useDeveloperLogs(50);
   const createKey = useCreateApiKey();
   const revokeKey = useRevokeApiKey();
   const rotateKey = useRotateApiKey();
 
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(["read", "write", "messages"]);
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(["read", "write", "messages", "contacts"]);
   const [newKeyExpiry, setNewKeyExpiry] = useState("");
   const [createdKey, setCreatedKey] = useState<DeveloperApiKey | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "keys" | "docs" | "logs">("overview");
+  // ?section=keys|docs|logs opens a sub-tab directly (e.g. from the old /settings/api-keys URL)
+  const sectionParam = useSearchParams().get("section");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "keys" | "docs" | "logs">(
+    sectionParam === "keys" || sectionParam === "docs" || sectionParam === "logs" ? sectionParam : "overview",
+  );
   const [keyConfirm, setKeyConfirm] = useState<{ type: "rotate" | "revoke"; id: string; name: string } | null>(null);
 
-  const AVAILABLE_SCOPES = ["read", "write", "contacts", "messages", "campaigns"];
+  const AVAILABLE_SCOPES = ["read", "write", "messages", "contacts"];
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
@@ -2044,6 +2265,9 @@ function DeveloperApiSection() {
                         </button>
                       ))}
                     </div>
+                    <p className="mt-1 text-caption text-on-surface-variant">
+                      read: GET requests. write: create, send and update. messages / contacts: which data the key can reach.
+                    </p>
                   </div>
                   <div>
                     <label className="text-label font-medium text-on-surface-variant">Expires In (days, optional)</label>
@@ -2078,6 +2302,7 @@ function DeveloperApiSection() {
                         <th className="pb-2 font-medium">Scopes</th>
                         <th className="pb-2 font-medium">Status</th>
                         <th className="pb-2 font-medium">Last Used</th>
+                        <th className="pb-2 font-medium">Expires</th>
                         <th className="pb-2 font-medium">Actions</th>
                       </tr>
                     </thead>
@@ -2110,6 +2335,15 @@ function DeveloperApiSection() {
                           </td>
                           <td className="py-3 text-on-surface-variant">
                             {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"}
+                          </td>
+                          <td className="py-3 text-on-surface-variant">
+                            {!key.expiresAt ? (
+                              "Never"
+                            ) : new Date(key.expiresAt) < new Date() ? (
+                              <span className="text-error">Expired</span>
+                            ) : (
+                              new Date(key.expiresAt).toLocaleDateString()
+                            )}
                           </td>
                           <td className="py-3">
                             {key.isActive && (
@@ -2180,7 +2414,7 @@ function DeveloperApiSection() {
                 <p className="text-label font-medium text-on-surface-variant mb-1">cURL</p>
                 <pre className="bg-surface-container rounded-xl p-4 text-label font-mono text-on-surface overflow-x-auto whitespace-pre">
 {`curl -X POST \\
-  ${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/v1/developer/messages/send \\
+  ${publicApiBase()}/developer/messages/send \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -d '{
@@ -2196,7 +2430,7 @@ function DeveloperApiSection() {
 {`const axios = require("axios");
 
 const res = await axios.post(
-  "${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/v1/developer/messages/send",
+  "${publicApiBase()}/developer/messages/send",
   {
     to: "+919876543210",
     type: "text",
@@ -2208,7 +2442,14 @@ const res = await axios.post(
 );
 
 console.log(res.data);
-// { message: { id: "...", to: "+91...", status: "QUEUED" } }`}
+// {
+//   success: true,
+//   data: {
+//     message: { id: "...", to: "+91...", type: "text", status: "QUEUED", createdAt: "..." },
+//     deduplicated: false
+//   },
+//   timestamp: "..."
+// }`}
                 </pre>
 
                 {/* Python */}
@@ -2217,7 +2458,7 @@ console.log(res.data);
 {`import requests
 
 res = requests.post(
-    "${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/v1/developer/messages/send",
+    "${publicApiBase()}/developer/messages/send",
     json={
         "to": "+919876543210",
         "type": "text",
@@ -2234,29 +2475,87 @@ print(res.json())`}
               <div>
                 <h4 className="text-body font-semibold text-on-surface mb-2">4. Receive Messages (Webhooks)</h4>
                 <p className="text-body text-on-surface-variant mb-2">
-                  Register a webhook URL to receive incoming messages. Go to Settings → Webhooks and add your endpoint with the <code className="bg-surface-container px-1 rounded text-label">message.received</code> event.
+                  Open the <strong>Webhooks</strong> tab in Settings, add your URL and tick the{" "}
+                  <code className="bg-surface-container px-1 rounded text-label">MESSAGE_RECEIVED</code> event.
+                  We POST this to your URL for every incoming message, with the message text and any media link.
                 </p>
                 <pre className="bg-surface-container rounded-xl p-4 text-label font-mono text-on-surface overflow-x-auto whitespace-pre">
-{`// Webhook payload (POST to your URL):
-{
-  "event": "message.received",
-  "payload": {
+{`{
+  "event": "MESSAGE_RECEIVED",
+  "data": {
     "messageId": "uuid",
-    "from": "+919876543210",
-    "type": "text",
+    "sessionId": "uuid",
+    "contactPhone": "+919876543210",
+    "type": "TEXT",
+    "conversationId": "uuid",
     "body": "Hi, I need help!",
-    "timestamp": "2026-04-03T10:30:00Z"
-  }
+    "mediaUrl": null,
+    "mediaMimeType": null
+  },
+  "timestamp": "2026-04-03T10:30:00.000Z"
 }`}
+                </pre>
+              </div>
+
+              {/* Step 5 — Verify signatures */}
+              <div>
+                <h4 className="text-body font-semibold text-on-surface mb-2">5. Verify the webhook signature</h4>
+                <p className="text-body text-on-surface-variant mb-2">
+                  Each request has <code className="bg-surface-container px-1 rounded text-label">X-Webhook-Signature</code> and{" "}
+                  <code className="bg-surface-container px-1 rounded text-label">X-Webhook-Timestamp</code> headers. The signature is an
+                  HMAC-SHA256 of <code className="bg-surface-container px-1 rounded text-label">timestamp.rawBody</code> using your webhook&apos;s signing secret.
+                </p>
+                <pre className="bg-surface-container rounded-xl p-4 text-label font-mono text-on-surface overflow-x-auto whitespace-pre">
+{`// Node.js (Express): use the raw body, not the parsed JSON
+const crypto = require("crypto");
+
+app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const timestamp = req.header("X-Webhook-Timestamp");
+  const expected = crypto
+    .createHmac("sha256", process.env.WAZELO_WEBHOOK_SECRET)
+    .update(\`\${timestamp}.\${req.body}\`)
+    .digest("hex");
+  const given = req.header("X-Webhook-Signature") ?? "";
+
+  if (given.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected))) {
+    return res.sendStatus(401);
+  }
+  // Reject old requests to stop replays
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return res.sendStatus(401);
+
+  const event = JSON.parse(req.body);
+  console.log(event.event, event.data);
+  res.sendStatus(200);
+});`}
                 </pre>
               </div>
             </CardContent>
           </Card>
 
-          {/* API Reference */}
+          {/* Try it */}
           <Card>
             <CardHeader>
+              <CardTitle className="text-body-lg">Try it</CardTitle>
+              <p className="text-label text-on-surface-variant">Call the API with one of your keys and see the real response.</p>
+            </CardHeader>
+            <CardContent>
+              <ApiTryIt />
+            </CardContent>
+          </Card>
+
+          {/* API Reference */}
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-body-lg">API Reference</CardTitle>
+              <a
+                href={`${publicApiBase()}/developer/openapi.json`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-label font-medium text-primary hover:underline"
+              >
+                OpenAPI spec (for Postman / Insomnia)
+              </a>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -2266,21 +2565,24 @@ print(res.json())`}
                       <th className="pb-2 font-medium">Method</th>
                       <th className="pb-2 font-medium">Endpoint</th>
                       <th className="pb-2 font-medium">Description</th>
+                      <th className="pb-2 font-medium">Scopes</th>
                     </tr>
                   </thead>
                   <tbody className="font-mono text-label">
                     {[
-                      ["POST", "/developer/messages/send", "Send a WhatsApp message"],
-                      ["GET", "/developer/messages", "List sent/received messages"],
-                      ["GET", "/developer/messages/:id", "Get message status & events"],
-                      ["GET", "/developer/contacts", "List contacts"],
-                      ["POST", "/developer/contacts", "Create a contact"],
-                      ["GET", "/developer/session/status", "Check WhatsApp connection"],
-                      ["POST", "/developer/webhooks", "Register webhook URL"],
-                      ["GET", "/developer/webhooks", "List webhooks"],
-                      ["PUT", "/developer/webhooks/:id", "Update webhook"],
-                      ["DELETE", "/developer/webhooks/:id", "Delete webhook"],
-                    ].map(([method, path, desc]) => (
+                      ["POST", "/developer/messages/send", "Send a text, media or interactive message", "write, messages"],
+                      ["POST", "/developer/messages/send-bulk", "Send one message to up to 100 numbers", "write, messages"],
+                      ["POST", "/developer/messages/send-template", "Send a saved template with variables", "write, messages"],
+                      ["GET", "/developer/messages", "List messages (cursor pagination)", "read, messages"],
+                      ["GET", "/developer/messages/:id", "Get a message and its status events", "read, messages"],
+                      ["GET", "/developer/templates", "List templates", "read, messages"],
+                      ["POST", "/developer/templates", "Create or update a template", "write, messages"],
+                      ["GET", "/developer/contacts", "List contacts (cursor pagination)", "read, contacts"],
+                      ["POST", "/developer/contacts", "Create a contact (returns existing one if the phone exists)", "write, contacts"],
+                      ["GET", "/developer/contacts/:id", "Get a contact", "read, contacts"],
+                      ["PUT", "/developer/contacts/:id", "Update name, email or metadata", "write, contacts"],
+                      ["GET", "/developer/session/status", "Check the WhatsApp connection", "read"],
+                    ].map(([method, path, desc, scopes]) => (
                       <tr key={`${method}-${path}`} className="border-b border-outline-variant/10">
                         <td className="py-2">
                           <span className={`px-1.5 py-0.5 rounded text-caption font-semibold ${
@@ -2294,14 +2596,30 @@ print(res.json())`}
                         </td>
                         <td className="py-2 text-on-surface">/api/v1{path}</td>
                         <td className="py-2 text-on-surface-variant font-sans">{desc}</td>
+                        <td className="py-2 text-on-surface-variant whitespace-nowrap">{scopes}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="mt-4 text-label text-on-surface-variant">
-                All Developer API endpoints use <code className="bg-surface-container px-1 rounded">X-API-Key</code> header for authentication. No JWT required.
-              </p>
+              <div className="mt-4 space-y-1 text-label text-on-surface-variant">
+                <p>
+                  Send your key in the <code className="bg-surface-container px-1 rounded">X-API-Key</code> header.
+                  A key needs <code className="bg-surface-container px-1 rounded">read</code> for GET requests,{" "}
+                  <code className="bg-surface-container px-1 rounded">write</code> for everything else, plus the resource scope shown.
+                  Missing scopes return 403.
+                </p>
+                <p>
+                  Successful responses are wrapped as <code className="bg-surface-container px-1 rounded">{"{ success, data, timestamp }"}</code>.
+                  Errors return <code className="bg-surface-container px-1 rounded">{"{ statusCode, message, error }"}</code>.
+                  Send an <code className="bg-surface-container px-1 rounded">Idempotency-Key</code> header (or <code className="bg-surface-container px-1 rounded">idempotencyKey</code> in the body) on send and send-template so a retried request doesn't send twice.
+                </p>
+                <p>
+                  Each key can make 60 requests per minute. Check the{" "}
+                  <code className="bg-surface-container px-1 rounded">X-RateLimit-Remaining</code> response header; a 429 means wait for{" "}
+                  <code className="bg-surface-container px-1 rounded">Retry-After</code> seconds.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -2351,7 +2669,8 @@ print(res.json())`}
       {activeSubTab === "logs" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-body-lg">Recent API Activity</CardTitle>
+            <CardTitle className="text-body-lg">Recent API requests</CardTitle>
+            <p className="text-label text-on-surface-variant">Last 50 requests made with your API keys. Kept for 30 days.</p>
           </CardHeader>
           <CardContent>
             {logs?.data && logs.data.length > 0 ? (
@@ -2359,33 +2678,41 @@ print(res.json())`}
                 <table className="w-full text-body">
                   <thead>
                     <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                      <th className="pb-2 font-medium">To</th>
-                      <th className="pb-2 font-medium">Type</th>
-                      <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 font-medium">Message</th>
                       <th className="pb-2 font-medium">Time</th>
+                      <th className="pb-2 font-medium">Request</th>
+                      <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">Duration</th>
+                      <th className="pb-2 font-medium">Key</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.data.map((log) => (
-                      <tr key={log.id} className="border-b border-outline-variant/10">
-                        <td className="py-2.5 font-mono text-label">{log.contactPhone}</td>
-                        <td className="py-2.5">
-                          <span className="px-1.5 py-0.5 bg-surface-container rounded text-caption uppercase">{log.type}</span>
+                      <tr key={log.id} className="border-b border-outline-variant/10 align-top">
+                        <td className="py-2.5 pr-3 text-on-surface-variant text-label whitespace-nowrap">
+                          {new Date(log.createdAt).toLocaleString()}
                         </td>
-                        <td className="py-2.5">
-                          <span className={`px-1.5 py-0.5 rounded text-caption font-medium ${
-                            log.status === "DELIVERED" || log.status === "READ" ? "bg-primary/10 text-primary" :
-                            log.status === "SENT" ? "bg-primary/10 text-primary" :
-                            log.status === "QUEUED" || log.status === "PROCESSING" ? "bg-warning/10 text-warning" :
-                            log.status === "FAILED" ? "bg-error/10 text-error" : "bg-surface-container text-on-surface"
+                        <td className="py-2.5 pr-3">
+                          <span className="font-mono text-label">
+                            <span className="font-semibold">{log.method}</span>{" "}
+                            {log.path.replace(/^\/api\/v1/, "")}
+                          </span>
+                          {log.errorMessage && (
+                            <p className="text-caption text-error mt-0.5 max-w-[360px]">{log.errorMessage}</p>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-3">
+                          <span className={`px-1.5 py-0.5 rounded text-caption font-medium font-mono ${
+                            log.statusCode < 300 ? "bg-success/10 text-success" :
+                            log.statusCode < 500 ? "bg-warning/10 text-warning" :
+                            "bg-error/10 text-error"
                           }`}>
-                            {log.status}
+                            {log.statusCode}
                           </span>
                         </td>
-                        <td className="py-2.5 text-on-surface-variant max-w-[200px] truncate">{log.body || "—"}</td>
+                        <td className="py-2.5 pr-3 text-on-surface-variant text-label tabular-nums">{log.durationMs} ms</td>
                         <td className="py-2.5 text-on-surface-variant text-label">
-                          {new Date(log.createdAt).toLocaleString()}
+                          {log.apiKeyName ?? "Deleted key"}
+                          {log.apiKeyPrefix && <span className="font-mono text-caption block">{log.apiKeyPrefix}…</span>}
                         </td>
                       </tr>
                     ))}
@@ -2394,7 +2721,7 @@ print(res.json())`}
               </div>
             ) : (
               <p className="text-center py-8 text-on-surface-variant text-body">
-                No API activity yet. Send your first message using the API.
+                No API requests yet. Requests made with your API keys show up here.
               </p>
             )}
           </CardContent>

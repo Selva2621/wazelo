@@ -7,6 +7,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { DeveloperApiRepository } from '../../infrastructure/repositories/developer-api.repository';
+import { GetDeveloperDashboardUseCase } from '../../application/use-cases/get-developer-dashboard.use-case';
 
 /**
  * Developer Portal UI API — authenticated via JWT (normal login).
@@ -14,12 +15,15 @@ import { DeveloperApiRepository } from '../../infrastructure/repositories/develo
  */
 @Controller('developer/portal')
 export class DeveloperPortalController {
-  constructor(private readonly repo: DeveloperApiRepository) {}
+  constructor(
+    private readonly repo: DeveloperApiRepository,
+    private readonly getDashboardUseCase: GetDeveloperDashboardUseCase,
+  ) {}
 
   @Get('dashboard')
   @Permissions(PERMISSIONS.SETTINGS_READ)
   async getDashboard(@CurrentUser('orgId') orgId: string) {
-    return this.repo.getDashboardStats(orgId);
+    return this.getDashboardUseCase.execute(orgId);
   }
 
   @Get('logs')

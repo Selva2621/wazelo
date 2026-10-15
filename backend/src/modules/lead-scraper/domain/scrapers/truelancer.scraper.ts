@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BaseScraper } from './base-scraper';
 import { ScrapedLead } from './scraper.interface';
+import { parseBudget, parseRelativeTime } from '../services/lead-parsing';
 
 export class TruelancerScraper extends BaseScraper {
   async scrape(
@@ -42,10 +43,17 @@ export class TruelancerScraper extends BaseScraper {
 
         if (!jobTitle) return;
 
+        const parsed = parseBudget(budget);
+        const posted = $(el).find('.job-posted, .posted-on, time').first().text().trim();
+
         leads.push({
           name: 'Truelancer Client',
           jobTitle,
           budget: budget || undefined,
+          budgetMin: parsed.min,
+          budgetMax: parsed.max,
+          budgetType: parsed.type,
+          postedAt: parseRelativeTime(posted)?.toISOString(),
           skills: skills.length > 0 ? skills : undefined,
           sourceUrl,
           scrapedAt: new Date().toISOString(),
@@ -53,8 +61,8 @@ export class TruelancerScraper extends BaseScraper {
       });
 
       return leads;
-    } catch {
-      return [];
+    } catch (error) {
+      return this.fail('Truelancer', error);
     }
   }
 }

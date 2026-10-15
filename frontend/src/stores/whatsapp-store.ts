@@ -10,12 +10,15 @@ interface WhatsAppState {
   status: SessionStatus;
   qrCode: string | null;
   qrExpiresAt: number | null;
+  /** Latest pairing code when linking by phone number instead of QR */
+  pairingCode: string | null;
   error: string | null;
 
   setSession: (session: WhatsAppSession | null) => void;
   setStatus: (status: SessionStatus) => void;
   setQr: (qr: string, expiresAt: number) => void;
   clearQr: () => void;
+  setPairingCode: (code: string | null) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 }
@@ -25,6 +28,7 @@ const initialState = {
   status: "loading" as SessionStatus,
   qrCode: null,
   qrExpiresAt: null,
+  pairingCode: null,
   error: null,
 };
 
@@ -49,7 +53,10 @@ export const useWhatsAppStore = create<WhatsAppState>()((set) => ({
   setQr: (qrCode, qrExpiresAt) =>
     set({ qrCode, qrExpiresAt, status: "connecting" }),
 
-  clearQr: () => set({ qrCode: null, qrExpiresAt: null }),
+  clearQr: () => set({ qrCode: null, qrExpiresAt: null, pairingCode: null }),
+
+  setPairingCode: (pairingCode) =>
+    set(pairingCode ? { pairingCode, status: "connecting" } : { pairingCode }),
 
   setError: (error) => set({ error }),
 

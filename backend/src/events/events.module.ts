@@ -12,6 +12,7 @@ import { AuthEventsHandler } from './handlers/auth-events.handler';
 import { OrgUserEventsHandler } from './handlers/org-user-events.handler';
 import { WhatsAppEventsHandler } from './handlers/whatsapp-events.handler';
 import { BaileysBridgeHandler } from './handlers/baileys-bridge.handler';
+import { WhatsAppNumberLostHandler } from './handlers/whatsapp-number-lost.handler';
 import { ContactEventsHandler } from './handlers/contact-events.handler';
 import { CampaignEventsHandler } from './handlers/campaign-events.handler';
 // EPIC 7 — Scheduling & Automation events
@@ -41,7 +42,6 @@ import { CsatModule } from '@/modules/csat/csat.module';
 import { LeadScoringEventsHandler } from './handlers/lead-scoring-events.handler';
 import { LeadScoringModule } from '@/modules/lead-scoring/lead-scoring.module';
 // Developer API webhook events
-import { DeveloperWebhookHandler } from './handlers/developer-webhook.handler';
 // Message pipeline (chatbot-first → automation)
 import { MessagePipelineHandler } from './handlers/message-pipeline.handler';
 import { MessagePipelineService } from '@/modules/messages/application/services/message-pipeline.service';
@@ -83,6 +83,7 @@ import { OrgModule } from '@/modules/org/org.module';
     OrgUserEventsHandler,
     WhatsAppEventsHandler,
     BaileysBridgeHandler,
+    WhatsAppNumberLostHandler,
     ContactEventsHandler,
     // EPIC 6 — Campaign Management events
     CampaignEventsHandler,
@@ -111,7 +112,6 @@ import { OrgModule } from '@/modules/org/org.module';
     // Drip Sequence events
     SequenceEventsHandler,
     // Developer API webhook events
-    DeveloperWebhookHandler,
     // Message pipeline (chatbot-first → automation, prevents race condition)
     MessagePipelineService,
     MessagePipelineHandler,

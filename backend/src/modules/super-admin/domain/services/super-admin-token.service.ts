@@ -7,7 +7,11 @@ import type { StringValue } from 'ms';
 /** Audience claim on every super admin token — tenant tokens never carry it. */
 export const SUPER_ADMIN_AUDIENCE = 'wazelo-platform';
 
-export type SuperAdminTokenType = 'access' | 'refresh' | '2fa';
+/**
+ * '2fa' = enter a code; '2fa-setup' = 2FA is mandatory and the account must enrol first;
+ * 'password-change' = signed in with a temporary password that must be replaced first.
+ */
+export type SuperAdminTokenType = 'access' | 'refresh' | '2fa' | '2fa-setup' | 'password-change';
 
 export interface SuperAdminTokenPayload {
   sub: string;
@@ -16,37 +20,46 @@ export interface SuperAdminTokenPayload {
   tv: number;
   typ: SuperAdminTokenType;
   isSuperAdmin: true;
+  /** SuperAdminSession.familyId — on access and refresh tokens; one per sign-in */
+  fid?: string;
+  /** SuperAdminSession.id — refresh tokens only, so every refresh token is unique */
+  jti?: string;
 }
 
 const REFRESH_EXPIRY: StringValue = '1d';
+export const REFRESH_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const CHALLENGE_EXPIRY: StringValue = '5m';
+const SETUP_CHALLENGE_EXPIRY: StringValue = '10m';
+const ACCESS_EXPIRY: StringValue = '15m';
 
 @Injectable()
 export class SuperAdminTokenService {
   private readonly secret: string;
-  private readonly accessExpiry: StringValue;
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    configService: ConfigService,
   ) {
-    this.secret = this.configService.getOrThrow<string>('jwt.superAdminSecret');
-    this.accessExpiry = this.configService.get<StringValue>('jwt.accessExpiry', '15m');
+    this.secret = configService.getOrThrow<string>('jwt.superAdminSecret');
   }
 
-  async generateAccessToken(superAdmin: SuperAdmin): Promise<{ accessToken: string; expiresIn: number }> {
-    const accessToken = await this.sign(superAdmin, 'access', this.accessExpiry);
+  /** Fixed 15 minutes — not tied to the tenant JWT_ACCESS_EXPIRY setting. */
+  async generateAccessToken(
+    superAdmin: SuperAdmin,
+    familyId: string,
+  ): Promise<{ accessToken: string; expiresIn: number }> {
+    const accessToken = await this.sign(superAdmin, 'access', ACCESS_EXPIRY, { fid: familyId });
     const decoded = this.jwtService.decode(accessToken) as { exp: number; iat: number };
     return { accessToken, expiresIn: decoded.exp - decoded.iat };
   }
 
-  generateRefreshToken(superAdmin: SuperAdmin): Promise<string> {
-    return this.sign(superAdmin, 'refresh', REFRESH_EXPIRY);
+  generateRefreshToken(superAdmin: SuperAdmin, familyId: string, sessionId: string): Promise<string> {
+    return this.sign(superAdmin, 'refresh', REFRESH_EXPIRY, { fid: familyId, jti: sessionId });
   }
 
-  /** Short-lived token proving the password step passed; exchanged for a session after the 2FA code. */
-  generateChallengeToken(superAdmin: SuperAdmin): Promise<string> {
-    return this.sign(superAdmin, '2fa', CHALLENGE_EXPIRY);
+  /** Short-lived token proving the password step passed; exchanged for a session after 2FA. */
+  generateChallengeToken(superAdmin: SuperAdmin, typ: '2fa' | '2fa-setup' | 'password-change' = '2fa'): Promise<string> {
+    return this.sign(superAdmin, typ, typ === '2fa' ? CHALLENGE_EXPIRY : SETUP_CHALLENGE_EXPIRY);
   }
 
   /**
@@ -66,10 +79,20 @@ export class SuperAdminTokenService {
     if (payload.typ !== expectedType || payload.isSuperAdmin !== true) {
       throw new UnauthorizedException('Invalid super admin token');
     }
+    if ((expectedType === 'access' || expectedType === 'refresh') && !payload.fid) {
+      // Issued before sessions were tracked — force a fresh sign-in
+      throw new UnauthorizedException('Session expired — sign in again');
+    }
     return payload;
   }
 
-  private sign(superAdmin: SuperAdmin, typ: SuperAdminTokenType, expiresIn: StringValue): Promise<string> {
+  private sign(
+    superAdmin: SuperAdmin,
+    typ: SuperAdminTokenType,
+    expiresIn: StringValue,
+    extra: { fid?: string; jti?: string } = {},
+  ): Promise<string> {
+    const { jti, ...claims } = extra;
     return this.jwtService.signAsync(
       {
         sub: superAdmin.id,
@@ -77,8 +100,9 @@ export class SuperAdminTokenService {
         tv: superAdmin.tokenVersion,
         typ,
         isSuperAdmin: true,
+        ...claims,
       },
-      { secret: this.secret, expiresIn, audience: SUPER_ADMIN_AUDIENCE },
+      { secret: this.secret, expiresIn, audience: SUPER_ADMIN_AUDIENCE, ...(jti ? { jwtid: jti } : {}) },
     );
   }
 }

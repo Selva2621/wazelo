@@ -10,9 +10,13 @@ import { Alert } from "@/components/ui/alert";
 import { OrgActionsPanel } from "@/components/super-admin/org-actions-panel";
 import { MessagingHealthPanel } from "@/components/super-admin/messaging-health-panel";
 import { EntitlementsPanel } from "@/components/super-admin/entitlements-panel";
+import { OrgCreditsPanel } from "@/components/super-admin/org-credits-panel";
+import { StatusBadge } from "@/components/super-admin/status-badge";
+import { DeletedOrgBanner } from "@/components/super-admin/org-lifecycle";
+import { Badge } from "@/components/ui/badge";
 import { cn, formatMoney } from "@/lib/utils";
 
-const TABS = ["Overview", "WhatsApp", "Usage", "Limits & features", "Billing history", "Users", "Tickets"] as const;
+const TABS = ["Overview", "WhatsApp", "Usage", "Limits & features", "Billing history", "Credits", "Users", "Tickets"] as const;
 type Tab = typeof TABS[number];
 
 const USAGE_LABELS: Record<string, string> = {
@@ -24,23 +28,6 @@ const USAGE_LABELS: Record<string, string> = {
   AI_CREDITS: "AI credits",
   MESSAGE_TEMPLATES: "Message templates",
 };
-
-function statusBadge(status?: string) {
-  if (!status) return null;
-  const colors: Record<string, string> = {
-    ACTIVE: "bg-success/10 text-success border-success/30",
-    TRIAL: "bg-warning/10 text-warning border-warning/30",
-    PAST_DUE: "bg-warning/10 text-warning border-warning/30",
-    GRACE_PERIOD: "bg-warning/10 text-warning border-warning/30",
-    EXPIRED: "bg-error/10 text-error border-error/30",
-    CANCELLED: "bg-surface-container text-on-surface-variant border-outline-variant",
-  };
-  return (
-    <span className={`text-label px-2 py-0.5 rounded-full border font-medium ${colors[status] ?? "bg-surface-container text-on-surface-variant border-outline-variant"}`}>
-      {status}
-    </span>
-  );
-}
 
 function UsageMeter({ label, value, limit }: { label: string; value: number; limit: number }) {
   const unlimited = limit === 0;
@@ -73,7 +60,7 @@ function UsageMeter({ label, value, limit }: { label: string; value: number; lim
 
 export default function OrgDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading } = useSAOrg(id);
+  const { data, isLoading, isError, error, refetch } = useSAOrg(id);
   const [tab, setTab] = useState<Tab>("Overview");
 
   if (isLoading) {
@@ -84,9 +71,22 @@ export default function OrgDetailPage() {
       </div>
     );
   }
+  if (isError && (error as { response?: { status?: number } } | null)?.response?.status !== 404) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <Alert variant="error">
+          Could not load this organization.{" "}
+          <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+            Try again
+          </button>
+        </Alert>
+      </div>
+    );
+  }
   if (!data) return <div className="p-6 text-on-surface-variant">Organization not found</div>;
 
   const { org, subscription, subscriptionHistory, usageRecords, users, counts } = data;
+  const deleted = !!org.deletedAt;
 
   return (
     <div className="p-6 space-y-5">
@@ -102,15 +102,23 @@ export default function OrgDetailPage() {
           <h1 className="text-title font-semibold text-on-surface">{org.name}</h1>
           <p className="text-label text-on-surface-variant">{org.slug} · {org.orgType}</p>
         </div>
+        {deleted && <Badge variant="error">Deleted</Badge>}
         {org.status === "SUSPENDED" && (
-          <span className="text-label px-2 py-0.5 rounded-full border font-medium bg-error/10 text-error border-error/30">
-            SUSPENDED
-          </span>
+          <StatusBadge status="SUSPENDED" />
         )}
-        {statusBadge(subscription?.status)}
+        {subscription?.status && <StatusBadge status={subscription.status} />}
       </div>
 
-      {org.status === "SUSPENDED" && (
+      {deleted && (
+        <DeletedOrgBanner
+          orgId={org.id}
+          orgName={org.name}
+          deletedAt={org.deletedAt}
+          restorableUntil={org.restorableUntil ?? null}
+        />
+      )}
+
+      {!deleted && org.status === "SUSPENDED" && (
         <Alert variant="error">
           Suspended{org.suspendedAt ? ` on ${new Date(org.suspendedAt).toLocaleString()}` : ""}
           {org.suspendReason ? ` — ${org.suspendReason}` : ""}. Users can&apos;t sign in and no messages are sent.
@@ -140,14 +148,19 @@ export default function OrgDetailPage() {
       <div role="tabpanel" id="org-tabpanel" aria-labelledby={`tab-${tab}`}>
         {tab === "Overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <OrgActionsPanel
-                orgId={org.id}
-                orgName={org.name}
-                orgStatus={org.status}
-                subscription={subscription ? { status: subscription.status, planId: subscription.planId } : null}
-              />
-            </div>
+            {!deleted && (
+              <div className="md:col-span-2">
+                <OrgActionsPanel
+                  orgId={org.id}
+                  orgName={org.name}
+                  orgSlug={org.slug}
+                  orgTimezone={org.timezone ?? ""}
+                  orgStatus={org.status}
+                  subscription={subscription ? { status: subscription.status, planId: subscription.planId } : null}
+                  currency={subscription?.currency}
+                />
+              </div>
+            )}
             {/* Subscription card */}
             <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-3">
               <h2 className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
@@ -156,7 +169,7 @@ export default function OrgDetailPage() {
               {subscription ? (
                 <dl className="space-y-2 text-body-lg">
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Plan</dt><dd className="text-on-surface">{subscription.plan?.name}</dd></div>
-                  <div className="flex justify-between"><dt className="text-on-surface-variant">Status</dt><dd>{statusBadge(subscription.status)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-on-surface-variant">Status</dt><dd><StatusBadge status={subscription.status} /></dd></div>
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Billing</dt><dd className="text-on-surface">{subscription.billingCycle}</dd></div>
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Price</dt><dd className="text-on-surface">{formatMoney(subscription.priceInCents, subscription.currency)}</dd></div>
                   {subscription.trialEndsAt && (
@@ -179,7 +192,7 @@ export default function OrgDetailPage() {
                   { label: "Users", value: users?.length },
                   { label: "Contacts", value: counts?.contacts },
                   { label: "Campaigns", value: counts?.campaigns },
-                  { label: "Messages", value: counts?.messages },
+                  { label: "Messages (30d)", value: counts?.messages },
                   { label: "Tickets", value: counts?.helpTickets },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-surface-container rounded-lg p-3">
@@ -216,7 +229,14 @@ export default function OrgDetailPage() {
           </section>
         )}
 
-        {tab === "Limits & features" && <EntitlementsPanel orgId={org.id} />}
+        {tab === "Limits & features" &&
+          (deleted ? (
+            <p className="bg-surface-container-low border border-outline-variant rounded-xl p-5 text-body-lg text-on-surface-variant max-w-2xl">
+              Limits and features can&apos;t be changed while the organization is deleted. Restore it first.
+            </p>
+          ) : (
+            <EntitlementsPanel orgId={org.id} />
+          ))}
 
         {tab === "Billing history" && (
           <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
@@ -236,7 +256,7 @@ export default function OrgDetailPage() {
                   {subscriptionHistory.map((s: any) => (
                     <tr key={s.id}>
                       <td className="px-4 py-3 text-on-surface">{s.plan?.name ?? "—"}</td>
-                      <td className="px-4 py-3">{statusBadge(s.status)}</td>
+                      <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
                       <td className="px-4 py-3 text-on-surface">
                         {formatMoney(s.priceInCents, s.currency)} / {s.billingCycle === "YEARLY" ? "yr" : "mo"}
                       </td>
@@ -252,6 +272,8 @@ export default function OrgDetailPage() {
           </div>
         )}
 
+        {tab === "Credits" && <OrgCreditsPanel orgId={org.id} defaultCurrency={subscription?.currency} />}
+
         {tab === "Users" && (
           <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
             <table className="w-full text-body-lg">
@@ -265,6 +287,9 @@ export default function OrgDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40">
+                {!users?.length && (
+                  <tr><td colSpan={4} className="py-12 text-center text-on-surface-variant">No users in this organization</td></tr>
+                )}
                 {users?.map((u: any) => (
                   <tr key={u.id} className="hover:bg-surface-container transition-colors">
                     <td className="px-4 py-3 text-on-surface">{u.firstName} {u.lastName}</td>

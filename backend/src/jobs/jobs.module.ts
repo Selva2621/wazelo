@@ -3,8 +3,11 @@ import { SendEmailWorker } from './email/send-email.worker';
 import { SendInviteEmailWorker } from './invitation/send-invite-email.worker';
 import { SessionCleanupWorker } from './auth/session-cleanup.worker';
 import { SessionRepository } from '@/modules/auth/infrastructure/repositories/session.repository';
+import { SuperAdminSessionRepository } from '@/modules/super-admin/infrastructure/repositories/super-admin-session.repository';
 import { SendMessageWorker } from './whatsapp/send-message.worker';
 import { SessionHealthWorker } from './whatsapp/session-health.worker';
+import { SendHealthWorker } from './whatsapp/send-health.worker';
+import { PhoneInactivityWorker } from './whatsapp/phone-inactivity.worker';
 import { IncomingMessageWorker } from './messaging/incoming-message.worker';
 import { MessageRecoveryWorker } from './messaging/message-recovery.worker';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
@@ -31,10 +34,14 @@ import { MetricCleanupWorker } from './observability/metric-cleanup.worker';
 import { QueueMetricsWorker } from './observability/queue-metrics.worker';
 // EPIC 11 — Notification workers
 import { NotificationEmailWorker } from './notification/notification-email.worker';
+import { NotificationPushWorker } from './notification/notification-push.worker';
+import { PushModule } from '@/infrastructure/external/push/push.module';
 // EPIC 12 — Settings & Configuration workers
 import { WebhookDeliveryWorker } from './webhook/webhook-delivery.worker';
 import { UsersModule } from '@/modules/users/users.module';
 import { SettingsModule } from '@/modules/settings/settings.module';
+import { DeveloperApiModule } from '@/modules/developer-api/developer-api.module';
+import { ApiLogCleanupWorker } from './developer/api-log-cleanup.worker';
 import { AnalyticsModule } from '@/modules/analytics/analytics.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 // EPIC 13 — Analytics & Reporting workers
@@ -60,10 +67,14 @@ import { ShopifyWebhookWorker } from './shopify/shopify-webhook.worker';
 import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
+import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
 import { OrgOnboardingWorker } from './org/org-onboarding.worker';
 import { OrgModule } from '@/modules/org/org.module';
+// Deal follow-up reminders
+import { DealFollowUpWorker } from './deals/deal-follow-up.worker';
+import { DealsModule } from '@/modules/deals/deals.module';
 
 @Module({
   imports: [
@@ -77,24 +88,31 @@ import { OrgModule } from '@/modules/org/org.module';
     BillingModule,
     UsersModule,
     SettingsModule,
+    DeveloperApiModule,
     AnalyticsModule,
     SlaModule,
     NotificationsModule,
+    PushModule,
     ChannelsModule,
     LeadAdsModule,
     SequencesModule,
     ShopifyModule,
     LeadScraperModule,
     OrgModule,
+    DealsModule,
   ],
   providers: [
+    DealFollowUpWorker,
     SendEmailWorker,
     SendInviteEmailWorker,
     SessionCleanupWorker,
     SessionRepository,
+    SuperAdminSessionRepository,
     // WhatsApp workers
     SendMessageWorker,
     SessionHealthWorker,
+    SendHealthWorker,
+    PhoneInactivityWorker,
     // EPIC 5 — Messaging Engine workers
     IncomingMessageWorker,
     MessageRecoveryWorker,
@@ -114,8 +132,10 @@ import { OrgModule } from '@/modules/org/org.module';
     QueueMetricsWorker,
     // EPIC 11 — Notification workers
     NotificationEmailWorker,
+    NotificationPushWorker,
     // EPIC 12 — Settings & Configuration workers
     WebhookDeliveryWorker,
+    ApiLogCleanupWorker,
     // EPIC 13 — Analytics & Reporting workers
     AnalyticsDailyWorker,
     AnalyticsHourlyWorker,
@@ -134,6 +154,7 @@ import { OrgModule } from '@/modules/org/org.module';
     ShopifyWebhookWorker,
     // Lead Scraper workers
     LeadScraperWorker,
+    ScrapeWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
   ],

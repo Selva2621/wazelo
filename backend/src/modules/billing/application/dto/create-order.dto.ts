@@ -9,6 +9,22 @@ import {
 export class CreateOrderDto {
   @IsUUID()
   planId: string;
+
+  /** Optional coupon — the order is priced at the discounted amount */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  couponCode?: string;
+}
+
+export class ValidateCouponDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  code: string;
+
+  @IsUUID()
+  planId: string;
 }
 
 export class VerifyPaymentDto {

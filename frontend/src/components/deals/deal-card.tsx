@@ -1,7 +1,8 @@
 "use client";
 
-import { User, Calendar, DollarSign, Package } from "lucide-react";
+import { User, Calendar, DollarSign, Package, AlarmClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatFollowUp } from "./contact-deal-card";
 import type { Deal } from "@/lib/types/deals";
 
 interface DealCardProps {
@@ -60,6 +61,15 @@ export function DealCard({ deal, onClick }: DealCardProps) {
             {deal.assignedTo.firstName}
           </Badge>
         )}
+        {deal.status === "OPEN" && deal.nextFollowUpAt && (() => {
+          const followUp = formatFollowUp(deal.nextFollowUpAt);
+          return (
+            <Badge variant={followUp.overdue ? "error" : "warning"} className="text-caption">
+              <AlarmClock className="h-3 w-3 mr-0.5" />
+              {followUp.text}
+            </Badge>
+          );
+        })()}
       </div>
     </button>
   );
