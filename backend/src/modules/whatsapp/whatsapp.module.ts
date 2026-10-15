@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { AuditModule } from '@/modules/audit/audit.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
 import { BillingModule } from '@/modules/billing/billing.module';
@@ -6,6 +7,9 @@ import { BillingModule } from '@/modules/billing/billing.module';
 // Domain services
 import { WhatsAppSessionService } from './domain/services/session.service';
 import { EncryptionService } from './domain/services/encryption.service';
+
+// Application services
+import { WhatsAppLinkTokenService } from './application/services/whatsapp-link-token.service';
 
 // Repositories
 import { WhatsAppSessionRepository } from './infrastructure/repositories/whatsapp-session.repository';
@@ -18,23 +22,29 @@ import {
   GetSessionUseCase,
   RefreshQrUseCase,
   ReconnectSessionUseCase,
+  RequestPairingCodeUseCase,
   HandleSessionEventUseCase,
   HandleIncomingMessageUseCase,
   HandleStatusUpdateUseCase,
 } from './application/use-cases';
 
 import { SendHealthUseCase } from './application/use-cases/send-health.use-case';
+import { WhatsAppLinkUseCase } from './application/use-cases/whatsapp-link.use-case';
 
 // Controllers
 import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-session.controller';
+import { WhatsAppLinkController } from './interfaces/controllers/whatsapp-link.controller';
 
 @Module({
-  imports: [AuditModule, BillingModule, forwardRef(() => MessagesModule)],
-  controllers: [WhatsAppSessionController],
+  imports: [AuditModule, BillingModule, JwtModule.register({}), forwardRef(() => MessagesModule)],
+  controllers: [WhatsAppSessionController, WhatsAppLinkController],
   providers: [
     // Domain
     WhatsAppSessionService,
     EncryptionService,
+
+    // Application services
+    WhatsAppLinkTokenService,
 
     // Infrastructure
     WhatsAppSessionRepository,
@@ -46,6 +56,8 @@ import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-ses
     GetSessionUseCase,
     RefreshQrUseCase,
     ReconnectSessionUseCase,
+    RequestPairingCodeUseCase,
+    WhatsAppLinkUseCase,
     HandleSessionEventUseCase,
     HandleIncomingMessageUseCase,
     HandleStatusUpdateUseCase,
@@ -55,6 +67,7 @@ import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-ses
     WhatsAppSessionRepository,
     WhatsAppSessionService,
     EncryptionService,
+    WhatsAppLinkTokenService,
     HandleSessionEventUseCase,
     HandleIncomingMessageUseCase,
     HandleStatusUpdateUseCase,

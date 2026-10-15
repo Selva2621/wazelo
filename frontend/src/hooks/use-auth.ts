@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
+import { notificationsApi } from "@/lib/api/notifications";
+import { getDeviceId } from "@/lib/device";
 import { useAuthStore } from "@/stores/auth-store";
 import { homePathFor } from "@/lib/utils";
 import type {
@@ -77,7 +79,11 @@ export function useLogout() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   return useMutation({
-    mutationFn: () => authApi.logout(),
+    mutationFn: async () => {
+      // This browser stops getting this user's push before the session ends
+      await notificationsApi.detachDevicePush(getDeviceId()).catch(() => undefined);
+      return authApi.logout();
+    },
     onSettled: () => {
       // Clear in-memory auth (also drops the realtime socket) and every cached query, so
       // nothing from this account stays readable in the tab. ProtectedLayout's redirect

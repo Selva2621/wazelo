@@ -63,6 +63,13 @@ export const throttleConfig = registerAs('throttle', () => ({
   limit: parseInt(process.env.THROTTLE_LIMIT || '60', 10),
 }));
 
+/** Web Push (VAPID). Generate keys once with `npx web-push generate-vapid-keys`; push is off without them. */
+export const pushConfig = registerAs('push', () => ({
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
+  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:hello@wazelo.in',
+}));
+
 export const whatsappConfig = registerAs('whatsapp', () => ({
   encryptionKey: process.env.WHATSAPP_ENCRYPTION_KEY || '',
 }));

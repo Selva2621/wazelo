@@ -37,6 +37,12 @@ export interface InitiateSessionResponse {
   message: string;
 }
 
+export interface PairingCodeResponse extends InitiateSessionResponse {
+  /** 8 characters, entered in WhatsApp → Linked devices → Link with phone number */
+  pairingCode: string;
+  phoneNumber: string;
+}
+
 export const whatsappApi = {
   initiateSession: async (idempotencyKey?: string) => {
     const r = await apiClient.post<InitiateSessionResponse>(
@@ -96,6 +102,14 @@ export const whatsappApi = {
   refreshQr: async (sessionId: string) => {
     const r = await apiClient.post<{ sessionId: string; message: string }>(
       `/whatsapp/sessions/${sessionId}/refresh-qr`,
+    );
+    return r.data;
+  },
+
+  requestPairingCode: async (phoneNumber: string) => {
+    const r = await apiClient.post<PairingCodeResponse>(
+      "/whatsapp/sessions/pairing-code",
+      { phoneNumber },
     );
     return r.data;
   },

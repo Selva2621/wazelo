@@ -16,8 +16,10 @@ export interface SessionEventPayload {
    * logout / banned = the number is gone (hold queued work, user must link again)
    * stopped = replaced elsewhere or bad session (no auto-reconnect)
    */
-  event: 'connected' | 'disconnected' | 'logout' | 'banned' | 'stopped' | 'heartbeat';
+  event: 'connected' | 'disconnected' | 'logout' | 'banned' | 'stopped' | 'heartbeat' | 'phone_activity';
   phoneNumber?: string;
+  /** 'connected' right after a QR scan / pairing code (the phone was online for it) */
+  newLogin?: boolean;
   reason?: string;
   /** Baileys DisconnectReason status code */
   statusCode?: number;
@@ -63,6 +65,9 @@ export class HandleSessionEventUseCase {
       case 'heartbeat':
         await this.handleHeartbeat(session);
         break;
+      case 'phone_activity':
+        await this.sessionRepo.updatePhoneActivity(session.id);
+        break;
       default:
         this.logger.warn(`Unknown session event: ${payload.event}`);
     }
@@ -82,6 +87,8 @@ export class HandleSessionEventUseCase {
       disconnectReason: null,
       // First successful link starts the send warm-up clock
       ...(!session.linkedAt && { linkedAt: new Date() }),
+      // Linking needs the phone online; a plain reconnect doesn't prove that
+      ...((payload.newLogin || !session.lastPhoneActivityAt) && { lastPhoneActivityAt: new Date() }),
     });
 
     await this.auditService.log({

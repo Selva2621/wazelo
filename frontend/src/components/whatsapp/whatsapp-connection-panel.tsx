@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Smartphone,
@@ -15,21 +16,34 @@ import {
   useRefreshQr,
   useDisconnectSession,
   useReconnectSession,
+  useRequestPairingCode,
   useWhatsAppSocket,
 } from "@/hooks/use-whatsapp";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { ApiError } from "@/lib/api/client";
 import { useWhatsAppStore } from "@/stores/whatsapp-store";
 import { Button } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { QrCodeDisplay } from "@/components/whatsapp/qr-code-display";
+import { PairingCodeForm } from "@/components/whatsapp/pairing-code-form";
 import { DisconnectButton } from "@/components/whatsapp/disconnect-button";
 import { AccountHealthCard } from "@/components/whatsapp/account-health";
+import { BrowserPushCard } from "@/components/notifications/browser-push-card";
 
 interface WhatsAppConnectionPanelProps {
   /** Hides reconnect/disconnect and the account health card, for use inside a modal. */
   compact?: boolean;
 }
+
+type LinkMethod = "qr" | "phone";
+
+const LINK_TABS = [
+  { id: "qr", label: "Scan QR" },
+  { id: "phone", label: "Phone number" },
+];
 
 /** Connect / QR / connected / disconnected states for the user's own WhatsApp session. */
 export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionPanelProps) {
@@ -40,20 +54,48 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   const session = useWhatsAppStore((s) => s.session);
   const qrCode = useWhatsAppStore((s) => s.qrCode);
   const qrExpiresAt = useWhatsAppStore((s) => s.qrExpiresAt);
+  const pairingCode = useWhatsAppStore((s) => s.pairingCode);
   const error = useWhatsAppStore((s) => s.error);
 
   // Queries & mutations
   const { isLoading } = useWhatsAppSession();
   const initiateSession = useInitiateSession();
   const refreshQr = useRefreshQr();
+  const requestPairingCode = useRequestPairingCode();
   const disconnectSession = useDisconnectSession();
   const reconnectSession = useReconnectSession();
 
   // WebSocket for QR & status events
   useWhatsAppSocket();
 
+  // On a phone the QR can't be scanned from the same screen, so default to the pairing code
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [pickedMethod, setPickedMethod] = useState<LinkMethod | null>(null);
+  const method = pickedMethod ?? (isMobile ? "phone" : "qr");
+
+  // The user chose to link (phone tab can be open before any session exists)
+  const [linking, setLinking] = useState(false);
+  if (linking && status === "connected") setLinking(false);
+  const showLinking =
+    status === "connecting" || (linking && status !== "connected" && status !== "reconnecting");
+
+  const startQr = () => {
+    initiateSession.mutate(crypto.randomUUID(), { onError: () => setLinking(false) });
+  };
+
   const handleConnect = () => {
-    initiateSession.mutate(crypto.randomUUID());
+    setLinking(true);
+    if (method === "qr") startQr();
+  };
+
+  const handleMethodChange = (next: string) => {
+    const m = next as LinkMethod;
+    setPickedMethod(m);
+    // Requesting a pairing code clears the QR, so this also switches a pairing socket back to QR
+    if (m === "qr" && !qrCode) {
+      if (session?.status === "CONNECTING") refreshQr.mutate(session.id);
+      else startQr();
+    }
   };
 
   const handleReconnect = () => {
@@ -89,7 +131,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       )}
 
       {/* ─── No Session State ─── */}
-      {status === "no_session" && (
+      {status === "no_session" && !showLinking && (
         <div className="flex flex-col items-center py-8 text-center">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface-container">
             <Smartphone className="h-10 w-10 text-on-surface-variant" />
@@ -98,7 +140,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
             No WhatsApp session
           </h3>
           <p className="text-body text-on-surface-variant max-w-[360px] mb-6">
-            Connect your WhatsApp account by scanning a QR code with your phone.
+            Link your WhatsApp with a QR code or your phone number.
           </p>
           <Button
             onClick={handleConnect}
@@ -110,41 +152,60 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
         </div>
       )}
 
-      {/* ─── Connecting / QR State ─── */}
-      {status === "connecting" && (
+      {/* ─── Linking: QR or Phone Number ─── */}
+      {showLinking && (
         <div className="flex flex-col items-center py-4">
-          <QrCodeDisplay
-            qrCode={qrCode}
-            expiresAt={qrExpiresAt}
-            onRefresh={handleRefreshQr}
-            isRefreshing={refreshQr.isPending}
+          <Tabs
+            tabs={LINK_TABS}
+            activeTab={method}
+            onTabChange={handleMethodChange}
+            className="mb-6"
           />
 
-          {/* Instructions */}
-          <div className="mt-8 w-full space-y-3">
-            <p className="text-body font-medium text-on-surface-variant uppercase tracking-wider mb-3">
-              How to connect
-            </p>
-            {[
-              { step: "1", text: "Open WhatsApp on your phone" },
-              { step: "2", text: "Go to Settings → Linked Devices" },
-              { step: "3", text: "Tap 'Link a Device' and scan the QR code" },
-            ].map((item) => (
-              <div key={item.step} className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-label font-semibold text-primary">
-                  {item.step}
-                </span>
-                <span className="text-body text-on-surface-variant">
-                  {item.text}
-                </span>
-              </div>
-            ))}
-          </div>
+          {method === "phone" ? (
+            <PairingCodeForm
+              pairingCode={pairingCode}
+              defaultPhone={session?.phoneNumber}
+              onSubmit={(phone) => requestPairingCode.mutate(phone)}
+              loading={requestPairingCode.isPending}
+              error={apiErrorMessage(requestPairingCode.error)}
+            />
+          ) : (
+            <>
+              <QrCodeDisplay
+                qrCode={qrCode}
+                expiresAt={qrExpiresAt}
+                onRefresh={handleRefreshQr}
+                isRefreshing={refreshQr.isPending}
+              />
 
-          {!qrCode && !refreshQr.isPending && (
-            <p className="mt-6 text-body text-on-surface-variant animate-pulse">
-              Waiting for QR code...
-            </p>
+              {/* Instructions */}
+              <div className="mt-8 w-full space-y-3">
+                <p className="text-body font-medium text-on-surface-variant uppercase tracking-wider mb-3">
+                  How to connect
+                </p>
+                {[
+                  { step: "1", text: "Open WhatsApp on your phone" },
+                  { step: "2", text: "Go to Settings → Linked Devices" },
+                  { step: "3", text: "Tap 'Link a Device' and scan the QR code" },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-center gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-label font-semibold text-primary">
+                      {item.step}
+                    </span>
+                    <span className="text-body text-on-surface-variant">
+                      {item.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {!qrCode && !refreshQr.isPending && (
+                <p className="mt-6 text-body text-on-surface-variant animate-pulse">
+                  Waiting for QR code...
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -206,6 +267,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
             )}
           </div>
 
+          {!compact && <BrowserPushCard variant="compact" className="mt-6 max-w-[420px]" />}
           {!compact && <AccountHealthCard className="mt-8 bg-surface-container-low" />}
         </div>
       )}
@@ -224,7 +286,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       )}
 
       {/* ─── Disconnected State ─── */}
-      {status === "disconnected" && (
+      {status === "disconnected" && !showLinking && (
         <div className="flex flex-col items-center py-8 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
             <WifiOff className="h-8 w-8 text-error" />
@@ -306,6 +368,19 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       )}
     </>
   );
+}
+
+function apiErrorMessage(err: unknown): string | null {
+  if (!err) return null;
+  if (!(err instanceof ApiError)) return "Could not get a code. Please try again.";
+  const fieldError = err.errors?.phoneNumber?.[0];
+  if (fieldError) return fieldError;
+  // Conflict errors carry a JSON body ({ code, message }) as their message
+  try {
+    return (JSON.parse(err.message) as { message?: string }).message ?? err.message;
+  } catch {
+    return err.message;
+  }
 }
 
 function formatTimeAgo(date: Date): string {

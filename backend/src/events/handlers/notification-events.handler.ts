@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { EVENT_NAMES } from '@/common/constants';
+import { EVENT_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
 import { NotificationDispatchService } from '@/modules/notifications/domain/services/notification-dispatch.service';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
+import { WhatsAppLinkTokenService } from '@/modules/whatsapp/application/services/whatsapp-link-token.service';
 import {
   WhatsAppMessageReceivedEvent,
   ContactAssignedEvent,
@@ -12,6 +13,8 @@ import {
   AutomationExecutedEvent,
   AutomationFailedEvent,
   WhatsAppSessionDisconnectedEvent,
+  WhatsAppSessionReconnectingEvent,
+  WhatsAppPhoneInactiveEvent,
   WhatsAppSendingPausedEvent,
   DealFollowUpDueEvent,
   DealScopeRespondedEvent,
@@ -37,6 +40,7 @@ export class NotificationEventsHandler {
   constructor(
     private readonly notificationDispatch: NotificationDispatchService,
     private readonly userRepository: UserRepository,
+    private readonly linkTokenService: WhatsAppLinkTokenService,
   ) {}
 
   // ─── Message Events ───
@@ -303,33 +307,106 @@ export class NotificationEventsHandler {
   ): Promise<void> {
     try {
       const admins = await this.getOrgAdminsAndManagers(event.orgId);
-      // Also notify the session owner
-      const targetUsers = [...new Set([...admins, event.userId])];
+      const others = admins.filter((id) => id !== event.userId);
 
-      await this.notificationDispatch.dispatchToOrg(
-        event.orgId,
-        targetUsers,
-        'WHATSAPP_SESSION_DISCONNECTED',
-        'CRITICAL',
+      const title =
         event.disconnectReason === 'BANNED'
           ? 'WhatsApp number blocked'
           : event.disconnectReason === 'LOGGED_OUT'
             ? 'WhatsApp number logged out'
-            : 'WhatsApp session disconnected',
+            : 'WhatsApp session disconnected';
+      const body =
         event.disconnectReason === 'BANNED' || event.disconnectReason === 'LOGGED_OUT'
           ? `${event.reason}. Campaigns and sequences on this number are paused — link a WhatsApp number again to resume.`
-          : `WhatsApp session disconnected: ${event.reason}`,
-        {
-          sessionId: event.sessionId,
-          reason: event.reason,
-          disconnectReason: event.disconnectReason,
-        },
-        `wa-disconnected:${event.sessionId}:${Date.now()}`,
-      );
+          : `WhatsApp session disconnected: ${event.reason}`;
+      const data = {
+        sessionId: event.sessionId,
+        reason: event.reason,
+        disconnectReason: event.disconnectReason,
+      };
+      const groupKey = `wa-disconnected:${event.sessionId}:${Date.now()}`;
+
+      // The owner's email carries a login-free link to reconnect from their phone
+      // (no point for a blocked number — re-linking it can't work)
+      const reconnectToken =
+        event.disconnectReason === 'BANNED'
+          ? undefined
+          : await this.linkTokenService.sign({
+              sessionId: event.sessionId,
+              userId: event.userId,
+              orgId: event.orgId,
+            });
+
+      await Promise.all([
+        this.notificationDispatch.dispatch({
+          orgId: event.orgId,
+          userId: event.userId,
+          type: 'WHATSAPP_SESSION_DISCONNECTED',
+          priority: 'CRITICAL',
+          title,
+          body,
+          data: { ...data, reconnectToken },
+          groupKey,
+          idempotencyKey: `${groupKey}:${event.userId}`,
+        }),
+        this.notificationDispatch.dispatchToOrg(
+          event.orgId,
+          others,
+          'WHATSAPP_SESSION_DISCONNECTED',
+          'CRITICAL',
+          title,
+          body,
+          data,
+          groupKey,
+        ),
+      ]);
     } catch (error) {
       this.logger.error(
         `Failed to dispatch SESSION_DISCONNECTED notification: ${error}`,
       );
+    }
+  }
+
+  /** Auto-reconnect keeps failing — tell the owner before it gives up. */
+  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_RECONNECTING)
+  async handleSessionReconnecting(event: WhatsAppSessionReconnectingEvent): Promise<void> {
+    if (event.attempt !== WHATSAPP_CONFIG.UNSTABLE_WARN_ATTEMPT) return;
+    try {
+      // One warning per session per hour, even if reconnect cycles repeat
+      const hourBucket = Math.floor(Date.now() / 3_600_000);
+      await this.notificationDispatch.dispatch({
+        orgId: event.orgId,
+        userId: event.userId,
+        type: 'WHATSAPP_SESSION_UNSTABLE',
+        priority: 'HIGH',
+        title: 'WhatsApp connection unstable',
+        body: `We couldn't reach WhatsApp after ${event.attempt} tries and are still retrying. Check that your phone has internet and WhatsApp is installed.`,
+        data: { sessionId: event.sessionId, attempt: event.attempt },
+        idempotencyKey: `wa-unstable:${event.sessionId}:${hourBucket}`,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to dispatch SESSION_UNSTABLE notification: ${error}`);
+    }
+  }
+
+  /** The phone has been offline long enough that WhatsApp will soon unlink Wazelo. */
+  @OnEvent(EVENT_NAMES.WHATSAPP_PHONE_INACTIVE)
+  async handlePhoneInactive(event: WhatsAppPhoneInactiveEvent): Promise<void> {
+    try {
+      const when = event.daysLeft <= 1 ? 'within a day' : `in about ${event.daysLeft} days`;
+      await this.notificationDispatch.dispatch({
+        orgId: event.orgId,
+        userId: event.userId,
+        type: 'WHATSAPP_PHONE_INACTIVE',
+        priority: event.final ? 'CRITICAL' : 'HIGH',
+        title: event.final ? 'WhatsApp will disconnect soon' : 'Open WhatsApp on your phone',
+        body: `We haven't seen activity from ${event.phoneNumber ?? 'your phone'} for ${event.inactiveDays} days. WhatsApp disconnects linked devices ${when} — open WhatsApp on your phone with internet on to stay connected.`,
+        data: { sessionId: event.sessionId, inactiveDays: event.inactiveDays },
+        // One warning per inactivity stretch, plus one final reminder
+        idempotencyKey: `wa-phone-inactive:${event.sessionId}:${event.lastPhoneActivityAt.getTime()}:${event.final ? 'final' : 'first'}`,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to dispatch PHONE_INACTIVE notification: ${error}`);
     }
   }
 

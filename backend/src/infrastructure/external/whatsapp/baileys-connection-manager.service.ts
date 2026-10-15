@@ -53,6 +53,16 @@ class MemoryCacheStore implements CacheStore {
   }
 }
 
+/** A session linking by phone-number pairing code instead of a QR scan. */
+interface PairingRequest {
+  phoneNumber: string;
+  /** Latest code issued — a new one comes with each socket until the user enters it */
+  code?: string;
+  /** Set until the first code is issued for the HTTP caller */
+  resolve?: (code: string) => void;
+  reject?: (error: Error) => void;
+}
+
 @Injectable()
 export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BaileysConnectionManager.name);
@@ -60,6 +70,13 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   /** Sockets whose connection actually opened — a socket in `connections` may still be pairing */
   private readonly openSockets = new Set<string>();
   private readonly initializing = new Set<string>();
+  private readonly pairingRequests = new Map<string, PairingRequest>();
+  /** Sockets that already asked WhatsApp for a pairing code (one code per socket) */
+  private readonly pairingRequested = new WeakSet<WASocket>();
+  /** Sessions that just linked (QR or code) — the phone was online for that */
+  private readonly newLogins = new Set<string>();
+  /** Last phone-activity report per session, to keep DB writes rare */
+  private readonly phoneActivityReportedAt = new Map<string, number>();
   private readonly msgRetryCounterCache = new MemoryCacheStore();
   private cachedVersion: { version: [number, number, number]; fetchedAt: number } | null = null;
   private sentMessageLookup: SentMessageLookup | null = null;
@@ -157,6 +174,51 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.initializing.delete(sessionId);
     }
+  }
+
+  /**
+   * Start a fresh link for `phoneNumber` (digits with country code, no +) using a
+   * pairing code: the user types it in WhatsApp → Linked devices → Link with phone
+   * number. Resolves with the first code; codes for later sockets (the previous
+   * one expired unused) are pushed over WebSocket as `whatsapp:pairing-code`.
+   */
+  async requestPairingCode(
+    sessionId: string,
+    userId: string,
+    orgId: string,
+    phoneNumber: string,
+  ): Promise<string> {
+    await this.destroyConnection(sessionId);
+    await this.authStateService.clearAuthState(sessionId);
+
+    const request: PairingRequest = { phoneNumber };
+    const code = new Promise<string>((resolve, reject) => {
+      request.resolve = resolve;
+      request.reject = reject;
+    });
+    this.pairingRequests.set(sessionId, request);
+
+    const timer = setTimeout(
+      () => request.reject?.(new Error('Timed out waiting for WhatsApp to issue a pairing code')),
+      WHATSAPP_CONFIG.PAIRING_CODE_TIMEOUT_MS,
+    );
+
+    try {
+      await this.createConnection(sessionId, userId, orgId);
+      return await code;
+    } catch (error) {
+      this.pairingRequests.delete(sessionId);
+      await this.destroyConnection(sessionId);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      request.resolve = request.reject = undefined;
+    }
+  }
+
+  /** Current pairing code while a session waits to be linked by phone number. */
+  getPairingCode(sessionId: string): string | null {
+    return this.pairingRequests.get(sessionId)?.code ?? null;
   }
 
   getConnection(sessionId: string): WASocket | undefined {
@@ -278,6 +340,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     // otherwise a deliberate disconnect looks like a ban (401) or a network drop.
     this.connections.delete(sessionId);
     this.openSockets.delete(sessionId);
+    this.pairingRequests.delete(sessionId);
 
     try {
       if (logout) {
@@ -303,9 +366,15 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   ): void {
     // ── connection.update ──
     sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
+      const { connection, lastDisconnect, qr, isNewLogin } = update;
 
-      if (qr) {
+      // Set when a QR scan / pairing code succeeds (just before the 515 restart)
+      if (isNewLogin) this.newLogins.add(sessionId);
+
+      // Pairing-code mode: the socket is ready once it offers a QR — ask for a code instead
+      if (qr && this.pairingRequests.has(sessionId)) {
+        await this.issuePairingCode(sock, sessionId, userId);
+      } else if (qr) {
         try {
           const qrDataUri = await QRCode.toDataURL(qr, { width: 300 });
 
@@ -328,6 +397,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
       if (connection === 'open') {
         this.openSockets.add(sessionId);
+        this.pairingRequests.delete(sessionId);
         const phoneNumber = sock.user?.id?.split(':')[0] || null;
 
         this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
@@ -336,6 +406,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           userId,
           event: 'connected',
           phoneNumber: phoneNumber ? `+${phoneNumber}` : undefined,
+          newLogin: this.newLogins.delete(sessionId),
         });
       }
 
@@ -348,9 +419,12 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
         const decision = classifyDisconnect(statusCode);
-        // `creds.me` is set once a QR scan (or pairing code) links the device;
-        // `creds.registered` is only set by the pairing-code flow, so it can't be used here.
-        const paired = Boolean(sock.authState?.creds?.me);
+        // `creds.me` is set once a QR scan links the device. In pairing-code mode
+        // it is set as soon as a code is requested, so only `creds.registered`
+        // (set when the user enters the code) means the device is linked.
+        const pairingPending =
+          this.pairingRequests.has(sessionId) && !sock.authState?.creds?.registered;
+        const paired = Boolean(sock.authState?.creds?.me) && !pairingPending;
 
         this.logger.log(
           `Session ${sessionId} closed (statusCode: ${statusCode ?? 'unknown'} → ${decision.reason}/${decision.action})`,
@@ -362,6 +436,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           (!paired && decision.action === 'reconnect_backoff');
 
         if (reconnectNow) {
+          // The unused code's half-registered creds would make the next socket try to log in
+          if (pairingPending) await this.authStateService.clearAuthState(sessionId);
           setTimeout(() => {
             this.createConnection(sessionId, userId, orgId).catch((err) => {
               this.logger.error(`Reconnect failed for session ${sessionId}: ${err.message}`);
@@ -407,6 +483,10 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
       for (const msg of messages) {
         try {
+          // Our own sends come back as 'append'; a 'notify' fromMe was typed on the phone
+          if (msg.key.fromMe && msg.key.remoteJid !== 'status@broadcast') {
+            this.reportPhoneActivity(sessionId, orgId, userId);
+          }
           if (msg.message?.pollUpdateMessage) {
             if (!msg.key.fromMe) await this.handlePollVote(sock, msg, sessionId);
             continue;
@@ -452,6 +532,39 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
+    });
+  }
+
+  private async issuePairingCode(sock: WASocket, sessionId: string, userId: string): Promise<void> {
+    const request = this.pairingRequests.get(sessionId);
+    if (!request || this.pairingRequested.has(sock) || sock.authState.creds.registered) return;
+    this.pairingRequested.add(sock);
+
+    try {
+      const pairingCode = await sock.requestPairingCode(request.phoneNumber);
+      request.code = pairingCode;
+      request.resolve?.(pairingCode);
+      this.wsGateway.emitToUser(userId, 'whatsapp:pairing-code', {
+        sessionId,
+        pairingCode,
+        phoneNumber: `+${request.phoneNumber}`,
+      });
+      this.logger.log(`Pairing code issued for session ${sessionId}`);
+    } catch (error) {
+      this.logger.error(`Failed to request pairing code for ${sessionId}`, error);
+      request.reject?.(error as Error);
+    }
+  }
+
+  private reportPhoneActivity(sessionId: string, orgId: string, userId: string): void {
+    const last = this.phoneActivityReportedAt.get(sessionId) ?? 0;
+    if (Date.now() - last < WHATSAPP_CONFIG.PHONE_ACTIVITY_WRITE_INTERVAL_MS) return;
+    this.phoneActivityReportedAt.set(sessionId, Date.now());
+    this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
+      sessionId,
+      orgId,
+      userId,
+      event: 'phone_activity',
     });
   }
 

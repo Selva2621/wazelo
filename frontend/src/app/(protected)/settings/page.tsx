@@ -81,6 +81,7 @@ import {
 } from "@/hooks/use-developer";
 import type { DeveloperApiKey } from "@/lib/types/developer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrowserPushCard } from "@/components/notifications/browser-push-card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -1287,6 +1288,8 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, { label: string; descri
   AUTOMATION_EXECUTED: { label: "Automation Executed", description: "When an automation rule executes" },
   AUTOMATION_FAILED: { label: "Automation Failed", description: "Automation failure alerts" },
   WHATSAPP_SESSION_DISCONNECTED: { label: "Session Disconnected", description: "WhatsApp session disconnects" },
+  WHATSAPP_SESSION_UNSTABLE: { label: "Connection Unstable", description: "WhatsApp keeps failing to reconnect" },
+  WHATSAPP_PHONE_INACTIVE: { label: "Phone Inactive", description: "Your phone hasn't been online for days — WhatsApp may unlink" },
   PAYMENT_FAILED: { label: "Payment Failed", description: "Payment failure alerts" },
   USAGE_LIMIT_WARNING: { label: "Usage Warning", description: "Approaching plan limits" },
   USAGE_LIMIT_REACHED: { label: "Usage Limit Reached", description: "Plan limit reached alerts" },
@@ -1333,6 +1336,8 @@ function NotificationsSection() {
   }
 
   return (
+    <div className="space-y-6">
+    <BrowserPushCard />
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
@@ -1411,6 +1416,7 @@ function NotificationsSection() {
         </table>
       </CardContent>
     </Card>
+    </div>
   );
 }
 

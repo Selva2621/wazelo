@@ -48,6 +48,7 @@ export const QUEUE_NAMES = {
   METRIC_CLEANUP: 'metric-cleanup',
   // EPIC 11 — Notification queues
   SEND_NOTIFICATION_EMAIL: 'send-notification-email',
+  SEND_PUSH_NOTIFICATION: 'send-push-notification',
   NOTIFICATION_DIGEST: 'notification-digest',
   // EPIC 12 — Settings & Configuration queues
   WEBHOOK_DELIVER: 'webhook-deliver',
@@ -127,6 +128,8 @@ export const EVENT_NAMES = {
   /** A decrypted vote on a WhatsApp poll we sent */
   BAILEYS_POLL_VOTE: 'baileys.poll_vote',
   WHATSAPP_SESSION_RECONNECTING: 'whatsapp.session_reconnecting',
+  /** Primary phone hasn't been seen for days — WhatsApp will unlink at 14 */
+  WHATSAPP_PHONE_INACTIVE: 'whatsapp.phone_inactive',
   WHATSAPP_SESSION_FORCE_DISCONNECTED: 'whatsapp.session_force_disconnected',
 
   // WhatsApp message events (EPIC 3)
@@ -324,6 +327,19 @@ export const EVENT_NAMES = {
 
 export const WHATSAPP_CONFIG = {
   QR_REFRESH_INTERVAL_MS: 25_000,
+  /** How long the HTTP request waits for WhatsApp to issue a pairing code */
+  PAIRING_CODE_TIMEOUT_MS: 20_000,
+  /** "Reconnect from your phone" link in disconnect emails — read hours later, so not short */
+  LINK_TOKEN_TTL_SECONDS: 24 * 60 * 60,
+  /** Warn the owner once auto-reconnect reaches this attempt */
+  UNSTABLE_WARN_ATTEMPT: 3,
+  /** WhatsApp unlinks companion devices after this many days without the phone online */
+  PHONE_UNLINK_DAYS: 14,
+  /** Days without phone activity before the first and the final warning */
+  PHONE_INACTIVE_WARN_DAYS: 10,
+  PHONE_INACTIVE_FINAL_DAYS: 13,
+  /** Phone-activity timestamps are written at most this often per session */
+  PHONE_ACTIVITY_WRITE_INTERVAL_MS: 60 * 60 * 1000,
   HEARTBEAT_INTERVAL_MS: 30_000,
   DISCONNECT_DETECTION_TIMEOUT_MS: 120_000, // 2 min — phone must miss 4 heartbeats before stale
   MAX_RECONNECT_ATTEMPTS: 15,               // ~46h total window with exponential backoff

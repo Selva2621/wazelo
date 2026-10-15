@@ -25,6 +25,7 @@ import {
   InitiateSessionDto,
   DisconnectSessionDto,
   ListSessionsQueryDto,
+  RequestPairingCodeDto,
 } from '../../application/dto';
 import {
   InitiateSessionUseCase,
@@ -33,6 +34,7 @@ import {
   GetSessionUseCase,
   RefreshQrUseCase,
   ReconnectSessionUseCase,
+  RequestPairingCodeUseCase,
 } from '../../application/use-cases';
 import { SendHealthUseCase } from '../../application/use-cases/send-health.use-case';
 
@@ -47,6 +49,7 @@ export class WhatsAppSessionController {
     private readonly getSessionUseCase: GetSessionUseCase,
     private readonly refreshQrUseCase: RefreshQrUseCase,
     private readonly reconnectSessionUseCase: ReconnectSessionUseCase,
+    private readonly requestPairingCodeUseCase: RequestPairingCodeUseCase,
     private readonly sendHealthUseCase: SendHealthUseCase,
   ) {}
 
@@ -64,6 +67,26 @@ export class WhatsAppSessionController {
     @Req() req: Request,
   ) {
     return this.initiateSessionUseCase.execute(
+      user.orgId,
+      user.sub,
+      dto,
+      this.getIp(req),
+      this.getUa(req),
+    );
+  }
+
+  @Post('sessions/pairing-code')
+  @Permissions(PERMISSIONS.WHATSAPP_SESSION_OWN)
+  @UseGuards(UsageLimitGuard)
+  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.WHATSAPP_SESSIONS)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @HttpCode(HttpStatus.CREATED)
+  async requestPairingCode(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: RequestPairingCodeDto,
+    @Req() req: Request,
+  ) {
+    return this.requestPairingCodeUseCase.execute(
       user.orgId,
       user.sub,
       dto,

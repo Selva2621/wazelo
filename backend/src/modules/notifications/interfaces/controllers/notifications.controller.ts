@@ -28,6 +28,8 @@ import { ListNotificationsDto } from '../../application/dto/list-notifications.d
 import { MarkNotificationsReadDto } from '../../application/dto/mark-notifications-read.dto';
 import { DeleteNotificationsDto } from '../../application/dto/delete-notifications.dto';
 import { UpdateNotificationPreferenceDto } from '../../application/dto/update-notification-preference.dto';
+import { RegisterDeviceDto, UpdateDeviceDto } from '../../application/dto/notification-device.dto';
+import { ManageNotificationDevicesUseCase } from '../../application/use-cases/manage-notification-devices.use-case';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -37,6 +39,7 @@ export class NotificationsController {
     private readonly deleteNotificationsUseCase: DeleteNotificationsUseCase,
     private readonly managePreferencesUseCase: ManagePreferencesUseCase,
     private readonly getUnreadCountUseCase: GetUnreadCountUseCase,
+    private readonly manageDevicesUseCase: ManageNotificationDevicesUseCase,
   ) {}
 
   /**
@@ -119,6 +122,90 @@ export class NotificationsController {
       user.orgId,
       user.sub,
     );
+  }
+
+  // ─── Browser Push ───
+
+  /**
+   * GET /notifications/push/config
+   * Whether browser push is available, and the VAPID key to subscribe with.
+   */
+  @Get('push/config')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_READ)
+  getPushConfig() {
+    return this.manageDevicesUseCase.getConfig();
+  }
+
+  /**
+   * GET /notifications/devices
+   * The current user's devices and whether each gets push.
+   */
+  @Get('devices')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_READ)
+  async listDevices(@CurrentUser() user: JwtPayload) {
+    return this.manageDevicesUseCase.list(user.sub);
+  }
+
+  /**
+   * POST /notifications/devices
+   * Register this device on app load; tells the app whether to ask (once).
+   */
+  @Post('devices')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_READ)
+  @HttpCode(HttpStatus.OK)
+  async registerDevice(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: RegisterDeviceDto,
+    @Req() req: Request,
+  ) {
+    return this.manageDevicesUseCase.register(
+      user.orgId,
+      user.sub,
+      dto,
+      req.headers['user-agent'] as string,
+    );
+  }
+
+  /**
+   * PATCH /notifications/devices/:deviceId
+   * Save the answer on this device (and its push subscription when granted).
+   */
+  @Patch('devices/:deviceId')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_MANAGE)
+  async updateDevice(
+    @CurrentUser() user: JwtPayload,
+    @Param('deviceId', ParseUUIDPipe) deviceId: string,
+    @Body() dto: UpdateDeviceDto,
+  ) {
+    return this.manageDevicesUseCase.update(user.sub, deviceId, dto);
+  }
+
+  /**
+   * DELETE /notifications/devices/:deviceId/push
+   * Stop push on a device (sign-out, or "turn off").
+   */
+  @Delete('devices/:deviceId/push')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_READ)
+  @HttpCode(HttpStatus.OK)
+  async detachDevicePush(
+    @CurrentUser() user: JwtPayload,
+    @Param('deviceId', ParseUUIDPipe) deviceId: string,
+  ) {
+    return this.manageDevicesUseCase.detachPush(user.sub, deviceId);
+  }
+
+  /**
+   * DELETE /notifications/devices/:deviceId
+   * Forget a device.
+   */
+  @Delete('devices/:deviceId')
+  @Permissions(PERMISSIONS.NOTIFICATIONS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  async removeDevice(
+    @CurrentUser() user: JwtPayload,
+    @Param('deviceId', ParseUUIDPipe) deviceId: string,
+  ) {
+    return this.manageDevicesUseCase.remove(user.sub, deviceId);
   }
 
   // ─── Preferences ───

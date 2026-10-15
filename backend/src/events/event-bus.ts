@@ -183,6 +183,19 @@ export interface WhatsAppSessionReconnectingEvent {
   attempt: number;
 }
 
+export interface WhatsAppPhoneInactiveEvent {
+  sessionId: string;
+  orgId: string;
+  userId: string;
+  phoneNumber: string | null;
+  lastPhoneActivityAt: Date;
+  inactiveDays: number;
+  /** Days until WhatsApp unlinks Wazelo */
+  daysLeft: number;
+  /** Last warning before the unlink */
+  final: boolean;
+}
+
 export interface WhatsAppSessionForceDisconnectedEvent {
   sessionId: string;
   orgId: string;

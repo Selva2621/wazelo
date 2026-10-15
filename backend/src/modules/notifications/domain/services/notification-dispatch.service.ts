@@ -112,6 +112,18 @@ export class NotificationDispatchService {
       );
     }
 
+    // 4b. Browser push for urgent ones — reaches the user with Wazelo closed.
+    // Follows the in-app preference; the worker no-ops without subscriptions.
+    if (inAppEnabled && (target.priority === 'HIGH' || target.priority === 'CRITICAL')) {
+      await this.queueService.publish(QUEUE_NAMES.SEND_PUSH_NOTIFICATION, {
+        userId: target.userId,
+        type: target.type,
+        title: target.title,
+        body: target.body,
+        data: target.data,
+      });
+    }
+
     // 5. Email notification (queued via pg-boss)
     if (emailEnabled) {
       await this.queueService.publishOnce(

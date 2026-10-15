@@ -19,6 +19,7 @@ export interface UpdateSessionStatusInput {
   disconnectCode?: number | null;
   disconnectReason?: string | null;
   linkedAt?: Date;
+  lastPhoneActivityAt?: Date;
 }
 
 @Injectable()
@@ -116,6 +117,32 @@ export class WhatsAppSessionRepository {
         ...(input.disconnectCode !== undefined && { disconnectCode: input.disconnectCode }),
         ...(input.disconnectReason !== undefined && { disconnectReason: input.disconnectReason }),
         ...(input.linkedAt !== undefined && { linkedAt: input.linkedAt }),
+        ...(input.lastPhoneActivityAt !== undefined && { lastPhoneActivityAt: input.lastPhoneActivityAt }),
+      },
+    });
+  }
+
+  async updatePhoneActivity(id: string) {
+    return this.prisma.whatsAppSession.update({
+      where: { id },
+      data: { lastPhoneActivityAt: new Date() },
+    });
+  }
+
+  /** Connected sessions whose phone hasn't been seen since `before` */
+  async findPhoneInactiveSessions(before: Date) {
+    return this.prisma.whatsAppSession.findMany({
+      where: {
+        deletedAt: null,
+        status: WhatsAppSessionStatus.CONNECTED,
+        lastPhoneActivityAt: { lt: before },
+      },
+      select: {
+        id: true,
+        orgId: true,
+        userId: true,
+        phoneNumber: true,
+        lastPhoneActivityAt: true,
       },
     });
   }

@@ -14,6 +14,7 @@ import {
   authConfig,
   throttleConfig,
   whatsappConfig,
+  pushConfig,
 } from './config';
 
 // Infrastructure
@@ -88,7 +89,7 @@ import { EventsModule } from './events/events.module';
     // Config (loads .env + typed config)
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, jwtConfig, emailConfig, authConfig, throttleConfig, whatsappConfig],
+      load: [appConfig, jwtConfig, emailConfig, authConfig, throttleConfig, whatsappConfig, pushConfig],
       envFilePath: ['.env'],
     }),
 

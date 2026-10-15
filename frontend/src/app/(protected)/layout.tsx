@@ -9,6 +9,7 @@ import { authApi } from "@/lib/api/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
+import { PushPromptBanner } from "@/components/notifications/push-prompt-banner";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
 
@@ -190,6 +191,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell>
       <AnnouncementBanner />
+      <PushPromptBanner />
       {children}
     </AppShell>
   );

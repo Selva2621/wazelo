@@ -90,6 +90,23 @@ export function useRefreshQr() {
   });
 }
 
+// ─── Link by Phone Number (pairing code instead of QR) ───
+export function useRequestPairingCode() {
+  const queryClient = useQueryClient();
+  const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
+  const clearQr = useWhatsAppStore((s) => s.clearQr);
+
+  return useMutation({
+    mutationFn: (phoneNumber: string) => whatsappApi.requestPairingCode(phoneNumber),
+    // The socket switches to pairing mode, so any QR on screen is dead
+    onMutate: () => clearQr(),
+    onSuccess: (data) => {
+      setPairingCode(data.pairingCode);
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+    },
+  });
+}
+
 // ─── Reconnect Existing Session (no QR needed if creds intact) ───
 export function useReconnectSession() {
   const queryClient = useQueryClient();
@@ -174,6 +191,7 @@ export function useWhatsAppSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const setQr = useWhatsAppStore((s) => s.setQr);
   const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
   const setSession = useWhatsAppStore((s) => s.setSession);
   const setStatus = useWhatsAppStore((s) => s.setStatus);
   const setError = useWhatsAppStore((s) => s.setError);
@@ -195,6 +213,11 @@ export function useWhatsAppSocket() {
         ? new Date(data.expiresAt).getTime()
         : data.expiresAt;
       setQr(data.qrCode, expiresAtMs);
+    });
+
+    // A new code is issued whenever the previous one expired unused
+    socket.on("whatsapp:pairing-code", (data: { sessionId: string; pairingCode: string }) => {
+      setPairingCode(data.pairingCode);
     });
 
     socket.on("whatsapp:session:connected", () => {
@@ -224,7 +247,7 @@ export function useWhatsAppSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, setQr, clearQr, setSession, setStatus, setError, queryClient]);
+  }, [accessToken, setQr, clearQr, setPairingCode, setSession, setStatus, setError, queryClient]);
 
   return socketRef;
 }
