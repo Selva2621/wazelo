@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Users, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
@@ -10,14 +10,17 @@ import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ContactFilters } from "@/components/contacts/contact-filters";
 import { ContactsTable } from "@/components/contacts/contacts-table";
+import { ContactsBulkBar } from "@/components/contacts/contacts-bulk-bar";
 import { ContactKanbanBoard } from "@/components/contacts/contact-kanban-board";
 import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
 import { ImportContactsModal } from "@/components/contacts/import-contacts-modal";
+import { LoadError } from "@/components/ui/empty-state";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
 
 const TAKE = 20;
+const EMPTY_SELECTION: Set<string> = new Set();
 
 const STATUS_TABS: { id: string; label: string }[] = [
   { id: "ALL", label: "All" },
@@ -33,6 +36,17 @@ export default function ContactsPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
+
+  // "Add Lead" links land here with ?action=new — open the create form, then
+  // drop the param so a refresh doesn't reopen it
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("action") !== "new") return;
+    url.searchParams.delete("action");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    const frame = requestAnimationFrame(() => setShowCreate(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [showImport, setShowImport] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
   const [view, setView] = useState<"list" | "kanban">("list");
@@ -83,7 +97,17 @@ export default function ContactsPage() {
     ],
   );
 
-  const { data, isLoading } = useContacts(params);
+  const { data, isLoading, isError, refetch } = useContacts(params);
+
+  // Selection belongs to the current query: changing page, search or filters drops it,
+  // so a bulk action never hits rows the agent can no longer see
+  const paramsKey = JSON.stringify(params);
+  const [selection, setSelection] = useState<{ key: string; ids: Set<string> }>({
+    key: paramsKey,
+    ids: new Set(),
+  });
+  const selectedIds = selection.key === paramsKey ? selection.ids : EMPTY_SELECTION;
+  const setSelectedIds = (ids: Set<string>) => setSelection({ key: paramsKey, ids });
 
   // Add counts to status tabs
   const tabsWithCounts = STATUS_TABS.map((tab) => ({
@@ -97,7 +121,7 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="relative flex flex-col h-[calc(100dvh-var(--header-height))]">
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
         <div className="flex items-center justify-between">
@@ -191,18 +215,31 @@ export default function ContactsPage() {
       {view === "kanban" ? (
         <ContactKanbanBoard />
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <ContactsTable
-            contacts={data?.contacts ?? []}
-            total={data?.total ?? 0}
-            take={TAKE}
-            skip={page * TAKE}
-            isLoading={isLoading}
-            onRowClick={openContactDetail}
-            onPageChange={setPage}
-            onCreateClick={() => setShowCreate(true)}
-          />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {isError ? (
+            <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
+          ) : (
+            <ContactsTable
+              contacts={data?.contacts ?? []}
+              total={data?.total ?? 0}
+              take={TAKE}
+              skip={page * TAKE}
+              isLoading={isLoading}
+              onRowClick={openContactDetail}
+              onPageChange={setPage}
+              onCreateClick={() => setShowCreate(true)}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+            />
+          )}
         </div>
+      )}
+
+      {view === "list" && (
+        <ContactsBulkBar
+          selectedIds={selectedIds}
+          onClear={() => setSelectedIds(new Set())}
+        />
       )}
 
       {/* Detail Drawer */}

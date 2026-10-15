@@ -50,6 +50,27 @@ export class AlertsRepository {
     });
   }
 
+  /** Partial update; `channels`/`channelConfig` are stored as JSON. */
+  async updateRule(id: string, data: Partial<CreateAlertRuleInput>) {
+    const { channels, channelConfig, ...rest } = data;
+    return this.prisma.alertRule.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(channels !== undefined && { channels: channels as Prisma.InputJsonValue }),
+        ...(channelConfig !== undefined && { channelConfig: channelConfig as Prisma.InputJsonValue }),
+      },
+    });
+  }
+
+  countRuleEvents(id: string): Promise<number> {
+    return this.prisma.alertEvent.count({ where: { alertRuleId: id } });
+  }
+
+  async deleteRule(id: string): Promise<void> {
+    await this.prisma.alertRule.delete({ where: { id } });
+  }
+
   async findRuleById(id: string) {
     return this.prisma.alertRule.findUnique({ where: { id } });
   }

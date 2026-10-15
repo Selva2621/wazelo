@@ -16,6 +16,7 @@ import { TokenRepository } from '../../infrastructure/repositories/token.reposit
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { QUEUE_NAMES, EVENT_NAMES, SAFE_AUTH_MESSAGE } from '@/common/constants';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { generateOrgSlugInTx } from '../services/org-slug';
 
 export interface RegisterResult {
   message: string;
@@ -63,7 +64,7 @@ export class RegisterUseCase {
         const org = await tx.organization.create({
           data: {
             name: dto.organizationName,
-            slug: await this.generateSlugInTx(tx, dto.organizationName),
+            slug: await generateOrgSlugInTx(tx, dto.organizationName),
           },
         });
 
@@ -155,38 +156,5 @@ export class RegisterUseCase {
     });
 
     return { message: SAFE_AUTH_MESSAGE };
-  }
-
-  private async generateSlugInTx(
-    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
-    name: string,
-  ): Promise<string> {
-    let baseSlug = name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/[\s]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 100);
-
-    if (!baseSlug) {
-      baseSlug = 'org';
-    }
-
-    let slug = baseSlug;
-    let attempt = 0;
-
-    while (true) {
-      const count = await tx.organization.count({
-        where: { slug, deletedAt: null },
-      });
-      if (count === 0) break;
-      attempt++;
-      const suffix = `-${attempt}`;
-      slug = baseSlug.slice(0, 100 - suffix.length) + suffix;
-    }
-
-    return slug;
   }
 }

@@ -5,11 +5,14 @@ import {
   Put,
   Delete,
   Body,
+  Headers,
+  BadRequestException,
   Param,
   Query,
   Req,
   ParseUUIDPipe,
   UseGuards,
+  UseInterceptors,
   SetMetadata,
   HttpCode,
   HttpStatus,
@@ -18,6 +21,8 @@ import {
 import { Request } from 'express';
 import { Public } from '@/common/decorators/public.decorator';
 import { ApiKeyGuard } from '@/modules/api-keys/interfaces/guards/api-key.guard';
+import { ApiKeyResourceScope } from '@/modules/api-keys/interfaces/guards/api-key-scope.decorator';
+import { ApiRequestLogInterceptor } from '../interceptors/api-request-log.interceptor';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces/guards/feature-flag.guard';
 import { UsageMetricType } from '@prisma/client';
@@ -37,6 +42,19 @@ import {
 } from '../../application/dto';
 
 /**
+ * The standard Idempotency-Key header works the same as the idempotencyKey
+ * body field; the body field wins if both are sent.
+ */
+function withIdempotencyKey<T extends { idempotencyKey?: string }>(dto: T, header?: string): T {
+  if (dto.idempotencyKey || !header) return dto;
+  const key = header.trim();
+  if (!key || key.length > 255) {
+    throw new BadRequestException('Idempotency-Key must be 1-255 characters');
+  }
+  return { ...dto, idempotencyKey: key };
+}
+
+/**
  * Public Developer API — authenticated via X-API-Key header.
  * These are the endpoints developers call from their applications.
  */
@@ -44,6 +62,7 @@ import {
 @Public() // Skip JWT auth
 @UseGuards(ApiKeyGuard, FeatureFlagGuard) // API key auth + feature flag check
 @SetMetadata(FEATURE_FLAG_KEY, 'api')
+@UseInterceptors(ApiRequestLogInterceptor)
 export class DeveloperApiController {
   constructor(
     private readonly repo: DeveloperApiRepository,
@@ -56,15 +75,21 @@ export class DeveloperApiController {
   // ── Messages ──
 
   @Post('messages/send')
+  @ApiKeyResourceScope('messages')
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.MESSAGES_SENT)
   @UseGuards(UsageLimitGuard)
   @HttpCode(HttpStatus.OK)
-  async sendMessage(@Req() req: Request, @Body() dto: DevSendMessageDto) {
+  async sendMessage(
+    @Req() req: Request,
+    @Body() dto: DevSendMessageDto,
+    @Headers('idempotency-key') idempotencyHeader?: string,
+  ) {
     const orgId = (req as any).apiKeyAuth.orgId;
-    return this.sendMessageUseCase.execute(orgId, dto);
+    return this.sendMessageUseCase.execute(orgId, withIdempotencyKey(dto, idempotencyHeader));
   }
 
   @Post('messages/send-bulk')
+  @ApiKeyResourceScope('messages')
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.MESSAGES_SENT)
   @UseGuards(UsageLimitGuard)
   @HttpCode(HttpStatus.OK)
@@ -74,15 +99,21 @@ export class DeveloperApiController {
   }
 
   @Post('messages/send-template')
+  @ApiKeyResourceScope('messages')
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.MESSAGES_SENT)
   @UseGuards(UsageLimitGuard)
   @HttpCode(HttpStatus.OK)
-  async sendTemplateMessage(@Req() req: Request, @Body() dto: DevSendTemplateDto) {
+  async sendTemplateMessage(
+    @Req() req: Request,
+    @Body() dto: DevSendTemplateDto,
+    @Headers('idempotency-key') idempotencyHeader?: string,
+  ) {
     const orgId = (req as any).apiKeyAuth.orgId;
-    return this.sendTemplateMessageUseCase.execute(orgId, dto);
+    return this.sendTemplateMessageUseCase.execute(orgId, withIdempotencyKey(dto, idempotencyHeader));
   }
 
   @Get('messages')
+  @ApiKeyResourceScope('messages')
   async listMessages(
     @Req() req: Request,
     @Query() query: DevListMessagesQueryDto,
@@ -97,6 +128,7 @@ export class DeveloperApiController {
   }
 
   @Get('messages/:id')
+  @ApiKeyResourceScope('messages')
   async getMessage(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,6 +142,7 @@ export class DeveloperApiController {
   // ── Contacts ──
 
   @Get('contacts')
+  @ApiKeyResourceScope('contacts')
   async listContacts(
     @Req() req: Request,
     @Query('limit') limit?: string,
@@ -120,6 +153,7 @@ export class DeveloperApiController {
   }
 
   @Post('contacts')
+  @ApiKeyResourceScope('contacts')
   @HttpCode(HttpStatus.CREATED)
   async createContact(
     @Req() req: Request,
@@ -136,6 +170,7 @@ export class DeveloperApiController {
   }
 
   @Get('contacts/:id')
+  @ApiKeyResourceScope('contacts')
   async getContact(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -147,6 +182,7 @@ export class DeveloperApiController {
   }
 
   @Put('contacts/:id')
+  @ApiKeyResourceScope('contacts')
   async updateContact(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -166,6 +202,7 @@ export class DeveloperApiController {
   // ── Templates ──
 
   @Post('templates')
+  @ApiKeyResourceScope('messages')
   @HttpCode(HttpStatus.CREATED)
   async createTemplate(@Req() req: Request, @Body() dto: DevCreateTemplateDto) {
     const orgId = (req as any).apiKeyAuth.orgId;
@@ -179,6 +216,7 @@ export class DeveloperApiController {
   }
 
   @Get('templates')
+  @ApiKeyResourceScope('messages')
   async listTemplates(@Req() req: Request) {
     const orgId = (req as any).apiKeyAuth.orgId;
     return this.repo.listTemplates(orgId);
@@ -202,24 +240,6 @@ export class DeveloperApiController {
   }
 
   // ── API Keys ──
-
-  @Post('keys')
-  @HttpCode(HttpStatus.CREATED)
-  async createApiKey(
-    @Req() req: Request,
-    @Body() dto: { name: string; scopes?: string[]; expiresInDays?: number },
-  ) {
-    const { orgId, keyId } = (req as any).apiKeyAuth;
-    return this.apiKeysRepo.createKey({
-      orgId,
-      name: dto.name,
-      scopes: dto.scopes ?? ['read', 'write'],
-      expiresAt: dto.expiresInDays
-        ? new Date(Date.now() + dto.expiresInDays * 86_400_000)
-        : undefined,
-      createdById: keyId,
-    });
-  }
 
   @Get('keys')
   async listApiKeys(@Req() req: Request) {

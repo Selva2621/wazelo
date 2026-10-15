@@ -2,7 +2,7 @@ import {
   IsString, IsNotEmpty, IsEnum, IsOptional, IsInt, Min, MaxLength, IsUUID, IsUrl,
   IsBoolean, Matches, ValidateIf,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
 
 export class CreateTicketDto {
@@ -24,7 +24,8 @@ export class CreateTicketDto {
   @IsOptional() @IsEnum(TicketPriority)
   priority?: TicketPriority;
 
-  @IsOptional() @IsString()
+  /** https only — rendered as a link in the admin UI, so javascript:/data: must never get through */
+  @IsOptional() @MaxLength(2048) @IsUrl({ protocols: ['https'], require_protocol: true })
   attachmentUrl?: string;
 }
 
@@ -69,7 +70,23 @@ export class ListTicketsQueryDto {
   @IsOptional() @IsUUID()
   orgId?: string;
 
+  /** Super admin queue: only open tickets waiting on a support reply. Ignored for tenants. */
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean()
+  needsReply?: boolean;
+
+  /** Super admin queue: matches the title or the org name. Ignored for tenants. */
+  @IsOptional() @IsString() @MaxLength(100)
+  search?: string;
+
   /** Super admin queue: 'me', 'unassigned', or a super admin id. Ignored for tenants. */
   @IsOptional() @Matches(/^(me|unassigned|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)
   assignee?: string;
+
+  /** Super admin queue: createdAt, priority, status or updatedAt; anything else means newest first. Ignored for tenants. */
+  @IsOptional() @IsString() @MaxLength(50)
+  sort?: string;
+
+  /** Super admin queue: asc | desc. Ignored for tenants. */
+  @IsOptional() @IsString() @MaxLength(10)
+  order?: string;
 }

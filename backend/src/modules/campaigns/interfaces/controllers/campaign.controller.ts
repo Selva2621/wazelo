@@ -19,6 +19,7 @@ import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces/guards/feature-flag.guard';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { UsageMetricType } from '@prisma/client';
 import { CreateCampaignDto, AudienceFiltersDto } from '../../application/dto/create-campaign.dto';
@@ -260,6 +261,7 @@ export class CampaignController {
   @UseGuards(FeatureFlagGuard, UsageLimitGuard)
   @SetMetadata(FEATURE_FLAG_KEY, 'campaigns')
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
+  @PlatformFeature('ai')
   @HttpCode(HttpStatus.OK)
   async generateCopy(
     @Body() dto: GenerateCampaignCopyDto,

@@ -7,6 +7,9 @@ import type {
   DeleteResponse,
   NotificationPreference,
   UpdateNotificationPreferenceRequest,
+  PushConfig,
+  NotificationDevice,
+  DevicePermission,
 } from "@/lib/types/notifications";
 
 export const notificationsApi = {
@@ -58,5 +61,50 @@ export const notificationsApi = {
   updatePreference: (data: UpdateNotificationPreferenceRequest) =>
     apiClient
       .patch<NotificationPreference>("/notifications/preferences", data)
+      .then((r) => r.data),
+
+  // ─── Browser Push ───
+
+  getPushConfig: () =>
+    apiClient
+      .get<PushConfig>("/notifications/push/config")
+      .then((r) => r.data),
+
+  // ─── Devices (one row per browser the user signed in on) ───
+
+  listDevices: () =>
+    apiClient
+      .get<NotificationDevice[]>("/notifications/devices")
+      .then((r) => r.data),
+
+  registerDevice: (deviceId: string, deviceName: string) =>
+    apiClient
+      .post<NotificationDevice>("/notifications/devices", { deviceId, deviceName })
+      .then((r) => r.data),
+
+  /** Save the answer on this device; `subscription` goes with "granted" */
+  updateDevice: (
+    deviceId: string,
+    permission: DevicePermission,
+    subscription?: PushSubscriptionJSON,
+  ) =>
+    apiClient
+      .patch<NotificationDevice>(`/notifications/devices/${deviceId}`, {
+        permission,
+        ...(subscription && {
+          subscription: { endpoint: subscription.endpoint, keys: subscription.keys },
+        }),
+      })
+      .then((r) => r.data),
+
+  /** Sign-out: this device stops getting this user's pushes */
+  detachDevicePush: (deviceId: string) =>
+    apiClient
+      .delete<{ pushEnabled: boolean }>(`/notifications/devices/${deviceId}/push`)
+      .then((r) => r.data),
+
+  removeDevice: (deviceId: string) =>
+    apiClient
+      .delete<{ removed: boolean }>(`/notifications/devices/${deviceId}`)
       .then((r) => r.data),
 };

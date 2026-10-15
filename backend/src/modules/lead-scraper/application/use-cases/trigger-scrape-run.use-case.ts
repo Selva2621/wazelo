@@ -19,6 +19,7 @@ export class TriggerScrapeRunUseCase {
       keywords: dto.keywords,
       location: dto.location,
       maxResults: dto.maxResults ?? 50,
+      filters: dto.filters,
       createdById: userId,
     });
 

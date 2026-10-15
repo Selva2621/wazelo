@@ -5,4 +5,5 @@ export {
   authConfig,
   throttleConfig,
   whatsappConfig,
+  pushConfig,
 } from './app.config';

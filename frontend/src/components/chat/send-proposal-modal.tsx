@@ -30,7 +30,7 @@ export function SendProposalModal({
 
   function buildProposalText(): string {
     const lines: string[] = [
-      "📋 *Project Proposal*",
+      "*Project Proposal*",
       "",
       `*Service:* ${serviceName}`,
       `*Price:* ₹${price}`,

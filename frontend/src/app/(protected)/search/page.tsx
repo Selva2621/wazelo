@@ -15,6 +15,7 @@ import { useGlobalSearch } from "@/hooks/use-search";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { SearchContactResult, SearchConversationResult, SearchCampaignResult } from "@/lib/types/search";
+import { inboxChatHref } from "@/lib/inbox-link";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ function ContactResults({ contacts, query, onNavigate }: {
 function ConversationResults({ conversations, query, onNavigate }: {
   conversations: SearchConversationResult[];
   query: string;
-  onNavigate: (id: string) => void;
+  onNavigate: (chat: SearchConversationResult) => void;
 }) {
   return (
     <div>
@@ -115,7 +116,7 @@ function ConversationResults({ conversations, query, onNavigate }: {
         {conversations.map((c, i) => (
           <button
             key={c.id}
-            onClick={() => onNavigate(c.id)}
+            onClick={() => onNavigate(c)}
             className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 transition-colors text-left group ${i < conversations.length - 1 ? "border-b border-outline-variant/8" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
@@ -202,8 +203,8 @@ export default function SearchPage() {
     router.push(`/contacts/${id}`);
   }, [router]);
 
-  const handleConversationClick = useCallback((id: string) => {
-    router.push(`/inbox?conversationId=${id}`);
+  const handleConversationClick = useCallback((chat: SearchConversationResult) => {
+    router.push(inboxChatHref(chat));
   }, [router]);
 
   const handleCampaignClick = useCallback((id: string) => {

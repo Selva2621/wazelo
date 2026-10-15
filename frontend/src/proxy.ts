@@ -8,6 +8,13 @@ const publicPaths = [
   "/auth/reset-password",
 ];
 
+// Session hand-off after "Continue with Google": reachable with or without a session hint
+// (it creates the session, and must not be bounced to /dashboard by a stale hint).
+const sessionHandoffPaths = ["/auth/google/complete"];
+
+// Login-free pages opened from emails (e.g. /wa/<token> — reconnect WhatsApp from the phone)
+const openPrefixes = ["/wa/"];
+
 const superAdminPublicPaths = ["/super-admin/login"];
 
 export function proxy(request: NextRequest) {
@@ -29,6 +36,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (sessionHandoffPaths.includes(pathname)) return NextResponse.next();
+  if (openPrefixes.some((p) => pathname.startsWith(p))) return NextResponse.next();
+
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
@@ -48,6 +58,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api).*)",
+    // sw.js: browsers refuse a redirected service worker script
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api|sw.js).*)",
   ],
 };

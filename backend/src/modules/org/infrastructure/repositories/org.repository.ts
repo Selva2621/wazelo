@@ -11,6 +11,8 @@ export interface UpdateOrgSettingsInput {
   description?: string;
   website?: string;
   orgType?: OrgType;
+  freelancerTypes?: string[];
+  freelancerService?: string | null;
 }
 
 @Injectable()
@@ -55,6 +57,8 @@ export class OrgRepository {
         ...(data.description !== undefined && { description: data.description }),
         ...(data.website !== undefined && { website: data.website }),
         ...(data.orgType !== undefined && { orgType: data.orgType }),
+        ...(data.freelancerTypes !== undefined && { freelancerTypes: data.freelancerTypes }),
+        ...(data.freelancerService !== undefined && { freelancerService: data.freelancerService }),
       },
     });
   }

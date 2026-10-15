@@ -64,3 +64,13 @@ export interface ResendVerificationRequest {
 export interface MessageResponse {
   message: string;
 }
+
+/** GET /auth/providers */
+export interface AuthProviders {
+  google: {
+    /** Client ID, secret and redirect URI are saved (Super Admin → Settings) */
+    configured: boolean;
+    /** New users may sign up with Google (super admin setting) */
+    signupEnabled: boolean;
+  };
+}

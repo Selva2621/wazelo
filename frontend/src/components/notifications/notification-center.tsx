@@ -14,6 +14,7 @@ import {
   Info,
   CreditCard,
   WifiOff,
+  Smartphone,
   UserPlus,
   BarChart3,
 } from "lucide-react";
@@ -47,6 +48,8 @@ const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
   AUTOMATION_EXECUTED: Zap,
   AUTOMATION_FAILED: Zap,
   WHATSAPP_SESSION_DISCONNECTED: WifiOff,
+  WHATSAPP_SESSION_UNSTABLE: WifiOff,
+  WHATSAPP_PHONE_INACTIVE: Smartphone,
   PAYMENT_FAILED: CreditCard,
   USAGE_LIMIT_WARNING: BarChart3,
   USAGE_LIMIT_REACHED: BarChart3,

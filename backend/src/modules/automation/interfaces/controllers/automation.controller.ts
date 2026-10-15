@@ -21,6 +21,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces/guards/feature-flag.guard';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import {
   CreateAutomationRuleDto,
   UpdateAutomationRuleDto,
@@ -68,6 +69,7 @@ export class AutomationController {
   @UseGuards(FeatureFlagGuard, UsageLimitGuard)
   @SetMetadata(FEATURE_FLAG_KEY, 'automation')
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
+  @PlatformFeature('ai')
   @HttpCode(HttpStatus.OK)
   async generateRule(
     @Body() dto: GenerateAutomationRuleDto,

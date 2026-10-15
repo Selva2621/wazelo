@@ -1,17 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SessionRepository } from '@/modules/auth/infrastructure/repositories/session.repository';
+import { SuperAdminSessionRepository } from '@/modules/super-admin/infrastructure/repositories/super-admin-session.repository';
 
 @Injectable()
 export class SessionCleanupWorker {
   private readonly logger = new Logger(SessionCleanupWorker.name);
 
-  constructor(private readonly sessionRepository: SessionRepository) {}
+  constructor(
+    private readonly sessionRepository: SessionRepository,
+    private readonly superAdminSessionRepository: SuperAdminSessionRepository,
+  ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
   async handleCleanup(): Promise<void> {
     try {
-      const deleted = await this.sessionRepository.deleteExpiredSessions();
+      const deleted =
+        (await this.sessionRepository.deleteExpiredSessions()) +
+        (await this.superAdminSessionRepository.deleteExpired());
       if (deleted > 0) {
         this.logger.log(`Cleaned up ${deleted} expired/revoked sessions`);
       }

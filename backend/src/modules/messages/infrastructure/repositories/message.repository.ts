@@ -89,6 +89,21 @@ export class MessageRepository {
     return msg ? this.decryptMessage(msg) : null;
   }
 
+  /** Latest messages with a contact (any session), decrypted, newest first. */
+  async findRecentByContactPhone(orgId: string, contactPhone: string, take = 60) {
+    const digits = contactPhone.replace(/^\+/, '');
+    const data = await this.prisma.message.findMany({
+      where: {
+        orgId,
+        deletedAt: null,
+        contactPhone: { in: [digits, `+${digits}`] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+    return data.map((m) => this.decryptMessage(m));
+  }
+
   async findByWhatsAppMessageId(whatsappMessageId: string) {
     const msg = await this.prisma.message.findUnique({
       where: { whatsappMessageId },
@@ -302,7 +317,9 @@ export class MessageRepository {
   }
 
   /**
-   * Count recent outbound messages for a session within a time window.
+   * Count outbound messages a session actually SENT within a time window.
+   * Counts by sentAt, not createdAt: campaigns create hundreds of rows at once,
+   * and counting creation time let them all go out together once those rows aged out of the window.
    * Used for per-session rate limiting.
    */
   async countRecentBySession(sessionId: string, windowMs: number): Promise<number> {
@@ -312,13 +329,13 @@ export class MessageRepository {
         sessionId,
         direction: MessageDirection.OUTBOUND,
         deletedAt: null,
-        createdAt: { gte: since },
+        sentAt: { gte: since },
       },
     });
   }
 
   /**
-   * Count recent outbound messages for an org within a time window.
+   * Count outbound messages an org actually SENT within a time window.
    * Used for org-level rate limiting.
    */
   async countRecentByOrg(orgId: string, windowMs: number): Promise<number> {
@@ -328,7 +345,7 @@ export class MessageRepository {
         orgId,
         direction: MessageDirection.OUTBOUND,
         deletedAt: null,
-        createdAt: { gte: since },
+        sentAt: { gte: since },
       },
     });
   }

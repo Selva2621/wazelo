@@ -8,14 +8,15 @@ import {
   DEFAULT_CANNED_RESPONSES,
   DEFAULT_LEAD_SCORING_RULES,
   DEFAULT_PIPELINE,
+  FREELANCER_PIPELINE,
   DEFAULT_SLA_POLICIES,
   DEFAULT_TAGS,
 } from '@/shared/constants/org-defaults';
 import {
-  FREELANCER_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
   SystemTemplate,
 } from '@/shared/constants/system-templates';
+import { buildFreelancerTemplates } from '@/shared/constants/freelancer-profiles';
 
 /**
  * - signup           — new org: full onboarding including the free trial
@@ -56,7 +57,8 @@ export class OnboardOrgUseCase {
     }
 
     if (mode === 'org-type-changed') {
-      await this.seedSystemTemplates(orgId, org.orgType);
+      await this.seedSystemTemplates(orgId, org.orgType, org.freelancerTypes, org.freelancerService);
+      await this.seedFreelancerPipeline(orgId, org.orgType);
       return;
     }
 
@@ -73,9 +75,10 @@ export class OnboardOrgUseCase {
     await this.rbacService.seedDefaultPermissionsForOrg(orgId);
     await this.initAiMemory(orgId);
     await this.seedPipeline(orgId);
+    await this.seedFreelancerPipeline(orgId, org.orgType);
     await this.seedTags(orgId);
     await this.seedLeadScoringRules(orgId);
-    await this.seedSystemTemplates(orgId, org.orgType);
+    await this.seedSystemTemplates(orgId, org.orgType, org.freelancerTypes, org.freelancerService);
 
     const adminId = await this.onboardingRepository.findFirstAdminId(orgId);
     if (adminId) {
@@ -128,6 +131,13 @@ export class OnboardOrgUseCase {
     await this.onboardingRepository.createDefaultPipeline(orgId, DEFAULT_PIPELINE);
   }
 
+  /** Freelancers get their own client pipeline as the default, once. */
+  private async seedFreelancerPipeline(orgId: string, orgType: OrgType): Promise<void> {
+    if (orgType !== OrgType.FREELANCER) return;
+    if (await this.onboardingRepository.hasPipelineNamed(orgId, FREELANCER_PIPELINE.name)) return;
+    await this.onboardingRepository.createPipelineAsDefault(orgId, FREELANCER_PIPELINE);
+  }
+
   private async seedTags(orgId: string): Promise<void> {
     if (await this.onboardingRepository.hasAnyTag(orgId)) return;
     await this.onboardingRepository.createTags(orgId, DEFAULT_TAGS);
@@ -148,10 +158,16 @@ export class OnboardOrgUseCase {
     await this.onboardingRepository.createSlaPolicies(orgId, adminId, timezone, DEFAULT_SLA_POLICIES);
   }
 
-  private async seedSystemTemplates(orgId: string, orgType: OrgType): Promise<void> {
+  private async seedSystemTemplates(
+    orgId: string,
+    orgType: OrgType,
+    freelancerTypes?: readonly string[] | null,
+    freelancerService?: string | null,
+  ): Promise<void> {
     const templates: SystemTemplate[] = [
       ...SHOPIFY_SYSTEM_TEMPLATES,
-      ...(orgType === OrgType.FREELANCER ? FREELANCER_SYSTEM_TEMPLATES : []),
+      // Worded for their lines of work (services filled in, plus pitch templates per type)
+      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerTypes, freelancerService) : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(

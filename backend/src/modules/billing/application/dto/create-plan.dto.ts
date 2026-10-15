@@ -38,9 +38,10 @@ export class CreatePlanDto {
   @Min(0)
   priceInCents: number;
 
+  /** ISO 4217 code, e.g. INR or USD */
   @IsOptional()
   @IsString()
-  @MaxLength(3)
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code such as INR or USD' })
   currency?: string;
 
   @IsInt()

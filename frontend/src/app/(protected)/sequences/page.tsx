@@ -22,6 +22,8 @@ import { useWhatsAppSession } from "@/hooks/use-whatsapp";
 import { usePageTitle } from "@/hooks/use-page-title";
 import type { SequenceStatus } from "@/lib/types/sequences";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadError } from "@/components/ui/empty-state";
+import { WhatsAppRequiredBanner } from "@/components/whatsapp/whatsapp-required-banner";
 
 const STATUS_TABS = [
   { id: "", label: "All" },
@@ -41,7 +43,7 @@ export default function SequencesPage() {
   const take = 20;
 
   const { data: session } = useWhatsAppSession();
-  const { data, isLoading } = useSequences({
+  const { data, isLoading, isError, refetch } = useSequences({
     status: (statusFilter || undefined) as SequenceStatus | undefined,
     take,
     skip: page * take,
@@ -79,16 +81,18 @@ export default function SequencesPage() {
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Workflow className="h-6 w-6 text-primary" />
-            Drip Sequences
+            Sequences
           </h1>
           <p className="text-body text-on-surface-variant mt-0.5">
-            Multi-step automated message sequences
+            A first message plus automatic follow-ups
           </p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1" /> New Sequence
         </Button>
       </div>
+
+      <WhatsAppRequiredBanner action="send sequences" />
 
       {/* Status tabs */}
       <Tabs
@@ -105,6 +109,8 @@ export default function SequencesPage() {
         <div className="flex justify-center py-12">
           <Spinner size="lg" className="text-primary" />
         </div>
+      ) : isError ? (
+        <LoadError what="sequences" onRetry={() => refetch()} />
       ) : (
         <>
           <SequenceTable

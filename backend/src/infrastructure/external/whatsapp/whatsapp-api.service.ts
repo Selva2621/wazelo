@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaileysConnectionManager } from './baileys-connection-manager.service';
+import { interactiveToText } from './interactive-to-text';
 
 export interface WhatsAppSendResult {
   whatsappMessageId: string;
@@ -77,54 +78,74 @@ export class WhatsAppApiService {
     };
   }
 
+  /**
+   * Buttons and lists are not rendered for linked-device (Baileys) senders and
+   * the odd payload can get a number flagged, so they go out as plain text
+   * with numbered options instead.
+   */
   async sendInteractiveMessage(
     sessionId: string,
     recipientPhone: string,
     interactivePayload: Record<string, unknown>,
+  ): Promise<WhatsAppSendResult> {
+    const interactiveType = interactivePayload.type as string;
+    if (interactiveType !== 'button' && interactiveType !== 'list') {
+      throw new Error(`Unsupported interactive type: ${interactiveType}`);
+    }
+
+    return this.sendTextMessage(
+      sessionId,
+      recipientPhone,
+      interactiveToText(interactivePayload),
+    );
+  }
+
+  /**
+   * Send a single-choice WhatsApp poll. The caller provides the 32-byte
+   * `messageSecret` and must keep it: votes can only be decrypted with it.
+   */
+  async sendPoll(
+    sessionId: string,
+    recipientPhone: string,
+    poll: { name: string; options: string[]; messageSecret: Uint8Array },
   ): Promise<WhatsAppSendResult> {
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
     }
 
-    const jid = this.phoneToJid(recipientPhone);
-    const interactiveType = interactivePayload.type as string;
-    let content: Record<string, unknown>;
-
-    if (interactiveType === 'button') {
-      // WhatsApp button message (up to 3 buttons)
-      const buttons = (interactivePayload.buttons as Array<{ id: string; title: string }>).map(
-        (btn, i) => ({
-          buttonId: btn.id || `btn-${i}`,
-          buttonText: { displayText: btn.title },
-          type: 1,
-        }),
-      );
-      content = {
-        text: interactivePayload.body as string,
-        footer: interactivePayload.footer as string | undefined,
-        buttons,
-        headerType: 1,
-      };
-    } else if (interactiveType === 'list') {
-      // WhatsApp list message (sections with rows)
-      content = {
-        text: interactivePayload.body as string,
-        footer: interactivePayload.footer as string | undefined,
-        title: interactivePayload.header as string | undefined,
-        buttonText: interactivePayload.buttonText as string || 'Choose',
-        sections: interactivePayload.sections as Array<unknown>,
-      };
-    } else {
-      throw new Error(`Unsupported interactive type: ${interactiveType}`);
-    }
-
-    const result = await sock.sendMessage(jid, content as any);
+    const result = await sock.sendMessage(this.phoneToJid(recipientPhone), {
+      poll: {
+        name: poll.name,
+        values: poll.options,
+        selectableCount: 1,
+        messageSecret: poll.messageSecret,
+      },
+    });
 
     return {
       whatsappMessageId: result?.key?.id || `local-${Date.now()}`,
       timestamp: Date.now(),
     };
+  }
+
+  /** Show "typing…" to the recipient for `durationMs`. Best effort — never blocks a send. */
+  async showTyping(
+    sessionId: string,
+    recipientPhone: string,
+    durationMs: number,
+  ): Promise<void> {
+    const sock = this.connectionManager.getConnection(sessionId);
+    if (!sock) return;
+
+    const jid = this.phoneToJid(recipientPhone);
+    try {
+      await sock.sendPresenceUpdate('composing', jid);
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+      await sock.sendPresenceUpdate('paused', jid);
+    } catch (error) {
+      this.logger.debug(`Typing indicator failed for session ${sessionId}: ${(error as Error).message}`);
+    }
   }
 
   isSessionConnected(sessionId: string): boolean {

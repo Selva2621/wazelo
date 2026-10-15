@@ -10,7 +10,7 @@ import {
 
 export interface CreatePaymentInput {
   orgId: string;
-  subscriptionId: string;
+  subscriptionId: string | null;
   amountInCents: number;
   currency?: string;
   externalId?: string;
@@ -20,7 +20,8 @@ export interface CreatePaymentInput {
 
 export interface CreateInvoiceInput {
   orgId: string;
-  subscriptionId: string;
+  /** Null only for manual invoices raised by a super admin */
+  subscriptionId: string | null;
   paymentId?: string;
   invoiceNumber: string;
   amountInCents: number;
@@ -30,6 +31,10 @@ export interface CreateInvoiceInput {
   lineItems: Record<string, unknown>[];
   dueDate: Date;
   externalId?: string;
+  /** Defaults to DRAFT */
+  status?: InvoiceStatus;
+  paidAt?: Date;
+  metadata?: Prisma.InputJsonValue;
 }
 
 @Injectable()
@@ -38,8 +43,9 @@ export class PaymentRepository {
 
   // ── Payments ──
 
-  async createPayment(input: CreatePaymentInput): Promise<Payment> {
-    return this.prisma.payment.create({
+  /** @param tx run inside the caller's transaction */
+  async createPayment(input: CreatePaymentInput, tx?: Prisma.TransactionClient): Promise<Payment> {
+    return (tx ?? this.prisma).payment.create({
       data: {
         orgId: input.orgId,
         subscriptionId: input.subscriptionId,
@@ -74,17 +80,19 @@ export class PaymentRepository {
     expectedStatus: PaymentStatus,
     newStatus: PaymentStatus,
     extra?: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
   ): Promise<Payment | null> {
     // A succeeded payment always gets paidAt (revenue reporting groups by it);
     // callers may still pass their own timestamp
     const paidAt = newStatus === PaymentStatus.SUCCEEDED ? { paidAt: new Date() } : {};
-    const result = await this.prisma.payment.updateMany({
+    const db = tx ?? this.prisma;
+    const result = await db.payment.updateMany({
       where: { id, status: expectedStatus },
       data: { status: newStatus, ...paidAt, ...extra },
     });
 
     if (result.count === 0) return null;
-    return this.findPaymentById(id);
+    return db.payment.findUnique({ where: { id } });
   }
 
   async schedulePaymentRetry(
@@ -134,8 +142,9 @@ export class PaymentRepository {
 
   // ── Invoices ──
 
-  async createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
-    return this.prisma.invoice.create({
+  /** @param tx run inside the caller's transaction */
+  async createInvoice(input: CreateInvoiceInput, tx?: Prisma.TransactionClient): Promise<Invoice> {
+    return (tx ?? this.prisma).invoice.create({
       data: {
         orgId: input.orgId,
         subscriptionId: input.subscriptionId,
@@ -143,14 +152,38 @@ export class PaymentRepository {
         invoiceNumber: input.invoiceNumber,
         amountInCents: input.amountInCents,
         currency: input.currency || 'USD',
-        status: InvoiceStatus.DRAFT,
+        status: input.status ?? InvoiceStatus.DRAFT,
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
         lineItems: input.lineItems as Prisma.InputJsonValue,
         dueDate: input.dueDate,
         externalId: input.externalId || null,
+        paidAt: input.paidAt ?? null,
+        ...(input.metadata !== undefined && { metadata: input.metadata }),
       },
     });
+  }
+
+  /**
+   * OPEN/DRAFT → PAID, optionally linking the payment. Conditional, so a concurrent
+   * void or second settle loses; returns null when the invoice was not open.
+   */
+  async markInvoicePaid(
+    id: string,
+    data: { paymentId?: string; paidAt?: Date },
+    tx?: Prisma.TransactionClient,
+  ): Promise<Invoice | null> {
+    const db = tx ?? this.prisma;
+    const result = await db.invoice.updateMany({
+      where: { id, status: { in: [InvoiceStatus.OPEN, InvoiceStatus.DRAFT] } },
+      data: {
+        status: InvoiceStatus.PAID,
+        paidAt: data.paidAt ?? new Date(),
+        ...(data.paymentId && { paymentId: data.paymentId }),
+      },
+    });
+    if (result.count === 0) return null;
+    return db.invoice.findUnique({ where: { id } });
   }
 
   async findInvoiceById(id: string): Promise<Invoice | null> {
@@ -162,14 +195,16 @@ export class PaymentRepository {
     expectedStatus: InvoiceStatus,
     newStatus: InvoiceStatus,
     extra?: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
   ): Promise<Invoice | null> {
-    const result = await this.prisma.invoice.updateMany({
+    const db = tx ?? this.prisma;
+    const result = await db.invoice.updateMany({
       where: { id, status: expectedStatus },
       data: { status: newStatus, ...extra },
     });
 
     if (result.count === 0) return null;
-    return this.findInvoiceById(id);
+    return db.invoice.findUnique({ where: { id } });
   }
 
   async findInvoicesByOrgPaginated(
@@ -196,8 +231,9 @@ export class PaymentRepository {
     return { invoices, total };
   }
 
-  async getNextInvoiceNumber(): Promise<string> {
-    const count = await this.prisma.invoice.count();
+  /** @param tx run inside the caller's transaction */
+  async getNextInvoiceNumber(tx?: Prisma.TransactionClient): Promise<string> {
+    const count = await (tx ?? this.prisma).invoice.count();
     const padded = String(count + 1).padStart(8, '0');
     return `INV-${padded}`;
   }

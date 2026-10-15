@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { sendCsv } from '../csv-response';
 import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { requestMeta } from '../request-meta';
@@ -23,11 +24,20 @@ import {
   AdminChangePlanDto,
   AdminExtendTrialDto,
   SuspendOrgDto,
+  AdminUpdateOrgDto,
+  AdminDeleteOrgDto,
 } from '../../application/dto/org-management.dto';
+import {
+  AdminDeleteOrgUseCase,
+  AdminExportOrgUseCase,
+  AdminRestoreOrgUseCase,
+  AdminUpdateOrgUseCase,
+} from '../../application/use-cases/org-lifecycle.use-cases';
 import { GetPlatformStatsUseCase } from '../../application/use-cases/get-platform-stats.use-case';
 import { GetPlatformActivityUseCase } from '../../application/use-cases/get-platform-activity.use-case';
 import { GetAllOrgsUseCase } from '../../application/use-cases/get-all-orgs.use-case';
 import { GetOrgDetailUseCase } from '../../application/use-cases/get-org-detail.use-case';
+import { GlobalSearchUseCase } from '../../application/use-cases/global-search.use-case';
 import { ListSubscriptionsUseCase } from '../../application/use-cases/list-subscriptions.use-case';
 
 function toInt(value: string | undefined, fallback: number): number {
@@ -57,7 +67,54 @@ export class SuperAdminOrgsController {
     private readonly getEntitlementsUseCase: GetOrgEntitlementsUseCase,
     private readonly setEntitlementUseCase: SetEntitlementOverrideUseCase,
     private readonly removeEntitlementUseCase: RemoveEntitlementOverrideUseCase,
+    private readonly updateOrgUseCase: AdminUpdateOrgUseCase,
+    private readonly deleteOrgUseCase: AdminDeleteOrgUseCase,
+    private readonly restoreOrgUseCase: AdminRestoreOrgUseCase,
+    private readonly exportOrgUseCase: AdminExportOrgUseCase,
+    private readonly globalSearchUseCase: GlobalSearchUseCase,
   ) {}
+
+  /** Header search: top 5 orgs, users, phone numbers, tickets and invoices (min 2 chars). */
+  @Get('search')
+  async search(@Query('q') q?: string) {
+    return this.globalSearchUseCase.execute(q);
+  }
+
+  // ── Org lifecycle ──
+
+  @Patch('organizations/:id')
+  async updateOrg(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminUpdateOrgDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.updateOrgUseCase.execute(id, dto, actionContext(user, req));
+  }
+
+  /** Soft delete; restorable for 30 days. Body must repeat the org name. */
+  @Post('organizations/:id/delete')
+  @HttpCode(HttpStatus.OK)
+  async deleteOrg(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminDeleteOrgDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.deleteOrgUseCase.execute(id, dto.confirmName, dto.reason, actionContext(user, req));
+  }
+
+  @Post('organizations/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restoreOrg(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.restoreOrgUseCase.execute(id, actionContext(user, req));
+  }
+
+  /** JSON copy of the org's data (no credentials, no message content); audited. */
+  @Get('organizations/:id/export')
+  async exportOrg(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.exportOrgUseCase.execute(id, actionContext(user, req));
+  }
 
   // ── Org actions ──
 
@@ -127,13 +184,29 @@ export class SuperAdminOrgsController {
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     return this.getAllOrgsUseCase.execute({
       page: toInt(page, 1),
       limit: toInt(limit, 20),
       search,
       status,
+      sort,
+      order,
     });
+  }
+
+  /** Same filters and sort as the list, as a CSV download (max 10,000 rows). Declared before ':id'. */
+  @Get('organizations/export.csv')
+  async exportOrgs(
+    @Res() res: Response,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
+  ) {
+    sendCsv(res, await this.getAllOrgsUseCase.exportCsv({ search, status, sort, order }));
   }
 
   @Get('organizations/:id')
@@ -181,7 +254,29 @@ export class SuperAdminOrgsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
-    return this.listSubscriptionsUseCase.execute({ page: toInt(page, 1), limit: toInt(limit, 20), status });
+    return this.listSubscriptionsUseCase.execute({
+      page: toInt(page, 1),
+      limit: toInt(limit, 20),
+      status,
+      search,
+      sort,
+      order,
+    });
+  }
+
+  /** Same filters and sort as the list, as a CSV download (max 10,000 rows). */
+  @Get('subscriptions/export.csv')
+  async exportSubscriptions(
+    @Res() res: Response,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
+  ) {
+    sendCsv(res, await this.listSubscriptionsUseCase.exportCsv({ status, search, sort, order }));
   }
 }

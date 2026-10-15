@@ -1,6 +1,9 @@
 import {
   IsOptional,
   IsString,
+  IsUUID,
+  IsObject,
+  ArrayMaxSize,
   IsNumber,
   IsDateString,
   IsIn,
@@ -28,7 +31,7 @@ export class QueryMetricsDto {
   endDate?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   orgId?: string;
 }
 
@@ -46,7 +49,7 @@ export class QueryTimeSeriesDto {
   endDate?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   orgId?: string;
 
   @IsOptional()
@@ -79,10 +82,64 @@ export class CreateAlertRuleDto {
   windowSeconds: number;
 
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(50, { each: true })
   channels: string[];
 
+  /** Free-form per-channel settings (stored as JSON); must be a plain object */
+  @IsObject()
   channelConfig: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  @Max(86400)
+  cooldownSeconds?: number;
+}
+
+/** Every field optional: send only what changes (e.g. `{ enabled: false }` to pause). */
+export class UpdateAlertRuleDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  metric?: string;
+
+  @IsOptional()
+  @IsIn(['gt', 'lt', 'gte', 'lte', 'eq'])
+  condition?: string;
+
+  @IsOptional()
+  @IsNumber()
+  threshold?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(10)
+  @Max(86400)
+  windowSeconds?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  channels?: string[];
+
+  @IsOptional()
+  @IsObject()
+  channelConfig?: Record<string, unknown>;
 
   @IsOptional()
   @IsBoolean()

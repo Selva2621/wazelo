@@ -10,6 +10,15 @@ import type {
   ListInvoicesParams,
 } from "@/lib/types/billing";
 
+export interface CouponValidation {
+  valid: boolean;
+  /** Minor units */
+  discountInCents: number;
+  finalAmountInCents: number;
+  currency: string;
+  message: string;
+}
+
 // apiClient response interceptor already unwraps { success, data } envelope.
 // So r.data is the actual payload returned by the use case.
 
@@ -30,17 +39,32 @@ export const billingApi = {
       .get<SubscriptionWithUsage>("/billing/subscription")
       .then((r) => r.data),
 
-  subscribe: (planId: string, idempotencyKey?: string) =>
+  /** `couponCode` only matters for a 100%-off coupon on a paid plan without trial. */
+  subscribe: (planId: string, idempotencyKey?: string, couponCode?: string) =>
     apiClient
-      .post<{ subscription: any; deduplicated: boolean }>("/billing/subscribe", { planId, idempotencyKey })
+      .post<{ subscription: any; deduplicated: boolean }>("/billing/subscribe", {
+        planId,
+        idempotencyKey,
+        ...(couponCode ? { couponCode } : {}),
+      })
       .then((r) => r.data),
 
-  createOrder: (planId: string) =>
+  /** `amount` is after any coupon discount. 400 when a coupon covers the full price — use subscribe instead. */
+  createOrder: (planId: string, couponCode?: string) =>
     apiClient
-      .post<{ orderId: string; amount: number; currency: string; planName: string }>(
-        "/billing/create-order",
-        { planId },
-      )
+      .post<{
+        orderId: string;
+        amount: number;
+        currency: string;
+        planName: string;
+        discountInCents?: number;
+        originalAmount?: number;
+      }>("/billing/create-order", { planId, ...(couponCode ? { couponCode } : {}) })
+      .then((r) => r.data),
+
+  validateCoupon: (code: string, planId: string) =>
+    apiClient
+      .post<CouponValidation>("/billing/coupons/validate", { code, planId })
       .then((r) => r.data),
 
   verifyPayment: (data: {

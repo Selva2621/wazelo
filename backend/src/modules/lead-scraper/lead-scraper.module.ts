@@ -15,6 +15,8 @@ import { ProcessScrapeRunUseCase } from './application/use-cases/process-scrape-
 import { ListScrapeRunsUseCase } from './application/use-cases/list-scrape-runs.use-case';
 import { ImportScrapeResultsUseCase } from './application/use-cases/import-scrape-results.use-case';
 import { CheckWhatsAppUseCase } from './application/use-cases/check-whatsapp.use-case';
+import { WhatsAppCheckRunUseCase } from './application/use-cases/whatsapp-check-run.use-case';
+import { WhatsAppCheckThrottleService } from './domain/services/whatsapp-check-throttle.service';
 
 // Controllers
 import { LeadScraperController } from './interfaces/controllers/lead-scraper.controller';
@@ -29,8 +31,10 @@ import { LeadScraperController } from './interfaces/controllers/lead-scraper.con
     ListScrapeRunsUseCase,
     ImportScrapeResultsUseCase,
     CheckWhatsAppUseCase,
+    WhatsAppCheckRunUseCase,
+    WhatsAppCheckThrottleService,
   ],
   controllers: [LeadScraperController],
-  exports: [ProcessScrapeRunUseCase],
+  exports: [ProcessScrapeRunUseCase, WhatsAppCheckRunUseCase],
 })
 export class LeadScraperModule {}

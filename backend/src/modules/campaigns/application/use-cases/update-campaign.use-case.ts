@@ -11,6 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { EVENT_NAMES } from '@/common/constants';
 import { AuditAction } from '@prisma/client';
+import { assertNoUnknownPlaceholders } from './create-campaign.use-case';
 
 @Injectable()
 export class UpdateCampaignUseCase {
@@ -63,6 +64,7 @@ export class UpdateCampaignUseCase {
     if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(messageType) && !mediaUrl) {
       throw new BadRequestException(`${messageType} campaigns require a mediaUrl`);
     }
+    assertNoUnknownPlaceholders(messageBody);
 
     // 5. Update
     const updated = await this.campaignRepo.updateDraft(campaignId, orgId, {

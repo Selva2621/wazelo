@@ -768,7 +768,7 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
             });
           }
           if (result.truncated) {
-            setLog((prev) => [...prev, { role: "system", text: "⚠️ Simulation truncated at 20 steps to prevent loops." }]);
+            setLog((prev) => [...prev, { role: "system", text: "Simulation stopped after 20 steps to prevent loops." }]);
           }
         },
       }

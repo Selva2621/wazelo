@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,30 +43,19 @@ export function CreateDealModal({
   const { data: pipelines } = usePipelines();
   const needsFetch = !externalPipelineId || !externalStages;
 
-  const activePipelineId = externalPipelineId || selectedPipelineId;
+  // Defaults are derived during render rather than copied into state by effects:
+  // the default pipeline, its first stage, and the prefilled contact (until cleared)
+  const defaultPipelineId = (pipelines?.find((p) => p.isDefault) ?? pipelines?.[0])?.id ?? "";
+  const pipelineChoice = selectedPipelineId || defaultPipelineId;
+  const activePipelineId = externalPipelineId || pipelineChoice;
   const activePipeline = pipelines?.find((p) => p.id === activePipelineId);
   const activeStages = externalStages || activePipeline?.stages || [];
+  const effectiveStageId = activeStages.some((s) => s.id === stageId) ? stageId : activeStages[0]?.id ?? "";
 
-  useEffect(() => {
-    if (needsFetch && pipelines?.length && !selectedPipelineId) {
-      const def = pipelines.find((p) => p.isDefault) || pipelines[0];
-      setSelectedPipelineId(def.id);
-      if (def.stages?.length) setStageId(def.stages[0].id);
-    }
-  }, [needsFetch, pipelines, selectedPipelineId]);
-
-  useEffect(() => {
-    if (externalStages?.length && !stageId) {
-      setStageId(externalStages[0].id);
-    }
-  }, [externalStages, stageId]);
-
-  useEffect(() => {
-    if (prefilledContactId && open) {
-      setSelectedContactId(prefilledContactId);
-      setSelectedContactName(prefilledContactName || "");
-    }
-  }, [prefilledContactId, prefilledContactName, open]);
+  const [contactCleared, setContactCleared] = useState(false);
+  const usePrefill = !selectedContactId && !contactCleared && !!prefilledContactId;
+  const effectiveContactId = selectedContactId ?? (usePrefill ? prefilledContactId! : null);
+  const effectiveContactName = usePrefill ? prefilledContactName || "" : selectedContactName;
 
   const createDeal = useCreateDeal();
   const { data: contactsData } = useContacts(
@@ -77,8 +66,8 @@ export function CreateDealModal({
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = "Deal title is required.";
     else if (title.trim().length > 255) e.title = "Title must be 255 characters or less.";
-    if (!selectedContactId) e.contact = "Select a contact.";
-    if (!stageId) e.stage = "Select a stage.";
+    if (!effectiveContactId) e.contact = "Select a contact.";
+    if (!effectiveStageId) e.stage = "Select a stage.";
     if (value && (isNaN(parseFloat(value)) || parseFloat(value) < 0))
       e.value = "Enter a valid positive number.";
     if (expectedClose && new Date(expectedClose) < new Date(new Date().toDateString()))
@@ -92,8 +81,8 @@ export function CreateDealModal({
     createDeal.mutate(
       {
         pipelineId: activePipelineId,
-        stageId,
-        contactId: selectedContactId!,
+        stageId: effectiveStageId,
+        contactId: effectiveContactId!,
         title: title.trim(),
         value: value ? parseFloat(value) : undefined,
         expectedClose: expectedClose || undefined,
@@ -109,6 +98,7 @@ export function CreateDealModal({
           if (!lockContact) {
             setSelectedContactId(null);
             setSelectedContactName("");
+            setContactCleared(false);
           }
           onClose();
         },
@@ -149,12 +139,12 @@ export function CreateDealModal({
           <label className="text-label font-medium text-on-surface-variant">
             Contact <span className="text-error">*</span>
           </label>
-          {selectedContactId ? (
+          {effectiveContactId ? (
             <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10">
-              <span className="text-body text-on-surface">{selectedContactName}</span>
+              <span className="text-body text-on-surface">{effectiveContactName}</span>
               {!lockContact && (
                 <button aria-label="Clear contact"
-                  onClick={() => { setSelectedContactId(null); setSelectedContactName(""); setContactSearch(""); setErrors((p) => ({ ...p, contact: "" })); }}
+                  onClick={() => { setSelectedContactId(null); setSelectedContactName(""); setContactCleared(true); setContactSearch(""); setErrors((p) => ({ ...p, contact: "" })); }}
                   className="text-on-surface-variant hover:text-error"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -197,7 +187,7 @@ export function CreateDealModal({
           <div className="space-y-1.5">
             <label className="text-label font-medium text-on-surface-variant">Pipeline</label>
             <select
-              value={selectedPipelineId}
+              value={pipelineChoice}
               onChange={(e) => {
                 setSelectedPipelineId(e.target.value);
                 const p = pipelines.find((pp) => pp.id === e.target.value);
@@ -218,7 +208,7 @@ export function CreateDealModal({
             Stage <span className="text-error">*</span>
           </label>
           <select
-            value={stageId}
+            value={effectiveStageId}
             onChange={(e) => { setStageId(e.target.value); setErrors((p) => ({ ...p, stage: "" })); }}
             className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body text-on-surface"
           >

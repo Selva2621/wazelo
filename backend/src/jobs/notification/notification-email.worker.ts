@@ -72,8 +72,8 @@ export class NotificationEmailWorker implements OnModuleInit {
     firstName: string,
     data?: Record<string, unknown>,
   ): { subject: string; html: string } {
-    const priorityEmoji = priority === 'CRITICAL' ? '🚨 ' : priority === 'HIGH' ? '⚠️ ' : '';
-    const subject = `${priorityEmoji}${title} — Wazelo CRM`;
+    const priorityPrefix = priority === 'CRITICAL' ? '[Urgent] ' : priority === 'HIGH' ? '[Important] ' : '';
+    const subject = `${priorityPrefix}${title} — Wazelo CRM`;
 
     const priorityBanner =
       priority === 'CRITICAL'
@@ -116,6 +116,8 @@ export class NotificationEmailWorker implements OnModuleInit {
       PAYMENT_FAILED:               { label: 'Manage Billing',     url: `${this.frontendUrl}/settings/billing` },
       SUBSCRIPTION_EXPIRING:        { label: 'Manage Billing',     url: `${this.frontendUrl}/settings/billing` },
       WHATSAPP_SESSION_DISCONNECTED:{ label: 'Reconnect Session',  url: `${this.frontendUrl}/settings/whatsapp` },
+      WHATSAPP_SESSION_UNSTABLE:    { label: 'Check Connection',   url: `${this.frontendUrl}/settings/whatsapp` },
+      WHATSAPP_PHONE_INACTIVE:      { label: 'Check Connection',   url: `${this.frontendUrl}/settings/whatsapp` },
       CONTACT_ASSIGNED:             { label: 'View Contact',       url: `${this.frontendUrl}/contacts/${data?.contactId ?? ''}` },
       CONTACT_REASSIGNED:           { label: 'View Contact',       url: `${this.frontendUrl}/contacts/${data?.contactId ?? ''}` },
       SLA_BREACH:                   { label: 'View Conversation',  url: `${this.frontendUrl}/inbox/${data?.conversationId ?? ''}` },
@@ -125,7 +127,17 @@ export class NotificationEmailWorker implements OnModuleInit {
       AUTOMATION_FAILED:            { label: 'View Automations',   url: `${this.frontendUrl}/automation` },
       USAGE_LIMIT_WARNING:          { label: 'View Usage',         url: `${this.frontendUrl}/settings/billing` },
       USAGE_LIMIT_REACHED:          { label: 'Upgrade Plan',       url: `${this.frontendUrl}/settings/billing` },
+      DEAL_FOLLOW_UP_DUE:           { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
+      DEAL_SCOPE_RESPONSE:          { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
     };
+
+    // Session owner: reconnect straight from the phone, no login
+    if (type === 'WHATSAPP_SESSION_DISCONNECTED' && typeof data?.reconnectToken === 'string') {
+      return buildButton(
+        'Reconnect from your phone',
+        `${this.frontendUrl}/wa/${encodeURIComponent(data.reconnectToken)}`,
+      );
+    }
 
     const action = actions[type] ?? {
       label: 'Go to Dashboard',

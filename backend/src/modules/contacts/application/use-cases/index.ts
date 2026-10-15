@@ -11,3 +11,4 @@ export { AddNoteUseCase } from './add-note.use-case';
 export { GetNotesUseCase } from './get-notes.use-case';
 export { AddTagUseCase, RemoveTagUseCase } from './manage-tags.use-case';
 export { GetContactHistoryUseCase } from './get-contact-history.use-case';
+export { BulkContactsUseCase } from './bulk-contacts.use-case';

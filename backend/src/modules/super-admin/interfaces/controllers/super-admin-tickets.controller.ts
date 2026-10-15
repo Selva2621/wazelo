@@ -1,9 +1,10 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, Req,
+  Controller, Get, Post, Patch, Body, Param, Query, Req, Res,
   ParseUUIDPipe, HttpCode, HttpStatus, BadRequestException,
 } from '@nestjs/common';
 import { SuperAdminRepository } from '../../infrastructure/repositories/super-admin.repository';
-import { Request } from 'express';
+import { Request, Response } from 'express';
+import { sendCsv } from '../csv-response';
 import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import {
@@ -64,6 +65,12 @@ export class SuperAdminTicketsController {
   @Get()
   async listTickets(@Query() query: ListTicketsQueryDto, @CurrentUser() user: JwtPayload) {
     return this.listTicketsUseCase.execute(query, undefined, true, user.sub);
+  }
+
+  /** Same filters and sort as the queue, as a CSV download (max 10,000 rows). Declared before ':id'. */
+  @Get('export.csv')
+  async exportTickets(@Query() query: ListTicketsQueryDto, @CurrentUser() user: JwtPayload, @Res() res: Response) {
+    sendCsv(res, await this.listTicketsUseCase.exportCsv(query, user.sub));
   }
 
   @Get(':id')

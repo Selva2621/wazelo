@@ -7,25 +7,80 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import makeWASocket, {
   WASocket,
-  DisconnectReason,
+  WAMessageKey,
+  CacheStore,
   makeCacheableSignalKeyStore,
   fetchLatestBaileysVersion,
   getContentType,
   WAMessage,
+  proto,
+  decryptPollVote,
+  jidNormalizedUser,
 } from '@whiskeysockets/baileys';
+import { createHash } from 'crypto';
 import { Boom } from '@hapi/boom';
 import * as QRCode from 'qrcode';
 import pino from 'pino';
 import { BaileysAuthStateService } from './baileys-auth-state.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
+import { classifyDisconnect } from '@/modules/whatsapp/domain/services/disconnect-classifier';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { EVENT_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
+
+/** Looks up the text of a message this platform sent, by WhatsApp message id. */
+export type SentMessageLookup = (whatsappMessageId: string) => Promise<string | undefined>;
+
+/** Looks up a poll this platform sent: its secret (base64) and option texts. */
+export type PollLookup = (
+  pollMessageId: string,
+) => Promise<{ secretBase64: string; options: string[] } | null>;
+
+/** Minimal in-memory CacheStore for Baileys' message retry counters. */
+class MemoryCacheStore implements CacheStore {
+  private readonly store = new Map<string, unknown>();
+  get<T>(key: string): T | undefined {
+    return this.store.get(key) as T | undefined;
+  }
+  set<T>(key: string, value: T): void {
+    if (this.store.size > 10_000) this.store.clear();
+    this.store.set(key, value);
+  }
+  del(key: string): void {
+    this.store.delete(key);
+  }
+  flushAll(): void {
+    this.store.clear();
+  }
+}
+
+/** A session linking by phone-number pairing code instead of a QR scan. */
+interface PairingRequest {
+  phoneNumber: string;
+  /** Latest code issued — a new one comes with each socket until the user enters it */
+  code?: string;
+  /** Set until the first code is issued for the HTTP caller */
+  resolve?: (code: string) => void;
+  reject?: (error: Error) => void;
+}
 
 @Injectable()
 export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BaileysConnectionManager.name);
   private readonly connections = new Map<string, WASocket>();
+  /** Sockets whose connection actually opened — a socket in `connections` may still be pairing */
+  private readonly openSockets = new Set<string>();
   private readonly initializing = new Set<string>();
+  private readonly pairingRequests = new Map<string, PairingRequest>();
+  /** Sockets that already asked WhatsApp for a pairing code (one code per socket) */
+  private readonly pairingRequested = new WeakSet<WASocket>();
+  /** Sessions that just linked (QR or code) — the phone was online for that */
+  private readonly newLogins = new Set<string>();
+  /** Last phone-activity report per session, to keep DB writes rare */
+  private readonly phoneActivityReportedAt = new Map<string, number>();
+  private readonly msgRetryCounterCache = new MemoryCacheStore();
+  private cachedVersion: { version: [number, number, number]; fetchedAt: number } | null = null;
+  private sentMessageLookup: SentMessageLookup | null = null;
+  private pollLookup: PollLookup | null = null;
 
   constructor(
     private readonly authStateService: BaileysAuthStateService,
@@ -53,7 +108,11 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    for (const [sessionId, sock] of this.connections) {
+    const sockets = [...this.connections];
+    // Untrack first so shutdown closes aren't handled as disconnects
+    this.connections.clear();
+    this.openSockets.clear();
+    for (const [sessionId, sock] of sockets) {
       try {
         sock.end(undefined);
         this.logger.log(`Closed socket for session ${sessionId}`);
@@ -61,7 +120,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`Error closing socket ${sessionId}`, error);
       }
     }
-    this.connections.clear();
   }
 
   async createConnection(
@@ -81,7 +139,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     try {
       const { state, saveCreds } =
         await this.authStateService.getAuthState(sessionId);
-      const { version } = await fetchLatestBaileysVersion();
+      const version = await this.getWaVersion();
 
       const sock = makeWASocket({
         version,
@@ -96,6 +154,11 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
         logger: pino({ level: 'silent' }) as any,
         browser: ['Wazelo CRM', 'Chrome', '120.0.0'],
         syncFullHistory: false,
+        // Don't appear permanently online — it also stops notifications on the user's phone
+        markOnlineOnConnect: false,
+        // Lets Baileys re-send a message the recipient couldn't decrypt ("waiting for this message")
+        msgRetryCounterCache: this.msgRetryCounterCache,
+        getMessage: (key) => this.getSentMessage(key),
         connectTimeoutMs: WHATSAPP_CONFIG.DISCONNECT_DETECTION_TIMEOUT_MS,
         keepAliveIntervalMs: WHATSAPP_CONFIG.HEARTBEAT_INTERVAL_MS,
       });
@@ -113,12 +176,140 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Start a fresh link for `phoneNumber` (digits with country code, no +) using a
+   * pairing code: the user types it in WhatsApp → Linked devices → Link with phone
+   * number. Resolves with the first code; codes for later sockets (the previous
+   * one expired unused) are pushed over WebSocket as `whatsapp:pairing-code`.
+   */
+  async requestPairingCode(
+    sessionId: string,
+    userId: string,
+    orgId: string,
+    phoneNumber: string,
+  ): Promise<string> {
+    await this.destroyConnection(sessionId);
+    await this.authStateService.clearAuthState(sessionId);
+
+    const request: PairingRequest = { phoneNumber };
+    const code = new Promise<string>((resolve, reject) => {
+      request.resolve = resolve;
+      request.reject = reject;
+    });
+    this.pairingRequests.set(sessionId, request);
+
+    const timer = setTimeout(
+      () => request.reject?.(new Error('Timed out waiting for WhatsApp to issue a pairing code')),
+      WHATSAPP_CONFIG.PAIRING_CODE_TIMEOUT_MS,
+    );
+
+    try {
+      await this.createConnection(sessionId, userId, orgId);
+      return await code;
+    } catch (error) {
+      this.pairingRequests.delete(sessionId);
+      await this.destroyConnection(sessionId);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      request.resolve = request.reject = undefined;
+    }
+  }
+
+  /** Current pairing code while a session waits to be linked by phone number. */
+  getPairingCode(sessionId: string): string | null {
+    return this.pairingRequests.get(sessionId)?.code ?? null;
+  }
+
   getConnection(sessionId: string): WASocket | undefined {
     return this.connections.get(sessionId);
   }
 
+  /** True only once the connection is open — not while the socket is still pairing or connecting. */
   isConnected(sessionId: string): boolean {
-    return this.connections.has(sessionId);
+    return this.openSockets.has(sessionId);
+  }
+
+  /** Registered by the messages module so Baileys can re-send messages on retry receipts. */
+  registerSentMessageLookup(lookup: SentMessageLookup): void {
+    this.sentMessageLookup = lookup;
+  }
+
+  /** Registered by the deals module so votes on its polls can be decrypted. */
+  registerPollLookup(lookup: PollLookup): void {
+    this.pollLookup = lookup;
+  }
+
+  /**
+   * Decrypt a vote on one of our polls and emit it. Baileys v7 no longer does
+   * this itself. The voter/creator ids used for the key can be the phone-number
+   * JID or the LID, so each pairing is tried — AES-GCM rejects the wrong ones.
+   */
+  private async handlePollVote(sock: WASocket, msg: WAMessage, sessionId: string): Promise<void> {
+    const update = msg.message?.pollUpdateMessage;
+    const pollId = update?.pollCreationMessageKey?.id;
+    if (!update?.vote?.encPayload || !update.vote.encIv || !pollId || !this.pollLookup) return;
+
+    const poll = await this.pollLookup(pollId);
+    if (!poll) return;
+
+    const pollEncKey = Buffer.from(poll.secretBase64, 'base64');
+    const creatorIds = [sock.user?.id, sock.user?.lid].filter(Boolean).map((id) => jidNormalizedUser(id!));
+    const key = msg.key as WAMessageKey & { remoteJidAlt?: string; participantAlt?: string };
+    const voterIds = [key.participantAlt, key.remoteJidAlt, key.participant, key.remoteJid]
+      .filter(Boolean)
+      .map((id) => jidNormalizedUser(id!));
+
+    for (const pollCreatorJid of new Set(creatorIds)) {
+      for (const voterJid of new Set(voterIds)) {
+        try {
+          const vote = decryptPollVote(update.vote as { encPayload: Uint8Array; encIv: Uint8Array }, {
+            pollCreatorJid,
+            pollMsgId: pollId,
+            pollEncKey,
+            voterJid,
+          });
+          const selected = (vote.selectedOptions ?? []).map((hash) => Buffer.from(hash).toString('hex'));
+          const selectedOptions = poll.options.filter((option) =>
+            selected.includes(createHash('sha256').update(Buffer.from(option)).digest('hex')),
+          );
+          this.eventEmitter.emit(EVENT_NAMES.BAILEYS_POLL_VOTE, {
+            sessionId,
+            pollMessageId: pollId,
+            selectedOptions,
+            voterJid,
+            votedAt: new Date(),
+          });
+          return;
+        } catch {
+          // wrong id pairing — try the next one
+        }
+      }
+    }
+    this.logger.warn(`Could not decrypt vote on poll ${pollId} (session ${sessionId})`);
+  }
+
+  private async getSentMessage(key: WAMessageKey): Promise<proto.IMessage | undefined> {
+    if (!key.id || !this.sentMessageLookup) return undefined;
+    try {
+      const text = await this.sentMessageLookup(key.id);
+      return text ? { conversation: text } : undefined;
+    } catch (error) {
+      this.logger.warn(`getMessage lookup failed for ${key.id}: ${(error as Error).message}`);
+      return undefined;
+    }
+  }
+
+  /** WhatsApp Web version, fetched at most once a day instead of on every connect. */
+  private async getWaVersion(): Promise<[number, number, number]> {
+    const fresh =
+      this.cachedVersion &&
+      Date.now() - this.cachedVersion.fetchedAt < WHATSAPP_CONFIG.VERSION_CACHE_TTL_MS;
+    if (!fresh) {
+      const { version } = await fetchLatestBaileysVersion();
+      this.cachedVersion = { version, fetchedAt: Date.now() };
+    }
+    return this.cachedVersion!.version;
   }
 
   /**
@@ -144,6 +335,13 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     const sock = this.connections.get(sessionId);
     if (!sock) return;
 
+    // Forget the socket BEFORE closing it: end()/logout() emit the close event
+    // synchronously, and the close handler ignores sockets no longer tracked —
+    // otherwise a deliberate disconnect looks like a ban (401) or a network drop.
+    this.connections.delete(sessionId);
+    this.openSockets.delete(sessionId);
+    this.pairingRequests.delete(sessionId);
+
     try {
       if (logout) {
         await sock.logout();
@@ -153,8 +351,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.warn(`Error destroying connection ${sessionId}`, error);
     }
-
-    this.connections.delete(sessionId);
 
     if (logout) {
       await this.authStateService.clearAuthState(sessionId);
@@ -170,9 +366,15 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   ): void {
     // ── connection.update ──
     sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
+      const { connection, lastDisconnect, qr, isNewLogin } = update;
 
-      if (qr) {
+      // Set when a QR scan / pairing code succeeds (just before the 515 restart)
+      if (isNewLogin) this.newLogins.add(sessionId);
+
+      // Pairing-code mode: the socket is ready once it offers a QR — ask for a code instead
+      if (qr && this.pairingRequests.has(sessionId)) {
+        await this.issuePairingCode(sock, sessionId, userId);
+      } else if (qr) {
         try {
           const qrDataUri = await QRCode.toDataURL(qr, { width: 300 });
 
@@ -194,6 +396,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       }
 
       if (connection === 'open') {
+        this.openSockets.add(sessionId);
+        this.pairingRequests.delete(sessionId);
         const phoneNumber = sock.user?.id?.split(':')[0] || null;
 
         this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
@@ -202,46 +406,62 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           userId,
           event: 'connected',
           phoneNumber: phoneNumber ? `+${phoneNumber}` : undefined,
+          newLogin: this.newLogins.delete(sessionId),
         });
       }
 
       if (connection === 'close') {
+        // Ignore a close from a socket that has already been replaced
+        if (this.connections.get(sessionId) !== sock) return;
+
         this.connections.delete(sessionId);
+        this.openSockets.delete(sessionId);
 
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        const decision = classifyDisconnect(statusCode);
+        // `creds.me` is set once a QR scan links the device. In pairing-code mode
+        // it is set as soon as a code is requested, so only `creds.registered`
+        // (set when the user enters the code) means the device is linked.
+        const pairingPending =
+          this.pairingRequests.has(sessionId) && !sock.authState?.creds?.registered;
+        const paired = Boolean(sock.authState?.creds?.me) && !pairingPending;
 
-        if (loggedOut) {
-          // Explicit logout from WhatsApp mobile — clear creds, no reconnect
-          await this.authStateService.clearAuthState(sessionId);
-          this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
-            sessionId,
-            orgId,
-            userId,
-            event: 'logout',
-            reason: 'Logged out from WhatsApp mobile app',
-          });
-        } else {
-          // ALL other codes: network loss, phone offline, restartRequired, timedOut, etc.
-          // Always attempt reconnect — health worker will handle exhaustion
-          this.logger.log(
-            `Auto-reconnecting session ${sessionId} (statusCode: ${statusCode ?? 'unknown'})`,
-          );
+        this.logger.log(
+          `Session ${sessionId} closed (statusCode: ${statusCode ?? 'unknown'} → ${decision.reason}/${decision.action})`,
+        );
+
+        // Still pairing (QR not scanned yet): keep refreshing the QR, as before
+        const reconnectNow =
+          decision.action === 'reconnect_now' ||
+          (!paired && decision.action === 'reconnect_backoff');
+
+        if (reconnectNow) {
+          // The unused code's half-registered creds would make the next socket try to log in
+          if (pairingPending) await this.authStateService.clearAuthState(sessionId);
           setTimeout(() => {
             this.createConnection(sessionId, userId, orgId).catch((err) => {
-              this.logger.error(
-                `Auto-reconnect failed for session ${sessionId}: ${err.message}`,
-              );
-              this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
-                sessionId,
-                orgId,
-                userId,
-                event: 'disconnected',
-                reason: `Auto-reconnect failed: ${err.message}`,
-              });
+              this.logger.error(`Reconnect failed for session ${sessionId}: ${err.message}`);
+              this.emitDisconnect(sessionId, orgId, userId, 'disconnected', statusCode, 'NETWORK', `Reconnect failed: ${err.message}`);
             });
           }, 1500);
+          return;
         }
+
+        if (decision.clearCreds) {
+          await this.authStateService.clearAuthState(sessionId);
+        }
+
+        // NETWORK → the session-event use case reconnects with exponential backoff.
+        // LOGGED_OUT / BANNED / REPLACED / BAD_SESSION → stop; the user has to act.
+        const event =
+          decision.action === 'reconnect_backoff'
+            ? 'disconnected'
+            : decision.reason === 'LOGGED_OUT'
+              ? 'logout'
+              : decision.reason === 'BANNED'
+                ? 'banned'
+                : 'stopped';
+        this.emitDisconnect(sessionId, orgId, userId, event, statusCode, decision.reason, decision.message);
       }
     });
 
@@ -263,6 +483,14 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
       for (const msg of messages) {
         try {
+          // Our own sends come back as 'append'; a 'notify' fromMe was typed on the phone
+          if (msg.key.fromMe && msg.key.remoteJid !== 'status@broadcast') {
+            this.reportPhoneActivity(sessionId, orgId, userId);
+          }
+          if (msg.message?.pollUpdateMessage) {
+            if (!msg.key.fromMe) await this.handlePollVote(sock, msg, sessionId);
+            continue;
+          }
           const payload = this.extractMessagePayload(msg, sessionId);
           if (payload) {
             this.eventEmitter.emit(EVENT_NAMES.BAILEYS_MESSAGE_UPSERT, payload);
@@ -304,6 +532,59 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
+    });
+  }
+
+  private async issuePairingCode(sock: WASocket, sessionId: string, userId: string): Promise<void> {
+    const request = this.pairingRequests.get(sessionId);
+    if (!request || this.pairingRequested.has(sock) || sock.authState.creds.registered) return;
+    this.pairingRequested.add(sock);
+
+    try {
+      const pairingCode = await sock.requestPairingCode(request.phoneNumber);
+      request.code = pairingCode;
+      request.resolve?.(pairingCode);
+      this.wsGateway.emitToUser(userId, 'whatsapp:pairing-code', {
+        sessionId,
+        pairingCode,
+        phoneNumber: `+${request.phoneNumber}`,
+      });
+      this.logger.log(`Pairing code issued for session ${sessionId}`);
+    } catch (error) {
+      this.logger.error(`Failed to request pairing code for ${sessionId}`, error);
+      request.reject?.(error as Error);
+    }
+  }
+
+  private reportPhoneActivity(sessionId: string, orgId: string, userId: string): void {
+    const last = this.phoneActivityReportedAt.get(sessionId) ?? 0;
+    if (Date.now() - last < WHATSAPP_CONFIG.PHONE_ACTIVITY_WRITE_INTERVAL_MS) return;
+    this.phoneActivityReportedAt.set(sessionId, Date.now());
+    this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
+      sessionId,
+      orgId,
+      userId,
+      event: 'phone_activity',
+    });
+  }
+
+  private emitDisconnect(
+    sessionId: string,
+    orgId: string,
+    userId: string,
+    event: 'disconnected' | 'logout' | 'banned' | 'stopped',
+    statusCode: number | undefined,
+    disconnectReason: string,
+    reason: string,
+  ): void {
+    this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
+      sessionId,
+      orgId,
+      userId,
+      event,
+      statusCode,
+      disconnectReason,
+      reason,
     });
   }
 

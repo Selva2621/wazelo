@@ -6,6 +6,8 @@ import { messagesApi } from "@/lib/api/messages";
 import type {
   ListConversationsParams,
   ListMessagesParams,
+  MessageResponse,
+  MessagesListResponse,
   SendMessageRequest,
 } from "@/lib/types/inbox";
 
@@ -48,7 +50,55 @@ export function useSendMessage() {
 
   return useMutation({
     mutationFn: (data: SendMessageRequest) => messagesApi.send(data),
-    onSuccess: () => {
+    // Show the outgoing bubble immediately; the refetch on success swaps in the real message
+    onMutate: async (data) => {
+      if (!data.conversationId) return undefined;
+      const key = conversationKeys.messages(data.conversationId);
+      await queryClient.cancelQueries({ queryKey: key });
+
+      const tempId = `temp-${Date.now()}`;
+      const optimistic: MessageResponse = {
+        id: tempId,
+        orgId: "",
+        sessionId: "",
+        conversationId: data.conversationId,
+        direction: "OUTBOUND",
+        type: data.type ?? "TEXT",
+        contactPhone: data.contactPhone,
+        contactName: data.contactName ?? null,
+        body: data.body ?? null,
+        mediaUrl: data.mediaUrl ?? null,
+        mediaMimeType: data.mediaMimeType ?? null,
+        status: "QUEUED",
+        whatsappMessageId: null,
+        interactivePayload: data.interactive ?? null,
+        idempotencyKey: data.idempotencyKey ?? null,
+        retryCount: 0,
+        failedReason: null,
+        createdAt: new Date().toISOString(),
+        channelPayload: data.channelPayload ?? null,
+      };
+
+      queryClient.setQueryData<MessagesListResponse>(key, (old) =>
+        old ? { ...old, data: [optimistic, ...old.data], total: old.total + 1 } : old,
+      );
+      return { key, tempId };
+    },
+    onError: (_err, _data, ctx) => {
+      if (!ctx) return;
+      queryClient.setQueryData<MessagesListResponse>(ctx.key, (old) =>
+        old
+          ? {
+              ...old,
+              data: old.data.map((m) =>
+                m.id === ctx.tempId ? { ...m, status: "FAILED" as const } : m,
+              ),
+            }
+          : old,
+      );
+    },
+    onSuccess: (_res, _data, ctx) => {
+      if (ctx) queryClient.invalidateQueries({ queryKey: ctx.key });
       queryClient.invalidateQueries({
         queryKey: conversationKeys.all,
       });

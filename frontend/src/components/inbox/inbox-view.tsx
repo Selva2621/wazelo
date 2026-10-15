@@ -40,7 +40,9 @@ import { Badge } from "@/components/ui/badge";
 import { CHANNEL_TYPE_LABELS } from "@/lib/types/channels";
 import type { ChannelType } from "@/lib/types/channels";
 import { ConversationList } from "@/components/chat/conversation-list";
-import { MessageThread } from "@/components/chat/message-thread";
+import { MessageThread, MessageThreadSkeleton } from "@/components/chat/message-thread";
+import { Drawer } from "@/components/ui/modal";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChatInput, type MediaAttachment } from "@/components/chat/chat-input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { uploadApi } from "@/lib/api/messages";
@@ -195,6 +197,11 @@ export function InboxView({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showCreateDeal, setShowCreateDeal] = useState(false);
 
+  // Below lg the inbox is a stack (list → thread) and contact info opens as a bottom sheet.
+  // The persisted contactPanelOpen preference only drives the desktop side panel.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const [mobileContactOpen, setMobileContactOpen] = useState(false);
+
   // ─── Contact data for selected conversation (lookup by phone) ───
   const selectedRawConv = conversationsQuery.data?.data?.find(
     (c) => c.id === selectedId,
@@ -347,10 +354,50 @@ export function InboxView({
     [selectedConversation, selectedId, sendMessage, targetUserId],
   );
 
+  // Rendered in the desktop side panel and the mobile bottom sheet
+  const renderContactPanel = (onClose: () => void) =>
+    selectedConversation && selectedId ? (
+      <ContactPanel
+        contact={{
+          id: contactData?.id ?? "",
+          name: contactData?.name ?? selectedConversation.contactName,
+          phone: contactData?.phoneNumber ?? selectedConversation.contactPhone,
+          email: contactData?.email ?? undefined,
+          leadStatus: contactData?.leadStatus ?? "NEW",
+          tags: contactData?.contactTags?.map((t) => t.tag.name) ?? [],
+          notes: "",
+          assignedTo: contactData?.owner
+            ? `${contactData.owner.firstName} ${contactData.owner.lastName}`
+            : undefined,
+        }}
+        onClose={onClose}
+        onStatusChange={contactData ? (cId, status) => {
+          changeLeadStatus.mutate({ contactId: cId, status });
+        } : undefined}
+        isUpdatingStatus={changeLeadStatus.isPending}
+        conversationAssignedToId={selectedRawConv?.assignedToId ?? null}
+        orgUsers={usersData?.users ?? []}
+        canAssign={userRole === "ADMIN" || userRole === "MANAGER"}
+        isAssigning={assignConversation.isPending}
+        onAssign={(assignedToId) => {
+          if (selectedId) {
+            assignConversation.mutate({ conversationId: selectedId, assignedToId });
+          }
+        }}
+        conversationId={selectedId ?? undefined}
+        onUseMessage={(text) => {
+          setAiSuggestionText(text);
+          setMobileContactOpen(false);
+        }}
+      />
+    ) : null;
+
+  const contactInfoOpen = isDesktop ? contactPanelOpen : mobileContactOpen;
+
   // ─── Loading ───
   if (sessionLoading && !skipSessionCheck) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
+      <div className="flex h-[calc(100dvh-var(--header-height))] items-center justify-center">
         <Spinner size="lg" className="text-primary" />
       </div>
     );
@@ -359,7 +406,7 @@ export function InboxView({
   // ─── No Session / Connecting: Full-page empty state (skip for admin or if channels exist) ───
   if (!skipSessionCheck && !hasActiveChannels && (hasNoSession || isConnecting)) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height))]">
+      <div className="flex h-[calc(100dvh-var(--header-height))]">
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             icon={<MessageSquare className="h-16 w-16" />}
@@ -382,9 +429,14 @@ export function InboxView({
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height))]">
-      {/* Left panel — Conversation list */}
-      <div className="w-[320px] shrink-0 border-r border-outline-variant/15 flex flex-col">
+    <div className="flex h-[calc(100dvh-var(--header-height))]">
+      {/* Left panel — Conversation list (full width on mobile until a chat is opened) */}
+      <div
+        className={cn(
+          "w-full lg:w-[320px] shrink-0 lg:border-r border-outline-variant/15 flex-col",
+          selectedId ? "hidden lg:flex" : "flex",
+        )}
+      >
         {onBack && (
           <button
             onClick={onBack}
@@ -402,12 +454,13 @@ export function InboxView({
             channelFilter={channelFilter}
             onChannelFilterChange={setChannelFilter}
             availableChannelTypes={availableChannelTypes}
+            isLoading={conversationsQuery.isLoading}
           />
         </div>
       </div>
 
-      {/* Center panel — Message thread */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Center panel — Message thread (replaces the list on mobile) */}
+      <div className={cn("flex-1 flex-col min-w-0", selectedId ? "flex" : "hidden lg:flex")}>
         {/* Disconnected banner */}
         {isDisconnected && !skipSessionCheck && (
           <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-warning-container/80 border-b border-warning/20">
@@ -444,8 +497,14 @@ export function InboxView({
         {selectedConversation ? (
           <>
             {/* Chat header */}
-            <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-outline-variant/15">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="shrink-0 flex items-center justify-between gap-2 px-2 sm:px-4 py-3 border-b border-outline-variant/15">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <IconButton size="sm"
+                  onClick={() => setSelectedId(null)}
+                  className="lg:hidden -mr-1"
+                  title="Back to conversations" aria-label="Back to conversations">
+                  <ArrowLeft className="h-5 w-5" />
+                </IconButton>
                 <Avatar
                   name={selectedConversation.contactName}
                   size="sm"
@@ -462,17 +521,17 @@ export function InboxView({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-label text-on-surface-variant">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-label text-on-surface-variant truncate">
                       {selectedConversation.contactPhone}
                     </p>
                     {contactProducts && contactProducts.length > 0 && contactProducts.slice(0, 2).map((p) => (
-                      <span key={p.id} className="text-caption px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{p.name}</span>
+                      <span key={p.id} className="hidden sm:inline text-caption px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{p.name}</span>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
                 {/* Close / Reopen */}
                 {selectedRawConv?.status === "OPEN" ? (
                   <IconButton size="sm"
@@ -523,9 +582,10 @@ export function InboxView({
                   disabled={sendCsatSurvey.isPending}
                   className="bg-warning-container text-warning border-warning/30 hover:bg-warning/20 hover:border-warning/50"
                   title="Send CSAT survey to customer"
+                  aria-label="Send CSAT survey"
                 >
                   <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                  <span>{sendCsatSurvey.isPending ? "Sending…" : "Send Survey"}</span>
+                  <span className="hidden sm:inline">{sendCsatSurvey.isPending ? "Sending…" : "Send Survey"}</span>
                 </Button>
                 {/* Delete */}
                 <IconButton size="sm" variant="danger"
@@ -536,18 +596,16 @@ export function InboxView({
                   <Trash2 className="h-4 w-4" />
                 </IconButton>
                 <button
-                  onClick={toggleContactPanel}
+                  onClick={isDesktop ? toggleContactPanel : () => setMobileContactOpen(true)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    contactPanelOpen
+                    contactInfoOpen
                       ? "bg-primary/10 text-primary"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container",
                   )}
-                  title={
-                    contactPanelOpen
-                      ? "Hide contact info"
-                      : "Show contact info"
-                  }
+                  title={contactInfoOpen ? "Hide contact info" : "Show contact info"}
+                  aria-label={contactInfoOpen ? "Hide contact info" : "Show contact info"}
+                  aria-pressed={contactInfoOpen}
                 >
                   <svg
                     className="h-4 w-4"
@@ -572,11 +630,9 @@ export function InboxView({
 
             {/* Messages */}
             {messagesQuery.isLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <Spinner size="md" className="text-primary" />
-              </div>
+              <MessageThreadSkeleton />
             ) : (
-              <MessageThread messages={currentMessages} />
+              <MessageThread key={selectedId} messages={currentMessages} />
             )}
 
             {/* AI Insight Panel */}
@@ -600,7 +656,6 @@ export function InboxView({
               <ChatInput
                 onSend={handleSend}
                 onSendInteractive={handleSendInteractive}
-                disabled={sendMessage.isPending}
                 uploading={uploading}
                 channelType={selectedChannelType}
                 emailSubject={emailSubject}
@@ -625,40 +680,30 @@ export function InboxView({
         )}
       </div>
 
-      {/* Right panel — Contact details */}
+      {/* Right panel — Contact details (desktop). CSS-gated so it doesn't flash in after hydration */}
       {contactPanelOpen && selectedConversation && selectedId && (
-        <div className="w-[300px] shrink-0 border-l border-outline-variant/15">
-          <ContactPanel
-            contact={{
-              id: contactData?.id ?? "",
-              name: contactData?.name ?? selectedConversation.contactName,
-              phone: contactData?.phoneNumber ?? selectedConversation.contactPhone,
-              email: contactData?.email ?? undefined,
-              leadStatus: contactData?.leadStatus ?? "NEW",
-              tags: contactData?.contactTags?.map((t) => t.tag.name) ?? [],
-              notes: "",
-              assignedTo: contactData?.owner
-                ? `${contactData.owner.firstName} ${contactData.owner.lastName}`
-                : undefined,
-            }}
-            onClose={toggleContactPanel}
-            onStatusChange={contactData ? (cId, status) => {
-              changeLeadStatus.mutate({ contactId: cId, status });
-            } : undefined}
-            isUpdatingStatus={changeLeadStatus.isPending}
-            conversationAssignedToId={selectedRawConv?.assignedToId ?? null}
-            orgUsers={usersData?.users ?? []}
-            canAssign={userRole === "ADMIN" || userRole === "MANAGER"}
-            isAssigning={assignConversation.isPending}
-            onAssign={(assignedToId) => {
-              if (selectedId) {
-                assignConversation.mutate({ conversationId: selectedId, assignedToId });
-              }
-            }}
-            conversationId={selectedId ?? undefined}
-          />
+        <div className="hidden lg:block w-[300px] shrink-0 border-l border-outline-variant/15">
+          {renderContactPanel(toggleContactPanel)}
         </div>
       )}
+
+      {/* Contact details (mobile) — bottom sheet */}
+      <Drawer
+        side="bottom"
+        open={!isDesktop && mobileContactOpen && !!selectedConversation}
+        onClose={() => setMobileContactOpen(false)}
+        className="overflow-y-auto"
+        aria-label="Contact info"
+      >
+        {() => (
+          <>
+            <div className="sticky top-0 z-10 flex justify-center bg-surface-container-lowest pt-2 pb-1">
+              <span aria-hidden className="h-1 w-10 rounded-full bg-outline-variant" />
+            </div>
+            {renderContactPanel(() => setMobileContactOpen(false))}
+          </>
+        )}
+      </Drawer>
       <ConfirmDialog
         open={showDeleteConfirm}
         title="Delete Conversation"

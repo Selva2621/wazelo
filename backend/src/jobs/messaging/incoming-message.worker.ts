@@ -5,6 +5,8 @@ import { ConversationRepository } from '@/modules/messages/infrastructure/reposi
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { isOptOutReply } from '@/modules/messages/domain/services/send-safety.policy';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import {
@@ -53,6 +55,7 @@ export class IncomingMessageWorker implements OnModuleInit {
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly prisma: PrismaService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -134,6 +137,22 @@ export class IncomingMessageWorker implements OnModuleInit {
       data.body || null,
       true, // isInbound → increments unreadCount
     );
+
+    // 7b. "STOP" / "unsubscribe" opts the contact out of bulk messages. Ignoring
+    // these is how numbers get reported — and opt-outs feed the send-health check.
+    if (data.type === 'TEXT' && isOptOutReply(data.body)) {
+      const digits = contactPhone.replace(/^\+/, '');
+      const { count } = await this.prisma.contact.updateMany({
+        where: {
+          orgId,
+          deletedAt: null,
+          optedOut: false,
+          phoneNumber: { in: [digits, `+${digits}`] },
+        },
+        data: { optedOut: true, optedOutAt: new Date() },
+      });
+      if (count > 0) this.logger.log(`Contact ${contactPhone} opted out by reply`);
+    }
 
     // 8. Emit events for real-time WebSocket push + contact auto-creation
     this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED, {

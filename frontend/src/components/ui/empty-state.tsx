@@ -13,6 +13,27 @@ interface EmptyStateProps {
   className?: string;
 }
 
+/** Shown instead of an empty state when a list failed to load, so failures don't read as "no data". */
+export function LoadError({
+  what,
+  onRetry,
+  className,
+}: {
+  /** What failed, e.g. "campaigns". */
+  what: string;
+  onRetry: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col items-center gap-3 rounded-xl bg-error-container p-6 text-center", className)}>
+      <p className="text-body text-error">Couldn&apos;t load {what}. Check your connection and try again.</p>
+      <Button variant="secondary" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 export function EmptyState({
   icon,
   title,

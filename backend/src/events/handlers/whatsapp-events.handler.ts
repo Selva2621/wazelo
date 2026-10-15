@@ -7,6 +7,7 @@ import {
   WhatsAppQrGeneratedEvent,
   WhatsAppSessionConnectedEvent,
   WhatsAppSessionDisconnectedEvent,
+  WhatsAppSendingPausedEvent,
   WhatsAppSessionReconnectingEvent,
   WhatsAppSessionForceDisconnectedEvent,
   WhatsAppMessageReceivedEvent,
@@ -53,12 +54,23 @@ export class WhatsAppEventsHandler {
     this.wsGateway.emitToUser(event.userId, 'whatsapp:session:disconnected', {
       sessionId: event.sessionId,
       reason: event.reason,
+      disconnectReason: event.disconnectReason,
     });
     this.wsGateway.emitToOrg(event.orgId, 'whatsapp:session:status', {
       sessionId: event.sessionId,
       userId: event.userId,
       status: 'DISCONNECTED',
       reason: event.reason,
+      disconnectReason: event.disconnectReason,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.WHATSAPP_SENDING_PAUSED)
+  handleSendingPaused(event: WhatsAppSendingPausedEvent): void {
+    this.wsGateway.emitToOrg(event.orgId, 'whatsapp:sending:paused', {
+      sessionId: event.sessionId,
+      reason: event.reason,
+      pausedUntil: event.pausedUntil,
     });
   }
 

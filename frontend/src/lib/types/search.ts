@@ -14,6 +14,9 @@ export interface SearchConversationResult {
   lastMessageAt: string | null;
   lastMessageBody: string | null;
   status: string;
+  /** Team member whose WhatsApp number the chat is on */
+  ownerUserId: string | null;
+  ownerName: string | null;
 }
 
 export interface SearchCampaignResult {

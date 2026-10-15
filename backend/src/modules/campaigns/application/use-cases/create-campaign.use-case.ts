@@ -11,6 +11,17 @@ import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import { AuditAction, CampaignStatus } from '@prisma/client';
+import { findUnknownPlaceholders } from '../../domain/services/message-placeholders';
+
+/** Contacts would otherwise receive raw `{{lead.service}}`-style text. */
+export function assertNoUnknownPlaceholders(body: string | null | undefined): void {
+  const unknown = findUnknownPlaceholders(body);
+  if (unknown.length) {
+    throw new BadRequestException(
+      `Fill in these placeholders before sending: ${unknown.map((k) => `{{${k}}}`).join(', ')}`,
+    );
+  }
+}
 
 @Injectable()
 export class CreateCampaignUseCase {
@@ -57,6 +68,7 @@ export class CreateCampaignUseCase {
     if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(dto.messageType) && !dto.mediaUrl) {
       throw new BadRequestException(`${dto.messageType} campaigns require a mediaUrl`);
     }
+    assertNoUnknownPlaceholders(dto.messageBody);
 
     // 4. Create campaign as DRAFT
     const campaign = await this.campaignRepo.create({

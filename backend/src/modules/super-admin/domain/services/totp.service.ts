@@ -33,18 +33,27 @@ export class TotpService {
    * Comparison is constant-time.
    */
   verify(secret: string, code: string, window = 1, now = Date.now()): boolean {
+    return this.matchStep(secret, code, window, now) !== null;
+  }
+
+  /**
+   * Like `verify`, but returns the time step the code belongs to (null if no match),
+   * so callers can refuse a step that was already used.
+   */
+  matchStep(secret: string, code: string, window = 1, now = Date.now()): number | null {
     const normalized = (code ?? '').replace(/\s/g, '');
-    if (!/^\d{6}$/.test(normalized)) return false;
+    if (!/^\d{6}$/.test(normalized)) return null;
 
     const key = base32Decode(secret);
     const currentStep = Math.floor(now / 1000 / STEP_SECONDS);
     const given = Buffer.from(normalized);
 
-    let matched = false;
+    let matched: number | null = null;
     for (let offset = -window; offset <= window; offset++) {
-      const expected = Buffer.from(hotp(key, currentStep + offset));
+      const step = currentStep + offset;
+      const expected = Buffer.from(hotp(key, step));
       // Evaluate every step — no early return — to keep timing uniform
-      if (timingSafeEqual(expected, given)) matched = true;
+      if (timingSafeEqual(expected, given)) matched = step;
     }
     return matched;
   }

@@ -60,12 +60,11 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
       return;
     }
 
-    const status = stage.isWonStage ? "WON" : stage.isLostStage ? "LOST" : "OPEN";
+    // The server sets WON/LOST/OPEN from the stage's flags
     moveDeal.mutate({
       pipelineId: pipeline.id,
       dealId: draggedDealId,
       stageId: stage.id,
-      status: status as any,
     });
     setDraggedDealId(null);
   };

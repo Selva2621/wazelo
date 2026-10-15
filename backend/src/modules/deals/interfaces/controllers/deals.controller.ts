@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  BadRequestException,
   UseGuards,
   SetMetadata,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { DealStatus, UsageMetricType } from '@prisma/client';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { PipelineRepository } from '../../infrastructure/repositories/pipeline.repository';
 import { DealRepository } from '../../infrastructure/repositories/deal.repository';
 import {
@@ -28,9 +30,14 @@ import {
   CreateDealDto,
   UpdateDealDto,
   MoveDealDto,
+  ListFollowUpsQueryDto,
+  SaveScopeDto,
 } from '../../application/dto';
 import { ScoreDealUseCase } from '../../application/use-cases/score-deal.use-case';
+import { DealGuardUseCase } from '../../application/use-cases/deal-guard.use-case';
+import { Throttle } from '@nestjs/throttler';
 import { DEFAULT_PIPELINE_STAGES } from '@/shared/constants/org-defaults';
+import { localDayStart } from '@/modules/messages/domain/services/send-safety.policy';
 
 @Controller('pipelines')
 export class DealsController {
@@ -39,6 +46,7 @@ export class DealsController {
     private readonly dealRepo: DealRepository,
     private readonly scoreDealUseCase: ScoreDealUseCase,
     private readonly usageTracking: UsageTrackingService,
+    private readonly dealGuard: DealGuardUseCase,
   ) {}
 
   // ───── Pipelines ─────
@@ -112,6 +120,21 @@ export class DealsController {
     return this.dealRepo.findByContact(user.orgId, contactId);
   }
 
+  // ───── Follow-ups ─────
+
+  @Get('deals/follow-ups')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async listFollowUps(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ListFollowUpsQueryDto,
+  ) {
+    const now = new Date();
+    const endOfToday = new Date(localDayStart(now, query.tz || 'UTC').getTime() + 24 * 60 * 60 * 1000);
+    const until =
+      query.scope === 'upcoming' ? new Date(endOfToday.getTime() + 7 * 24 * 60 * 60 * 1000) : endOfToday;
+    return this.dealRepo.findFollowUpsDue(user.orgId, until);
+  }
+
   // ───── Deals ─────
 
   @Post(':pipelineId/deals')
@@ -122,6 +145,16 @@ export class DealsController {
     @Param('pipelineId', ParseUUIDPipe) pipelineId: string,
     @Body() dto: CreateDealDto,
   ) {
+    // Every referenced id must belong to this org (and the stage to this pipeline)
+    const invalid = await this.dealRepo.findInvalidRefs(user.orgId, {
+      pipelineId,
+      stageId: dto.stageId,
+      contactId: dto.contactId,
+      assignedToId: dto.assignedToId,
+      productId: dto.productId,
+    });
+    if (invalid.length) throw new BadRequestException(`Invalid ${invalid.join(', ')}`);
+
     return this.dealRepo.create({
       orgId: user.orgId,
       pipelineId,
@@ -171,6 +204,8 @@ export class DealsController {
       value: dto.value,
       expectedClose: dto.expectedClose ? new Date(dto.expectedClose) : undefined,
       status: dto.status as DealStatus | undefined,
+      nextFollowUpAt:
+        dto.nextFollowUpAt === undefined ? undefined : dto.nextFollowUpAt === null ? null : new Date(dto.nextFollowUpAt),
     });
   }
 
@@ -184,7 +219,14 @@ export class DealsController {
   ) {
     const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId);
     if (!deal) throw new NotFoundException('Deal not found');
-    return this.dealRepo.updateStage(dealId, dto.stageId, dto.status as DealStatus | undefined);
+
+    // The target stage must be in the deal's own pipeline; its won/lost flags set the status
+    const stage = deal.pipeline
+      ? await this.pipelineRepo.findStageInPipeline(dto.stageId, deal.pipelineId)
+      : null;
+    if (!stage) throw new BadRequestException('Stage is not in this deal\'s pipeline');
+
+    return this.dealRepo.updateStage(dealId, stage);
   }
 
   @Delete(':pipelineId/deals/:dealId')
@@ -200,12 +242,58 @@ export class DealsController {
     return { success: true };
   }
 
+  // ───── Deal Guard (ghost radar, trust card, scope lock) ─────
+
+  @Get(':pipelineId/deals/:dealId/guard')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getDealGuard(
+    @CurrentUser() user: JwtPayload,
+    @Param('dealId', ParseUUIDPipe) dealId: string,
+  ) {
+    return this.dealGuard.getGuard(user.orgId, dealId);
+  }
+
+  @Post(':pipelineId/deals/:dealId/scope/draft')
+  @Permissions(PERMISSIONS.CONTACTS_CREATE)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  async draftScope(
+    @CurrentUser() user: JwtPayload,
+    @Param('dealId', ParseUUIDPipe) dealId: string,
+  ) {
+    return this.dealGuard.draftScope(user.orgId, dealId, () =>
+      this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS),
+    );
+  }
+
+  @Patch(':pipelineId/deals/:dealId/scope')
+  @Permissions(PERMISSIONS.CONTACTS_CREATE)
+  async saveScope(
+    @CurrentUser() user: JwtPayload,
+    @Param('dealId', ParseUUIDPipe) dealId: string,
+    @Body() dto: SaveScopeDto,
+  ) {
+    return this.dealGuard.saveScope(user.orgId, dealId, dto.summary);
+  }
+
+  @Post(':pipelineId/deals/:dealId/scope/send')
+  @Permissions(PERMISSIONS.CONTACTS_CREATE)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  async sendScope(
+    @CurrentUser() user: JwtPayload,
+    @Param('dealId', ParseUUIDPipe) dealId: string,
+  ) {
+    return this.dealGuard.sendScope(user.orgId, user.sub, dealId);
+  }
+
   // ───── AI Scoring ─────
 
   @Post(':pipelineId/deals/:dealId/score')
   @Permissions(PERMISSIONS.CONTACTS_READ)
   @UseGuards(UsageLimitGuard)
   @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
+  @PlatformFeature('ai')
   @HttpCode(HttpStatus.OK)
   async scoreDeal(
     @CurrentUser() user: JwtPayload,

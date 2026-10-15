@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
@@ -13,6 +14,7 @@ import {
   authConfig,
   throttleConfig,
   whatsappConfig,
+  pushConfig,
 } from './config';
 
 // Infrastructure
@@ -87,7 +89,7 @@ import { EventsModule } from './events/events.module';
     // Config (loads .env + typed config)
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, jwtConfig, emailConfig, authConfig, throttleConfig, whatsappConfig],
+      load: [appConfig, jwtConfig, emailConfig, authConfig, throttleConfig, whatsappConfig, pushConfig],
       envFilePath: ['.env'],
     }),
 
@@ -187,10 +189,10 @@ import { EventsModule } from './events/events.module';
       provide: APP_GUARD,
       useClass: CsrfGuard,
     },
-    // Global rate limit guard
+    // Global rate limit guard (per API key for Developer API calls, else per IP)
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: AppThrottlerGuard,
     },
     // Global org-scope interceptor — enforces multi-tenant isolation
     {

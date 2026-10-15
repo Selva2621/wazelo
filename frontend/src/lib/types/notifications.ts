@@ -13,7 +13,9 @@ export type NotificationType =
   | "USAGE_LIMIT_WARNING"
   | "USAGE_LIMIT_REACHED"
   | "SUBSCRIPTION_EXPIRING"
-  | "SYSTEM_ALERT";
+  | "SYSTEM_ALERT"
+  | "WHATSAPP_SESSION_UNSTABLE"
+  | "WHATSAPP_PHONE_INACTIVE";
 
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
 export type NotificationChannel = "IN_APP" | "EMAIL";
@@ -96,6 +98,27 @@ export interface NotificationPreferencesMap {
     inAppEnabled: boolean;
     emailEnabled: boolean;
   };
+}
+
+// ─── Browser Push ───
+
+export interface PushConfig {
+  /** False when the server has no VAPID keys */
+  enabled: boolean;
+  publicKey: string | null;
+}
+
+/** Answer recorded per device; "dismissed" = "Not now" in our prompt */
+export type DevicePermission = "granted" | "denied" | "dismissed";
+
+export interface NotificationDevice {
+  deviceId: string;
+  deviceName: string | null;
+  permission: "default" | DevicePermission;
+  /** We already asked on this device — never prompt again */
+  prompted: boolean;
+  pushEnabled: boolean;
+  lastSeenAt: string;
 }
 
 // ─── WebSocket Events ───

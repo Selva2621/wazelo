@@ -43,6 +43,7 @@ import type {
   AutomationConditionOperator,
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
+import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -439,10 +440,9 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             </div>
           </div>
           <div>
-            <Label className="text-caption">Session ID (optional)</Label>
-            <input
+            <Label className="text-caption">Send from</Label>
+            <SessionSelect
               className={`${inputCls} mt-1`}
-              placeholder="Leave blank to auto-detect"
               value={String(row.actionConfig.sessionId ?? "")}
               onChange={(e) => setConfig("sessionId", e.target.value)}
             />
@@ -452,10 +452,9 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "ASSIGN_CONTACT" && (
         <div className="pl-8">
-          <Label className="text-caption">Assign To User ID</Label>
-          <input
+          <Label className="text-caption">Assign to</Label>
+          <MemberSelect
             className={`${inputCls} mt-1`}
-            placeholder="User UUID to assign contact to"
             value={String(row.actionConfig.assignToUserId ?? "")}
             onChange={(e) => setConfig("assignToUserId", e.target.value)}
           />

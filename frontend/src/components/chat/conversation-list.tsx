@@ -16,6 +16,23 @@ interface ConversationListProps {
   channelFilter?: ChannelType | "all";
   onChannelFilterChange?: (filter: ChannelType | "all") => void;
   availableChannelTypes?: ChannelType[];
+  /** Shows placeholder rows instead of the "No conversations" message on first load. */
+  isLoading?: boolean;
+}
+
+function ConversationRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 rounded-xl px-3 py-3">
+      <div className="h-10 w-10 shrink-0 rounded-full bg-surface-container animate-pulse" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-3 w-1/2 rounded-full bg-surface-container animate-pulse" />
+          <div className="h-2.5 w-8 rounded-full bg-surface-container animate-pulse" />
+        </div>
+        <div className="h-2.5 w-4/5 rounded-full bg-surface-container animate-pulse" />
+      </div>
+    </div>
+  );
 }
 
 const filterTabs: TabItem[] = [
@@ -31,6 +48,7 @@ export function ConversationList({
   channelFilter = "all",
   onChannelFilterChange,
   availableChannelTypes,
+  isLoading = false,
 }: ConversationListProps) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -83,6 +101,8 @@ export function ConversationList({
                 key={type}
                 onClick={() => onChannelFilterChange(type)}
                 title={CHANNEL_TYPE_LABELS[type]}
+                aria-label={CHANNEL_TYPE_LABELS[type]}
+                aria-pressed={channelFilter === type}
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium transition-colors",
                   channelFilter === type
@@ -105,7 +125,13 @@ export function ConversationList({
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div aria-busy="true" aria-label="Loading conversations">
+            {Array.from({ length: 7 }, (_, i) => (
+              <ConversationRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-body text-on-surface-variant/60">
               No conversations found

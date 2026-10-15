@@ -144,10 +144,9 @@ export function buildInfoBox(
   variant: 'warning' | 'info' | 'error' = 'info',
 ): string {
   const s = brand[variant];
-  const icons: Record<string, string> = { warning: '⚠️', error: '🚨', info: 'ℹ️' };
   return `
-    <div style="background:${s.bg};border:1px solid ${s.border};border-radius:8px;padding:14px 16px;margin-bottom:24px;font-size:14px;color:${s.text};font-weight:600;">
-      ${icons[variant]}&nbsp; ${text}
+    <div style="background:${s.bg};border:1px solid ${s.border};border-left:4px solid ${s.text};border-radius:8px;padding:14px 16px;margin-bottom:24px;font-size:14px;color:${s.text};font-weight:600;">
+      ${text}
     </div>`;
 }
 

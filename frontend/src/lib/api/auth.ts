@@ -1,4 +1,4 @@
-import apiClient, { refreshSession } from "./client";
+import apiClient, { API_BASE_URL, refreshSession } from "./client";
 import type {
   LoginRequest,
   LoginResponse,
@@ -10,9 +10,21 @@ import type {
   RefreshTokenResponse,
   SessionInfo,
   MessageResponse,
+  AuthProviders,
 } from "@/lib/types/auth";
 
+/** Full-page navigation target that starts "Continue with Google" on the backend. */
+export function googleStartUrl(intent: "signin" | "signup", rememberMe = false): string {
+  const params = new URLSearchParams({ intent });
+  if (rememberMe) params.set("remember", "1");
+  return `${API_BASE_URL}/auth/google/start?${params.toString()}`;
+}
+
 export const authApi = {
+  /** Which external sign-in options to show (public). */
+  getProviders: () =>
+    apiClient.get<AuthProviders>("/auth/providers").then((r) => r.data),
+
   register: (data: RegisterRequest) =>
     apiClient.post<MessageResponse>("/auth/register", data).then((r) => r.data),
 

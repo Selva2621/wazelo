@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { ArrowRight, Lock, Mail, MessageCircle, Phone, TriangleAlert } from "lucide-react";
@@ -15,6 +15,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { ContinueWithGoogle, ssoErrorMessage } from "@/components/auth/continue-with-google";
 
 type Method = "email" | "whatsapp";
 
@@ -28,6 +29,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
@@ -35,16 +37,29 @@ export function LoginForm() {
   });
 
   const login = useLogin();
+  const rememberMe = useWatch({ control, name: "rememberMe" }) ?? false;
   const [method, setMethod] = useState<Method>("email");
   const [capsLock, setCapsLock] = useState(false);
   // Set by the API client when a session ends because the org was suspended
   const [suspended, setSuspended] = useState(false);
+  // Set by the backend when "Continue with Google" fails (?ssoError=<code>)
+  const [ssoError, setSsoError] = useState<string | null>(null);
   useEffect(() => {
-    setSuspended(new URLSearchParams(window.location.search).get("suspended") === "1");
+    const params = new URLSearchParams(window.location.search);
+    setSuspended(params.get("suspended") === "1");
+    const sso = params.get("ssoError");
+    if (sso) {
+      setSsoError(ssoErrorMessage(sso));
+      // Don't show it again on reload
+      params.delete("ssoError");
+      const query = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    }
   }, []);
   const tabRefs = useRef<Record<Method, HTMLButtonElement | null>>({ email: null, whatsapp: null });
 
   const onSubmit = (data: LoginFormData) => {
+    setSsoError(null);
     login.mutate(data);
   };
 
@@ -128,7 +143,12 @@ export function LoginForm() {
 
       {/* Email panel */}
       <div role="tabpanel" id="panel-email" aria-labelledby="tab-email" hidden={method !== "email"}>
-        {suspended && !errorMessage && (
+        {ssoError && !errorMessage && (
+          <div className="mb-5">
+            <Alert variant="error">{ssoError}</Alert>
+          </div>
+        )}
+        {suspended && !errorMessage && !ssoError && (
           <div className="mb-5">
             <Alert variant="warning">
               Your organization has been suspended, so you were signed out. Contact Wazelo support to restore access.
@@ -153,6 +173,8 @@ export function LoginForm() {
             </Alert>
           </div>
         )}
+
+        <ContinueWithGoogle intent="signin" rememberMe={rememberMe} />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">

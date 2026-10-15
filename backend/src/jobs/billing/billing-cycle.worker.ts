@@ -7,6 +7,7 @@ import { PlanRepository } from '@/modules/billing/infrastructure/repositories/pl
 import { PaymentRepository } from '@/modules/billing/infrastructure/repositories/payment.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { StripePaymentService } from '@/modules/billing/domain/services/stripe-payment.service';
+import { ApplyRenewalCreditUseCase } from '@/modules/billing/application/use-cases/apply-renewal-credit.use-case';
 import { EVENT_NAMES } from '@/common/constants';
 import {
   AuditAction,
@@ -27,6 +28,7 @@ export class BillingCycleWorker {
     private readonly stripePayment: StripePaymentService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly applyRenewalCredit: ApplyRenewalCreditUseCase,
   ) {}
 
   /**
@@ -152,12 +154,37 @@ export class BillingCycleWorker {
       return;
     }
 
+    // Account credit in the subscription currency is applied BEFORE charging. It creates the
+    // renewal invoice up front (OPEN, with an "Account credit" line); idempotent per renewal —
+    // keyed on the period being renewed, which only moves once the renewal completes
+    const credit = await this.applyRenewalCredit.execute({
+      orgId: subscription.orgId,
+      subscriptionId: subscription.id,
+      priceInCents: subscription.priceInCents,
+      currency: subscription.currency,
+      periodStart: newPeriodStart,
+      periodEnd: newPeriodEnd,
+      renewalKey: `${subscription.id}:${new Date(subscription.currentPeriodEnd).toISOString()}`,
+      planLine: this.planLine(subscription, plan),
+    });
+
+    // Fully covered by credit: no gateway charge, like a free renewal
+    if (credit && credit.amountDueInCents === 0) {
+      await this.paymentRepo.markInvoicePaid(credit.invoiceId, {});
+      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan, credit.invoiceId);
+      this.logger.log(
+        `Subscription ${subscription.id} renewal covered by account credit (${credit.appliedInCents} ${subscription.currency})`,
+      );
+      return;
+    }
+    const amountDue = credit ? credit.amountDueInCents : subscription.priceInCents;
+
     // For paid plans, create payment record
     // In production, this would call the payment gateway
     const payment = await this.paymentRepo.createPayment({
       orgId: subscription.orgId,
       subscriptionId: subscription.id,
-      amountInCents: subscription.priceInCents,
+      amountInCents: amountDue,
       currency: subscription.currency,
       idempotencyKey: `renewal-${subscription.id}-${newPeriodStart.toISOString().slice(0, 10)}`,
     });
@@ -166,7 +193,7 @@ export class BillingCycleWorker {
     await this.paymentRepo.transitionPaymentStatus(payment.id, 'PENDING', 'PROCESSING');
 
     const result = await this.stripePayment.chargePayment(
-      subscription.priceInCents,
+      amountDue,
       subscription.currency,
       subscription.externalCustomerId || '',
       subscription.externalCustomerId || '', // Stripe uses default payment method from customer
@@ -176,13 +203,16 @@ export class BillingCycleWorker {
 
     if (result.success) {
       await this.paymentRepo.transitionPaymentStatus(payment.id, 'PROCESSING', 'SUCCEEDED');
-      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan);
+      if (credit) {
+        await this.paymentRepo.markInvoicePaid(credit.invoiceId, { paymentId: payment.id });
+      }
+      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan, credit?.invoiceId);
 
       this.eventEmitter.emit(EVENT_NAMES.PAYMENT_SUCCEEDED, {
         paymentId: payment.id,
         orgId: subscription.orgId,
         subscriptionId: subscription.id,
-        amountInCents: subscription.priceInCents,
+        amountInCents: amountDue,
       });
 
       this.logger.log(`Payment ${payment.id} succeeded for subscription ${subscription.id} renewal`);
@@ -205,11 +235,21 @@ export class BillingCycleWorker {
     }
   }
 
+  private planLine(subscription: any, plan: any) {
+    return {
+      description: `${plan.name} plan - ${subscription.billingCycle.toLowerCase()}`,
+      amount: subscription.priceInCents,
+      quantity: 1,
+    };
+  }
+
+  /** @param existingInvoiceId the renewal invoice already created when credit was applied */
   private async completeRenewal(
     subscription: any,
     newPeriodStart: Date,
     newPeriodEnd: Date,
     plan: any,
+    existingInvoiceId?: string,
   ) {
     // Update subscription period
     await this.subscriptionRepo.transitionStatus(
@@ -240,25 +280,21 @@ export class BillingCycleWorker {
       limits,
     );
 
-    // Generate invoice
-    const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
-    await this.paymentRepo.createInvoice({
-      orgId: subscription.orgId,
-      subscriptionId: subscription.id,
-      invoiceNumber,
-      amountInCents: subscription.priceInCents,
-      currency: subscription.currency,
-      periodStart: newPeriodStart,
-      periodEnd: newPeriodEnd,
-      lineItems: [
-        {
-          description: `${plan.name} plan - ${subscription.billingCycle.toLowerCase()}`,
-          amount: subscription.priceInCents,
-          quantity: 1,
-        },
-      ],
-      dueDate: newPeriodStart,
-    });
+    // Generate invoice (unless credit application already created this renewal's invoice)
+    if (!existingInvoiceId) {
+      const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
+      await this.paymentRepo.createInvoice({
+        orgId: subscription.orgId,
+        subscriptionId: subscription.id,
+        invoiceNumber,
+        amountInCents: subscription.priceInCents,
+        currency: subscription.currency,
+        periodStart: newPeriodStart,
+        periodEnd: newPeriodEnd,
+        lineItems: [this.planLine(subscription, plan)],
+        dueDate: newPeriodStart,
+      });
+    }
 
     // Record event
     await this.subscriptionRepo.recordEvent({

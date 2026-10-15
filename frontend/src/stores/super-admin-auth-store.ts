@@ -7,6 +7,9 @@ export interface SuperAdminInfo {
   name: string;
   email: string;
   twoFactorEnabled: boolean;
+  /** 2FA is mandatory on this deployment — it can't be turned off */
+  twoFactorRequired: boolean;
+  recoveryCodesRemaining: number;
   lastLoginAt: string | null;
 }
 

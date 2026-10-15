@@ -6,8 +6,9 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
   Phone, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, ChevronDown,
+  Filter, X, ChevronDown, Rocket, Ban,
 } from "lucide-react";
+import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
 import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "@/hooks/use-lead-scraper";
 import { useQuery } from "@tanstack/react-query";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
@@ -20,6 +21,7 @@ import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-mod
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ interface ActiveFilters {
   hasWebsite: "all" | "yes" | "no";
   minRating: number; // 0 = any
   categories: string[]; // empty = all
+  tier: "all" | ScoreTier;
+  sortByScore: boolean;
 }
 
 const DEFAULT_FILTERS: ActiveFilters = {
@@ -41,7 +45,37 @@ const DEFAULT_FILTERS: ActiveFilters = {
   hasWebsite: "all",
   minRating: 0,
   categories: [],
+  tier: "all",
+  sortByScore: false,
 };
+
+// ─── Lead score ───────────────────────────────────────────────────────────────
+
+type ScoreTier = "hot" | "warm" | "cold";
+
+function scoreTier(score: number): ScoreTier {
+  if (score >= 7) return "hot";
+  if (score >= 4) return "warm";
+  return "cold";
+}
+
+const TIER_STYLE: Record<ScoreTier, { label: string; className: string }> = {
+  hot:  { label: "Hot",  className: "bg-error/10 text-error" },
+  warm: { label: "Warm", className: "bg-warning/10 text-warning" },
+  cold: { label: "Cold", className: "bg-surface-container text-on-surface-variant" },
+};
+
+function ScoreBadge({ score }: { score: number }) {
+  const { label, className } = TIER_STYLE[scoreTier(score)];
+  return (
+    <span
+      title={`Lead score ${score}/10`}
+      className={`shrink-0 text-caption font-semibold px-1.5 py-0.5 rounded-full ${className}`}
+    >
+      {label} · {score}
+    </span>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +93,7 @@ function StatusBadge({ status }: { status: ScrapeRunStatus }) {
     RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                  icon: <Loader2 className="w-3 h-3 animate-spin" /> },
     COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                  icon: <CheckCircle2 className="w-3 h-3" /> },
     FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                      icon: <XCircle className="w-3 h-3" /> },
+    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
   };
   const { label, className, icon } = config[status];
   return (
@@ -109,6 +144,7 @@ function FilterBar({
   onChange,
   categories,
   waChecksLoaded,
+  hasScores,
   resultCount,
   visibleCount,
 }: {
@@ -116,6 +152,7 @@ function FilterBar({
   onChange: (f: Partial<ActiveFilters>) => void;
   categories: string[];
   waChecksLoaded: boolean;
+  hasScores: boolean;
   resultCount: number;
   visibleCount: number;
 }) {
@@ -127,6 +164,7 @@ function FilterBar({
     filters.hasWebsite !== "all",
     filters.minRating > 0,
     filters.categories.length > 0,
+    filters.tier !== "all",
   ].filter(Boolean).length;
 
   return (
@@ -170,6 +208,34 @@ function FilterBar({
 
       {/* Filter chips row */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Lead score */}
+        {hasScores && (
+          <>
+            <FilterSelect
+              label="Score"
+              value={filters.tier}
+              onChange={(v) => onChange({ tier: v as ActiveFilters["tier"] })}
+              options={[
+                { value: "all", label: "Score: All" },
+                { value: "hot", label: "Hot (7+)" },
+                { value: "warm", label: "Warm (4–6)" },
+                { value: "cold", label: "Cold (0–3)" },
+              ]}
+            />
+            <button
+              onClick={() => onChange({ sortByScore: !filters.sortByScore })}
+              aria-pressed={filters.sortByScore}
+              className={`text-label px-3 py-1.5 rounded-lg border transition-colors ${
+                filters.sortByScore
+                  ? "bg-primary text-on-primary border-primary"
+                  : "bg-surface-container text-on-surface border-outline-variant hover:border-primary/50"
+              }`}
+            >
+              Best leads first
+            </button>
+          </>
+        )}
+
         {/* WA Status */}
         <FilterSelect
           label="WA Status"
@@ -191,7 +257,7 @@ function FilterBar({
           options={[
             { value: "all", label: "Imported: All" },
             { value: "no", label: "Not imported" },
-            { value: "yes", label: "Imported ✓" },
+            { value: "yes", label: "Imported" },
           ]}
         />
 
@@ -226,10 +292,10 @@ function FilterBar({
           onChange={(v) => onChange({ minRating: Number(v) })}
           options={[
             { value: "0", label: "Rating: Any" },
-            { value: "3", label: "⭐ 3.0+" },
-            { value: "3.5", label: "⭐ 3.5+" },
-            { value: "4", label: "⭐ 4.0+" },
-            { value: "4.5", label: "⭐ 4.5+" },
+            { value: "3", label: "Rating 3.0+" },
+            { value: "3.5", label: "Rating 3.5+" },
+            { value: "4", label: "Rating 4.0+" },
+            { value: "4.5", label: "Rating 4.5+" },
           ]}
         />
 
@@ -283,6 +349,38 @@ function FilterBar({
 
 // ─── Result table row ─────────────────────────────────────────────────────────
 
+function timeAgo(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+/** Extra facts from the source page, only the ones it showed */
+function detailLines(result: ScrapeResult): [string, string][] {
+  const d = result.details;
+  if (!d) return [];
+  const lines: [string, string][] = [];
+  if (d.postedAt) lines.push(["Posted", timeAgo(d.postedAt)]);
+  if (d.budgetType) lines.push(["Type", d.budgetType === "hourly" ? "Hourly" : "Fixed price"]);
+  if (d.proposals != null) lines.push(["Proposals", String(d.proposals)]);
+  if (d.paymentVerified != null) lines.push(["Payment", d.paymentVerified ? "Verified" : "Not verified"]);
+  if (d.clientCountry && d.clientCountry !== result.location) lines.push(["Client", d.clientCountry]);
+  if (d.priceLevel) lines.push(["Price", "₹".repeat(d.priceLevel)]);
+  if (d.photoCount != null) lines.push(["Photos", String(d.photoCount)]);
+  if (d.lastReviewAt) lines.push(["Last review", timeAgo(d.lastReviewAt)]);
+  return lines;
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="truncate text-caption text-on-surface-variant">
+      <span className="text-on-surface-variant/60">{label}:</span> {value}
+    </span>
+  );
+}
+
 function ResultRow({
   result, selected, onToggle, waStatus,
 }: {
@@ -291,15 +389,12 @@ function ResultRow({
   onToggle: () => void;
   waStatus?: CheckWhatsAppResult;
 }) {
-  const isDisabled = result.imported;
-
+  // Imported rows stay selectable so they can be pitched
   return (
     <TableRow
-      onClick={() => !isDisabled && onToggle()}
+      onClick={onToggle}
       className={
-        isDisabled
-          ? "opacity-50 cursor-default"
-          : selected
+        selected
           ? "bg-primary/5 cursor-pointer"
           : "cursor-pointer hover:bg-surface-container-low"
       }
@@ -308,14 +403,12 @@ function ResultRow({
       <TableCell>
         <div
           className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-            isDisabled
-              ? "border-success bg-success"
-              : selected
+            selected
               ? "border-primary bg-primary"
               : "border-outline-variant"
           }`}
         >
-          {(selected || isDisabled) && (
+          {selected && (
             <CheckCircle2 className="w-2.5 h-2.5 text-on-primary" />
           )}
         </div>
@@ -323,9 +416,17 @@ function ResultRow({
 
       {/* Name + category */}
       <TableCell>
-        <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
-          {result.name ?? "—"}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
+            {result.name ?? "—"}
+          </p>
+          {result.score != null && <ScoreBadge score={result.score} />}
+        </div>
+        {result.tags?.length > 0 && (
+          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px]">
+            {result.tags.join(" · ")}
+          </p>
+        )}
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
           {result.category && (
             <span className="text-caption bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
@@ -416,20 +517,23 @@ function ResultRow({
             <p className="text-caption text-on-surface-variant line-clamp-2">{result.description}</p>
           )}
           {result.openingHours && (
-            <span className="text-caption text-on-surface-variant">🕐 {result.openingHours}</span>
+            <DetailLine label="Hours" value={result.openingHours} />
           )}
           {result.email && (
-            <span className="text-caption text-on-surface-variant truncate">✉️ {result.email}</span>
+            <DetailLine label="Email" value={result.email} />
           )}
           {result.budget && (
-            <span className="text-caption text-on-surface-variant">💰 {result.budget}</span>
+            <DetailLine label="Budget" value={result.budget} />
           )}
           {result.jobTitle && (
-            <span className="text-caption text-on-surface-variant">🧑‍💼 {result.jobTitle}</span>
+            <DetailLine label="Role" value={result.jobTitle} />
           )}
           {result.company && (
-            <span className="text-caption text-on-surface-variant">🏢 {result.company}</span>
+            <DetailLine label="Company" value={result.company} />
           )}
+          {detailLines(result).map(([label, value]) => (
+            <DetailLine key={label} label={label} value={value} />
+          ))}
           {result.skills && result.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {result.skills.slice(0, 3).map((s) => (
@@ -441,7 +545,7 @@ function ResultRow({
           {result.socialLinks && result.socialLinks.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               {result.socialLinks.map((url) => {
-                const domain = url.includes("facebook") ? "FB" : url.includes("instagram") ? "IG" : url.includes("linkedin") ? "LI" : url.includes("youtube") ? "YT" : "🔗";
+                const domain = url.includes("facebook") ? "FB" : url.includes("instagram") ? "IG" : url.includes("linkedin") ? "LI" : url.includes("youtube") ? "YT" : "Link";
                 return (
                   <a key={url} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                     className="text-caption text-primary hover:underline">{domain}</a>
@@ -480,6 +584,8 @@ export default function ScrapeRunResultsPage() {
   const { runId } = useParams<{ runId: string }>();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pitchOpen, setPitchOpen] = useState(false);
+  const [outreachOpen, setOutreachOpen] = useState(false);
+  const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
 
   const updateFilters = (patch: Partial<ActiveFilters>) =>
@@ -491,17 +597,23 @@ export default function ScrapeRunResultsPage() {
     queryFn: () => leadScraperApi.getRun(runId),
     enabled: Boolean(runId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === "PENDING" || status === "RUNNING" ? 5000 : false;
+      const data = query.state.data;
+      const active = data?.status === "PENDING" || data?.status === "RUNNING" || data?.waCheck?.state === "running";
+      return active ? 5000 : false;
     },
   });
 
-  const { data: resultsData, isLoading: resultsLoading } = useScrapeRunResults(runId ?? null);
+  const waCheckRunning = run?.waCheck?.state === "running";
+  const { data: resultsData, isLoading: resultsLoading } = useScrapeRunResults(runId ?? null, waCheckRunning ? 5000 : false);
   const importMutation = useImportScrapeResults(runId ?? "");
 
-  const results = resultsData?.results ?? [];
-  const phones = results.map((r) => r.phone).filter(Boolean) as string[];
-  const { statusMap: waStatusMap, isLoading: waLoading } = useWhatsAppChecks(phones);
+  const results = useMemo(() => resultsData?.results ?? [], [resultsData]);
+  const {
+    statusMap: waStatusMap,
+    isChecking: waChecking,
+    checkPhones,
+    stopChecking,
+  } = useWhatsAppChecks(runId, run?.waCheck, results);
 
   // Derive unique categories from results for dynamic filter chips
   const categories = useMemo(() => {
@@ -514,7 +626,7 @@ export default function ScrapeRunResultsPage() {
 
   // Apply all filters
   const filteredResults = useMemo(() => {
-    return results.filter((r) => {
+    const matched = results.filter((r) => {
       // Search
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -552,28 +664,24 @@ export default function ScrapeRunResultsPage() {
       // Category chips
       if (filters.categories.length > 0 && !filters.categories.includes(r.category ?? "")) return false;
 
+      // Lead score tier
+      if (filters.tier !== "all" && (r.score == null || scoreTier(r.score) !== filters.tier)) return false;
+
       return true;
     });
+    return filters.sortByScore
+      ? [...matched].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+      : matched;
   }, [results, filters, waStatusMap]);
 
-  const unimportedVisible = filteredResults.filter((r) => !r.imported);
-  const allSelected = unimportedVisible.length > 0 && unimportedVisible.every((r) => selected.has(r.id));
+  const allSelected = filteredResults.length > 0 && filteredResults.every((r) => selected.has(r.id));
 
   const toggleAll = () => {
-    if (allSelected) {
-      // deselect only visible unimported
-      setSelected((prev) => {
-        const next = new Set(prev);
-        unimportedVisible.forEach((r) => next.delete(r.id));
-        return next;
-      });
-    } else {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        unimportedVisible.forEach((r) => next.add(r.id));
-        return next;
-      });
-    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filteredResults.forEach((r) => (allSelected ? next.delete(r.id) : next.add(r.id)));
+      return next;
+    });
   };
 
   const toggleOne = (id: string) => {
@@ -584,11 +692,12 @@ export default function ScrapeRunResultsPage() {
     });
   };
 
+  // Selection is kept after import so the same leads can be pitched next
+  const unimportedSelectedIds = results.filter((r) => selected.has(r.id) && !r.imported).map((r) => r.id);
+
   const handleImport = () => {
-    if (selected.size === 0) return;
-    importMutation.mutate(Array.from(selected), {
-      onSuccess: () => setSelected(new Set()),
-    });
+    if (unimportedSelectedIds.length === 0) return;
+    importMutation.mutate(unimportedSelectedIds);
   };
 
   if (runLoading) {
@@ -612,7 +721,7 @@ export default function ScrapeRunResultsPage() {
     // Export currently visible filtered rows
     const rows = filteredResults;
     if (rows.length === 0) return;
-    const headers = ["Name", "Category", "Phone", "Email", "Address", "Website", "Rating", "Reviews", "Budget", "Skills", "Job Title", "Company", "Source URL", "Scraped At", "Imported", "WA Active"];
+    const headers = ["Name", "Category", "Phone", "Email", "Address", "Website", "Rating", "Reviews", "Lead Score", "Tags", "Budget", "Skills", "Job Title", "Company", "Source URL", "Scraped At", "Imported", "WA Active"];
     const csvRows = rows.map((r) => {
       const wa = r.phone ? waStatusMap[r.phone] : undefined;
       const waLabel = wa?.exists === true ? "Yes" : wa?.exists === false ? "No" : "Unknown";
@@ -621,6 +730,7 @@ export default function ScrapeRunResultsPage() {
         r.address ?? r.location ?? "", r.website ?? "",
         r.rating != null ? r.rating.toFixed(1) : "",
         r.reviewCount != null ? String(r.reviewCount) : "",
+        r.score != null ? String(r.score) : "", (r.tags ?? []).join("; "),
         r.budget ?? "", (r.skills ?? []).join("; "),
         r.jobTitle ?? "", r.company ?? "",
         r.sourceUrl, r.createdAt,
@@ -640,6 +750,16 @@ export default function ScrapeRunResultsPage() {
   };
 
   const importedSelected = filteredResults.filter((r) => selected.has(r.id) && r.imported && r.phone);
+
+  // Rows still without a WhatsApp answer: the selected rows, or all visible rows
+  const waCheckTargets = (selected.size > 0
+    ? filteredResults.filter((r) => selected.has(r.id))
+    : filteredResults
+  )
+    .filter((r) => r.phone && r.waExists == null)
+    .map((r) => r.id);
+  const phoneCount = results.filter((r) => r.phone).length;
+  const checkedCount = results.filter((r) => r.phone && r.waCheckedAt).length;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -674,7 +794,7 @@ export default function ScrapeRunResultsPage() {
             <div className="w-px h-8 bg-outline-variant" />
             <div>
               <p className="text-title font-semibold text-on-surface">{results.filter((r) => !r.imported).length}</p>
-              <p className="text-caption text-on-surface-variant">Pending</p>
+              <p className="text-caption text-on-surface-variant">Not imported</p>
             </div>
             <div className="w-px h-8 bg-outline-variant" />
             <div>
@@ -714,7 +834,8 @@ export default function ScrapeRunResultsPage() {
                 filters={filters}
                 onChange={updateFilters}
                 categories={categories}
-                waChecksLoaded={!waLoading && phones.length > 0}
+                waChecksLoaded={!waChecking && Object.keys(waStatusMap).length > 0}
+                hasScores={results.some((r) => r.score != null)}
                 resultCount={results.length}
                 visibleCount={filteredResults.length}
               />
@@ -730,14 +851,34 @@ export default function ScrapeRunResultsPage() {
                   />
                   <span className="text-body-lg text-on-surface-variant">
                     {allSelected
-                      ? `All ${unimportedVisible.length} visible selected`
+                      ? `All ${filteredResults.length} visible selected`
                       : selected.size > 0
                       ? `${selected.size} selected`
-                      : `Select to import`}
+                      : `Select leads`}
                   </span>
                 </label>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {(waChecking || waCheckTargets.length > 0) && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => (waChecking ? stopChecking() : checkPhones(waCheckTargets))}
+                      title="Runs in the background, one number at a time, to keep your WhatsApp number safe"
+                    >
+                      {waChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+                      {waChecking
+                        ? `Checking ${checkedCount}/${phoneCount} · Stop`
+                        : `Check WhatsApp (${waCheckTargets.length})`}
+                    </Button>
+                  )}
+
+                  {run && run.importedCount > 0 && (
+                    <Button onClick={() => setMessageChoiceOpen(true)}>
+                      <Send className="w-4 h-4" />
+                      Message leads
+                    </Button>
+                  )}
+
                   <Button variant="secondary"
                     onClick={exportCsv}
                    
@@ -746,27 +887,15 @@ export default function ScrapeRunResultsPage() {
                     Export {filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}
                   </Button>
 
-                  {selected.size > 0 && (
-                    <>
-                      <Button variant="secondary"
-                        onClick={handleImport}
-                        disabled={importMutation.isPending}
-                        className="border-primary text-primary hover:bg-primary/5"
-                      >
-                        {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
-                        Import {selected.size}
-                      </Button>
-
-                      <Button
-                        onClick={() => setPitchOpen(true)}
-                        disabled={importedSelected.length === 0}
-                        title={importedSelected.length === 0 ? "Import leads first before pitching" : undefined}
-                       
-                      >
-                        <Send className="w-4 h-4" />
-                        Send Pitch ({importedSelected.length})
-                      </Button>
-                    </>
+                  {unimportedSelectedIds.length > 0 && (
+                    <Button variant="secondary"
+                      onClick={handleImport}
+                      disabled={importMutation.isPending}
+                      className="border-primary text-primary hover:bg-primary/5"
+                    >
+                      {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+                      Import {unimportedSelectedIds.length}
+                    </Button>
                   )}
                 </div>
               </div>
@@ -794,7 +923,7 @@ export default function ScrapeRunResultsPage() {
                             className="accent-primary w-4 h-4"
                             checked={allSelected}
                             onChange={toggleAll}
-                            title="Select all visible unimported"
+                            title="Select all visible"
                           />
                         </TableHead>
                         <TableHead>Name</TableHead>
@@ -825,7 +954,63 @@ export default function ScrapeRunResultsPage() {
         </>
       )}
 
-      {/* Pitch template modal */}
+      {/* One entry point for messaging leads: sequence for the run, or a one-time pitch */}
+      <Modal
+        open={messageChoiceOpen}
+        onClose={() => setMessageChoiceOpen(false)}
+        aria-labelledby="message-leads-title"
+        className="max-w-md p-6"
+      >
+        {() => (
+          <>
+            <h2 id="message-leads-title" className="text-title font-semibold text-on-surface mb-4">
+              Message leads
+            </h2>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { setMessageChoiceOpen(false); setOutreachOpen(true); }}
+                className="w-full flex items-start gap-3 rounded-xl border border-outline-variant p-4 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <Rocket className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-body-lg font-medium text-on-surface">
+                    Follow-up sequence <span className="text-label text-primary">(recommended)</span>
+                  </span>
+                  <span className="block text-label text-on-surface-variant mt-0.5">
+                    First message plus automatic follow-ups to all {run.importedCount} imported leads. Stops when they reply.
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={importedSelected.length === 0}
+                onClick={() => { setMessageChoiceOpen(false); setPitchOpen(true); }}
+                className="w-full flex items-start gap-3 rounded-xl border border-outline-variant p-4 text-left enabled:hover:border-primary enabled:hover:bg-primary/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Send className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <span className="block text-body-lg font-medium text-on-surface">One-time message</span>
+                  <span className="block text-label text-on-surface-variant mt-0.5">
+                    {importedSelected.length > 0
+                      ? `Send one pitch to the ${importedSelected.length} selected imported lead${importedSelected.length !== 1 ? "s" : ""}.`
+                      : "Select imported leads in the table first."}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {run && (
+        <StartOutreachModal
+          open={outreachOpen}
+          onClose={() => setOutreachOpen(false)}
+          run={{ id: run.id, keywords: run.keywords, location: run.location, importedCount: run.importedCount }}
+        />
+      )}
+
       <PitchTemplateModal
         open={pitchOpen}
         onClose={() => setPitchOpen(false)}

@@ -36,6 +36,17 @@ export async function startSequence(id: string): Promise<CampaignSequence> {
   return data;
 }
 
+/** Create + start an outreach sequence for a scrape run's imported leads */
+export async function startOutreach(req: {
+  scrapeRunId: string;
+  name: string;
+  steps: { messageBody: string; delayMinutes: number }[];
+  onlyNew?: boolean;
+}): Promise<CampaignSequence> {
+  const { data } = await apiClient.post("/sequences/outreach", req);
+  return data;
+}
+
 export async function pauseSequence(id: string): Promise<CampaignSequence> {
   const { data } = await apiClient.post(`/sequences/${id}/pause`);
   return data;

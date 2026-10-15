@@ -228,8 +228,8 @@ export function InvoiceDetailModal({ invoice, user, onClose }: Props) {
                     width: 38, height: 38, borderRadius: 10,
                     background: "rgba(255,255,255,0.15)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 18,
-                  }}>💬</div>
+                    fontSize: 18, fontWeight: 800,
+                  }}>W</div>
                   <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>Wazelo CRM</span>
                 </div>
                 {/* Invoice number */}

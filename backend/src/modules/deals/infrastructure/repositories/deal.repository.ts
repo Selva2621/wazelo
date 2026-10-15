@@ -50,15 +50,51 @@ export class DealRepository {
     });
   }
 
-  async updateStage(id: string, stageId: string, status?: DealStatus) {
-    const data: Prisma.DealUpdateInput = { stage: { connect: { id: stageId } } };
-    if (status === DealStatus.WON) {
-      data.status = DealStatus.WON;
-      data.closedAt = new Date();
-    } else if (status === DealStatus.LOST) {
-      data.status = DealStatus.LOST;
-      data.closedAt = new Date();
-    }
+  /**
+   * Names of referenced records that don't exist in this org (or, for the
+   * stage, aren't in the given pipeline). Empty when everything is valid.
+   */
+  async findInvalidRefs(orgId: string, refs: {
+    pipelineId: string;
+    stageId: string;
+    contactId?: string;
+    assignedToId?: string;
+    productId?: string;
+  }): Promise<string[]> {
+    const [pipeline, stage, contact, assignee, product] = await Promise.all([
+      this.prisma.pipeline.findFirst({ where: { id: refs.pipelineId, orgId, deletedAt: null }, select: { id: true } }),
+      this.prisma.pipelineStage.findFirst({ where: { id: refs.stageId, pipelineId: refs.pipelineId }, select: { id: true } }),
+      refs.contactId
+        ? this.prisma.contact.findFirst({ where: { id: refs.contactId, orgId, deletedAt: null }, select: { id: true } })
+        : Promise.resolve({ id: '' }),
+      refs.assignedToId
+        ? this.prisma.user.findFirst({ where: { id: refs.assignedToId, orgId, deletedAt: null }, select: { id: true } })
+        : Promise.resolve({ id: '' }),
+      refs.productId
+        ? this.prisma.product.findFirst({ where: { id: refs.productId, orgId, deletedAt: null }, select: { id: true } })
+        : Promise.resolve({ id: '' }),
+    ]);
+
+    const invalid: string[] = [];
+    if (!pipeline) invalid.push('pipeline');
+    if (!pipeline || !stage) invalid.push('stage');
+    if (!contact) invalid.push('contact');
+    if (!assignee) invalid.push('assignee');
+    if (!product) invalid.push('product');
+    return invalid;
+  }
+
+  /**
+   * Move a deal to a stage. Status follows the stage's won/lost flags, so moving
+   * a closed deal back to an open stage reopens it (status OPEN, closedAt cleared).
+   */
+  async updateStage(id: string, stage: { id: string; isWonStage: boolean; isLostStage: boolean }) {
+    const status = stage.isWonStage ? DealStatus.WON : stage.isLostStage ? DealStatus.LOST : DealStatus.OPEN;
+    const data: Prisma.DealUpdateInput = {
+      stage: { connect: { id: stage.id } },
+      status,
+      closedAt: status === DealStatus.OPEN ? null : new Date(),
+    };
     return this.prisma.deal.update({
       where: { id },
       data,
@@ -74,20 +110,77 @@ export class DealRepository {
     notes?: string;
     assignedToId?: string;
     status?: DealStatus;
+    /** null clears the follow-up */
+    nextFollowUpAt?: Date | null;
+    followUpNote?: string | null;
   }) {
     return this.prisma.deal.update({
       where: { id },
       data: {
+        ...(data.nextFollowUpAt !== undefined && {
+          nextFollowUpAt: data.nextFollowUpAt,
+          // A new or cleared time gets a fresh "due" notification
+          followUpNotifiedAt: null,
+        }),
+        ...(data.followUpNote !== undefined && { followUpNote: data.followUpNote }),
         ...(data.title && { title: data.title }),
         ...(data.value !== undefined && { value: data.value }),
         ...(data.currency && { currency: data.currency }),
         ...(data.expectedClose && { expectedClose: data.expectedClose }),
         ...(data.notes !== undefined && { notes: data.notes }),
         ...(data.assignedToId && { assignedToId: data.assignedToId }),
-        ...(data.status && { status: data.status, ...(data.status !== DealStatus.OPEN && { closedAt: new Date() }) }),
+        ...(data.status && {
+          status: data.status,
+          closedAt: data.status === DealStatus.OPEN ? null : new Date(),
+        }),
       },
       include: { stage: true, contact: true, assignedTo: true, product: true },
     });
+  }
+
+  /** Open deals with a follow-up due at or before `until` (overdue first). */
+  async findFollowUpsDue(orgId: string, until: Date, take = 50) {
+    return this.prisma.deal.findMany({
+      where: {
+        orgId,
+        deletedAt: null,
+        status: DealStatus.OPEN,
+        nextFollowUpAt: { not: null, lte: until },
+      },
+      include: {
+        stage: { select: { id: true, name: true, color: true } },
+        contact: { select: { id: true, name: true, phoneNumber: true } },
+      },
+      orderBy: { nextFollowUpAt: 'asc' },
+      take,
+    });
+  }
+
+  /** Follow-ups that just came due and haven't been notified yet — all orgs. */
+  async findFollowUpsToNotify(now: Date, take = 200) {
+    return this.prisma.deal.findMany({
+      where: {
+        deletedAt: null,
+        status: DealStatus.OPEN,
+        nextFollowUpAt: { not: null, lte: now },
+        followUpNotifiedAt: null,
+      },
+      select: {
+        id: true,
+        orgId: true,
+        pipelineId: true,
+        title: true,
+        assignedToId: true,
+        nextFollowUpAt: true,
+        followUpNote: true,
+        contact: { select: { id: true, name: true, phoneNumber: true, ownerId: true } },
+      },
+      take,
+    });
+  }
+
+  async markFollowUpNotified(id: string, at: Date) {
+    return this.prisma.deal.update({ where: { id }, data: { followUpNotifiedAt: at } });
   }
 
   async softDelete(id: string) {

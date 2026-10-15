@@ -10,6 +10,7 @@ import {
   cancelSequence,
   getSequenceRecipients,
   getSequenceAnalytics,
+  startOutreach,
 } from "@/lib/api/sequences";
 import type { CreateSequenceRequest, SequenceStatus } from "@/lib/types/sequences";
 
@@ -48,6 +49,14 @@ export function useStartSequence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => startSequence(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sequences"] }),
+  });
+}
+
+export function useStartOutreach() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: Parameters<typeof startOutreach>[0]) => startOutreach(req),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sequences"] }),
   });
 }

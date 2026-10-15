@@ -3,6 +3,7 @@ export { DisconnectSessionUseCase } from './disconnect-session.use-case';
 export { ListSessionsUseCase } from './list-sessions.use-case';
 export { GetSessionUseCase } from './get-session.use-case';
 export { RefreshQrUseCase } from './refresh-qr.use-case';
+export { RequestPairingCodeUseCase } from './request-pairing-code.use-case';
 // SendMessageUseCase moved to @/modules/messages (EPIC 5)
 export { HandleSessionEventUseCase } from './handle-session-event.use-case';
 export { ReconnectSessionUseCase } from './reconnect-session.use-case';

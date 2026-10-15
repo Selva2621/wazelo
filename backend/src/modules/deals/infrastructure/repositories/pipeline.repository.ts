@@ -83,6 +83,13 @@ export class PipelineRepository {
     return this.prisma.pipelineStage.delete({ where: { id: stageId } });
   }
 
+  async findStageInPipeline(stageId: string, pipelineId: string) {
+    return this.prisma.pipelineStage.findFirst({
+      where: { id: stageId, pipelineId },
+      select: { id: true, isWonStage: true, isLostStage: true },
+    });
+  }
+
   async findDefaultOrFirst(orgId: string) {
     const defaultPipeline = await this.prisma.pipeline.findFirst({
       where: { orgId, isDefault: true, deletedAt: null },

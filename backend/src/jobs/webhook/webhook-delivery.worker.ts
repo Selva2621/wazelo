@@ -6,6 +6,7 @@ import { SettingsRepository } from '@/modules/settings/infrastructure/repositori
 import { WebhookSigningService } from '@/modules/settings/domain/services/webhook-signing.service';
 import { QUEUE_NAMES, EVENT_NAMES, SETTINGS_CONFIG } from '@/common/constants';
 import { WebhookDeliveryStatus } from '@prisma/client';
+import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 
 interface WebhookDeliverJob {
   deliveryId: string;
@@ -22,6 +23,7 @@ export class WebhookDeliveryWorker implements OnModuleInit {
     private readonly settingsRepository: SettingsRepository,
     private readonly webhookSigningService: WebhookSigningService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly messageRepository: MessageRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -43,6 +45,28 @@ export class WebhookDeliveryWorker implements OnModuleInit {
     );
 
     this.logger.log('Webhook delivery worker started');
+  }
+
+  /**
+   * MESSAGE_RECEIVED deliveries are stored without the message text (bodies
+   * are encrypted at rest), so add the decrypted body and media at send time.
+   */
+  private async withMessageContent(payload: unknown, orgId: string): Promise<unknown> {
+    const p = payload as { event?: string; data?: { messageId?: string } } | null;
+    if (p?.event !== 'MESSAGE_RECEIVED' || !p.data?.messageId) return payload;
+
+    const message = await this.messageRepository.findByIdAndOrg(p.data.messageId, orgId);
+    if (!message) return payload;
+
+    return {
+      ...p,
+      data: {
+        ...p.data,
+        body: message.body ?? null,
+        mediaUrl: message.mediaUrl ?? null,
+        mediaMimeType: message.mediaMimeType ?? null,
+      },
+    };
   }
 
   private async handleDelivery(data: WebhookDeliverJob): Promise<void> {
@@ -69,7 +93,7 @@ export class WebhookDeliveryWorker implements OnModuleInit {
       return;
     }
 
-    const payloadString = JSON.stringify(delivery.payload);
+    const payloadString = JSON.stringify(await this.withMessageContent(delivery.payload, orgId));
     const timestamp = Math.floor(Date.now() / 1000);
     const signature = this.webhookSigningService.sign(payloadString, webhook.secret, timestamp);
 

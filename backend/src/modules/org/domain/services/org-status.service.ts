@@ -27,9 +27,10 @@ export class OrgStatusService {
 
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
-      select: { status: true },
+      select: { status: true, deletedAt: true },
     });
-    const suspended = org?.status === OrgStatus.SUSPENDED;
+    // A deleted org (restorable for 30 days) is locked out exactly like a suspended one
+    const suspended = org?.status === OrgStatus.SUSPENDED || !!org?.deletedAt;
     this.cache.set(orgId, { suspended, expiresAt: Date.now() + CACHE_TTL_MS });
     return suspended;
   }

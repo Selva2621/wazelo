@@ -17,6 +17,8 @@ import type {
   AddTagRequest,
   ListContactsParams,
   OrgMember,
+  BulkContactAction,
+  BulkContactsResult,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -108,6 +110,13 @@ export const contactsApi = {
 
   listOrgTags: () =>
     apiClient.get<Tag[]>("/contacts/tags/list").then((r) => r.data),
+
+  // ─── Bulk actions ───
+
+  bulk: ({ action, ...body }: BulkContactAction) =>
+    apiClient
+      .post<BulkContactsResult>(`/contacts/bulk/${action}`, body)
+      .then((r) => r.data),
 
   // ─── Lookup by phone ───
 

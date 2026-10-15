@@ -1,9 +1,12 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
+import { notificationsApi } from "@/lib/api/notifications";
+import { getDeviceId } from "@/lib/device";
 import { useAuthStore } from "@/stores/auth-store";
+import { homePathFor } from "@/lib/utils";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -24,9 +27,19 @@ export function useLogin() {
       // Never show a new user anything cached for whoever used this tab before.
       queryClient.clear();
       setAuth({ ...data, rememberMe: variables.rememberMe ?? false });
-      // Go straight to the right dashboard instead of bouncing through /dashboard
-      router.push(data.user.orgType === "FREELANCER" ? "/dashboard/freelancer" : "/dashboard");
+      // Go straight to the right page instead of bouncing through /dashboard
+      router.push(homePathFor(data.user.orgType));
     },
+  });
+}
+
+/** External sign-in options for the auth pages. Hidden (not an error) when the call fails. */
+export function useAuthProviders() {
+  return useQuery({
+    queryKey: ["auth", "providers"],
+    queryFn: authApi.getProviders,
+    staleTime: 60_000,
+    retry: 1,
   });
 }
 
@@ -66,7 +79,11 @@ export function useLogout() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   return useMutation({
-    mutationFn: () => authApi.logout(),
+    mutationFn: async () => {
+      // This browser stops getting this user's push before the session ends
+      await notificationsApi.detachDevicePush(getDeviceId()).catch(() => undefined);
+      return authApi.logout();
+    },
     onSettled: () => {
       // Clear in-memory auth (also drops the realtime socket) and every cached query, so
       // nothing from this account stays readable in the tab. ProtectedLayout's redirect

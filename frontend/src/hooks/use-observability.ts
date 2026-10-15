@@ -8,6 +8,8 @@ import type {
   QueryAlertsParams,
   QueryErrorsParams,
   CreateAlertRuleRequest,
+  UpdateAlertRuleRequest,
+  QueryFailedJobsParams,
 } from "@/lib/types/observability";
 
 // ─── Query Key Factory ───
@@ -26,6 +28,9 @@ export const observabilityKeys = {
     ["observability", "alert-history", params] as const,
   errors: (params?: QueryErrorsParams) =>
     ["observability", "errors", params] as const,
+  failedJobsAll: () => ["observability", "failed-jobs"] as const,
+  failedJobs: (params?: QueryFailedJobsParams) =>
+    ["observability", "failed-jobs", params] as const,
 };
 
 // ─── Query Hooks ───
@@ -90,7 +95,48 @@ export function useErrors(params?: QueryErrorsParams) {
   });
 }
 
+export function useFailedJobs(params?: QueryFailedJobsParams) {
+  return useQuery({
+    queryKey: observabilityKeys.failedJobs(params),
+    queryFn: () => observabilityApi.getFailedJobs(params),
+    placeholderData: (prev) => prev,
+  });
+}
+
 // ─── Mutation Hooks ───
+
+export function useRetryJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => observabilityApi.retryJob(id),
+    onSettled: () => {
+      // Also on error: a 400/404 means the list is stale (already retried / job gone)
+      queryClient.invalidateQueries({ queryKey: observabilityKeys.failedJobsAll() });
+      queryClient.invalidateQueries({ queryKey: observabilityKeys.queues() });
+    },
+  });
+}
+
+export function useUpdateAlertRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAlertRuleRequest }) =>
+      observabilityApi.updateAlertRule(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: observabilityKeys.alertRules() });
+    },
+  });
+}
+
+export function useDeleteAlertRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => observabilityApi.deleteAlertRule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: observabilityKeys.alertRules() });
+    },
+  });
+}
 
 export function useCreateAlertRule() {
   const queryClient = useQueryClient();

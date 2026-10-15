@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { ScrapeRun, ScrapeRunStatus, ScrapeSource } from '@prisma/client';
+import { Prisma, ScrapeRun, ScrapeRunStatus, ScrapeSource } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { LeadFilters } from '../../domain/services/lead-filters';
 
 export interface CreateScrapeRunInput {
   orgId: string;
@@ -8,6 +9,7 @@ export interface CreateScrapeRunInput {
   keywords: string;
   location?: string;
   maxResults: number;
+  filters?: LeadFilters;
   createdById: string;
 }
 
@@ -32,6 +34,7 @@ export class ScrapeRunRepository {
         keywords: data.keywords,
         location: data.location ?? null,
         maxResults: data.maxResults,
+        ...(data.filters && { filters: data.filters as Prisma.InputJsonObject }),
         createdById: data.createdById,
         status: ScrapeRunStatus.PENDING,
       },
@@ -56,6 +59,26 @@ export class ScrapeRunRepository {
         ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
       },
     });
+  }
+
+  /** Update only if the run is currently in one of `from`; returns whether it applied. */
+  async transition(
+    id: string,
+    from: ScrapeRunStatus[],
+    data: UpdateScrapeRunInput,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.scrapeRun.updateMany({
+      where: { id, status: { in: from } },
+      data: {
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.resultCount !== undefined && { resultCount: data.resultCount }),
+        ...(data.importedCount !== undefined && { importedCount: data.importedCount }),
+        ...(data.skippedCount !== undefined && { skippedCount: data.skippedCount }),
+        ...(data.errorMessage !== undefined && { errorMessage: data.errorMessage }),
+        ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
+      },
+    });
+    return count > 0;
   }
 
   async findResults(scrapeRunId: string) {

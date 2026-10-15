@@ -104,6 +104,40 @@ export class AudienceResolverService {
   }
 
   /**
+   * Keep only "warm" contacts — ones who have messaged this org before.
+   * Bulk messages to people who never wrote first get a WhatsApp number
+   * reported and banned, so Baileys campaigns only go to warm contacts.
+   */
+  async keepWarmContacts(orgId: string, contacts: ResolvedContact[]): Promise<ResolvedContact[]> {
+    const warm: ResolvedContact[] = [];
+    const chunkSize = 1000;
+
+    for (let i = 0; i < contacts.length; i += chunkSize) {
+      const chunk = contacts.slice(i, i + chunkSize);
+      const variants = chunk.flatMap((c) => {
+        const digits = c.phoneNumber.replace(/^\+/, '');
+        return [digits, `+${digits}`];
+      });
+
+      const inbound = await this.prisma.message.findMany({
+        where: {
+          orgId,
+          direction: 'INBOUND',
+          deletedAt: null,
+          contactPhone: { in: variants },
+        },
+        select: { contactPhone: true },
+        distinct: ['contactPhone'],
+      });
+      const warmPhones = new Set(inbound.map((m) => m.contactPhone.replace(/^\+/, '')));
+
+      warm.push(...chunk.filter((c) => warmPhones.has(c.phoneNumber.replace(/^\+/, ''))));
+    }
+
+    return warm;
+  }
+
+  /**
    * Preview audience count without fetching all contacts.
    * Used by the preview-audience endpoint for fast feedback.
    */

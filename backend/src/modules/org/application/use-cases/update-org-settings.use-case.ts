@@ -74,6 +74,20 @@ export class UpdateOrgSettingsUseCase {
       changes.orgType = { from: org.orgType, to: dto.orgType };
     }
 
+    if (
+      dto.freelancerTypes !== undefined &&
+      [...dto.freelancerTypes].sort().join(',') !== [...org.freelancerTypes].sort().join(',')
+    ) {
+      updateData.freelancerTypes = dto.freelancerTypes;
+      changes.freelancerTypes = { from: org.freelancerTypes, to: dto.freelancerTypes };
+    }
+
+    const service = dto.freelancerService?.trim() || null;
+    if (dto.freelancerService !== undefined && service !== org.freelancerService) {
+      updateData.freelancerService = service;
+      changes.freelancerService = { from: org.freelancerService, to: service };
+    }
+
     // No changes detected
     if (Object.keys(updateData).length === 0) {
       return org;
@@ -96,12 +110,16 @@ export class UpdateOrgSettingsUseCase {
       userAgent,
     });
 
-    // Switching to FREELANCER unlocks the freelancer system templates — onboarding is idempotent
-    if (changes.orgType && dto.orgType === OrgType.FREELANCER) {
+    // Becoming a FREELANCER, or saying what they do, seeds the freelancer templates
+    // written for their line of work. Onboarding only adds missing templates, so
+    // anything the user already has or edited is left alone.
+    const isFreelancer = (dto.orgType ?? org.orgType) === OrgType.FREELANCER;
+    if (isFreelancer && (changes.orgType || changes.freelancerTypes || changes.freelancerService)) {
+      const types = [...(dto.freelancerTypes ?? org.freelancerTypes)].sort().join('+') || 'none';
       await this.queueService.publishOnce(
         QUEUE_NAMES.ORG_ONBOARDING,
         { orgId, mode: 'org-type-changed' },
-        `org-templates:${orgId}`,
+        `org-templates:${orgId}:${types}`,
       );
     }
 

@@ -6,3 +6,9 @@ export { AssignContactDto } from './assign-contact.dto';
 export { MergeContactsDto } from './merge-contacts.dto';
 export { AddNoteDto } from './add-note.dto';
 export { AddTagDto } from './manage-tag.dto';
+export {
+  BulkContactIdsDto,
+  BulkChangeLeadStatusDto,
+  BulkAssignContactsDto,
+  BulkAddTagDto,
+} from './bulk-contacts.dto';

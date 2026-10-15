@@ -28,6 +28,22 @@ export const DEFAULT_PIPELINE = {
   stages: DEFAULT_PIPELINE_STAGES,
 };
 
+/** A freelancer's client journey: first message → advance paid → won. */
+export const FREELANCER_PIPELINE = {
+  name: 'Client Deals',
+  description: 'Freelancer pipeline — from first message to advance paid',
+  stages: [
+    { name: 'New lead', order: 0, color: '#64748b' },
+    { name: 'Qualified', order: 1, color: '#6366f1' },
+    { name: 'Discovery call', order: 2, color: '#0ea5e9' },
+    { name: 'Proposal sent', order: 3, color: '#f59e0b' },
+    { name: 'Negotiation', order: 4, color: '#3b82f6' },
+    { name: 'Advance paid', order: 5, color: '#14b8a6' },
+    { name: 'Won', order: 6, color: '#22c55e', isWonStage: true },
+    { name: 'Lost', order: 7, color: '#ef4444', isLostStage: true },
+  ] as DefaultPipelineStage[],
+};
+
 export const DEFAULT_TAGS: { name: string; color: string }[] = [
   { name: 'Hot Lead', color: '#ef4444' },
   { name: 'Warm Lead', color: '#f59e0b' },

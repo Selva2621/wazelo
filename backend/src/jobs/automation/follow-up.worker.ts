@@ -6,6 +6,7 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AutomationRepository } from '@/modules/automation/infrastructure/repositories/automation.repository';
 import { OutboundMessageService } from '@/modules/messages/application/services/outbound-message.service';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
+import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 
 export interface FollowUpCheckJobData {
   ruleId: string;
@@ -28,6 +29,7 @@ export class FollowUpWorker implements OnModuleInit {
     private readonly automationRepo: AutomationRepository,
     private readonly outboundMessage: OutboundMessageService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly killSwitches: KillSwitchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -46,6 +48,18 @@ export class FollowUpWorker implements OnModuleInit {
     this.logger.debug(
       `Checking follow-up: rule=${data.ruleId} contact=${data.contactId} job=${jobId}`,
     );
+
+    // Platform kill switch: cancel (not retry) — a follow-up sent hours late is wrong
+    if (await this.killSwitches.isDisabled('automation')) {
+      this.logger.warn(`Automation switched off platform-wide — cancelling follow-up rule=${data.ruleId} contact=${data.contactId}`);
+      this.eventEmitter.emit(EVENT_NAMES.FOLLOW_UP_CANCELLED, {
+        ruleId: data.ruleId,
+        orgId: data.orgId,
+        contactId: data.contactId,
+        reason: 'Automation is temporarily disabled platform-wide',
+      });
+      return;
+    }
 
     try {
       // 1. Check if rule is still active

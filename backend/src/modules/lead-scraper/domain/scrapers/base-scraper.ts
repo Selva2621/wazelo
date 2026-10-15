@@ -45,6 +45,21 @@ export abstract class BaseScraper {
     return `+${defaultCountryCode}${digits}`;
   }
 
+  /**
+   * Rethrow a fetch/parse failure with a readable message, so the run is marked
+   * FAILED with a reason instead of COMPLETED with 0 results.
+   */
+  protected fail(sourceName: string, error: unknown): never {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    const detail =
+      status === 403 || status === 429
+        ? `blocked by ${sourceName} (HTTP ${status}) — try again later`
+        : status
+          ? `${sourceName} returned HTTP ${status}`
+          : `${sourceName} could not be reached: ${error instanceof Error ? error.message : String(error)}`;
+    throw new Error(detail);
+  }
+
   abstract scrape(
     keywords: string,
     location?: string,

@@ -60,6 +60,7 @@ export class SearchController {
           lastMessageAt: true,
           lastMessageBody: true,
           status: true,
+          sessionId: true,
         },
         take: 5,
         orderBy: { lastMessageAt: 'desc' },
@@ -83,11 +84,27 @@ export class SearchController {
       }),
     ]);
 
+    // Whose WhatsApp number each conversation is on, so the inbox can open it
+    // directly for admins and managers (their inbox is per team member)
+    const sessionIds = [...new Set(conversations.map((c) => c.sessionId).filter((id): id is string => !!id))];
+    const sessions = sessionIds.length
+      ? await this.prisma.whatsAppSession.findMany({
+          where: { orgId, id: { in: sessionIds } },
+          select: { id: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+        })
+      : [];
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+
     // Decrypt lastMessageBody in conversation results
-    const decryptedConversations = conversations.map((c) => ({
-      ...c,
-      lastMessageBody: this.enc.decryptIfEncrypted(c.lastMessageBody),
-    }));
+    const decryptedConversations = conversations.map(({ sessionId, ...c }) => {
+      const owner = sessionId ? sessionById.get(sessionId) : undefined;
+      return {
+        ...c,
+        lastMessageBody: this.enc.decryptIfEncrypted(c.lastMessageBody),
+        ownerUserId: owner?.userId ?? null,
+        ownerName: owner ? `${owner.user.firstName} ${owner.user.lastName}`.trim() : null,
+      };
+    });
 
     return { contacts, conversations: decryptedConversations, campaigns };
   }

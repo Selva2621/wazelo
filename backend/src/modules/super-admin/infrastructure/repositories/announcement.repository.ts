@@ -50,8 +50,16 @@ export class AnnouncementRepository {
     });
   }
 
+  update(id: string, data: Partial<Omit<CreateAnnouncementInput, 'createdById'>>) {
+    return this.prisma.platformAnnouncement.update({ where: { id }, data });
+  }
+
   archive(id: string) {
     return this.prisma.platformAnnouncement.update({ where: { id }, data: { archivedAt: new Date() } });
+  }
+
+  restore(id: string) {
+    return this.prisma.platformAnnouncement.update({ where: { id }, data: { archivedAt: null } });
   }
 
   /** Unarchived announcements that have started and not ended — targeting is applied by the caller. */
