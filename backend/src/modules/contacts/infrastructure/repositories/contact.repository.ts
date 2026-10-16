@@ -157,7 +157,9 @@ export class ContactRepository {
             previousStatus: null,
             newStatus: LeadStatus.NEW,
             changedById: createdById,
-            reason: 'Auto-created from incoming message',
+            reason: data.source === ContactSource.WEB_SCRAPE
+              ? 'Imported from Lead Scraper'
+              : 'Auto-created from incoming message',
           },
         });
 
@@ -168,13 +170,22 @@ export class ContactRepository {
             previousOwnerId: null,
             newOwnerId: data.ownerId,
             assignedById: createdById,
-            reason: 'Auto-assigned to session owner',
+            reason: data.source === ContactSource.WEB_SCRAPE
+              ? 'Assigned to the user who imported it'
+              : 'Auto-assigned to session owner',
           },
         });
 
-        const contact = await tx.contact.findUniqueOrThrow({
-          where: { id: contactId },
-        });
+        // The raw insert only covers the conflict-checked columns; add the rest
+        const contact = data.email || data.metadata
+          ? await tx.contact.update({
+              where: { id: contactId },
+              data: {
+                ...(data.email && { email: data.email }),
+                ...(data.metadata && { metadata: data.metadata as Prisma.InputJsonObject }),
+              },
+            })
+          : await tx.contact.findUniqueOrThrow({ where: { id: contactId } });
 
         return { contact, created: true };
       }

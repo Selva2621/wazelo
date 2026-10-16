@@ -7,6 +7,7 @@ import {
   parsePriceLevel,
   parseProposals,
   parseRelativeTime,
+  splitSearchTerms,
   zoomForRadius,
 } from './lead-parsing';
 import { matchesFilters, hasActiveFilters } from './lead-filters';
@@ -16,6 +17,12 @@ const NOW = new Date('2026-10-12T12:00:00.000Z');
 const DAY = 86_400_000;
 
 describe('lead parsing', () => {
+  it('splits search terms, dropping blanks and repeats', () => {
+    expect(splitSearchTerms('Gym, Fitness centre, gym ,  ')).toEqual(['Gym', 'Fitness centre']);
+    expect(splitSearchTerms('web design agency')).toEqual(['web design agency']);
+    expect(splitSearchTerms(' , ')).toEqual([]);
+  });
+
   it('parses relative times', () => {
     expect(parseRelativeTime('Posted 2 hours ago', NOW)?.getTime()).toBe(NOW.getTime() - 2 * 3_600_000);
     expect(parseRelativeTime('a month ago', NOW)?.getTime()).toBe(NOW.getTime() - 30 * DAY);

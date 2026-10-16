@@ -125,6 +125,10 @@ export interface ScrapeResult {
   sourceUrl: string;
   imported: boolean;
   contactId?: string;
+  /** A contact already has this number (here or from anywhere else) */
+  existingContactId?: string | null;
+  /** When an earlier run first found this lead — null if it's new */
+  seenBeforeAt?: string | null;
   createdAt: string;
 }
 

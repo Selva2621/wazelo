@@ -6,6 +6,7 @@ import {
   distanceKm,
   parsePriceLevel,
   parseRelativeTime,
+  splitSearchTerms,
   zoomForRadius,
 } from '../services/lead-parsing';
 
@@ -46,9 +47,11 @@ export class GoogleMapsScraper extends BaseScraper {
 
       const placeUrls: string[] = [];
       const seen = new Set<string>();
-      for (const url of searchUrls) {
+      for (const [i, url] of searchUrls.entries()) {
         if (placeUrls.length >= candidateLimit) break;
-        const found = await this.collectPlaceUrls(page, url, candidateLimit - placeUrls.length, seen);
+        // Share what's left across the remaining searches so the first type/area can't take it all
+        const budget = Math.ceil((candidateLimit - placeUrls.length) / (searchUrls.length - i));
+        const found = await this.collectPlaceUrls(page, url, budget, seen);
         for (const placeUrl of found) {
           // Skip places outside the radius before spending time on their page
           const coords = coordsFromMapsUrl(placeUrl);
@@ -79,12 +82,15 @@ export class GoogleMapsScraper extends BaseScraper {
 
   private searchUrls(keywords: string, location: string | undefined, options?: ScrapeOptions, center?: Coords): string[] {
     const search = (q: string) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+    const terms = splitSearchTerms(keywords);
+    if (!terms.length) terms.push(keywords.trim());
     const areas = options?.areas?.map((a) => a.trim()).filter(Boolean) ?? [];
-    if (areas.length) return areas.map((area) => search(`${keywords} ${area}`));
+    if (areas.length) return terms.flatMap((term) => areas.map((area) => search(`${term} ${area}`)));
     if (center && options?.radiusKm) {
-      return [`${search(keywords)}/@${center.lat},${center.lng},${zoomForRadius(options.radiusKm)}z`];
+      const at = `/@${center.lat},${center.lng},${zoomForRadius(options.radiusKm)}z`;
+      return terms.map((term) => `${search(term)}${at}`);
     }
-    return [search(`${keywords} ${location ?? ''}`.trim())];
+    return terms.map((term) => search(`${term} ${location ?? ''}`.trim()));
   }
 
   /** Resolve a place name to coordinates by letting Maps centre on it */
