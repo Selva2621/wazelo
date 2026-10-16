@@ -3,10 +3,20 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { LeadFilters, ScrapeSource, WebsiteIssue } from "@/lib/types/lead-scraper";
+import { SuggestMulti } from "./business-type-input";
+import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, SKILL_SUGGESTIONS } from "@/lib/constants/scraper-suggestions";
 
 /** Number of filters the user has set (empty lists and false toggles don't count) */
 export function countActiveFilters(f: LeadFilters) {
   return Object.values(f).filter((v) => (Array.isArray(v) ? v.length > 0 : v != null && v !== false && v !== "")).length;
+}
+
+/** New runs skip leads the org already has — users can still untick */
+export const DEFAULT_LEAD_FILTERS: LeadFilters = { newOnly: true, skipExistingContacts: true };
+
+/** Filters inside "More filters" — the duplicate checks sit outside it */
+function countMoreFilters(f: LeadFilters) {
+  return countActiveFilters({ ...f, newOnly: undefined, skipExistingContacts: undefined });
 }
 
 const inputClass =
@@ -31,12 +41,17 @@ function Check({ checked, onChange, label, hint }: {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, asDiv }: {
+  label: string; children: React.ReactNode;
+  /** For controls with buttons inside — a <label> would forward clicks on its text to the first button */
+  asDiv?: boolean;
+}) {
+  const Tag = asDiv ? "div" : "label";
   return (
-    <label className="flex items-center gap-2 text-label text-on-surface-variant flex-wrap">
+    <Tag className="flex items-center gap-2 text-label text-on-surface-variant flex-wrap">
       <span className="shrink-0">{label}</span>
       {children}
-    </label>
+    </Tag>
   );
 }
 
@@ -85,7 +100,7 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
   /** Radius needs a location to centre on */
   hasLocation: boolean;
 }) {
-  const active = countActiveFilters(value);
+  const active = countMoreFilters(value);
   const [open, setOpen] = useState(active > 0);
   // Duplicating a run fills filters in from outside — show them
   const [prevActive, setPrevActive] = useState(active);
@@ -113,7 +128,12 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
   };
 
   return (
-    <div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        <Check label="New leads only" hint="skip ones found in earlier runs" checked={!!value.newOnly} onChange={(v) => set({ newOnly: flag(v) })} />
+        <Check label="Skip numbers already in contacts" checked={!!value.skipExistingContacts} onChange={(v) => set({ skipExistingContacts: flag(v) })} />
+      </div>
+
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -128,14 +148,7 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
       </button>
 
       {open && (
-        <div className="mt-3 rounded-xl border border-outline-variant bg-surface-container/40 p-4 space-y-5">
-          <Section title="Duplicates">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Check label="New leads only" hint="skip earlier runs" checked={!!value.newOnly} onChange={(v) => set({ newOnly: flag(v) })} />
-              <Check label="Skip numbers already in contacts" checked={!!value.skipExistingContacts} onChange={(v) => set({ skipExistingContacts: flag(v) })} />
-            </div>
-          </Section>
-
+        <div className="rounded-xl border border-outline-variant bg-surface-container/40 p-4 space-y-5">
           {isMaps ? (
             <>
               <Section title="Location">
@@ -210,11 +223,11 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
               </Section>
 
               <Section title="Business">
-                <Field label="Category is">
-                  <ListInput value={value.includeCategories} onChange={(includeCategories) => set({ includeCategories })} placeholder="gym, fitness" />
+                <Field label="Category is" asDiv>
+                  <SuggestMulti groups={KEYWORD_SUGGESTIONS.GOOGLE_MAPS} aliases={KEYWORD_ALIASES.GOOGLE_MAPS} value={value.includeCategories} onChange={(includeCategories) => set({ includeCategories })} placeholder="Type or pick — Gym, Fitness centre" />
                 </Field>
-                <Field label="Category is not">
-                  <ListInput value={value.excludeCategories} onChange={(excludeCategories) => set({ excludeCategories })} placeholder="yoga, dance" />
+                <Field label="Category is not" asDiv>
+                  <SuggestMulti groups={KEYWORD_SUGGESTIONS.GOOGLE_MAPS} aliases={KEYWORD_ALIASES.GOOGLE_MAPS} value={value.excludeCategories} onChange={(excludeCategories) => set({ excludeCategories })} placeholder="Type or pick — Yoga studio" />
                 </Field>
                 <Field label="Skip names with">
                   <ListInput value={value.excludeWords} onChange={(excludeWords) => set({ excludeWords })} placeholder="Gold's, Cult, Anytime" />
@@ -263,11 +276,11 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                     {[1, 3, 7, 14, 30].map((d) => <option key={d} value={d}>{d === 1 ? "24 hours" : `${d} days`}</option>)}
                   </select>
                 </Field>
-                <Field label="Skills include">
-                  <ListInput value={value.includeSkills} onChange={(includeSkills) => set({ includeSkills })} placeholder="react, wordpress" />
+                <Field label="Skills include" asDiv>
+                  <SuggestMulti groups={SKILL_SUGGESTIONS[source] ?? []} value={value.includeSkills} onChange={(includeSkills) => set({ includeSkills })} placeholder="Type or pick — React, WordPress" />
                 </Field>
-                <Field label="Skills exclude">
-                  <ListInput value={value.excludeSkills} onChange={(excludeSkills) => set({ excludeSkills })} placeholder="php" />
+                <Field label="Skills exclude" asDiv>
+                  <SuggestMulti groups={SKILL_SUGGESTIONS[source] ?? []} value={value.excludeSkills} onChange={(excludeSkills) => set({ excludeSkills })} placeholder="Type or pick — PHP" />
                 </Field>
               </Section>
 

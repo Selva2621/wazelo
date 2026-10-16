@@ -18,6 +18,7 @@ import {
   TableBody, TableRow, TableCell,
 } from "@/components/ui/table";
 import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-modal";
+import { TypeFilter } from "@/components/lead-scraper/type-filter";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface ActiveFilters {
   minRating: number; // 0 = any
   categories: string[]; // empty = all
   tier: "all" | ScoreTier;
+  /** new = not in contacts and not found before */
+  known: "all" | "new" | "in_contacts" | "seen";
   sortByScore: boolean;
 }
 
@@ -46,6 +49,7 @@ const DEFAULT_FILTERS: ActiveFilters = {
   minRating: 0,
   categories: [],
   tier: "all",
+  known: "all",
   sortByScore: false,
 };
 
@@ -150,7 +154,7 @@ function FilterBar({
 }: {
   filters: ActiveFilters;
   onChange: (f: Partial<ActiveFilters>) => void;
-  categories: string[];
+  categories: { name: string; count: number }[];
   waChecksLoaded: boolean;
   hasScores: boolean;
   resultCount: number;
@@ -165,6 +169,7 @@ function FilterBar({
     filters.minRating > 0,
     filters.categories.length > 0,
     filters.tier !== "all",
+    filters.known !== "all",
   ].filter(Boolean).length;
 
   return (
@@ -236,6 +241,19 @@ function FilterBar({
           </>
         )}
 
+        {/* New vs already known */}
+        <FilterSelect
+          label="Lead"
+          value={filters.known}
+          onChange={(v) => onChange({ known: v as ActiveFilters["known"] })}
+          options={[
+            { value: "all", label: "Leads: All" },
+            { value: "new", label: "New only" },
+            { value: "in_contacts", label: "Already in contacts" },
+            { value: "seen", label: "Found before" },
+          ]}
+        />
+
         {/* WA Status */}
         <FilterSelect
           label="WA Status"
@@ -299,35 +317,13 @@ function FilterBar({
           ]}
         />
 
-        {/* Category chips — dynamic from data */}
+        {/* Type — dynamic from data */}
         {categories.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {categories.slice(0, 8).map((cat) => {
-              const active = filters.categories.includes(cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() =>
-                    onChange({
-                      categories: active
-                        ? filters.categories.filter((c) => c !== cat)
-                        : [...filters.categories, cat],
-                    })
-                  }
-                  className={`text-caption px-2 py-0.5 rounded-full border transition-colors ${
-                    active
-                      ? "bg-primary text-on-primary border-primary"
-                      : "bg-surface-container text-on-surface-variant border-outline-variant hover:border-primary/50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-            {categories.length > 8 && (
-              <span className="text-caption text-on-surface-variant">+{categories.length - 8} more</span>
-            )}
-          </div>
+          <TypeFilter
+            options={categories}
+            value={filters.categories}
+            onChange={(cats) => onChange({ categories: cats })}
+          />
         )}
 
         {/* Quick: Select all WA active */}
@@ -441,6 +437,24 @@ function ResultRow({
           {result.imported && (
             <span className="text-caption bg-success/10 text-success px-1.5 py-0.5 rounded-full">
               Imported
+            </span>
+          )}
+          {!result.imported && result.existingContactId && (
+            <Link
+              href={`/contacts/${result.existingContactId}`}
+              onClick={(e) => e.stopPropagation()}
+              title="This number is already saved — open the contact"
+              className="text-caption bg-warning/10 text-warning px-1.5 py-0.5 rounded-full hover:underline"
+            >
+              In contacts
+            </Link>
+          )}
+          {result.seenBeforeAt && (
+            <span
+              title={`Also found in an earlier run on ${new Date(result.seenBeforeAt).toLocaleDateString()}`}
+              className="text-caption bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full"
+            >
+              Found {timeAgo(result.seenBeforeAt)}
             </span>
           )}
         </div>
@@ -615,13 +629,13 @@ export default function ScrapeRunResultsPage() {
     stopChecking,
   } = useWhatsAppChecks(runId, run?.waCheck, results);
 
-  // Derive unique categories from results for dynamic filter chips
+  // Derive unique categories (with counts) from results for the Type filter
   const categories = useMemo(() => {
-    const seen = new Set<string>();
+    const counts = new Map<string, number>();
     results.forEach((r) => {
-      if (r.category) seen.add(r.category);
+      if (r.category) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
     });
-    return Array.from(seen).sort();
+    return Array.from(counts, ([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
   }, [results]);
 
   // Apply all filters
@@ -663,6 +677,12 @@ export default function ScrapeRunResultsPage() {
 
       // Category chips
       if (filters.categories.length > 0 && !filters.categories.includes(r.category ?? "")) return false;
+
+      // New vs already known (imported results count as in contacts)
+      const inContacts = r.imported || !!r.existingContactId;
+      if (filters.known === "new" && (inContacts || r.seenBeforeAt)) return false;
+      if (filters.known === "in_contacts" && !inContacts) return false;
+      if (filters.known === "seen" && !r.seenBeforeAt) return false;
 
       // Lead score tier
       if (filters.tier !== "all" && (r.score == null || scoreTier(r.score) !== filters.tier)) return false;

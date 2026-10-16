@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Map, Briefcase, Globe, Search, Linkedin, Play, Clock,
   CheckCircle2, XCircle, Loader2, Users, ArrowRight,
   Trash2, RotateCcw, Copy, ChevronLeft, ChevronRight,
-  Filter, StickyNote, X, ChevronDown, Ban,
+  StickyNote, X, ChevronDown, Ban, Sparkles,
 } from "lucide-react";
 import {
   useScrapeRuns, useTriggerScrapeRun,
@@ -16,7 +16,15 @@ import { Spinner } from "@/components/ui/spinner";
 import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { ScrapeFilters, countActiveFilters } from "@/components/lead-scraper/scrape-filters";
+import { ScrapeFilters, countActiveFilters, DEFAULT_LEAD_FILTERS } from "@/components/lead-scraper/scrape-filters";
+import { SuggestInput, SuggestMulti, type RecentSearch } from "@/components/lead-scraper/business-type-input";
+import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
+import { useOrgSettings } from "@/hooks/use-settings";
+
+/** "Gym, Fitness centre" → ["Gym", "Fitness centre"] — mirrors the backend split */
+function splitTerms(keywords: string) {
+  return keywords.split(",").map((t) => t.trim()).filter(Boolean);
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,6 +37,7 @@ const SCRAPERS: {
   description: string;
   bestFor: string;
   locationLabel?: string;
+  keywordsLabel: string;
   keywordsPlaceholder: string;
   locationPlaceholder?: string;
 }[] = [
@@ -38,7 +47,8 @@ const SCRAPERS: {
     title: "Google Maps",
     description: "Find local businesses by search query",
     bestFor: "Designers, agencies, local B2B",
-    keywordsPlaceholder: "web design agency",
+    keywordsLabel: "Business type",
+    keywordsPlaceholder: "Gym",
     locationPlaceholder: "Mumbai, India",
     locationLabel: "City / Region",
   },
@@ -48,7 +58,8 @@ const SCRAPERS: {
     title: "Upwork Jobs",
     description: "Scrape job postings from Upwork",
     bestFor: "Developers, designers, copywriters",
-    keywordsPlaceholder: "react developer",
+    keywordsLabel: "Job category",
+    keywordsPlaceholder: "React developer",
     locationPlaceholder: "India",
     locationLabel: "Location filter",
   },
@@ -58,7 +69,8 @@ const SCRAPERS: {
     title: "Freelancer.in",
     description: "Browse active projects on Freelancer.com",
     bestFor: "Indian freelancers",
-    keywordsPlaceholder: "logo design",
+    keywordsLabel: "Project type",
+    keywordsPlaceholder: "Logo design",
   },
   {
     source: "TRUELANCER",
@@ -66,7 +78,8 @@ const SCRAPERS: {
     title: "Truelancer",
     description: "Find projects on Truelancer",
     bestFor: "Indian freelancers",
-    keywordsPlaceholder: "wordpress developer",
+    keywordsLabel: "Project type",
+    keywordsPlaceholder: "WordPress website",
   },
   {
     source: "LINKEDIN_JOBS",
@@ -74,7 +87,8 @@ const SCRAPERS: {
     title: "LinkedIn Jobs",
     description: "Extract job postings from LinkedIn",
     bestFor: "B2B & SaaS consultants",
-    keywordsPlaceholder: "product manager",
+    keywordsLabel: "Job title",
+    keywordsPlaceholder: "Product manager",
     locationPlaceholder: "Bangalore, India",
     locationLabel: "Location",
   },
@@ -347,7 +361,7 @@ export default function LeadScraperPage() {
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [maxResults, setMaxResults] = useState(20);
-  const [leadFilters, setLeadFilters] = useState<LeadFilters>({});
+  const [leadFilters, setLeadFilters] = useState<LeadFilters>(DEFAULT_LEAD_FILTERS);
 
   // Run list filters
   const [filterSource, setFilterSource] = useState<ScrapeSource | "">("");
@@ -372,12 +386,47 @@ export default function LeadScraperPage() {
 
   const selectedScraper = SCRAPERS.find((s) => s.source === selected);
 
+  // Google Maps takes several types as chips — one search each; `pendingType` is typed but not yet added
+  const [pendingType, setPendingType] = useState("");
+  const isMaps = selected === "GOOGLE_MAPS";
+  const mapsTypes = splitTerms(keywords);
+  const searchKeywords = isMaps
+    ? [...mapsTypes, pendingType.trim()].filter(Boolean).join(", ")
+    : keywords.trim();
+
+  // Past searches for this source, newest first, one per keywords + location
+  const { data: recentData } = useScrapeRuns({ take: 50 });
+  const recentSearches = useMemo<RecentSearch[]>(() => {
+    const seen = new Set<string>();
+    return (recentData?.runs ?? [])
+      .filter((r) => r.source === selected)
+      .filter((r) => {
+        const key = `${r.keywords.toLowerCase()}|${(r.location ?? "").toLowerCase()}`;
+        return !seen.has(key) && seen.add(key);
+      })
+      .map((r) => ({ keywords: r.keywords, location: r.location ?? undefined, resultCount: r.resultCount }));
+  }, [recentData, selected]);
+
+  // Picks for the org's line of work (chosen in onboarding)
+  const { data: orgSettings } = useOrgSettings();
+  const suggested = selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
+  const mapsTip = isMaps ? mapsTipFor(orgSettings?.freelancerTypes) : undefined;
+  const tipApplied = !!mapsTip && Object.entries(mapsTip.filters).every(
+    ([k, v]) => leadFilters[k as keyof LeadFilters] === v,
+  );
+
+  const pickRecent = (r: RecentSearch) => {
+    setKeywords(r.keywords);
+    setLocation(r.location ?? "");
+    setPendingType("");
+  };
+
   function handleRun() {
-    if (!selected || !keywords.trim()) return;
+    if (!selected || !searchKeywords) return;
     trigger.mutate(
       {
         source: selected,
-        keywords: keywords.trim(),
+        keywords: searchKeywords,
         location: location.trim() || undefined,
         maxResults,
         ...(countActiveFilters(leadFilters) > 0 && { filters: leadFilters }),
@@ -385,8 +434,9 @@ export default function LeadScraperPage() {
       {
         onSuccess: () => {
           setKeywords("");
+          setPendingType("");
           setLocation("");
-          setLeadFilters({});
+          setLeadFilters(DEFAULT_LEAD_FILTERS);
           setSelected(null);
           // Go back to page 0 to see the new run
           setPage(0);
@@ -400,6 +450,7 @@ export default function LeadScraperPage() {
   function handleDuplicate(run: ScrapeRun) {
     setSelected(run.source);
     setKeywords(run.keywords);
+    setPendingType("");
     setLocation(run.location ?? "");
     setMaxResults(run.maxResults);
     setLeadFilters(run.filters ?? {});
@@ -426,7 +477,7 @@ export default function LeadScraperPage() {
           {SCRAPERS.map((s) => (
             <button
               key={s.source}
-              onClick={() => { setSelected(s.source); setKeywords(""); setLocation(""); setMaxResults(20); setLeadFilters({}); }}
+              onClick={() => { setSelected(s.source); setKeywords(""); setPendingType(""); setLocation(""); setMaxResults(20); setLeadFilters(DEFAULT_LEAD_FILTERS); }}
               className={`flex flex-col items-start gap-2 p-4 rounded-2xl border-2 text-left transition-all ${
                 selected === s.source
                   ? "border-primary bg-primary/5 shadow-md"
@@ -461,16 +512,54 @@ export default function LeadScraperPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-label font-medium text-on-surface-variant block mb-1">
-                Keywords <span className="text-error">*</span>
+                {isMaps ? "Business types" : selectedScraper.keywordsLabel} <span className="text-error">*</span>
               </label>
-              <input
-                type="text"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRun()}
-                placeholder={selectedScraper.keywordsPlaceholder}
-                className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
-              />
+              {isMaps ? (
+                <SuggestMulti
+                  large
+                  groups={KEYWORD_SUGGESTIONS.GOOGLE_MAPS}
+                  aliases={KEYWORD_ALIASES.GOOGLE_MAPS}
+                  recent={recentSearches}
+                  onPickRecent={pickRecent}
+                  suggested={suggested}
+                  value={mapsTypes}
+                  onChange={(types) => setKeywords(types?.join(", ") ?? "")}
+                  text={pendingType}
+                  onTextChange={setPendingType}
+                  onEnter={handleRun}
+                  placeholder="Type or pick — e.g. Gym, parlour"
+                />
+              ) : (
+                <SuggestInput
+                  groups={KEYWORD_SUGGESTIONS[selectedScraper.source]}
+                  aliases={KEYWORD_ALIASES[selectedScraper.source]}
+                  recent={recentSearches}
+                  onPickRecent={pickRecent}
+                  suggested={suggested}
+                  value={keywords}
+                  onChange={setKeywords}
+                  onEnter={handleRun}
+                  placeholder={`Type or pick — e.g. ${selectedScraper.keywordsPlaceholder}`}
+                />
+              )}
+              {isMaps && mapsTypes.length > 1 && (
+                <p className="text-caption text-on-surface-variant/70 mt-1">
+                  {mapsTypes.length} searches in one run — duplicates removed, Max Results shared between them.
+                </p>
+              )}
+              {mapsTip && !tipApplied && (
+                <p className="flex items-center gap-1.5 text-caption text-on-surface-variant mt-1.5">
+                  <Sparkles className="w-3 h-3 text-primary shrink-0" />
+                  Tip: {mapsTip.text}
+                  <button
+                    type="button"
+                    onClick={() => setLeadFilters((f) => ({ ...f, ...mapsTip.filters }))}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Apply
+                  </button>
+                </p>
+              )}
             </div>
             {selectedScraper.locationPlaceholder && (
               <div>
@@ -518,7 +607,7 @@ export default function LeadScraperPage() {
 
           <Button size="lg"
             onClick={handleRun}
-            disabled={!keywords.trim() || trigger.isPending}
+            disabled={!searchKeywords || trigger.isPending}
            
           >
             {trigger.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}

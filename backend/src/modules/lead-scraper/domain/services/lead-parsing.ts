@@ -81,6 +81,15 @@ export function zoomForRadius(km: number): number {
   return 10;
 }
 
+/** "Gym, Fitness centre, gym" → ["Gym", "Fitness centre"] — one Maps search per term */
+export function splitSearchTerms(keywords: string): string[] {
+  const seen = new Set<string>();
+  return keywords
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
+}
+
 /** "Price: Moderate" / "₹₹" → 1–4 */
 export function parsePriceLevel(text: string | null | undefined): number | undefined {
   if (!text) return undefined;
