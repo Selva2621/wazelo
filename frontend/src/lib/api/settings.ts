@@ -39,6 +39,7 @@ export const settingsApi = {
         website: d.website ?? "",
         orgType: d.orgType,
         brandColors: d.branding?.brandColors,
+        orgTypeSetup: d.orgTypeSetup,
         updatedAt: d.updatedAt,
       } as OrgSettings;
     }),

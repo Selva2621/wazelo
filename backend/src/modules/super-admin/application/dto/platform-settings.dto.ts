@@ -24,4 +24,14 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @MaxLength(500)
   googleRedirectUri?: string;
+
+  /** New workspaces may choose Team / Company during setup */
+  @IsOptional()
+  @IsBoolean()
+  teamSetupEnabled?: boolean;
+
+  /** New workspaces may choose Solo / Freelancer during setup */
+  @IsOptional()
+  @IsBoolean()
+  freelancerSetupEnabled?: boolean;
 }

@@ -21,6 +21,8 @@ export interface OrgSettings {
     primary?: string;
     secondary?: string;
   };
+  /** Which org types a super admin has left open to new setups */
+  orgTypeSetup?: { TEAM: boolean; FREELANCER: boolean };
   updatedAt: string;
 }
 

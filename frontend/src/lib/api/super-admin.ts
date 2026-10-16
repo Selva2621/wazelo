@@ -257,7 +257,12 @@ export interface PlatformSettings {
     /** The backend's own callback URL, to paste into Google Cloud Console */
     suggestedRedirectUri: string;
   };
+  /** Per org type: may new workspaces pick it, and how many live orgs have it */
+  orgTypes: Record<SetupOrgType, { setupEnabled: boolean; orgCount: number }>;
 }
+
+/** Org types offered on the "How will you use Wazelo?" setup screen */
+export type SetupOrgType = "TEAM" | "FREELANCER";
 
 export interface UpdatePlatformSettingsBody {
   googleSignupEnabled?: boolean;
@@ -265,6 +270,8 @@ export interface UpdatePlatformSettingsBody {
   /** Write-only: "" keeps the stored secret, null removes it */
   googleClientSecret?: string | null;
   googleRedirectUri?: string;
+  teamSetupEnabled?: boolean;
+  freelancerSetupEnabled?: boolean;
 }
 
 export const superAdminApi = {

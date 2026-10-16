@@ -27,10 +27,16 @@ function deps(initial: Record<string, unknown> = {}) {
   // Real cached service over the fake repo, so invalidation is exercised too
   const settings = new PlatformSettingsService(repo as any, encryption as any);
   const audit = { record: jest.fn() };
-  const update = new UpdatePlatformSettingsUseCase(repo as any, settings, audit as any);
-  const get = new GetPlatformSettingsUseCase(settings);
+  const platform = { countOrgsByType: jest.fn(async () => ({ TEAM: 4, CRM: 1 })) };
+  const update = new UpdatePlatformSettingsUseCase(repo as any, settings, audit as any, platform as any);
+  const get = new GetPlatformSettingsUseCase(settings, platform as any);
   return { rows, repo, settings, audit, update, get };
 }
+
+const ALL_SETUP_ON = {
+  TEAM: { setupEnabled: true, orgCount: 4 },
+  FREELANCER: { setupEnabled: true, orgCount: 0 },
+};
 
 const configuredRows = () => ({
   'auth.google.clientId': CLIENT_ID,
@@ -43,6 +49,7 @@ describe('GetPlatformSettingsUseCase', () => {
     expect(await deps().get.execute(SUGGESTED)).toEqual({
       googleSignupEnabled: false,
       google: { clientId: null, clientSecretSet: false, redirectUri: null, configured: false, suggestedRedirectUri: SUGGESTED },
+      orgTypes: ALL_SETUP_ON,
     });
   });
 
@@ -51,6 +58,7 @@ describe('GetPlatformSettingsUseCase', () => {
     expect(out).toEqual({
       googleSignupEnabled: true,
       google: { clientId: CLIENT_ID, clientSecretSet: true, redirectUri: REDIRECT, configured: true, suggestedRedirectUri: SUGGESTED },
+      orgTypes: ALL_SETUP_ON,
     });
     expect(JSON.stringify(out)).not.toMatch(/old-secret|cipher:/);
   });
@@ -143,6 +151,26 @@ describe('UpdatePlatformSettingsUseCase', () => {
     });
     // Cache was invalidated: readers see the new value without waiting for the TTL
     expect((await d.settings.get()).googleSignupEnabled).toBe(true);
+  });
+
+  it('turns Team setup off without touching Google settings, audited as Workspace types', async () => {
+    const d = deps(configuredRows());
+    const out = await d.update.execute({ teamSetupEnabled: false }, actor, {}, SUGGESTED);
+
+    expect(d.rows.get('orgTypes.teamSetupEnabled')).toBe(false);
+    expect(out.orgTypes).toEqual({ ...ALL_SETUP_ON, TEAM: { setupEnabled: false, orgCount: 4 } });
+    expect(out.google.configured).toBe(true);
+    expect(d.audit.record.mock.calls[0][0]).toMatchObject({
+      targetId: 'orgTypes',
+      metadata: { label: 'Workspace types', before: { teamSetupEnabled: true }, after: { teamSetupEnabled: false } },
+    });
+    expect((await d.settings.get()).orgTypeSetup).toEqual({ TEAM: false, FREELANCER: true });
+  });
+
+  it('does not write a setup toggle that is already at that value', async () => {
+    const d = deps({ 'orgTypes.freelancerSetupEnabled': false });
+    await d.update.execute({ freelancerSetupEnabled: false, teamSetupEnabled: true }, actor, {}, SUGGESTED);
+    expect(d.repo.apply).not.toHaveBeenCalled();
   });
 
   it('does nothing (no write, no audit) when the value is unchanged', async () => {

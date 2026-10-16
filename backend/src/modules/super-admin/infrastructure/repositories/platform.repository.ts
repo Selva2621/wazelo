@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InvoiceStatus, OrgStatus, PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client';
+import { InvoiceStatus, OrgStatus, OrgType, PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { RevenueRow } from '../../domain/services/revenue';
 import { MonthCount, MonthRevenue } from '../../domain/services/growth-series';
@@ -52,6 +52,15 @@ export class PlatformRepository {
     return this.prisma.organization.count({
       where: { deletedAt: null, ...(since && { createdAt: { gte: since } }) },
     });
+  }
+
+  async countOrgsByType(): Promise<Partial<Record<OrgType, number>>> {
+    const rows = await this.prisma.organization.groupBy({
+      by: ['orgType'],
+      where: LIVE_ORG,
+      _count: { orgType: true },
+    });
+    return Object.fromEntries(rows.map((r) => [r.orgType, r._count.orgType]));
   }
 
   async subscriptionStatusCounts(): Promise<Partial<Record<SubscriptionStatus, number>>> {

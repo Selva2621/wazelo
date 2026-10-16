@@ -1,10 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PlatformAuditAction } from '@prisma/client';
+import { OrgType, PlatformAuditAction } from '@prisma/client';
 import { PlatformSettingRepository } from '@/modules/platform-settings/infrastructure/repositories/platform-setting.repository';
 import { PlatformSettingsService } from '@/modules/platform-settings/domain/services/platform-settings.service';
-import { isGoogleConfigured, PlatformSettings } from '@/modules/platform-settings/domain/services/platform-settings';
+import {
+  isGoogleConfigured,
+  PlatformSettings,
+  SETUP_ORG_TYPES,
+  SetupOrgType,
+} from '@/modules/platform-settings/domain/services/platform-settings';
 import { planPlatformSettingsChange } from '../../domain/services/platform-settings-change';
 import { UpdatePlatformSettingsDto } from '../dto/platform-settings.dto';
+import { PlatformRepository } from '../../infrastructure/repositories/platform.repository';
 import { AuditActor, PlatformAuditService, RequestMeta } from '../services/platform-audit.service';
 
 export interface PlatformSettingsView {
@@ -18,9 +24,15 @@ export interface PlatformSettingsView {
     /** This backend's own callback URL, to copy into Google Cloud Console */
     suggestedRedirectUri: string;
   };
+  /** Per org type: may new workspaces pick it, and how many live orgs have it */
+  orgTypes: Record<SetupOrgType, { setupEnabled: boolean; orgCount: number }>;
 }
 
-function toView(settings: PlatformSettings, suggestedRedirectUri: string): PlatformSettingsView {
+function toView(
+  settings: PlatformSettings,
+  suggestedRedirectUri: string,
+  orgCounts: Partial<Record<OrgType, number>>,
+): PlatformSettingsView {
   return {
     googleSignupEnabled: settings.googleSignupEnabled,
     google: {
@@ -30,16 +42,26 @@ function toView(settings: PlatformSettings, suggestedRedirectUri: string): Platf
       configured: isGoogleConfigured(settings.google),
       suggestedRedirectUri,
     },
+    orgTypes: Object.fromEntries(
+      SETUP_ORG_TYPES.map((type) => [
+        type,
+        { setupEnabled: settings.orgTypeSetup[type], orgCount: orgCounts[type] ?? 0 },
+      ]),
+    ) as PlatformSettingsView['orgTypes'],
   };
 }
 
 /** GET /super-admin/settings */
 @Injectable()
 export class GetPlatformSettingsUseCase {
-  constructor(private readonly settings: PlatformSettingsService) {}
+  constructor(
+    private readonly settings: PlatformSettingsService,
+    private readonly platform: PlatformRepository,
+  ) {}
 
   async execute(suggestedRedirectUri: string): Promise<PlatformSettingsView> {
-    return toView(await this.settings.get(), suggestedRedirectUri);
+    const [settings, counts] = await Promise.all([this.settings.get(), this.platform.countOrgsByType()]);
+    return toView(settings, suggestedRedirectUri, counts);
   }
 }
 
@@ -53,6 +75,7 @@ export class UpdatePlatformSettingsUseCase {
     private readonly repo: PlatformSettingRepository,
     private readonly settings: PlatformSettingsService,
     private readonly audit: PlatformAuditService,
+    private readonly platform: PlatformRepository,
   ) {}
 
   async execute(
@@ -72,16 +95,23 @@ export class UpdatePlatformSettingsUseCase {
       await this.repo.apply(change.set, change.remove, actor.id);
       // Takes effect immediately on this (single) instance
       this.settings.invalidate();
+      const keys = [...change.set.map((s) => s.key), ...change.remove];
+      const orgTypesOnly = keys.every((k) => k.startsWith('orgTypes.'));
       await this.audit.record({
         action: PlatformAuditAction.PLATFORM_SETTING_CHANGED,
         actor,
         targetType: 'PlatformSetting',
-        targetId: 'auth.google',
-        metadata: { label: 'Google sign-in', before: change.before, after: change.after },
+        targetId: orgTypesOnly ? 'orgTypes' : 'auth.google',
+        metadata: {
+          label: orgTypesOnly ? 'Workspace types' : 'Google sign-in',
+          before: change.before,
+          after: change.after,
+        },
         meta,
       });
     }
 
-    return toView(await this.settings.get(), suggestedRedirectUri);
+    const [settings, counts] = await Promise.all([this.settings.get(), this.platform.countOrgsByType()]);
+    return toView(settings, suggestedRedirectUri, counts);
   }
 }
