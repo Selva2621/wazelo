@@ -13,6 +13,7 @@ const empty: PlatformSettings = DEFAULT_PLATFORM_SETTINGS;
 const configured: PlatformSettings = {
   googleSignupEnabled: false,
   google: { clientId: CLIENT_ID, clientSecretEncrypted: 'enc(old)', redirectUri: REDIRECT },
+  orgTypeSetup: { TEAM: true, FREELANCER: true },
 };
 
 describe('validators', () => {

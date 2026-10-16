@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Logger,
@@ -11,6 +12,13 @@ import { QueueService } from '@/infrastructure/queue/queue.service';
 import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import { Organization, OrgType, Prisma } from '@prisma/client';
 import { UpdateOrgSettingsInput } from '../../infrastructure/repositories/org.repository';
+import { PlatformSettingsService } from '@/modules/platform-settings/domain/services/platform-settings.service';
+import { SetupOrgType } from '@/modules/platform-settings/domain/services/platform-settings';
+
+const ORG_TYPE_LABELS: Record<SetupOrgType, string> = {
+  TEAM: 'Team / Company',
+  FREELANCER: 'Solo / Freelancer',
+};
 
 @Injectable()
 export class UpdateOrgSettingsUseCase {
@@ -21,6 +29,7 @@ export class UpdateOrgSettingsUseCase {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly queueService: QueueService,
+    private readonly platformSettings: PlatformSettingsService,
   ) {}
 
   async execute(
@@ -70,6 +79,14 @@ export class UpdateOrgSettingsUseCase {
     }
 
     if (dto.orgType !== undefined && dto.orgType !== org.orgType) {
+      // A super admin can close a type to new setups; orgs already on it keep it
+      const { orgTypeSetup } = await this.platformSettings.get();
+      const setupType = dto.orgType as string;
+      if (setupType in orgTypeSetup && !orgTypeSetup[setupType as SetupOrgType]) {
+        throw new ForbiddenException(
+          `${ORG_TYPE_LABELS[setupType as SetupOrgType]} workspaces aren't available right now.`,
+        );
+      }
       updateData.orgType = dto.orgType;
       changes.orgType = { from: org.orgType, to: dto.orgType };
     }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users, User, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUpdateOrgSettings } from "@/hooks/use-settings";
+import { useOrgSettings, useUpdateOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,10 +51,30 @@ function ChoiceCard({
   );
 }
 
+const MODE_CARDS: { mode: Mode; title: string; description: string; icon: React.ReactNode }[] = [
+  {
+    mode: "TEAM",
+    title: "Team / Company",
+    description: "Shared inbox, agent assignments, campaigns, team analytics, and RBAC controls.",
+    icon: <Users className="w-6 h-6 text-primary" />,
+  },
+  {
+    mode: "FREELANCER",
+    title: "Solo / Freelancer",
+    description: "Client pipeline, lead finder, follow-up sequences, and a personal WhatsApp inbox.",
+    icon: <User className="w-6 h-6 text-primary" />,
+  },
+];
+
 export default function OrgTypePage() {
   const router = useRouter();
+  const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
+  // Types a super admin has closed to new setups are hidden
+  const cards = MODE_CARDS.filter((c) => orgSettings?.orgTypeSetup?.[c.mode] ?? true);
   const [step, setStep] = useState<1 | 2>(1);
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [chosenMode, setMode] = useState<Mode | null>(null);
+  // With a single type open, it is preselected
+  const mode = chosenMode ?? (cards.length === 1 ? cards[0].mode : null);
   const [freelancerTypes, setFreelancerTypes] = useState<FreelancerTypeValue[]>([]);
   const hasOther = freelancerTypes.includes("OTHER");
 
@@ -119,22 +139,27 @@ export default function OrgTypePage() {
           </p>
         </div>
 
-        {step === 1 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <ChoiceCard
-              selected={mode === "TEAM"}
-              onClick={() => setMode("TEAM")}
-              icon={<Users className="w-6 h-6 text-primary" />}
-              title="Team / Company"
-              description="Shared inbox, agent assignments, campaigns, team analytics, and RBAC controls."
-            />
-            <ChoiceCard
-              selected={mode === "FREELANCER"}
-              onClick={() => setMode("FREELANCER")}
-              icon={<User className="w-6 h-6 text-primary" />}
-              title="Solo / Freelancer"
-              description="Client pipeline, lead finder, follow-up sequences, and a personal WhatsApp inbox."
-            />
+        {step === 1 && orgLoading ? (
+          <div className="flex justify-center py-12 mb-6" role="status">
+            <Spinner />
+            <span className="sr-only">Loading…</span>
+          </div>
+        ) : step === 1 && cards.length === 0 ? (
+          <p className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-low p-5 text-center text-body-lg text-on-surface-variant">
+            New workspace setup is paused right now. Please check back later.
+          </p>
+        ) : step === 1 ? (
+          <div className={cn("grid grid-cols-1 gap-4 mb-6", cards.length > 1 && "sm:grid-cols-2")}>
+            {cards.map((card) => (
+              <ChoiceCard
+                key={card.mode}
+                selected={mode === card.mode}
+                onClick={() => setMode(card.mode)}
+                icon={card.icon}
+                title={card.title}
+                description={card.description}
+              />
+            ))}
           </div>
         ) : (
           <div className="mb-6 space-y-4">

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useSAPlatformSettings, useSAUpdatePlatformSettings } from "@/hooks/use-super-admin";
-import type { PlatformSettings, UpdatePlatformSettingsBody } from "@/lib/api/super-admin";
+import type { PlatformSettings, SetupOrgType, UpdatePlatformSettingsBody } from "@/lib/api/super-admin";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,132 @@ function errorMessage(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
   if (Array.isArray(message)) return message.join(", ");
   return typeof message === "string" && message ? message : fallback;
+}
+
+function Switch({
+  on,
+  disabled,
+  onClick,
+  ...aria
+}: {
+  on: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      {...aria}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "relative h-5 w-9 shrink-0 rounded-full transition-colors outline-none",
+        "focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 disabled:cursor-not-allowed",
+        on ? "bg-primary" : "bg-outline",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-0.5 left-0 h-4 w-4 rounded-full bg-on-primary shadow-sm transition-transform",
+          on ? "translate-x-4" : "translate-x-0.5",
+        )}
+      />
+    </button>
+  );
+}
+
+const ORG_TYPE_ROWS: { type: SetupOrgType; label: string; field: "teamSetupEnabled" | "freelancerSetupEnabled" }[] = [
+  { type: "TEAM", label: "Team / Company", field: "teamSetupEnabled" },
+  { type: "FREELANCER", label: "Solo / Freelancer", field: "freelancerSetupEnabled" },
+];
+
+/** Which org types new workspaces may pick on the "How will you use Wazelo?" screen. */
+function WorkspaceTypesCard({ settings }: { settings: PlatformSettings }) {
+  const update = useSAUpdatePlatformSettings();
+  const [pending, setPending] = useState<{ row: (typeof ORG_TYPE_ROWS)[number]; next: boolean } | null>(null);
+
+  const confirm = () => {
+    if (!pending) return;
+    const { row, next } = pending;
+    update.mutate(
+      { [row.field]: next },
+      {
+        onSuccess: () => {
+          toast.success(`${row.label} setup is ${next ? "on" : "off"}`);
+          setPending(null);
+        },
+        onError: (err) => {
+          toast.error(errorMessage(err, "Could not update the setting"));
+          setPending(null);
+        },
+      },
+    );
+  };
+
+  return (
+    <section aria-labelledby="org-types-heading" className="space-y-3">
+      <h2 id="org-types-heading" className="text-title-sm font-semibold text-on-surface">
+        Workspace types
+      </h2>
+
+      <div className={cn(sectionClass, "p-0 overflow-hidden")}>
+        <table className="w-full text-body">
+          <thead>
+            <tr className="border-b border-outline-variant text-left text-label text-on-surface-variant">
+              <th scope="col" className="px-5 py-3 font-medium">Type</th>
+              <th scope="col" className="px-5 py-3 font-medium text-right">Workspaces</th>
+              <th scope="col" className="px-5 py-3 font-medium text-right">New setup</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ORG_TYPE_ROWS.map((row) => {
+              const { setupEnabled, orgCount } = settings.orgTypes[row.type];
+              return (
+                <tr key={row.type} className="border-b border-outline-variant last:border-0">
+                  <th scope="row" className="px-5 py-3 text-left font-medium text-on-surface">{row.label}</th>
+                  <td className="px-5 py-3 text-right tabular-nums text-on-surface-variant">{orgCount}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <Switch
+                        on={setupEnabled}
+                        disabled={update.isPending}
+                        onClick={() => setPending({ row, next: !setupEnabled })}
+                        aria-label={`Allow new ${row.label} workspaces`}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-label text-on-surface-variant">
+        Off hides the type when a new workspace is set up. Existing workspaces aren&apos;t affected.
+      </p>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.next ? `Allow new ${pending.row.label} workspaces?` : `Stop new ${pending?.row.label} workspaces?`}
+        message={
+          pending?.next
+            ? "New workspaces can choose this type during setup."
+            : "New workspaces can't choose this type during setup. Existing ones keep working."
+        }
+        confirmLabel={pending?.next ? "Turn on" : "Turn off"}
+        variant={pending?.next ? "default" : "warning"}
+        loading={update.isPending}
+        onConfirm={confirm}
+        onCancel={() => setPending(null)}
+      />
+    </section>
+  );
 }
 
 /** Client ID / secret / redirect URI form. Re-mounted (keyed) whenever the saved values change. */
@@ -282,30 +408,19 @@ export default function SuperAdminSettingsPage() {
               {!google.configured && " Available once Google sign-in is configured."}
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={on}
-            aria-labelledby="google-signup-label"
-            aria-describedby="google-signup-desc"
-            disabled={switchDisabled}
-            onClick={() => setPending(!on)}
-            className={cn(
-              "relative mt-1 h-5 w-9 shrink-0 rounded-full transition-colors outline-none",
-              "focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 disabled:cursor-not-allowed",
-              on ? "bg-primary" : "bg-outline",
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "absolute top-0.5 h-4 w-4 rounded-full bg-on-primary shadow-sm transition-transform",
-                on ? "translate-x-4" : "translate-x-0.5",
-              )}
+          <div className="mt-1">
+            <Switch
+              on={on}
+              disabled={switchDisabled}
+              onClick={() => setPending(!on)}
+              aria-labelledby="google-signup-label"
+              aria-describedby="google-signup-desc"
             />
-          </button>
+          </div>
         </div>
       </section>
+
+      <WorkspaceTypesCard settings={settings} />
 
       <ConfirmDialog
         open={pending !== null}
