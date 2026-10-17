@@ -81,6 +81,16 @@ export class ScrapeRunRepository {
     return count > 0;
   }
 
+  /** Mark RUNNING runs started before `startedBefore` as FAILED; returns how many. */
+  async failRunning(startedBefore: Date, errorMessage: string): Promise<number> {
+    const { count } = await this.prisma.scrapeRun.updateMany({
+      // updatedAt is set when the run moves to RUNNING and not touched again until it ends
+      where: { status: ScrapeRunStatus.RUNNING, updatedAt: { lt: startedBefore } },
+      data: { status: ScrapeRunStatus.FAILED, errorMessage, completedAt: new Date() },
+    });
+    return count;
+  }
+
   async findResults(scrapeRunId: string) {
     return this.prisma.scrapeResult.findMany({
       where: { scrapeRunId },

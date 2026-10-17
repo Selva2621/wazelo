@@ -1,6 +1,6 @@
 import { BaseScraper } from './base-scraper';
 import { launchBrowser } from './browser';
-import { ScrapedLead } from './scraper.interface';
+import { ScrapedLead, ScrapeOptions } from './scraper.interface';
 import { parseBudget, parseProposals, parseRelativeTime } from '../services/lead-parsing';
 
 export class UpworkJobsScraper extends BaseScraper {
@@ -8,10 +8,11 @@ export class UpworkJobsScraper extends BaseScraper {
     keywords: string,
     location?: string,
     maxResults = 50,
+    options?: ScrapeOptions,
   ): Promise<ScrapedLead[]> {
     let browser;
     try {
-      browser = await launchBrowser();
+      browser = await launchBrowser(options?.signal);
 
       const context = await browser.newContext({
         userAgent:

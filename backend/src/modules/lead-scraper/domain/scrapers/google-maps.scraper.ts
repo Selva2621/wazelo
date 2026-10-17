@@ -31,7 +31,7 @@ export class GoogleMapsScraper extends BaseScraper {
       : maxResults;
     let browser;
     try {
-      browser = await launchBrowser();
+      browser = await launchBrowser(options?.signal);
 
       const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -46,7 +46,7 @@ export class GoogleMapsScraper extends BaseScraper {
       const placeUrls: string[] = [];
       const seen = new Set<string>();
       for (const [i, url] of searchUrls.entries()) {
-        if (placeUrls.length >= candidateLimit) break;
+        if (placeUrls.length >= candidateLimit || options?.signal?.aborted) break;
         // Share what's left across the remaining searches so the first type/area can't take it all
         const budget = Math.ceil((candidateLimit - placeUrls.length) / (searchUrls.length - i));
         const found = await this.collectPlaceUrls(page, url, budget, seen);
@@ -60,7 +60,7 @@ export class GoogleMapsScraper extends BaseScraper {
 
       const results: ScrapedLead[] = [];
       for (const placeUrl of placeUrls) {
-        if (results.length >= maxResults) break;
+        if (results.length >= maxResults || options?.signal?.aborted) break;
         try {
           const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview);
           if (!accept || (await accept(lead))) results.push(lead);

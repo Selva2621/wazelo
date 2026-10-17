@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, ScrapeRunStatus, ScrapeSource } from '@prisma/client';
+import { Prisma, ScrapeRun, ScrapeRunStatus, ScrapeSource } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { ScrapeRunRepository } from '../../infrastructure/repositories/scrape-run.repository';
 import { ScraperFactory } from '../../domain/scrapers/scraper.factory';
@@ -8,11 +8,14 @@ import { inspectWebsite } from '../../domain/scrapers/website-email-finder';
 import { dedupeLeads } from '../../domain/services/dedupe-leads';
 import { LeadFilters, hasActiveFilters, matchesFilters } from '../../domain/services/lead-filters';
 import { scoreLead } from '../../domain/services/lead-score';
+import { ScrapeTimeoutError, scrapeRunTimeoutMs } from '../../domain/services/scrape-timeout';
 
 /** Websites fetched in parallel when looking for emails */
 const WEBSITE_LOOKUP_CONCURRENCY = 5;
 /** Job boards: fetch this many times maxResults when filters will drop some */
 const JOB_FILTER_OVERSCAN = 3;
+/** How often a running scrape checks whether the user cancelled it */
+const CANCEL_POLL_MS = 5_000;
 
 @Injectable()
 export class ProcessScrapeRunUseCase {
@@ -42,39 +45,32 @@ export class ProcessScrapeRunUseCase {
     );
     if (!started) return;
 
+    const filters = (run.filters as LeadFilters | null) ?? null;
+    const isMaps = run.source === ScrapeSource.GOOGLE_MAPS;
+    const limitMs = scrapeRunTimeoutMs({
+      maxResults: run.maxResults,
+      isMaps,
+      filtered: hasActiveFilters(filters),
+      collectLastReview: filters?.activeWithinMonths != null,
+      findEmails: !!filters?.findEmails,
+    });
+
+    // Stop the scrape (closing its browser) when it runs past its limit or the user cancels it
+    const abort = new AbortController();
+    const deadline = setTimeout(() => abort.abort(new ScrapeTimeoutError(limitMs)), limitMs);
+    const cancelWatch = setInterval(() => {
+      this.scrapeRunRepository
+        .findById(scrapeRunId)
+        .then((r) => {
+          if (r?.status === ScrapeRunStatus.CANCELLED) abort.abort(new Error('Cancelled'));
+        })
+        .catch(() => undefined);
+    }, CANCEL_POLL_MS);
+
     try {
-      const filters = (run.filters as LeadFilters | null) ?? null;
-      const isMaps = run.source === ScrapeSource.GOOGLE_MAPS;
-      const inspected = new WeakSet<ScrapedLead>();
-      const accept = hasActiveFilters(filters)
-        ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected)
-        : undefined;
+      const { leads, duplicates } = await untilAborted(this.collect(run, filters, isMaps, abort.signal), abort.signal);
 
-      const scraper = this.scraperFactory.getScraper(run.source);
-      let scraped: ScrapedLead[];
-      if (isMaps) {
-        // Maps applies the filter while scraping, so maxResults counts matching places
-        scraped = await scraper.scrape(run.keywords, run.location ?? undefined, run.maxResults, {
-          accept,
-          areas: filters?.areas,
-          radiusKm: filters?.radiusKm,
-          collectLastReview: filters?.activeWithinMonths != null,
-        });
-      } else {
-        // Job boards return a list in one go: fetch extra, then filter down to maxResults
-        const fetchCount = accept ? Math.min(run.maxResults * JOB_FILTER_OVERSCAN, 200) : run.maxResults;
-        const fetched = await scraper.scrape(run.keywords, run.location ?? undefined, fetchCount);
-        scraped = [];
-        for (const lead of fetched) {
-          if (scraped.length >= run.maxResults) break;
-          if (!accept || (await accept(lead))) scraped.push(lead);
-        }
-      }
-      const { unique: leads, duplicates } = dedupeLeads(scraped);
-
-      if (filters?.findEmails) await this.inspectWebsites(leads, inspected);
-
-      // The scrape itself can't be interrupted; if the user cancelled meanwhile, discard results
+      // Cancelled just before the scrape returned — discard results
       const current = await this.scrapeRunRepository.findById(scrapeRunId);
       if (current?.status === ScrapeRunStatus.CANCELLED) {
         this.logger.log(`ScrapeRun ${scrapeRunId} was cancelled — discarding ${leads.length} results`);
@@ -126,6 +122,7 @@ export class ProcessScrapeRunUseCase {
         `ScrapeRun ${scrapeRunId} completed: ${leads.length} results saved, ${duplicates} duplicates dropped`,
       );
     } catch (err) {
+      // A cancelled run is no longer RUNNING, so this leaves it CANCELLED
       const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.error(`ScrapeRun ${scrapeRunId} failed: ${errorMessage}`);
       await this.scrapeRunRepository.transition(scrapeRunId, [ScrapeRunStatus.RUNNING], {
@@ -133,7 +130,50 @@ export class ProcessScrapeRunUseCase {
         errorMessage,
         completedAt: new Date(),
       });
+    } finally {
+      clearTimeout(deadline);
+      clearInterval(cancelWatch);
+      abort.abort(); // close the browser if the scraper is still holding it
     }
+  }
+
+  /** Scrape, filter, dedupe and (optionally) look up emails — everything the deadline covers. */
+  private async collect(
+    run: ScrapeRun,
+    filters: LeadFilters | null,
+    isMaps: boolean,
+    signal: AbortSignal,
+  ): Promise<{ leads: ScrapedLead[]; duplicates: number }> {
+    const inspected = new WeakSet<ScrapedLead>();
+    const accept = hasActiveFilters(filters)
+      ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected)
+      : undefined;
+
+    const scraper = this.scraperFactory.getScraper(run.source);
+    let scraped: ScrapedLead[];
+    if (isMaps) {
+      // Maps applies the filter while scraping, so maxResults counts matching places
+      scraped = await scraper.scrape(run.keywords, run.location ?? undefined, run.maxResults, {
+        accept,
+        areas: filters?.areas,
+        radiusKm: filters?.radiusKm,
+        collectLastReview: filters?.activeWithinMonths != null,
+        signal,
+      });
+    } else {
+      // Job boards return a list in one go: fetch extra, then filter down to maxResults
+      const fetchCount = accept ? Math.min(run.maxResults * JOB_FILTER_OVERSCAN, 200) : run.maxResults;
+      const fetched = await scraper.scrape(run.keywords, run.location ?? undefined, fetchCount, { signal });
+      scraped = [];
+      for (const lead of fetched) {
+        if (scraped.length >= run.maxResults || signal.aborted) break;
+        if (!accept || (await accept(lead))) scraped.push(lead);
+      }
+    }
+    const { unique: leads, duplicates } = dedupeLeads(scraped);
+
+    if (filters?.findEmails) await this.inspectWebsites(leads, inspected, signal);
+    return { leads, duplicates };
   }
 
   /**
@@ -186,15 +226,28 @@ export class ProcessScrapeRunUseCase {
   }
 
   /** Fetch each lead's website for an email and marketing signals, a few at a time. */
-  private async inspectWebsites(leads: ScrapedLead[], inspected: WeakSet<ScrapedLead>): Promise<void> {
+  private async inspectWebsites(leads: ScrapedLead[], inspected: WeakSet<ScrapedLead>, signal: AbortSignal): Promise<void> {
     const queue = leads.filter((l) => l.website && !inspected.has(l));
     const worker = async () => {
-      for (let lead = queue.shift(); lead; lead = queue.shift()) {
+      for (let lead = queue.shift(); lead && !signal.aborted; lead = queue.shift()) {
         await this.inspectLeadWebsite(lead, true, inspected);
       }
     };
     await Promise.all(Array.from({ length: WEBSITE_LOOKUP_CONCURRENCY }, worker));
   }
+}
+
+/**
+ * Settle with `work`, or reject with the abort reason as soon as `signal` fires — so a scraper
+ * that ignores the signal can't keep the run going. Its late result or error is dropped.
+ */
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  work.catch(() => undefined);
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    work.then(resolve, reject);
+  });
 }
 
 /** Source-specific extras kept as JSON (shown in the results table, used by filters) */

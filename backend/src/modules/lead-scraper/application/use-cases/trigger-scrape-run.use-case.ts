@@ -26,7 +26,8 @@ export class TriggerScrapeRunUseCase {
     await this.queueService.publish(
       QUEUE_NAMES.SCRAPE_LEADS,
       { scrapeRunId: run.id },
-      { singletonKey: `scrape-${run.id}` },
+      // The run enforces its own limit (≤ 30 min); don't let pg-boss hold the job for the 24h default
+      { singletonKey: `scrape-${run.id}`, expireInMinutes: 35 },
     );
 
     return run;

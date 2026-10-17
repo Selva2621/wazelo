@@ -37,6 +37,6 @@ import { LeadScraperController } from './interfaces/controllers/lead-scraper.con
     WhatsAppCheckThrottleService,
   ],
   controllers: [LeadScraperController],
-  exports: [ProcessScrapeRunUseCase, WhatsAppCheckRunUseCase],
+  exports: [ProcessScrapeRunUseCase, WhatsAppCheckRunUseCase, ScrapeRunRepository],
 })
 export class LeadScraperModule {}
