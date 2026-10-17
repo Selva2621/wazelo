@@ -1,5 +1,5 @@
-import { chromium } from 'playwright';
 import { BaseScraper } from './base-scraper';
+import { launchBrowser } from './browser';
 import { ScrapedLead } from './scraper.interface';
 import { parseBudget, parseProposals, parseRelativeTime } from '../services/lead-parsing';
 
@@ -11,14 +11,7 @@ export class UpworkJobsScraper extends BaseScraper {
   ): Promise<ScrapedLead[]> {
     let browser;
     try {
-      browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled',
-        ],
-      });
+      browser = await launchBrowser();
 
       const context = await browser.newContext({
         userAgent:

@@ -50,13 +50,18 @@ export abstract class BaseScraper {
    * FAILED with a reason instead of COMPLETED with 0 results.
    */
   protected fail(sourceName: string, error: unknown): never {
+    const message = error instanceof Error ? error.message : String(error);
+    // Playwright's own text is a multi-line ASCII box — not something to show in the UI
+    if (message.includes("Executable doesn't exist")) {
+      throw new Error(`${sourceName} scraper browser is not installed on the server — reinstall dependencies and redeploy`);
+    }
     const status = (error as { response?: { status?: number } })?.response?.status;
     const detail =
       status === 403 || status === 429
         ? `blocked by ${sourceName} (HTTP ${status}) — try again later`
         : status
           ? `${sourceName} returned HTTP ${status}`
-          : `${sourceName} could not be reached: ${error instanceof Error ? error.message : String(error)}`;
+          : `${sourceName} could not be reached: ${message}`;
     throw new Error(detail);
   }
 
