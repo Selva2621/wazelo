@@ -1,5 +1,6 @@
-import { chromium, Page } from 'playwright';
+import type { Page } from 'playwright';
 import { BaseScraper } from './base-scraper';
+import { launchBrowser } from './browser';
 import { ScrapedLead, ScrapeOptions } from './scraper.interface';
 import {
   coordsFromMapsUrl,
@@ -30,10 +31,7 @@ export class GoogleMapsScraper extends BaseScraper {
       : maxResults;
     let browser;
     try {
-      browser = await chromium.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
-      });
+      browser = await launchBrowser();
 
       const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
