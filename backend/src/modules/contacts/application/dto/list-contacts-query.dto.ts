@@ -39,6 +39,10 @@ export class ListContactsQueryDto {
   source?: ContactSource;
 
   @IsOptional()
+  @IsUUID()
+  scrapeRunId?: string;
+
+  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
   @Transform(({ value }) =>

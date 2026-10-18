@@ -31,6 +31,7 @@ export const contactKeys = {
     ["contacts", contactId, "owner-history"] as const,
   orgTags: ["contacts", "org-tags"] as const,
   orgMembers: ["contacts", "org-members"] as const,
+  groups: ["contacts", "groups"] as const,
 };
 
 // ─── Query Hooks ───
@@ -39,6 +40,14 @@ export function useContacts(params?: ListContactsParams) {
   return useQuery({
     queryKey: contactKeys.list(params),
     queryFn: () => contactsApi.list(params),
+  });
+}
+
+/** Contact counts per lead source and per scrape run */
+export function useContactGroups() {
+  return useQuery({
+    queryKey: contactKeys.groups,
+    queryFn: () => contactsApi.groups(),
   });
 }
 

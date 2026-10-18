@@ -2,6 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { DealStatus, Prisma } from '@prisma/client';
 
+/**
+ * Which deals a user may see: undefined = whole org (admin), otherwise deals
+ * whose contact is owned by, or which are assigned to, one of these users.
+ */
+export type DealScope = { userIds: string[] } | undefined;
+
+/** Deals of a deleted pipeline are gone with it */
+const LIVE: Prisma.DealWhereInput = { deletedAt: null, pipeline: { deletedAt: null } };
+
+function scopeWhere(scope: DealScope): Prisma.DealWhereInput {
+  if (!scope) return {};
+  return {
+    OR: [
+      { contact: { ownerId: { in: scope.userIds } } },
+      { assignedToId: { in: scope.userIds } },
+    ],
+  };
+}
+
 @Injectable()
 export class DealRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -37,9 +56,9 @@ export class DealRepository {
     });
   }
 
-  async findByIdAndOrg(id: string, orgId: string) {
+  async findByIdAndOrg(id: string, orgId: string, scope?: DealScope) {
     return this.prisma.deal.findFirst({
-      where: { id, orgId, deletedAt: null },
+      where: { id, orgId, ...LIVE, ...scopeWhere(scope) },
       include: {
         stage: true,
         contact: true,
@@ -60,12 +79,21 @@ export class DealRepository {
     contactId?: string;
     assignedToId?: string;
     productId?: string;
-  }): Promise<string[]> {
+  }, scope?: DealScope): Promise<string[]> {
     const [pipeline, stage, contact, assignee, product] = await Promise.all([
       this.prisma.pipeline.findFirst({ where: { id: refs.pipelineId, orgId, deletedAt: null }, select: { id: true } }),
       this.prisma.pipelineStage.findFirst({ where: { id: refs.stageId, pipelineId: refs.pipelineId }, select: { id: true } }),
       refs.contactId
-        ? this.prisma.contact.findFirst({ where: { id: refs.contactId, orgId, deletedAt: null }, select: { id: true } })
+        ? this.prisma.contact.findFirst({
+            where: {
+              id: refs.contactId,
+              orgId,
+              deletedAt: null,
+              // Only a contact the user can see
+              ...(scope && { ownerId: { in: scope.userIds } }),
+            },
+            select: { id: true },
+          })
         : Promise.resolve({ id: '' }),
       refs.assignedToId
         ? this.prisma.user.findFirst({ where: { id: refs.assignedToId, orgId, deletedAt: null }, select: { id: true } })
@@ -104,7 +132,8 @@ export class DealRepository {
 
   async update(id: string, data: {
     title?: string;
-    value?: number;
+    /** null clears the value */
+    value?: number | null;
     currency?: string;
     expectedClose?: Date;
     notes?: string;
@@ -139,11 +168,12 @@ export class DealRepository {
   }
 
   /** Open deals with a follow-up due at or before `until` (overdue first). */
-  async findFollowUpsDue(orgId: string, until: Date, take = 50) {
+  async findFollowUpsDue(orgId: string, until: Date, scope?: DealScope, take = 50) {
     return this.prisma.deal.findMany({
       where: {
         orgId,
-        deletedAt: null,
+        ...LIVE,
+        ...scopeWhere(scope),
         status: DealStatus.OPEN,
         nextFollowUpAt: { not: null, lte: until },
       },
@@ -160,7 +190,7 @@ export class DealRepository {
   async findFollowUpsToNotify(now: Date, take = 200) {
     return this.prisma.deal.findMany({
       where: {
-        deletedAt: null,
+        ...LIVE,
         status: DealStatus.OPEN,
         nextFollowUpAt: { not: null, lte: now },
         followUpNotifiedAt: null,
@@ -190,17 +220,17 @@ export class DealRepository {
     });
   }
 
-  async findByPipeline(orgId: string, pipelineId: string) {
+  async findByPipeline(orgId: string, pipelineId: string, scope?: DealScope) {
     return this.prisma.deal.findMany({
-      where: { orgId, pipelineId, deletedAt: null },
+      where: { orgId, pipelineId, ...LIVE, ...scopeWhere(scope) },
       include: { stage: true, contact: true, assignedTo: true, product: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findByContact(orgId: string, contactId: string) {
+  async findByContact(orgId: string, contactId: string, scope?: DealScope) {
     return this.prisma.deal.findMany({
-      where: { orgId, contactId, deletedAt: null },
+      where: { orgId, contactId, ...LIVE, ...scopeWhere(scope) },
       include: { stage: true, pipeline: true, contact: true, assignedTo: true, product: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -208,12 +238,12 @@ export class DealRepository {
 
   async findOpenByContact(orgId: string, contactId: string) {
     return this.prisma.deal.findFirst({
-      where: { orgId, contactId, status: 'OPEN', deletedAt: null },
+      where: { orgId, contactId, status: 'OPEN', ...LIVE },
     });
   }
 
-  async getAnalytics(orgId: string, pipelineId?: string) {
-    const where: Prisma.DealWhereInput = { orgId, deletedAt: null };
+  async getAnalytics(orgId: string, pipelineId?: string, scope?: DealScope) {
+    const where: Prisma.DealWhereInput = { orgId, ...LIVE, ...scopeWhere(scope) };
     if (pipelineId) where.pipelineId = pipelineId;
 
     const [totalDeals, totalValue, byStatus, byStage] = await Promise.all([

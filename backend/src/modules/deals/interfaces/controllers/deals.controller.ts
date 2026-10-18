@@ -35,6 +35,8 @@ import {
 } from '../../application/dto';
 import { ScoreDealUseCase } from '../../application/use-cases/score-deal.use-case';
 import { DealGuardUseCase } from '../../application/use-cases/deal-guard.use-case';
+import { DealAccessUseCase } from '../../application/use-cases/deal-access.use-case';
+import { DealLifecycleUseCase } from '../../application/use-cases/deal-lifecycle.use-case';
 import { Throttle } from '@nestjs/throttler';
 import { DEFAULT_PIPELINE_STAGES } from '@/shared/constants/org-defaults';
 import { localDayStart } from '@/modules/messages/domain/services/send-safety.policy';
@@ -47,7 +49,17 @@ export class DealsController {
     private readonly scoreDealUseCase: ScoreDealUseCase,
     private readonly usageTracking: UsageTrackingService,
     private readonly dealGuard: DealGuardUseCase,
+    private readonly dealAccess: DealAccessUseCase,
+    private readonly dealLifecycle: DealLifecycleUseCase,
   ) {}
+
+  /** A deal in this org the user is allowed to see, or 404 */
+  private async findDeal(user: JwtPayload, dealId: string) {
+    const scope = await this.dealAccess.scopeFor(user);
+    const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId, scope);
+    if (!deal) throw new NotFoundException('Deal not found');
+    return deal;
+  }
 
   // ───── Pipelines ─────
 
@@ -117,7 +129,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('contactId', ParseUUIDPipe) contactId: string,
   ) {
-    return this.dealRepo.findByContact(user.orgId, contactId);
+    return this.dealRepo.findByContact(user.orgId, contactId, await this.dealAccess.scopeFor(user));
   }
 
   // ───── Follow-ups ─────
@@ -132,7 +144,7 @@ export class DealsController {
     const endOfToday = new Date(localDayStart(now, query.tz || 'UTC').getTime() + 24 * 60 * 60 * 1000);
     const until =
       query.scope === 'upcoming' ? new Date(endOfToday.getTime() + 7 * 24 * 60 * 60 * 1000) : endOfToday;
-    return this.dealRepo.findFollowUpsDue(user.orgId, until);
+    return this.dealRepo.findFollowUpsDue(user.orgId, until, await this.dealAccess.scopeFor(user));
   }
 
   // ───── Deals ─────
@@ -145,17 +157,18 @@ export class DealsController {
     @Param('pipelineId', ParseUUIDPipe) pipelineId: string,
     @Body() dto: CreateDealDto,
   ) {
-    // Every referenced id must belong to this org (and the stage to this pipeline)
+    // Every referenced id must belong to this org (and the stage to this pipeline),
+    // and the contact must be one the user can see
     const invalid = await this.dealRepo.findInvalidRefs(user.orgId, {
       pipelineId,
       stageId: dto.stageId,
       contactId: dto.contactId,
       assignedToId: dto.assignedToId,
       productId: dto.productId,
-    });
+    }, await this.dealAccess.scopeFor(user));
     if (invalid.length) throw new BadRequestException(`Invalid ${invalid.join(', ')}`);
 
-    return this.dealRepo.create({
+    return this.dealLifecycle.create({
       orgId: user.orgId,
       pipelineId,
       stageId: dto.stageId,
@@ -176,7 +189,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('pipelineId', ParseUUIDPipe) pipelineId: string,
   ) {
-    return this.dealRepo.findByPipeline(user.orgId, pipelineId);
+    return this.dealRepo.findByPipeline(user.orgId, pipelineId, await this.dealAccess.scopeFor(user));
   }
 
   @Get(':pipelineId/deals/:dealId')
@@ -185,9 +198,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
-    const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId);
-    if (!deal) throw new NotFoundException('Deal not found');
-    return deal;
+    return this.findDeal(user, dealId);
   }
 
   @Patch(':pipelineId/deals/:dealId')
@@ -197,9 +208,8 @@ export class DealsController {
     @Param('dealId', ParseUUIDPipe) dealId: string,
     @Body() dto: UpdateDealDto,
   ) {
-    const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId);
-    if (!deal) throw new NotFoundException('Deal not found');
-    return this.dealRepo.update(dealId, {
+    const deal = await this.findDeal(user, dealId);
+    return this.dealLifecycle.update(deal, {
       ...dto,
       value: dto.value,
       expectedClose: dto.expectedClose ? new Date(dto.expectedClose) : undefined,
@@ -217,16 +227,8 @@ export class DealsController {
     @Param('dealId', ParseUUIDPipe) dealId: string,
     @Body() dto: MoveDealDto,
   ) {
-    const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId);
-    if (!deal) throw new NotFoundException('Deal not found');
-
-    // The target stage must be in the deal's own pipeline; its won/lost flags set the status
-    const stage = deal.pipeline
-      ? await this.pipelineRepo.findStageInPipeline(dto.stageId, deal.pipelineId)
-      : null;
-    if (!stage) throw new BadRequestException('Stage is not in this deal\'s pipeline');
-
-    return this.dealRepo.updateStage(dealId, stage);
+    const deal = await this.findDeal(user, dealId);
+    return this.dealLifecycle.moveToStage(deal, dto.stageId);
   }
 
   @Delete(':pipelineId/deals/:dealId')
@@ -236,8 +238,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
-    const deal = await this.dealRepo.findByIdAndOrg(dealId, user.orgId);
-    if (!deal) throw new NotFoundException('Deal not found');
+    await this.findDeal(user, dealId);
     await this.dealRepo.softDelete(dealId);
     return { success: true };
   }
@@ -250,6 +251,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
+    await this.findDeal(user, dealId);
     return this.dealGuard.getGuard(user.orgId, dealId);
   }
 
@@ -261,6 +263,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
+    await this.findDeal(user, dealId);
     return this.dealGuard.draftScope(user.orgId, dealId, () =>
       this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS),
     );
@@ -273,6 +276,7 @@ export class DealsController {
     @Param('dealId', ParseUUIDPipe) dealId: string,
     @Body() dto: SaveScopeDto,
   ) {
+    await this.findDeal(user, dealId);
     return this.dealGuard.saveScope(user.orgId, dealId, dto.summary);
   }
 
@@ -284,6 +288,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
+    await this.findDeal(user, dealId);
     return this.dealGuard.sendScope(user.orgId, user.sub, dealId);
   }
 
@@ -299,6 +304,7 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
+    await this.findDeal(user, dealId);
     const result = await this.scoreDealUseCase.execute(dealId, user.orgId);
     await this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS);
     return result;
@@ -312,6 +318,6 @@ export class DealsController {
     @CurrentUser() user: JwtPayload,
     @Param('pipelineId', ParseUUIDPipe) pipelineId: string,
   ) {
-    return this.dealRepo.getAnalytics(user.orgId, pipelineId);
+    return this.dealRepo.getAnalytics(user.orgId, pipelineId, await this.dealAccess.scopeFor(user));
   }
 }

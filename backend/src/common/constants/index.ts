@@ -125,6 +125,8 @@ export const EVENT_NAMES = {
   DEAL_FOLLOW_UP_DUE: 'deal.follow_up_due',
   /** Client answered a deal's scope-approval poll */
   DEAL_SCOPE_RESPONDED: 'deal.scope_responded',
+  /** A deal was created in, or moved to, a stage */
+  DEAL_STAGE_CHANGED: 'deal.stage_changed',
   /** A decrypted vote on a WhatsApp poll we sent */
   BAILEYS_POLL_VOTE: 'baileys.poll_vote',
   WHATSAPP_SESSION_RECONNECTING: 'whatsapp.session_reconnecting',

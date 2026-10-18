@@ -19,13 +19,14 @@ import { AudienceResolverService } from '@/modules/campaigns/domain/services/aud
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES } from '@/common/constants';
-import { CampaignAudienceType, SequenceStatus } from '@prisma/client';
+import { CampaignAudienceType, SequenceStatus, SequenceTriggerType } from '@prisma/client';
 import {
   CreateSequenceDto,
   UpdateSequenceDto,
   AddSequenceStepDto,
   UpdateSequenceStepDto,
   StartOutreachDto,
+  SequenceTriggerDto,
 } from '../../application/dto';
 import { CreateSequenceTemplateDto, UpdateSequenceTemplateDto } from '../../application/dto/sequence-template.dto';
 import { SequenceTemplateRepository } from '../../infrastructure/repositories/sequence-template.repository';
@@ -96,6 +97,7 @@ export class SequencesController {
     if (!dto.steps.length) {
       throw new BadRequestException('Sequence must have at least one step');
     }
+    const triggerConfig = dto.trigger ? await this.resolveTriggerConfig(dto.trigger, orgId) : undefined;
 
     const sequence = await this.repo.create({
       orgId,
@@ -103,7 +105,9 @@ export class SequencesController {
       name: dto.name,
       description: dto.description,
       audienceType: dto.audienceType,
-      audienceFilters: dto.audienceFilters,
+      audienceFilters: dto.trigger ? undefined : dto.audienceFilters,
+      triggerType: dto.trigger?.type,
+      triggerConfig,
       exitOnReply: dto.exitOnReply,
       createdById: userId,
     });
@@ -121,6 +125,7 @@ export class SequencesController {
         mediaUrl: step.mediaUrl,
         mediaMimeType: step.mediaMimeType,
         delayMinutes: step.delayMinutes ?? 1440,
+        conditions: step.conditions?.length ? step.conditions : undefined,
       });
     }
 
@@ -255,7 +260,29 @@ export class SequencesController {
     if (seq.status !== 'DRAFT') throw new BadRequestException('Only DRAFT sequences can be started');
     if (!seq.steps.length) throw new BadRequestException('Sequence must have at least one step');
 
+    // Always-on: nobody joins now — contacts are added as their trigger fires
+    if (seq.triggerType) {
+      await this.repo.updateStatus(id, orgId, SequenceStatus.ACTIVE, { startedAt: new Date() });
+      return this.repo.findByIdAndOrg(id, orgId);
+    }
+
     return this.enrollAndActivate(seq, orgId);
+  }
+
+  /** Stored trigger settings; each trigger type needs its own target */
+  private async resolveTriggerConfig(trigger: SequenceTriggerDto, orgId: string): Promise<Record<string, unknown>> {
+    switch (trigger.type) {
+      case SequenceTriggerType.DEAL_STAGE_CHANGED:
+        if (!trigger.stageId || !(await this.repo.stageBelongsToOrg(trigger.stageId, orgId))) {
+          throw new BadRequestException('Choose a deal stage');
+        }
+        return { stageId: trigger.stageId };
+      case SequenceTriggerType.LEAD_STATUS_CHANGED:
+        if (!trigger.toStatus) throw new BadRequestException('Choose a lead status');
+        return { toStatus: trigger.toStatus };
+      default:
+        return {};
+    }
   }
 
   /**

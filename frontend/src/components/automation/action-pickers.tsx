@@ -3,6 +3,8 @@
 import type { ComponentProps } from "react";
 import { useOrgMembers } from "@/hooks/use-contacts";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
+import { usePipelines } from "@/hooks/use-deals";
+import { useSequences } from "@/hooks/use-sequences";
 
 type SelectProps = Omit<ComponentProps<"select">, "children">;
 
@@ -22,6 +24,44 @@ export function SessionSelect(props: SelectProps) {
           </option>
         );
       })}
+    </select>
+  );
+}
+
+/** Picks a deal stage; empty value means any stage. */
+export function StageSelect(props: SelectProps) {
+  const { data: pipelines } = usePipelines();
+  const list = pipelines ?? [];
+
+  return (
+    <select {...props}>
+      <option value="">Any stage</option>
+      {list.map((p) =>
+        list.length === 1 ? (
+          p.stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+        ) : (
+          <optgroup key={p.id} label={p.name}>
+            {p.stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </optgroup>
+        ),
+      )}
+    </select>
+  );
+}
+
+/** Picks a running sequence — only those can take new contacts. */
+export function SequenceSelect(props: SelectProps) {
+  const { data } = useSequences({ take: 100 });
+  const running = (data?.data ?? []).filter((s) => s.status === "ACTIVE" || s.status === "PAUSED");
+
+  return (
+    <select {...props}>
+      <option value="">{running.length ? "Choose a sequence" : "No running sequences — start one first"}</option>
+      {running.map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}{s.status === "PAUSED" ? " (paused)" : ""}
+        </option>
+      ))}
     </select>
   );
 }

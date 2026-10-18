@@ -17,6 +17,9 @@ import { CreateCampaignModal } from "@/components/campaigns/create-campaign-moda
 import { useSubscription } from "@/hooks/use-billing";
 import { LoadError } from "@/components/ui/empty-state";
 import type { CampaignStatus, ListCampaignsParams, MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
+import type { CreateCampaignFormData } from "@/lib/validations/campaigns";
+
+type AudienceFilters = NonNullable<CreateCampaignFormData["audienceFilters"]>;
 
 const TAKE = 20;
 
@@ -79,15 +82,23 @@ export default function CampaignsPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
+  const [initialAudience, setInitialAudience] = useState<AudienceFilters | undefined>();
 
   // "New Campaign" shortcuts land here with ?action=new — open the create
-  // form, then drop the param so a refresh doesn't reopen it
+  // form, then drop the params so a refresh doesn't reopen it. Contact
+  // source groups also pass ?source= or ?scrapeRunId= to target that group.
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("action") !== "new") return;
-    url.searchParams.delete("action");
+    const source = url.searchParams.get("source");
+    const scrapeRunId = url.searchParams.get("scrapeRunId");
+    for (const key of ["action", "source", "scrapeRunId"]) url.searchParams.delete(key);
     window.history.replaceState(null, "", url.pathname + url.search);
-    const frame = requestAnimationFrame(() => setShowCreate(true));
+    const frame = requestAnimationFrame(() => {
+      if (scrapeRunId) setInitialAudience({ scrapeRunId });
+      else if (source) setInitialAudience({ sources: [source] });
+      setShowCreate(true);
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
 
@@ -327,8 +338,9 @@ export default function CampaignsPage() {
       {/* Create Modal */}
       <CreateCampaignModal
         open={showCreate}
-        onClose={() => setShowCreate(false)}
+        onClose={() => { setShowCreate(false); setInitialAudience(undefined); }}
         sessions={sessions}
+        initialAudienceFilters={initialAudience}
       />
     </div>
   );

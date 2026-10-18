@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EVENT_NAMES } from '@/common/constants';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { SequenceRepository } from '@/modules/sequences/infrastructure/repositories/sequence.repository';
 
 /**
@@ -15,23 +16,34 @@ import { SequenceRepository } from '@/modules/sequences/infrastructure/repositor
 export class SequenceEventsHandler {
   private readonly logger = new Logger(SequenceEventsHandler.name);
 
-  constructor(private readonly sequenceRepo: SequenceRepository) {}
+  constructor(
+    private readonly sequenceRepo: SequenceRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED)
   async onMessageReceived(payload: {
     contactId?: string;
+    contactPhone?: string;
+    messageId?: string;
     orgId: string;
     body?: string;
   }) {
-    if (!payload.contactId) return;
-
     try {
-      const activeRecipients = await this.sequenceRepo.findActiveRecipientByContact(
-        payload.contactId,
-        payload.orgId,
-      );
+      // Inbound WhatsApp events carry the phone and message id, not the contact or text
+      const contactId = payload.contactId ?? (await this.findContactId(payload.orgId, payload.contactPhone));
+      if (!contactId) return;
+      const message = payload.messageId
+        ? await this.prisma.message.findUnique({ where: { id: payload.messageId }, select: { body: true, createdAt: true } })
+        : null;
+      const body = payload.body ?? message?.body ?? undefined;
+
+      const activeRecipients = await this.sequenceRepo.findActiveRecipientByContact(contactId, payload.orgId);
 
       for (const recipient of activeRecipients) {
+        // The message that got them enrolled (e.g. a first message) is not a reply
+        if (message && message.createdAt <= recipient.enrolledAt) continue;
+
         const { sequence } = recipient;
         const steps = sequence.steps || [];
 
@@ -41,8 +53,8 @@ export class SequenceEventsHandler {
 
         // Check conditions on the last sent step
         const conditions = lastSentStep?.conditions as Array<{ keyword: string; goToStepOrder: number }> | null;
-        if (conditions?.length && payload.body) {
-          const messageLower = payload.body.toLowerCase();
+        if (conditions?.length && body) {
+          const messageLower = body.toLowerCase();
           const match = conditions.find((c) => messageLower.includes(c.keyword.toLowerCase()));
 
           if (match) {
@@ -52,7 +64,7 @@ export class SequenceEventsHandler {
 
             await this.sequenceRepo.jumpRecipientToStep(recipient.id, match.goToStepOrder, delay);
             this.logger.debug(
-              `Contact ${payload.contactId} jumped to step ${match.goToStepOrder} in sequence ${recipient.sequenceId} (keyword: "${match.keyword}")`,
+              `Contact ${contactId} jumped to step ${match.goToStepOrder} in sequence ${recipient.sequenceId} (keyword: "${match.keyword}")`,
             );
             continue;
           }
@@ -63,12 +75,22 @@ export class SequenceEventsHandler {
           await this.sequenceRepo.exitRecipient(recipient.id, 'Contact replied');
           await this.sequenceRepo.updateSequenceCounters(recipient.sequenceId);
           this.logger.debug(
-            `Contact ${payload.contactId} exited sequence ${recipient.sequenceId} (replied)`,
+            `Contact ${contactId} exited sequence ${recipient.sequenceId} (replied)`,
           );
         }
       }
     } catch (error) {
-      this.logger.error(`Failed to process sequence reply for contact ${payload.contactId}: ${error}`);
+      this.logger.error(`Failed to process sequence reply from ${payload.contactId ?? payload.contactPhone}: ${error}`);
     }
+  }
+
+  private async findContactId(orgId: string, phone?: string): Promise<string | undefined> {
+    if (!phone) return undefined;
+    const digits = phone.replace(/^\+/, '');
+    const contact = await this.prisma.contact.findFirst({
+      where: { orgId, deletedAt: null, phoneNumber: { in: [digits, `+${digits}`] } },
+      select: { id: true },
+    });
+    return contact?.id;
   }
 }

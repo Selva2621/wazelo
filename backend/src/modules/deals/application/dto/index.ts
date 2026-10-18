@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsUUID, IsDateString, IsIn, MaxLength } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class CreatePipelineDto {
   @IsString()
@@ -68,10 +68,11 @@ export class UpdateDealDto {
   @IsString()
   title?: string;
 
+  /** null clears the value */
   @IsOptional()
+  @Transform(({ value }) => (value === null || value === undefined ? value : Number(value)))
   @IsNumber()
-  @Type(() => Number)
-  value?: number;
+  value?: number | null;
 
   @IsOptional()
   @IsString()
@@ -90,7 +91,7 @@ export class UpdateDealDto {
   notes?: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['OPEN', 'WON', 'LOST'])
   status?: 'OPEN' | 'WON' | 'LOST';
 
   /** Next follow-up time; null clears it (marks the follow-up done) */
@@ -128,6 +129,6 @@ export class MoveDealDto {
   stageId: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['OPEN', 'WON', 'LOST'])
   status?: 'OPEN' | 'WON' | 'LOST';
 }

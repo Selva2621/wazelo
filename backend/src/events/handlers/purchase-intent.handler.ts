@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { EVENT_NAMES } from '@/common/constants';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { DealRepository } from '@/modules/deals/infrastructure/repositories/deal.repository';
+import { DealLifecycleUseCase } from '@/modules/deals/application/use-cases/deal-lifecycle.use-case';
 import { PipelineRepository } from '@/modules/deals/infrastructure/repositories/pipeline.repository';
 import { ConfigResolutionService } from '@/modules/settings/domain/services/config-resolution.service';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
@@ -19,6 +20,7 @@ export class PurchaseIntentHandler {
     private readonly configService: ConfigResolutionService,
     private readonly wsGateway: AppWebSocketGateway,
     private readonly prisma: PrismaService,
+    private readonly dealLifecycle: DealLifecycleUseCase,
   ) {}
 
   @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED, { async: true })
@@ -85,8 +87,8 @@ Respond with JSON: {"intent": true/false, "confidence": 0.0-1.0, "keywords": ["m
       const contactName = contact?.name || contact?.phoneNumber || payload.contactPhone;
       const firstStage = pipeline.stages[0];
 
-      // Create deal
-      const deal = await this.dealRepo.create({
+      // Create deal — like one made by hand, so first-stage sequences/automations fire
+      const deal = await this.dealLifecycle.create({
         orgId: payload.orgId,
         pipelineId: pipeline.id,
         stageId: firstStage.id,

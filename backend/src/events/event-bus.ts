@@ -146,6 +146,16 @@ export interface DealFollowUpDueEvent {
   userId: string | null;
 }
 
+export interface DealStageChangedEvent {
+  dealId: string;
+  orgId: string;
+  pipelineId: string;
+  contactId: string;
+  stageId: string;
+  /** null when the deal was just created */
+  previousStageId: string | null;
+}
+
 export interface DealScopeRespondedEvent {
   dealId: string;
   orgId: string;

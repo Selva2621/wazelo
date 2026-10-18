@@ -28,14 +28,13 @@ import { IconButton } from "@/components/ui/icon-button";
 import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  CONTACT_SOURCES,
+  CONTACT_SOURCE_LABELS,
+  SCRAPE_SOURCE_LABELS,
+} from "@/lib/constants/contact-sources";
 
-const SOURCE_LABELS: Record<string, string> = {
-  GOOGLE_MAPS: "Google Maps",
-  UPWORK_JOBS: "Upwork",
-  FREELANCER_IN: "Freelancer.in",
-  TRUELANCER: "Truelancer",
-  LINKEDIN_JOBS: "LinkedIn Jobs",
-};
+const SOURCE_LABELS: Record<string, string> = SCRAPE_SOURCE_LABELS;
 
 const MSG_TYPES: { value: MessageType; label: string }[] = [
   { value: "TEXT", label: "Text" },
@@ -105,9 +104,11 @@ interface CreateCampaignModalProps {
   open: boolean;
   onClose: () => void;
   sessions: { id: string; name: string; status: string }[];
+  /** Opens with a filtered audience, e.g. a contact source group */
+  initialAudienceFilters?: CreateCampaignFormData["audienceFilters"];
 }
 
-export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignModalProps) {
+export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFilters }: CreateCampaignModalProps) {
   const router = useRouter();
   const createCampaign = useCreateCampaign();
   const executeCampaign = useExecuteCampaign();
@@ -141,6 +142,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
   useEffect(() => {
     if (open && onlySessionId) setValue("sessionId", onlySessionId);
   }, [open, onlySessionId, setValue]);
+
+  useEffect(() => {
+    if (!open || !initialAudienceFilters) return;
+    setValue("audienceType", "FILTERED", { shouldValidate: true });
+    setValue("audienceFilters", initialAudienceFilters);
+  }, [open, initialAudienceFilters, setValue]);
 
   const messageType = watch("messageType") as MessageType;
   const audienceType = watch("audienceType") as CampaignAudienceType;
@@ -519,12 +526,12 @@ export function CreateCampaignModal({ open, onClose, sessions }: CreateCampaignM
                   <div>
                     <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Source</p>
                     <div className="flex flex-wrap gap-1">
-                      {(["WHATSAPP", "MANUAL", "IMPORT", "API"] as const).map((s) => {
+                      {CONTACT_SOURCES.map((s) => {
                         const active = audienceFilters?.sources?.includes(s);
                         return (
                           <button key={s} type="button" onClick={() => toggleFilter("sources", s)}
                             className={`px-2 py-0.5 rounded-md text-caption font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
-                            {s.charAt(0) + s.slice(1).toLowerCase()}
+                            {CONTACT_SOURCE_LABELS[s]}
                           </button>
                         );
                       })}

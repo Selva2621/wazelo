@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/table";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadScoreBadge } from "./lead-score-badge";
-import type { Contact, ContactSource } from "@/lib/types/contacts";
+import type { Contact } from "@/lib/types/contacts";
+import { CONTACT_SOURCE_LABELS as SOURCE_LABELS } from "@/lib/constants/contact-sources";
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -37,18 +38,6 @@ interface ContactsTableProps {
 const checkboxClass =
   "size-4 cursor-pointer rounded border-outline-variant accent-primary align-middle";
 
-const SOURCE_LABELS: Record<ContactSource, string> = {
-  WHATSAPP: "WhatsApp",
-  INSTAGRAM: "Instagram",
-  FACEBOOK: "Facebook",
-  EMAIL: "Email",
-  MANUAL: "Manual",
-  IMPORT: "Import",
-  API: "API",
-  FACEBOOK_LEAD_AD: "FB Lead Ad",
-  INSTAGRAM_LEAD_AD: "IG Lead Ad",
-  WHATSAPP_LEAD_AD: "WA Lead Ad",
-};
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();

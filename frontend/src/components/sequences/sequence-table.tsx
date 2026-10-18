@@ -90,7 +90,10 @@ export function SequenceTable({
               </TableCell>
 
               <TableCell>
-                <Badge variant={STATUS_VARIANTS[seq.status]}>{seq.status}</Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={STATUS_VARIANTS[seq.status]}>{seq.status}</Badge>
+                  {seq.triggerType && <Badge variant="info">Auto</Badge>}
+                </div>
               </TableCell>
 
               <TableCell>

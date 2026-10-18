@@ -6,7 +6,7 @@ import { useContactsStore } from "@/stores/contacts-store";
 import { useOrgMembers, useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useAuthStore } from "@/stores/auth-store";
-import type { LeadStatus, ContactSource } from "@/lib/types/contacts";
+import type { LeadStatus } from "@/lib/types/contacts";
 import { IconButton } from "@/components/ui/icon-button";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
@@ -15,13 +15,6 @@ const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "INTERESTED", label: "Interested" },
   { value: "CONVERTED", label: "Converted" },
   { value: "CLOSED", label: "Closed" },
-];
-
-const SOURCES: { value: ContactSource; label: string }[] = [
-  { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "MANUAL", label: "Manual" },
-  { value: "IMPORT", label: "Import" },
-  { value: "API", label: "API" },
 ];
 
 export function ContactFilters() {
@@ -33,7 +26,6 @@ export function ContactFilters() {
     filterProductIds,
     setFilterStatus,
     setFilterOwnerId,
-    setFilterSource,
     setFilterTagIds,
     setFilterProductIds,
     clearFilters,
@@ -82,22 +74,6 @@ export function ContactFilters() {
           ))}
         </select>
       )}
-
-      {/* Source */}
-      <select
-        value={filterSource ?? ""}
-        onChange={(e) =>
-          setFilterSource(e.target.value ? (e.target.value as ContactSource) : null)
-        }
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
-      >
-        <option value="">All Sources</option>
-        {SOURCES.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
-          </option>
-        ))}
-      </select>
 
       {/* Tags */}
       <select

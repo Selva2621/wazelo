@@ -211,7 +211,6 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Check label="Has phone" checked={!!value.hasPhone} onChange={(v) => set({ hasPhone: flag(v) })} />
                   <Check label="Mobile numbers only" hint="no landlines" checked={!!value.mobileOnly} onChange={(v) => set({ mobileOnly: flag(v) })} />
-                  <Check label="Find emails from website" hint="slower" checked={!!value.findEmails} onChange={(v) => set({ findEmails: flag(v) })} />
                   <Field label="Social profiles">
                     <select value={value.social ?? ""} onChange={(e) => set({ social: (e.target.value || undefined) as LeadFilters["social"] })} className={inputClass}>
                       <option value="">Any</option>

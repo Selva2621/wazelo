@@ -90,6 +90,15 @@ export class PipelineRepository {
     });
   }
 
+  /** A pipeline's stages in board order, with their won/lost flags */
+  async findStages(pipelineId: string) {
+    return this.prisma.pipelineStage.findMany({
+      where: { pipelineId },
+      select: { id: true, isWonStage: true, isLostStage: true },
+      orderBy: { order: 'asc' },
+    });
+  }
+
   async findDefaultOrFirst(orgId: string) {
     const defaultPipeline = await this.prisma.pipeline.findFirst({
       where: { orgId, isDefault: true, deletedAt: null },

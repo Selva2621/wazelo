@@ -19,6 +19,7 @@ import type {
   OrgMember,
   BulkContactAction,
   BulkContactsResult,
+  ContactGroups,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -36,6 +37,9 @@ export const contactsApi = {
         },
       })
       .then((r) => r.data),
+
+  groups: () =>
+    apiClient.get<ContactGroups>("/contacts/groups").then((r) => r.data),
 
   get: (contactId: string) =>
     apiClient.get<Contact>(`/contacts/${contactId}`).then((r) => r.data),

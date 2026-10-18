@@ -159,6 +159,13 @@ enum SequenceRecipientStatus {
   PAUSED        // sequence paused
 }
 
+/// What enrolls a contact into an always-on sequence (null = one-time audience)
+enum SequenceTriggerType {
+  DEAL_STAGE_CHANGED
+  LEAD_STATUS_CHANGED
+  CONTACT_CREATED
+}
+
 enum AuditAction {
   // Auth actions
   USER_REGISTERED
@@ -352,6 +359,7 @@ enum AutomationTriggerType {
   SHOPIFY_ORDER_FULFILLED
   SHOPIFY_CART_ABANDONED
   WIDGET_MESSAGE_RECEIVED
+  DEAL_STAGE_CHANGED
 }
 
 enum AutomationConditionOperator {
@@ -367,6 +375,7 @@ enum AutomationActionType {
   ASSIGN_CONTACT
   ADD_TAG
   UPDATE_STATUS
+  ENROLL_IN_SEQUENCE
 }
 
 enum AutomationRuleStatus {
@@ -1411,6 +1420,9 @@ model CampaignSequence {
   status          SequenceStatus @default(DRAFT)
   audienceType    CampaignAudienceType @default(FILTERED) @map("audience_type")
   audienceFilters Json?          @map("audience_filters") @db.JsonB
+  /// Set → contacts join one at a time when this happens; the audience is not used
+  triggerType     SequenceTriggerType? @map("trigger_type")
+  triggerConfig   Json?          @map("trigger_config") @db.JsonB
   exitOnReply     Boolean        @default(true) @map("exit_on_reply")
   createdById     String         @map("created_by_id") @db.Uuid
   startedAt       DateTime?      @map("started_at")

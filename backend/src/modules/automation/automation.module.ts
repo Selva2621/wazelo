@@ -4,6 +4,7 @@ import { BillingModule } from '@/modules/billing/billing.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { AiModule } from '@/modules/ai/ai.module';
+import { SequencesModule } from '@/modules/sequences/sequences.module';
 
 // Repository
 import { AutomationRepository } from './infrastructure/repositories/automation.repository';
@@ -31,7 +32,7 @@ import { GenerateAutomationRuleUseCase } from './application/use-cases/generate-
 import { AutomationController } from './interfaces/controllers/automation.controller';
 
 @Module({
-  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule],
+  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule, SequencesModule],
   controllers: [AutomationController],
   providers: [
     // Repository

@@ -10,7 +10,8 @@ export type AutomationTriggerType =
   | "SHOPIFY_ORDER_CREATED"
   | "SHOPIFY_ORDER_FULFILLED"
   | "SHOPIFY_CART_ABANDONED"
-  | "WIDGET_MESSAGE_RECEIVED";
+  | "WIDGET_MESSAGE_RECEIVED"
+  | "DEAL_STAGE_CHANGED";
 
 export type AutomationConditionOperator =
   | "EQUALS"
@@ -23,7 +24,8 @@ export type AutomationActionType =
   | "SEND_MESSAGE"
   | "ASSIGN_CONTACT"
   | "ADD_TAG"
-  | "UPDATE_STATUS";
+  | "UPDATE_STATUS"
+  | "ENROLL_IN_SEQUENCE";
 
 export type AutomationRuleStatus = "ACTIVE" | "INACTIVE";
 
@@ -42,6 +44,8 @@ export interface TriggerConfig {
   toStatus?: string;
   cronExpression?: string;
   delaySeconds?: number;
+  /** DEAL_STAGE_CHANGED: empty → any stage */
+  stageId?: string;
 }
 
 // ─── Condition ───

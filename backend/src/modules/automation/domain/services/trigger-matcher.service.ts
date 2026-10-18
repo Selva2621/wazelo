@@ -43,6 +43,10 @@ export class TriggerMatcherService {
       case AutomationTriggerType.WIDGET_MESSAGE_RECEIVED:
         return this.matchWidgetMessage(input.triggerConfig, input.eventPayload);
 
+      case AutomationTriggerType.DEAL_STAGE_CHANGED:
+        // No stage configured → any stage change
+        return !input.triggerConfig.stageId || input.triggerConfig.stageId === input.eventPayload.stageId;
+
       default:
         this.logger.warn(`Unknown trigger type: ${input.triggerType}`);
         return false;

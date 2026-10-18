@@ -21,6 +21,7 @@ import {
   Tag,
   RefreshCcw,
   CheckCircle2,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,7 @@ import type {
   AutomationConditionOperator,
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
-import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
+import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: stri
   { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
   { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
   { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
+  { value: "DEAL_STAGE_CHANGED",      label: "Deal Stage Changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.ElementType; color: string }[] = [
@@ -64,6 +66,7 @@ const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.El
   { value: "ASSIGN_CONTACT", label: "Assign Contact", icon: UserCheck,     color: "#22c55e" },
   { value: "ADD_TAG",        label: "Add Tag",         icon: Tag,           color: "#ec4899" },
   { value: "UPDATE_STATUS",  label: "Update Status",   icon: RefreshCcw,    color: "#f59e0b" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence", icon: Workflow,  color: "#0ea5e9" },
 ];
 
 const CONDITION_FIELDS = [
@@ -229,6 +232,20 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           value={String(triggerConfig.minCartValue ?? "")}
           onChange={(e) => onChange("minCartValue", parseFloat(e.target.value) || undefined)}
         />
+      </div>
+    );
+  }
+
+  if (triggerType === "DEAL_STAGE_CHANGED") {
+    return (
+      <div>
+        <Label>Moved to stage</Label>
+        <StageSelect
+          className={inputCls}
+          value={String(triggerConfig.stageId ?? "")}
+          onChange={(e) => onChange("stageId", e.target.value || undefined)}
+        />
+        <p className="text-caption text-on-surface-variant/50 mt-1">Also fires when a deal is created in that stage.</p>
       </div>
     );
   }
@@ -486,6 +503,17 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {row.actionType === "ENROLL_IN_SEQUENCE" && (
+        <div className="pl-8">
+          <Label className="text-caption">Sequence</Label>
+          <SequenceSelect
+            className={`${inputCls} mt-1`}
+            value={String(row.actionConfig.sequenceId ?? "")}
+            onChange={(e) => setConfig("sequenceId", e.target.value)}
+          />
         </div>
       )}
 

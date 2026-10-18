@@ -52,7 +52,7 @@ export class ProcessScrapeRunUseCase {
       isMaps,
       filtered: hasActiveFilters(filters),
       collectLastReview: filters?.activeWithinMonths != null,
-      findEmails: !!filters?.findEmails,
+      findEmails: findsEmails(filters, isMaps),
     });
 
     // Stop the scrape (closing its browser) when it runs past its limit or the user cancels it
@@ -146,7 +146,7 @@ export class ProcessScrapeRunUseCase {
   ): Promise<{ leads: ScrapedLead[]; duplicates: number }> {
     const inspected = new WeakSet<ScrapedLead>();
     const accept = hasActiveFilters(filters)
-      ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected)
+      ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected, findsEmails(filters, isMaps))
       : undefined;
 
     const scraper = this.scraperFactory.getScraper(run.source);
@@ -172,7 +172,7 @@ export class ProcessScrapeRunUseCase {
     }
     const { unique: leads, duplicates } = dedupeLeads(scraped);
 
-    if (filters?.findEmails) await this.inspectWebsites(leads, inspected, signal);
+    if (findsEmails(filters, isMaps)) await this.inspectWebsites(leads, inspected, signal);
     return { leads, duplicates };
   }
 
@@ -186,9 +186,10 @@ export class ProcessScrapeRunUseCase {
     orgId: string,
     runId: string,
     inspected: WeakSet<ScrapedLead>,
+    findEmail: boolean,
   ): Promise<boolean> {
     if (filters.websiteIssues?.length && lead.website && !inspected.has(lead)) {
-      await this.inspectLeadWebsite(lead, !!filters.findEmails, inspected);
+      await this.inspectLeadWebsite(lead, findEmail, inspected);
     }
     if (!matchesFilters(lead, filters)) return false;
 
@@ -235,6 +236,11 @@ export class ProcessScrapeRunUseCase {
     };
     await Promise.all(Array.from({ length: WEBSITE_LOOKUP_CONCURRENCY }, worker));
   }
+}
+
+/** Google Maps always looks up an email on the lead's website, like the phone; job boards only when asked. */
+function findsEmails(filters: LeadFilters | null, isMaps: boolean): boolean {
+  return isMaps || !!filters?.findEmails;
 }
 
 /**

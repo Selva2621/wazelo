@@ -8,6 +8,7 @@ import {
   ContactCreatedEvent,
   ContactAutoCreatedEvent,
   ContactStatusChangedEvent,
+  DealStageChangedEvent,
   AutomationExecutedEvent,
   AutomationFailedEvent,
   ScheduledMessageExecutedEvent,
@@ -131,6 +132,33 @@ export class AutomationEventsHandler {
     } catch (error) {
       this.logger.error(
         `Error evaluating LEAD_STATUS_CHANGED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.DEAL_STAGE_CHANGED)
+  async handleDealStageChanged(payload: DealStageChangedEvent): Promise<void> {
+    try {
+      await this.evaluateTrigger.execute({
+        orgId: payload.orgId,
+        triggerType: AutomationTriggerType.DEAL_STAGE_CHANGED,
+        // No contactId here: the dedupe key prefers it over eventId, and each move is its own event
+        eventPayload: {
+          eventId: `${payload.dealId}:${payload.stageId}:${Date.now()}`,
+          dealId: payload.dealId,
+          pipelineId: payload.pipelineId,
+          stageId: payload.stageId,
+          previousStageId: payload.previousStageId,
+        },
+        context: {
+          contact: { id: payload.contactId },
+          trigger: { dealId: payload.dealId, stageId: payload.stageId, pipelineId: payload.pipelineId },
+        },
+        contactId: payload.contactId,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error evaluating DEAL_STAGE_CHANGED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
       );
     }
   }

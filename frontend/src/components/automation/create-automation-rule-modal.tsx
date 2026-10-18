@@ -21,7 +21,7 @@ import type {
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
-import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
+import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
 
 interface CreateAutomationRuleModalProps {
   open: boolean;
@@ -38,6 +38,7 @@ const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: stri
   { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
   { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
   { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
+  { value: "DEAL_STAGE_CHANGED",    label: "Deal Stage Changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
@@ -45,6 +46,7 @@ const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
   { value: "ASSIGN_CONTACT", label: "Assign Contact" },
   { value: "ADD_TAG",        label: "Add Tag" },
   { value: "UPDATE_STATUS",  label: "Update Lead Status" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence" },
 ];
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
@@ -160,6 +162,21 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  if (actionType === "ENROLL_IN_SEQUENCE") {
+    return (
+      <div>
+        <Label>Sequence <span className="text-error">*</span></Label>
+        <SequenceSelect
+          {...register(`actions.${idx}.actionConfig.sequenceId`)}
+          className={inputCls}
+        />
+        <p className="text-caption text-on-surface-variant/50 mt-1">
+          Someone already in this sequence keeps their place.
+        </p>
       </div>
     );
   }
@@ -466,6 +483,20 @@ export function CreateAutomationRuleModal({
               <p className="text-label text-on-surface-variant/60">
                 Triggers when any new contact is created.
               </p>
+            )}
+
+            {triggerType === "DEAL_STAGE_CHANGED" && (
+              <div>
+                <Label htmlFor="triggerConfig.stageId">Moved to stage</Label>
+                <StageSelect
+                  id="triggerConfig.stageId"
+                  {...register("triggerConfig.stageId")}
+                  className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-caption text-on-surface-variant/50 mt-1">
+                  Also fires when a deal is created in that stage.
+                </p>
+              </div>
             )}
 
             {triggerType === "WIDGET_MESSAGE_RECEIVED" && (

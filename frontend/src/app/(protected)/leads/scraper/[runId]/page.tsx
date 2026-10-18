@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
-  Phone, MapPin, ExternalLink, Star, Import, Users, Download, Send,
+  Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
   Filter, X, ChevronDown, Rocket, Ban,
 } from "lucide-react";
 import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
@@ -460,19 +460,33 @@ function ResultRow({
         </div>
       </TableCell>
 
-      {/* Phone + WA */}
+      {/* Phone + WA + Email */}
       <TableCell>
-        {result.phone ? (
+        {result.phone || result.email ? (
           <div className="flex flex-col gap-0.5">
-            <a
-              href={`tel:${result.phone}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-label text-on-surface hover:text-primary whitespace-nowrap"
-            >
-              <Phone className="w-3 h-3 shrink-0 text-on-surface-variant" />
-              {result.phone}
-            </a>
-            <WaBadge status={waStatus} />
+            {result.phone && (
+              <>
+                <a
+                  href={`tel:${result.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-label text-on-surface hover:text-primary whitespace-nowrap"
+                >
+                  <Phone className="w-3 h-3 shrink-0 text-on-surface-variant" />
+                  {result.phone}
+                </a>
+                <WaBadge status={waStatus} />
+              </>
+            )}
+            {result.email && (
+              <a
+                href={`mailto:${result.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-label text-on-surface-variant hover:text-primary max-w-[200px]"
+              >
+                <Mail className="w-3 h-3 shrink-0" />
+                <span className="truncate">{result.email}</span>
+              </a>
+            )}
           </div>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>

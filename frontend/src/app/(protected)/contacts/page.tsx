@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ContactFilters } from "@/components/contacts/contact-filters";
+import { ContactSourceGroups } from "@/components/contacts/contact-source-groups";
 import { ContactsTable } from "@/components/contacts/contacts-table";
 import { ContactsBulkBar } from "@/components/contacts/contacts-bulk-bar";
 import { ContactKanbanBoard } from "@/components/contacts/contact-kanban-board";
@@ -60,6 +61,7 @@ export default function ContactsPage() {
     filterStatus,
     filterOwnerId,
     filterSource,
+    filterScrapeRunId,
     filterTagIds,
     filterProductIds,
     page,
@@ -81,6 +83,7 @@ export default function ContactsPage() {
       leadStatus: effectiveStatus,
       ownerId: filterOwnerId ?? undefined,
       source: filterSource ?? undefined,
+      scrapeRunId: filterScrapeRunId ?? undefined,
       tagIds: filterTagIds.length > 0 ? filterTagIds : undefined,
       productIds: filterProductIds.length > 0 ? filterProductIds : undefined,
       sortBy: "createdAt",
@@ -92,6 +95,7 @@ export default function ContactsPage() {
       effectiveStatus,
       filterOwnerId,
       filterSource,
+      filterScrapeRunId,
       filterTagIds,
       filterProductIds,
     ],
@@ -206,6 +210,9 @@ export default function ContactsPage() {
           activeTab={statusTab}
           onTabChange={handleStatusTabChange}
         />
+
+        {/* Lead-source groups */}
+        <ContactSourceGroups />
 
         {/* Filters */}
         <ContactFilters />

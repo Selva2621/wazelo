@@ -1,3 +1,5 @@
+import type { ScrapeSource } from "./lead-scraper";
+
 // ─── Enums (match backend Prisma enums) ───
 
 export type LeadStatus = "NEW" | "CONTACTED" | "INTERESTED" | "CONVERTED" | "CLOSED";
@@ -26,7 +28,23 @@ export type ContactSource =
   | "API"
   | "FACEBOOK_LEAD_AD"
   | "INSTAGRAM_LEAD_AD"
-  | "WHATSAPP_LEAD_AD";
+  | "WHATSAPP_LEAD_AD"
+  | "SHOPIFY"
+  | "WEB_SCRAPE";
+
+// ─── Lead-source groups (GET /contacts/groups) ───
+
+export interface ContactGroups {
+  sources: { source: ContactSource; count: number }[];
+  scrapeRuns: {
+    id: string;
+    source: ScrapeSource;
+    keywords: string;
+    location: string | null;
+    createdAt: string;
+    count: number;
+  }[];
+}
 
 // ─── Tag ───
 
@@ -183,6 +201,7 @@ export interface ListContactsParams {
   leadStatus?: LeadStatus;
   ownerId?: string;
   source?: ContactSource;
+  scrapeRunId?: string;
   tagIds?: string[];
   productIds?: string[];
   search?: string;

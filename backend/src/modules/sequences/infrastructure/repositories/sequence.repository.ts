@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import {
+  Prisma,
   SequenceRecipientStatus,
   SequenceStatus,
+  SequenceTriggerType,
   CampaignRecipientStatus,
   WhatsAppSessionStatus,
 } from '@prisma/client';
@@ -20,6 +22,8 @@ export class SequenceRepository {
     description?: string;
     audienceType: 'ALL' | 'FILTERED';
     audienceFilters?: Record<string, unknown>;
+    triggerType?: SequenceTriggerType;
+    triggerConfig?: Record<string, unknown>;
     exitOnReply?: boolean;
     createdById: string;
   }) {
@@ -122,6 +126,7 @@ export class SequenceRepository {
     mediaUrl?: string;
     mediaMimeType?: string;
     delayMinutes?: number;
+    conditions?: Array<{ keyword: string; goToStepOrder: number }>;
   }) {
     return this.prisma.campaignSequenceStep.create({ data: data as any });
   }
@@ -168,6 +173,59 @@ export class SequenceRepository {
     });
   }
 
+  async stageBelongsToOrg(stageId: string, orgId: string): Promise<boolean> {
+    const stage = await this.prisma.pipelineStage.findFirst({
+      where: { id: stageId, pipeline: { orgId, deletedAt: null } },
+      select: { id: true },
+    });
+    return !!stage;
+  }
+
+  /** Active always-on sequences in an org that a given event type can start */
+  async findActiveTriggered(orgId: string, triggerType: SequenceTriggerType) {
+    return this.prisma.campaignSequence.findMany({
+      where: { orgId, triggerType, status: SequenceStatus.ACTIVE, deletedAt: null },
+      select: { id: true, triggerConfig: true },
+    });
+  }
+
+  async findActiveForEnroll(id: string, orgId: string) {
+    return this.prisma.campaignSequence.findFirst({
+      where: { id, orgId, deletedAt: null },
+      select: {
+        id: true,
+        status: true,
+        steps: { orderBy: { stepOrder: 'asc' }, take: 1, select: { delayMinutes: true } },
+      },
+    });
+  }
+
+  async findRecipient(sequenceId: string, contactId: string) {
+    return this.prisma.sequenceRecipient.findUnique({
+      where: { sequenceId_contactId: { sequenceId, contactId } },
+      select: { id: true, status: true },
+    });
+  }
+
+  /**
+   * Put one contact at the start of a sequence. A finished earlier run is
+   * replaced so the same client can get the sequence again (e.g. a new invoice).
+   */
+  async enrollOne(data: {
+    sequenceId: string;
+    orgId: string;
+    contactId: string;
+    contactPhone: string;
+    nextStepAt: Date;
+    replaceRecipientId?: string;
+  }) {
+    const { replaceRecipientId, ...record } = data;
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (replaceRecipientId) await tx.sequenceRecipient.delete({ where: { id: replaceRecipientId } });
+      return tx.sequenceRecipient.create({ data: record });
+    });
+  }
+
   async getActiveRecipientsForStep(orgId: string | undefined, beforeDate: Date, take = 100) {
     const where: any = {
       status: SequenceRecipientStatus.ACTIVE,
@@ -182,6 +240,21 @@ export class SequenceRepository {
       },
       take,
       orderBy: { nextStepAt: 'asc' },
+    });
+  }
+
+  /** One recipient whose next step is due — null once sent, finished or exited */
+  async findDueRecipient(recipientId: string, orgId: string, now: Date) {
+    return this.prisma.sequenceRecipient.findFirst({
+      where: {
+        id: recipientId,
+        orgId,
+        status: SequenceRecipientStatus.ACTIVE,
+        nextStepAt: { lte: now },
+      },
+      include: {
+        sequence: { select: { id: true, sessionId: true, status: true, exitOnReply: true } },
+      },
     });
   }
 

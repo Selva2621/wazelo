@@ -218,7 +218,7 @@ function DealDetails({
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setEditingValue(false);
                     if (e.key === "Enter") {
-                      updateDeal.mutate({ pipelineId: deal.pipelineId, dealId: deal.id, value: Number(valueDraft || 0) });
+                      updateDeal.mutate({ pipelineId: deal.pipelineId, dealId: deal.id, value: valueDraft ? Number(valueDraft) : null });
                       setEditingValue(false);
                     }
                   }}

@@ -2,6 +2,8 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import {
   ContactRepository,
   ContactWithRelations,
+  ContactOwnerScope,
+  ContactGroups,
 } from '../../infrastructure/repositories/contact.repository';
 import { TeamRepository } from '@/modules/teams/infrastructure/repositories/team.repository';
 import { ListContactsQueryDto } from '../dto/list-contacts-query.dto';
@@ -26,26 +28,7 @@ export class ListContactsUseCase {
     role: string,
     query: ListContactsQueryDto,
   ): Promise<ListContactsResult> {
-    let ownerId = query.ownerId;
-    let ownerIds: string[] | undefined;
-
-    if (role === 'EMPLOYEE') {
-      // Employee sees only own contacts
-      ownerId = userId;
-    } else if (role === 'MANAGER') {
-      if (query.ownerId) {
-        // Manager drill-down: validate target is in team
-        const teamUserIds = await this.teamRepository.getMemberUserIds(userId, orgId);
-        if (!teamUserIds.includes(query.ownerId)) {
-          throw new ForbiddenException('User is not in your team');
-        }
-        ownerId = query.ownerId;
-      } else {
-        // Manager default: own + team members' contacts
-        ownerIds = await this.teamRepository.getMemberUserIds(userId, orgId);
-      }
-    }
-    // ADMIN: pass through query.ownerId or see all
+    const { ownerId, ownerIds } = await this.resolveOwnerScope(orgId, userId, role, query.ownerId);
 
     const { contacts, total } = await this.contactRepository.findByOrgPaginated(
       orgId,
@@ -56,6 +39,7 @@ export class ListContactsUseCase {
         ownerId,
         ownerIds,
         source: query.source,
+        scrapeRunId: query.scrapeRunId,
         tagIds: query.tagIds,
         productIds: query.productIds,
         search: query.search,
@@ -70,5 +54,37 @@ export class ListContactsUseCase {
       take: query.take ?? 50,
       skip: query.skip ?? 0,
     };
+  }
+
+  /** Lead-source groups (per source + per scrape run) with counts the caller may see */
+  async groups(orgId: string, userId: string, role: string): Promise<ContactGroups> {
+    const scope = await this.resolveOwnerScope(orgId, userId, role);
+    return this.contactRepository.countGroups(orgId, scope);
+  }
+
+  private async resolveOwnerScope(
+    orgId: string,
+    userId: string,
+    role: string,
+    requestedOwnerId?: string,
+  ): Promise<ContactOwnerScope> {
+    if (role === 'EMPLOYEE') {
+      // Employee sees only own contacts
+      return { ownerId: userId };
+    }
+    if (role === 'MANAGER') {
+      const teamUserIds = await this.teamRepository.getMemberUserIds(userId, orgId);
+      if (requestedOwnerId) {
+        // Manager drill-down: validate target is in team
+        if (!teamUserIds.includes(requestedOwnerId)) {
+          throw new ForbiddenException('User is not in your team');
+        }
+        return { ownerId: requestedOwnerId };
+      }
+      // Manager default: own + team members' contacts
+      return { ownerIds: teamUserIds };
+    }
+    // ADMIN: pass through requested owner or see all
+    return { ownerId: requestedOwnerId };
   }
 }

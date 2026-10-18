@@ -8,6 +8,7 @@ const triggerConfigSchema = z.object({
   delaySeconds: z.number().int().min(0).optional(),
   minOrderValue: z.number().min(0).optional(),
   minCartValue: z.number().min(0).optional(),
+  stageId: z.string().optional().or(z.literal("")),
 });
 
 const conditionSchema = z.object({
@@ -22,6 +23,7 @@ const actionSchema = z.object({
     "ASSIGN_CONTACT",
     "ADD_TAG",
     "UPDATE_STATUS",
+    "ENROLL_IN_SEQUENCE",
   ]),
   actionConfig: z.record(z.string(), z.any()),
   orderIndex: z.number().int().min(0).optional(),
@@ -45,6 +47,7 @@ export const createAutomationRuleSchema = z.object({
     "SHOPIFY_ORDER_FULFILLED",
     "SHOPIFY_CART_ABANDONED",
     "WIDGET_MESSAGE_RECEIVED",
+    "DEAL_STAGE_CHANGED",
   ]),
   triggerConfig: triggerConfigSchema,
   conditions: z.array(conditionSchema).optional(),
@@ -68,6 +71,8 @@ export const updateAutomationRuleSchema = z.object({
       "SHOPIFY_ORDER_CREATED",
       "SHOPIFY_ORDER_FULFILLED",
       "SHOPIFY_CART_ABANDONED",
+      "WIDGET_MESSAGE_RECEIVED",
+      "DEAL_STAGE_CHANGED",
     ])
     .optional(),
   triggerConfig: triggerConfigSchema.optional(),

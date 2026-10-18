@@ -39,8 +39,9 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         pipelineId,
         dealId: deal.id,
         title: title.trim(),
-        value: value ? parseFloat(value) : undefined,
-        notes: notes || undefined,
+        // Emptied fields are cleared, not left as they were
+        value: value ? parseFloat(value) : null,
+        notes,
         expectedClose: expectedClose || undefined,
       },
       { onSuccess: onClose },

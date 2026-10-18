@@ -48,6 +48,7 @@ import { MessagePipelineService } from '@/modules/messages/application/services/
 import { ChatbotModule } from '@/modules/chatbot/chatbot.module';
 // Drip Sequence events
 import { SequenceEventsHandler } from './handlers/sequence-events.handler';
+import { SequenceTriggerHandler } from './handlers/sequence-trigger.handler';
 import { SequencesModule } from '@/modules/sequences/sequences.module';
 // Purchase Intent detection
 import { PurchaseIntentHandler } from './handlers/purchase-intent.handler';
@@ -111,6 +112,7 @@ import { OrgModule } from '@/modules/org/org.module';
     LeadScoringEventsHandler,
     // Drip Sequence events
     SequenceEventsHandler,
+    SequenceTriggerHandler,
     // Developer API webhook events
     // Message pipeline (chatbot-first → automation, prevents race condition)
     MessagePipelineService,

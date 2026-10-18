@@ -41,11 +41,29 @@ export interface ListContactsOptions {
   ownerId?: string;
   ownerIds?: string[];
   source?: ContactSource;
+  scrapeRunId?: string;
   tagIds?: string[];
   productIds?: string[];
   search?: string;
   sortBy?: 'createdAt' | 'updatedAt' | 'name';
   sortOrder?: 'asc' | 'desc';
+}
+
+export interface ContactOwnerScope {
+  ownerId?: string;
+  ownerIds?: string[];
+}
+
+export interface ContactGroups {
+  sources: { source: ContactSource; count: number }[];
+  scrapeRuns: {
+    id: string;
+    source: string;
+    keywords: string;
+    location: string | null;
+    createdAt: Date;
+    count: number;
+  }[];
 }
 
 export type ContactWithRelations = Contact & {
@@ -270,6 +288,16 @@ export class ContactRepository {
     orgId: string,
     options: ListContactsOptions = {},
   ): Promise<{ contacts: ContactWithRelations[]; total: number }> {
+    // Contacts link to a scrape run only through scrape_results.contact_id
+    const scrapeRunContactIds = options.scrapeRunId
+      ? (
+          await this.prisma.scrapeResult.findMany({
+            where: { orgId, scrapeRunId: options.scrapeRunId, contactId: { not: null } },
+            select: { contactId: true },
+          })
+        ).map((r) => r.contactId as string)
+      : undefined;
+
     const where: Prisma.ContactWhereInput = {
       orgId,
       deletedAt: null,
@@ -278,6 +306,7 @@ export class ContactRepository {
       ...(options.ownerId && { ownerId: options.ownerId }),
       ...(options.ownerIds && { ownerId: { in: options.ownerIds } }),
       ...(options.source && { source: options.source }),
+      ...(scrapeRunContactIds && { id: { in: scrapeRunContactIds } }),
       ...(options.tagIds &&
         options.tagIds.length > 0 && {
           contactTags: {
@@ -344,6 +373,50 @@ export class ContactRepository {
     ]);
 
     return { contacts: contacts as ContactWithRelations[], total };
+  }
+
+  /** Contact counts per source and per scrape run, within the caller's owner scope */
+  async countGroups(orgId: string, scope: ContactOwnerScope): Promise<ContactGroups> {
+    const ownerIds = scope.ownerId ? [scope.ownerId] : scope.ownerIds;
+
+    const [bySource, byRun] = await Promise.all([
+      this.prisma.contact.groupBy({
+        by: ['source'],
+        where: {
+          orgId,
+          deletedAt: null,
+          mergedIntoId: null,
+          ...(ownerIds && { ownerId: { in: ownerIds } }),
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.$queryRaw<{ scrape_run_id: string; count: bigint }[]>`
+        SELECT sr.scrape_run_id, COUNT(DISTINCT c.id) AS count
+        FROM scrape_results sr
+        JOIN contacts c ON c.id = sr.contact_id
+        WHERE sr.org_id = ${orgId}::uuid
+          AND c.deleted_at IS NULL
+          AND c.merged_into_id IS NULL
+          ${ownerIds ? Prisma.sql`AND c.owner_id = ANY(${ownerIds}::uuid[])` : Prisma.empty}
+        GROUP BY sr.scrape_run_id
+      `,
+    ]);
+
+    const runCounts = new Map(byRun.map((r) => [r.scrape_run_id, Number(r.count)]));
+    const runs = runCounts.size
+      ? await this.prisma.scrapeRun.findMany({
+          where: { orgId, id: { in: [...runCounts.keys()] } },
+          select: { id: true, source: true, keywords: true, location: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
+    return {
+      sources: bySource
+        .map((g) => ({ source: g.source, count: g._count._all }))
+        .sort((a, b) => b.count - a.count),
+      scrapeRuns: runs.map((r) => ({ ...r, count: runCounts.get(r.id) ?? 0 })),
+    };
   }
 
   // ───── Lead Status ─────

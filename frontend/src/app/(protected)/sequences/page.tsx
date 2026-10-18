@@ -141,11 +141,15 @@ export default function SequencesPage() {
         sessionId={session?.id ?? ""}
         onSubmit={(req) => {
           createSequence.mutate(req, {
-            onSuccess: () => setShowCreate(false),
+            onSuccess: (created) => {
+              setShowCreate(false);
+              // Always-on sequences have nobody to send to yet — turn them on right away
+              if (req.trigger) startSequence.mutate(created.id);
+            },
           });
         }}
         onClose={() => setShowCreate(false)}
-        submitting={createSequence.isPending}
+        submitting={createSequence.isPending || startSequence.isPending}
       />
     </div>
   );

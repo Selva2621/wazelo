@@ -6,6 +6,7 @@ import { MessageRepository } from '@/modules/messages/infrastructure/repositorie
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
+import { EnrollContactUseCase } from '@/modules/sequences/application/use-cases/enroll-contact.use-case';
 import { QUEUE_NAMES, MESSAGING_CONFIG } from '@/common/constants';
 
 export interface ActionExecutionInput {
@@ -37,6 +38,7 @@ export class ActionExecutorService {
     private readonly conversationRepo: ConversationRepository,
     private readonly messageEventRepo: MessageEventRepository,
     private readonly sessionRepo: WhatsAppSessionRepository,
+    private readonly enrollContact: EnrollContactUseCase,
   ) {}
 
   async execute(input: ActionExecutionInput): Promise<ActionResult> {
@@ -49,6 +51,8 @@ export class ActionExecutorService {
         return this.executeAddTag(input);
       case AutomationActionType.UPDATE_STATUS:
         return this.executeUpdateStatus(input);
+      case AutomationActionType.ENROLL_IN_SEQUENCE:
+        return this.executeEnrollInSequence(input);
       default:
         return {
           actionType: input.actionType,
@@ -249,6 +253,27 @@ export class ActionExecutorService {
       return { actionType: AutomationActionType.UPDATE_STATUS, success: true, result: { newStatus, queued: true } };
     } catch (error) {
       return { actionType: AutomationActionType.UPDATE_STATUS, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── ENROLL_IN_SEQUENCE ───────────────────────────────────────────────────
+
+  private async executeEnrollInSequence(input: ActionExecutionInput): Promise<ActionResult> {
+    const { sequenceId } = input.actionConfig as { sequenceId?: string };
+    const actionType = AutomationActionType.ENROLL_IN_SEQUENCE;
+
+    if (!sequenceId) {
+      return { actionType, success: false, error: 'Missing sequenceId in action config' };
+    }
+
+    try {
+      const result = await this.enrollContact.execute(input.orgId, sequenceId, input.contactId);
+      if (result.enrolled) return { actionType, success: true, result: { sequenceId, recipientId: result.recipientId } };
+      // Already in the sequence is the outcome the rule wanted, not a failure
+      if (result.reason === 'ALREADY_ACTIVE') return { actionType, success: true, result: { sequenceId, skipped: result.reason } };
+      return { actionType, success: false, error: `Not added to sequence: ${result.reason}` };
+    } catch (error) {
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }

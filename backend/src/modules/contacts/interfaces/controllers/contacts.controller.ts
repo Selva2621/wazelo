@@ -104,6 +104,12 @@ export class ContactsController {
     return this.listContactsUseCase.execute(user.orgId, user.sub, user.role, query);
   }
 
+  @Get('groups')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getContactGroups(@CurrentUser() user: JwtPayload) {
+    return this.listContactsUseCase.groups(user.orgId, user.sub, user.role);
+  }
+
   @Get('export')
   @Permissions(PERMISSIONS.CONTACTS_EXPORT)
   async exportContacts(

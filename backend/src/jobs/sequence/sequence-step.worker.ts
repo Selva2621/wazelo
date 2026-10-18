@@ -48,15 +48,7 @@ export class SequenceStepWorker implements OnModuleInit {
     );
 
     // Schedule periodic check
-    await this.queueService.publishOnce(
-      QUEUE_NAMES.SEQUENCE_STEP_CHECK,
-      {},
-      'sequence-step-check-singleton',
-      {
-        retryLimit: 0,
-        singletonSeconds: 30,
-      },
-    );
+    await this.scheduleNextCheck();
 
     // Subscribe to individual step sends
     await this.queueService.subscribeConcurrent<{
@@ -74,31 +66,12 @@ export class SequenceStepWorker implements OnModuleInit {
     this.logger.log('SequenceStepWorker subscribed');
   }
 
-  private async checkDueSteps(): Promise<void> {
-    const now = new Date();
-    const dueRecipients = await this.sequenceRepo.getActiveRecipientsForStep(undefined, now, 100);
-
-    // Filter: only those whose parent sequence is still ACTIVE
-    const eligible = dueRecipients.filter(
-      (r) => r.sequence.status === SequenceStatus.ACTIVE,
-    );
-
-    for (const recipient of eligible) {
-      await this.queueService.publishOnce(
-        QUEUE_NAMES.SEQUENCE_SEND_STEP,
-        {
-          recipientId: recipient.id,
-          stepId: '', // resolved in sendStep
-          orgId: recipient.orgId,
-          sequenceId: recipient.sequenceId,
-          sessionId: recipient.sequence.sessionId,
-        },
-        `seq-step-${recipient.id}-${recipient.currentStep}`,
-        { retryLimit: 2, retryBackoff: true },
-      );
-    }
-
-    // Re-schedule self
+  /**
+   * One check per 30s slot. This runs inside the current slot's job, so without
+   * singletonNextSlot the insert collides with that job and pg-boss silently
+   * drops it — the loop would stop after one run.
+   */
+  private async scheduleNextCheck(): Promise<void> {
     await this.queueService.publishOnce(
       QUEUE_NAMES.SEQUENCE_STEP_CHECK,
       {},
@@ -106,8 +79,39 @@ export class SequenceStepWorker implements OnModuleInit {
       {
         retryLimit: 0,
         singletonSeconds: 30,
+        singletonNextSlot: true,
       },
     );
+  }
+
+  private async checkDueSteps(): Promise<void> {
+    try {
+      const now = new Date();
+      const dueRecipients = await this.sequenceRepo.getActiveRecipientsForStep(undefined, now, 100);
+
+      // Filter: only those whose parent sequence is still ACTIVE
+      const eligible = dueRecipients.filter(
+        (r) => r.sequence.status === SequenceStatus.ACTIVE,
+      );
+
+      for (const recipient of eligible) {
+        await this.queueService.publishOnce(
+          QUEUE_NAMES.SEQUENCE_SEND_STEP,
+          {
+            recipientId: recipient.id,
+            stepId: '', // resolved in sendStep
+            orgId: recipient.orgId,
+            sequenceId: recipient.sequenceId,
+            sessionId: recipient.sequence.sessionId,
+          },
+          `seq-step-${recipient.id}-${recipient.currentStep}`,
+          { retryLimit: 2, retryBackoff: true },
+        );
+      }
+    } finally {
+      // Re-schedule self even when this run failed, or the loop dies
+      await this.scheduleNextCheck();
+    }
   }
 
   private async sendStep(data: {
@@ -122,10 +126,9 @@ export class SequenceStepWorker implements OnModuleInit {
     const steps = await this.sequenceRepo.getStepsBySequence(sequenceId);
     if (!steps.length) return;
 
-    // Re-fetch recipient (freshest state)
-    const recipients = await this.sequenceRepo.getActiveRecipientsForStep(orgId, new Date(), 1);
-    const recipient = recipients.find((r) => r.id === recipientId);
-    if (!recipient || recipient.status !== 'ACTIVE') return;
+    // Re-fetch this recipient (freshest state) — still active and still due
+    const recipient = await this.sequenceRepo.findDueRecipient(recipientId, orgId, new Date());
+    if (!recipient) return;
 
     // Step jobs published before a pause must not send; and use the sequence's
     // current number — it may have moved off a logged-out or banned one
