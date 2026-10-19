@@ -28,6 +28,7 @@ import type {
 } from "@/lib/types/sequences";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
 
 interface CreateSequenceModalProps {
   /** Defaults to true so callers that mount the modal conditionally keep working. */
@@ -53,6 +54,14 @@ const DELAY_PRESETS = [
   { label: "3 days", value: 4320 },
   { label: "7 days", value: 10080 },
 ];
+
+function formatDelay(minutes: number): string {
+  const preset = DELAY_PRESETS.find((p) => p.value === minutes);
+  if (preset) return preset.label;
+  if (minutes % 1440 === 0) return `${minutes / 1440} days`;
+  if (minutes % 60 === 0) return `${minutes / 60} hours`;
+  return `${minutes} min`;
+}
 
 const TRIGGER_OPTIONS: { value: SequenceTriggerType; label: string }[] = [
   { value: "DEAL_STAGE_CHANGED", label: "A deal moves to a stage" },
@@ -89,7 +98,7 @@ export function CreateSequenceModal({ open = true, ...props }: CreateSequenceMod
       onClose={props.onClose}
       dismissible={!props.submitting}
       aria-labelledby="create-sequence-title"
-      className="max-w-2xl rounded-3xl bg-surface max-h-[90vh] flex flex-col overflow-hidden"
+      className="max-w-2xl lg:max-w-5xl rounded-3xl bg-surface max-h-[90vh] flex flex-col overflow-hidden"
     >
       {/* Form state lives in a child so it resets each time the modal opens. */}
       {() => <CreateSequenceForm {...props} />}
@@ -120,7 +129,9 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
   const { data: products } = useProducts();
   const { data: orgSettings } = useOrgSettings();
   // Login already returns orgType, so the right preset set shows before settings load
-  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const user = useAuthStore((s) => s.user);
+  const userOrgType = user?.orgType;
+  const senderName = user ? `${user.firstName} ${user.lastName}`.trim() : undefined;
   const presets = getSequencePresets({ ...orgSettings, orgType: orgSettings?.orgType ?? userOrgType });
   let nextKey = steps.length;
 
@@ -221,7 +232,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
             <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
               Start from a template
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {presets.map((preset) => (
                 <button
                   key={preset.id}
@@ -244,6 +255,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
             </Button>
           </div>
         ) : (
+        <div className="flex flex-1 min-h-0">
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <button
             type="button"
@@ -617,6 +629,26 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
               <Plus className="h-3.5 w-3.5" /> Add step
             </button>
           </div>
+        </div>
+
+        {/* What the contact sees, step by step */}
+        <div className="hidden lg:flex w-[320px] shrink-0 flex-col items-center overflow-y-auto border-l border-outline-variant/15 bg-surface-container-lowest px-6 py-4">
+          <p className="self-stretch text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">
+            Preview
+          </p>
+          <WhatsAppPhonePreview
+            senderName={senderName}
+            messages={steps.map((s, i) => ({
+              key: s._key,
+              body: s.messageBody ?? "",
+              messageType: s.messageType,
+              gapLabel:
+                (i > 0 || joinMode === "AUTO") && s.delayMinutes
+                  ? `After ${formatDelay(s.delayMinutes)}`
+                  : undefined,
+            }))}
+          />
+        </div>
         </div>
         )}
 

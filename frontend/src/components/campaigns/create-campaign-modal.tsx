@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import {
   X, FileText, Search, ExternalLink, ChevronDown,
   Megaphone, MessageSquare, Users, Clock, Wifi,
-  Package, ScanSearch, Tag,
+  Package, ScanSearch, Tag, Smartphone,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -26,6 +26,7 @@ import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
+import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -153,6 +154,9 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const audienceType = watch("audienceType") as CampaignAudienceType;
   const messageBody = watch("messageBody") || "";
   const audienceFilters = watch("audienceFilters");
+  const mediaUrl = watch("mediaUrl");
+  const sessionId = watch("sessionId");
+  const senderName = sessions.find((s) => s.id === sessionId)?.name;
 
   // Template placeholders like {{lead.service}} aren't contact fields — the
   // user fills them once for the whole campaign
@@ -239,7 +243,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
       onClose={onClose}
       dismissible={!pendingSend}
       aria-label="New Campaign"
-      className="max-w-4xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
+      className="max-w-4xl xl:max-w-6xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
     >
       {() => (
       <>
@@ -471,8 +475,8 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             </div>
           </div>
 
-          {/* RIGHT PANEL — Audience, Session, Product, Scheduling */}
-          <div className="w-[380px] shrink-0 overflow-y-auto px-6 py-5 space-y-6">
+          {/* MIDDLE PANEL — Audience, Session, Product, Scheduling */}
+          <div className="w-[380px] shrink-0 overflow-y-auto px-6 py-5 space-y-6 xl:border-r xl:border-outline-variant/10">
 
             {/* Audience */}
             <div>
@@ -782,6 +786,22 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 </div>
               )}
             </div>
+          </div>
+
+          {/* RIGHT PANEL — what the contact sees */}
+          <div className="hidden xl:flex w-[320px] shrink-0 overflow-y-auto flex-col items-center px-6 py-5 bg-surface-container-lowest">
+            <div className="self-stretch">
+              <SectionHeading icon={<Smartphone className="h-3.5 w-3.5" />} label="Preview" />
+            </div>
+            <WhatsAppPhonePreview
+              senderName={senderName}
+              messages={[{
+                key: "msg",
+                body: fillPlaceholders(messageBody, placeholderValues),
+                messageType,
+                mediaUrl,
+              }]}
+            />
           </div>
         </form>
 
