@@ -3,6 +3,7 @@ import { AutomationTriggerType } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
 import type { ShopifyOrderPayload } from '../../domain/services/shopify-webhook.service';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 // Nil UUID used as authorId for system-generated notes (no real user)
 const SYSTEM_AUTHOR_ID = '00000000-0000-0000-0000-000000000000';
@@ -21,6 +22,7 @@ export class ProcessShopifyWebhookUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(job: ShopifyWebhookJob): Promise<void> {
@@ -40,7 +42,7 @@ export class ProcessShopifyWebhookUseCase {
   }
 
   private async handleOrderCreated(orgId: string, order: ShopifyOrderPayload): Promise<void> {
-    const phone = this.normalizePhone(order.customer?.phone ?? order.phone);
+    const phone = await this.orgLocale.normalizePhone(orgId, order.customer?.phone ?? order.phone);
     if (!phone) {
       this.logger.warn(`Shopify order ${order.id} has no phone, skipping contact upsert`);
       return;
@@ -118,7 +120,7 @@ export class ProcessShopifyWebhookUseCase {
   }
 
   private async handleOrderFulfilled(orgId: string, order: ShopifyOrderPayload): Promise<void> {
-    const phone = this.normalizePhone(order.customer?.phone ?? order.phone);
+    const phone = await this.orgLocale.normalizePhone(orgId, order.customer?.phone ?? order.phone);
     if (!phone) return;
 
     const contact = await this.prisma.contact.findFirst({
@@ -147,7 +149,7 @@ export class ProcessShopifyWebhookUseCase {
   }
 
   private async handleAbandonedCart(orgId: string, checkout: Record<string, unknown>): Promise<void> {
-    const phone = this.normalizePhone((checkout.phone as string) ?? null);
+    const phone = await this.orgLocale.normalizePhone(orgId, (checkout.phone as string) ?? null);
     if (!phone) return;
 
     const contact = await this.prisma.contact.findFirst({
@@ -233,8 +235,4 @@ export class ProcessShopifyWebhookUseCase {
     }
   }
 
-  private normalizePhone(phone: string | null | undefined): string | null {
-    if (!phone) return null;
-    return phone.replace(/\s+/g, '').replace(/[^+\d]/g, '') || null;
-  }
 }

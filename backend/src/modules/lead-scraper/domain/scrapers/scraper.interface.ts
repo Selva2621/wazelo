@@ -65,6 +65,8 @@ export interface ScrapeOptions {
   radiusKm?: number;
   /** Google Maps: open the reviews tab to find the newest review date (slower) */
   collectLastReview?: boolean;
+  /** ISO country the search is in — phone numbers without a country code are read as its */
+  country?: string;
   /** Aborted on timeout or cancel — browser scrapers close their browser so pending steps fail fast */
   signal?: AbortSignal;
 }

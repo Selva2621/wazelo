@@ -13,7 +13,8 @@ import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { formatMoney, parseMoneyInput } from "@/lib/utils";
 
-export const CURRENCIES = ["INR", "USD", "EUR", "GBP"];
+/** Billing currencies — Razorpay checkout takes INR and USD only */
+export const CURRENCIES = ["INR", "USD"];
 
 const KIND_BADGE: Record<CreditEntryKind, { label: string; variant: "success" | "info" | "error" }> = {
   GRANT: { label: "Grant", variant: "success" },

@@ -46,6 +46,20 @@ export function formatMoney(minorUnits: number, currency = "USD"): string {
   }
 }
 
+/** Format a major-unit amount (deal value, product price) in its currency, without decimals */
+export function formatAmount(value: number, currency = "INR"): string {
+  const code = currency.toUpperCase();
+  try {
+    return new Intl.NumberFormat(code === "INR" ? "en-IN" : "en-US", {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: 0,
+    }).format(value);
+  } catch {
+    return `${code} ${value.toLocaleString()}`;
+  }
+}
+
 /**
  * Parse a major-unit amount typed by a user ("12.50") into integer minor units (1250).
  * Returns null unless it is a plain non-negative number with at most 2 decimals.

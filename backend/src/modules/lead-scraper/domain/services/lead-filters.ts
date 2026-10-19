@@ -6,6 +6,8 @@ export type WebsiteIssue = 'noSsl' | 'notMobile' | 'noPixel' | 'noAnalytics';
 /** Optional filters chosen before a scrape. */
 export interface LeadFilters {
   // ── All sources ──
+  /** ISO country searched in — phones without a country code are read as its. Not a filter. */
+  country?: string;
   /** Skip leads already found by an earlier run */
   newOnly?: boolean;
   /** Skip phone numbers already saved as contacts */
@@ -58,7 +60,7 @@ const DAY_MS = 86_400_000;
 /** Filters that drop leads (findEmails, areas and radius change how scraping runs instead). */
 export function hasActiveFilters(f: LeadFilters | null | undefined): boolean {
   if (!f) return false;
-  const { findEmails: _e, areas: _a, radiusKm: _r, ...rest } = f;
+  const { findEmails: _e, areas: _a, radiusKm: _r, country: _c, ...rest } = f;
   return Object.values(rest).some((v) => (Array.isArray(v) ? v.length > 0 : v != null && v !== false));
 }
 

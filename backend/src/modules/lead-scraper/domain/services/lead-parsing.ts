@@ -1,4 +1,5 @@
 /** Small parsers for the loosely formatted text scraped from listing pages. */
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
 
 const UNIT_MS: Record<string, number> = {
   minute: 60_000,
@@ -48,11 +49,14 @@ export function parseProposals(text: string | null | undefined): number | undefi
 
 /**
  * Indian mobile numbers are +91 followed by 10 digits starting 6–9; landlines carry
- * an STD code instead. Returns undefined for other countries — we can't tell there.
+ * an STD code instead. Other countries go by their numbering plan; undefined where
+ * the plan can't tell mobiles from landlines (US, Canada).
  */
 export function isMobileNumber(phone: string): boolean | undefined {
-  if (!phone.startsWith('+91')) return undefined;
-  return /^\+91[6-9]\d{9}$/.test(phone);
+  if (phone.startsWith('+91')) return /^\+91[6-9]\d{9}$/.test(phone);
+  const type = parsePhoneNumberFromString(phone)?.getType();
+  if (type === undefined || type === 'FIXED_LINE_OR_MOBILE') return undefined;
+  return type === 'MOBILE';
 }
 
 /** Google Maps place URLs embed coordinates as !3d<lat>!4d<lng>; search URLs as @lat,lng */

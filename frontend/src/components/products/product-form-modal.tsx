@@ -9,6 +9,7 @@ import { useCreateProduct, useUpdateProduct, useProductCategories } from "@/hook
 import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { useOrgSettings } from "@/hooks/use-settings";
 
 interface ProductFormModalProps {
   open: boolean;
@@ -27,6 +28,10 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const { data: categories } = useProductCategories();
+  // New products are priced in the org's currency
+  const { data: orgSettings } = useOrgSettings();
+  const orgCurrency = orgSettings?.currency ?? "INR";
+  const currencies = [...new Set([orgCurrency, ...CURRENCIES])];
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,16 +48,16 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
       setName(product.name);
       setDescription(product.description ?? "");
       setPrice(product.price ? parseFloat(product.price).toString() : "");
-      setCurrency(product.currency ?? "INR");
+      setCurrency(product.currency ?? orgCurrency);
       setSku(product.sku ?? "");
       setImageUrl(product.imageUrl ?? "");
       setCategoryId(product.categoryId ?? "");
     } else {
-      setName(""); setDescription(""); setPrice(""); setCurrency("INR");
+      setName(""); setDescription(""); setPrice(""); setCurrency(orgCurrency);
       setSku(""); setImageUrl(""); setCategoryId("");
     }
     setError(null);
-  }, [product, open]);
+  }, [product, open, orgCurrency]);
 
   const isPending = createProduct.isPending || updateProduct.isPending;
 
@@ -168,7 +173,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 onChange={(e) => setCurrency(e.target.value)}
                 className="shrink-0 border-r border-outline-variant/10 bg-surface-container px-3 py-2.5 text-body text-on-surface-variant font-medium outline-none"
               >
-                {CURRENCIES.map((c) => (
+                {currencies.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>

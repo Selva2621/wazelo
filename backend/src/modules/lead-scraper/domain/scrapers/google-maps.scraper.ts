@@ -62,7 +62,7 @@ export class GoogleMapsScraper extends BaseScraper {
       for (const placeUrl of placeUrls) {
         if (results.length >= maxResults || options?.signal?.aborted) break;
         try {
-          const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview);
+          const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview, options?.country);
           if (!accept || (await accept(lead))) results.push(lead);
         } catch {
           // Skip failed detail pages
@@ -152,7 +152,12 @@ export class GoogleMapsScraper extends BaseScraper {
     return urls;
   }
 
-  private async scrapePlace(page: Page, placeUrl: string, collectLastReview: boolean): Promise<ScrapedLead> {
+  private async scrapePlace(
+    page: Page,
+    placeUrl: string,
+    collectLastReview: boolean,
+    country?: string,
+  ): Promise<ScrapedLead> {
     await page.goto(placeUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     await page.waitForSelector('h1', { timeout: 8_000 }).catch(() => {});
     await this.delay(800, 1200);
@@ -242,9 +247,9 @@ export class GoogleMapsScraper extends BaseScraper {
       };
     });
 
-    // Normalize phone to E.164 (strips tel: prefix, trunk 0, adds +91)
+    // Normalize phone to E.164 (strips tel: prefix and trunk 0, adds the country code)
     const cleanPhone = detail.phone
-      ? this.normalizePhone(detail.phone.replace(/^tel:/i, '').trim()) ?? undefined
+      ? this.normalizePhone(detail.phone.replace(/^tel:/i, '').trim(), country) ?? undefined
       : undefined;
 
     // Strip leading map-pin icon characters (non-ASCII garbage before the address)

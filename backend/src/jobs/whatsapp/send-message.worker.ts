@@ -19,6 +19,7 @@ import {
   MESSAGING_CONFIG,
   SEND_SAFETY_CONFIG,
 } from '@/common/constants';
+import { TEST_RECIPIENT_BLOCKED_ERROR } from '@/common/utils/test-recipient-guard.util';
 import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
@@ -46,6 +47,7 @@ const NON_RETRYABLE_ERRORS = [
   'blocked by user',
   'account banned',
   'invalid session',
+  TEST_RECIPIENT_BLOCKED_ERROR.toLowerCase(),
 ];
 
 function isRetryableError(error: string): boolean {

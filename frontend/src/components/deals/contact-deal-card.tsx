@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Briefcase, AlarmClock, Check, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatAmount } from "@/lib/utils";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -96,6 +97,8 @@ function CreateDealInline({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(`${contactName} — project`);
   const [value, setValue] = useState("");
+  // New deals are in the org's currency
+  const { data: orgSettings } = useOrgSettings();
 
   const firstStage = pipeline?.stages.slice().sort((a, b) => a.order - b.order)[0];
   if (!pipeline || !firstStage) return null;
@@ -123,7 +126,7 @@ function CreateDealInline({
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
-        placeholder="Value (₹)"
+        placeholder={`Value (${orgSettings?.currency ?? "INR"})`}
         inputMode="decimal"
       />
       <div className="flex justify-end gap-2">
@@ -232,7 +235,7 @@ function DealDetails({
                 className="text-body font-medium tabular-nums text-on-surface hover:text-primary"
                 title="Edit value"
               >
-                {deal.value != null ? `₹${Number(deal.value).toLocaleString("en-IN")}` : "Add value"}
+                {deal.value != null ? formatAmount(Number(deal.value), deal.currency) : "Add value"}
               </button>
             )}
           </div>

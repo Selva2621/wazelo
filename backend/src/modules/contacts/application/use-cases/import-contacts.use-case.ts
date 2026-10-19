@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 export interface ImportResult {
   imported: number;
@@ -9,7 +10,10 @@ export interface ImportResult {
 
 @Injectable()
 export class ImportContactsUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly orgLocale: OrgLocaleService,
+  ) {}
 
   async execute(orgId: string, userId: string, csvContent: string): Promise<ImportResult> {
     const lines = csvContent.split('\n').filter((l) => l.trim());
@@ -34,10 +38,17 @@ export class ImportContactsUseCase {
 
     for (let i = 1; i < lines.length; i++) {
       const row = this.parseCsvRow(lines[i]);
-      const phone = this.normalizePhone(row[phoneIdx]?.trim());
+      const rawPhone = row[phoneIdx]?.trim();
 
-      if (!phone) {
+      if (!rawPhone) {
         errors.push(`Row ${i + 1}: Missing phone number`);
+        continue;
+      }
+
+      // Numbers without a country code get the org's
+      const phone = await this.orgLocale.normalizePhone(orgId, rawPhone);
+      if (!phone) {
+        errors.push(`Row ${i + 1}: Invalid phone number "${rawPhone}"`);
         continue;
       }
 
@@ -100,12 +111,6 @@ export class ImportContactsUseCase {
     }
     result.push(current);
     return result;
-  }
-
-  private normalizePhone(phone: string | undefined): string {
-    if (!phone) return '';
-    // Strip non-digit except leading +
-    return phone.replace(/[^\d+]/g, '');
   }
 
   private normalizeStatus(status: string | undefined): string {

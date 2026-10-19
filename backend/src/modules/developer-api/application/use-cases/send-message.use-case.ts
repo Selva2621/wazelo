@@ -11,6 +11,7 @@ import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { DevSendMessageDto } from '../dto';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 @Injectable()
 export class DevSendMessageUseCase {
@@ -22,9 +23,13 @@ export class DevSendMessageUseCase {
     private readonly queueService: QueueService,
     private readonly usageTracking: UsageTrackingService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(orgId: string, dto: DevSendMessageDto) {
+    // Numbers without a country code get the org's
+    const to = (await this.orgLocale.normalizePhone(orgId, dto.to)) ?? dto.to;
+
     // 1. Idempotency check
     if (dto.idempotencyKey) {
       const existing = await this.prisma.message.findFirst({
@@ -64,8 +69,8 @@ export class DevSendMessageUseCase {
     // 4. Auto-create or find contact
     const contactResult = await this.repo.createContact({
       orgId,
-      name: dto.to,
-      phoneNumber: dto.to,
+      name: to,
+      phoneNumber: to,
     });
 
     // 5. Find or create conversation
@@ -79,7 +84,7 @@ export class DevSendMessageUseCase {
         data: {
           orgId,
           contactId: contactResult.contact.id,
-          contactPhone: dto.to,
+          contactPhone: to,
           sessionId: session.id,
           status: 'OPEN',
           lastMessageAt: new Date(),
@@ -98,7 +103,7 @@ export class DevSendMessageUseCase {
         type: messageType,
         body: dto.body,
         mediaUrl: dto.mediaUrl,
-        contactPhone: dto.to,
+        contactPhone: to,
         status: MessageStatus.QUEUED,
         idempotencyKey: dto.idempotencyKey,
         metadata: dto.interactive ? { interactive: dto.interactive as any } : undefined,
@@ -119,7 +124,7 @@ export class DevSendMessageUseCase {
       messageId: message.id,
       sessionId: session.id,
       orgId,
-      contactPhone: dto.to,
+      contactPhone: to,
       type: messageType,
       body: dto.body,
       mediaUrl: dto.mediaUrl,
@@ -133,16 +138,16 @@ export class DevSendMessageUseCase {
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {
       messageId: message.id,
       orgId,
-      contactPhone: dto.to,
+      contactPhone: to,
       source: 'developer-api',
     });
 
-    this.logger.log(`Developer API: Message ${message.id} queued for ${dto.to} in org ${orgId}`);
+    this.logger.log(`Developer API: Message ${message.id} queued for ${to} in org ${orgId}`);
 
     return {
       message: {
         id: message.id,
-        to: dto.to,
+        to: to,
         type: dto.type,
         status: 'QUEUED',
         createdAt: message.createdAt,

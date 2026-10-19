@@ -251,6 +251,12 @@ function PlanFormBody({
           >
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
+          {!isEdit && (
+            <p className="text-label text-on-surface-variant mt-0.5">
+              INR plans are shown to orgs in India, USD plans to everyone else. A USD plan needs its own
+              slug (e.g. starter-usd) and Razorpay International Payments switched on.
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor={fid("price")} className={labelClass}>Price ({form.currency})</label>

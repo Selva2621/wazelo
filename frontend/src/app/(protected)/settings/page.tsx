@@ -99,6 +99,8 @@ import type {
   WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
 import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
+import { COUNTRIES, CURRENCY_CODES, DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
+import { CountrySelect } from "@/components/ui/country-select";
 import { cn } from "@/lib/utils";
 import type {
   NotificationType,
@@ -297,6 +299,8 @@ function OrganizationSection() {
 
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("UTC");
+  const [country, setCountry] = useState(DEFAULT_COUNTRY_CODE);
+  const [currency, setCurrency] = useState("INR");
   const [language, setLanguage] = useState("en");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
@@ -313,6 +317,8 @@ function OrganizationSection() {
     if (data) {
       setName(data.name ?? "");
       setTimezone(data.timezone ?? "UTC");
+      setCountry(data.country ?? DEFAULT_COUNTRY_CODE);
+      setCurrency(data.currency ?? "INR");
       setLanguage(data.language ?? "en");
       setIndustry(data.industry ?? "");
       setDescription(data.description ?? "");
@@ -326,6 +332,8 @@ function OrganizationSection() {
     const payload: UpdateOrgSettingsRequest = {
       name,
       timezone,
+      country,
+      currency,
       language,
       industry,
       description,
@@ -366,6 +374,53 @@ function OrganizationSection() {
           />
         </div>
 
+        {/* Country — sets the default phone code, currency and timezone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="org-country"
+              className="text-label font-medium text-on-surface-variant uppercase tracking-wider"
+            >
+              Country
+            </label>
+            <CountrySelect
+              id="org-country"
+              value={country}
+              showDialCode
+              onChange={(code) => {
+                const c = getCountry(code);
+                setCountry(c.code);
+                setCurrency(c.currency);
+                setTimezone(c.timezone);
+              }}
+            />
+            <p className="text-caption text-on-surface-variant">
+              Numbers saved without a country code get +{getCountry(country).dialCode}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="org-currency"
+              className="text-label font-medium text-on-surface-variant uppercase tracking-wider"
+            >
+              Currency
+            </label>
+            <select
+              id="org-currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {CURRENCY_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+            <p className="text-caption text-on-surface-variant">Default for deals and products</p>
+          </div>
+        </div>
+
         {/* Timezone */}
         <div className="space-y-1.5">
           <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
@@ -377,7 +432,7 @@ function OrganizationSection() {
             onChange={(e) => setTimezone(e.target.value)}
             className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            {TIMEZONES.map((tz) => (
+            {[...new Set([...TIMEZONES, ...COUNTRIES.map((c) => c.timezone), timezone])].map((tz) => (
               <option key={tz} value={tz}>
                 {tz}
               </option>

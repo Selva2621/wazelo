@@ -12,6 +12,8 @@ import { CreateDealModal } from "./create-deal-modal";
 import { DealDetailDrawer } from "./deal-detail-drawer";
 import { useDeals, useMoveDeal, useDealAnalytics } from "@/hooks/use-deals";
 import type { Pipeline, Deal, PipelineStage } from "@/lib/types/deals";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { formatAmount } from "@/lib/utils";
 
 interface PipelineBoardProps {
   pipeline: Pipeline;
@@ -69,12 +71,9 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
     setDraggedDealId(null);
   };
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(val);
+  // Totals are shown in the org's currency
+  const { data: orgSettings } = useOrgSettings();
+  const formatCurrency = (val: number) => formatAmount(val, orgSettings?.currency);
 
   if (isLoading) {
     return (

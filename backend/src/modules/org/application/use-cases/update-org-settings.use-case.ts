@@ -14,6 +14,8 @@ import { Organization, OrgType, Prisma } from '@prisma/client';
 import { UpdateOrgSettingsInput } from '../../infrastructure/repositories/org.repository';
 import { PlatformSettingsService } from '@/modules/platform-settings/domain/services/platform-settings.service';
 import { SetupOrgType } from '@/modules/platform-settings/domain/services/platform-settings';
+import { OrgLocaleService } from '../../domain/services/org-locale.service';
+import { getCountry } from '@/shared/constants/countries';
 
 const ORG_TYPE_LABELS: Record<SetupOrgType, string> = {
   TEAM: 'Team / Company',
@@ -30,6 +32,7 @@ export class UpdateOrgSettingsUseCase {
     private readonly eventEmitter: EventEmitter2,
     private readonly queueService: QueueService,
     private readonly platformSettings: PlatformSettingsService,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(
@@ -56,6 +59,19 @@ export class UpdateOrgSettingsUseCase {
     if (dto.timezone !== undefined && dto.timezone !== org.timezone) {
       updateData.timezone = dto.timezone;
       changes.timezone = { from: org.timezone, to: dto.timezone };
+    }
+
+    if (dto.country !== undefined && dto.country !== org.country) {
+      updateData.country = dto.country;
+      changes.country = { from: org.country, to: dto.country };
+    }
+
+    // A new country brings its currency unless one was picked explicitly
+    const currency =
+      dto.currency ?? (changes.country ? getCountry(dto.country).currency : undefined);
+    if (currency !== undefined && currency !== org.currency) {
+      updateData.currency = currency;
+      changes.currency = { from: org.currency, to: currency };
     }
 
     if (dto.branding !== undefined) {
@@ -114,6 +130,7 @@ export class UpdateOrgSettingsUseCase {
       orgId,
       updateData as UpdateOrgSettingsInput,
     );
+    if (changes.country || changes.currency) this.orgLocale.invalidate(orgId);
 
     // Audit log
     await this.auditService.log({

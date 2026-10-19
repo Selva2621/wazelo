@@ -157,6 +157,8 @@ export interface ContactOwnerHistoryEntry {
 
 export interface CreateContactRequest {
   phoneNumber: string;
+  /** Country of a number typed without a country code; defaults to the org's */
+  country?: string;
   name?: string;
   email?: string;
   source?: ContactSource;

@@ -8,6 +8,10 @@ export interface OrgSettings {
   name: string;
   logo?: string;
   timezone: string;
+  /** ISO country code — numbers without a country code are read as this country's */
+  country: string;
+  /** ISO currency code — default for deals and products */
+  currency: string;
   language: string;
   industry?: string;
   description?: string;
@@ -30,6 +34,8 @@ export interface UpdateOrgSettingsRequest {
   name?: string;
   logo?: string;
   timezone?: string;
+  country?: string;
+  currency?: string;
   language?: string;
   industry?: string;
   description?: string;

@@ -7,6 +7,7 @@ import { MetaGraphApiService } from '../../domain/services/meta-graph-api.servic
 import { LeadAssignmentService } from '../../domain/services/lead-assignment.service';
 import { ChannelService } from '@/modules/channels/domain/services/channel.service';
 import { EVENT_NAMES } from '@/common/constants';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 @Injectable()
 export class ProcessLeadAdUseCase {
@@ -19,6 +20,7 @@ export class ProcessLeadAdUseCase {
     private readonly leadAssignment: LeadAssignmentService,
     private readonly channelService: ChannelService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(leadAdEntryId: string): Promise<void> {
@@ -77,7 +79,12 @@ export class ProcessLeadAdUseCase {
         fields.fullName ||
         [fields.firstName, fields.lastName].filter(Boolean).join(' ') ||
         null;
-      const phoneNumber = fields.phone || fields.email || entry.leadgenId;
+      // Meta forms often take the number without a country code — read it as the org's
+      const phoneNumber =
+        (await this.orgLocale.normalizePhone(entry.orgId, fields.phone)) ||
+        fields.phone ||
+        fields.email ||
+        entry.leadgenId;
 
       const contact = await this.prisma.contact.upsert({
         where: {

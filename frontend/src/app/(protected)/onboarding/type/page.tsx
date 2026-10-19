@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Users, User, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FREELANCER_TYPE_OPTIONS, type FreelancerTypeValue } from "@/lib/constants/outreach";
+import { DEFAULT_COUNTRY_CODE, browserTimezone, detectCountryCode, getCountry } from "@/lib/constants/countries";
+import { CountrySelect } from "@/components/ui/country-select";
 
 type Mode = "TEAM" | "FREELANCER";
+
+/** The browser's country never changes while the page is open */
+const noopSubscribe = () => () => {};
 
 function ChoiceCard({
   selected,
@@ -81,20 +86,32 @@ export default function OrgTypePage() {
   const toggleFreelancerType = (value: FreelancerTypeValue) =>
     setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
   const [otherService, setOtherService] = useState("");
+  // Guessed from the browser (the server renders the default); sets the phone code, currency and timezone
+  const detectedCountry = useSyncExternalStore(noopSubscribe, detectCountryCode, () => DEFAULT_COUNTRY_CODE);
+  const [chosenCountry, setCountry] = useState<string | null>(null);
+  const country = chosenCountry ?? detectedCountry;
   const [error, setError] = useState<string | null>(null);
   const updateOrgSettings = useUpdateOrgSettings();
 
   const save = () => {
     if (!mode) return;
     setError(null);
+    const picked = getCountry(country);
+    const locale = {
+      country: picked.code,
+      currency: picked.currency,
+      // The browser's own zone is more precise (US, Australia) when it's the same country
+      timezone: (picked.code === detectedCountry && browserTimezone()) || picked.timezone,
+    };
     updateOrgSettings.mutate(
       mode === "FREELANCER"
         ? {
+            ...locale,
             orgType: "FREELANCER",
             freelancerTypes,
             freelancerService: hasOther ? otherService.trim() : undefined,
           }
-        : { orgType: "TEAM" },
+        : { ...locale, orgType: "TEAM" },
       {
         onSuccess: () => router.push("/onboarding"),
         onError: () => setError("Failed to save your selection. Please try again."),
@@ -149,18 +166,29 @@ export default function OrgTypePage() {
             New workspace setup is paused right now. Please check back later.
           </p>
         ) : step === 1 ? (
-          <div className={cn("grid grid-cols-1 gap-4 mb-6", cards.length > 1 && "sm:grid-cols-2")}>
-            {cards.map((card) => (
-              <ChoiceCard
-                key={card.mode}
-                selected={mode === card.mode}
-                onClick={() => setMode(card.mode)}
-                icon={card.icon}
-                title={card.title}
-                description={card.description}
-              />
-            ))}
-          </div>
+          <>
+            <div className={cn("grid grid-cols-1 gap-4 mb-6", cards.length > 1 && "sm:grid-cols-2")}>
+              {cards.map((card) => (
+                <ChoiceCard
+                  key={card.mode}
+                  selected={mode === card.mode}
+                  onClick={() => setMode(card.mode)}
+                  icon={card.icon}
+                  title={card.title}
+                  description={card.description}
+                />
+              ))}
+            </div>
+            <div className="mb-6 space-y-1.5">
+              <label htmlFor="org-country" className="text-label font-medium text-on-surface-variant">
+                Country
+              </label>
+              <CountrySelect id="org-country" value={country} onChange={setCountry} showDialCode />
+              <p className="text-caption text-on-surface-variant">
+                Sets your phone code, currency ({getCountry(country).currency}) and timezone. You can change it later in Settings.
+              </p>
+            </div>
+          </>
         ) : (
           <div className="mb-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

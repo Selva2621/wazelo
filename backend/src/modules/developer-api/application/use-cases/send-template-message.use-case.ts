@@ -7,6 +7,7 @@ import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { DevSendTemplateDto } from '../dto';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 @Injectable()
 export class DevSendTemplateMessageUseCase {
@@ -18,9 +19,13 @@ export class DevSendTemplateMessageUseCase {
     private readonly queueService: QueueService,
     private readonly usageTracking: UsageTrackingService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(orgId: string, dto: DevSendTemplateDto) {
+    // Numbers without a country code get the org's
+    const to = (await this.orgLocale.normalizePhone(orgId, dto.to)) ?? dto.to;
+
     // 1. Idempotency check
     if (dto.idempotencyKey) {
       const existing = await this.prisma.message.findFirst({
@@ -63,7 +68,7 @@ export class DevSendTemplateMessageUseCase {
     }
 
     // 5. Auto-create or find contact
-    const contactResult = await this.repo.createContact({ orgId, name: dto.to, phoneNumber: dto.to });
+    const contactResult = await this.repo.createContact({ orgId, name: to, phoneNumber: to });
 
     // 6. Find or create conversation
     let conversation = await this.prisma.conversation.findFirst({
@@ -76,7 +81,7 @@ export class DevSendTemplateMessageUseCase {
         data: {
           orgId,
           contactId: contactResult.contact.id,
-          contactPhone: dto.to,
+          contactPhone: to,
           sessionId: session.id,
           status: 'OPEN',
           lastMessageAt: new Date(),
@@ -93,7 +98,7 @@ export class DevSendTemplateMessageUseCase {
         direction: MessageDirection.OUTBOUND,
         type: MessageType.TEXT,
         body: renderedBody,
-        contactPhone: dto.to,
+        contactPhone: to,
         status: MessageStatus.QUEUED,
         idempotencyKey: dto.idempotencyKey,
         metadata: { templateName: dto.templateName, variables: dto.variables ?? {} } as any,
@@ -109,7 +114,7 @@ export class DevSendTemplateMessageUseCase {
       messageId: message.id,
       sessionId: session.id,
       orgId,
-      contactPhone: dto.to,
+      contactPhone: to,
       type: MessageType.TEXT,
       body: renderedBody,
     });
@@ -119,16 +124,16 @@ export class DevSendTemplateMessageUseCase {
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {
       messageId: message.id,
       orgId,
-      contactPhone: dto.to,
+      contactPhone: to,
       source: 'developer-api-template',
     });
 
-    this.logger.log(`Developer API: Template '${dto.templateName}' rendered and queued for ${dto.to} in org ${orgId}`);
+    this.logger.log(`Developer API: Template '${dto.templateName}' rendered and queued for ${to} in org ${orgId}`);
 
     return {
       message: {
         id: message.id,
-        to: dto.to,
+        to: to,
         templateName: dto.templateName,
         renderedBody,
         status: 'QUEUED',

@@ -5,6 +5,7 @@ import { EVENT_NAMES } from '@/common/constants';
 import type { DealStageChangedEvent } from '@/events/event-bus';
 import { DealRepository } from '../../infrastructure/repositories/deal.repository';
 import { PipelineRepository } from '../../infrastructure/repositories/pipeline.repository';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 type CreateDealInput = Parameters<DealRepository['create']>[0];
 type UpdateDealInput = Parameters<DealRepository['update']>[1];
@@ -26,10 +27,13 @@ export class DealLifecycleUseCase {
     private readonly dealRepo: DealRepository,
     private readonly pipelineRepo: PipelineRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async create(input: CreateDealInput) {
-    const deal = await this.dealRepo.create(input);
+    // No currency picked — the org's
+    const currency = input.currency || (await this.orgLocale.get(input.orgId)).currency;
+    const deal = await this.dealRepo.create({ ...input, currency });
     this.emitStageChanged(deal, null);
     return deal;
   }

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaileysConnectionManager } from './baileys-connection-manager.service';
 import { interactiveToText } from './interactive-to-text';
+import {
+  assertTestRecipient,
+  checkTestRecipient,
+} from '@/common/utils/test-recipient-guard.util';
 
 export interface WhatsAppSendResult {
   whatsappMessageId: string;
@@ -20,6 +24,7 @@ export class WhatsAppApiService {
     recipientPhone: string,
     text: string,
   ): Promise<WhatsAppSendResult> {
+    assertTestRecipient(recipientPhone);
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -41,6 +46,7 @@ export class WhatsAppApiService {
     mediaUrl: string,
     caption?: string,
   ): Promise<WhatsAppSendResult> {
+    assertTestRecipient(recipientPhone);
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -109,6 +115,7 @@ export class WhatsAppApiService {
     recipientPhone: string,
     poll: { name: string; options: string[]; messageSecret: Uint8Array },
   ): Promise<WhatsAppSendResult> {
+    assertTestRecipient(recipientPhone);
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -136,7 +143,7 @@ export class WhatsAppApiService {
     durationMs: number,
   ): Promise<void> {
     const sock = this.connectionManager.getConnection(sessionId);
-    if (!sock) return;
+    if (!sock || checkTestRecipient(recipientPhone)) return;
 
     const jid = this.phoneToJid(recipientPhone);
     try {

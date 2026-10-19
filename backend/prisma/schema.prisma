@@ -456,6 +456,10 @@ model Organization {
   name      String    @db.VarChar(255)
   slug      String    @unique @db.VarChar(255)
   timezone    String    @default("UTC") @db.VarChar(100)
+  /// ISO 3166-1 alpha-2 — phone numbers without a country code are read as this country's
+  country     String    @default("IN") @db.VarChar(2)
+  /// ISO 4217 — default for deals and products
+  currency    String    @default("INR") @db.VarChar(3)
   orgType     OrgType   @default(CRM) @map("org_type")
   /// For FREELANCER orgs: what they do (WEB_DEVELOPER, DESIGNER, …), one or more — shapes default templates
   freelancerTypes   String[] @default([]) @map("freelancer_types") @db.VarChar(30)

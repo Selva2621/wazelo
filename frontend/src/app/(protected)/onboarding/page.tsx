@@ -18,10 +18,6 @@ import { formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatINR(cents: number) {
-  return `₹${(cents / 100).toLocaleString("en-IN")}`;
-}
-
 function formatLimit(val: number) {
   if (val === 0) return "Unlimited";
   if (val >= 100000) return `${(val / 100000).toFixed(0)}L`;
@@ -252,7 +248,7 @@ function PlanCard({
         </div>
         <div className="text-right flex-shrink-0 ml-3">
           <div className="font-semibold text-on-surface">
-            {formatINR(perMonth)}<span className="text-label font-normal text-on-surface-variant">/mo</span>
+            {formatMoney(perMonth, plan.currency)}<span className="text-label font-normal text-on-surface-variant">/mo</span>
           </div>
         </div>
       </div>
@@ -405,7 +401,7 @@ function ConfirmStep({
     );
   };
 
-  const dueToday = coupon ? formatMoney(coupon.finalAmountInCents, coupon.currency) : formatINR(plan.priceInCents);
+  const dueToday = coupon ? formatMoney(coupon.finalAmountInCents, coupon.currency) : formatMoney(plan.priceInCents, plan.currency);
 
   return (
     <div className="text-center">

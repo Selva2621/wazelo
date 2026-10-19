@@ -9,6 +9,7 @@ import { dedupeLeads } from '../../domain/services/dedupe-leads';
 import { LeadFilters, hasActiveFilters, matchesFilters } from '../../domain/services/lead-filters';
 import { scoreLead } from '../../domain/services/lead-score';
 import { ScrapeTimeoutError, scrapeRunTimeoutMs } from '../../domain/services/scrape-timeout';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 /** Websites fetched in parallel when looking for emails */
 const WEBSITE_LOOKUP_CONCURRENCY = 5;
@@ -25,6 +26,7 @@ export class ProcessScrapeRunUseCase {
     private readonly scrapeRunRepository: ScrapeRunRepository,
     private readonly scraperFactory: ScraperFactory,
     private readonly prisma: PrismaService,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(scrapeRunId: string): Promise<void> {
@@ -158,6 +160,7 @@ export class ProcessScrapeRunUseCase {
         areas: filters?.areas,
         radiusKm: filters?.radiusKm,
         collectLastReview: filters?.activeWithinMonths != null,
+        country: filters?.country ?? (await this.orgLocale.get(run.orgId)).country,
         signal,
       });
     } else {

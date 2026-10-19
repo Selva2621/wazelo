@@ -4,14 +4,8 @@ import { ContactSource } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { ContactRepository } from '@/modules/contacts/infrastructure/repositories/contact.repository';
 import { EVENT_NAMES } from '@/common/constants';
-
-function normalizeE164(phone: string): string | null {
-  if (!phone) return null;
-  const hasPlus = phone.trimStart().startsWith('+');
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 7) return null;
-  return hasPlus ? `+${digits}` : digits;
-}
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
+import { toE164 } from '@/shared/utils/phone.util';
 
 export interface ImportScrapeResultsOutcome {
   imported: number;
@@ -28,6 +22,7 @@ export class ImportScrapeResultsUseCase {
     private readonly prisma: PrismaService,
     private readonly contactRepository: ContactRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(
@@ -38,9 +33,14 @@ export class ImportScrapeResultsUseCase {
   ): Promise<ImportScrapeResultsOutcome> {
     const run = await this.prisma.scrapeRun.findFirst({
       where: { id: scrapeRunId, orgId },
-      select: { id: true, source: true },
+      select: { id: true, source: true, filters: true },
     });
     if (!run) throw new NotFoundException('Scrape run not found');
+
+    // Numbers without a country code belong to the country the run searched in
+    const country =
+      (run.filters as { country?: string } | null)?.country ??
+      (await this.orgLocale.get(orgId)).country;
 
     // Scoped to this run — without resultIds it imports the run's remaining
     // results, never other runs' results
@@ -64,7 +64,7 @@ export class ImportScrapeResultsUseCase {
         // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
         // Truelancer, Upwork) have no phone — bid on them via their link instead
         // of creating a contact with a made-up number.
-        const phoneNumber = result.phone ? normalizeE164(result.phone) : null;
+        const phoneNumber = toE164(result.phone, country);
         if (!phoneNumber) {
           noPhone++;
           continue;

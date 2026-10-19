@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { OrgType } from '@prisma/client';
 import { FREELANCER_TYPES, FreelancerType } from '@/shared/constants/freelancer-profiles';
+import { COUNTRY_CODES, CURRENCY_CODES } from '@/shared/constants/countries';
 
 export class UpdateOrgSettingsDto {
   @IsOptional()
@@ -47,6 +48,15 @@ export class UpdateOrgSettingsDto {
       'Timezone must be a valid IANA timezone identifier (e.g. America/New_York)',
   })
   timezone?: string;
+
+  /** ISO country code — sets the default phone country code (and currency when none is sent) */
+  @IsOptional()
+  @IsIn(COUNTRY_CODES)
+  country?: string;
+
+  @IsOptional()
+  @IsIn(CURRENCY_CODES)
+  currency?: string;
 
   @IsOptional()
   @IsObject()

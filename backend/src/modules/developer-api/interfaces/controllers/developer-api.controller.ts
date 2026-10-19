@@ -31,6 +31,7 @@ import { DevSendMessageUseCase } from '../../application/use-cases/send-message.
 import { DevSendBulkMessageUseCase } from '../../application/use-cases/send-bulk-message.use-case';
 import { DevSendTemplateMessageUseCase } from '../../application/use-cases/send-template-message.use-case';
 import { ApiKeysRepository } from '@/modules/api-keys/infrastructure/repositories/api-keys.repository';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 import {
   DevSendMessageDto,
   DevSendBulkMessageDto,
@@ -70,6 +71,7 @@ export class DeveloperApiController {
     private readonly sendBulkMessageUseCase: DevSendBulkMessageUseCase,
     private readonly sendTemplateMessageUseCase: DevSendTemplateMessageUseCase,
     private readonly apiKeysRepo: ApiKeysRepository,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   // ── Messages ──
@@ -163,7 +165,7 @@ export class DeveloperApiController {
     return this.repo.createContact({
       orgId,
       name: dto.name,
-      phoneNumber: dto.phone,
+      phoneNumber: (await this.orgLocale.normalizePhone(orgId, dto.phone)) ?? dto.phone,
       email: dto.email,
       metadata: dto.metadata,
     });

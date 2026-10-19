@@ -69,8 +69,9 @@ export class BillingController {
   @Get('plans')
   @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
   @Permissions(PERMISSIONS.BILLING_READ)
-  async listPlans() {
-    return this.listPlansUseCase.execute();
+  async listPlans(@CurrentUser('orgId') orgId: string) {
+    // Only the plans in the org's billing currency (INR for India, USD elsewhere)
+    return this.listPlansUseCase.execute({ orgId });
   }
 
   // ── Razorpay Payment Flow ──

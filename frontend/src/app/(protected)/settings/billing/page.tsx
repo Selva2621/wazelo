@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatMoney } from "@/lib/utils";
 import {
   CreditCard,
   Check,
@@ -347,7 +348,7 @@ export default function BillingPage() {
                   </span>
                 </p>
                 <p className="text-display font-semibold text-primary mt-2">
-                  ₹{(subscription.plan.priceInCents / 100).toLocaleString("en-IN")}
+                  {formatMoney(subscription.plan.priceInCents, subscription.plan.currency)}
                   <span className="text-body-lg font-normal text-on-surface-variant">
                     /{subscription.plan.billingCycle === "MONTHLY" ? "mo" : "yr"}
                   </span>
@@ -375,7 +376,7 @@ export default function BillingPage() {
                             </span>
                           </span>
                           <span className="text-label font-semibold text-primary">
-                            ₹{(subscription.scheduledPlan.priceInCents / 100).toLocaleString("en-IN")}
+                            {formatMoney(subscription.scheduledPlan.priceInCents, subscription.scheduledPlan.currency)}
                             /{subscription.scheduledPlan.billingCycle === "MONTHLY" ? "mo" : "yr"}
                           </span>
                         </div>
@@ -384,7 +385,7 @@ export default function BillingPage() {
                         <div className="pl-5 flex items-center gap-1.5">
                           <Check className="h-3 w-3 text-success shrink-0" />
                           <span className="text-caption text-success font-medium">
-                            Payment of ₹{(scheduledPayment.amountInCents / 100).toLocaleString("en-IN")} received on{" "}
+                            Payment of {formatMoney(scheduledPayment.amountInCents, scheduledPayment.currency)} received on{" "}
                             {formatDate(scheduledPayment.createdAt)}
                           </span>
                         </div>
@@ -659,7 +660,7 @@ export default function BillingPage() {
                             {formatDate(payment.createdAt)}
                           </TableCell>
                           <TableCell className="text-body text-on-surface font-medium">
-                            ₹{(payment.amountInCents / 100).toLocaleString("en-IN")}{" "}
+                            {formatMoney(payment.amountInCents, payment.currency)}{" "}
                             <span className="text-caption text-on-surface-variant font-normal">
                               {payment.currency}
                             </span>
@@ -730,7 +731,7 @@ export default function BillingPage() {
                             {formatDate(invoice.periodStart)} — {formatDate(invoice.periodEnd)}
                           </TableCell>
                           <TableCell className="text-body text-on-surface font-medium">
-                            ₹{(invoice.amountInCents / 100).toLocaleString("en-IN")}{" "}
+                            {formatMoney(invoice.amountInCents, invoice.currency)}{" "}
                             <span className="text-caption text-on-surface-variant font-normal">
                               {invoice.currency}
                             </span>
@@ -1169,6 +1170,8 @@ function UpgradeConfirmModal({
   const credit = (currentPrice / daysInPeriod) * estimatedDaysRemaining;
   const charge = (newPrice / daysInPeriod) * estimatedDaysRemaining;
   const net = charge - credit;
+  // Upgrades stay within one currency — the new plan's
+  const money = (minorUnits: number) => formatMoney(Math.round(minorUnits), newPlan.currency);
 
   // Rendered inside <Modal> by the page, which owns the backdrop, panel and animation.
   return (
@@ -1202,7 +1205,7 @@ function UpgradeConfirmModal({
               {currentPlan.name}
             </p>
             <p className="text-body-lg text-on-surface-variant mt-0.5">
-              ₹{currentPrice.toLocaleString("en-IN")}/{cycleSuffix}
+              {money(currentPlan.priceInCents)}/{cycleSuffix}
             </p>
           </div>
           <div className="text-on-surface-variant/50">→</div>
@@ -1214,7 +1217,7 @@ function UpgradeConfirmModal({
               {newPlan.name}
             </p>
             <p className="text-body-lg text-primary mt-0.5">
-              ₹{newPrice.toLocaleString("en-IN")}/{cycleSuffix}
+              {money(newPlan.priceInCents)}/{cycleSuffix}
             </p>
           </div>
         </div>
@@ -1286,7 +1289,7 @@ function UpgradeConfirmModal({
                 Credit for remaining period
               </span>
               <span className="text-success font-medium">
-                -₹{credit.toLocaleString("en-IN")}
+                -{money(credit * 100)}
               </span>
             </div>
             <div className="flex items-center justify-between text-body">
@@ -1294,13 +1297,13 @@ function UpgradeConfirmModal({
                 New plan charge (prorated)
               </span>
               <span className="text-on-surface font-medium">
-                ₹{charge.toLocaleString("en-IN")}
+                {money(charge * 100)}
               </span>
             </div>
             <div className="border-t border-outline-variant/15 pt-2 mt-2">
               <div className="flex items-center justify-between text-body-lg font-semibold">
                 <span className="text-on-surface">Amount due today</span>
-                <span className="text-primary">₹{net.toLocaleString("en-IN")}</span>
+                <span className="text-primary">{money(net * 100)}</span>
               </div>
             </div>
             <p className="text-caption text-on-surface-variant/60 mt-1">

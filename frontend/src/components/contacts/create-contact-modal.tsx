@@ -23,6 +23,8 @@ import type { Tag as TagType } from "@/lib/types/contacts";
 import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryFlag } from "@/lib/constants/countries";
 
 interface CreateContactModalProps {
   open: boolean;
@@ -130,6 +132,11 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
+  // Country code for numbers typed without one — the org's unless changed here
+  const { data: orgSettings } = useOrgSettings();
+  const [pickedCountry, setPickedCountry] = useState<string | null>(null);
+  const country = pickedCountry ?? orgSettings?.country ?? DEFAULT_COUNTRY_CODE;
+
   const hasNoProducts = !productsLoading && (products ?? []).length === 0;
 
   const {
@@ -157,6 +164,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
   function onSubmit(data: CreateContactFormData) {
     const payload = {
       ...data,
+      country,
       email: data.email || undefined,
     };
 
@@ -204,12 +212,31 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="phoneNumber">Phone Number *</Label>
-            <Input
-              id="phoneNumber"
-              placeholder="+1234567890"
-              error={errors.phoneNumber?.message}
-              {...register("phoneNumber")}
-            />
+            <div className="flex items-start gap-2">
+              <select
+                aria-label="Country code"
+                value={country}
+                onChange={(e) => setPickedCountry(e.target.value)}
+                className="h-10 w-28 shrink-0 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-2 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code} title={c.name}>
+                    {countryFlag(c.code)} +{c.dialCode}
+                  </option>
+                ))}
+              </select>
+              <div className="flex-1 min-w-0">
+                <Input
+                  id="phoneNumber"
+                  placeholder="98765 43210"
+                  error={errors.phoneNumber?.message}
+                  {...register("phoneNumber")}
+                />
+              </div>
+            </div>
+            <p className="mt-1 text-caption text-on-surface-variant">
+              Already has a country code (+…)? It is kept as typed.
+            </p>
           </div>
 
           <div>

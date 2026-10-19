@@ -12,6 +12,8 @@ export type WebsiteIssue = "noSsl" | "notMobile" | "noPixel" | "noAnalytics";
 /** Chosen before a scrape. Mirrors the backend LeadFiltersDto. */
 export interface LeadFilters {
   // All sources
+  /** ISO country searched in — phones without a country code get its code. Not a filter. */
+  country?: string;
   newOnly?: boolean;
   skipExistingContacts?: boolean;
   // Google Maps

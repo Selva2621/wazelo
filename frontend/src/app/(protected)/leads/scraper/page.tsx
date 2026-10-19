@@ -20,6 +20,8 @@ import { ScrapeFilters, countActiveFilters, DEFAULT_LEAD_FILTERS } from "@/compo
 import { SuggestInput, SuggestMulti, type RecentSearch } from "@/components/lead-scraper/business-type-input";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
+import { CountrySelect } from "@/components/ui/country-select";
 
 /** "Gym, Fitness centre" → ["Gym", "Fitness centre"] — mirrors the backend split */
 function splitTerms(keywords: string) {
@@ -415,6 +417,10 @@ export default function LeadScraperPage() {
     ([k, v]) => leadFilters[k as keyof LeadFilters] === v,
   );
 
+  // Maps phones without a country code get this country's — the org's unless changed
+  const [pickedCountry, setPickedCountry] = useState<string | null>(null);
+  const scrapeCountry = pickedCountry ?? orgSettings?.country ?? DEFAULT_COUNTRY_CODE;
+
   const pickRecent = (r: RecentSearch) => {
     setKeywords(r.keywords);
     setLocation(r.location ?? "");
@@ -429,7 +435,9 @@ export default function LeadScraperPage() {
         keywords: searchKeywords,
         location: location.trim() || undefined,
         maxResults,
-        ...(countActiveFilters(leadFilters) > 0 && { filters: leadFilters }),
+        ...(isMaps
+          ? { filters: { ...leadFilters, country: scrapeCountry } }
+          : countActiveFilters(leadFilters) > 0 && { filters: leadFilters }),
       },
       {
         onSuccess: () => {
@@ -574,6 +582,23 @@ export default function LeadScraperPage() {
                   placeholder={selectedScraper.locationPlaceholder}
                   className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
                 />
+              </div>
+            )}
+            {isMaps && (
+              <div>
+                <label htmlFor="scrape-country" className="text-label font-medium text-on-surface-variant block mb-1">
+                  Country
+                </label>
+                <CountrySelect
+                  id="scrape-country"
+                  value={scrapeCountry}
+                  onChange={setPickedCountry}
+                  showDialCode
+                  className="rounded-xl border-outline-variant bg-surface-container"
+                />
+                <p className="mt-1 text-caption text-on-surface-variant">
+                  Numbers found without a country code get +{getCountry(scrapeCountry).dialCode}
+                </p>
               </div>
             )}
           </div>

@@ -8,6 +8,7 @@ import { MessageDirection, MessageStatus, MessageType, UsageMetricType } from '@
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { DevSendBulkMessageDto } from '../dto';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 @Injectable()
 export class DevSendBulkMessageUseCase {
@@ -20,6 +21,7 @@ export class DevSendBulkMessageUseCase {
     private readonly usageTracking: UsageTrackingService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messageRepo: MessageRepository,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(orgId: string, dto: DevSendBulkMessageDto) {
@@ -51,7 +53,10 @@ export class DevSendBulkMessageUseCase {
     const results: { to: string; messageId: string; status: string }[] = [];
 
     // 3. Queue each recipient
-    for (const to of dto.to) {
+    for (const rawTo of dto.to) {
+      // Numbers without a country code get the org's
+      const to = (await this.orgLocale.normalizePhone(orgId, rawTo)) ?? rawTo;
+
       // Auto-create or find contact
       const contactResult = await this.repo.createContact({ orgId, name: to, phoneNumber: to });
 

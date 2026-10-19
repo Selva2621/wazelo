@@ -24,7 +24,13 @@ function setup(stages = STAGES) {
     findStages: jest.fn(async () => stages),
   };
   const eventEmitter = { emit: jest.fn() };
-  const useCase = new DealLifecycleUseCase(dealRepo as never, pipelineRepo as never, eventEmitter as never);
+  const orgLocale = { get: jest.fn(async () => ({ country: 'IN', dialCode: '91', currency: 'INR' })) };
+  const useCase = new DealLifecycleUseCase(
+    dealRepo as never,
+    pipelineRepo as never,
+    eventEmitter as never,
+    orgLocale as never,
+  );
   return { useCase, dealRepo, eventEmitter };
 }
 

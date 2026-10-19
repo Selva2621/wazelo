@@ -17,6 +17,7 @@ import { Permissions } from '@/common/decorators/permissions.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { EVENT_NAMES } from '@/common/constants';
 import { ProductRepository } from '../../infrastructure/repositories/product.repository';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -30,6 +31,7 @@ export class ProductsController {
   constructor(
     private readonly repo: ProductRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   // ─── Product Categories ──────────────────────────────────────────────────
@@ -81,7 +83,9 @@ export class ProductsController {
   @Permissions(PERMISSIONS.CONTACTS_CREATE)
   @HttpCode(HttpStatus.CREATED)
   async create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateProductDto) {
-    const product = await this.repo.create({ orgId, ...dto });
+    // No currency picked — the org's
+    const currency = dto.currency || (await this.orgLocale.get(orgId)).currency;
+    const product = await this.repo.create({ orgId, ...dto, currency });
     this.eventEmitter.emit(EVENT_NAMES.PRODUCT_CREATED, { orgId });
     return product;
   }

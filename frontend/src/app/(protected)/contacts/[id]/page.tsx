@@ -57,6 +57,7 @@ import { exportContactData, eraseContactData } from "@/lib/api/gdpr";
 import { SendMessageModal } from "@/components/contacts/send-message-modal";
 import type { LeadStatus } from "@/lib/types/contacts";
 import { IconButton } from "@/components/ui/icon-button";
+import { formatAmount } from "@/lib/utils";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -551,7 +552,7 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
               </div>
               {deal.value != null && (
                 <p className="text-body text-primary font-semibold">
-                  ₹{Number(deal.value).toLocaleString("en-IN")}
+                  {formatAmount(Number(deal.value), deal.currency)}
                 </p>
               )}
               {deal.stage && (

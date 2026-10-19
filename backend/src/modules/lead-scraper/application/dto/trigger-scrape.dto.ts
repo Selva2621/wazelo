@@ -15,11 +15,14 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ScrapeSource } from '@prisma/client';
+import { COUNTRY_CODES } from '@/shared/constants/countries';
 
 const WEBSITE_ISSUES = ['noSsl', 'notMobile', 'noPixel', 'noAnalytics'] as const;
 
 export class LeadFiltersDto {
   // ── All sources ──
+  /** Country searched in; defaults to the org's */
+  @IsOptional() @IsIn(COUNTRY_CODES) country?: string;
   @IsOptional() @IsBoolean() newOnly?: boolean;
   @IsOptional() @IsBoolean() skipExistingContacts?: boolean;
 
