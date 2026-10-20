@@ -2,35 +2,27 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  X,
-  ArrowRight,
-  Check,
-  Smartphone,
-  Package,
-  FileText,
-  Contact,
-  MessageCircle,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { X, Check, MessageCircle, Power, Sparkles, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSetupChecklist, type ChecklistItem } from "@/hooks/use-setup-checklist";
+import { useWhatsAppSession } from "@/hooks/use-whatsapp";
+import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { WhatsAppConnectionPanel } from "@/components/whatsapp/whatsapp-connection-panel";
-import { AssistantSetup, AssistantSwitch, useAssistantStatus } from "@/components/dashboard/assistant-setup";
+import { AssistantSetup, useAssistantControls, useAssistantStatus } from "@/components/dashboard/assistant-setup";
 
-const ITEM_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-  whatsapp: { icon: Smartphone, color: "text-success", bg: "bg-success/10" },
-  products:  { icon: Package,    color: "text-warning", bg: "bg-warning/10" },
-  template:  { icon: FileText,   color: "text-primary",    bg: "bg-primary/10"    },
-  contacts:  { icon: Contact,    color: "text-chart-4",   bg: "bg-chart-4/10"   },
+/** The button each basic step shows until it's done */
+const STEP_ACTION: Record<string, string> = {
+  whatsapp: "Connect",
+  products: "Add",
+  template: "Create",
+  contacts: "Find leads",
 };
 
 /* ── SVG circular progress ring ─────────────────── */
-function ProgressRing({ pct, size = 56 }: { pct: number; size?: number }) {
-  const stroke = 5;
+function ProgressRing({ pct, size = 44 }: { pct: number; size?: number }) {
+  const stroke = 4;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
@@ -52,146 +44,239 @@ function ProgressRing({ pct, size = 56 }: { pct: number; size?: number }) {
   );
 }
 
-/* ── A step still to do ──────────────────────────── */
-function TaskRow({ item, onConnectWhatsApp }: { item: ChecklistItem; onConnectWhatsApp: () => void }) {
-  const meta = ITEM_META[item.id] ?? { icon: ArrowRight, color: "text-primary", bg: "bg-primary/10" };
-  const Icon = meta.icon;
+type StepState = "done" | "current" | "todo";
 
-  const content = (
-    <>
-      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", meta.bg)}>
-        <Icon className={cn("h-4.5 w-4.5", meta.color)} />
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-body font-medium text-on-surface">{item.label}</span>
-        <span className="block truncate text-label text-on-surface-variant">{item.description}</span>
-      </span>
-      <ArrowRight className="h-4 w-4 shrink-0 text-on-surface-variant/40 transition-colors group-hover:text-primary" />
-    </>
-  );
-
-  const rowClass =
-    "group flex w-full items-center gap-3 rounded-2xl border border-outline-variant/30 px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-primary/5";
-
-  if (item.action === "connect-whatsapp") {
-    return (
-      <button type="button" onClick={onConnectWhatsApp} className={rowClass}>
-        {content}
-      </button>
-    );
-  }
+/** One numbered step with a line down to the next */
+function Step({
+  index,
+  state,
+  title,
+  detail,
+  action,
+  last,
+}: {
+  index: number;
+  state: StepState;
+  title: string;
+  detail: React.ReactNode;
+  action?: React.ReactNode;
+  last?: boolean;
+}) {
   return (
-    <Link href={item.href} className={rowClass}>
-      {content}
-    </Link>
+    <li className="relative flex gap-3 pb-4 last:pb-0">
+      {!last && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-[15px] top-8 bottom-0 w-0.5 rounded-full",
+            state === "done" ? "bg-success/40" : "bg-outline-variant/50",
+          )}
+        />
+      )}
+      <span
+        className={cn(
+          "relative z-[1] grid size-8 shrink-0 place-items-center rounded-full text-label font-semibold tabular-nums",
+          state === "done" && "bg-success text-white",
+          state === "current" && "bg-primary text-on-primary ring-4 ring-primary/15",
+          state === "todo" && "border border-outline-variant bg-surface-container-lowest text-on-surface-variant",
+        )}
+      >
+        {state === "done" ? <Check className="h-4 w-4" /> : index}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
+        <div className="min-w-0 flex-1">
+          <p className={cn("text-body font-semibold", state === "todo" ? "text-on-surface-variant" : "text-on-surface")}>
+            {title}
+          </p>
+          <div className="text-label text-on-surface-variant">{detail}</div>
+        </div>
+        {action}
+      </div>
+    </li>
   );
 }
 
+const ACTION_CLASS =
+  "inline-flex shrink-0 items-center rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1.5 text-label font-semibold text-primary transition-colors hover:border-primary/60 hover:bg-primary/10 active:scale-[0.98]";
+
 /* ── Main component ──────────────────────────────── */
 /**
- * "Get set up": the basics (WhatsApp, a template, first contacts) and, for admins,
- * turning on the assistant (chatbot + automations), with one progress ring for all.
- * Hidden once every step is done or the card is dismissed.
+ * "Get set up": every step one under the other, numbered: the basics (WhatsApp, a
+ * template, first contacts) and, for admins, the assistant (chatbot + automations) with
+ * its on/off switch. Always shown; once everything is done it reads "You're all set".
  */
-export function SetupChecklist() {
-  const { items, dismissed, dismiss } = useSetupChecklist();
+export function SetupChecklist({ className }: { className?: string } = {}) {
+  const { items } = useSetupChecklist();
   const assistant = useAssistantStatus();
+  const controls = useAssistantControls(assistant.applicable);
+  const { data: session } = useWhatsAppSession();
   const [connectOpen, setConnectOpen] = useState(false);
-  const [turnedOn, setTurnedOn] = useState<string[] | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [turnedOn, setTurnedOn] = useState(false);
 
-  const basicsLeft = items.filter((i) => !i.done);
-  const basicsDone = items.filter((i) => i.done);
   const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
-  const assistantDone = assistant.done || !!turnedOn;
+  const assistantDone = assistant.done || turnedOn;
 
   const total = items.length + (assistant.applicable ? 1 : 0);
-  const doneCount = basicsDone.length + (assistant.applicable && assistantDone ? 1 : 0);
+  const doneCount = items.filter((i) => i.done).length + (assistant.applicable && assistantDone ? 1 : 0);
   const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
   const everythingDone = doneCount === total;
 
-  // Stay up just after turning the assistant on, to confirm it worked
-  const visible = !dismissed && !assistant.loading && (!everythingDone || !!turnedOn);
+  // The first unfinished step is the one to do now
+  const order = [...items.map((i) => ({ id: i.id, done: i.done })), ...(assistant.applicable ? [{ id: "assistant", done: assistantDone }] : [])];
+  const currentId = order.find((s) => !s.done)?.id;
+  const stateOf = (id: string, done: boolean): StepState => (done ? "done" : id === currentId ? "current" : "todo");
 
-  // Card done or dismissed: what's left is the assistant's on/off switch
-  if (!visible && !connectOpen) return <AssistantSwitch />;
+  function basicAction(item: ChecklistItem) {
+    if (item.done) return null;
+    const label = STEP_ACTION[item.id] ?? "Open";
+    if (item.action === "connect-whatsapp") {
+      return (
+        <button type="button" onClick={() => setConnectOpen(true)} className={ACTION_CLASS}>
+          {label}
+        </button>
+      );
+    }
+    return (
+      <Link href={item.href} className={ACTION_CLASS}>
+        {label}
+      </Link>
+    );
+  }
+
+  function basicDetail(item: ChecklistItem) {
+    if (!item.done) return item.description;
+    if (item.id === "whatsapp") return session?.phoneNumber ? `Connected · ${session.phoneNumber}` : "Connected";
+    return "Done";
+  }
 
   return (
     <>
-      {visible && (
-        <section
-          aria-labelledby="setup-title"
-          className="relative rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 sm:p-6"
-        >
-          <IconButton size="xs" onClick={dismiss} aria-label="Dismiss" className="absolute right-4 top-4">
-            <X className="h-3.5 w-3.5" />
-          </IconButton>
-
-          {/* Header: one ring for every step */}
-          <div className="flex items-center gap-4 pr-8">
-            <div className="relative grid place-items-center">
-              <ProgressRing pct={pct} />
-              <span className="absolute text-label font-semibold tabular-nums text-on-surface">
-                {doneCount}/{total}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <h2 id="setup-title" className="text-title-sm font-semibold text-on-surface">
-                {everythingDone ? "You're all set" : "Get set up"}
-              </h2>
-              <p className="text-label text-on-surface-variant">
-                {everythingDone
-                  ? "Your assistant is answering new enquiries."
-                  : `${total - doneCount} ${total - doneCount === 1 ? "step" : "steps"} left to start winning clients on WhatsApp`}
-              </p>
-            </div>
+      <section
+        aria-labelledby="setup-title"
+        className={cn("rounded-3xl border border-outline-variant bg-surface-container-lowest p-5", className)}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3 border-b border-outline-variant/40 pb-3">
+          <div className="min-w-0">
+            <h2 id="setup-title" className="text-title-sm font-semibold text-on-surface">
+              {everythingDone ? "You're all set" : "Get set up"}
+            </h2>
+            <p className="text-label text-on-surface-variant">
+              {doneCount} of {total} done
+            </p>
           </div>
+          <div className="relative grid shrink-0 place-items-center">
+            <ProgressRing pct={pct} />
+            <span className="absolute text-caption font-semibold tabular-nums text-on-surface">{pct}%</span>
+          </div>
+        </div>
 
-          {/* Basics: finished ones shrink to chips, the rest stay as rows */}
-          {basicsDone.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Done">
-              {basicsDone.map((item) => (
-                <li
-                  key={item.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-label font-medium text-success"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          )}
-          {basicsLeft.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-              {basicsLeft.map((item) => (
-                <TaskRow key={item.id} item={item} onConnectWhatsApp={() => setConnectOpen(true)} />
-              ))}
-            </div>
-          )}
+        <ol>
+          {items.map((item, i) => (
+            <Step
+              key={item.id}
+              index={i + 1}
+              state={stateOf(item.id, item.done)}
+              title={item.label}
+              detail={basicDetail(item)}
+              action={basicAction(item)}
+              last={!assistant.applicable && i === items.length - 1}
+            />
+          ))}
 
-          {/* Assistant: the last step, done in place; once on, its switch */}
-          {assistant.applicable && assistantDone && (
-            <div className="mt-5 border-t border-outline-variant/30 pt-5">
-              <AssistantSwitch className="border-0 px-0 py-0" />
-            </div>
+          {assistant.applicable && (
+            <Step
+              index={items.length + 1}
+              state={stateOf("assistant", assistantDone)}
+              title="Turn on your assistant"
+              detail={
+                !assistantDone
+                  ? whatsappReady
+                    ? "Answers new enquiries, follows up and chases proposals for you"
+                    : (
+                      <span className="inline-flex items-center gap-1">
+                        <Lock className="h-3 w-3" /> Connect WhatsApp first
+                      </span>
+                    )
+                  : controls.exists
+                    ? controls.isOn
+                      ? `${controls.runningCount} of ${controls.total} running, replying and following up for you`
+                      : "Off. New enquiries wait for you to reply"
+                    : "Running"
+              }
+              action={
+                !assistantDone ? (
+                  <button
+                    type="button"
+                    disabled={!whatsappReady}
+                    onClick={() => setAssistantOpen(true)}
+                    className={cn(ACTION_CLASS, "disabled:cursor-not-allowed disabled:opacity-50")}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Set up
+                  </button>
+                ) : controls.exists ? (
+                  <Button
+                    size="sm"
+                    variant={controls.isOn ? "ghost" : "primary"}
+                    loading={controls.busy}
+                    onClick={controls.isOn ? controls.turnOff : controls.turnOn}
+                  >
+                    <Power className="mr-1.5 h-3.5 w-3.5" />
+                    {controls.isOn ? "Turn off" : "Turn on"}
+                  </Button>
+                ) : null
+              }
+              last
+            />
           )}
-          {assistant.applicable && !assistantDone && (
-            <div className="mt-5 border-t border-outline-variant/30 pt-5">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-on-primary">
-                  <Sparkles className="h-4.5 w-4.5" />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-body-lg font-semibold text-on-surface">Turn on your assistant</h3>
-                  <p className="text-label text-on-surface-variant">
-                    Answers new enquiries, follows up and chases proposals for you.
-                  </p>
-                </div>
+        </ol>
+
+        {assistant.applicable && assistantDone && (
+          <p className="mt-4 flex items-center justify-between border-t border-outline-variant/40 pt-3 text-label text-on-surface-variant">
+            Chatbot and automations
+            <Link href="/automation" className="font-semibold text-primary hover:underline">
+              Configure
+            </Link>
+          </p>
+        )}
+      </section>
+
+      {/* Assistant setup is roomy (details, message, preview), so it opens on its own */}
+      <Modal
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        aria-labelledby="assistant-setup-title"
+        className="max-w-4xl max-h-[90vh] overflow-y-auto p-6"
+      >
+        {() => (
+          <>
+            <div className="mb-5 flex items-center gap-3 pr-8">
+              <span className="grid size-10 place-items-center rounded-xl bg-primary text-on-primary">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 id="assistant-setup-title" className="text-title font-semibold text-on-surface">
+                  Turn on your assistant
+                </h2>
+                <p className="text-label text-on-surface-variant">
+                  Answers new enquiries, follows up and chases proposals for you.
+                </p>
               </div>
-              <AssistantSetup locked={!whatsappReady} onDone={setTurnedOn} />
             </div>
-          )}
-        </section>
-      )}
+            <IconButton size="xs" onClick={() => setAssistantOpen(false)} aria-label="Close" className="absolute right-4 top-4">
+              <X className="h-4 w-4" />
+            </IconButton>
+            <AssistantSetup
+              locked={!whatsappReady}
+              onDone={() => {
+                setTurnedOn(true);
+                setAssistantOpen(false);
+              }}
+            />
+          </>
+        )}
+      </Modal>
 
       <Modal
         open={connectOpen}

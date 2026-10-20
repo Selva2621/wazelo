@@ -148,11 +148,56 @@ export function useAssistantControls(enabled: boolean) {
   };
 }
 
-/** One-line switch for the assistant, shown on the dashboard once the setup card is gone */
-export function AssistantSwitch({ className }: { className?: string }) {
+/**
+ * Switch for the assistant: a card on the dashboard once the setup card is gone,
+ * or `inline` as one line inside the setup card.
+ */
+export function AssistantSwitch({ className, inline }: { className?: string; inline?: boolean }) {
   const isAdmin = useAuthStore((s) => s.user?.role === "ADMIN");
   const controls = useAssistantControls(isAdmin);
   if (!isAdmin || !controls.exists) return null;
+
+  if (inline) {
+    return (
+      <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 text-body", className)}>
+        <span
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-lg",
+            controls.isOn ? "bg-primary/10 text-primary" : "bg-surface-container text-on-surface-variant",
+          )}
+        >
+          <Sparkles className="h-4 w-4" />
+        </span>
+        <p className="min-w-0 flex-1 text-on-surface-variant">
+          {controls.isOn ? (
+            <>
+              Your assistant is on:{" "}
+              <span className="font-semibold text-on-surface">
+                {controls.runningCount} of {controls.total} running
+              </span>
+              , replying to enquiries and following up for you
+            </>
+          ) : (
+            <>
+              Your assistant is <span className="font-semibold text-on-surface">off</span>. New enquiries wait for you to reply
+            </>
+          )}
+        </p>
+        <Link href="/automation" className="text-label font-semibold text-primary hover:underline">
+          Edit
+        </Link>
+        <Button
+          size="sm"
+          variant={controls.isOn ? "ghost" : "primary"}
+          loading={controls.busy}
+          onClick={controls.isOn ? controls.turnOff : controls.turnOn}
+        >
+          <Power className="h-3.5 w-3.5 mr-1.5" />
+          {controls.isOn ? "Turn off" : "Turn on"}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <section

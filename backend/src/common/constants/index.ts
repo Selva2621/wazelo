@@ -32,6 +32,8 @@ export const QUEUE_NAMES = {
   SCHEDULED_MESSAGE_CHECK: 'scheduled-message-check',
   AUTOMATION_EVALUATE: 'automation-evaluate',
   AUTOMATION_EXECUTE_ACTION: 'automation-execute-action',
+  /** Delayed check behind NO_REPLY rules: did the contact answer our message in time? */
+  AUTOMATION_NO_REPLY: 'automation-no-reply',
   FOLLOW_UP_CHECK: 'follow-up-check',
   // EPIC 9 — Subscription & Billing queues
   BILLING_PAYMENT_RETRY: 'billing-payment-retry',

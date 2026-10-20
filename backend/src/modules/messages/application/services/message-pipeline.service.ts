@@ -91,15 +91,20 @@ export class MessagePipelineService {
           contactPhone: payload.contactPhone,
           type: payload.type,
           conversationId: payload.conversationId,
+          // Keyword rules match on the text
+          body: payload.body,
         },
         context: {
           message: {
             id: payload.messageId,
             type: payload.type,
+            body: payload.body,
             contactPhone: payload.contactPhone,
           },
+          contact: { id: payload.contactId, phoneNumber: payload.contactPhone },
         },
-        contactId: undefined,
+        // Without it, per-contact limits and cooldowns are skipped and contact actions can't run
+        contactId: payload.contactId,
       });
     } catch (error) {
       this.logger.error(

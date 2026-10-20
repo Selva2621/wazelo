@@ -27,8 +27,8 @@ export class TriggerMatcherService {
         return false;
 
       case AutomationTriggerType.NO_REPLY:
-        // No-reply triggers are evaluated by the follow-up worker
-        return false;
+        // Only raised by the no-reply worker, after it confirmed the contact stayed silent
+        return input.eventPayload.noReplyConfirmed === true;
 
       case AutomationTriggerType.SHOPIFY_ORDER_CREATED:
         return this.matchShopifyOrder(input.triggerConfig, input.eventPayload);

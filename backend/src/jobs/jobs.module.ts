@@ -24,6 +24,7 @@ import { CampaignBatchWorker } from './campaign/campaign-batch.worker';
 import { CampaignSchedulerWorker } from './campaign/campaign-scheduler.worker';
 // EPIC 7 — Scheduling & Automation workers
 import { AutomationEvaluatorWorker } from './automation/automation-evaluator.worker';
+import { NoReplyWorker } from './automation/no-reply.worker';
 import { FollowUpWorker } from './automation/follow-up.worker';
 import { ScheduledMessageWorker } from './scheduler/scheduled-message.worker';
 // EPIC 9 — Billing & Subscription workers
@@ -122,6 +123,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     CampaignSchedulerWorker,
     // EPIC 7 — Scheduling & Automation workers
     AutomationEvaluatorWorker,
+    NoReplyWorker,
     FollowUpWorker,
     ScheduledMessageWorker,
     // EPIC 9 — Billing & Subscription workers

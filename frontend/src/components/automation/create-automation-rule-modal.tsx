@@ -41,7 +41,6 @@ const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: stri
   { value: "MESSAGE_RECEIVED",      label: "Message Received" },
   { value: "CONTACT_CREATED",       label: "Contact Created" },
   { value: "LEAD_STATUS_CHANGED",   label: "Lead Status Changed" },
-  { value: "TIME_BASED",            label: "Time-Based (Cron)" },
   { value: "NO_REPLY",              label: "No Reply Follow-Up" },
   { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
   { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },

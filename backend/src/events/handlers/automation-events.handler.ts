@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { AutomationTriggerType } from '@prisma/client';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
+import { ScheduleNoReplyChecksUseCase } from '@/modules/automation/application/use-cases/no-reply.use-cases';
 import { EVENT_NAMES } from '@/common/constants';
 import {
   ContactCreatedEvent,
@@ -20,6 +21,7 @@ import {
   FollowUpCancelledEvent,
   FollowUpExecutedEvent,
   WidgetMessageReceivedAutomationEvent,
+  WhatsAppMessageSentEvent,
 } from '../event-bus';
 
 @Injectable()
@@ -29,6 +31,7 @@ export class AutomationEventsHandler {
   constructor(
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
     private readonly wsGateway: AppWebSocketGateway,
+    private readonly scheduleNoReplyChecks: ScheduleNoReplyChecksUseCase,
   ) {}
 
   // ─── Trigger Evaluation Handlers ──────────────────
@@ -132,6 +135,18 @@ export class AutomationEventsHandler {
     } catch (error) {
       this.logger.error(
         `Error evaluating LEAD_STATUS_CHANGED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
+
+  /** Every message we send may start a NO_REPLY countdown for the contact */
+  @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_SENT)
+  async handleMessageSent(payload: WhatsAppMessageSentEvent): Promise<void> {
+    try {
+      await this.scheduleNoReplyChecks.execute(payload.orgId, payload.messageId);
+    } catch (error) {
+      this.logger.error(
+        `Error scheduling no-reply checks for message ${payload.messageId}: ${error instanceof Error ? error.message : 'Unknown'}`,
       );
     }
   }

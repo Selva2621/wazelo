@@ -27,6 +27,7 @@ import {
   EvaluateTriggerUseCase,
 } from './application/use-cases';
 import { GenerateAutomationRuleUseCase } from './application/use-cases/generate-automation-rule.use-case';
+import { RunNoReplyCheckUseCase, ScheduleNoReplyChecksUseCase } from './application/use-cases/no-reply.use-cases';
 
 // Controller
 import { AutomationController } from './interfaces/controllers/automation.controller';
@@ -52,6 +53,8 @@ import { AutomationController } from './interfaces/controllers/automation.contro
     ListExecutionLogsUseCase,
     EvaluateTriggerUseCase,
     GenerateAutomationRuleUseCase,
+    ScheduleNoReplyChecksUseCase,
+    RunNoReplyCheckUseCase,
   ],
   exports: [
     AutomationRepository,
@@ -60,6 +63,8 @@ import { AutomationController } from './interfaces/controllers/automation.contro
     LoopPreventionService,
     ActionExecutorService,
     EvaluateTriggerUseCase,
+    ScheduleNoReplyChecksUseCase,
+    RunNoReplyCheckUseCase,
   ],
 })
 export class AutomationModule {}

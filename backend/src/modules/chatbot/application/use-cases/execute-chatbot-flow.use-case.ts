@@ -59,8 +59,9 @@ export class ExecuteChatbotFlowUseCase {
     const session = await this.chatbotRepo.findActiveSession(orgId, conversationId);
 
     if (session) {
-      // Resume existing session
-      return this.resumeSession(session, payload);
+      // The message answers the running flow: handled, even when the flow just ends
+      await this.resumeSession(session, payload);
+      return { replied: true };
     }
 
     // 2. Find matching flow by trigger
@@ -102,6 +103,8 @@ export class ExecuteChatbotFlowUseCase {
 
     // Execute the start node
     await this.executeNode(startNode, nodes, newSession.id, payload, 0);
+    // Tells the message pipeline the chatbot handled it, so automations don't reply too
+    return { replied: true };
   }
 
   /**
