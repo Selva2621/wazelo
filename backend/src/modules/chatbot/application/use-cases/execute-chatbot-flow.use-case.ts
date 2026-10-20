@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { ChatbotRepository } from '../../infrastructure/repositories/chatbot.repository';
 import { KbRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb.repository';
 import { DocumentProcessorService } from '@/modules/knowledge-base/domain/services/document-processor.service';
@@ -30,7 +31,13 @@ export class ExecuteChatbotFlowUseCase {
     private readonly aiProvider: AiProviderService,
     private readonly outboundMessage: OutboundMessageService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
+
+  /** Plan, super admin override and kill switch all decide — same check as the AI endpoints */
+  private aiAllowed(orgId: string): Promise<boolean> {
+    return this.usageTracking.isFeatureEnabled(orgId, 'ai');
+  }
 
   /**
    * Execute a chatbot flow for an incoming message.
@@ -105,6 +112,12 @@ export class ExecuteChatbotFlowUseCase {
     payload: { orgId: string; conversationId: string; contactId: string; contactPhone: string; sessionId: string; messageBody: string },
   ) {
     const { orgId, conversationId, contactPhone, sessionId, messageBody } = payload;
+
+    // No AI on the plan (or switched off): stay quiet so a person replies
+    if (!(await this.aiAllowed(orgId))) {
+      this.logger.log(`AI flow ${flow.id} skipped — AI is not enabled for org ${orgId}`);
+      return null;
+    }
 
     // Build conversation context from last 20 messages
     const messages = await this.prisma.message.findMany({
@@ -303,6 +316,11 @@ IMPORTANT RULES:
       }
 
       case 'AI_REPLY': {
+        // Without AI on the plan the step is skipped and the flow carries on
+        if (!(await this.aiAllowed(orgId))) {
+          await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
+          break;
+        }
         const systemPrompt = (node.data.systemPrompt as string) ||
           'You are a helpful customer support agent. Reply concisely.';
         const maxTokens = (node.data.maxTokens as number) || 500;
@@ -445,7 +463,8 @@ IMPORTANT RULES:
         const intents = (node.data.intents as string[]) || [];
         const defaultNextRef = node.nextNodes.find((nn) => nn.condition === 'default') || node.nextNodes[0];
 
-        if (intents.length === 0 || !payload.messageBody) {
+        // Without AI on the plan every message takes the default branch
+        if (intents.length === 0 || !payload.messageBody || !(await this.aiAllowed(orgId))) {
           if (defaultNextRef) {
             const nextNode = allNodes.find((n) => n.id === defaultNextRef.nodeId);
             if (nextNode) {

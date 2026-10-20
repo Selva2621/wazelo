@@ -12,10 +12,11 @@ export const chatbotKeys = {
   analytics: (id: string) => ["chatbot", "analytics", id] as const,
 };
 
-export function useChatbotFlows() {
+export function useChatbotFlows(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: chatbotKeys.flows(),
     queryFn: () => chatbotApi.listFlows(),
+    enabled: options.enabled ?? true,
   });
 }
 

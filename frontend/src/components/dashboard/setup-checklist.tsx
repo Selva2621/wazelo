@@ -11,6 +11,7 @@ import {
   FileText,
   Contact,
   MessageCircle,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { useSetupChecklist, type ChecklistItem } from "@/hooks/use-setup-checkli
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { WhatsAppConnectionPanel } from "@/components/whatsapp/whatsapp-connection-panel";
+import { AssistantSetup, AssistantSwitch, useAssistantStatus } from "@/components/dashboard/assistant-setup";
 
 const ITEM_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
   whatsapp: { icon: Smartphone, color: "text-success", bg: "bg-success/10" },
@@ -27,19 +29,20 @@ const ITEM_META: Record<string, { icon: LucideIcon; color: string; bg: string }>
 };
 
 /* ── SVG circular progress ring ─────────────────── */
-function ProgressRing({ pct }: { pct: number }) {
-  const r = 52;
+function ProgressRing({ pct, size = 56 }: { pct: number; size?: number }) {
+  const stroke = 5;
+  const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
   return (
-    <svg width="136" height="136" viewBox="0 0 136 136" className="-rotate-90">
-      <circle cx="68" cy="68" r={r} fill="none" stroke="var(--outline-variant)" strokeWidth="8" strokeOpacity="0.2" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--outline-variant)" strokeWidth={stroke} strokeOpacity="0.25" />
       <circle
-        cx="68" cy="68" r={r}
+        cx={size / 2} cy={size / 2} r={r}
         fill="none"
         stroke="var(--primary)"
-        strokeWidth="8"
+        strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={circ}
         strokeDashoffset={offset}
@@ -49,116 +52,145 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-/* ── Single task row ─────────────────────────────── */
+/* ── A step still to do ──────────────────────────── */
 function TaskRow({ item, onConnectWhatsApp }: { item: ChecklistItem; onConnectWhatsApp: () => void }) {
   const meta = ITEM_META[item.id] ?? { icon: ArrowRight, color: "text-primary", bg: "bg-primary/10" };
   const Icon = meta.icon;
 
   const content = (
     <>
-      <div
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
-          item.done ? "bg-success/10" : meta.bg,
-        )}
-      >
-        {item.done ? <Check className="h-4.5 w-4.5 text-success" /> : <Icon className={`h-4.5 w-4.5 ${meta.color}`} />}
-      </div>
-      <div className="flex-1 min-w-0 text-left">
-        <p className={cn("text-body font-medium truncate", item.done ? "text-on-surface-variant line-through" : "text-on-surface")}>
-          {item.label}
-        </p>
-        {!item.done && (
-          <p className="text-label text-on-surface-variant truncate">{item.description}</p>
-        )}
-      </div>
-      {!item.done && (
-        <ArrowRight className="h-4 w-4 text-on-surface-variant/30 group-hover:text-primary transition-colors shrink-0" />
-      )}
+      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", meta.bg)}>
+        <Icon className={cn("h-4.5 w-4.5", meta.color)} />
+      </span>
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-body font-medium text-on-surface">{item.label}</span>
+        <span className="block truncate text-label text-on-surface-variant">{item.description}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0 text-on-surface-variant/40 transition-colors group-hover:text-primary" />
     </>
   );
 
-  const rowClass = "flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors group";
+  const rowClass =
+    "group flex w-full items-center gap-3 rounded-2xl border border-outline-variant/30 px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-primary/5";
 
-  if (item.done) {
-    return <div className={rowClass}>{content}</div>;
-  }
   if (item.action === "connect-whatsapp") {
     return (
-      <button type="button" onClick={onConnectWhatsApp} className={cn(rowClass, "hover:bg-surface-container-high")}>
+      <button type="button" onClick={onConnectWhatsApp} className={rowClass}>
         {content}
       </button>
     );
   }
   return (
-    <Link href={item.href} className={cn(rowClass, "hover:bg-surface-container-high")}>
+    <Link href={item.href} className={rowClass}>
       {content}
     </Link>
   );
 }
 
 /* ── Main component ──────────────────────────────── */
+/**
+ * "Get set up": the basics (WhatsApp, a template, first contacts) and, for admins,
+ * turning on the assistant (chatbot + automations), with one progress ring for all.
+ * Hidden once every step is done or the card is dismissed.
+ */
 export function SetupChecklist() {
-  const { items, doneCount, total, visible, dismiss } = useSetupChecklist();
+  const { items, dismissed, dismiss } = useSetupChecklist();
+  const assistant = useAssistantStatus();
   const [connectOpen, setConnectOpen] = useState(false);
+  const [turnedOn, setTurnedOn] = useState<string[] | null>(null);
 
-  // Keep the modal mounted while open so the "connected" state can show
-  // after the last step completes and the card would otherwise hide
-  if (!visible && !connectOpen) return null;
+  const basicsLeft = items.filter((i) => !i.done);
+  const basicsDone = items.filter((i) => i.done);
+  const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
+  const assistantDone = assistant.done || !!turnedOn;
 
-  const pct = Math.round((doneCount / total) * 100);
+  const total = items.length + (assistant.applicable ? 1 : 0);
+  const doneCount = basicsDone.length + (assistant.applicable && assistantDone ? 1 : 0);
+  const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
+  const everythingDone = doneCount === total;
+
+  // Stay up just after turning the assistant on, to confirm it worked
+  const visible = !dismissed && !assistant.loading && (!everythingDone || !!turnedOn);
+
+  // Card done or dismissed: what's left is the assistant's on/off switch
+  if (!visible && !connectOpen) return <AssistantSwitch />;
 
   return (
     <>
       {visible && (
-        <div className="relative rounded-xl bg-surface-container-lowest overflow-hidden">
-          {/* Dismiss */}
-          <IconButton size="xs"
-            onClick={dismiss}
-            aria-label="Dismiss"
-            className="absolute right-3 top-3 z-10 hover:text-on-surface-variant"
-          >
+        <section
+          aria-labelledby="setup-title"
+          className="relative rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 sm:p-6"
+        >
+          <IconButton size="xs" onClick={dismiss} aria-label="Dismiss" className="absolute right-4 top-4">
             <X className="h-3.5 w-3.5" />
           </IconButton>
 
-          <div className="flex">
-            {/* ── Left: ring + stats ───────────────────── */}
-            <div className="hidden sm:flex flex-col items-center justify-center gap-3 px-8 py-6 border-r border-outline-variant/10 shrink-0 min-w-[192px]">
-              <div className="relative flex items-center justify-center">
-                <ProgressRing pct={pct} />
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-display font-semibold text-on-surface tabular-nums leading-none">
-                    {pct}%
-                  </span>
-                  <span className="text-caption text-on-surface-variant/50 mt-1">
-                    complete
-                  </span>
-                </div>
-              </div>
-              <p className="text-label text-on-surface-variant/60 text-center leading-snug">
-                {doneCount} of {total} steps done
+          {/* Header: one ring for every step */}
+          <div className="flex items-center gap-4 pr-8">
+            <div className="relative grid place-items-center">
+              <ProgressRing pct={pct} />
+              <span className="absolute text-label font-semibold tabular-nums text-on-surface">
+                {doneCount}/{total}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <h2 id="setup-title" className="text-title-sm font-semibold text-on-surface">
+                {everythingDone ? "You're all set" : "Get set up"}
+              </h2>
+              <p className="text-label text-on-surface-variant">
+                {everythingDone
+                  ? "Your assistant is answering new enquiries."
+                  : `${total - doneCount} ${total - doneCount === 1 ? "step" : "steps"} left to start winning clients on WhatsApp`}
               </p>
             </div>
-
-            {/* ── Right: title + tasks ─────────────────── */}
-            <div className="flex-1 min-w-0 py-5">
-              <div className="px-5 mb-4">
-                <p className="text-body-lg font-semibold text-on-surface">
-                  Get set up
-                </p>
-                <p className="text-label text-on-surface-variant mt-1">
-                  <span className="sm:hidden">{doneCount} of {total} done. </span>
-                  Finish these steps to start messaging
-                </p>
-              </div>
-              <div className="px-3 space-y-1">
-                {items.map((item) => (
-                  <TaskRow key={item.id} item={item} onConnectWhatsApp={() => setConnectOpen(true)} />
-                ))}
-              </div>
-            </div>
           </div>
-        </div>
+
+          {/* Basics: finished ones shrink to chips, the rest stay as rows */}
+          {basicsDone.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Done">
+              {basicsDone.map((item) => (
+                <li
+                  key={item.id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-label font-medium text-success"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          )}
+          {basicsLeft.length > 0 && (
+            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+              {basicsLeft.map((item) => (
+                <TaskRow key={item.id} item={item} onConnectWhatsApp={() => setConnectOpen(true)} />
+              ))}
+            </div>
+          )}
+
+          {/* Assistant: the last step, done in place; once on, its switch */}
+          {assistant.applicable && assistantDone && (
+            <div className="mt-5 border-t border-outline-variant/30 pt-5">
+              <AssistantSwitch className="border-0 px-0 py-0" />
+            </div>
+          )}
+          {assistant.applicable && !assistantDone && (
+            <div className="mt-5 border-t border-outline-variant/30 pt-5">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-on-primary">
+                  <Sparkles className="h-4.5 w-4.5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-body-lg font-semibold text-on-surface">Turn on your assistant</h3>
+                  <p className="text-label text-on-surface-variant">
+                    Answers new enquiries, follows up and chases proposals for you.
+                  </p>
+                </div>
+              </div>
+              <AssistantSetup locked={!whatsappReady} onDone={setTurnedOn} />
+            </div>
+          )}
+        </section>
       )}
 
       <Modal

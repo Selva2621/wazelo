@@ -10,7 +10,9 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
@@ -26,7 +28,15 @@ export class ChatbotController {
     private readonly chatbotRepo: ChatbotRepository,
     private readonly executeChatbotFlow: ExecuteChatbotFlowUseCase,
     private readonly simulateChatbotFlow: SimulateChatbotFlowUseCase,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
+
+  /** An AI-replying flow needs AI on the org's plan */
+  private async assertAiAllowed(orgId: string, aiEnabled: boolean | undefined) {
+    if (aiEnabled && !(await this.usageTracking.isFeatureEnabled(orgId, 'ai'))) {
+      throw new ForbiddenException('AI replies are not included in your plan. Upgrade to use an AI chatbot.');
+    }
+  }
 
   @Post('flows')
   @Roles('ADMIN', 'MANAGER')
@@ -35,6 +45,7 @@ export class ChatbotController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateFlowDto,
   ) {
+    await this.assertAiAllowed(user.orgId, dto.aiEnabled);
     return this.chatbotRepo.createFlow({
       orgId: user.orgId,
       name: dto.name,
@@ -73,6 +84,7 @@ export class ChatbotController {
   ) {
     const flow = await this.chatbotRepo.findFlowById(flowId, user.orgId);
     if (!flow) throw new NotFoundException('Flow not found');
+    await this.assertAiAllowed(user.orgId, dto.aiEnabled);
     return this.chatbotRepo.updateFlow(flowId, dto);
   }
 
@@ -99,6 +111,7 @@ export class ChatbotController {
   ) {
     const flow = await this.chatbotRepo.findFlowById(flowId, user.orgId);
     if (!flow) throw new NotFoundException('Flow not found');
+    await this.assertAiAllowed(user.orgId, flow.aiEnabled);
     return this.chatbotRepo.updateFlow(flowId, { isActive: true });
   }
 

@@ -12,6 +12,7 @@ import {
   EVENT_NAMES,
   CAMPAIGN_CONFIG,
 } from '@/common/constants';
+import { isTestModeOn } from '@/common/utils/test-recipient-guard.util';
 import {
   AuditAction,
   CampaignStatus,
@@ -182,7 +183,9 @@ export class CampaignExecutorWorker implements OnModuleInit {
 
     // Campaigns run on the user's own WhatsApp number (Baileys): only message
     // people who have written to us before, cold blasts get numbers banned.
-    const contacts = CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY
+    // In WhatsApp test mode every send goes to a test number, so the whole
+    // audience runs — that's what is being tested.
+    const contacts = CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY && !isTestModeOn()
       ? await this.audienceResolver.keepWarmContacts(orgId, resolved.contacts)
       : resolved.contacts;
     const total = contacts.length;

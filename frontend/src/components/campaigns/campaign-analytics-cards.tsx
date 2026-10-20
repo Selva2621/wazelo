@@ -13,10 +13,12 @@ interface AnalyticsCardsProps {
 export function CampaignAnalyticsCards({
   totalRecipients,
   sentCount,
-  deliveredCount,
+  deliveredCount: deliveredReceipts,
   readCount,
   failedCount,
 }: AnalyticsCardsProps) {
+  // A read message was delivered even when WhatsApp skipped the delivered receipt
+  const deliveredCount = Math.max(deliveredReceipts, readCount);
   const deliveryRate =
     sentCount > 0 ? ((deliveredCount / sentCount) * 100).toFixed(1) : "0.0";
   const readRate =

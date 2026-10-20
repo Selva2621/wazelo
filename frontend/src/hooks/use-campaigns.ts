@@ -101,6 +101,19 @@ export function useExecuteCampaign() {
   });
 }
 
+/** Copies a finished campaign and starts the copy */
+export function useRerunCampaign() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => campaignsApi.rerun(campaignId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.all });
+      toast.success("Campaign started again");
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to run the campaign again"),
+  });
+}
+
 export function useScheduleCampaign() {
   const queryClient = useQueryClient();
   return useMutation({

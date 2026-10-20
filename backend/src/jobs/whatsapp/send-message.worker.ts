@@ -19,7 +19,7 @@ import {
   MESSAGING_CONFIG,
   SEND_SAFETY_CONFIG,
 } from '@/common/constants';
-import { TEST_RECIPIENT_BLOCKED_ERROR } from '@/common/utils/test-recipient-guard.util';
+import { TEST_RECIPIENT_BLOCKED_ERROR, isTestModeOn } from '@/common/utils/test-recipient-guard.util';
 import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
@@ -174,10 +174,14 @@ export class SendMessageWorker implements OnModuleInit {
       // Safety governor (bulk only — inbox replies are never held): auto-pause,
       // sending hours and warm-up daily caps for this number. Re-checked when a
       // paced message comes back for its slot, so a batch can't overshoot a cap.
-      const decision = await this.accountSafety.checkBulkSend(orgId, sessionId, message.contactPhone);
-      if (!decision.allowed) {
-        await this.holdMessage(data, decision.retryAt, decision.reason);
-        return;
+      // Skipped in WhatsApp test mode: everything goes to a test number, and a
+      // campaign tested at night shouldn't sit held until morning.
+      if (!isTestModeOn()) {
+        const decision = await this.accountSafety.checkBulkSend(orgId, sessionId, message.contactPhone);
+        if (!decision.allowed) {
+          await this.holdMessage(data, decision.retryAt, decision.reason);
+          return;
+        }
       }
     }
 

@@ -190,6 +190,21 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
     !hasBlanks &&
     (joinMode === "AUTO" ? triggerReady : audienceType !== "SCRAPED" || !!scrapeRunId);
 
+  // Why the button is off — shown next to it so nobody has to guess
+  const blockedReason = (() => {
+    if (!name.trim()) return "Give the sequence a name";
+    const emptyStep = steps.findIndex((s) => !s.messageBody?.trim());
+    if (emptyStep >= 0) return `Write the message for step ${emptyStep + 1}`;
+    const blankStep = steps.findIndex((s) => hasOutreachBlanks(s.messageBody ?? ""));
+    if (blankStep >= 0) {
+      const blank = steps[blankStep].messageBody?.match(/\[[^\]]+\]/)?.[0];
+      return `Replace ${blank} in step ${blankStep + 1} with your own words`;
+    }
+    if (joinMode === "AUTO" && !triggerReady) return "Pick when contacts join";
+    if (joinMode !== "AUTO" && audienceType === "SCRAPED" && !scrapeRunId) return "Pick a lead scrape run";
+    return null;
+  })();
+
   const audienceFilters =
     audienceType === "SCRAPED"
       ? { scrapeRunId, ...(onlyNewLeads && { leadStatuses: ["NEW"] }) }
@@ -654,6 +669,11 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15">
+          {view === "form" && blockedReason && (
+            <p role="status" className="mr-auto text-label text-warning">
+              {blockedReason}
+            </p>
+          )}
           <Button variant="ghost" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>

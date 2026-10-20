@@ -63,22 +63,24 @@ export class AiProviderService {
       return { text: '' };
     }
 
+    // `return await` so a failed call lands in the catch below and falls back,
+    // instead of escaping as a 500 to every AI endpoint
     try {
       // Custom-format providers
-      if (this.provider === 'anthropic') return this.completeAnthropic(req);
-      if (this.provider === 'gemini') return this.completeGemini(req);
-      if (this.provider === 'cohere') return this.completeCohere(req);
-      if (this.provider === 'huggingface') return this.completeHuggingFace(req);
+      if (this.provider === 'anthropic') return await this.completeAnthropic(req);
+      if (this.provider === 'gemini') return await this.completeGemini(req);
+      if (this.provider === 'cohere') return await this.completeCohere(req);
+      if (this.provider === 'huggingface') return await this.completeHuggingFace(req);
 
       // OpenAI-compatible providers (openai, groq, mistral, together, openrouter, cerebras)
       const baseUrl = OPENAI_COMPATIBLE_URLS[this.provider];
       if (baseUrl) {
-        return this.completeOpenAICompatible(baseUrl, req);
+        return await this.completeOpenAICompatible(baseUrl, req);
       }
 
       // Unknown provider — try as OpenAI-compatible with custom base URL
       this.logger.warn(`Unknown AI provider '${this.provider}', trying as OpenAI-compatible`);
-      return this.completeOpenAICompatible(`https://api.${this.provider}.com/v1`, req);
+      return await this.completeOpenAICompatible(`https://api.${this.provider}.com/v1`, req);
     } catch (error) {
       this.logger.error(`AI completion failed (${this.provider}): ${error.message}`, error.stack);
       return { text: '' };

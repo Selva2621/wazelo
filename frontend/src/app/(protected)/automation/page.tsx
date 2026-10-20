@@ -1,8 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { Plus, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Zap, MessageCircle, Tag, Clock, FileText, Trophy, Globe } from "lucide-react";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { RecipeCards } from "@/components/ui/recipe-cards";
+import { useChatbotFlows } from "@/hooks/use-chatbot";
+import { useAuthStore } from "@/stores/auth-store";
+import { DEFAULT_PRESET_PROFILE } from "@/lib/constants/preset-profile";
+import { isGreetingFlow } from "@/lib/greeting-overlap";
+import {
+  getAutomationPresets,
+  type AutomationPreset,
+  type AutomationPresetIcon,
+} from "@/lib/constants/automation-presets";
+
+const PRESET_ICONS: Record<AutomationPresetIcon, typeof Zap> = {
+  welcome: MessageCircle,
+  pricing: Tag,
+  "follow-up": Clock,
+  proposal: FileText,
+  won: Trophy,
+  website: Globe,
+};
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useAutomationRules,
@@ -58,6 +78,18 @@ export default function AutomationPage() {
     setLogsPage,
     setShowCreateModal,
   } = useAutomationStore();
+
+  // Recipes written for the org's kind of work (freelancer vs team)
+  const { data: orgSettings } = useOrgSettings();
+  const firstName = useAuthStore((s) => s.user?.firstName);
+  const presets = getAutomationPresets(orgSettings?.orgType, {
+    ...DEFAULT_PRESET_PROFILE,
+    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerService },
+  });
+  const [preset, setPreset] = useState<AutomationPreset | null>(null);
+  // An active chatbot already answers first messages — a welcome rule would be a second reply
+  const { data: chatbotFlows } = useChatbotFlows();
+  const greetingBot = chatbotFlows?.find(isGreetingFlow);
 
   const enableRule = useEnableAutomationRule();
   const disableRule = useDisableAutomationRule();
@@ -160,6 +192,23 @@ export default function AutomationPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
+        {activeTab === "rules" && automationEnabled && (
+          <RecipeCards
+            className="px-6 pt-4"
+            items={presets.map((p) => {
+              const Icon = PRESET_ICONS[p.icon];
+              const needs =
+                p.icon === "welcome" && greetingBot
+                  ? `Chatbot "${greetingBot.name}" already greets new contacts — this would send a second welcome`
+                  : p.needs;
+              return { id: p.id, icon: <Icon className="h-4 w-4" />, title: p.title, summary: p.summary, needs };
+            })}
+            onPick={(id) => {
+              setPreset(presets.find((p) => p.id === id) ?? null);
+              setShowCreateModal(true);
+            }}
+          />
+        )}
         {activeTab === "rules" ? (
           <AutomationRulesTable
             rules={rulesData?.data ?? []}
@@ -188,7 +237,11 @@ export default function AutomationPage() {
       {/* Create Modal */}
       <CreateAutomationRuleModal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        preset={preset}
+        onClose={() => {
+          setShowCreateModal(false);
+          setPreset(null);
+        }}
       />
     </div>
   );

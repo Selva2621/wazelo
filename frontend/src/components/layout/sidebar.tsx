@@ -105,7 +105,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Automation",
     roles: ["ADMIN", "MANAGER"],
-    hideForFreelancer: true,
+    // Freelancers see it too — the pages open with recipes written for their work
     items: [
       { href: "/automation", icon: <Zap className="h-5 w-5" />, label: "Automation", feature: "automation" },
       { href: "/chatbot", icon: <Bot className="h-5 w-5" />, label: "Chatbot" },

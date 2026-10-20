@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useWidgetConfig, useUpdateWidgetConfig } from "@/hooks/use-widget";
 import { uploadApi } from "@/lib/api/messages";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 
 const POSITIONS = [
@@ -371,6 +372,15 @@ function WidgetPreview({ form }: { form: Parameters<typeof buildPreviewHtml>[0] 
   );
 }
 
+/** Starting copy for a freelancer's widget, used until the widget is first saved */
+const FREELANCER_WIDGET_DEFAULTS = {
+  welcomeMessage: "Hi! Tell me about your project and I'll get back to you within a few hours.",
+  placeholder: "Describe your project...",
+  preChatFormEnabled: true,
+  aiSystemPrompt:
+    "You are the assistant of an independent freelancer. Answer questions about their services and process briefly and politely. Never promise prices or deadlines — say the freelancer will confirm them personally. Ask what the visitor needs and by when.",
+};
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ChatWidgetSettingsPage() {
@@ -410,23 +420,30 @@ export default function ChatWidgetSettingsPage() {
     }
   };
 
+  // A widget that was never saved starts from copy that fits the org: a freelancer
+  // talks about "your project" in first person and collects who is asking
+  const { data: orgSettings } = useOrgSettings();
+  const isFreelancer = orgSettings?.orgType === "FREELANCER";
+
   useEffect(() => {
     if (config) {
+      const neverSaved = !("id" in config);
+      const starter = neverSaved && isFreelancer ? FREELANCER_WIDGET_DEFAULTS : null;
       setForm({
         enabled: config.enabled,
         position: config.position || "bottom-right",
         primaryColor: config.primaryColor || "#6366f1",
-        welcomeMessage: config.welcomeMessage || "Hi! How can we help you?",
-        placeholder: config.placeholder || "Type a message...",
-        companyName: config.companyName || "",
+        welcomeMessage: starter?.welcomeMessage || config.welcomeMessage || "Hi! How can we help you?",
+        placeholder: starter?.placeholder || config.placeholder || "Type a message...",
+        companyName: config.companyName || (neverSaved ? orgSettings?.name ?? "" : ""),
         avatarUrl: config.avatarUrl || "",
         whatsappNumber: config.whatsappNumber || "",
-        preChatFormEnabled: config.preChatFormEnabled ?? false,
+        preChatFormEnabled: starter?.preChatFormEnabled ?? config.preChatFormEnabled ?? false,
         aiAssistantEnabled: config.aiAssistantEnabled ?? false,
-        aiSystemPrompt: config.aiSystemPrompt || "",
+        aiSystemPrompt: config.aiSystemPrompt || starter?.aiSystemPrompt || "",
       });
     }
-  }, [config]);
+  }, [config, isFreelancer, orgSettings?.name]);
 
   const handleSave = () => {
     updateConfig.mutate({

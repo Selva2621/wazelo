@@ -111,5 +111,5 @@ export function useSetupChecklist() {
 
   const visible = !dismissed && !allDone;
 
-  return { items, doneCount, total: items.length, allDone, visible, dismiss };
+  return { items, doneCount, total: items.length, allDone, visible, dismissed, dismiss };
 }

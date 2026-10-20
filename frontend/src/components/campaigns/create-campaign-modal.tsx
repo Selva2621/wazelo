@@ -37,6 +37,9 @@ import {
 
 const SOURCE_LABELS: Record<string, string> = SCRAPE_SOURCE_LABELS;
 
+/** Templates shown in the picker per scroll step */
+const TEMPLATE_PAGE_SIZE = 10;
+
 const MSG_TYPES: { value: MessageType; label: string }[] = [
   { value: "TEXT", label: "Text" },
   { value: "IMAGE", label: "Image" },
@@ -120,6 +123,8 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  // Templates render a page at a time; scrolling near the end shows the next page
+  const [visibleTemplates, setVisibleTemplates] = useState(TEMPLATE_PAGE_SIZE);
 
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const { data: orgTags } = useOrgTags();
@@ -343,7 +348,10 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setShowTemplatePicker((v) => !v)}
+                    onClick={() => {
+                      setShowTemplatePicker((v) => !v);
+                      setVisibleTemplates(TEMPLATE_PAGE_SIZE);
+                    }}
                     className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-body text-on-surface-variant/60 hover:bg-surface-container transition-colors text-left"
                   >
                     <FileText className="h-4 w-4 shrink-0" />
@@ -358,12 +366,24 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                       <input
                         autoFocus
                         value={templateSearch}
-                        onChange={(e) => setTemplateSearch(e.target.value)}
+                        onChange={(e) => {
+                          setTemplateSearch(e.target.value);
+                          setVisibleTemplates(TEMPLATE_PAGE_SIZE);
+                        }}
                         placeholder="Search templates…"
                         className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
                       />
                     </div>
-                    <div className="max-h-[200px] overflow-y-auto">
+                    <div
+                      className="max-h-[260px] overflow-y-auto"
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const nearEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+                        if (nearEnd && visibleTemplates < filteredTemplates.length) {
+                          setVisibleTemplates((n) => n + TEMPLATE_PAGE_SIZE);
+                        }
+                      }}
+                    >
                       {templatesLoading ? (
                         <p className="text-label text-center text-on-surface-variant py-4">Loading…</p>
                       ) : filteredTemplates.length === 0 ? (
@@ -379,7 +399,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                           )}
                         </div>
                       ) : (
-                        (templateSearch.trim() ? filteredTemplates : filteredTemplates.slice(0, 3)).map((tpl) => {
+                        filteredTemplates.slice(0, visibleTemplates).map((tpl) => {
                           const body = extractTemplateBody(tpl);
                           return (
                             <button
@@ -406,9 +426,10 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                         })
                       )}
                     </div>
-                    {!templateSearch.trim() && filteredTemplates.length > 3 && (
+                    {filteredTemplates.length > TEMPLATE_PAGE_SIZE && (
                       <p className="px-3 py-2 text-caption text-on-surface-variant/50 border-t border-outline-variant/10 text-center">
-                        {filteredTemplates.length - 3} more — search to filter
+                        {Math.min(visibleTemplates, filteredTemplates.length)} of {filteredTemplates.length}
+                        {visibleTemplates < filteredTemplates.length && " — scroll for more"}
                       </p>
                     )}
                   </div>

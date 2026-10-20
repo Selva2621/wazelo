@@ -17,6 +17,7 @@ import { CampaignStateMachineService } from './domain/services/campaign-state-ma
 import { CreateCampaignUseCase } from './application/use-cases/create-campaign.use-case';
 import { UpdateCampaignUseCase } from './application/use-cases/update-campaign.use-case';
 import { ExecuteCampaignUseCase } from './application/use-cases/execute-campaign.use-case';
+import { RerunCampaignUseCase } from './application/use-cases/rerun-campaign.use-case';
 import { ScheduleCampaignUseCase } from './application/use-cases/schedule-campaign.use-case';
 import { PauseCampaignUseCase } from './application/use-cases/pause-campaign.use-case';
 import { ResumeCampaignUseCase } from './application/use-cases/resume-campaign.use-case';
@@ -52,6 +53,7 @@ import { CampaignController } from './interfaces/controllers/campaign.controller
     CreateCampaignUseCase,
     UpdateCampaignUseCase,
     ExecuteCampaignUseCase,
+    RerunCampaignUseCase,
     ScheduleCampaignUseCase,
     PauseCampaignUseCase,
     ResumeCampaignUseCase,

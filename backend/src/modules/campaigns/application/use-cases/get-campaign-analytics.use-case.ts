@@ -33,10 +33,10 @@ export class GetCampaignAnalyticsUseCase {
         ? ((recipientCounts.failed / campaign.totalRecipients) * 100).toFixed(2)
         : '0.00';
 
+    // A read message was delivered even when WhatsApp skipped the delivered receipt
+    const delivered = Math.max(campaign.deliveredCount, campaign.readCount);
     const readRate =
-      recipientCounts.delivered > 0
-        ? ((campaign.readCount / recipientCounts.delivered) * 100).toFixed(2)
-        : '0.00';
+      delivered > 0 ? ((campaign.readCount / delivered) * 100).toFixed(2) : '0.00';
 
     return {
       campaignId: campaign.id,
@@ -47,7 +47,7 @@ export class GetCampaignAnalyticsUseCase {
       metrics: {
         totalRecipients: campaign.totalRecipients,
         sent: campaign.sentCount,
-        delivered: campaign.deliveredCount,
+        delivered,
         failed: campaign.failedCount,
         read: campaign.readCount,
         skipped: recipientCounts.skipped,

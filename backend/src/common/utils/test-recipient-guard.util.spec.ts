@@ -1,45 +1,50 @@
-import { checkTestRecipient } from './test-recipient-guard.util';
+import { resolveTestRecipient, testRecipientOrThrow } from './test-recipient-guard.util';
 
-describe('checkTestRecipient', () => {
+describe('resolveTestRecipient', () => {
   const env = { ...process.env };
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.WHATSAPP_TEST_MODE;
+  });
 
   afterEach(() => {
     process.env = { ...env };
   });
 
-  it('allows a listed number in any format', () => {
-    process.env.NODE_ENV = 'development';
+  it('sends to a listed number as is, in any format', () => {
     process.env.WHATSAPP_TEST_NUMBERS = '+91 98765 43210, 919000000001';
-    expect(checkTestRecipient('919876543210')).toBeNull();
-    expect(checkTestRecipient('9000000001')).toBeNull();
+    expect(resolveTestRecipient('919876543210')).toBe('919876543210');
+    expect(resolveTestRecipient('+919000000001')).toBe('+919000000001');
   });
 
-  it('blocks an unlisted number in development', () => {
-    process.env.NODE_ENV = 'development';
-    process.env.WHATSAPP_TEST_NUMBERS = '919876543210';
-    expect(checkTestRecipient('918888888888')).toContain('not in WHATSAPP_TEST_NUMBERS');
+  it('redirects anyone else to the first test number, in E.164', () => {
+    process.env.WHATSAPP_TEST_NUMBERS = '9876543210, 919000000001';
+    expect(resolveTestRecipient('+918110822979')).toBe('+919876543210');
+    expect(resolveTestRecipient('+971501234567')).toBe('+919876543210');
   });
 
-  it('blocks everything when the list is empty', () => {
-    process.env.NODE_ENV = 'development';
+  it('has nowhere to send when the list is empty', () => {
     process.env.WHATSAPP_TEST_NUMBERS = '';
-    expect(checkTestRecipient('919876543210')).not.toBeNull();
+    expect(resolveTestRecipient('919876543210')).toBeNull();
+    expect(() => testRecipientOrThrow('919876543210')).toThrow('WHATSAPP_TEST_NUMBERS is empty');
   });
 
-  it('allows every number in production', () => {
+  it('sends to the real recipient in production', () => {
     process.env.NODE_ENV = 'production';
-    delete process.env.WHATSAPP_TEST_MODE;
-    expect(checkTestRecipient('918888888888')).toBeNull();
+    process.env.WHATSAPP_TEST_NUMBERS = '9876543210';
+    expect(resolveTestRecipient('+918110822979')).toBe('+918110822979');
   });
 
   it('respects WHATSAPP_TEST_MODE overrides', () => {
+    process.env.WHATSAPP_TEST_NUMBERS = '9876543210';
+
     process.env.NODE_ENV = 'production';
     process.env.WHATSAPP_TEST_MODE = 'true';
-    process.env.WHATSAPP_TEST_NUMBERS = '';
-    expect(checkTestRecipient('918888888888')).not.toBeNull();
+    expect(resolveTestRecipient('+918110822979')).toBe('+919876543210');
 
     process.env.NODE_ENV = 'development';
     process.env.WHATSAPP_TEST_MODE = 'false';
-    expect(checkTestRecipient('918888888888')).toBeNull();
+    expect(resolveTestRecipient('+918110822979')).toBe('+918110822979');
   });
 });

@@ -149,6 +149,7 @@ export class CampaignRecipientRepository {
 
   async findByCampaignPaginated(
     campaignId: string,
+    orgId: string,
     options: {
       take?: number;
       skip?: number;
@@ -157,6 +158,7 @@ export class CampaignRecipientRepository {
   ): Promise<{ recipients: CampaignRecipient[]; total: number }> {
     const where: Prisma.CampaignRecipientWhereInput = {
       campaignId,
+      orgId,
       ...(options.status && { status: options.status }),
     };
 
@@ -166,6 +168,8 @@ export class CampaignRecipientRepository {
         take: options.take ?? 50,
         skip: options.skip ?? 0,
         orderBy: { createdAt: 'asc' },
+        // The recipients table shows who each row is
+        include: { contact: { select: { id: true, name: true } } },
       }),
       this.prisma.campaignRecipient.count({ where }),
     ]);

@@ -26,10 +26,11 @@ export const automationKeys = {
 
 // ─── Query Hooks ───
 
-export function useAutomationRules(params?: ListAutomationRulesParams) {
+export function useAutomationRules(params?: ListAutomationRulesParams, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: automationKeys.ruleList(params),
     queryFn: () => automationApi.list(params),
+    enabled: options.enabled ?? true,
   });
 }
 

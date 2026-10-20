@@ -54,10 +54,10 @@ import {
   useChatbotFlow,
   useSaveChatbotNodes,
   useUpdateChatbotFlow,
-  useActivateChatbotFlow,
   useDeactivateChatbotFlow,
   useSimulateChatbotFlow,
 } from "@/hooks/use-chatbot";
+import { useActivateChatbotFlowChecked } from "@/hooks/use-activate-chatbot-flow-checked";
 import { useKbDocuments, useUploadDocument, useDeleteDocument } from "@/hooks/use-knowledge-base";
 import { useProducts } from "@/hooks/use-products";
 import { Button } from "@/components/ui/button";
@@ -904,7 +904,8 @@ function ChatbotEditorInner() {
 
   const saveNodes = useSaveChatbotNodes();
   const updateFlow = useUpdateChatbotFlow();
-  const activateFlow = useActivateChatbotFlow();
+  // Warns before a first-message flow doubles up with an automation welcome
+  const activateChecked = useActivateChatbotFlowChecked();
   const deactivateFlow = useDeactivateChatbotFlow();
 
   // ReactFlow state
@@ -1234,7 +1235,7 @@ function ChatbotEditorInner() {
               Deactivate
             </Button>
           ) : (
-            <Button variant="secondary" size="sm" onClick={() => activateFlow.mutate(flowId)} disabled={isSaving}>
+            <Button variant="secondary" size="sm" onClick={() => activateChecked.request(flow)} disabled={isSaving}>
               <Play className="h-3.5 w-3.5 mr-1.5" />
               Activate
             </Button>
@@ -1367,6 +1368,7 @@ function ChatbotEditorInner() {
           />
         )}
       </div>
+      {activateChecked.dialog}
     </div>
   );
 }

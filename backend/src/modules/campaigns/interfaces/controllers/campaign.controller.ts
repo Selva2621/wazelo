@@ -31,6 +31,7 @@ import {
 import { CreateCampaignUseCase } from '../../application/use-cases/create-campaign.use-case';
 import { UpdateCampaignUseCase } from '../../application/use-cases/update-campaign.use-case';
 import { ExecuteCampaignUseCase } from '../../application/use-cases/execute-campaign.use-case';
+import { RerunCampaignUseCase } from '../../application/use-cases/rerun-campaign.use-case';
 import { ScheduleCampaignUseCase } from '../../application/use-cases/schedule-campaign.use-case';
 import { PauseCampaignUseCase } from '../../application/use-cases/pause-campaign.use-case';
 import { ResumeCampaignUseCase } from '../../application/use-cases/resume-campaign.use-case';
@@ -48,6 +49,7 @@ export class CampaignController {
     private readonly createCampaignUseCase: CreateCampaignUseCase,
     private readonly updateCampaignUseCase: UpdateCampaignUseCase,
     private readonly executeCampaignUseCase: ExecuteCampaignUseCase,
+    private readonly rerunCampaignUseCase: RerunCampaignUseCase,
     private readonly scheduleCampaignUseCase: ScheduleCampaignUseCase,
     private readonly pauseCampaignUseCase: PauseCampaignUseCase,
     private readonly resumeCampaignUseCase: ResumeCampaignUseCase,
@@ -140,6 +142,28 @@ export class CampaignController {
     );
   }
 
+  /** Run a finished campaign again as a new campaign; returns the new one */
+  @Post(':id/rerun')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CAMPAIGNS_CREATE, PERMISSIONS.CAMPAIGNS_EXECUTE)
+  @UseGuards(FeatureFlagGuard, UsageLimitGuard)
+  @SetMetadata(FEATURE_FLAG_KEY, 'campaigns')
+  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.CAMPAIGN_EXECUTIONS)
+  @HttpCode(HttpStatus.CREATED)
+  async rerunCampaign(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.rerunCampaignUseCase.execute(
+      id,
+      user.orgId,
+      user.sub,
+      this.extractIp(req),
+      this.extractUserAgent(req),
+    );
+  }
+
   @Post(':id/schedule')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
@@ -223,12 +247,15 @@ export class CampaignController {
   async listRecipients(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListRecipientsQueryDto,
+    @CurrentUser() user: JwtPayload,
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
 
+    // Scoped to the caller's org — a campaign id alone must not expose another org's recipients
     const { recipients, total } = await this.recipientRepo.findByCampaignPaginated(
       id,
+      user.orgId,
       {
         take: limit,
         skip: (page - 1) * limit,

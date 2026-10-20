@@ -9,7 +9,9 @@ import {
   X as XIcon,
   RotateCcw,
   Copy,
+  Repeat,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useCampaign,
@@ -19,6 +21,7 @@ import {
   usePauseCampaign,
   useResumeCampaign,
   useCancelCampaign,
+  useRerunCampaign,
 } from "@/hooks/use-campaigns";
 import { useCampaignSocket } from "@/hooks/use-campaign-socket";
 import { Button } from "@/components/ui/button";
@@ -75,6 +78,8 @@ export default function CampaignDetailPage() {
   const pauseMut = usePauseCampaign();
   const resumeMut = useResumeCampaign();
   const cancelMut = useCancelCampaign();
+  const rerunMut = useRerunCampaign();
+  const [confirmRerun, setConfirmRerun] = useState(false);
 
   if (isLoading) {
     return (
@@ -198,7 +203,29 @@ export default function CampaignDetailPage() {
                   Cancel
                 </Button>
               )}
+              {isTerminal && (
+                <Button onClick={() => setConfirmRerun(true)} loading={rerunMut.isPending}>
+                  <Repeat className="h-4 w-4 mr-1" />
+                  Run again
+                </Button>
+              )}
             </div>
+            <ConfirmDialog
+              open={confirmRerun}
+              title="Run this campaign again?"
+              message="A new campaign with the same message and audience starts now. The audience is picked again, so contacts added since are included. This campaign's report stays as it is."
+              confirmLabel="Run again"
+              loading={rerunMut.isPending}
+              onCancel={() => setConfirmRerun(false)}
+              onConfirm={() =>
+                rerunMut.mutate(campaignId, {
+                  onSuccess: (created) => {
+                    setConfirmRerun(false);
+                    router.push(`/campaigns/${created.id}`);
+                  },
+                })
+              }
+            />
           </div>
         </div>
 

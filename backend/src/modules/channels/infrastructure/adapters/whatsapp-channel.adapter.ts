@@ -12,7 +12,10 @@ import {
   ChannelCapabilities,
 } from '../../domain/interfaces/channel-adapter.interface';
 import { CHANNEL_CONFIG } from '@/common/constants';
-import { checkTestRecipient } from '@/common/utils/test-recipient-guard.util';
+import {
+  resolveTestRecipient,
+  TEST_RECIPIENT_BLOCKED_ERROR,
+} from '@/common/utils/test-recipient-guard.util';
 
 const META_API_BASE = 'https://graph.facebook.com/v19.0';
 
@@ -65,15 +68,16 @@ export class WhatsAppChannelAdapter implements ChannelAdapter {
     message: OutboundMessage,
     config: Record<string, unknown>,
   ): Promise<OutboundResult> {
-    const blockedReason = checkTestRecipient(message.recipientIdentifier);
-    if (blockedReason) {
-      return { success: false, error: blockedReason, retryable: false };
+    // Test mode: anyone but a test number gets redirected to one
+    const to = resolveTestRecipient(message.recipientIdentifier);
+    if (!to) {
+      return { success: false, error: `Test mode: ${TEST_RECIPIENT_BLOCKED_ERROR}`, retryable: false };
     }
 
     const phoneNumberId = config.phoneNumberId as string;
     const accessToken = config.accessToken as string;
     const url = `${META_API_BASE}/${phoneNumberId}/messages`;
-    const payload = this.buildOutboundPayload(message);
+    const payload = this.buildOutboundPayload({ ...message, recipientIdentifier: to });
 
     try {
       const response = await fetch(url, {

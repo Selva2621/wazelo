@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus, Trash2, Sparkles, ChevronDown } from "lucide-react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
@@ -22,11 +22,20 @@ import type {
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
+import type { AutomationPreset } from "@/lib/constants/automation-presets";
 
 interface CreateAutomationRuleModalProps {
   open: boolean;
   onClose: () => void;
+  /** Recipe picked on the Automation page — fills the form when the modal opens */
+  preset?: AutomationPreset | null;
 }
+
+const EMPTY_RULE: Partial<CreateAutomationRuleFormData> = {
+  triggerType: "MESSAGE_RECEIVED",
+  triggerConfig: {},
+  actions: [{ actionType: "SEND_MESSAGE", actionConfig: {}, orderIndex: 0 }],
+};
 
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
   { value: "MESSAGE_RECEIVED",      label: "Message Received" },
@@ -189,6 +198,7 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
 export function CreateAutomationRuleModal({
   open,
   onClose,
+  preset,
 }: CreateAutomationRuleModalProps) {
   const router = useRouter();
   const createRule = useCreateAutomationRule();
@@ -209,14 +219,13 @@ export function CreateAutomationRuleModal({
     formState: { errors },
   } = useForm<CreateAutomationRuleFormData>({
     resolver: zodResolver(createAutomationRuleSchema),
-    defaultValues: {
-      triggerType: "MESSAGE_RECEIVED",
-      triggerConfig: {},
-      actions: [
-        { actionType: "SEND_MESSAGE", actionConfig: {}, orderIndex: 0 },
-      ],
-    },
+    defaultValues: EMPTY_RULE,
   });
+
+  // A recipe opens the form already filled in
+  useEffect(() => {
+    if (open && preset) reset({ ...EMPTY_RULE, ...preset.values });
+  }, [open, preset, reset]);
 
   const {
     fields: actionFields,

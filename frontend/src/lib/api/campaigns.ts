@@ -38,6 +38,12 @@ export const campaignsApi = {
       .post<Campaign>(`/campaigns/${campaignId}/execute`)
       .then((r) => r.data),
 
+  /** Runs a finished campaign again as a new campaign — returns the new one */
+  rerun: (campaignId: string) =>
+    apiClient
+      .post<Campaign>(`/campaigns/${campaignId}/rerun`)
+      .then((r) => r.data),
+
   schedule: (campaignId: string, data: ScheduleCampaignRequest) =>
     apiClient
       .post<Campaign>(`/campaigns/${campaignId}/schedule`, data)
