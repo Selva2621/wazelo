@@ -57,9 +57,12 @@ import { AiModule } from '@/modules/ai/ai.module';
 // Org AI Memory events
 import { OrgMemoryEventsHandler } from './handlers/org-memory-events.handler';
 import { OrgModule } from '@/modules/org/org.module';
+// AI credits for purchase intent detection
+import { BillingModule } from '@/modules/billing/billing.module';
 
 @Module({
   imports: [
+    BillingModule,
     WhatsAppModule,
     AuditModule,
     ContactsModule,

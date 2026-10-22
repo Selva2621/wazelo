@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Body,
   Param,
@@ -20,7 +21,8 @@ import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { ChatbotRepository } from '../../infrastructure/repositories/chatbot.repository';
 import { ExecuteChatbotFlowUseCase } from '../../application/use-cases/execute-chatbot-flow.use-case';
 import { SimulateChatbotFlowUseCase } from '../../application/use-cases/simulate-chatbot-flow.use-case';
-import { CreateFlowDto, UpdateFlowDto, SaveNodesDto, SimulateFlowDto } from '../../application/dto';
+import { CreateFlowDto, UpdateFlowDto, SaveNodesDto, SimulateFlowDto, BotBehaviorDto } from '../../application/dto';
+import { BotBehaviorService } from '../../application/services/bot-behavior.service';
 
 @Controller('chatbot')
 export class ChatbotController {
@@ -29,6 +31,7 @@ export class ChatbotController {
     private readonly executeChatbotFlow: ExecuteChatbotFlowUseCase,
     private readonly simulateChatbotFlow: SimulateChatbotFlowUseCase,
     private readonly usageTracking: UsageTrackingService,
+    private readonly botBehavior: BotBehaviorService,
   ) {}
 
   /** An AI-replying flow needs AI on the org's plan */
@@ -36,6 +39,20 @@ export class ChatbotController {
     if (aiEnabled && !(await this.usageTracking.isFeatureEnabled(orgId, 'ai'))) {
       throw new ForbiddenException('AI replies are not included in your plan. Upgrade to use an AI chatbot.');
     }
+  }
+
+  // ─── Handover & opening hours (AI bot) ───
+
+  @Get('behavior')
+  @Roles('ADMIN', 'MANAGER')
+  getBehavior(@CurrentUser('orgId') orgId: string) {
+    return this.botBehavior.getSettings(orgId);
+  }
+
+  @Put('behavior')
+  @Roles('ADMIN', 'MANAGER')
+  saveBehavior(@CurrentUser('orgId') orgId: string, @Body() dto: BotBehaviorDto) {
+    return this.botBehavior.saveSettings(orgId, dto);
   }
 
   @Post('flows')

@@ -55,6 +55,26 @@ export class UsageRepository {
     });
   }
 
+  /**
+   * Adds up to `amount` to a usage record without passing `limit`, in one locked
+   * statement, so concurrent callers can't overshoot. Returns how much was added.
+   */
+  async incrementUpTo(recordId: string, amount: number, limit: number): Promise<number> {
+    if (amount <= 0) return 0;
+    const rows = await this.prisma.$queryRaw<{ taken: number }[]>`
+      WITH prev AS (
+        SELECT id, current_value FROM usage_records WHERE id = ${recordId}::uuid FOR UPDATE
+      )
+      UPDATE usage_records u
+      SET current_value = u.current_value + LEAST(${amount}::int, GREATEST(${limit}::int - prev.current_value, 0)),
+          last_increment_at = now(),
+          updated_at = now()
+      FROM prev
+      WHERE u.id = prev.id
+      RETURNING LEAST(${amount}::int, GREATEST(${limit}::int - prev.current_value, 0))::int AS taken`;
+    return rows[0]?.taken ?? 0;
+  }
+
   async getUsage(
     orgId: string,
     metricType: UsageMetricType,

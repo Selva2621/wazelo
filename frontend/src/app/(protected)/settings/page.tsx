@@ -1269,7 +1269,7 @@ function AiSettingsSection() {
           params: { category: "ai", key: "auto_detect_purchase_intent" },
         })
         .then((r) => {
-          setAiPurchaseIntent(r.data?.value === "true");
+          setAiPurchaseIntent(r.data?.value === true || r.data?.value === "true");
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -1284,8 +1284,8 @@ function AiSettingsSection() {
       await apiClient.post("/settings/config", {
         category: "ai",
         key: "auto_detect_purchase_intent",
-        value: String(newValue),
-        type: "BOOLEAN",
+        value: newValue,
+        valueType: "boolean",
         scope: "ORG",
       });
     } catch {

@@ -107,9 +107,14 @@ export class DealGuardUseCase implements OnModuleInit {
 
   /**
    * Draft a scope from the chat with AI; falls back to a fill-in template.
-   * `onAiUsed` is called when the AI produced the draft (for usage metering).
+   * `ai.allowed` false (no AI credits left) goes straight to the template;
+   * `ai.onUsed` is called when the AI produced the draft (for credit metering).
    */
-  async draftScope(orgId: string, dealId: string, onAiUsed?: () => Promise<unknown>): Promise<DealGuard> {
+  async draftScope(
+    orgId: string,
+    dealId: string,
+    ai: { allowed: boolean; onUsed?: () => Promise<unknown> } = { allowed: true },
+  ): Promise<DealGuard> {
     const deal = await this.findDeal(orgId, dealId);
     const messages = await this.chatMessages(orgId, deal.contact.phoneNumber);
 
@@ -120,7 +125,7 @@ export class DealGuardUseCase implements OnModuleInit {
       .join('\n');
 
     let summary = '';
-    if (transcript) {
+    if (transcript && ai.allowed) {
       try {
         const result = await this.aiProvider.complete({
           systemPrompt: [
@@ -139,7 +144,7 @@ export class DealGuardUseCase implements OnModuleInit {
           maxTokens: 300,
         });
         summary = result.text.trim();
-        if (summary && onAiUsed) await onAiUsed().catch(() => undefined);
+        if (summary && ai.onUsed) await ai.onUsed().catch(() => undefined);
       } catch (error) {
         this.logger.warn(`Scope draft AI call failed for deal ${dealId}: ${error}`);
       }

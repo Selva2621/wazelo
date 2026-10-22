@@ -3,12 +3,19 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
+import { AiAction } from '@/modules/billing/domain/services/ai-actions';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
+import { KbAnswerService } from '@/modules/ai/application/services/kb-answer.service';
 import { ChatbotRepository } from '../../infrastructure/repositories/chatbot.repository';
 import { KbRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb.repository';
 import { DocumentProcessorService } from '@/modules/knowledge-base/domain/services/document-processor.service';
 import { OutboundMessageService } from '@/modules/messages/application/services/outbound-message.service';
 import { EVENT_NAMES } from '@/common/constants';
 import { ChatbotSessionStatus } from '@prisma/client';
+import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
+import { BotBehaviorService, HandoffReason } from '../services/bot-behavior.service';
+import { wantsHuman } from '../../domain/services/handoff-intent';
 
 interface FlowNode {
   id: string;
@@ -18,6 +25,14 @@ interface FlowNode {
 }
 
 const MAX_NODE_DEPTH = 20;
+
+/**
+ * The model's reply as the customer should see it: the transcript we send labels
+ * lines "Agent:" / "Customer:", and models often echo that label back.
+ */
+function cleanReply(text: string | undefined): string {
+  return (text ?? '').trim().replace(/^(agent|assistant|business)\s*:\s*/i, '').trim();
+}
 
 @Injectable()
 export class ExecuteChatbotFlowUseCase {
@@ -32,11 +47,19 @@ export class ExecuteChatbotFlowUseCase {
     private readonly outboundMessage: OutboundMessageService,
     private readonly eventEmitter: EventEmitter2,
     private readonly usageTracking: UsageTrackingService,
+    private readonly aiCredits: AiCreditsService,
+    private readonly messageCrypto: MessageEncryptionService,
+    private readonly kbAnswer: KbAnswerService,
+    private readonly kbMisses: KbMissRepository,
+    private readonly botBehavior: BotBehaviorService,
   ) {}
 
-  /** Plan, super admin override and kill switch all decide — same check as the AI endpoints */
-  private aiAllowed(orgId: string): Promise<boolean> {
-    return this.usageTracking.isFeatureEnabled(orgId, 'ai');
+  /**
+   * Plan, super admin override and kill switch all decide — same check as the AI
+   * endpoints — and the org must have the AI credits for the action.
+   */
+  private async aiAllowed(orgId: string, action: AiAction): Promise<boolean> {
+    return (await this.usageTracking.isFeatureEnabled(orgId, 'ai')) && this.aiCredits.canAfford(orgId, action);
   }
 
   /**
@@ -116,64 +139,65 @@ export class ExecuteChatbotFlowUseCase {
   ) {
     const { orgId, conversationId, contactPhone, sessionId, messageBody } = payload;
 
-    // No AI on the plan (or switched off): stay quiet so a person replies
-    if (!(await this.aiAllowed(orgId))) {
-      this.logger.log(`AI flow ${flow.id} skipped — AI is not enabled for org ${orgId}`);
+    // Someone on the team is handling this chat (they replied, or the bot handed over)
+    if (await this.botBehavior.isPaused(conversationId, orgId)) {
+      this.logger.debug(`AI flow ${flow.id} quiet: conversation ${conversationId} is with the team`);
       return null;
     }
 
-    // Build conversation context from last 20 messages
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: { direction: true, body: true, type: true, createdAt: true },
-    });
+    // Customer asked for a person: hand over (no AI needed, so no credits)
+    if (wantsHuman(messageBody)) {
+      return this.handOff(orgId, conversationId, contactPhone, sessionId, 'ASKED_FOR_PERSON');
+    }
+
+    // No AI on the plan, switched off, or out of credits: stay quiet so a person replies
+    if (!(await this.aiAllowed(orgId, 'chatbot_reply'))) {
+      this.logger.log(`AI flow ${flow.id} skipped — AI not enabled or no AI credits left for org ${orgId}`);
+      return null;
+    }
+
+    // Build conversation context from last 20 messages (bodies are encrypted at rest)
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { direction: true, body: true, type: true, createdAt: true },
+      }),
+    );
 
     const context = messages
       .reverse()
       .map((m) => `${m.direction === 'INBOUND' ? 'Customer' : 'Agent'}: ${m.body || `[${m.type}]`}`)
       .join('\n');
 
-    // Build knowledge base context if enabled
-    let kbContext = '';
+    // Knowledge on: answer from the org's website pages, documents, articles and profile
+    // (the same answers the widget and inbox KB search give)
     if (flow.useKnowledgeBase) {
-      try {
-        // Get ALL org documents (flow-linked + general)
-        const [flowDocs, allDocs] = await Promise.all([
-          this.kbRepo.findReadyDocuments(orgId, flow.id),
-          this.kbRepo.findReadyDocuments(orgId),
-        ]);
-
-        // Merge & deduplicate
-        const docsMap = new Map<string, { id: string; title: string; extractedText: string }>();
-        for (const d of [...flowDocs, ...allDocs]) {
-          if (d.extractedText) docsMap.set(d.id, { id: d.id, title: d.title, extractedText: d.extractedText });
-        }
-        const uniqueDocs = Array.from(docsMap.values());
-
-        if (uniqueDocs.length > 0) {
-          const relevantChunks = this.docProcessor.searchDocuments(uniqueDocs, messageBody, 5, 2000);
-
-          if (relevantChunks.length > 0) {
-            kbContext = '\n\n--- PRODUCT DOCUMENTATION ---\n' +
-              relevantChunks.map((c) => `[Document: ${c.title}]\n${c.content}`).join('\n\n---\n\n');
-          } else {
-            // No keyword match — send first 1500 chars of each doc as general context
-            kbContext = '\n\n--- PRODUCT DOCUMENTATION ---\n' +
-              uniqueDocs.slice(0, 3).map((d) => `[Document: ${d.title}]\n${d.extractedText.slice(0, 1500)}`).join('\n\n---\n\n');
-          }
-        }
-
-        // Also include KB articles
-        const articles = await this.kbRepo.searchPublicArticles(orgId, messageBody, 3);
-        if (articles.length > 0) {
-          kbContext += '\n\n--- KNOWLEDGE BASE ARTICLES ---\n' +
-            articles.map((a) => `[Article: ${a.title}]\n${a.body?.slice(0, 1000)}`).join('\n\n---\n\n');
-        }
-      } catch (error) {
-        this.logger.warn(`KB context fetch failed: ${error.message}`);
+      const kb = await this.kbAnswer.answer({
+        orgId,
+        question: messageBody,
+        conversation: context,
+        flowId: flow.id,
+        instructions: flow.aiSystemPrompt,
+      });
+      if (kb.answer && kb.found) {
+        await this.botBehavior.answered(conversationId);
+        return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
       }
+
+      // Not in the knowledge: log it for the owner, and after two in a row let a person take over
+      await this.kbMisses
+        .record(orgId, messageBody, 'WHATSAPP', conversationId)
+        .catch((err) => this.logger.warn(`Couldn't log unanswered question: ${(err as Error).message}`));
+      if (await this.botBehavior.missed(conversationId)) {
+        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'UNANSWERED');
+      }
+      if (kb.answer) {
+        // The polite "I'll check with the team" reply
+        return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+      }
+      // Nothing to answer from: fall through to a conversation-only reply
     }
 
     const defaultSystemPrompt = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
@@ -188,9 +212,7 @@ IMPORTANT RULES:
 
     const systemPrompt = flow.aiSystemPrompt || defaultSystemPrompt;
 
-    const userPrompt = kbContext
-      ? `${kbContext}\n\n--- CONVERSATION ---\n${context}\n\nBased on the product documentation above, reply to the customer's latest message:`
-      : `Conversation so far:\n${context}\n\nReply to the customer's latest message as the agent:`;
+    const userPrompt = `Conversation so far:\n${context}\n\nReply to the customer's latest message as the agent:`;
 
     const result = await this.aiProvider.complete({
       systemPrompt,
@@ -198,11 +220,36 @@ IMPORTANT RULES:
       maxTokens: 500,
     });
 
-    const replyText = result.text?.trim();
+    return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, result.text);
+  }
+
+  /** Tells the customer a person will reply (or when, after hours) and pauses the bot in the chat. */
+  private async handOff(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    reason: HandoffReason,
+  ) {
+    const text = await this.botBehavior.handOff(orgId, conversationId, reason);
+    await this.sendReply(orgId, conversationId, contactPhone, sessionId, text);
+    return { replied: true, text };
+  }
+
+  /** Cleans, charges and sends an AI reply; null when the AI produced nothing. */
+  private async sendAiReply(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    text: string | undefined,
+  ) {
+    const replyText = cleanReply(text);
     if (!replyText) {
       this.logger.warn(`AI returned empty reply for conversation ${conversationId}`);
       return null;
     }
+    await this.aiCredits.charge(orgId, 'chatbot_reply');
 
     // Send the AI reply as a WhatsApp message
     const { messageId } = await this.sendReply(orgId, conversationId, contactPhone, sessionId, replyText);
@@ -319,8 +366,8 @@ IMPORTANT RULES:
       }
 
       case 'AI_REPLY': {
-        // Without AI on the plan the step is skipped and the flow carries on
-        if (!(await this.aiAllowed(orgId))) {
+        // Without AI on the plan (or credits) the step is skipped and the flow carries on
+        if (!(await this.aiAllowed(orgId, 'chatbot_reply'))) {
           await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
           break;
         }
@@ -328,12 +375,14 @@ IMPORTANT RULES:
           'You are a helpful customer support agent. Reply concisely.';
         const maxTokens = (node.data.maxTokens as number) || 500;
 
-        const messages = await this.prisma.message.findMany({
-          where: { conversationId, orgId },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          select: { direction: true, body: true, type: true },
-        });
+        const messages = this.messageCrypto.decryptBodies(
+          await this.prisma.message.findMany({
+            where: { conversationId, orgId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { direction: true, body: true, type: true },
+          }),
+        );
 
         const context = messages
           .reverse()
@@ -346,8 +395,10 @@ IMPORTANT RULES:
           maxTokens,
         });
 
-        if (result.text?.trim()) {
-          await this.sendReply(orgId, conversationId, contactPhone, waSessionId, result.text.trim());
+        const nodeReply = cleanReply(result.text);
+        if (nodeReply) {
+          await this.aiCredits.charge(orgId, 'chatbot_reply');
+          await this.sendReply(orgId, conversationId, contactPhone, waSessionId, nodeReply);
         }
         await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
         break;
@@ -466,8 +517,8 @@ IMPORTANT RULES:
         const intents = (node.data.intents as string[]) || [];
         const defaultNextRef = node.nextNodes.find((nn) => nn.condition === 'default') || node.nextNodes[0];
 
-        // Without AI on the plan every message takes the default branch
-        if (intents.length === 0 || !payload.messageBody || !(await this.aiAllowed(orgId))) {
+        // Without AI on the plan (or credits) every message takes the default branch
+        if (intents.length === 0 || !payload.messageBody || !(await this.aiAllowed(orgId, 'intent'))) {
           if (defaultNextRef) {
             const nextNode = allNodes.find((n) => n.id === defaultNextRef.nodeId);
             if (nextNode) {
@@ -486,6 +537,7 @@ IMPORTANT RULES:
         });
 
         const detectedIntent = result.text?.trim().toLowerCase() || '';
+        if (detectedIntent) await this.aiCredits.charge(orgId, 'intent');
         // Find the branch matching detected intent
         const matchingBranch =
           node.nextNodes.find((nn) => nn.condition && detectedIntent.includes(nn.condition.toLowerCase())) ||

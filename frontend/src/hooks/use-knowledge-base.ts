@@ -3,7 +3,95 @@ import {
   listCategories, createCategory, deleteCategory,
   listArticles, getArticle, createArticle, updateArticle, deleteArticle,
   listDocuments, uploadDocument, deleteDocument,
+  listWebsiteSources, addWebsiteSource, resyncWebsiteSource, removeWebsiteSource,
+  listFaqs, suggestFaqs, publishFaqs,
+  setWebsiteAutoResync, listUnanswered, answerUnanswered, dismissUnanswered,
 } from "@/lib/api/knowledge-base";
+
+export function useSetWebsiteAutoResync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, autoResync }: { id: string; autoResync: boolean }) => setWebsiteAutoResync(id, autoResync),
+    onSuccess: () => qc.invalidateQueries({ queryKey: websitesKey }),
+  });
+}
+
+const unansweredKey = ["kb", "unanswered"] as const;
+
+export function useKbUnanswered() {
+  return useQuery({ queryKey: unansweredKey, queryFn: listUnanswered, refetchInterval: 60_000 });
+}
+
+export function useAnswerUnanswered() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...item }: { id: string; question: string; answer: string }) => answerUnanswered(id, item),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["kb"] }),
+  });
+}
+
+export function useDismissUnanswered() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: dismissUnanswered,
+    onSuccess: () => qc.invalidateQueries({ queryKey: unansweredKey }),
+  });
+}
+
+const faqsKey = ["kb", "faqs"] as const;
+
+export function useKbFaqs() {
+  return useQuery({ queryKey: faqsKey, queryFn: listFaqs });
+}
+
+/** AI suggestions only; nothing is saved until published. */
+export function useSuggestFaqs() {
+  return useMutation({ mutationFn: suggestFaqs });
+}
+
+export function usePublishFaqs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: publishFaqs,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["kb"] }),
+  });
+}
+
+const websitesKey = ["kb", "sources"] as const;
+
+/** Websites the bot learns from; polled every 3s while one is being read. */
+export function useKbWebsites() {
+  return useQuery({
+    queryKey: websitesKey,
+    queryFn: listWebsiteSources,
+    refetchInterval: (query) =>
+      query.state.data?.some((s) => s.status === "QUEUED" || s.status === "CRAWLING") ? 3000 : false,
+  });
+}
+
+export function useAddWebsite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: addWebsiteSource,
+    onSuccess: () => qc.invalidateQueries({ queryKey: websitesKey }),
+  });
+}
+
+export function useResyncWebsite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: resyncWebsiteSource,
+    onSuccess: () => qc.invalidateQueries({ queryKey: websitesKey }),
+  });
+}
+
+export function useRemoveWebsite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: removeWebsiteSource,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["kb"] }),
+  });
+}
 
 export function useKbCategories() {
   return useQuery({ queryKey: ["kb", "categories"], queryFn: listCategories });

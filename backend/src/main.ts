@@ -11,6 +11,9 @@ import { StructuredLogger } from './infrastructure/logger/structured-logger.serv
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    // Keeps req.rawBody: webhook signatures (Razorpay, Stripe, Shopify, Meta) are
+    // computed over the exact bytes sent, not over re-serialised JSON
+    rawBody: true,
   });
 
   // Use structured logger as the application logger (EPIC 10)

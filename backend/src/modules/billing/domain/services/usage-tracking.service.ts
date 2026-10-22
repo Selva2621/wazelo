@@ -152,6 +152,46 @@ export class UsageTrackingService {
   }
 
   /**
+   * Takes up to `amount` from a period allowance without going over the limit, safe
+   * under concurrency (one locked statement). An unlimited metric (limit 0) takes it
+   * all; no subscription takes nothing. Emits the same soft/hard limit events.
+   */
+  async consumeUpTo(orgId: string, metricType: UsageMetricType, amount: number): Promise<number> {
+    if (amount <= 0) return 0;
+    const subscription = await this.subscriptionRepo.findByOrgWithPlan(orgId);
+    if (!subscription) return 0;
+
+    const limitValue = await this.getEffectiveLimit(orgId, subscription.plan, metricType);
+    if (limitValue === 0) {
+      await this.incrementUsage(orgId, metricType, amount);
+      return amount;
+    }
+
+    const record = await this.usageRepo.findOrCreate(
+      orgId,
+      metricType,
+      subscription.currentPeriodStart,
+      subscription.currentPeriodEnd,
+      limitValue,
+    );
+    const taken = await this.usageRepo.incrementUpTo(record.id, amount, limitValue);
+    if (taken === 0) return 0;
+
+    const updated = await this.usageRepo.getUsage(orgId, metricType, subscription.currentPeriodStart);
+    const current = updated?.currentValue ?? 0;
+    const percentUsed = Math.round((current / limitValue) * 100);
+    const previousPercent = Math.round(((current - taken) / limitValue) * 100);
+    const softThreshold = subscription.plan.softLimitPercent;
+    if (previousPercent < softThreshold && percentUsed >= softThreshold) {
+      this.eventEmitter.emit(EVENT_NAMES.USAGE_SOFT_LIMIT_WARNING, { orgId, metricType, currentValue: current, limitValue, percentUsed });
+    }
+    if (current >= limitValue && current - taken < limitValue) {
+      this.eventEmitter.emit(EVENT_NAMES.USAGE_LIMIT_REACHED, { orgId, metricType, currentValue: current, limitValue });
+    }
+    return taken;
+  }
+
+  /**
    * Check if a feature is enabled for the org: a platform kill switch denies
    * it for everyone; otherwise a super admin override (on or off) wins, and
    * otherwise the org's current plan decides.

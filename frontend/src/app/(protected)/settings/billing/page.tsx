@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
 import {
   CreditCard,
@@ -38,6 +39,7 @@ import {
   useCreateOrder,
   useVerifyPayment,
 } from "@/hooks/use-billing";
+import { useAiCredits } from "@/hooks/use-ai-credits";
 import { AnimatePresence } from "motion/react";
 import { PaymentDetailModal } from "@/components/billing/payment-detail-modal";
 import { InvoiceDetailModal } from "@/components/billing/invoice-detail-modal";
@@ -127,6 +129,8 @@ export default function BillingPage() {
   const user = useAuthStore((s) => s.user);
   const { data: plans, isLoading: plansLoading } = usePlans();
   const { data: subData, isLoading: subLoading } = useSubscription();
+  // Bought AI credits, shown on the plan's AI usage card
+  const { data: aiCreditsData } = useAiCredits();
   const [paymentPage, setPaymentPage] = useState(1);
   const [invoicePage, setInvoicePage] = useState(1);
   const [historyTab, setHistoryTab] = useState("payments");
@@ -457,11 +461,20 @@ export default function BillingPage() {
               <h3 className="text-body-lg font-semibold text-on-surface">
                 Current Usage
               </h3>
-              {subscription?.status === "TRIAL" && (
-                <span className="text-caption text-warning bg-warning-container border border-warning/30 rounded-full px-2.5 py-0.5">
-                  Trial limits active — upgrade to unlock full capacity
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                {subscription?.status === "TRIAL" && (
+                  <span className="text-caption text-warning bg-warning-container border border-warning/30 rounded-full px-2.5 py-0.5">
+                    Trial limits active — upgrade to unlock full capacity
+                  </span>
+                )}
+                <Link
+                  href="/settings/ai-credits"
+                  className="inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  Buy AI credits
+                </Link>
+              </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
               <UsageCard
@@ -504,6 +517,7 @@ export default function BillingPage() {
                 label="AI Credits"
                 current={usage.aiCredits?.current ?? 0}
                 limit={usage.aiCredits?.limit ?? 0}
+                extra={aiCreditsData?.wallet.purchased ?? 0}
                 isTrial={subscription?.status === "TRIAL"}
               />
               <UsageCard
@@ -870,16 +884,19 @@ function UsageCard({
   current,
   limit,
   isTrial = false,
+  extra = 0,
 }: {
   icon: typeof Users;
   label: string;
   current: number;
   limit: number;
   isTrial?: boolean;
+  /** Bought on top of the plan (AI credits): with some left, a full plan is not a blocker */
+  extra?: number;
 }) {
   const pct = limit > 0 ? Math.min((current / limit) * 100, 100) : 0;
-  const isNearLimit = pct >= 80;
-  const isAtLimit = pct >= 100;
+  const isNearLimit = pct >= 80 && extra === 0;
+  const isAtLimit = pct >= 100 && extra === 0;
 
   return (
     <Card className="!p-0 overflow-hidden">
@@ -912,6 +929,11 @@ function UsageCard({
           <span className="text-caption text-on-surface-variant/60">
             {pct.toFixed(0)}% used
           </span>
+          {extra > 0 && (
+            <span className="text-caption font-medium tabular-nums text-success">
+              +{extra.toLocaleString()} extra
+            </span>
+          )}
           {isTrial && (
             <span className="text-caption font-medium text-warning bg-warning-container border border-warning/30 rounded px-1.5 py-0.5">
               trial limit
@@ -945,14 +967,18 @@ function fmtFeatureLimit(value: number | undefined | null, suffix: string): stri
   return `${value}${suffix}`;
 }
 
-function FeatureLimitRow({ label, value }: { label: string; value: string }) {
+function FeatureLimitRow({ label, value, included = true }: { label: string; value: string; included?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
-        <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+        {included ? (
+          <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+        ) : (
+          <X className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
+        )}
         <span className="text-label text-on-surface-variant">{label}</span>
       </div>
-      <span className="text-label font-medium text-on-surface">{value}</span>
+      <span className={included ? "text-label font-medium text-on-surface" : "text-label text-on-surface-variant/60"}>{value}</span>
     </div>
   );
 }
@@ -1088,7 +1114,12 @@ function PlanCard({
           </p>
           <FeatureLimitRow label="Templates"   value={fmtFeatureLimit(plan.maxMessageTemplates, "")} />
           <FeatureLimitRow label="API Access"  value={fmtFeatureLimit(plan.maxApiCallsPerMonth, "/mo")} />
-          <FeatureLimitRow label="AI Credits"  value={fmtFeatureLimit(plan.aiCreditsPerMonth, "/mo")} />
+          <FeatureLimitRow
+            label="AI Credits"
+            // 0 credits means unlimited only on plans that include AI
+            value={plan.aiEnabled ? fmtFeatureLimit(plan.aiCreditsPerMonth, "/mo") : "Not included"}
+            included={plan.aiEnabled}
+          />
           <FeatureLimitRow label="Shopify"     value={fmtFeatureLimit(plan.maxShopifyStores, plan.maxShopifyStores === 1 ? " store" : " stores")} />
           <FeatureLimitRow label="Automation"  value="Included" />
         </div>

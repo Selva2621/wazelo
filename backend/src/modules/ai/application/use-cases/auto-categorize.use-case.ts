@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
 import { OrgContextService } from '../../domain/services/org-context.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 export interface CategorizationResult {
   suggestedLabels: string[];
@@ -18,6 +19,7 @@ export class AutoCategorizeUseCase {
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
     private readonly orgContext: OrgContextService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   /**
@@ -25,12 +27,15 @@ export class AutoCategorizeUseCase {
    * Can be triggered automatically on new conversations or manually by agents.
    */
   async execute(conversationId: string, orgId: string): Promise<CategorizationResult> {
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'asc' },
-      take: 15,
-      select: { direction: true, body: true, type: true },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'asc' },
+        take: 15,
+        select: { direction: true, body: true, type: true },
+      }),
+    );
 
     if (messages.length === 0) {
       return { suggestedLabels: [], intent: 'unknown', priority: 'MEDIUM', language: 'en' };

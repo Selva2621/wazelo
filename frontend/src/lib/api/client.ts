@@ -111,8 +111,17 @@ const NO_REFRESH_PATHS = [
 ];
 
 // Response interceptor: unwrap envelope + handle 401 refresh
+/** Routes that spend AI credits (see backend @AiCredits) */
+const AI_CREDIT_ROUTE = /\/(ai\/|campaigns\/generate-copy|automation\/rules\/generate|templates\/generate|pipelines\/[^/]+\/deals\/[^/]+\/(score|scope\/draft))/;
+
+/** Fired after an AI call succeeds, so credit balances on screen refresh. */
+export const AI_CREDITS_USED_EVENT = "wazelo:ai-credits-used";
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse<ApiResponse<unknown>>) => {
+    if (typeof window !== "undefined" && AI_CREDIT_ROUTE.test(response.config.url ?? "")) {
+      window.dispatchEvent(new Event(AI_CREDITS_USED_EVENT));
+    }
     // Unwrap the { success, data } envelope
     if (response.data && typeof response.data === "object" && "success" in response.data) {
       response.data = response.data.data as ApiResponse<unknown>;
@@ -174,6 +183,18 @@ apiClient.interceptors.response.use(
           action: {
             label: "Upgrade",
             onClick: () => { window.location.href = "/settings/billing"; },
+          },
+        });
+      }
+
+      // Plan AI credits and purchased ones both spent
+      if (errorCode === "AI_CREDITS_EXHAUSTED" && typeof window !== "undefined") {
+        toast.error("You're out of AI credits.", {
+          id: "ai-credits-exhausted",
+          duration: 6000,
+          action: {
+            label: "Buy credits",
+            onClick: () => { window.location.href = "/settings/ai-credits"; },
           },
         });
       }

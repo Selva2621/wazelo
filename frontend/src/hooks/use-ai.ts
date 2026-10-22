@@ -5,13 +5,18 @@ import { toast } from "sonner";
 import { aiApi } from "@/lib/api/ai";
 import type { RoutingSuggestion, AiInsightsResult, CampaignCopyResult, DealScoreResult } from "@/lib/api/ai";
 
-export function useSmartReplies(conversationId: string | null) {
+/**
+ * Conversation AI results cost credits per call, so they run only when asked
+ * (`enabled`) and are kept for the session instead of refetching on revisit.
+ */
+const AI_RESULT_CACHE = { staleTime: Infinity, gcTime: 30 * 60_000, refetchOnWindowFocus: false } as const;
+
+export function useSmartReplies(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "smart-replies", conversationId],
     queryFn: () => aiApi.getSmartReplies(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 
@@ -22,23 +27,21 @@ export function useSummarizeConversation() {
   });
 }
 
-export function useSentiment(conversationId: string | null) {
+export function useSentiment(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "sentiment", conversationId],
     queryFn: () => aiApi.getSentiment(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 
-export function useCategorization(conversationId: string | null) {
+export function useCategorization(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "categorization", conversationId],
     queryFn: () => aiApi.getCategorization(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 
@@ -65,18 +68,16 @@ export function useKbSuggest(conversationId: string | null) {
     queryKey: ["ai", "kb-suggest", conversationId],
     queryFn: () => aiApi.kbSuggest(conversationId!),
     enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    ...AI_RESULT_CACHE,
   });
 }
 
-export function useDetectIntent(conversationId: string | null) {
+export function useDetectIntent(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "intent", conversationId],
     queryFn: () => aiApi.detectIntent(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 

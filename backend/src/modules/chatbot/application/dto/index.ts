@@ -1,4 +1,7 @@
-import { IsString, IsOptional, IsBoolean, IsArray, IsNotEmpty, IsNotEmptyObject, ValidateNested, IsObject } from 'class-validator';
+import {
+  IsString, IsOptional, IsBoolean, IsArray, IsNotEmpty, IsNotEmptyObject, ValidateNested, IsObject,
+  IsInt, Min, Max, MaxLength, ArrayMaxSize,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateFlowDto {
@@ -79,4 +82,51 @@ export class SimulateFlowDto {
   @IsOptional()
   @IsString()
   contactPhone?: string;
+}
+
+/** PUT /chatbot/behavior — how the AI bot hands chats over, and its hours. */
+export class BotBehaviorDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  handoffMessage?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  hoursEnabled?: boolean;
+
+  /** Minutes from midnight in the org timezone */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  openMinute?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  closeMinute?: number;
+
+  /** 0 = Sunday … 6 = Saturday */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  openDays?: number[];
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  afterHoursMessage?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(168)
+  pauseHours?: number;
 }

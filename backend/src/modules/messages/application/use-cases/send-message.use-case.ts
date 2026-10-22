@@ -211,6 +211,8 @@ export class SendMessageUseCase {
       contactPhone: dto.contactPhone,
       type: dto.type,
     });
+    // A person answered here: the AI bot leaves this chat to them for a while
+    this.eventEmitter.emit(EVENT_NAMES.CONVERSATION_AGENT_REPLIED, { orgId, conversationId: conversation.id, userId });
 
     // 11. Audit log
     await this.auditService.log({

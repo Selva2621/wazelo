@@ -58,6 +58,8 @@ const ACTIONS: Record<string, string> = {
   COUPON_CREATED: "Coupon created",
   COUPON_DEACTIVATED: "Coupon deactivated",
   PLATFORM_SETTING_CHANGED: "Platform setting changed",
+  AI_CREDIT_PACK_CREATED: "AI credit pack created",
+  AI_CREDIT_PACK_UPDATED: "AI credit pack updated",
 };
 
 /** Humanises an action the map doesn't know yet (e.g. after a backend release). */

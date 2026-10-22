@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 @Injectable()
 export class SummarizeConversationUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   async execute(conversationId: string, orgId: string) {
@@ -21,16 +23,19 @@ export class SummarizeConversationUseCase {
     }
 
     // Get all messages for this conversation
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'asc' },
-      select: {
-        direction: true,
-        body: true,
-        type: true,
-        createdAt: true,
-      },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          direction: true,
+          body: true,
+          type: true,
+          createdAt: true,
+        },
+      }),
+    );
 
     if (messages.length === 0) {
       return { summary: 'No messages in this conversation.', keyTopics: [], sentiment: 'NEUTRAL' };

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
 
 @Injectable()
 export class OrgAiMemoryService {
@@ -9,6 +10,7 @@ export class OrgAiMemoryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
+    private readonly aiCredits: AiCreditsService,
   ) {}
 
   /**
@@ -59,7 +61,7 @@ export class OrgAiMemoryService {
 
       // AI-generate a KB summary only if KB articles exist
       let kbSummary: string | null = null;
-      if (kbArticles.length > 0) {
+      if (kbArticles.length > 0 && (await this.aiCredits.canAfford(orgId, 'org_memory'))) {
         try {
           const kbText = kbArticles
             .map((a) => `## ${a.title}\n${String(a.body ?? '').slice(0, 500)}`)
@@ -71,6 +73,7 @@ export class OrgAiMemoryService {
             maxTokens: 300,
           });
           kbSummary = result.text || null;
+          if (kbSummary) await this.aiCredits.charge(orgId, 'org_memory');
         } catch (err: unknown) {
           this.logger.warn(
             `OrgAiMemory: KB summary generation failed for org ${orgId}: ${(err as Error).message}`,

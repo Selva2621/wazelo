@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bot, Plus, Play, Pause, Trash2, BarChart3, Edit2, Sparkles, Zap,
-  ClipboardList, Images, Clock,
+  ClipboardList, Images, Clock, BookOpen,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useOrgSettings } from "@/hooks/use-settings";
@@ -164,6 +164,12 @@ export default function ChatbotPage() {
           <Badge variant="muted">{flows.length}</Badge>
         </div>
         <div className="flex gap-2">
+          {aiEnabled && (
+            <Button size="sm" variant="secondary" onClick={() => router.push("/chatbot/knowledge")}>
+              <BookOpen className="h-3.5 w-3.5 mr-1.5" />
+              Bot knowledge
+            </Button>
+          )}
           <Button size="sm" variant="secondary" onClick={handleCreate} disabled={createFlow.isPending}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             Custom Flow

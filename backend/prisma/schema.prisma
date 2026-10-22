@@ -540,6 +540,12 @@ model Organization {
   aiMemory                 OrgAiMemory?
   creditEntries            OrgCreditEntry[]
   couponRedemptions        CouponRedemption[]
+  aiCreditBalance          OrgAiCreditBalance?
+  aiCreditEntries          AiCreditEntry[]
+  kbSources                KbSource[]
+  kbMisses                 KbMiss[]
+  botSettings              BotSettings?
+  kbChunks                 KbChunk[]
 
   @@index([slug])
   @@index([deletedAt])
@@ -1217,6 +1223,11 @@ model Conversation {
   channelId         String?            @map("channel_id") @db.Uuid
   channelType       ChannelType?       @map("channel_type")
   contactIdentifier String?            @map("contact_identifier") @db.VarChar(255)
+
+  // AI bot: quiet in this chat until then (a person replied, or it handed over)
+  botPausedUntil    DateTime?          @map("bot_paused_until")
+  // AI bot: questions in a row it couldn't answer (2 → hand over)
+  botMissStreak     Int                @default(0) @map("bot_miss_streak")
 
   organization Organization @relation(fields: [orgId], references: [id])
   channel      Channel?     @relation(fields: [channelId], references: [id])
@@ -3330,6 +3341,11 @@ model KbDocument {
   fileSize      Int       @map("file_size")
   extractedText String?   @map("extracted_text") @db.Text
   status        String    @default("PROCESSING") @db.VarChar(20) // PROCESSING, READY, FAILED
+  // UPLOAD (file), WEBSITE (crawled page), TEXT (pasted)
+  sourceType    String    @default("UPLOAD") @map("source_type") @db.VarChar(20)
+  // WEBSITE: the crawl this page came from, and the page's URL
+  sourceId      String?   @map("source_id") @db.Uuid
+  sourceUrl     String?   @map("source_url") @db.Text
   uploadedById  String    @map("uploaded_by_id") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -3337,11 +3353,110 @@ model KbDocument {
 
   organization Organization @relation(fields: [orgId], references: [id])
   uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  source       KbSource?    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  chunks       KbChunk[]
 
   @@index([orgId])
   @@index([orgId, flowId])
   @@index([orgId, status])
+  @@index([sourceId])
   @@map("kb_documents")
+}
+
+// A question customers asked that the bot couldn't answer from the knowledge base.
+// Repeats of the same question bump `count`; answering it publishes a FAQ.
+model KbMiss {
+  id                 String    @id @default(uuid()) @db.Uuid
+  orgId              String    @map("org_id") @db.Uuid
+  question           String    @db.Text
+  // Normalised question (lowercase, letters/digits only) used to group repeats
+  questionKey        String    @map("question_key") @db.VarChar(300)
+  count              Int       @default(1)
+  // WHATSAPP or WIDGET: where it was last asked
+  channel            String    @db.VarChar(20)
+  lastConversationId String?   @map("last_conversation_id") @db.Uuid
+  lastAskedAt        DateTime  @default(now()) @map("last_asked_at")
+  // Answered (became a FAQ) or dismissed; asked again after that reopens it
+  resolvedAt         DateTime? @map("resolved_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, questionKey])
+  @@index([orgId, resolvedAt])
+  @@map("kb_misses")
+}
+
+// How the org's AI bot hands chats over to people, and its opening hours.
+model BotSettings {
+  id                String   @id @default(uuid()) @db.Uuid
+  orgId             String   @unique @map("org_id") @db.Uuid
+  // Sent when the bot hands over (customer asked for a person / 2 unanswered in a row)
+  handoffMessage    String   @default("Thanks! Someone from our team will reply to you here shortly.") @map("handoff_message") @db.VarChar(500)
+  // Hours in the org's timezone, as minutes from midnight; days 0 = Sunday … 6 = Saturday
+  hoursEnabled      Boolean  @default(false) @map("hours_enabled")
+  openMinute        Int      @default(540) @map("open_minute")
+  closeMinute       Int      @default(1200) @map("close_minute")
+  openDays          Int[]    @default([1, 2, 3, 4, 5, 6]) @map("open_days")
+  // Sent instead of the handoff message when the team is closed
+  afterHoursMessage String   @default("Thanks! Our team is offline right now and will reply when we're back.") @map("after_hours_message") @db.VarChar(500)
+  // How long the bot stays quiet in a chat after a person replies or it hands over
+  pauseHours        Int      @default(24) @map("pause_hours")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("bot_settings")
+}
+
+// A website the org gave us to learn from. Crawled into KbDocuments (one per page).
+model KbSource {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  type        String    @default("WEBSITE") @db.VarChar(20)
+  url         String    @db.Text
+  // QUEUED, CRAWLING, READY, FAILED
+  status      String    @default("QUEUED") @db.VarChar(20)
+  pagesFound  Int       @default(0) @map("pages_found")
+  pagesDone   Int       @default(0) @map("pages_done")
+  error       String?   @db.VarChar(500)
+  lastSyncedAt DateTime? @map("last_synced_at")
+  // Read the site again every week (charges kb_build each time)
+  autoResync  Boolean   @default(false) @map("auto_resync")
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  documents    KbDocument[]
+
+  @@index([orgId])
+  @@map("kb_sources")
+}
+
+// Searchable passages of documents and articles. `search` is a generated tsvector
+// column (Postgres full-text, 'simple' config so any language works) queried raw.
+model KbChunk {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  documentId String?  @map("document_id") @db.Uuid
+  articleId  String?  @map("article_id") @db.Uuid
+  position   Int      @default(0)
+  // Page/article title, kept with the passage for context in AI prompts
+  title      String?  @db.VarChar(500)
+  content    String   @db.Text
+  search     Unsupported("tsvector")?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  document     KbDocument?  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([documentId])
+  @@index([articleId])
+  @@map("kb_chunks")
 }
 
 // ─────────────────────────────────────────────
@@ -3587,6 +3702,8 @@ enum PlatformAuditAction {
   COUPON_CREATED
   COUPON_DEACTIVATED
   PLATFORM_SETTING_CHANGED
+  AI_CREDIT_PACK_CREATED
+  AI_CREDIT_PACK_UPDATED
 }
 
 // ─────────────────────────────────────────────
@@ -3871,6 +3988,67 @@ model OrgCreditEntry {
   @@index([orgId, createdAt])
   @@index([invoiceId])
   @@map("org_credit_entries")
+}
+
+// ─────────────────────────────────────────────
+// AI CREDITS (on top of the plan's monthly aiCreditsPerMonth)
+// Packs are priced by a super admin and bought by orgs. Purchased credits never
+// expire and are spent only after the month's plan credits run out.
+// ─────────────────────────────────────────────
+
+model AiCreditPack {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  credits      Int
+  priceInCents Int      @map("price_in_cents")
+  currency     String   @db.VarChar(3)
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([currency, isActive])
+  @@map("ai_credit_packs")
+}
+
+// Purchased credits left. Kept in step with AiCreditEntry.purchasedCredits.
+model OrgAiCreditBalance {
+  orgId     String   @id @map("org_id") @db.Uuid
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_ai_credit_balances")
+}
+
+enum AiCreditEntryKind {
+  PURCHASE
+  USAGE
+}
+
+// Append-only: one row per pack bought and per AI action charged
+model AiCreditEntry {
+  id               String            @id @default(uuid()) @db.Uuid
+  orgId            String            @map("org_id") @db.Uuid
+  kind             AiCreditEntryKind
+  // USAGE: the AI action (smart_reply, chatbot_reply, ...)
+  action           String?           @db.VarChar(50)
+  // USAGE: credits taken from the month's plan allowance
+  planCredits      Int               @default(0) @map("plan_credits")
+  // Signed change to the purchased balance: + PURCHASE, − USAGE
+  purchasedCredits Int               @default(0) @map("purchased_credits")
+  packId           String?           @map("pack_id") @db.Uuid
+  paymentId        String?           @map("payment_id") @db.Uuid
+  // PURCHASE: one entry per Razorpay order, whether verify or the webhook lands first
+  idempotencyKey   String?           @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([createdAt])
+  @@map("ai_credit_entries")
 }
 
 // ─────────────────────────────────────────────

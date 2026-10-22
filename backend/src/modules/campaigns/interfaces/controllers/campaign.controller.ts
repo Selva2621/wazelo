@@ -22,6 +22,7 @@ import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces
 import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { UsageMetricType } from '@prisma/client';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
 import { CreateCampaignDto, AudienceFiltersDto } from '../../application/dto/create-campaign.dto';
 import { UpdateCampaignDto } from '../../application/dto/update-campaign.dto';
 import {
@@ -285,10 +286,10 @@ export class CampaignController {
   @Post('generate-copy')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.CAMPAIGNS_CREATE)
-  @UseGuards(FeatureFlagGuard, UsageLimitGuard)
+  @UseGuards(FeatureFlagGuard)
   @SetMetadata(FEATURE_FLAG_KEY, 'campaigns')
-  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
   @PlatformFeature('ai')
+  @AiCredits('campaign_copy')
   @HttpCode(HttpStatus.OK)
   async generateCopy(
     @Body() dto: GenerateCampaignCopyDto,

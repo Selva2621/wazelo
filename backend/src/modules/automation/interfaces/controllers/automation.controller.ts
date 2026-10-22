@@ -38,9 +38,7 @@ import {
   ListExecutionLogsUseCase,
 } from '../../application/use-cases';
 import { GenerateAutomationRuleUseCase } from '../../application/use-cases/generate-automation-rule.use-case';
-import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
-import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
-import { UsageMetricType } from '@prisma/client';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
 import { IsString, MaxLength } from 'class-validator';
 
 class GenerateAutomationRuleDto {
@@ -60,24 +58,21 @@ export class AutomationController {
     private readonly listRulesUseCase: ListAutomationRulesUseCase,
     private readonly listExecutionLogsUseCase: ListExecutionLogsUseCase,
     private readonly generateRuleUseCase: GenerateAutomationRuleUseCase,
-    private readonly usageTracking: UsageTrackingService,
   ) {}
 
   @Post('rules/generate')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.AUTOMATION_CREATE)
-  @UseGuards(FeatureFlagGuard, UsageLimitGuard)
+  @UseGuards(FeatureFlagGuard)
   @SetMetadata(FEATURE_FLAG_KEY, 'automation')
-  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
   @PlatformFeature('ai')
+  @AiCredits('automation_rule')
   @HttpCode(HttpStatus.OK)
-  async generateRule(
+  generateRule(
     @Body() dto: GenerateAutomationRuleDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    const result = await this.generateRuleUseCase.execute(user.orgId, dto.prompt);
-    await this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS);
-    return result;
+    return this.generateRuleUseCase.execute(user.orgId, dto.prompt);
   }
 
   @Post('rules')

@@ -13,9 +13,53 @@ import { Permissions } from '@/common/decorators/permissions.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { EVENT_NAMES } from '@/common/constants';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
 import { KbRepository } from '../../infrastructure/repositories/kb.repository';
 import { DocumentProcessorService } from '../../domain/services/document-processor.service';
 import { CreateCategoryDto, CreateArticleDto, UpdateArticleDto } from '../../application/dto';
+import { IsString, IsNotEmpty, MaxLength, IsArray, ArrayMinSize, ArrayMaxSize, ValidateNested, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
+import { KbIndexService } from '../../application/services/kb-index.service';
+import { KbFaqsUseCase, MAX_ANSWER, MAX_QUESTION } from '../../application/use-cases/kb-faqs.use-cases';
+import { KbUnansweredUseCase } from '../../application/use-cases/kb-unanswered.use-cases';
+import {
+  AddWebsiteSourceUseCase,
+  ManageWebsiteSourcesUseCase,
+  ResyncWebsiteSourceUseCase,
+} from '../../application/use-cases/kb-sources.use-cases';
+
+class AddWebsiteSourceDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  url: string;
+}
+
+class UpdateWebsiteSourceDto {
+  @IsBoolean()
+  autoResync: boolean;
+}
+
+class FaqItemDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MAX_QUESTION)
+  question: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MAX_ANSWER)
+  answer: string;
+}
+
+class PublishFaqsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => FaqItemDto)
+  items: FaqItemDto[];
+}
 
 /* ─── Admin KB Controller (authenticated) ─── */
 
@@ -35,7 +79,98 @@ export class KbController {
     private readonly docProcessor: DocumentProcessorService,
     private readonly eventEmitter: EventEmitter2,
     private readonly aiProvider: AiProviderService,
+    private readonly aiCredits: AiCreditsService,
+    private readonly addWebsite: AddWebsiteSourceUseCase,
+    private readonly resyncWebsite: ResyncWebsiteSourceUseCase,
+    private readonly websites: ManageWebsiteSourcesUseCase,
+    private readonly kbIndex: KbIndexService,
+    private readonly faqs: KbFaqsUseCase,
+    private readonly unanswered: KbUnansweredUseCase,
   ) {}
+
+  @Patch('sources/:id')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  updateSource(
+    @CurrentUser('orgId') orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWebsiteSourceDto,
+  ) {
+    return this.websites.setAutoResync(orgId, id, dto.autoResync);
+  }
+
+  // ─── Unanswered questions (the bot couldn't answer; the owner fills the gap) ───
+
+  @Get('unanswered')
+  @Permissions(PERMISSIONS.SETTINGS_READ)
+  listUnanswered(@CurrentUser('orgId') orgId: string) {
+    return this.unanswered.list(orgId);
+  }
+
+  @Post('unanswered/:id/answer')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  answerUnanswered(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: FaqItemDto,
+  ) {
+    return this.unanswered.answer(orgId, userId, id, dto);
+  }
+
+  @Delete('unanswered/:id')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  dismissUnanswered(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.unanswered.dismiss(orgId, id);
+  }
+
+  // ─── FAQs (AI suggests from the website/files, the user reviews and publishes) ───
+
+  @Get('faqs')
+  @Permissions(PERMISSIONS.SETTINGS_READ)
+  listFaqs(@CurrentUser('orgId') orgId: string) {
+    return this.faqs.list(orgId);
+  }
+
+  @Post('faqs/generate')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  suggestFaqs(@CurrentUser('orgId') orgId: string) {
+    return this.faqs.suggest(orgId);
+  }
+
+  @Post('faqs')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  publishFaqs(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: PublishFaqsDto) {
+    return this.faqs.publish(orgId, userId, dto.items);
+  }
+
+  // ─── Websites (learn from the org's site) ───
+
+  @Get('sources')
+  @Permissions(PERMISSIONS.SETTINGS_READ)
+  listSources(@CurrentUser('orgId') orgId: string) {
+    return this.websites.list(orgId);
+  }
+
+  @Post('sources')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  addSource(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: AddWebsiteSourceDto) {
+    return this.addWebsite.execute(orgId, userId, dto.url);
+  }
+
+  @Post('sources/:id/resync')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  resyncSource(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.resyncWebsite.execute(orgId, id);
+  }
+
+  @Delete('sources/:id')
+  @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  removeSource(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.websites.remove(orgId, id);
+  }
 
   // ─── Categories ───
 
@@ -64,19 +199,22 @@ export class KbController {
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
   async createArticle(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: CreateArticleDto) {
     const article = await this.repo.createArticle({ orgId, authorId: userId, ...dto });
+    await this.kbIndex.indexArticle(article.id);
     if (article.isPublished) {
       this.eventEmitter.emit(EVENT_NAMES.KB_ARTICLE_PUBLISHED, { orgId });
     }
 
-    // Generate AI tag suggestions (non-blocking — don't fail if AI is down)
+    // Generate AI tag suggestions (non-blocking — don't fail if AI is down or out of credits)
     let suggestedTags: string[] = [];
     try {
+      if (!(await this.aiCredits.canAfford(orgId, 'kb_tags'))) return { ...article, suggestedTags };
       const content = `Title: ${article.title}\n\n${(article as any).body?.slice(0, 1000) ?? ''}`;
       const result = await this.aiProvider.complete({
         systemPrompt: 'You are a knowledge base tagger. Return ONLY a JSON array of 3-5 short tag strings (lowercase, no spaces, use hyphens). Example: ["billing","refunds","payment-policy"]',
         userPrompt: `Suggest tags for this knowledge base article:\n\n${content}`,
         maxTokens: 100,
       });
+      if (result.text) await this.aiCredits.charge(orgId, 'kb_tags');
       const match = result.text.match(/\[[\s\S]*\]/);
       if (match) {
         const arr = JSON.parse(match[0]);
@@ -126,6 +264,7 @@ export class KbController {
     const article = await this.repo.findByIdAndOrg(id, orgId);
     if (!article) throw new NotFoundException('Article not found');
     await this.repo.updateArticle(id, orgId, dto as any);
+    await this.kbIndex.indexArticle(id);
     // Rebuild memory if publish state changed or content updated
     if (dto.isPublished !== undefined || dto.body !== undefined || dto.title !== undefined) {
       this.eventEmitter.emit(EVENT_NAMES.KB_ARTICLE_PUBLISHED, { orgId });
@@ -137,6 +276,7 @@ export class KbController {
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
   async deleteArticle(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.repo.softDelete(id, orgId);
+    await this.kbIndex.indexArticle(id);
     this.eventEmitter.emit(EVENT_NAMES.KB_ARTICLE_DELETED, { orgId });
     return { deleted: true };
   }
@@ -193,6 +333,7 @@ export class KbController {
     try {
       const extractedText = await this.docProcessor.extractText(file.path, file.mimetype);
       await this.repo.updateDocumentStatus(doc.id, 'READY', extractedText);
+      await this.kbIndex.indexDocument(orgId, doc.id, doc.title, extractedText);
       this.logger.log(`Document ${doc.id} processed: ${extractedText.length} chars extracted`);
       return { ...doc, status: 'READY', extractedTextLength: extractedText.length };
     } catch (error) {
@@ -218,7 +359,9 @@ export class KbController {
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
+    const doc = await this.repo.findDocumentById(id, orgId);
     await this.repo.softDeleteDocument(id, orgId);
+    if (doc) await this.kbIndex.removeDocument(doc.id);
     return { deleted: true };
   }
 }

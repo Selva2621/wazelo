@@ -86,6 +86,8 @@ export const QUEUE_NAMES = {
   SCRAPE_LEADS: 'scrape-leads',
   // One "is this number on WhatsApp?" lookup per job; each job queues the next
   SCRAPE_WA_CHECK: 'scrape-wa-check',
+  // Knowledge base — read an org's website into KB documents + searchable passages
+  CRAWL_WEBSITE: 'crawl-website',
   // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
   ORG_ONBOARDING: 'org-onboarding',
 } as const;
@@ -288,6 +290,8 @@ export const EVENT_NAMES = {
   CHATBOT_AI_REPLY_SENT: 'chatbot.ai_reply_sent',
   CHATBOT_SESSION_COMPLETED: 'chatbot.session_completed',
   CHATBOT_SESSION_HANDED_OFF: 'chatbot.session_handed_off',
+  // A person on the team sent a message in a conversation (the AI bot pauses there)
+  CONVERSATION_AGENT_REPLIED: 'conversation.agent_replied',
 
   // Developer API events
   DEVELOPER_MESSAGE_SENT: 'developer.message_sent',

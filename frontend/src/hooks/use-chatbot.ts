@@ -12,6 +12,18 @@ export const chatbotKeys = {
   analytics: (id: string) => ["chatbot", "analytics", id] as const,
 };
 
+export function useBotBehavior() {
+  return useQuery({ queryKey: ["chatbot", "behavior"], queryFn: () => chatbotApi.getBehavior() });
+}
+
+export function useSaveBotBehavior() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: chatbotApi.saveBehavior,
+    onSuccess: (data) => qc.setQueryData(["chatbot", "behavior"], data),
+  });
+}
+
 export function useChatbotFlows(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: chatbotKeys.flows(),

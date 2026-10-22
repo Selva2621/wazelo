@@ -14,6 +14,7 @@ import {
   Shield,
   FileText,
   CreditCard,
+  Sparkles,
   ShieldCheck,
   Radio,
   Target,
@@ -130,6 +131,7 @@ const navGroups: NavGroup[] = [
       { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"] },
       // { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
       { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"] },
+      { href: "/settings/ai-credits", icon: <Sparkles className="h-5 w-5" />, label: "AI Credits", roles: ["ADMIN", "MANAGER"] },
     ],
   },
   {

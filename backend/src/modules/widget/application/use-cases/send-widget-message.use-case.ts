@@ -4,6 +4,8 @@ import { WidgetRepository } from '../../infrastructure/repositories/widget.repos
 import { SendWidgetMessageDto } from '../dto/send-widget-message.dto';
 import { EVENT_NAMES } from '@/common/constants';
 import { KbRagSearchUseCase } from '@/modules/ai/application/use-cases/kb-rag-search.use-case';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
+import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
 
 @Injectable()
 export class SendWidgetMessageUseCase {
@@ -13,6 +15,8 @@ export class SendWidgetMessageUseCase {
     private readonly widgetRepository: WidgetRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly kbRagSearch: KbRagSearchUseCase,
+    private readonly aiCredits: AiCreditsService,
+    private readonly kbMisses: KbMissRepository,
   ) {}
 
   async execute(orgSlug: string, dto: SendWidgetMessageDto) {
@@ -64,10 +68,12 @@ export class SendWidgetMessageUseCase {
 
     // AI assistant: generate reply using org's KB and product data
     let agentReply: { messageId: string; body: string; createdAt: Date } | undefined;
-    if (config.aiAssistantEnabled) {
+    // Out of AI credits (or AI not on the plan): no auto-reply, a person answers
+    if (config.aiAssistantEnabled && (await this.aiCredits.canAfford(orgId, 'widget_reply'))) {
       try {
         const ragResult = await this.kbRagSearch.execute(dto.body, orgId);
         if (ragResult.answer) {
+          await this.aiCredits.charge(orgId, 'widget_reply');
           const agentMsg = await this.widgetRepository.addMessage(
             session.id,
             orgId,
@@ -82,6 +88,9 @@ export class SendWidgetMessageUseCase {
           this.logger.log(
             `AI reply generated for session=${session.id} confidence=${ragResult.confidence}`,
           );
+        } else {
+          // Not in the knowledge base: shows up in the owner's unanswered questions
+          await this.kbMisses.record(orgId, dto.body, 'WIDGET');
         }
       } catch (err) {
         // Non-fatal: log and continue — visitor message was already saved

@@ -9,7 +9,28 @@ import type {
   SimulateFlowResponse,
 } from "@/lib/types/chatbot";
 
+/** How the AI bot hands chats over to the team, and the team's opening hours. */
+export interface BotBehavior {
+  handoffMessage: string;
+  hoursEnabled: boolean;
+  /** Minutes from midnight, in `timezone` */
+  openMinute: number;
+  closeMinute: number;
+  /** 0 = Sunday … 6 = Saturday */
+  openDays: number[];
+  afterHoursMessage: string;
+  pauseHours: number;
+  timezone: string;
+  openNow: boolean;
+}
+
+export type BotBehaviorInput = Partial<Omit<BotBehavior, "timezone" | "openNow">>;
+
 export const chatbotApi = {
+  getBehavior: () => apiClient.get<BotBehavior>("/chatbot/behavior").then((r) => r.data),
+
+  saveBehavior: (data: BotBehaviorInput) => apiClient.put<BotBehavior>("/chatbot/behavior", data).then((r) => r.data),
+
   listFlows: () =>
     apiClient.get<ChatbotFlow[]>("/chatbot/flows").then((r) => r.data),
 

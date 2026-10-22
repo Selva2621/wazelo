@@ -7,6 +7,7 @@ import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/rep
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { isOptOutReply } from '@/modules/messages/domain/services/send-safety.policy';
+import { AutoCreateContactUseCase } from '@/modules/contacts/application/use-cases/auto-create-contact.use-case';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import {
@@ -56,6 +57,7 @@ export class IncomingMessageWorker implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
+    private readonly autoCreateContact: AutoCreateContactUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -154,13 +156,31 @@ export class IncomingMessageWorker implements OnModuleInit {
       if (count > 0) this.logger.log(`Contact ${contactPhone} opted out by reply`);
     }
 
-    // 8. Emit events for real-time WebSocket push + contact auto-creation
+    // 8. Resolve the contact first: the chatbot, automations and purchase-intent
+    // handlers all need its id, and creating it in a parallel listener raced them
+    let contactId: string | undefined;
+    try {
+      ({ contactId } = await this.autoCreateContact.execute({
+        orgId,
+        phoneNumber: contactPhone,
+        ownerId: session.userId,
+        sessionId,
+        messageId: message.id,
+      }));
+    } catch (err) {
+      this.logger.error(`Contact lookup failed for ${contactPhone}: ${(err as Error).message}`);
+    }
+
+    // 9. Emit events for real-time WebSocket push, chatbot / automation pipeline, etc.
     this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED, {
       messageId: message.id,
       sessionId,
       orgId,
       userId: session.userId,
+      contactId,
       contactPhone,
+      // Plain text for listeners (the stored body is encrypted)
+      body: data.body,
       type: data.type,
       conversationId: conversation.id,
     });

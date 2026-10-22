@@ -12,15 +12,13 @@ import {
   HttpStatus,
   NotFoundException,
   BadRequestException,
-  UseGuards,
-  SetMetadata,
 } from '@nestjs/common';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
-import { DealStatus, UsageMetricType } from '@prisma/client';
-import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
-import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { DealStatus } from '@prisma/client';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
 import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { PipelineRepository } from '../../infrastructure/repositories/pipeline.repository';
 import { DealRepository } from '../../infrastructure/repositories/deal.repository';
@@ -47,7 +45,7 @@ export class DealsController {
     private readonly pipelineRepo: PipelineRepository,
     private readonly dealRepo: DealRepository,
     private readonly scoreDealUseCase: ScoreDealUseCase,
-    private readonly usageTracking: UsageTrackingService,
+    private readonly aiCredits: AiCreditsService,
     private readonly dealGuard: DealGuardUseCase,
     private readonly dealAccess: DealAccessUseCase,
     private readonly dealLifecycle: DealLifecycleUseCase,
@@ -264,9 +262,11 @@ export class DealsController {
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
     await this.findDeal(user, dealId);
-    return this.dealGuard.draftScope(user.orgId, dealId, () =>
-      this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS),
-    );
+    // Out of AI credits → the fill-in template instead of a 403
+    return this.dealGuard.draftScope(user.orgId, dealId, {
+      allowed: await this.aiCredits.canAfford(user.orgId, 'deal_scope'),
+      onUsed: () => this.aiCredits.charge(user.orgId, 'deal_scope'),
+    });
   }
 
   @Patch(':pipelineId/deals/:dealId/scope')
@@ -296,18 +296,15 @@ export class DealsController {
 
   @Post(':pipelineId/deals/:dealId/score')
   @Permissions(PERMISSIONS.CONTACTS_READ)
-  @UseGuards(UsageLimitGuard)
-  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
   @PlatformFeature('ai')
+  @AiCredits('deal_score')
   @HttpCode(HttpStatus.OK)
   async scoreDeal(
     @CurrentUser() user: JwtPayload,
     @Param('dealId', ParseUUIDPipe) dealId: string,
   ) {
     await this.findDeal(user, dealId);
-    const result = await this.scoreDealUseCase.execute(dealId, user.orgId);
-    await this.usageTracking.incrementUsage(user.orgId, UsageMetricType.AI_CREDITS);
-    return result;
+    return this.scoreDealUseCase.execute(dealId, user.orgId);
   }
 
   // ───── Analytics ─────

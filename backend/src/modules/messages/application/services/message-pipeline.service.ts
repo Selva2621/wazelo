@@ -42,8 +42,11 @@ export class MessagePipelineService {
       return;
     }
 
-    // Only text messages are eligible for chatbot flows
-    if (!payload.type || payload.type === 'TEXT') {
+    // Only text messages from a known contact are eligible for chatbot flows
+    // (a chatbot session belongs to a contact)
+    if (!payload.contactId) {
+      this.logger.warn(`Message ${payload.messageId} has no contact — skipping chatbot`);
+    } else if (!payload.type || payload.type === 'TEXT') {
       const chatbotResult = await this.runChatbot(payload);
       if (chatbotResult?.replied) {
         this.logger.debug(

@@ -10,9 +10,11 @@ import {
 } from './application/use-cases';
 import { AuditModule } from '../audit/audit.module';
 import { AiModule } from '../ai/ai.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [AuditModule, AiModule],
+  // BillingModule: AI credits for the widget's AI assistant replies
+  imports: [AuditModule, AiModule, BillingModule],
   controllers: [WidgetAdminController, WidgetPublicController],
   providers: [
     WidgetRepository,

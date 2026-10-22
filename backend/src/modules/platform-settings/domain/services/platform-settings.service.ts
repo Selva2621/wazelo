@@ -58,6 +58,18 @@ export class PlatformSettingsService {
     }
   }
 
+  /** The super admin's AI key, decrypted; null when none is stored or it can't be decrypted. Never log. */
+  async getAiApiKey(): Promise<string | null> {
+    const { ai } = await this.get();
+    if (!ai.apiKeyEncrypted) return null;
+    try {
+      return this.encryption.decrypt(ai.apiKeyEncrypted);
+    } catch {
+      this.logger.error('Stored AI API key could not be decrypted; falling back to AI_API_KEY');
+      return null;
+    }
+  }
+
   encryptSecret(plain: string): string {
     return this.encryption.encrypt(plain);
   }

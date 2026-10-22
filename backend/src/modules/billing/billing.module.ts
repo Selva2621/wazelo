@@ -11,6 +11,17 @@ import { EntitlementOverrideRepository } from './infrastructure/repositories/ent
 import { KillSwitchRepository } from './infrastructure/repositories/kill-switch.repository';
 import { CreditRepository } from './infrastructure/repositories/credit.repository';
 import { CouponRepository } from './infrastructure/repositories/coupon.repository';
+import { AiCreditRepository } from './infrastructure/repositories/ai-credit.repository';
+import { PlatformSettingsModule } from '@/modules/platform-settings/platform-settings.module';
+import { AiCreditsService } from './domain/services/ai-credits.service';
+import {
+  CreateAiCreditOrderUseCase,
+  FulfillAiCreditOrderUseCase,
+  GetAiCreditsUseCase,
+  ListAiCreditHistoryUseCase,
+} from './application/use-cases/ai-credits.use-cases';
+import { AiCreditGuard, AiCreditChargeInterceptor } from './interfaces/guards/ai-credit.guard';
+import { AiCreditsController } from './interfaces/controllers/ai-credits.controller';
 
 // Domain services
 import { UsageTrackingService } from './domain/services/usage-tracking.service';
@@ -47,9 +58,19 @@ import { StripeWebhookController } from './interfaces/controllers/stripe-webhook
 import { RazorpayWebhookController } from './interfaces/controllers/razorpay-webhook.controller';
 
 @Module({
-  imports: [AuditModule, ConfigModule],
-  controllers: [BillingController, StripeWebhookController, RazorpayWebhookController],
+  imports: [AuditModule, ConfigModule, PlatformSettingsModule],
+  controllers: [BillingController, StripeWebhookController, RazorpayWebhookController, AiCreditsController],
   providers: [
+    // AI credits (plan allowance + purchased packs)
+    AiCreditRepository,
+    AiCreditsService,
+    AiCreditGuard,
+    AiCreditChargeInterceptor,
+    GetAiCreditsUseCase,
+    ListAiCreditHistoryUseCase,
+    CreateAiCreditOrderUseCase,
+    FulfillAiCreditOrderUseCase,
+
     // Repositories
     PlanRepository,
     SubscriptionRepository,
@@ -96,6 +117,11 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
   exports: [
     // Export for use in other modules (guards, workers)
     UsageTrackingService,
+    // AI credit metering (@AiCredits routes, chatbot, event handlers) + packs (super-admin)
+    AiCreditsService,
+    AiCreditRepository,
+    AiCreditGuard,
+    AiCreditChargeInterceptor,
     // Super admin per-org overrides (written only by the super-admin module)
     EntitlementOverrideService,
     EntitlementOverrideRepository,

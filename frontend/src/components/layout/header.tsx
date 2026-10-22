@@ -16,7 +16,29 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useLogout } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-billing";
+import { useAiCredits } from "@/hooks/use-ai-credits";
+import type { AiCreditWallet } from "@/lib/api/ai-credits";
 import type { SubscriptionStatus } from "@/lib/types/billing";
+
+/** Header pill: credits left in total (plan + bought), coloured by how close to empty. */
+function aiCreditsPill(wallet: AiCreditWallet): { value: string; title: string; color: string } {
+  const { plan, purchased, available } = wallet;
+  const planText = plan.unlimited ? "Plan: unlimited" : `Plan: ${plan.used.toLocaleString("en-IN")} / ${plan.limit.toLocaleString("en-IN")} used`;
+  const title = `${planText} · Extra: ${purchased.toLocaleString("en-IN")}`;
+  if (available === null) {
+    return { value: "Unlimited", title, color: "bg-success-container text-success border-success/20" };
+  }
+  const planLow = !plan.unlimited && plan.limit > 0 && plan.used / plan.limit >= 0.8;
+  const color =
+    available === 0
+      ? "bg-error-container text-error border-error/20"
+      : planLow && purchased === 0
+        ? "bg-warning-container text-warning border-warning/20"
+        : (plan.remaining ?? 0) === 0
+          ? "bg-warning-container text-warning border-warning/20"
+          : "bg-success-container text-success border-success/20";
+  return { value: available.toLocaleString("en-IN"), title, color };
+}
 
 const statusBadgeStyles: Record<SubscriptionStatus, string> = {
   ACTIVE:       "bg-success-container text-success",
@@ -49,17 +71,11 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { data: billingData } = useSubscription({ enabled: isAuthenticated });
-  const aiCredits = billingData?.usage?.aiCredits;
   const subscription = billingData?.subscription;
-
-  const aiPillColor =
-    !aiCredits
-      ? null
-      : aiCredits.percentUsed >= 100
-      ? "bg-error-container text-error border-error/20"
-      : aiCredits.percentUsed >= 80
-      ? "bg-warning-container text-warning border-warning/20"
-      : "bg-success-container text-success border-success/20";
+  // Plan credits + bought credits — the plan counter alone ignores purchased packs
+  const { data: aiData } = useAiCredits({ enabled: isAuthenticated });
+  const wallet = aiData?.wallet;
+  const aiPill = wallet ? aiCreditsPill(wallet) : null;
 
   // Global ⌘K shortcut
   useEffect(() => {
@@ -141,18 +157,19 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
 
         {/* Right actions */}
         <div className="flex shrink-0 items-center gap-2">
-          {aiPillColor && aiCredits && (
+          {aiPill && (
             <Link
-              href="/settings/billing"
+              href="/settings/ai-credits"
               className={cn(
                 "hidden h-10 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-opacity hover:opacity-80 sm:flex",
-                aiPillColor,
+                aiPill.color,
               )}
-              title={`${aiCredits.current} of ${aiCredits.limit} AI credits used`}
+              title={aiPill.title}
+              aria-label={`${aiPill.value} AI credits left. ${aiPill.title}`}
             >
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
               <span className="tabular-nums">
-                {aiCredits.current} / {aiCredits.limit}
+                {aiPill.value}
                 <span className="ml-1 hidden xl:inline">AI credits</span>
               </span>
             </Link>

@@ -12,6 +12,7 @@ import { IncomingMessageWorker } from './messaging/incoming-message.worker';
 import { MessageRecoveryWorker } from './messaging/message-recovery.worker';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
+import { ContactsModule } from '@/modules/contacts/contacts.module';
 import { AuditModule } from '@/modules/audit/audit.module';
 import { CampaignsModule } from '@/modules/campaigns/campaigns.module';
 import { AutomationModule } from '@/modules/automation/automation.module';
@@ -68,6 +69,8 @@ import { ShopifyWebhookWorker } from './shopify/shopify-webhook.worker';
 import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
+import { CrawlWebsiteWorker } from './knowledge/crawl-website.worker';
+import { KnowledgeBaseModule } from '@/modules/knowledge-base/knowledge-base.module';
 import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
@@ -81,6 +84,10 @@ import { DealsModule } from '@/modules/deals/deals.module';
   imports: [
     WhatsAppModule,
     MessagesModule,
+    // IncomingMessageWorker resolves the sender's contact before emitting the event
+    ContactsModule,
+    // CrawlWebsiteWorker reads org websites into the knowledge base
+    KnowledgeBaseModule,
     AuditModule,
     CampaignsModule,
     AutomationModule,
@@ -156,6 +163,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     ShopifyWebhookWorker,
     // Lead Scraper workers
     LeadScraperWorker,
+    CrawlWebsiteWorker,
     ScrapeWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
