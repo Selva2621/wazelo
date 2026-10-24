@@ -520,6 +520,7 @@ model Organization {
   csatSurveys              CsatSurvey[]
   pipelines                Pipeline[]
   deals                    Deal[]
+  proposals                Proposal[]
   aiConversationSummaries  AiConversationSummary[]
   chatbotFlows             ChatbotFlow[]
   chatbotSessions          ChatbotSession[]
@@ -1067,6 +1068,7 @@ model Contact {
   notes              ContactNote[]
   campaignRecipients CampaignRecipient[]
   deals              Deal[]
+  proposals          Proposal[]
   scoreHistory       ContactScoreHistory[]
   sequenceRecipients SequenceRecipient[]
   consentRecords     ConsentRecord[]
@@ -2011,6 +2013,8 @@ enum NotificationType {
   TICKET_RESOLVED
   DEAL_FOLLOW_UP_DUE
   DEAL_SCOPE_RESPONSE
+  PROPOSAL_VIEWED
+  PROPOSAL_RESPONSE
   WHATSAPP_SESSION_UNSTABLE
   WHATSAPP_PHONE_INACTIVE
 }
@@ -3048,6 +3052,7 @@ model Deal {
   productId     String?       @map("product_id") @db.Uuid
   assignedTo    User?         @relation("DealAssignee", fields: [assignedToId], references: [id])
   product       Product?      @relation(fields: [productId], references: [id])
+  proposals     Proposal[]
 
   @@index([orgId])
   @@index([orgId, pipelineId])
@@ -3056,6 +3061,65 @@ model Deal {
   @@index([orgId, status])
   @@index([orgId, nextFollowUpAt])
   @@map("deals")
+}
+
+// ─────────────────────────────────────────────
+// PROPOSALS
+// ─────────────────────────────────────────────
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  CHANGES_REQUESTED
+}
+
+// A quote sent to a client: opened from a public link (publicToken), where the
+// client accepts or asks for changes. Expiry is read from validUntil, not stored.
+model Proposal {
+  id           String         @id @default(uuid()) @db.Uuid
+  orgId        String         @map("org_id") @db.Uuid
+  // Per-org running number, shown as P-0001
+  number       Int
+  contactId    String         @map("contact_id") @db.Uuid
+  dealId       String?        @map("deal_id") @db.Uuid
+  title        String         @db.VarChar(300)
+  intro        String?        @db.Text
+  // string[]: what's included
+  scope        Json           @default("[]") @db.JsonB
+  // [{ name, description?, quantity, unitPrice }]
+  items        Json           @default("[]") @db.JsonB
+  taxPercent   Decimal        @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  discount     Decimal        @default(0) @db.Decimal(15, 2)
+  // Kept in sync with items/tax/discount on every save
+  subtotal     Decimal        @default(0) @db.Decimal(15, 2)
+  total        Decimal        @default(0) @db.Decimal(15, 2)
+  currency     String         @db.VarChar(3)
+  terms        String?        @db.Text
+  validUntil   DateTime?      @map("valid_until")
+  status       ProposalStatus @default(DRAFT)
+  publicToken  String         @unique @map("public_token") @db.VarChar(64)
+  sentAt       DateTime?      @map("sent_at")
+  viewedAt     DateTime?      @map("viewed_at")
+  respondedAt  DateTime?      @map("responded_at")
+  // Client's note when asking for changes; name typed when accepting
+  responseNote String?        @map("response_note") @db.Text
+  acceptedBy   String?        @map("accepted_by") @db.VarChar(200)
+  createdById  String         @map("created_by_id") @db.Uuid
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  deletedAt    DateTime?      @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  contact      Contact      @relation(fields: [contactId], references: [id])
+  deal         Deal?        @relation(fields: [dealId], references: [id])
+
+  @@unique([orgId, number])
+  @@index([orgId, status])
+  @@index([orgId, contactId])
+  @@index([dealId])
+  @@map("proposals")
 }
 
 // ─────────────────────────────────────────────

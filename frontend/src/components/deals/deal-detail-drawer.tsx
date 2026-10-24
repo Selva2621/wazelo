@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/modal";
 import { useUpdateDeal, useDeleteDeal } from "@/hooks/use-deals";
 import type { Deal, PipelineStage } from "@/lib/types/deals";
+import { DealProposals } from "@/components/proposals/deal-proposals";
 
 interface DealDetailDrawerProps {
   deal: Deal;
@@ -102,6 +103,8 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
               <p className="text-body-lg font-semibold text-on-surface">{deal.stage.name}</p>
             </div>
           </div>
+
+          <DealProposals dealId={deal.id} contactId={deal.contactId} open={deal.status === "OPEN"} />
 
           {/* Editable fields */}
           <div className="space-y-1.5">

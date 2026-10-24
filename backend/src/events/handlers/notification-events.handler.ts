@@ -4,6 +4,7 @@ import { EVENT_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
 import { NotificationDispatchService } from '@/modules/notifications/domain/services/notification-dispatch.service';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
 import { WhatsAppLinkTokenService } from '@/modules/whatsapp/application/services/whatsapp-link-token.service';
+import type { ProposalEvent } from '@/modules/proposals/application/use-cases/respond-proposal.use-case';
 import {
   WhatsAppMessageReceivedEvent,
   ContactAssignedEvent,
@@ -273,6 +274,44 @@ export class NotificationEventsHandler {
       );
     } catch (error) {
       this.logger.error(`Failed to dispatch DEAL_SCOPE_RESPONSE notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.PROPOSAL_VIEWED)
+  async handleProposalViewed(event: ProposalEvent): Promise<void> {
+    try {
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        [event.userId],
+        'PROPOSAL_VIEWED',
+        'NORMAL',
+        `${event.contactName} opened your proposal`,
+        `${event.number} · ${event.title}`,
+        { proposalId: event.proposalId, contactId: event.contactId, dealId: event.dealId },
+        `proposal-viewed:${event.proposalId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch PROPOSAL_VIEWED notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.PROPOSAL_RESPONDED)
+  async handleProposalResponded(event: ProposalEvent & { accepted: boolean; note: string | null }): Promise<void> {
+    try {
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        [event.userId],
+        'PROPOSAL_RESPONSE',
+        'HIGH',
+        event.accepted
+          ? `${event.contactName} accepted your proposal`
+          : `${event.contactName} asked for changes`,
+        event.accepted ? `${event.number} · ${event.title}` : event.note || `${event.number} · ${event.title}`,
+        { proposalId: event.proposalId, contactId: event.contactId, dealId: event.dealId, accepted: event.accepted },
+        `proposal-response:${event.proposalId}:${Date.now()}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch PROPOSAL_RESPONSE notification: ${error}`);
     }
   }
 

@@ -129,6 +129,8 @@ export class NotificationEmailWorker implements OnModuleInit {
       USAGE_LIMIT_REACHED:          { label: 'Upgrade Plan',       url: `${this.frontendUrl}/settings/billing` },
       DEAL_FOLLOW_UP_DUE:           { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
       DEAL_SCOPE_RESPONSE:          { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
+      PROPOSAL_VIEWED:              { label: 'View Proposal',      url: `${this.frontendUrl}/proposals/${data?.proposalId ?? ''}` },
+      PROPOSAL_RESPONSE:            { label: 'View Proposal',      url: `${this.frontendUrl}/proposals/${data?.proposalId ?? ''}` },
     };
 
     // Session owner: reconnect straight from the phone, no login

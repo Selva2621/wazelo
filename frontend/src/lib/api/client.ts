@@ -112,7 +112,7 @@ const NO_REFRESH_PATHS = [
 
 // Response interceptor: unwrap envelope + handle 401 refresh
 /** Routes that spend AI credits (see backend @AiCredits) */
-const AI_CREDIT_ROUTE = /\/(ai\/|campaigns\/generate-copy|automation\/rules\/generate|templates\/generate|pipelines\/[^/]+\/deals\/[^/]+\/(score|scope\/draft))/;
+const AI_CREDIT_ROUTE = /\/(ai\/|campaigns\/generate-copy|automation\/rules\/generate|templates\/generate|pipelines\/[^/]+\/deals\/[^/]+\/(score|scope\/draft)|proposals\/[^/]+\/(draft|improve)|kb\/faqs\/generate)/;
 
 /** Fired after an AI call succeeds, so credit balances on screen refresh. */
 export const AI_CREDITS_USED_EVENT = "wazelo:ai-credits-used";

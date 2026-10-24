@@ -378,7 +378,7 @@ const COST_GROUPS: { title: string; actions: string[] }[] = [
   { title: "Automation", actions: ["chatbot_reply", "widget_reply", "purchase_intent", "automation_rule", "org_memory"] },
   {
     title: "Sales & content",
-    actions: ["deal_score", "deal_scope", "campaign_copy", "template_generate", "insights"],
+    actions: ["deal_score", "deal_scope", "proposal_draft", "proposal_improve", "campaign_copy", "template_generate", "insights"],
   },
   { title: "Knowledge", actions: ["kb_build", "faq_generate", "kb_tags"] },
 ];

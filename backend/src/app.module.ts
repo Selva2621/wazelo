@@ -56,6 +56,7 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { SearchModule } from './modules/search/search.module';
 import { CsatModule } from './modules/csat/csat.module';
 import { DealsModule } from './modules/deals/deals.module';
+import { ProposalsModule } from './modules/proposals/proposals.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
@@ -149,6 +150,7 @@ import { EventsModule } from './events/events.module';
     SearchModule,
     CsatModule,
     DealsModule,
+    ProposalsModule,
     ProductsModule,
     AiModule,
     ChatbotModule,

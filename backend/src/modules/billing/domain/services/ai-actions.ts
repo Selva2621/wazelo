@@ -17,6 +17,8 @@ export const AI_ACTIONS = {
   purchase_intent: { label: 'Purchase intent detection', defaultCost: 1 },
   deal_score: { label: 'Deal scoring', defaultCost: 1 },
   deal_scope: { label: 'Deal scope draft', defaultCost: 1 },
+  proposal_draft: { label: 'Proposal draft', defaultCost: 2 },
+  proposal_improve: { label: 'Proposal section rewrite', defaultCost: 1 },
   campaign_copy: { label: 'Campaign copy', defaultCost: 1 },
   automation_rule: { label: 'Automation rule from prompt', defaultCost: 1 },
   template_generate: { label: 'Message template draft', defaultCost: 1 },

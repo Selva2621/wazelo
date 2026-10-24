@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaileysConnectionManager } from './baileys-connection-manager.service';
 import { interactiveToText } from './interactive-to-text';
+import { documentMimeType } from './document-mime';
 import {
   resolveTestRecipient,
   testRecipientOrThrow,
@@ -68,7 +69,8 @@ export class WhatsAppApiService {
       case 'DOCUMENT':
         content = {
           document: { url: mediaUrl },
-          mimetype: 'application/octet-stream',
+          // A real type lets WhatsApp show a preview (PDFs) instead of a generic file
+          mimetype: documentMimeType(caption || mediaUrl),
           fileName: caption || 'document',
         };
         break;

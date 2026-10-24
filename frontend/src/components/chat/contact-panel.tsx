@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck, FileText } from "lucide-react";
-import { AnimatePresence } from "motion/react";
-import { SendProposalModal } from "./send-proposal-modal";
+import { X, Phone, Mail, Tag, StickyNote, UserCircle, ChevronDown, Check, UserCheck } from "lucide-react";
+import { NewProposalButton } from "@/components/proposals/new-proposal-button";
 import { ContactDealCard } from "@/components/deals/contact-deal-card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +77,6 @@ export function ContactPanel({
 }: ContactPanelProps) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [showProposal, setShowProposal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const assignDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -273,16 +271,7 @@ export function ContactPanel({
               Quick Actions
             </span>
             <div className="mt-1.5 flex flex-col gap-2">
-              <button
-                onClick={() => setShowProposal(true)}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors text-body font-medium",
-                  "border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/50",
-                )}
-              >
-                <FileText className="h-4 w-4 text-on-surface-variant shrink-0" />
-                Send Proposal
-              </button>
+              <NewProposalButton contactId={contact.id} />
             </div>
           </div>
         )}
@@ -333,17 +322,6 @@ export function ContactPanel({
         )}
       </div>
 
-      {/* Send Proposal Modal */}
-      <AnimatePresence>
-        {showProposal && conversationId && (
-          <SendProposalModal
-            conversationId={conversationId}
-            contactPhone={contact.phone}
-            contactName={contact.name}
-            onClose={() => setShowProposal(false)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
