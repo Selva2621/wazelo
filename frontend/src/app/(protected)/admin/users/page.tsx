@@ -44,6 +44,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
@@ -171,8 +172,12 @@ export default function AdminUsersPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Phones/tablets: the iOS nav bar carries the title and the + button */}
+      <MobilePageActions
+        primary={{ label: "Create user", onClick: () => setShowCreate(true) }}
+      />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface">Users</h1>
           <p className="text-body text-on-surface-variant mt-0.5">
@@ -204,7 +209,7 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 First Name
@@ -244,7 +249,7 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 Password
@@ -300,11 +305,11 @@ export default function AdminUsersPage() {
             {pendingInvites.map((inv) => (
               <div
                 key={inv.id}
-                className="flex items-center justify-between px-4 py-2.5"
+                className="flex items-center justify-between px-4 py-2.5 max-lg:gap-3 max-lg:py-3"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-wrap max-lg:gap-x-2 max-lg:gap-y-1">
                   <Mail className="h-4 w-4 text-on-surface-variant/50" />
-                  <span className="text-body text-on-surface">
+                  <span className="text-body text-on-surface max-lg:min-w-0 max-lg:break-all">
                     {inv.email}
                   </span>
                   <Badge
@@ -325,7 +330,7 @@ export default function AdminUsersPage() {
                 </div>
                 <button
                   onClick={() => revokeInvitation.mutate(inv.id)}
-                  className="text-label text-error hover:text-error/80 transition-colors"
+                  className="text-label text-error hover:text-error/80 transition-colors max-lg:min-h-11 max-lg:shrink-0 max-lg:px-1"
                 >
                   Revoke
                 </button>
@@ -473,6 +478,8 @@ export default function AdminUsersPage() {
                             !session || session.status !== "CONNECTED"
                           }
                           title="View Inbox"
+                          aria-label="View Inbox"
+                          className="max-lg:size-10"
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                         </Button>
@@ -483,14 +490,14 @@ export default function AdminUsersPage() {
                             {user.status === "ACTIVE" ? (
                               <IconButton size="xs"
                                 onClick={() => disableUser.mutate(user.id)}
-                                className="hover:text-warning hover:bg-warning/10"
+                                className="hover:text-warning hover:bg-warning/10 max-lg:size-10"
                                 title="Disable user" aria-label="Disable user">
                                 <Ban className="h-3.5 w-3.5" />
                               </IconButton>
                             ) : user.status === "SUSPENDED" ? (
                               <IconButton size="xs"
                                 onClick={() => enableUser.mutate(user.id)}
-                                className="hover:text-success hover:bg-success/10"
+                                className="hover:text-success hover:bg-success/10 max-lg:size-10"
                                 title="Enable user" aria-label="Enable user">
                                 <CheckCircle className="h-3.5 w-3.5" />
                               </IconButton>
@@ -507,7 +514,7 @@ export default function AdminUsersPage() {
                                   deleteUser.mutate(user.id);
                                 }
                               }}
-                             
+                              className="max-lg:size-10"
                               title="Delete user" aria-label="Delete user">
                               <Trash2 className="h-3.5 w-3.5" />
                             </IconButton>

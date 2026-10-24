@@ -59,7 +59,7 @@ export function CampaignRecipientsTable({
   return (
     <div>
       {/* Header */}
-      <div className="grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="max-lg:hidden grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
         <span>Contact</span>
         <span>Phone</span>
         <span>Status</span>
@@ -72,16 +72,16 @@ export function CampaignRecipientsTable({
         return (
           <div
             key={r.id}
-            className="grid grid-cols-[1fr_120px_90px_100px] gap-2 items-center px-4 py-2.5 border-b border-outline-variant/10"
+            className="grid grid-cols-[1fr_120px_90px_100px] gap-2 items-center px-4 py-2.5 border-b border-outline-variant/10 max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-y-0.5 max-lg:px-0"
           >
             <span className="text-body text-on-surface truncate">
               {r.contact?.name || "Unknown"}
             </span>
-            <span className="text-label text-on-surface-variant/60 tabular-nums">
+            <span className="text-label text-on-surface-variant/60 tabular-nums max-lg:order-2">
               {r.contactPhone}
             </span>
-            <Badge variant={cfg.variant}>{cfg.label}</Badge>
-            <span className="text-caption text-on-surface-variant/60">
+            <Badge variant={cfg.variant} className="max-lg:order-1 max-lg:justify-self-end">{cfg.label}</Badge>
+            <span className="text-caption text-on-surface-variant/60 max-lg:order-3 max-lg:text-right">
               {r.processedAt
                 ? new Date(r.processedAt).toLocaleTimeString()
                 : "—"}
@@ -92,7 +92,7 @@ export function CampaignRecipientsTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3 max-lg:px-0">
           <p className="text-label text-on-surface-variant/60">
             {skip + 1}–{Math.min(skip + take, total)} of {total}
           </p>

@@ -62,7 +62,7 @@ export function CampaignAnalyticsCards({
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2">
       {cards.map((card) => (
         <div
           key={card.label}

@@ -58,7 +58,9 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // sw.js: browsers refuse a redirected service worker script
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api|sw.js).*)",
+    // sw.js: browsers refuse a redirected service worker script.
+    // PWA files (manifest, icons, offline page) must load without a session so the
+    // app can be installed from the login screen.
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api|sw.js|manifest.webmanifest|icons|offline.html).*)",
   ],
 };

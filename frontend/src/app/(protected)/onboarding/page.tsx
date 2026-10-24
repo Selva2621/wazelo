@@ -138,7 +138,7 @@ function TrialActiveStep({
 
       <Button size="lg"
         onClick={onContinue}
-       
+        className="max-lg:h-12 max-lg:w-full"
       >
         Go to Dashboard
         <ArrowRight className="w-4 h-4" />
@@ -197,7 +197,7 @@ function WelcomeStep({
 
       <Button size="lg"
         onClick={onNext}
-       
+        className="max-lg:h-12 max-lg:w-full"
       >
         Choose a Plan
         <ChevronRight className="w-4 h-4" />
@@ -336,14 +336,14 @@ function ChoosePlanStep({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors max-lg:min-h-12 max-lg:px-3"
         >
           Back
         </button>
         <Button size="lg"
           onClick={onNext}
           disabled={!selectedId}
-          className="flex-1"
+          className="flex-1 max-lg:h-12"
         >
           Continue
           <ChevronRight className="w-4 h-4" />
@@ -494,14 +494,14 @@ function ConfirmStep({
         <button
           onClick={onBack}
           disabled={loading}
-          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors max-lg:min-h-12 max-lg:px-3"
         >
           Back
         </button>
         <Button size="lg"
           onClick={() => onConfirm(coupon)}
           disabled={loading || validate.isPending}
-          className="flex-1"
+          className="flex-1 max-lg:h-12"
         >
           {loading ? (
             <>
@@ -555,12 +555,12 @@ export default function OnboardingPage() {
   // If on active trial → show trial welcome screen
   if (!subLoading && isOnTrial) {
     return (
-      <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
+      <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-[calc(24px+var(--safe-bottom))] max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
         <div className="w-full max-w-xl">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 max-lg:mb-5">
             <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
           </div>
-          <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
+          <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8 max-lg:p-5">
             <TrialActiveStep
               firstName={user?.firstName ?? ""}
               daysLeft={trialDaysLeft}
@@ -644,16 +644,16 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
+    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-[calc(24px+var(--safe-bottom))] max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
       <div className="w-full max-w-xl">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 max-lg:mb-5">
           <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
         </div>
 
         <Steps current={step} labels={["Welcome", "Choose Plan", "Confirm"]} />
 
-        <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
+        <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8 max-lg:p-5">
           {(subLoading || plansLoading) ? (
             <div className="flex items-center justify-center h-40">
               <Spinner />

@@ -733,3 +733,434 @@ html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .
   margin-right: 0.625rem;
   border-radius: 0.75rem;
 }
+
+/* ═══ Mobile / installed app (iOS style) ═══
+   Everything below applies under 1024px only, so the desktop layout is untouched.
+   viewport-fit=cover lets the page run under the notch and home bar; these safe-area
+   values are 0 on devices without them. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (max-width: 1023.98px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Native feel: no grey tap flash, no 300ms double-tap wait */
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :is(a, button, [role="button"], label, summary, input, select, textarea) {
+    touch-action: manipulation;
+  }
+  /* iOS zooms into any field under 16px; keep fields at 16px on touch screens */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) {
+    font-size: max(16px, 1em);
+  }
+
+  /* ─── iOS shell geometry ───
+     Nav bar (44) under the status bar, optional large title (52), tab bar (49) above the
+     home indicator. --header-height is what ~35 full-height pages subtract from the
+     viewport, so redefining it here makes all of them fit between the bars. */
+  :root {
+    --mobile-nav-h: 44px;
+    --mobile-large-title-h: 0px;
+    --mobile-tabbar-h: 49px;
+    --header-height: calc(
+      var(--mobile-nav-h) + var(--safe-top) + var(--mobile-large-title-h) + var(--mobile-tabbar-h) + var(--safe-bottom)
+    );
+  }
+  html[data-large-title] {
+    --mobile-large-title-h: 52px;
+  }
+  html[data-tabbar-hidden] {
+    --mobile-tabbar-h: 0px;
+  }
+
+  /* The desktop header stays mounted (it carries the live notification listener) but the
+     iOS nav bar replaces it on screen */
+  .app-header {
+    display: none;
+  }
+  .app-main {
+    padding-bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom));
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
+  .ios-page {
+    padding-top: 4px;
+  }
+
+  /* iOS margins: desktop pages use 24–32px gutters; phones use 16px */
+  .app-main :is(.p-6, .p-8) {
+    padding: 16px;
+  }
+  .app-main :is(.px-6, .px-8) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .app-main :is(.py-6, .py-8) {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .app-main :is(.pt-6, .pt-8) {
+    padding-top: 16px;
+  }
+
+  /* Rows of tabs/pills scroll sideways instead of overflowing the screen */
+  .mobile-scroll-x {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll-x > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Every Modal opens as a bottom sheet; every side Drawer as a tall sheet */
+  .ios-modal-sheet {
+    width: 100%;
+    max-width: 680px;
+    margin-inline: auto;
+    max-height: calc(100dvh - var(--safe-top) - 12px);
+    border: 0;
+    border-radius: 14px 14px 0 0;
+  }
+  .ios-drawer-sheet {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - var(--safe-top) - 10px);
+    max-height: none;
+    border: 0;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  /* ─── Tables as iOS cards ───
+     MobileTableLabels copies each column header onto its cells (data-label) and marks
+     the table; each row then reads as a card of "Label ........ value" lines. */
+  table[data-mobile-cards] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  table[data-mobile-cards] thead {
+    display: none;
+  }
+  table[data-mobile-cards] tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 12px 12px;
+  }
+  /* Fields with nothing in them are left out of the card */
+  table[data-mobile-cards] td[data-empty] {
+    display: none;
+  }
+  table[data-mobile-cards] tr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 0.5px solid var(--ios-hairline);
+    border-radius: 12px;
+    background-color: var(--ios-row-bg);
+  }
+  table[data-mobile-cards] tr:active {
+    background-color: var(--surface-container-low);
+  }
+  table[data-mobile-cards] td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+    white-space: normal;
+    word-break: break-word;
+  }
+  table[data-mobile-cards] td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+    text-align: left;
+  }
+  /* The row's main cell reads as its title */
+  table[data-mobile-cards] td[data-primary] {
+    /* Stack several pieces (name, subtitle, badges) instead of squeezing them in a row */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    justify-content: flex-start;
+    padding: 0 28px 6px 0;
+    text-align: left;
+    font-weight: 600;
+  }
+  table[data-mobile-cards] td[data-primary]::before,
+  table[data-mobile-cards] td[data-label=""]::before {
+    display: none;
+  }
+  /* Selection checkbox: top-right corner of the card */
+  table[data-mobile-cards] td[data-select] {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 0;
+  }
+  table[data-mobile-cards] td[data-select]::before {
+    display: none;
+  }
+  /* Unlabelled cell with buttons (row actions): a footer row */
+  table[data-mobile-cards] td[data-actions] {
+    justify-content: flex-end;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 0.5px solid var(--ios-hairline);
+  }
+  /* Full-width rows (empty states, loaders) */
+  table[data-mobile-cards] td[colspan] {
+    display: block;
+    text-align: center;
+  }
+  table[data-mobile-cards] td[colspan]::before {
+    display: none;
+  }
+  table[data-mobile-cards] tr:has(> td[colspan]:only-child) {
+    border: 0;
+    background: transparent;
+  }
+
+  /* Floating iOS card (install prompt and similar) */
+  .ios-floating-card {
+    padding: 14px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--surface-container-lowest) 86%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid color-mix(in srgb, var(--on-surface) 10%, transparent);
+    box-shadow: 0 18px 48px -12px var(--shadow-color);
+  }
+}
+
+/* ─── iOS components ───
+   New classes used only by the mobile shell and components/ios/*. Unscoped so pages that
+   use them (Notifications, More) also render cleanly on desktop. */
+:root {
+  --ios-row-bg: var(--surface-container-lowest);
+  --ios-hairline: color-mix(in srgb, var(--on-surface) 14%, transparent);
+  --ios-bar-bg: color-mix(in srgb, var(--surface-container-lowest) 80%, transparent);
+}
+
+/* Nav bar: clear at the top of the page, frosted with a hairline once content scrolls under */
+.ios-nav-bar {
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  border-bottom: 0.5px solid transparent;
+  background-color: var(--surface);
+  transition:
+    background-color 200ms var(--ease-standard),
+    border-color 200ms var(--ease-standard);
+}
+.ios-nav-bar[data-scrolled="true"] {
+  background-color: var(--ios-bar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom-color: var(--ios-hairline);
+}
+[data-theme="ember-glass"] .ios-nav-bar:not([data-scrolled="true"]) {
+  background-color: transparent;
+}
+.ios-large-title {
+  height: 52px;
+  padding: 0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
+}
+.ios-large-title h1 {
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--on-surface);
+}
+
+/* Tab bar */
+.ios-tab-bar {
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background-color: var(--ios-bar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 0.5px solid var(--ios-hairline);
+  transition: transform 260ms var(--ease-standard);
+}
+.ios-tab-bar[data-hidden="true"] {
+  transform: translateY(100%);
+}
+
+/* Inset grouped lists (Settings.app) */
+.ios-group {
+  margin: 0 16px 24px;
+}
+.ios-group-header {
+  padding: 0 16px 7px;
+  font-size: 13px;
+  line-height: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--on-surface-variant);
+}
+.ios-group-footer {
+  padding: 7px 16px 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--on-surface-variant);
+}
+.ios-group-body {
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: var(--ios-row-bg);
+}
+.ios-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding-left: 16px;
+  color: var(--on-surface);
+  background-color: var(--ios-row-bg);
+  transition: background-color 120ms var(--ease-standard);
+}
+.ios-row-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  align-self: stretch;
+  padding: 11px 16px 11px 0;
+  border-bottom: 0.5px solid var(--ios-hairline);
+}
+.ios-group-body > li:last-child .ios-row-main {
+  border-bottom: 0;
+}
+.ios-row-tappable {
+  cursor: pointer;
+}
+.ios-row-tappable:active {
+  background-color: var(--surface-container-high);
+}
+@media (hover: hover) {
+  .ios-row-tappable:hover {
+    background-color: var(--surface-container-low);
+  }
+}
+.ios-row-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 7px;
+  color: #fff;
+}
+.ios-row-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.ios-row-profile .ios-row-icon {
+  width: auto;
+  height: auto;
+  border-radius: 9999px;
+}
+.ios-row-profile .ios-row-main {
+  padding-block: 12px;
+}
+
+/* Sheets and action sheets */
+.ios-sheet {
+  border-radius: 14px 14px 0 0;
+  background-color: var(--surface);
+  box-shadow: 0 -10px 40px -12px var(--shadow-color);
+}
+.ios-action-group {
+  overflow: hidden;
+  border-radius: 14px;
+  background-color: color-mix(in srgb, var(--surface-container-lowest) 94%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.ios-action-button {
+  display: block;
+  width: 100%;
+  height: 57px;
+  font-size: 20px;
+  border-top: 0.5px solid var(--ios-hairline);
+}
+.ios-action-group > :first-child,
+button.ios-action-group {
+  border-top: 0;
+}
+.ios-action-button:active {
+  background-color: var(--surface-container-high);
+}
+/* Glass theme's dialog styling must not paint the transparent action-sheet wrapper */
+[data-theme="ember-glass"] .ios-action-sheet[role="dialog"] {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Segmented control */
+.ios-segmented {
+  position: relative;
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background-color: color-mix(in srgb, var(--on-surface) 9%, transparent);
+}
+.ios-segmented-thumb {
+  border-radius: 7px;
+  background-color: var(--surface-container-lowest);
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 0.12),
+    0 3px 1px rgb(0 0 0 / 0.04);
+}
+html:not([data-theme="daylight"]) .ios-segmented-thumb {
+  background-color: var(--surface-container-highest);
+}
+
+/* Installed app only: no rubber-band pull of the whole page, no text callouts on controls */
+@media (max-width: 1023.98px) {
+  html[data-standalone] {
+    overscroll-behavior-y: none;
+  }
+  html[data-standalone] :is(button, a, [role="button"]) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

@@ -145,7 +145,7 @@ export default function TeamDetailPage({
   return (
     <div className="p-6 space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-body">
+      <nav className="flex items-center gap-1.5 text-body max-lg:hidden">
         <button
           onClick={() => router.push("/admin/teams")}
           className="text-on-surface-variant hover:text-on-surface transition-colors"
@@ -159,19 +159,19 @@ export default function TeamDetailPage({
       {/* Team info card */}
       <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
         {/* Card header */}
-        <div className="flex items-start justify-between px-6 py-5 bg-surface-container/30 border-b border-outline-variant/10">
-          <div className="flex items-center gap-4">
+        <div className="flex items-start justify-between px-6 py-5 bg-surface-container/30 border-b border-outline-variant/10 max-lg:flex-col max-lg:gap-3 max-lg:px-4 max-lg:py-4">
+          <div className="flex items-center gap-4 max-lg:w-full max-lg:min-w-0 max-lg:gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <Users className="h-6 w-6 text-primary" />
             </div>
-            <div>
+            <div className="max-lg:min-w-0 max-lg:flex-1">
               {isEditing ? (
                 <div className="space-y-1">
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => { setEditName(e.target.value); setEditError(""); }}
-                    className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body-lg font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 w-64"
+                    className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body-lg font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 w-64 max-lg:h-11 max-lg:w-full"
                     autoFocus
                   />
                   {editError && (
@@ -188,7 +188,7 @@ export default function TeamDetailPage({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:[&>button]:h-11 max-lg:[&>button]:flex-1">
             {isEditing ? (
               <>
                 <Button
@@ -213,14 +213,14 @@ export default function TeamDetailPage({
         </div>
 
         {/* Manager row */}
-        <div className="px-6 py-4 flex items-center gap-6 border-b border-outline-variant/10">
-          <div className="space-y-0.5 min-w-[120px]">
+        <div className="px-6 py-4 flex items-center gap-6 border-b border-outline-variant/10 max-lg:flex-wrap max-lg:gap-x-6 max-lg:gap-y-4 max-lg:px-4">
+          <div className="space-y-0.5 min-w-[120px] max-lg:basis-full">
             <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Manager</p>
             {isEditing ? (
               <select
                 value={editManagerId}
                 onChange={(e) => setEditManagerId(e.target.value)}
-                className="mt-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 max-lg:h-11 max-lg:w-full"
               >
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -283,11 +283,11 @@ export default function TeamDetailPage({
 
         {/* Add member inline form (edit mode only) */}
         {isEditing && addingMember && (
-          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 max-lg:flex-wrap max-lg:[&>button]:h-11 max-lg:[&>button]:flex-1">
             <select
               value={newMemberUserId}
               onChange={(e) => setNewMemberUserId(e.target.value)}
-              className="flex-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="max-lg:h-11 max-lg:basis-full flex-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Select user to add</option>
               {availableToAdd.map((u) => (

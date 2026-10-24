@@ -123,7 +123,7 @@ function PipelineColumn({
 
   return (
     <div
-      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors ${
+      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors max-lg:w-[calc(100vw-48px)] max-lg:snap-start ${
         isDragOver
           ? "border-primary/40 bg-primary/5"
           : "border-outline-variant/10 bg-surface-container/40"
@@ -213,7 +213,8 @@ export default function LeadPipelinePage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/10">
+      {/* The iOS nav bar shows the title on mobile */}
+      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/10 max-lg:hidden">
         <h1 className="text-title font-semibold text-on-surface">Lead Pipeline</h1>
         <p className="text-body-lg text-on-surface-variant mt-0.5">
           Scraped leads tracked through your sales stages. Drag cards to update status.
@@ -221,8 +222,9 @@ export default function LeadPipelinePage() {
       </div>
 
       {/* Kanban board */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-4 p-6 h-full min-h-0">
+      {/* Mobile: one column per screen, swipe sideways with snap */}
+      <div className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4">
+        <div className="flex gap-4 p-6 h-full min-h-0 max-lg:gap-3 max-lg:px-4 max-lg:py-3 max-lg:w-max">
           {COLUMNS.map((col) => (
             <PipelineColumn
               key={col.status}

@@ -13,6 +13,8 @@ import { PAGE_SIZE } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useHideTabBar } from "@/hooks/use-mobile-chrome";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -361,6 +363,8 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
   const { data: ticket, isLoading } = useTicket(ticketId);
   const reply = useReply(ticketId);
   const [body, setBody] = useState("");
+  // Mobile: full-screen ticket thread
+  useHideTabBar(true);
 
   const handleReply = () => {
     if (!body.trim()) return;
@@ -420,7 +424,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             {/* Original message */}
             <div className="flex justify-start">
-              <div className="max-w-[75%]">
+              <div className="max-w-[75%] max-lg:max-w-[88%]">
                 <div className="text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5">
                   <span className="font-medium text-on-surface">You</span>
                   <span>·</span>
@@ -448,7 +452,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
               const isSupport = !!r.superAdmin;
               return (
                 <div key={r.id} className={`flex ${isSupport ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%]`}>
+                  <div className={`max-w-[75%] max-lg:max-w-[88%]`}>
                     <div className={`text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5 ${isSupport ? "justify-end" : ""}`}>
                       <span className="font-medium text-on-surface">{isSupport ? "Support Team" : "You"}</span>
                       <span>·</span>
@@ -632,8 +636,9 @@ export default function SupportPage() {
 
   return (
     <div className="flex flex-col p-6 gap-5" style={{ height: "calc(100vh - var(--header-height))" }}>
+      <MobilePageActions primary={{ label: "New Ticket", onClick: () => setShowModal(true) }} />
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+      <div className="flex items-center justify-between flex-shrink-0 max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <LifeBuoy className="h-5 w-5 text-primary" /> Support

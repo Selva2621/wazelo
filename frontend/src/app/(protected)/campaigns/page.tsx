@@ -16,6 +16,7 @@ import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { CreateCampaignModal } from "@/components/campaigns/create-campaign-modal";
 import { useSubscription } from "@/hooks/use-billing";
 import { LoadError } from "@/components/ui/empty-state";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { CampaignStatus, ListCampaignsParams, MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import type { CreateCampaignFormData } from "@/lib/validations/campaigns";
 
@@ -193,7 +194,7 @@ export default function CampaignsPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Upgrade banner */}
       {!campaignsEnabled && (
-        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
+        <div className="shrink-0 mx-6 mt-4 max-lg:mx-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
           <Megaphone className="h-4 w-4 shrink-0 text-warning" />
           <span>
             <strong>Campaigns</strong> are not included in your current plan.{" "}
@@ -205,9 +206,12 @@ export default function CampaignsPage() {
         </div>
       )}
 
+      <MobilePageActions primary={{ label: "New Campaign", onClick: () => setShowCreate(true) }} />
+
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4 max-lg:px-4 max-lg:pt-2 max-lg:space-y-3">
+        {/* Title row: the iOS nav bar shows the title and "+" on mobile */}
+        <div className="flex items-center justify-between max-lg:hidden">
           <div className="flex items-center gap-3">
             <Megaphone className="h-5 w-5 text-on-surface-variant" />
             <h1 className="text-title font-semibold text-on-surface">Campaigns</h1>
@@ -222,10 +226,10 @@ export default function CampaignsPage() {
         </div>
 
         {/* ─── Filter bar (lead scraper style) ──────────────────────────── */}
-        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
+        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3 max-lg:p-3">
           {/* Top row: label + search + count + clear */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
+            <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant max-lg:hidden">
               <Filter className="w-3.5 h-3.5" />
               Filters
               {activeFilterCount > 0 && (
@@ -240,7 +244,7 @@ export default function CampaignsPage() {
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               placeholder="Search campaigns…"
-              className="flex-1 min-w-[180px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+              className="flex-1 min-w-[180px] max-lg:min-w-0 text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
             />
 
             <span className="text-label text-on-surface-variant ml-auto shrink-0">
@@ -257,8 +261,8 @@ export default function CampaignsPage() {
             )}
           </div>
 
-          {/* Filter chip row */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Filter chip row (one sideways-scrolling row on mobile) */}
+          <div className="flex items-center gap-2 flex-wrap mobile-scroll-x">
             <CampaignFilterSelect
               value={filterMessageType}
               onChange={(v) => { setFilterMessageType(v as MessageType | ""); setPage(0); }}

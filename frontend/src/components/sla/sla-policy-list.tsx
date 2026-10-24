@@ -49,7 +49,7 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
   return (
     <div className="rounded-xl border border-outline-variant/10 overflow-hidden divide-y divide-outline-variant/8">
       {/* Table header */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-5 py-2.5 bg-surface-container/50">
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-5 py-2.5 bg-surface-container/50 max-lg:hidden">
         {["Policy", "Metric", "Breach", "Warning", ""].map((h) => (
           <span key={h} className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-wide">{h}</span>
         ))}
@@ -63,11 +63,11 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
         return (
           <div
             key={p.id}
-            className={`grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3.5 bg-surface-container-lowest hover:bg-surface-container/30 transition-colors ${!p.isActive ? "opacity-50" : ""}`}
+            className={`grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3.5 bg-surface-container-lowest max-lg:grid-cols-3 max-lg:gap-x-3 max-lg:gap-y-2 max-lg:px-4 hover:bg-surface-container/30 transition-colors ${!p.isActive ? "opacity-50" : ""}`}
           >
             {/* Name + description */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 max-lg:col-span-2">
+              <div className="flex items-center gap-2 max-lg:flex-wrap max-lg:gap-x-2 max-lg:gap-y-1">
                 <span className="text-body font-medium text-on-surface truncate">{p.name}</span>
                 <span className={`shrink-0 text-caption font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${priority.bg} ${priority.text}`}>
                   {p.priority}
@@ -82,13 +82,15 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
             </div>
 
             {/* Metric */}
-            <span className="text-label text-on-surface-variant">
+            <span className="text-label text-on-surface-variant max-lg:order-last">
+              <span className="block text-caption text-on-surface-variant/50 uppercase lg:hidden">Metric</span>
               {METRIC_LABEL[p.metricType] ?? p.metricType}
               {p.businessHoursOnly && <span className="block text-caption text-on-surface-variant/40">Biz hours</span>}
             </span>
 
             {/* Breach */}
-            <div>
+            <div className="max-lg:order-last">
+              <span className="block text-caption text-on-surface-variant/50 uppercase lg:hidden">Breach</span>
               <span className="text-body font-semibold text-error">{fmtMs(p.thresholdMs)}</span>
               {warningPct !== null && (
                 <div className="mt-1 h-1 w-16 rounded-full overflow-hidden bg-outline-variant/15 flex">
@@ -99,12 +101,13 @@ export function SlaPolicyList({ policies, onToggle, onEdit, onDelete, isUpdating
             </div>
 
             {/* Warning */}
-            <span className="text-body font-semibold text-warning">
+            <span className="text-body font-semibold text-warning max-lg:order-last">
+              <span className="block text-caption font-normal text-on-surface-variant/50 uppercase lg:hidden">Warning</span>
               {p.warningThresholdMs ? fmtMs(p.warningThresholdMs) : <span className="text-on-surface-variant/30 font-normal">—</span>}
             </span>
 
             {/* Actions */}
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5 max-lg:justify-end">
               <button
                 onClick={() => onToggle(p.id, !p.isActive)}
                 disabled={isUpdating}

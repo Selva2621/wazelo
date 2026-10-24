@@ -47,8 +47,8 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
       <div className="w-full max-w-3xl mx-auto p-6 space-y-4">
         {/* Header */}
         <div>
-          <h2 className="text-title font-semibold text-on-surface">Inbox</h2>
-          <p className="text-body text-on-surface-variant mt-1">
+          <h2 className="text-title font-semibold text-on-surface max-lg:hidden">Inbox</h2>
+          <p className="text-body text-on-surface-variant mt-1 max-lg:mt-0">
             {role === "ADMIN"
               ? "Select a user or team to view their conversations"
               : "Select a team member to view their conversations"}

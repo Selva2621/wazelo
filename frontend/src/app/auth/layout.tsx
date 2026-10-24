@@ -125,13 +125,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </aside>
 
       {/* Form side: plain surface, no card */}
-      <div className="flex min-h-dvh flex-col px-5 py-5 sm:px-8">
+      {/* Phones/tablets: clear the notch and home indicator; 48px fields and buttons */}
+      <div className="flex min-h-dvh flex-col px-5 py-5 sm:px-8 max-lg:pt-[calc(20px+var(--safe-top))] max-lg:pb-[calc(20px+var(--safe-bottom))] max-sm:pl-[max(20px,var(--safe-left))] max-sm:pr-[max(20px,var(--safe-right))]">
         <header className="flex items-center justify-between gap-4">
           <Logo className="lg:hidden" />
           <ThemeCycleButton className="ml-auto" />
         </header>
-        <main className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-[400px]">{children}</div>
+        <main className="flex flex-1 items-center justify-center py-10 max-lg:py-6">
+          <div className="w-full max-w-[400px] max-lg:[&_input:not([type=checkbox]):not([type=radio])]:h-12 max-lg:[&_button[type=submit]]:h-12 max-lg:[&_button.h-11]:h-12 max-lg:[&_a.h-11]:h-12">{children}</div>
         </main>
         <footer className="flex flex-col items-center justify-between gap-2 border-t border-outline-variant pt-4 text-caption font-normal text-on-surface-variant sm:flex-row">
           <span>© {new Date().getFullYear()} Wazelo</span>

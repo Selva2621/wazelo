@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { PeriodSelector } from "@/components/analytics/period-selector";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { PAGE_SIZE } from "@/lib/constants";
 import { SlaKpiCards } from "@/components/sla/sla-kpi-cards";
 import { SlaBreachTable } from "@/components/sla/sla-breach-table";
@@ -107,18 +108,23 @@ export default function SlaPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {isAdmin && (
+        <MobilePageActions
+          more={[{ label: "Manage Policies", onSelect: () => router.push("/settings?tab=sla") }]}
+        />
+      )}
+      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:pt-1">
+        <div className="flex items-center gap-2 max-lg:hidden">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">
             SLA Tracking
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-lg:w-full max-lg:min-w-0">
           {isAdmin && (
             <a
               href="/settings?tab=sla"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors max-lg:hidden"
             >
               <Settings2 className="h-3.5 w-3.5" />
               Manage Policies

@@ -43,9 +43,35 @@ export function AppShellSkeleton() {
         </div>
       </aside>
 
+      {/* Phones and tablets: iOS nav bar, large title and tab bar placeholders */}
+      <div aria-hidden className="lg:hidden">
+        <div className="ios-nav-bar flex justify-end px-4" style={{ height: "calc(44px + var(--safe-top))" }}>
+          <div className="mt-auto mb-2.5 size-6 rounded-full bg-on-surface/6" />
+        </div>
+        <div className="ios-large-title flex items-center">
+          <div className="h-8 w-40 rounded-lg bg-on-surface/8" />
+        </div>
+        <div className="space-y-3 px-4 pt-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="size-11 shrink-0 rounded-full bg-on-surface/6" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 rounded-full bg-on-surface/8" style={{ width: `${45 + (i % 3) * 15}%` }} />
+                <div className="h-2.5 w-3/4 rounded-full bg-on-surface/5" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="ios-tab-bar fixed inset-x-0 bottom-0 flex h-[calc(49px+var(--safe-bottom))] justify-around pt-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="size-6 rounded-md bg-on-surface/6" />
+          ))}
+        </div>
+      </div>
+
       <header
         aria-hidden
-        className={cn("flex h-[var(--header-height)] items-center gap-3 px-4 lg:px-6", offset)}
+        className={cn("flex h-[var(--header-height)] items-center gap-3 px-4 max-lg:hidden lg:px-6", offset)}
       >
         <div className="size-9 rounded-lg bg-on-surface/6" />
         <div className="h-3.5 w-28 rounded-full bg-on-surface/8" />

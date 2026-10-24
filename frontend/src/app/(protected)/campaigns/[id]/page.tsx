@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import {
   useCampaign,
   useCampaignAnalytics,
@@ -48,6 +49,8 @@ const RECIPIENT_TABS = [
 
 export default function CampaignDetailPage() {
   usePageTitle("Campaign Details");
+  // Short title for the compact iOS nav bar
+  useMobileTitle("Campaign");
   useCampaignSocket();
 
   const params = useParams();
@@ -121,21 +124,21 @@ export default function CampaignDetailPage() {
 
   return (
     <div className="h-[calc(100vh-var(--header-height))] overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6 max-lg:space-y-4">
         {/* Back + Header */}
         <div>
           <button
             onClick={() => router.push("/campaigns")}
-            className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors mb-3"
+            className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors mb-3 max-lg:hidden"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Campaigns
           </button>
 
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-headline font-semibold text-on-surface">
+          <div className="flex items-start justify-between max-lg:flex-col max-lg:gap-3">
+            <div className="max-lg:w-full max-lg:min-w-0">
+              <div className="flex items-center gap-3 mb-1 max-lg:flex-wrap max-lg:gap-2">
+                <h1 className="text-headline font-semibold text-on-surface max-lg:text-title max-lg:break-words">
                   {campaign.name}
                 </h1>
                 <CampaignStatusBadge
@@ -154,7 +157,7 @@ export default function CampaignDetailPage() {
                   {campaign.description}
                 </p>
               )}
-              <div className="flex gap-4 text-label text-on-surface-variant/60">
+              <div className="flex gap-4 text-label text-on-surface-variant/60 max-lg:flex-col max-lg:gap-0.5">
                 <span>Started: {formatDate(campaign.startedAt)}</span>
                 <span>Completed: {formatDate(campaign.completedAt)}</span>
                 {campaign.scheduledAt && (
@@ -163,8 +166,8 @@ export default function CampaignDetailPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2">
+            {/* Action Buttons (full-width row on mobile) */}
+            <div className="flex gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
               {isDraft && (
                 <Button
                   onClick={() => executeMut.mutate(campaignId)}
@@ -250,7 +253,7 @@ export default function CampaignDetailPage() {
         />
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-[1fr_1.5fr] gap-6">
+        <div className="grid grid-cols-[1fr_1.5fr] gap-6 max-lg:grid-cols-1 max-lg:gap-4">
           {/* Left: Campaign Info */}
           <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
             <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
@@ -301,7 +304,7 @@ export default function CampaignDetailPage() {
           </div>
 
           {/* Right: Recipients Table */}
-          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
+          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 max-lg:min-w-0 max-lg:p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
                 Recipients

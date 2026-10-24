@@ -35,6 +35,7 @@ import { useAutomationSocket } from "@/hooks/use-automation-socket";
 import { useAutomationStore } from "@/stores/automation-store";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { AutomationRulesTable } from "@/components/automation/automation-rules-table";
 import { ExecutionLogsTable } from "@/components/automation/execution-logs-table";
 import { CreateAutomationRuleModal } from "@/components/automation/create-automation-rule-modal";
@@ -156,7 +157,11 @@ export default function AutomationPage() {
       )}
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
+        {/* Mobile: the nav bar shows the title and the "+" */}
+        {activeTab === "rules" && (
+          <MobilePageActions primary={{ label: "New Rule", onClick: () => setShowCreateModal(true) }} />
+        )}
+        <div className="flex items-center justify-between max-lg:hidden">
           <div className="flex items-center gap-3">
             <Zap className="h-5 w-5 text-on-surface-variant" />
             <h1 className="text-title font-semibold text-on-surface">

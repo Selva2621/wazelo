@@ -472,7 +472,7 @@ export default function ChatWidgetSettingsPage() {
           <SkeletonBox className="h-72 rounded-2xl" />
           <SkeletonBox className="h-20 rounded-2xl" />
         </div>
-        <div className="w-[360px] flex-shrink-0">
+        <div className="w-[360px] flex-shrink-0 max-lg:hidden">
           <SkeletonBox className="h-[540px] rounded-2xl" />
         </div>
       </div>
@@ -480,12 +480,12 @@ export default function ChatWidgetSettingsPage() {
   }
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex gap-6 items-start max-lg:flex-col max-lg:items-stretch max-lg:px-4 max-lg:pb-4">
 
       {/* ── Left: Form ──────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 space-y-4">
 
-        <div>
+        <div className="max-lg:hidden">
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Globe className="h-5 w-5 text-primary" />
             Chat Widget
@@ -510,7 +510,7 @@ export default function ChatWidgetSettingsPage() {
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
           <p className="text-body font-semibold text-on-surface">Appearance</p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div>
               <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Company Name</label>
               <input value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
@@ -648,7 +648,7 @@ export default function ChatWidgetSettingsPage() {
           </div>
           <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
           <div className="relative">
-            <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10">
+            <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10 max-lg:whitespace-pre-wrap max-lg:break-all">
               <code>{embedCode}</code>
             </pre>
             <button onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors" title="Copy">
@@ -659,7 +659,7 @@ export default function ChatWidgetSettingsPage() {
       </div>
 
       {/* ── Right: Live Preview ──────────────────────────────────────────── */}
-      <div className="w-[380px] flex-shrink-0 sticky top-6">
+      <div className="w-[380px] flex-shrink-0 sticky top-6 max-lg:static max-lg:w-full">
         <div className="rounded-2xl border border-outline-variant/15 bg-surface-container overflow-hidden">
           {/* Panel header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/10">
@@ -668,7 +668,7 @@ export default function ChatWidgetSettingsPage() {
             <span className="ml-1 text-caption text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
               Interactive
             </span>
-            <p className="ml-auto text-caption text-on-surface-variant/50">Updates as you type</p>
+            <p className="ml-auto text-caption text-on-surface-variant/50 max-sm:hidden">Updates as you type</p>
           </div>
 
           {/* Browser chrome */}

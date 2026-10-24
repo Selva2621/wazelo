@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { FaqsCard } from "@/components/knowledge/faqs-card";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 const card = "rounded-xl border border-outline-variant bg-surface-container-low";
 const sectionTitle = "text-body-lg font-medium text-on-surface";
@@ -349,7 +350,7 @@ function TestChat({ askCost }: { askCost: number }) {
   };
 
   return (
-    <aside aria-labelledby="test-heading" className={cn(card, "flex h-[calc(100dvh-10rem)] min-h-[420px] flex-col overflow-hidden lg:sticky lg:top-[calc(var(--header-height)+1rem)] lg:h-[calc(100dvh-var(--header-height)-2rem)]")}>
+    <aside id="test-bot" aria-labelledby="test-heading" className={cn(card, "max-lg:scroll-mt-4 flex h-[calc(100dvh-10rem)] min-h-[420px] flex-col overflow-hidden lg:sticky lg:top-[calc(var(--header-height)+1rem)] lg:h-[calc(100dvh-var(--header-height)-2rem)]")}>
       <div className="border-b border-outline-variant px-5 py-4">
         <h2 id="test-heading" className={cn(sectionTitle, "flex items-center gap-2")}>
           <Sparkles className="h-4 w-4 text-primary" aria-hidden />
@@ -425,13 +426,17 @@ export default function ChatbotKnowledgePage() {
   return (
     // No overflow wrapper here: the window scrolls, so the test chat can stick beside the cards
     <div>
+      {/* Mobile: the test chat sits below a long list, so offer a jump to it */}
+      <MobilePageActions
+        more={[{ label: "Test your bot", onSelect: () => document.getElementById("test-bot")?.scrollIntoView({ behavior: "smooth" }) }]}
+      />
       <div className="mx-auto max-w-6xl space-y-5 p-6">
         <div className="space-y-1">
-          <Link href="/chatbot" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface">
+          <Link href="/chatbot" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface max-lg:hidden">
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Chatbot
           </Link>
-          <h1 className="text-title font-semibold text-on-surface">Bot knowledge</h1>
+          <h1 className="text-title font-semibold text-on-surface max-lg:hidden">Bot knowledge</h1>
           <p className="text-body text-on-surface-variant">
             What your bot answers from, on WhatsApp and your website chat. Turn on &ldquo;Use knowledge base&rdquo; in a chatbot flow to use it.
           </p>

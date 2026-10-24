@@ -26,6 +26,7 @@ import {
 import type { Team } from "@/lib/types/teams";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 export default function AdminTeamsPage() {
   usePageTitle("Teams");
@@ -113,8 +114,10 @@ export default function AdminTeamsPage() {
 
   return (
     <div className="p-6 space-y-5">
+      {/* Phones/tablets: the iOS nav bar carries the title and the + button */}
+      <MobilePageActions primary={{ label: "Create team", onClick: () => setShowCreate(true) }} />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface">Teams</h1>
           <p className="text-body text-on-surface-variant mt-0.5">
@@ -144,7 +147,7 @@ export default function AdminTeamsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">Team Name</label>
               <input
@@ -266,13 +269,13 @@ export default function AdminTeamsPage() {
                       >
                         <IconButton size="xs"
                           onClick={() => router.push(`/admin/teams/${team.id}`)}
-                          className="hover:text-primary hover:bg-primary/10"
+                          className="hover:text-primary hover:bg-primary/10 max-lg:size-10"
                           title="View / Edit team" aria-label="View / Edit team">
                           <Eye className="h-3.5 w-3.5" />
                         </IconButton>
                         <IconButton size="xs" variant="danger"
                           onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
-                         
+                          className="max-lg:size-10"
                           title="Delete team" aria-label="Delete team">
                           <Trash2 className="h-3.5 w-3.5" />
                         </IconButton>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { motionTokens } from "@/lib/motion-tokens";
@@ -8,6 +8,13 @@ import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { PageTransition } from "./page-transition";
 import { useUIStore } from "@/stores/ui-store";
+import { useMobileStore } from "@/stores/mobile-store";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { MobileNavBar } from "@/components/mobile/mobile-nav-bar";
+import { MobileTabBar } from "@/components/mobile/mobile-tab-bar";
+import { MobileTableLabels } from "@/components/mobile/mobile-table-labels";
+import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
+import { EdgeSwipeBack } from "@/components/mobile/edge-swipe-back";
 
 interface AppShellProps {
   children: ReactNode;
@@ -18,6 +25,13 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const mobileOpen = useUIStore((s) => s.mobileSidebarOpen);
   const setMobileOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const isMobile = useIsMobile();
+  const tabBarHidden = useMobileStore((s) => s.tabBarHiders > 0);
+
+  // Lets CSS drop the tab bar's space while a screen hides it (open chat, editors)
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-tabbar-hidden", tabBarHidden);
+  }, [tabBarHidden]);
 
   // Header turns solid once content scrolls beneath it.
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -49,6 +63,13 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
         )}
       </AnimatePresence>
       <Header scrolled={scrolled} offsetClassName={offset} />
+      {/* Phones and tablets: iOS nav bar + tab bar (the desktop header is hidden by CSS there) */}
+      {isMobile && (
+        // Suspense: the nav bar reads search params (settings sections)
+        <Suspense fallback={null}>
+          <MobileNavBar />
+        </Suspense>
+      )}
       <main
         className={cn(
           "app-main transition-[margin-left] duration-200 ease-standard",
@@ -58,6 +79,10 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
       >
         <PageTransition>{children}</PageTransition>
       </main>
+      {isMobile && <MobileTabBar />}
+      {isMobile && <MobileTableLabels />}
+      {isMobile && <PullToRefresh />}
+      {isMobile && <EdgeSwipeBack />}
     </div>
   );
 }

@@ -57,8 +57,8 @@ export default function AdminWhatsAppSessionsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div>
+      {/* Header (the iOS nav bar shows the title on phones/tablets) */}
+      <div className="max-lg:hidden">
         <p className="text-label text-on-surface-variant mb-1">
           Admin &gt; WhatsApp Sessions
         </p>
@@ -69,14 +69,14 @@ export default function AdminWhatsAppSessionsPage() {
 
       <Card className="!p-0 overflow-hidden">
         {/* Filter bar */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-outline-variant/15">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-outline-variant/15 max-lg:flex-wrap max-lg:px-4">
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as StatusFilter);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11"
           >
             <option value="">All Statuses</option>
             <option value="CONNECTED">Connected</option>
@@ -85,14 +85,14 @@ export default function AdminWhatsAppSessionsPage() {
             <option value="CONNECTING">Connecting</option>
           </select>
 
-          <div className="relative flex-1 max-w-[280px]">
+          <div className="relative flex-1 max-w-[280px] max-lg:order-first max-lg:max-w-none max-lg:basis-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
             <input
               type="text"
               placeholder="Search by user name..."
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 max-lg:h-11 w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -242,12 +242,12 @@ export default function AdminWhatsAppSessionsPage() {
             <div className="flex items-center gap-1">
               <IconButton size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1} aria-label="Previous page">
+                disabled={page <= 1} aria-label="Previous page" className="max-lg:size-11">
                 <ChevronLeft className="h-4 w-4" />
               </IconButton>
               <IconButton size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages} aria-label="Next page">
+                disabled={page >= totalPages} aria-label="Next page" className="max-lg:size-11">
                 <ChevronRight className="h-4 w-4" />
               </IconButton>
             </div>

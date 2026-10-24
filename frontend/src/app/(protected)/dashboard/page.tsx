@@ -88,7 +88,7 @@ function TeamDashboard() {
       {/* Hero */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-label text-on-surface-variant">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-label text-on-surface-variant max-lg:hidden">
             <Link
               href="/dashboard"
               aria-label="Home"
@@ -101,14 +101,14 @@ function TeamDashboard() {
               Dashboard
             </span>
           </nav>
-          <h2 className="mt-3 truncate text-headline font-semibold text-on-surface">
+          <h2 className="mt-3 truncate text-headline font-semibold text-on-surface max-lg:mt-0 max-lg:text-title">
             Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
           </h2>
           <p className="text-body text-on-surface-variant">
             How your WhatsApp conversations are performing {PERIOD_COPY[period]}.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-lg:w-full">
           <PeriodSelector value={period} onChange={setPeriod} />
           <ProductFilterSelect value="" onChange={() => {}} />
         </div>

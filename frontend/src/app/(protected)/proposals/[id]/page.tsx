@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 /* ─── Form state: numbers stay strings while typing ─── */
 
@@ -307,19 +308,40 @@ function Editor({ proposal }: { proposal: Proposal }) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
+      {/* Mobile: Send is the nav bar button, the rest sit in its "…" menu */}
+      <MobilePageActions
+        primary={
+          !locked && !busy && items.length > 0
+            ? { label: sentBefore ? "Send again" : "Send on WhatsApp", onClick: runSend, icon: <Send className="h-[22px] w-[22px]" aria-hidden /> }
+            : undefined
+        }
+        moreTitle={`Proposal ${proposal.number}`}
+        more={[
+          !locked && { label: `Write with AI · ${draftCost} credits`, onSelect: runDraft, disabled: busy || update.isPending },
+          (!locked || sentBefore) && {
+            label: "Copy client link",
+            onSelect: copyLink,
+            disabled: busy || share.isPending || (!sentBefore && !items.length),
+          },
+          items.length > 0 && { label: "Download PDF", onSelect: downloadPdf, disabled: downloading },
+          sentBefore && { label: "Open client page", onSelect: () => window.open(proposal.publicUrl, "_blank", "noopener") },
+          proposal.status === "DRAFT" && { label: "Delete", onSelect: () => setConfirmDelete(true), destructive: true },
+        ]}
+      />
+
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/proposals" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface">
+        <Link href="/proposals" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface max-lg:hidden">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Proposals
         </Link>
-        <span className="text-label text-on-surface-variant">/</span>
+        <span className="text-label text-on-surface-variant max-lg:hidden">/</span>
         <span className="text-body font-medium text-on-surface">{proposal.number}</span>
         <ProposalStatusBadge status={proposal.status} expired={proposal.expired} />
         <span className="text-label text-on-surface-variant" aria-live="polite">
           {locked ? "" : update.isPending ? "Saving…" : dirty ? "Unsaved" : "Saved"}
         </span>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-lg:hidden">
           {!locked && (
             <Button variant="secondary" size="sm" onClick={runDraft} loading={draft.isPending} disabled={busy || update.isPending}>
               <Sparkles className="h-4 w-4" aria-hidden />
@@ -384,7 +406,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Form */}
-        <fieldset disabled={locked} className="min-w-0 space-y-5 rounded-xl border border-outline-variant bg-surface-container-low p-5">
+        <fieldset disabled={locked} className="min-w-0 space-y-5 rounded-xl border border-outline-variant bg-surface-container-low p-5 max-lg:p-4">
           <legend className="sr-only">Proposal details</legend>
           <p className="text-label text-on-surface-variant">
             For <span className="font-medium text-on-surface">{proposal.contact.name || proposal.contact.phoneNumber}</span>
@@ -442,7 +464,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
                       <X className="h-4 w-4" />
                     </IconButton>
                   </div>
-                  <div className="mt-2 grid grid-cols-[1fr_5rem_8rem] gap-2">
+                  <div className="mt-2 grid grid-cols-[1fr_5rem_8rem] gap-2 max-lg:grid-cols-[5rem_1fr] max-lg:[&>:first-child]:col-span-2">
                     <Input
                       aria-label="Description"
                       placeholder="Description (optional)"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Megaphone, MoreVertical } from "lucide-react";
+import { ChevronRight, Megaphone, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CampaignStatusBadge } from "./campaign-status-badge";
@@ -87,8 +87,38 @@ export function CampaignsTable({
 
   return (
     <div>
+      {/* Mobile: iOS grouped list, one row per campaign */}
+      <ul className="lg:hidden mx-4 mt-1 mb-4 overflow-hidden rounded-xl bg-surface-container-lowest divide-y divide-outline-variant/40">
+        {campaigns.map((campaign) => (
+          <li key={campaign.id}>
+            <button
+              type="button"
+              onClick={() => onRowClick(campaign.id)}
+              className="flex w-full min-h-11 items-center gap-3 px-4 py-3 text-left active:bg-surface-container"
+            >
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate text-body font-medium text-on-surface">{campaign.name}</p>
+                  <CampaignStatusBadge status={campaign.status} pulse={campaign.status === "RUNNING"} />
+                </div>
+                {campaign.description && (
+                  <p className="truncate text-caption text-on-surface-variant/70">{campaign.description}</p>
+                )}
+                <CampaignProgressBar sent={campaign.sentCount + campaign.failedCount} total={campaign.totalRecipients} />
+                <p className="text-caption text-on-surface-variant">
+                  {campaign.totalRecipients.toLocaleString()} recipients
+                  {campaign.sentCount > 0 && <> · <span className="text-success">{deliveryRate(campaign)} delivered</span></>}
+                  {" · "}{timeAgo(campaign.createdAt)}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant/50" aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+
       {/* Header */}
-      <div className="grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="max-lg:hidden grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
         <span>Campaign</span>
         <span>Status</span>
         <span>Recipients</span>
@@ -103,7 +133,7 @@ export function CampaignsTable({
         <button
           key={campaign.id}
           onClick={() => onRowClick(campaign.id)}
-          className="w-full grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 items-center px-4 py-3.5 text-left border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors cursor-pointer"
+          className="max-lg:hidden w-full grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 items-center px-4 py-3.5 text-left border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors cursor-pointer"
         >
           {/* Name + Description */}
           <div className="min-w-0">

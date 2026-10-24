@@ -64,7 +64,7 @@ export default function ManagerTeamPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
+      <div className="max-lg:hidden">
         <h1 className="text-title font-semibold text-on-surface">My Team</h1>
         <p className="text-body text-on-surface-variant mt-0.5">
           View and manage your team members&apos; WhatsApp inboxes

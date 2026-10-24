@@ -306,7 +306,7 @@ export default function AiCreditsPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="p-6 space-y-6 max-w-4xl">
-        <div className="space-y-1">
+        <div className="space-y-1 max-lg:hidden">
           <Link
             href="/settings/billing"
             className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface"

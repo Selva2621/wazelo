@@ -76,8 +76,8 @@ export default function CsatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:flex-col max-lg:items-stretch max-lg:gap-2 max-lg:pt-1">
+        <div className="flex items-center gap-2 max-lg:hidden">
           <Star className="h-5 w-5 text-warning" />
           <h1 className="text-title font-semibold text-on-surface">
             Customer Satisfaction

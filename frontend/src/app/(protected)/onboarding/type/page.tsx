@@ -36,7 +36,9 @@ function ChoiceCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "relative text-left rounded-2xl border-2 p-5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        "relative text-left rounded-2xl border-2 p-5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-14 max-lg:p-4 max-lg:active:scale-[0.99]",
+        // Phones: icon on the left, text beside it
+        !!icon && "max-sm:grid max-sm:grid-cols-[48px_1fr] max-sm:items-center max-sm:gap-x-4",
         selected
           ? "border-primary bg-primary/5"
           : "border-outline-variant bg-surface-container-low hover:border-outline hover:bg-surface-container",
@@ -48,10 +50,10 @@ function ChoiceCard({
         </span>
       )}
       {icon && (
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">{icon}</div>
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 max-sm:row-span-2 max-sm:mb-0">{icon}</div>
       )}
-      <h2 className="font-semibold text-on-surface text-title-sm mb-1 pr-6">{title}</h2>
-      <p className="text-label text-on-surface-variant leading-relaxed">{description}</p>
+      <h2 className="font-semibold text-on-surface text-title-sm mb-1 pr-6 max-sm:self-end">{title}</h2>
+      <p className="text-label text-on-surface-variant leading-relaxed max-sm:col-start-2 max-sm:self-start">{description}</p>
     </button>
   );
 }
@@ -133,10 +135,10 @@ export default function OrgTypePage() {
       : freelancerTypes.length > 0 && (!hasOther || otherService.trim().length >= 2);
 
   return (
-    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
+    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-0 max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
       <div className={cn("w-full", step === 1 ? "max-w-lg" : "max-w-2xl")}>
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 max-lg:mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src="/logo/logo.png" alt="Wazelo" className="h-8 w-8 object-contain" />
             <span className="text-title font-semibold text-on-surface">
@@ -223,7 +225,8 @@ export default function OrgTypePage() {
 
         {error && <p className="text-body-lg text-error text-center mb-4">{error}</p>}
 
-        <div className="flex gap-3">
+        {/* Phones/tablets: the buttons stay pinned above the home indicator */}
+        <div className="flex gap-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:bg-surface/90 max-lg:px-4 max-lg:pt-3 max-lg:pb-[calc(12px+var(--safe-bottom))] max-lg:backdrop-blur-md max-lg:[&>button]:h-12">
           {step === 2 && (
             <Button size="lg" variant="secondary" type="button" onClick={() => setStep(1)} disabled={updateOrgSettings.isPending}>
               <ArrowLeft className="w-4 h-4" />

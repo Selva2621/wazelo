@@ -58,6 +58,7 @@ import { SendMessageModal } from "@/components/contacts/send-message-modal";
 import type { LeadStatus } from "@/lib/types/contacts";
 import { IconButton } from "@/components/ui/icon-button";
 import { formatAmount } from "@/lib/utils";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -172,20 +173,33 @@ export default function ContactDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-10">
-      {/* Back nav */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-10 max-lg:space-y-4 max-lg:px-4 max-lg:pt-2">
+      {/* Mobile: Send Message is the nav bar button, the other actions sit in its "…" menu */}
+      <MobilePageActions
+        primary={{ label: "Send Message", onClick: () => setShowSendMessage(true), icon: <MessageSquare className="h-[22px] w-[22px]" aria-hidden /> }}
+        moreTitle={contact.name || contact.phoneNumber}
+        more={[
+          { label: "Open Chat", onSelect: openConversation },
+          !editing && { label: "Edit", onSelect: startEditing },
+          { label: "Assign Owner", onSelect: () => setShowAssign(true) },
+          { label: "Export Data", onSelect: handleExport },
+          { label: "Delete Contact", onSelect: () => setShowDeleteConfirm(true), destructive: true },
+        ]}
+      />
+
+      {/* Back nav (the iOS nav bar has Back on mobile) */}
       <button
         onClick={() => router.push("/contacts")}
-        className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors"
+        className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors max-lg:hidden"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Contacts
       </button>
 
       {/* Profile Card */}
-      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 space-y-5">
+      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
         {/* Header row */}
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-5 max-lg:flex-wrap max-lg:gap-3">
           <Avatar
             name={contact.name || contact.phoneNumber}
             src={contact.avatarUrl}
@@ -222,16 +236,16 @@ export default function ContactDetailPage() {
               </div>
             ) : (
               <>
-                <h1 className="text-headline font-semibold text-on-surface truncate">
+                <h1 className="text-headline font-semibold text-on-surface truncate max-lg:text-title">
                   {contact.name || "Unknown"}
                 </h1>
-                <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant">
+                <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant max-lg:gap-x-3 max-lg:gap-y-1">
                   <span className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> {contact.phoneNumber}
                   </span>
                   {contact.email && (
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" /> {contact.email}
+                    <span className="flex items-center gap-1.5 max-lg:min-w-0 max-lg:break-all">
+                      <Mail className="h-3.5 w-3.5 max-lg:shrink-0" /> {contact.email}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">
@@ -249,37 +263,37 @@ export default function ContactDetailPage() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 max-lg:w-full">
             <LeadScoreBadge score={contact.leadScore} size="md" />
             {!editing && (
               <IconButton size="sm"
                 onClick={startEditing}
-                className="hover:text-primary hover:bg-primary/10"
+                className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
                 title="Edit" aria-label="Edit">
                 <Pencil className="h-4 w-4" />
               </IconButton>
             )}
             <IconButton size="sm"
               onClick={() => setShowAssign(true)}
-              className="hover:text-primary hover:bg-primary/10"
+              className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
               title="Assign Owner" aria-label="Assign Owner">
               <UserPlus className="h-4 w-4" />
             </IconButton>
-            <Button size="sm" onClick={() => setShowSendMessage(true)}>
+            <Button size="sm" className="max-lg:hidden" onClick={() => setShowSendMessage(true)}>
               <MessageSquare className="h-4 w-4 mr-1" /> Send Message
             </Button>
-            <Button size="sm" variant="secondary" onClick={openConversation}>
+            <Button size="sm" variant="secondary" className="max-lg:hidden" onClick={openConversation}>
               Open Chat
             </Button>
             <IconButton size="sm"
               onClick={handleExport}
-              className="hover:text-primary hover:bg-primary/10"
+              className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
               title="Export Data" aria-label="Export Data">
               <Download className="h-4 w-4" />
             </IconButton>
             <IconButton size="sm" variant="danger"
               onClick={() => setShowDeleteConfirm(true)}
-             
+              className="max-lg:hidden"
               title="Delete Contact" aria-label="Delete Contact">
               <Trash2 className="h-4 w-4" />
             </IconButton>
@@ -311,7 +325,7 @@ export default function ContactDetailPage() {
 
       {/* Tabs content */}
       <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
-        <div className="px-6 pt-4 border-b border-outline-variant/10">
+        <div className="px-6 pt-4 border-b border-outline-variant/10 max-lg:px-3 max-lg:pt-2">
           <Tabs tabs={PAGE_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 

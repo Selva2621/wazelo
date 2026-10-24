@@ -173,7 +173,7 @@ function FilterBar({
   ].filter(Boolean).length;
 
   return (
-    <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
+    <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3 max-lg:p-3">
       {/* Top row: search + active indicator */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
@@ -192,7 +192,7 @@ function FilterBar({
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
           placeholder="Search name, company, category, skills…"
-          className="flex-1 min-w-[200px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+          className="flex-1 min-w-[200px] max-lg:min-w-0 max-lg:basis-full max-lg:order-last text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
         />
 
         {/* Showing count */}
@@ -398,6 +398,9 @@ function ResultRow({
       {/* Checkbox */}
       <TableCell>
         <div
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={`Select ${result.name ?? "lead"}`}
           className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
             selected
               ? "border-primary bg-primary"
@@ -410,16 +413,17 @@ function ResultRow({
         </div>
       </TableCell>
 
-      {/* Name + category */}
+      {/* Name + category (one block so the mobile card title stacks) */}
       <TableCell>
+        <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
+          <p className="font-medium text-body text-on-surface truncate max-w-[200px] max-lg:max-w-none">
             {result.name ?? "—"}
           </p>
           {result.score != null && <ScoreBadge score={result.score} />}
         </div>
         {result.tags?.length > 0 && (
-          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px]">
+          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px] max-lg:max-w-none max-lg:font-normal">
             {result.tags.join(" · ")}
           </p>
         )}
@@ -457,6 +461,7 @@ function ResultRow({
               Found {timeAgo(result.seenBeforeAt)}
             </span>
           )}
+        </div>
         </div>
       </TableCell>
 
@@ -796,18 +801,18 @@ export default function ScrapeRunResultsPage() {
   const checkedCount = results.filter((r) => r.phone && r.waCheckedAt).length;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-5">
-      {/* Back nav */}
+    <div className="p-6 max-w-6xl mx-auto space-y-5 max-lg:space-y-4">
+      {/* Back nav (the iOS nav bar has Back on mobile) */}
       <Link
         href="/leads/scraper"
-        className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors"
+        className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors max-lg:hidden"
       >
         <ArrowLeft className="w-4 h-4" />
         Lead Scraper
       </Link>
 
       {/* Run header */}
-      <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-5">
+      <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-5 max-lg:p-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -820,7 +825,7 @@ export default function ScrapeRunResultsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-center">
+          <div className="flex items-center gap-4 text-center max-lg:w-full max-lg:justify-around">
             <div>
               <p className="text-title font-semibold text-on-surface">{run.resultCount}</p>
               <p className="text-caption text-on-surface-variant">Found</p>
@@ -876,7 +881,7 @@ export default function ScrapeRunResultsPage() {
 
               {/* Toolbar */}
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label className="flex items-center gap-2 cursor-pointer select-none max-lg:min-h-11">
                   <input
                     type="checkbox"
                     className="accent-primary w-4 h-4"
@@ -892,7 +897,7 @@ export default function ScrapeRunResultsPage() {
                   </span>
                 </label>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap max-lg:w-full max-lg:[&>*]:flex-1">
                   {(waChecking || waCheckTargets.length > 0) && (
                     <Button
                       variant="secondary"
@@ -947,7 +952,7 @@ export default function ScrapeRunResultsPage() {
                   </button>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-outline-variant overflow-hidden">
+                <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:-mx-3 max-lg:border-0 max-lg:rounded-none">
                   <Table>
                     <TableHeader>
                       <TableHeaderRow>

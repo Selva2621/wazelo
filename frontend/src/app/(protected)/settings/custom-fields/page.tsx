@@ -16,6 +16,7 @@ import {
   CustomFieldDefinition,
 } from "@/lib/api/custom-fields";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { IconButton } from "@/components/ui/icon-button";
 
 const FIELD_TYPES = ["text", "number", "date", "select", "multiselect", "boolean", "url", "email", "phone"];
@@ -78,8 +79,9 @@ export default function CustomFieldsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+      <MobilePageActions primary={{ label: "New Field", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <SlidersHorizontal className="h-6 w-6 text-primary" />
@@ -93,7 +95,7 @@ export default function CustomFieldsPage() {
       </div>
 
       {/* Entity filter tabs */}
-      <div className="flex gap-1 bg-surface-container rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-surface-container rounded-xl p-1 w-fit mobile-scroll-x max-lg:w-full">
         {ENTITIES.map((e) => (
           <button
             key={e}

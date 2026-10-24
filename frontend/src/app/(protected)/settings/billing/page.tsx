@@ -317,7 +317,7 @@ export default function BillingPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1200px] mx-auto p-6 space-y-6">
         {/* Breadcrumb + Header */}
-        <div>
+        <div className="max-lg:hidden">
           <p className="text-label text-on-surface-variant/60 mb-1">
             Settings &gt; Billing
           </p>
@@ -336,7 +336,7 @@ export default function BillingPage() {
         {/* Current Plan — Gradient Hero Card */}
         {subscription && (
           <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-6">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between max-lg:flex-col max-lg:gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <h2 className="text-title font-semibold text-on-surface">
@@ -398,7 +398,7 @@ export default function BillingPage() {
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 max-lg:w-full max-lg:flex-wrap max-lg:[&>*]:flex-1">
                 {canReactivate && (
                   <Button
                     variant="primary"
@@ -457,11 +457,11 @@ export default function BillingPage() {
         {/* Usage Metrics */}
         {usage && (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 max-lg:flex-col max-lg:items-start max-lg:gap-2">
               <h3 className="text-body-lg font-semibold text-on-surface">
                 Current Usage
               </h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-lg:flex-wrap max-lg:gap-2">
                 {subscription?.status === "TRIAL" && (
                   <span className="text-caption text-warning bg-warning-container border border-warning/30 rounded-full px-2.5 py-0.5">
                     Trial limits active — upgrade to unlock full capacity
@@ -540,7 +540,7 @@ export default function BillingPage() {
                 <button aria-label="Dismiss" onClick={() => setPlanChangeError(null)} className="ml-3 text-error/60 hover:text-error">✕</button>
               </div>
             )}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 max-lg:flex-col max-lg:items-start max-lg:gap-2">
               <h3 className="text-body-lg font-semibold text-on-surface">
                 Subscription Tiers
               </h3>
@@ -925,7 +925,7 @@ function UsageCard({
             / {limit > 0 ? limit.toLocaleString() : "∞"}
           </span>
         </div>
-        <div className="flex items-center justify-between mt-1">
+        <div className="flex items-center justify-between mt-1 max-lg:flex-wrap max-lg:gap-x-2 max-lg:gap-y-1 max-lg:[&>*]:whitespace-nowrap">
           <span className="text-caption text-on-surface-variant/60">
             {pct.toFixed(0)}% used
           </span>

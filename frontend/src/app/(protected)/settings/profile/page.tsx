@@ -86,9 +86,9 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4">
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">
@@ -98,7 +98,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
         {/* Profile Info */}
         <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
           <div className="flex items-center gap-4 mb-2">
@@ -134,7 +134,7 @@ export default function ProfilePage() {
             <Alert variant="error">{profileError || "Failed to update profile"}</Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 First Name
@@ -214,7 +214,7 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
                 New Password

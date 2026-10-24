@@ -88,8 +88,8 @@ export default function AuditLogsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div>
+      {/* Header (the iOS nav bar shows the title on phones/tablets) */}
+      <div className="max-lg:hidden">
         <p className="text-label text-on-surface-variant mb-1">
           Admin &gt; Audit Logs
         </p>
@@ -101,7 +101,7 @@ export default function AuditLogsPage() {
 
       {/* Filter Bar */}
       <Card className="!p-0">
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3 px-5 py-4 max-lg:px-4">
           <Filter className="h-4 w-4 text-on-surface-variant shrink-0" />
 
           <select
@@ -110,7 +110,7 @@ export default function AuditLogsPage() {
               setActionFilter(e.target.value);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1"
           >
             {ACTION_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -119,7 +119,8 @@ export default function AuditLogsPage() {
             ))}
           </select>
 
-          <div className="flex items-center gap-2">
+          {/* Phones: the two dates share one full-width row */}
+          <div className="flex items-center gap-2 max-lg:w-full">
             <input
               type="date"
               value={startDate}
@@ -127,7 +128,7 @@ export default function AuditLogsPage() {
                 setStartDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-2"
               placeholder="From"
             />
             <span className="text-label text-on-surface-variant">to</span>
@@ -138,7 +139,7 @@ export default function AuditLogsPage() {
                 setEndDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-2"
               placeholder="To"
             />
           </div>
@@ -250,7 +251,8 @@ function LogRow({
         }`}
         onClick={onToggle}
       >
-        <td className="px-5 py-3">
+        {/* Phones: the whole card toggles details, so the chevron cell is hidden */}
+        <td className="px-5 py-3 max-lg:hidden!">
           <button aria-expanded={expanded} aria-label={expanded ? "Collapse row" : "Expand row"} className="text-on-surface-variant/50 hover:text-on-surface-variant">
             {expanded ? (
               <ChevronUp className="h-4 w-4" />
@@ -308,7 +310,7 @@ function LogRow({
       {/* Expanded detail row */}
       {expanded && (
         <tr className="bg-surface-container/10">
-          <td colSpan={6} className="px-5 py-4">
+          <td colSpan={6} className="px-5 py-4 max-lg:px-1 max-lg:py-2 max-lg:text-left!">
             <div className="space-y-2">
               <p className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
                 Details

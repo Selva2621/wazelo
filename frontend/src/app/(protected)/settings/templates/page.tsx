@@ -29,6 +29,12 @@ import { useProducts } from "@/hooks/use-products";
 import { listFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+
+// The inline form sits at the top of the page; on phones bring it into view
+function scrollTopOnMobile() {
+  if (window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 const CATEGORIES = ["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const;
 
@@ -217,6 +223,7 @@ export default function TemplatesPage() {
     setLanguage(tpl.language);
     setProductId(getProductId(tpl) ?? "");
     setShowForm(true);
+    scrollTopOnMobile();
   };
 
   if (isLoading) {
@@ -232,9 +239,13 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+      <MobilePageActions
+        primary={{ label: "New Template", onClick: () => { resetForm(); setShowForm(true); scrollTopOnMobile(); } }}
+        more={[{ label: "Generate with AI", onSelect: () => setShowAiModal(true) }]}
+      />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />
@@ -263,7 +274,7 @@ export default function TemplatesPage() {
             </h3>
           </div>
 
-          <div className="grid grid-cols-[1fr_280px] divide-x divide-outline-variant/10">
+          <div className="grid grid-cols-[1fr_280px] divide-x divide-outline-variant/10 max-lg:grid-cols-1 max-lg:divide-x-0 max-lg:divide-y">
             {/* Left: Template fields */}
             <div className="p-5 space-y-3">
               <input
@@ -300,7 +311,8 @@ export default function TemplatesPage() {
               <div>
                 <p className="text-caption font-medium text-on-surface-variant mb-1.5">
                   Message Body *
-                  <span className="ml-2 font-normal opacity-60">— drag fields from the right panel to insert</span>
+                  <span className="ml-2 font-normal opacity-60 max-lg:hidden">— drag fields from the right panel to insert</span>
+                  <span className="ml-2 font-normal opacity-60 lg:hidden">— tap a field below to insert</span>
                 </p>
                 <textarea
                   ref={textareaRef}
@@ -439,7 +451,7 @@ export default function TemplatesPage() {
       {templates && templates.length > 0 && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           {/* Category tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container border border-outline-variant/10">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container border border-outline-variant/10 mobile-scroll-x max-lg:w-full">
             {(["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const).map((cat) => {
               const label = cat === "" ? "All" : cat === "SHOPIFY" ? "Shopify" : cat;
               const count = cat === "" ? templates.length : templates.filter((t) => t.category === cat).length;
@@ -471,7 +483,7 @@ export default function TemplatesPage() {
           </div>
 
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/10 min-w-[200px]">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/10 min-w-[200px] max-lg:w-full">
             <Search className="h-4 w-4 text-on-surface-variant/40 shrink-0" />
             <input
               value={search}

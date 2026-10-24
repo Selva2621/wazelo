@@ -16,6 +16,7 @@ import {
 import { usePageTitle } from "@/hooks/use-page-title";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 export default function KnowledgeBasePage() {
   usePageTitle("Knowledge Base");
@@ -79,7 +80,8 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <MobilePageActions primary={{ label: "New Article", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" />
@@ -93,8 +95,8 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex items-center gap-3 max-lg:gap-2 max-lg:px-4">
+        <div className="relative flex-1 max-w-xs max-lg:max-w-none max-lg:min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant/50" />
           <input
             value={search}
@@ -106,7 +108,7 @@ export default function KnowledgeBasePage() {
         <select
           value={categoryFilter}
           onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
-          className="rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none"
+          className="rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none max-lg:max-w-[45%]"
         >
           <option value="">All Categories</option>
           {categories?.map((c) => (

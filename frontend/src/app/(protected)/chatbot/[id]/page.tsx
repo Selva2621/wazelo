@@ -65,6 +65,9 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatbotNodeType } from "@/lib/types/chatbot";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 // ─── Node type metadata ───────────────────────────────────────────────────────
 
@@ -80,6 +83,10 @@ const NODE_META: Record<ChatbotNodeType, { label: string; icon: React.ElementTyp
   INTENT_DETECT:  { label: "Intent Detect",  icon: GitBranch,     color: "#a855f7", bg: "#a855f715" },
   CAROUSEL:       { label: "Carousel",       icon: LayoutTemplate, color: "#14b8a6", bg: "#14b8a615" },
 };
+
+// Phones/tablets: side panels open as a sheet docked to the bottom, over the canvas
+const MOBILE_SHEET =
+  "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-40 max-lg:w-full max-lg:rounded-t-2xl max-lg:border-x-0 max-lg:border-t max-lg:shadow-2xl max-lg:pb-[env(safe-area-inset-bottom)]";
 
 const NODE_TYPE_LIST = Object.entries(NODE_META) as [ChatbotNodeType, (typeof NODE_META)[ChatbotNodeType]][];
 
@@ -244,6 +251,9 @@ interface LeftPanelProps {
   setSelectedProductIds: (v: string[]) => void;
   flowId: string;
   onAddNode: (type: ChatbotNodeType) => void;
+  /** Mobile only: whether the panel is shown as a bottom sheet */
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
 function LeftPanel({
@@ -254,6 +264,7 @@ function LeftPanel({
   useKnowledgeBase, setUseKnowledgeBase,
   selectedProductIds, setSelectedProductIds,
   flowId, onAddNode,
+  mobileOpen, onMobileClose,
 }: LeftPanelProps) {
   const { data: documents } = useKbDocuments(flowId);
   const uploadDoc = useUploadDocument();
@@ -261,8 +272,15 @@ function LeftPanel({
   const { data: availableProducts } = useProducts();
 
   return (
-    <div className="w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto">
-      <div className="p-3 space-y-4">
+    <div className={`w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${mobileOpen ? `${MOBILE_SHEET} max-lg:max-h-[75dvh]` : "max-lg:hidden"}`}>
+      {/* Mobile sheet header */}
+      <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between border-b border-outline-variant bg-surface-container-low px-4 py-1">
+        <span className="text-body font-semibold text-on-surface">Flow settings</span>
+        <button type="button" onClick={onMobileClose} className="min-h-11 px-2 text-body font-semibold text-primary active:opacity-50">
+          Done
+        </button>
+      </div>
+      <div className="p-3 space-y-4 max-lg:p-4">
         {/* Trigger */}
         <section className="space-y-2">
           <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Trigger</p>
@@ -387,7 +405,7 @@ function LeftPanel({
 
         {/* Node palette */}
         {!aiEnabled && (
-          <section className="border-t border-outline-variant pt-3 space-y-1.5">
+          <section id="chatbot-add-node" className="border-t border-outline-variant pt-3 space-y-1.5 max-lg:scroll-mt-14">
             <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Add Node</p>
             <p className="text-caption text-on-surface-variant mb-2">Drag onto canvas or click to add</p>
             {NODE_TYPE_LIST.map(([type, meta]) => {
@@ -449,7 +467,7 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
   const errors = validateNode(nodeType, nodeData);
 
   return (
-    <div className="w-[280px] shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto">
+    <div className={`w-[280px] shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${MOBILE_SHEET} max-lg:max-h-[65dvh]`}>
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between px-4 py-3" style={{ borderBottom: `2px solid ${meta.color}20` }}>
         <div className="flex items-center gap-2">
@@ -776,7 +794,7 @@ function TestPanel({ flowId, onClose, nodeCount, validationErrors }: TestPanelPr
   }
 
   return (
-    <div className="w-[280px] shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col">
+    <div className={`w-[280px] shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col ${MOBILE_SHEET} max-lg:h-[70dvh]`}>
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
         <div className="flex items-center gap-2">
@@ -913,6 +931,12 @@ function ChatbotEditorInner() {
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showTestPanel, setShowTestPanel] = useState(false);
+  // Mobile: left panel (settings + node palette) shown as a bottom sheet
+  const [showMobileSettings, setShowMobileSettings] = useState(false);
+  useHideTabBar(true);
+  // The flow name is editable just below, so the bar keeps a short title
+  useMobileTitle("Flow");
+  const isMobile = useIsMobile();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Flow meta state
@@ -974,6 +998,7 @@ function ChatbotEditorInner() {
   const handleSelectNode = useCallback((id: string) => {
     setSelectedNodeId((prev) => (prev === id ? null : id));
     setShowTestPanel(false);
+    setShowMobileSettings(false);
   }, []);
 
   const handleDeleteNode = useCallback((id: string) => {
@@ -1178,36 +1203,57 @@ function ChatbotEditorInner() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))] bg-surface">
+      {/* Mobile: Save in the nav bar, other toolbar buttons in its "…" menu */}
+      <MobilePageActions
+        primary={{
+          label: "Save",
+          onClick: () => { if (!isSaving) handleSave(); },
+          icon: isSaving ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Save className="h-5 w-5" aria-hidden />,
+        }}
+        moreTitle={flowName || flow.name}
+        more={[
+          { label: "Flow settings", onSelect: () => { setSelectedNodeId(null); setShowTestPanel(false); setShowMobileSettings(true); } },
+          !aiEnabled && {
+            label: showTestPanel ? "Close test" : "Test",
+            onSelect: () => { setShowTestPanel((v) => !v); setSelectedNodeId(null); setShowMobileSettings(false); },
+          },
+          !aiEnabled && rfNodes.length > 1 && { label: "Auto-layout nodes", onSelect: handleAutoLayout },
+          flow.isActive
+            ? { label: "Deactivate", onSelect: () => deactivateFlow.mutate(flowId), disabled: isSaving }
+            : { label: "Activate", onSelect: () => activateChecked.request(flow), disabled: isSaving },
+        ]}
+      />
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-outline-variant bg-surface-container-low z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-1 max-lg:gap-2">
           <IconButton size="sm"
-            onClick={() => router.push("/chatbot")} aria-label="Back">
+            onClick={() => router.push("/chatbot")} aria-label="Back" className="max-lg:hidden">
             <ArrowLeft className="h-4 w-4" />
           </IconButton>
           <input
             value={flowName}
             onChange={(e) => setFlowName(e.target.value)}
-            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[220px] focus:ring-0"
+            aria-label="Flow name"
+            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[220px] focus:ring-0 max-lg:w-auto max-lg:min-w-0 max-lg:flex-1"
           />
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium ${flow.isActive ? "bg-success-container text-success" : "bg-surface-container-highest text-on-surface-variant"}`}>
+          <span className={`max-lg:shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium ${flow.isActive ? "bg-success-container text-success" : "bg-surface-container-highest text-on-surface-variant"}`}>
             {flow.isActive ? "Active" : "Draft"}
           </span>
           {aiEnabled && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning-container text-warning">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning-container text-warning max-lg:shrink-0">
               <Sparkles className="h-3 w-3" />
               AI Mode
             </span>
           )}
           {validationErrors.length > 0 && !aiEnabled && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning/20 text-warning">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning/20 text-warning max-lg:shrink-0">
               <AlertTriangle className="h-3 w-3" />
               {validationErrors.length} issue{validationErrors.length > 1 ? "s" : ""}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-lg:hidden">
           {!aiEnabled && rfNodes.length > 1 && (
             <IconButton size="sm"
               onClick={handleAutoLayout}
@@ -1264,7 +1310,9 @@ function ChatbotEditorInner() {
           selectedProductIds={selectedProductIds}
           setSelectedProductIds={setSelectedProductIds}
           flowId={flowId}
-          onAddNode={addNodeToCanvas}
+          onAddNode={(type) => { addNodeToCanvas(type); setShowMobileSettings(false); }}
+          mobileOpen={showMobileSettings}
+          onMobileClose={() => setShowMobileSettings(false)}
         />
 
         {/* Canvas */}
@@ -1313,6 +1361,12 @@ function ChatbotEditorInner() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              // Mobile: a tap always opens the node's settings sheet
+              onNodeClick={isMobile ? (_, node) => {
+                setSelectedNodeId(node.id);
+                setShowTestPanel(false);
+                setShowMobileSettings(false);
+              } : undefined}
               nodeTypes={nodeTypes}
               fitView
               fitViewOptions={{ padding: 0.2 }}
@@ -1331,18 +1385,45 @@ function ChatbotEditorInner() {
                   const d = n.data as FlowNodeData;
                   return d ? (NODE_META[d.nodeType]?.color ?? "#6b7280") : "#6b7280";
                 }}
-                className="!bg-surface-container !border !border-outline-variant !rounded-xl"
+                className="!bg-surface-container !border !border-outline-variant !rounded-xl max-lg:!hidden"
               />
 
               {rfNodes.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center space-y-2">
-                    <p className="text-body-lg text-on-surface-variant font-medium">Drag nodes here or click from the left panel</p>
+                    <p className="text-body-lg text-on-surface-variant font-medium max-lg:hidden">Drag nodes here or click from the left panel</p>
+                    <p className="text-body-lg text-on-surface-variant font-medium lg:hidden">Tap Add node to start</p>
                     <p className="text-label text-on-surface-variant/60">Connect nodes by dragging from the bottom handle to the top handle of another node</p>
                   </div>
                 </div>
               )}
             </ReactFlow>
+          )}
+
+          {/* Mobile: floating bar to open the node palette / flow settings */}
+          {!selectedRfNode && !showTestPanel && !showMobileSettings && (
+            <div className="lg:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full border border-outline-variant bg-surface-container-lowest p-1 shadow-lg">
+              {!aiEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMobileSettings(true);
+                    requestAnimationFrame(() => document.getElementById("chatbot-add-node")?.scrollIntoView());
+                  }}
+                  className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 text-body font-semibold text-on-primary active:opacity-70"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add node
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowMobileSettings(true)}
+                className="flex min-h-11 items-center rounded-full px-4 text-body font-medium text-primary active:opacity-50"
+              >
+                Settings
+              </button>
+            </div>
           )}
         </div>
 

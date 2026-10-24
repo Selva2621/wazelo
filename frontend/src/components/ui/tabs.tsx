@@ -17,7 +17,8 @@ interface TabsProps {
 
 export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
   return (
-    <div className={cn("flex gap-1", className)}>
+    // mobile-scroll-x (globals.css, phones/tablets only): one row that scrolls sideways
+    <div className={cn("flex gap-1 mobile-scroll-x", className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id}

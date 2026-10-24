@@ -72,10 +72,10 @@ export function ConversationList({
   const showChannelFilters = availableChannelTypes && availableChannelTypes.length > 1;
 
   return (
-    <div className="flex h-full flex-col bg-surface-container-lowest">
-      {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-2 space-y-3">
-        <h2 className="text-title-sm font-semibold text-on-surface">Inbox</h2>
+    <div className="flex h-full flex-col bg-surface-container-lowest max-lg:bg-surface">
+      {/* Header (mobile: the nav bar's large title already says Inbox) */}
+      <div className="shrink-0 px-4 pt-4 pb-2 space-y-3 max-lg:pt-1">
+        <h2 className="text-title-sm font-semibold text-on-surface max-lg:hidden">Inbox</h2>
         <SearchInput
           placeholder="Search conversations..."
           value={search}
@@ -124,7 +124,7 @@ export function ConversationList({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 max-lg:px-0 max-lg:space-y-0">
         {isLoading ? (
           <div aria-busy="true" aria-label="Loading conversations">
             {Array.from({ length: 7 }, (_, i) => (

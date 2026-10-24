@@ -18,6 +18,7 @@ import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
 import { ImportContactsModal } from "@/components/contacts/import-contacts-modal";
 import { LoadError } from "@/components/ui/empty-state";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
 
 const TAKE = 20;
@@ -127,8 +128,27 @@ export default function ContactsPage() {
   return (
     <div className="relative flex flex-col h-[calc(100dvh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4 max-lg:pt-1 max-lg:space-y-3">
+        {/* Phones/tablets: title is in the nav bar, buttons in its + and … menus */}
+        <MobilePageActions
+          primary={{ label: "New contact", onClick: () => setShowCreate(true) }}
+          more={[
+            {
+              label: view === "list" ? "Show as board" : "Show as list",
+              onSelect: () => setView(view === "list" ? "kanban" : "list"),
+            },
+            { label: "Import CSV", onSelect: () => setShowImport(true) },
+            { label: "Export CSV", onSelect: () => exportContacts.mutate() },
+            { label: "Merge contacts", onSelect: () => setShowMerge(true) },
+          ]}
+        />
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={data ? `Search ${data.total} contacts` : "Search contacts"}
+          className="w-full lg:hidden"
+        />
+        <div className="flex items-center justify-between max-lg:hidden">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-on-surface-variant" />
             <h1 className="text-title font-semibold text-on-surface">

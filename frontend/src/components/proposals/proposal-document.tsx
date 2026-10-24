@@ -91,7 +91,7 @@ export function ProposalDocument({ data, className }: { data: ProposalDocumentDa
       <section className="space-y-3 border-t border-[#e6e8eb] py-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[#59636e]">Price</h2>
         {hasNumbers ? (
-          <table className="w-full text-sm">
+          <table data-mobile-table="keep" className="w-full text-sm">
             <caption className="sr-only">Price breakdown</caption>
             <thead>
               <tr className="text-left text-[#59636e]">

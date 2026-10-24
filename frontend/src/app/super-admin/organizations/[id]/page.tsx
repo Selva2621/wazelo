@@ -239,7 +239,8 @@ export default function OrgDetailPage() {
           ))}
 
         {tab === "Billing history" && (
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
+          // Phones/tablets: the table scrolls sideways inside its card
+          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden max-lg:overflow-x-auto">
             {subscriptionHistory?.length ? (
               <table className="w-full text-body-lg">
                 <caption className="sr-only">Subscription history</caption>
@@ -275,7 +276,7 @@ export default function OrgDetailPage() {
         {tab === "Credits" && <OrgCreditsPanel orgId={org.id} defaultCurrency={subscription?.currency} />}
 
         {tab === "Users" && (
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
+          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden max-lg:overflow-x-auto">
             <table className="w-full text-body-lg">
               <caption className="sr-only">Users</caption>
               <thead>

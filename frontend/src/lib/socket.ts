@@ -31,6 +31,14 @@ export function getSocket(accessToken: string): Socket {
   return socket;
 }
 
+/**
+ * Reconnects the shared socket if it gave up (it stops after 10 attempts).
+ * Called when the network comes back or the installed app returns to the foreground.
+ */
+export function reconnectSocketIfNeeded(): void {
+  if (socket && !socket.connected) socket.connect();
+}
+
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();

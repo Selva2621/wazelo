@@ -44,6 +44,8 @@ import type {
   AutomationConditionOperator,
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -292,16 +294,16 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
         </p>
       )}
       {conditions.map((row, i) => (
-        <div key={row.id} className="flex items-center gap-2">
+        <div key={row.id} className="flex items-center gap-2 max-lg:flex-wrap">
           {i > 0 && (
-            <span className="text-caption font-semibold text-primary uppercase shrink-0 w-6 text-center">AND</span>
+            <span className="text-caption font-semibold text-primary uppercase shrink-0 w-6 text-center max-lg:basis-full max-lg:text-left">AND</span>
           )}
-          {i === 0 && <span className="w-6 shrink-0" />}
+          {i === 0 && <span className="w-6 shrink-0 max-lg:hidden" />}
 
           <select
             value={row.field}
             onChange={(e) => update(row.id, "field", e.target.value)}
-            className={`${selectCls} w-40`}
+            className={`${selectCls} w-40 max-lg:w-[calc(50%-0.25rem)]`}
           >
             {CONDITION_FIELDS.map((f) => (
               <option key={f.value} value={f.value}>{f.label}</option>
@@ -311,7 +313,7 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
           <select
             value={row.operator}
             onChange={(e) => update(row.id, "operator", e.target.value as AutomationConditionOperator)}
-            className={`${selectCls} w-28`}
+            className={`${selectCls} w-28 max-lg:w-[calc(50%-0.25rem)]`}
           >
             {CONDITION_OPERATORS.map((op) => (
               <option key={op.value} value={op.value}>{op.label}</option>
@@ -319,7 +321,7 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
           </select>
 
           <input
-            className={inputCls}
+            className={`${inputCls} max-lg:min-w-0 max-lg:basis-[calc(100%-3rem)]`}
             placeholder="value"
             value={row.value}
             onChange={(e) => update(row.id, "value", e.target.value)}
@@ -517,7 +519,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       )}
 
       {/* Delay */}
-      <div className="pl-8 flex items-center gap-2">
+      <div className="pl-8 flex items-center gap-2 max-lg:flex-wrap max-lg:pl-0">
         <Clock className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
         <Label className="text-caption text-on-surface-variant/60 shrink-0">Delay before action:</Label>
         <input
@@ -559,6 +561,8 @@ export default function AutomationRuleEditorPage() {
   const [initialized, setInitialized] = useState(false);
 
   const { data: rule, isLoading, isError } = useAutomationRule(id);
+  // The rule name is editable just below, so the bar keeps a short title
+  useMobileTitle("Rule");
   const { data: logsData, isLoading: logsLoading } = useExecutionLogs({
     ruleId: id,
     limit: TAKE,
@@ -723,31 +727,41 @@ export default function AutomationRuleEditorPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+      {/* Mobile: Enable/Disable and Delete live in the nav bar "…" menu */}
+      <MobilePageActions
+        moreTitle={rule.name}
+        more={[
+          { label: rule.status === "ACTIVE" ? "Disable" : "Enable", onSelect: handleToggle, disabled: isToggling },
+          { label: "Delete", onSelect: () => setShowDeleteDialog(true), destructive: true },
+        ]}
+      />
       {/* ── Header ── */}
       <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant/10 bg-surface-container-low">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-1 max-lg:gap-2">
+          {/* Mobile: the nav bar has Back */}
           <IconButton size="sm"
             onClick={() => router.push("/automation")}
-           
+            className="max-lg:hidden"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </IconButton>
-          <Zap className="h-4 w-4 text-on-surface-variant" />
+          <Zap className="h-4 w-4 text-on-surface-variant max-lg:hidden" />
           <input
             value={name}
             onChange={(e) => { setName(e.target.value); markDirty(); }}
-            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0"
+            aria-label="Rule name"
+            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0 max-lg:w-auto max-lg:min-w-0 max-lg:flex-1"
           />
           <RuleStatusBadge status={rule.status} />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-lg:shrink-0">
           {isDirty && (
-            <span className="text-caption text-on-surface-variant/50">Unsaved changes</span>
+            <span className="text-caption text-on-surface-variant/50 max-lg:hidden">Unsaved changes</span>
           )}
           {saved && (
-            <span className="flex items-center gap-1 text-caption text-success">
+            <span className="flex items-center gap-1 text-caption text-success max-lg:hidden">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Saved
             </span>
@@ -766,6 +780,7 @@ export default function AutomationRuleEditorPage() {
             size="sm"
             onClick={handleToggle}
             loading={isToggling}
+            className="max-lg:hidden"
           >
             {rule.status === "ACTIVE" ? (
               <><PowerOff className="h-4 w-4 mr-1.5" />Disable</>
@@ -777,7 +792,7 @@ export default function AutomationRuleEditorPage() {
             variant="ghost"
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
-            className="text-error hover:bg-error/10"
+            className="text-error hover:bg-error/10 max-lg:hidden"
           >
             <Trash2 className="h-4 w-4 mr-1.5" />
             Delete
@@ -902,7 +917,7 @@ export default function AutomationRuleEditorPage() {
 
             {/* Advanced Settings */}
             <Section title="Advanced Settings" defaultOpen={false}>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
                 <div>
                   <Label>Priority</Label>
                   <Input

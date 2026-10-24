@@ -24,6 +24,8 @@ import type { SequenceStatus } from "@/lib/types/sequences";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadError } from "@/components/ui/empty-state";
 import { WhatsAppRequiredBanner } from "@/components/whatsapp/whatsapp-required-banner";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 
 const STATUS_TABS = [
   { id: "", label: "All" },
@@ -55,16 +57,20 @@ export default function SequencesPage() {
   const resumeSequence = useResumeSequence();
   const cancelSequence = useCancelSequence();
   const deleteSequence = useDeleteSequence();
+  useMobileTitle(analyticsId ? "Sequence Analytics" : undefined);
 
   // Analytics view
   if (analyticsId) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
+      <div className="space-y-4 max-lg:px-4">
+        <div className="flex items-center gap-3 max-lg:gap-1">
           <IconButton size="sm" onClick={() => setAnalyticsId(null)} aria-label="Back">
             <ArrowLeft className="h-4 w-4 text-on-surface-variant" />
           </IconButton>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
+          <button type="button" onClick={() => setAnalyticsId(null)} className="lg:hidden min-h-11 text-body font-medium text-primary">
+            All sequences
+          </button>
+          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2 max-lg:hidden">
             <BarChart3 className="h-6 w-6 text-primary" />
             Sequence Analytics
           </h1>
@@ -75,9 +81,11 @@ export default function SequencesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-lg:px-4 max-lg:pt-2">
+      <MobilePageActions primary={{ label: "New Sequence", onClick: () => setShowCreate(true) }} />
+
+      {/* Header: on mobile the nav bar has the title and "+" */}
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Workflow className="h-6 w-6 text-primary" />

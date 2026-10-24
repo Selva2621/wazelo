@@ -238,7 +238,7 @@ function RunRow({
             <span className="ml-2">· max {run.maxResults}</span>
           </p>
           {note && !showNote && (
-            <p className="mt-1 text-caption text-on-surface-variant italic flex items-center gap-1">
+            <p className="mt-1 text-caption text-on-surface-variant italic flex items-center gap-1 max-lg:[overflow-wrap:anywhere]">
               <StickyNote className="w-3 h-3 shrink-0" />
               {note}
             </p>
@@ -246,8 +246,8 @@ function RunRow({
         </div>
 
         {/* Right: time + actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-label text-on-surface-variant mr-1">{formatTimeAgo(run.createdAt)}</span>
+        <div className="flex items-center gap-1 shrink-0 max-lg:w-full max-lg:gap-2">
+          <span className="text-label text-on-surface-variant mr-1 max-lg:mr-auto">{formatTimeAgo(run.createdAt)}</span>
 
           {/* Note toggle */}
           <button
@@ -323,7 +323,7 @@ function RunRow({
 
       {/* Error */}
       {run.status === "FAILED" && run.errorMessage && (
-        <p className="mt-2 text-label text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
+        <p className="mt-2 text-label text-error bg-error/5 rounded-lg px-3 py-2 max-lg:[overflow-wrap:anywhere]">{run.errorMessage}</p>
       )}
 
       {/* View / Monitor link */}
@@ -469,9 +469,9 @@ export default function LeadScraperPage() {
   const activeFilterCount = [filterSource !== "", filterStatus !== ""].filter(Boolean).length;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
+    <div className="p-6 max-w-5xl mx-auto space-y-8 max-lg:space-y-6">
+      {/* Header (the iOS nav bar shows the title on mobile) */}
+      <div className="max-lg:hidden">
         <h1 className="text-headline font-semibold text-on-surface">Lead Scraper</h1>
         <p className="text-body-lg text-on-surface-variant mt-1">
           Pick a source, search for leads, review the results, then import the ones you want.
@@ -509,7 +509,7 @@ export default function LeadScraperPage() {
 
       {/* Config form */}
       {selectedScraper && (
-        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4">
+        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4 max-lg:p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-body-lg font-semibold text-on-surface">Configure {selectedScraper.title} Search</h2>
             <button aria-label="Close" onClick={() => setSelected(null)} className="text-on-surface-variant hover:text-on-surface">
@@ -657,7 +657,7 @@ export default function LeadScraperPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap max-lg:w-full">
             {/* Source filter */}
             <div className="relative">
               <select
@@ -731,7 +731,7 @@ export default function LeadScraperPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 max-lg:flex-col max-lg:gap-2">
             <span className="text-label text-on-surface-variant">
               Page {page + 1} of {totalPages} · {total} runs
             </span>

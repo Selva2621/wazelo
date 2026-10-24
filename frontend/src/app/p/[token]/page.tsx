@@ -10,12 +10,13 @@ import { ProposalDocument } from "@/components/proposals/proposal-document";
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 
+// Phones: 48px buttons and fields
 const btn =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#1f2328]/40 focus-visible:ring-offset-2 disabled:opacity-50";
+  "inline-flex h-11 max-sm:h-12 items-center justify-center gap-2 rounded-lg px-4 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#1f2328]/40 focus-visible:ring-offset-2 disabled:opacity-50";
 const primary = `${btn} bg-[#1f2328] text-white hover:bg-[#32383f]`;
 const secondary = `${btn} border border-[#d0d4d9] bg-white text-[#1f2328] hover:bg-[#f6f7f8]`;
 const input =
-  "w-full rounded-lg border border-[#d0d4d9] bg-white px-3 py-2.5 text-[15px] text-[#1f2328] outline-none placeholder:text-[#8b949e] focus:border-[#1f2328] focus:ring-2 focus:ring-[#1f2328]/20";
+  "max-sm:min-h-12 w-full rounded-lg border border-[#d0d4d9] bg-white px-3 py-2.5 text-[15px] text-[#1f2328] outline-none placeholder:text-[#8b949e] focus:border-[#1f2328] focus:ring-2 focus:ring-[#1f2328]/20";
 
 function Banner({ tone, icon, children }: { tone: "green" | "amber" | "grey"; icon: React.ReactNode; children: React.ReactNode }) {
   const tones = {
@@ -51,7 +52,7 @@ function Actions({ token, proposal }: { token: string; proposal: PublicProposal 
   };
 
   return (
-    <div className="sticky bottom-0 border-t border-[#e6e8eb] bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur print:hidden">
+    <div className="sticky bottom-0 border-t border-[#e6e8eb] bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur print:hidden max-sm:pl-[max(16px,var(--safe-left))] max-sm:pr-[max(16px,var(--safe-right))]">
       <div className="mx-auto max-w-2xl">
         {mode === "idle" ? (
           <div className="flex gap-2">
@@ -64,7 +65,7 @@ function Actions({ token, proposal }: { token: string; proposal: PublicProposal 
               <span className="hidden sm:inline">Request changes</span>
             </button>
             <a
-              className={secondary}
+              className={`${secondary} max-sm:w-12 max-sm:px-0`}
               href={publicProposalApi.pdfUrl(token)}
               target="_blank"
               rel="noopener noreferrer"
@@ -148,7 +149,7 @@ export default function PublicProposalPage() {
   }
   if (isError || !p) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-3 px-4 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-3 px-4 text-center max-lg:px-6 max-lg:pb-[var(--safe-bottom)] max-lg:pt-[var(--safe-top)]">
         <FileX className="h-10 w-10 text-[#8b949e]" aria-hidden />
         <h1 className="text-lg font-semibold">This proposal isn&apos;t available</h1>
         <p className="text-[15px] text-[#59636e]">The link may be wrong, or the proposal was withdrawn. Ask the sender for a new link.</p>
@@ -160,7 +161,7 @@ export default function PublicProposalPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-3 py-6 sm:px-4 sm:py-10 print:max-w-none print:p-0">
+      <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-3 py-6 sm:px-4 sm:py-10 print:max-w-none print:p-0 max-sm:pt-[calc(1rem+var(--safe-top))] max-sm:pl-[max(12px,var(--safe-left))] max-sm:pr-[max(12px,var(--safe-right))]">
         {p.status === "ACCEPTED" && (
           <Banner tone="green" icon={<CheckCircle2 className="h-5 w-5" />}>
             <p className="font-medium">Accepted{p.acceptedBy ? ` by ${p.acceptedBy}` : ""} on {day(p.respondedAt)}</p>

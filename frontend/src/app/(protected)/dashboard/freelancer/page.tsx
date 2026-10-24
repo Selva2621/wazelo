@@ -28,6 +28,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 // Bento layout from the Stitch "Wazelo - Bento Grid Layout" screen, built on the shared
 // tokens so it follows the app's themes. One radius system: 24px cards, 16px tiles, pill buttons.
@@ -66,11 +67,12 @@ function Kpi({
   href: string;
 }) {
   return (
-    <Link href={href} className={cn(CARD, "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-primary/40")}>
-      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl", tone)}>{icon}</span>
-      <span className="min-w-0">
+    // Phones: two tiles per row, icon above the numbers
+    <Link href={href} className={cn(CARD, "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-primary/40 max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:rounded-2xl max-lg:active:scale-[0.98]")}>
+      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl max-sm:size-10 max-sm:rounded-xl", tone)}>{icon}</span>
+      <span className="min-w-0 max-sm:w-full">
         <span className="block truncate text-label text-on-surface-variant">{label}</span>
-        <span className="flex items-baseline gap-2">
+        <span className="flex items-baseline gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-0">
           <span className="text-headline font-semibold tabular-nums text-on-surface">{value}</span>
           <span className="truncate text-caption text-on-surface-variant">{caption}</span>
         </span>
@@ -102,13 +104,14 @@ function QuickActions({ className }: { className?: string }) {
           <Link
             key={href}
             href={href}
-            className={cn(CARD, "flex items-center gap-3 px-4 py-3 text-body font-semibold text-on-surface transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]")}
+            // Phones/tablets: iOS tiles, icon above the label so it never truncates
+            className={cn(CARD, "flex items-center gap-3 px-4 py-3 text-body font-semibold text-on-surface transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98] max-lg:flex-col max-lg:items-start max-lg:gap-2.5 max-lg:rounded-2xl max-lg:p-3.5")}
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
               <Icon className="h-4.5 w-4.5" />
             </span>
-            <span className="truncate">{label}</span>
-            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-on-surface-variant/40" />
+            <span className="truncate max-lg:w-full">{label}</span>
+            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-on-surface-variant/40 max-lg:hidden" />
           </Link>
         ))}
       </div>
@@ -138,12 +141,14 @@ function ThisWeek() {
         <>
           <div className="grid grid-cols-3 gap-2.5">
             {[
-              { label: "Sent messages", value: sent },
-              { label: "Replies", value: replies },
-              { label: "Read", value: totals?.read ?? 0 },
+              { label: "Sent messages", short: "Sent", value: sent },
+              { label: "Replies", short: "Replies", value: replies },
+              { label: "Read", short: "Read", value: totals?.read ?? 0 },
             ].map((s) => (
               <div key={s.label} className={cn(TILE, "px-3 py-2.5")}>
-                <p className="truncate text-caption text-on-surface-variant">{s.label}</p>
+                {/* Phones: the short label fits a third of the card */}
+                <p className="truncate text-caption text-on-surface-variant max-sm:hidden">{s.label}</p>
+                <p className="truncate text-caption text-on-surface-variant sm:hidden">{s.short}</p>
                 <p className="text-title-sm font-semibold tabular-nums text-on-surface">{data ? s.value : "…"}</p>
               </div>
             ))}
@@ -230,15 +235,18 @@ export default function FreelancerDashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 pb-10 pt-4 lg:px-6">
+      {/* Phones/tablets: Add Lead is the nav bar's + button */}
+      <MobilePageActions primary={{ label: "Add lead", onClick: () => router.push("/contacts?action=new") }} />
+
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-display font-semibold text-on-surface">Hey, {firstName}</h1>
-          <p className="mt-1 text-body-lg text-on-surface-variant">Your client pipeline overview</p>
+          <h1 className="text-display font-semibold text-on-surface max-lg:text-title">Hey, {firstName}</h1>
+          <p className="mt-1 text-body-lg text-on-surface-variant max-lg:mt-0 max-lg:text-body">Your client pipeline overview</p>
         </div>
         <Link
           href="/contacts?action=new"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-body font-semibold text-on-primary shadow-[0_0_24px_-6px_var(--primary-glow)] transition-transform active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-body font-semibold text-on-primary shadow-[0_0_24px_-6px_var(--primary-glow)] transition-transform active:scale-[0.98] max-lg:hidden"
         >
           <Plus className="h-4 w-4" />
           Add Lead
@@ -371,7 +379,7 @@ export default function FreelancerDashboard() {
       </div>
 
       {/* Row 3: KPI tiles, the busier two wider */}
-      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr]">
+      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr] max-sm:grid-cols-2">
         <Kpi
           label="Total Leads"
           value={totalLeads}

@@ -33,13 +33,14 @@ export default function ProposalsPage() {
   const { data, isLoading } = useProposals(status ? { status } : undefined);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
-      <div>
+    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6 max-lg:space-y-4 max-lg:pt-2">
+      {/* Title: the iOS nav bar shows it on mobile */}
+      <div className="max-lg:hidden">
         <h1 className="text-title font-semibold text-on-surface">Proposals</h1>
         <p className="text-body text-on-surface-variant">Create one from a chat or a deal. Clients accept from a link.</p>
       </div>
 
-      <div role="tablist" aria-label="Filter by status" className="flex flex-wrap gap-1.5">
+      <div role="tablist" aria-label="Filter by status" className="flex flex-wrap gap-1.5 mobile-scroll-x">
         {FILTERS.map((f) => (
           <button
             key={f.label}
@@ -47,7 +48,7 @@ export default function ProposalsPage() {
             aria-selected={status === f.value}
             onClick={() => setStatus(f.value)}
             className={cn(
-              "rounded-full border px-3 py-1 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/40",
+              "rounded-full border px-3 py-1 max-lg:py-1.5 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/40",
               status === f.value ? "border-primary bg-primary text-on-primary" : "border-outline-variant text-on-surface-variant hover:border-outline",
             )}
           >
@@ -68,8 +69,8 @@ export default function ProposalsPage() {
         <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-low">
           {data.map((p) => (
             <li key={p.id}>
-              <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 outline-none hover:bg-surface-container focus-visible:bg-surface-container">
-                <div className="min-w-0 flex-1">
+              <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 max-lg:gap-x-3 outline-none hover:bg-surface-container focus-visible:bg-surface-container">
+                <div className="min-w-0 flex-1 max-lg:basis-full">
                   <p className="truncate text-body font-medium text-on-surface">{p.title}</p>
                   <p className="truncate text-label text-on-surface-variant">
                     {p.number} · {p.contact.name || p.contact.phoneNumber}
@@ -78,7 +79,7 @@ export default function ProposalsPage() {
                 </div>
                 <span className="text-body tabular-nums text-on-surface">{money(p.total, p.currency)}</span>
                 <ProposalStatusBadge status={p.status} expired={!!p.validUntil && new Date(p.validUntil) < new Date() && (p.status === "SENT" || p.status === "VIEWED")} />
-                <span className="w-16 text-right text-label text-on-surface-variant">{ago(p.updatedAt)}</span>
+                <span className="w-16 text-right text-label text-on-surface-variant max-lg:ml-auto">{ago(p.updatedAt)}</span>
               </Link>
             </li>
           ))}

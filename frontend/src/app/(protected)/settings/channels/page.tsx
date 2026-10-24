@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-channels";
 import { useChannelSocket } from "@/hooks/use-channel-socket";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useAuthStore } from "@/stores/auth-store";
 import type {
   Channel,
@@ -103,9 +104,14 @@ export default function ChannelsPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] overflow-hidden max-lg:h-auto max-lg:overflow-visible">
+      {canCreate && !showForm && !editingChannel && (
+        <MobilePageActions
+          primary={{ label: "Add Channel", onClick: () => { setShowForm(true); setDetailChannel(null); } }}
+        />
+      )}
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/15">
+      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/15 max-lg:hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Radio className="h-6 w-6 text-primary" />
@@ -133,7 +139,7 @@ export default function ChannelsPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4 max-lg:overflow-visible">
         {/* Create form */}
         {showForm && (
           <ChannelForm

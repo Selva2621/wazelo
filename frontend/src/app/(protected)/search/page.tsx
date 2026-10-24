@@ -214,8 +214,8 @@ export default function SearchPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:pt-1">
+        <div className="flex items-center gap-3 mb-4 max-lg:hidden">
           <Search className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">Search</h1>
         </div>

@@ -26,6 +26,7 @@ import {
   useDeleteChatbotFlow,
 } from "@/hooks/use-chatbot";
 import { Button } from "@/components/ui/button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -156,8 +157,20 @@ export default function ChatbotPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+      {/* Mobile: header buttons move to the nav bar */}
+      <MobilePageActions
+        primary={
+          aiEnabled
+            ? { label: "AI Chatbot", onClick: () => !createFlow.isPending && handleCreateAiBot() }
+            : { label: "Custom Flow", onClick: () => !createFlow.isPending && handleCreate() }
+        }
+        more={[
+          aiEnabled && { label: "Custom Flow", onSelect: handleCreate, disabled: createFlow.isPending },
+          aiEnabled && { label: "Bot knowledge", onSelect: () => router.push("/chatbot/knowledge") },
+        ]}
+      />
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
+      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:hidden">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">Chatbot Flows</h1>
@@ -207,7 +220,7 @@ export default function ChatbotPage() {
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-3 max-lg:flex-wrap">
                 <Badge variant="default" className="text-caption">
                   {TRIGGER_LABELS[flow.trigger.type] || flow.trigger.type}
                 </Badge>

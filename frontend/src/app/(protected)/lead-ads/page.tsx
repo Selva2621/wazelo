@@ -102,8 +102,9 @@ export default function LeadAdsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* ─── Header ─── */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
+        {/* Title: the iOS nav bar shows it on mobile */}
+        <div className="flex items-center gap-2 max-lg:hidden">
           <Target className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">
             Lead Ads
@@ -113,7 +114,7 @@ export default function LeadAdsPage() {
       </div>
 
       {/* ─── Content ─── */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 max-lg:px-4">
         {/* Loading */}
         {analyticsLoading && !analytics && (
           <div className="flex items-center justify-center py-20">
@@ -162,8 +163,8 @@ export default function LeadAdsPage() {
             )}
 
             {/* ─── Filters Toolbar ─── */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex-1 min-w-[200px] max-w-xs">
+            <div className="flex items-center gap-3 flex-wrap max-lg:gap-2">
+              <div className="flex-1 min-w-[200px] max-w-xs max-lg:max-w-none max-lg:basis-full">
                 <SearchInput
                   placeholder="Search by name, campaign..."
                   value={search}

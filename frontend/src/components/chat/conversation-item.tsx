@@ -55,6 +55,8 @@ export function ConversationItem({
         isActive
           ? "bg-surface-container"
           : "hover:bg-surface-container-low",
+        // Mobile: iOS Messages row (taller, edge to edge, pressed state)
+        "max-lg:h-[76px] max-lg:rounded-none max-lg:bg-transparent max-lg:px-4 max-lg:active:bg-surface-container",
       )}
     >
       <div className="relative shrink-0">
@@ -76,11 +78,11 @@ export function ConversationItem({
         )}
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-lg:self-stretch max-lg:flex max-lg:flex-col max-lg:justify-center max-lg:border-b max-lg:border-outline-variant/60">
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
-              "text-body truncate text-on-surface",
+              "text-body truncate text-on-surface max-lg:text-[16px]",
               hasUnread ? "font-semibold" : "font-medium",
             )}
           >
@@ -93,7 +95,7 @@ export function ConversationItem({
         <div className="flex items-center justify-between gap-2 mt-0.5">
           <p
             className={cn(
-              "text-body truncate",
+              "text-body truncate max-lg:text-[15px]",
               hasUnread ? "text-on-surface" : "text-on-surface-variant",
             )}
           >

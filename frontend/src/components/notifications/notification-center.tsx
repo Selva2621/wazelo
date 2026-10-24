@@ -39,7 +39,7 @@ import type {
 } from "@/lib/types/notifications";
 import { IconButton } from "@/components/ui/icon-button";
 
-const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
+export const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
   MESSAGE_RECEIVED: MessageSquare,
   CONTACT_ASSIGNED: UserPlus,
   CONTACT_REASSIGNED: UserPlus,
@@ -341,7 +341,7 @@ function NotificationItem({
 
 // ─── Helpers ────────────────────────────────────
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const secs = Math.floor(diff / 1000);
   if (secs < 60) return "just now";

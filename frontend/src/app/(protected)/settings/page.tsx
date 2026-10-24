@@ -45,6 +45,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { GroupedSection, ListRow } from "@/components/ios/grouped-list";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   useOrgSettings,
@@ -175,6 +177,20 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
   },
 ];
 
+// Icon tile colours for the mobile section list
+const MOBILE_TAB_TILE: Record<SettingsTab, string> = {
+  organization: "bg-chart-6",
+  "working-hours": "bg-chart-1",
+  notifications: "bg-error",
+  whatsapp: "bg-[#25D366]",
+  shopify: "bg-chart-3",
+  features: "bg-chart-5",
+  "ai-memory": "bg-chart-4",
+  sla: "bg-chart-2",
+  "developer-api": "bg-primary",
+  webhooks: "bg-chart-6",
+};
+
 const TIMEZONES = [
   "UTC",
   "America/New_York",
@@ -221,14 +237,39 @@ export default function SettingsPage() {
     if (tabParam) setActiveTab(tabParam);
   }, [tabParam]);
 
+  // Mobile: no ?tab shows the list of sections; ?tab shows that section alone
+  const mobileTabLabel = tabParam
+    ? TAB_GROUPS.flatMap((g) => g.tabs).find((t) => t.id === tabParam)?.label
+    : null;
+  useMobileTitle(mobileTabLabel);
+
   if (user?.role !== "ADMIN") {
     return <EmployeeSettingsRedirect />;
   }
 
   return (
     <div className="flex-1 p-6 space-y-6">
+      {/* Mobile: iOS Settings-style section list */}
+      {!tabParam && (
+        <div className="lg:hidden -mx-4 -mt-2">
+          {TAB_GROUPS.map((group) => (
+            <GroupedSection key={group.label} header={group.label}>
+              {group.tabs.map((tab) => (
+                <ListRow
+                  key={tab.id}
+                  icon={<tab.icon className="h-[18px] w-[18px]" />}
+                  iconClassName={MOBILE_TAB_TILE[tab.id]}
+                  title={tab.label}
+                  href={`/settings?tab=${tab.id}`}
+                />
+              ))}
+            </GroupedSection>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
-      <div>
+      <div className="max-lg:hidden">
         <h1 className="text-headline font-semibold text-on-surface">Settings</h1>
         <p className="text-body text-on-surface-variant mt-1">
           Manage your organization, integrations, and system configuration
@@ -237,7 +278,7 @@ export default function SettingsPage() {
 
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
-        <div className="md:w-56 shrink-0">
+        <div className="md:w-56 shrink-0 max-lg:hidden">
           <nav className="space-y-4">
             {TAB_GROUPS.map((group) => (
               <div key={group.label}>
@@ -269,7 +310,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className={cn("flex-1 min-w-0", !tabParam && "max-lg:hidden")}>
           {activeTab === "organization" && <OrganizationSection />}
           {activeTab === "ai-memory" && <AiMemorySection />}
           {activeTab === "whatsapp" && <WhatsAppSection />}
@@ -1079,7 +1120,7 @@ function WorkingHoursSection() {
                 <label className="text-label font-medium text-on-surface-variant mb-2 block">
                   Working Days
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 max-lg:flex-wrap">
                   {DAYS.map((day, i) => (
                     <button
                       key={day}
@@ -2142,7 +2183,7 @@ function DeveloperApiSection() {
   return (
     <div className="space-y-6">
       {/* Sub-tabs */}
-      <div className="flex gap-1 p-1 bg-surface-container rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-surface-container rounded-lg w-fit mobile-scroll-x max-lg:w-full">
         {(
           [
             { id: "overview", label: "Overview", icon: BarChart3 },
@@ -2154,13 +2195,13 @@ function DeveloperApiSection() {
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-body font-medium transition-colors ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-body font-medium transition-colors max-lg:flex-1 max-lg:justify-center max-sm:px-2 max-sm:py-2 ${
               activeSubTab === tab.id
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <tab.icon className="h-4 w-4" />
+            <tab.icon className="h-4 w-4 max-sm:hidden" />
             {tab.label}
           </button>
         ))}
@@ -2174,9 +2215,9 @@ function DeveloperApiSection() {
           ) : stats ? (
             <>
               {/* Usage Stats */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-sm:grid-cols-2 max-sm:gap-3">
                 <Card>
-                  <CardContent className="pt-5">
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
                     <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Messages Used</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">
                       {(stats.messagesUsed ?? 0).toLocaleString()}
@@ -2197,21 +2238,21 @@ function DeveloperApiSection() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
                     <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Active Sessions</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeSessions}</p>
                     <p className="text-label text-on-surface-variant mt-1">WhatsApp connected</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
                     <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">API Keys</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeApiKeys}</p>
                     <p className="text-label text-on-surface-variant mt-1">Active keys</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
                     <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Contacts</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{(stats.totalContacts ?? 0).toLocaleString()}</p>
                     <p className="text-label text-on-surface-variant mt-1">Total contacts</p>

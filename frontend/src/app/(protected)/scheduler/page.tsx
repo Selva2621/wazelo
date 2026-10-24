@@ -10,6 +10,7 @@ import { useWhatsAppSession } from "@/hooks/use-whatsapp";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { ScheduledMessagesTable } from "@/components/scheduler/scheduled-messages-table";
 import { CreateScheduledMessageModal } from "@/components/scheduler/create-scheduled-message-modal";
 import type {
@@ -87,8 +88,9 @@ export default function SchedulerPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
+        <MobilePageActions primary={{ label: "Schedule Message", onClick: () => setShowCreateModal(true) }} />
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 max-lg:hidden">
             <Clock className="h-5 w-5 text-on-surface-variant" />
             <h1 className="text-title font-semibold text-on-surface">
               Scheduled Messages
@@ -99,14 +101,14 @@ export default function SchedulerPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-lg:w-full">
             <SearchInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search messages..."
-              className="w-64"
+              className="w-64 max-lg:w-full"
             />
-            <Button onClick={() => setShowCreateModal(true)}>
+            <Button onClick={() => setShowCreateModal(true)} className="max-lg:hidden">
               <Plus className="h-4 w-4 mr-1" />
               Schedule Message
             </Button>

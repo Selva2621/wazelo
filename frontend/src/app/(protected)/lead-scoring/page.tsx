@@ -25,6 +25,7 @@ import { SCORING_SIGNALS } from "@/lib/types/lead-scoring";
 import type { LeadScoringRule, CreateScoringRuleRequest } from "@/lib/types/lead-scoring";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 // ─── Rule Form Modal ───────────────────────────────────────────────────────────
 
@@ -201,11 +202,11 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
   const isPositive = rule.points >= 0;
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-container/50 transition-colors group border-b border-outline-variant/8 last:border-0">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-container/50 transition-colors group border-b border-outline-variant/8 last:border-0 max-lg:flex-wrap max-lg:gap-x-3 max-lg:gap-y-1.5">
       {/* Toggle */}
       <button
         onClick={() => onToggle(rule)}
-        className="shrink-0 text-on-surface-variant hover:text-primary transition-colors"
+        className="shrink-0 text-on-surface-variant hover:text-primary transition-colors max-lg:-m-2.5 max-lg:p-2.5"
         title={rule.enabled ? "Disable rule" : "Enable rule"}
       >
         {rule.enabled ? (
@@ -216,7 +217,7 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
       </button>
 
       {/* Signal */}
-      <div className="w-44 shrink-0">
+      <div className="w-44 shrink-0 max-lg:order-2 max-lg:w-auto max-lg:ml-8">
         <Badge variant={rule.enabled ? "primary" : "default"} className="text-caption">
           {signal?.label ?? rule.signal}
         </Badge>
@@ -235,19 +236,22 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
       </div>
 
       {/* Points */}
-      <div className="w-20 shrink-0 text-right">
+      <div className="w-20 shrink-0 text-right max-lg:w-auto">
         <span className={`text-body font-semibold tabular-nums ${isPositive ? "text-success" : "text-error"}`}>
           {isPositive ? "+" : ""}{rule.points} pts
         </span>
       </div>
 
       {/* Max fires */}
-      <div className="w-28 shrink-0 text-label text-on-surface-variant/60 text-center">
+      {/* Line break before signal + limit on mobile */}
+      <div className="hidden max-lg:block max-lg:order-1 max-lg:basis-full max-lg:h-0" aria-hidden />
+
+      <div className="w-28 shrink-0 text-label text-on-surface-variant/60 text-center max-lg:order-2 max-lg:w-auto">
         {rule.maxPerContact === 0 ? "Unlimited" : `Max ${rule.maxPerContact}×`}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity max-lg:opacity-100">
         <IconButton size="xs"
           onClick={() => onEdit(rule)}
          
@@ -301,8 +305,10 @@ export default function LeadScoringPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
-      {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
+      <MobilePageActions primary={{ label: "New Rule", onClick: () => setShowCreate(true) }} />
+
+      {/* Header: on mobile the nav bar has the title and "+" */}
+      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:hidden">
         <div className="flex items-center gap-3">
           <TrendingUp className="h-5 w-5 text-primary" />
           <h1 className="text-title font-semibold text-on-surface">Lead Scoring</h1>
@@ -319,7 +325,7 @@ export default function LeadScoringPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 max-lg:px-4 max-lg:pt-2">
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">
@@ -348,7 +354,7 @@ export default function LeadScoringPage() {
 
         {/* Stats row */}
         {rules && rules.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 max-lg:gap-2">
             <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
               <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Total Rules</p>
               <p className="text-headline font-semibold text-on-surface tabular-nums">{rules.length}</p>
@@ -382,7 +388,7 @@ export default function LeadScoringPage() {
         {rules && rules.length > 0 && (
           <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
             {/* Table header */}
-            <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant/10 bg-surface-container/40">
+            <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant/10 bg-surface-container/40 max-lg:hidden">
               <div className="w-5 shrink-0" />
               <div className="w-44 shrink-0 text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
                 Signal

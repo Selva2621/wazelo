@@ -14,12 +14,16 @@ import { useDeals, useMoveDeal, useDealAnalytics } from "@/hooks/use-deals";
 import type { Pipeline, Deal, PipelineStage } from "@/lib/types/deals";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { formatAmount } from "@/lib/utils";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import type { ActionSheetAction } from "@/components/ios/action-sheet";
 
 interface PipelineBoardProps {
   pipeline: Pipeline;
+  /** Extra items for the mobile nav bar's "…" menu */
+  mobileMore?: ActionSheetAction[];
 }
 
-export function PipelineBoard({ pipeline }: PipelineBoardProps) {
+export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
   const { data: deals, isLoading } = useDeals(pipeline.id);
   const { data: analytics } = useDealAnalytics(pipeline.id);
   const moveDeal = useMoveDeal();
@@ -85,9 +89,11 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
 
   return (
     <div className="flex flex-col h-full">
+      <MobilePageActions primary={{ label: "Add Deal", onClick: () => setShowCreateModal(true) }} more={mobileMore} />
+
       {/* Summary bar */}
       {analytics && (
-        <div className="shrink-0 flex items-center gap-6 px-6 py-3 border-b border-outline-variant/10 bg-surface-container/30">
+        <div className="shrink-0 flex items-center gap-6 px-6 py-3 max-lg:flex-wrap max-lg:gap-x-4 max-lg:gap-y-1 max-lg:px-4 max-lg:py-2 border-b border-outline-variant/10 bg-surface-container/30">
           <div className="flex items-center gap-2 text-body">
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-on-surface-variant">Total:</span>
@@ -107,7 +113,7 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
               </span>
             </div>
           )}
-          <div className="ml-auto">
+          <div className="ml-auto max-lg:hidden">
             <Button size="sm" onClick={() => setShowCreateModal(true)}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add Deal
@@ -117,8 +123,9 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
       )}
 
       {/* Kanban board */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-4 p-6 min-h-0 h-full">
+      {/* Mobile: one column per screen, swipe sideways with snap */}
+      <div className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4">
+        <div className="flex gap-4 p-6 min-h-0 h-full max-lg:gap-3 max-lg:px-4 max-lg:py-3 max-lg:w-max">
           {pipeline.stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];
             const stageAnalytics = analytics?.byStage.find((s) => s.stageId === stage.id);
@@ -126,7 +133,7 @@ export function PipelineBoard({ pipeline }: PipelineBoardProps) {
             return (
               <div
                 key={stage.id}
-                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10"
+                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10 max-lg:w-[calc(100vw-48px)] max-lg:snap-start"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage)}
               >

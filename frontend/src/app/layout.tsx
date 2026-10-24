@@ -1,8 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
+import { splashScreens } from "@/lib/pwa/splash-screens";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -17,10 +20,32 @@ export const metadata: Metadata = {
     template: "%s | Wazelo CRM",
   },
   description: "WhatsApp CRM for Growing Teams — Leads, Inbox, Campaigns & Automation",
+  applicationName: "Wazelo CRM",
   icons: {
     icon: "/favicon.png",
-    apple: "/favicon.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+  // Installed iOS app: full screen, content under the status bar (safe areas handle it),
+  // launch screen per device size
+  appleWebApp: {
+    capable: true,
+    title: "Wazelo",
+    statusBarStyle: "black-translucent",
+    startupImage: splashScreens,
+  },
+  // Stop iOS turning numbers in chats and tables into blue phone links
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Draw under the notch/home bar; mobile layouts pad with env(safe-area-inset-*)
+  viewportFit: "cover",
+  // Android: the keyboard resizes the page so chat inputs stay visible
+  interactiveWidget: "resizes-content",
+  // Default theme's page colour; PwaProvider follows the active theme
+  themeColor: "#eef1f6",
 };
 
 export default function RootLayout({
@@ -34,8 +59,13 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             {children}
+            <PwaProvider />
+            <OfflineBanner />
             <Toaster
               position="bottom-right"
+              // Clears the mobile tab bar; the var is unset on desktop, so this stays 24px there
+              offset={{ bottom: "calc(var(--mobile-tabbar-h, 0px) + var(--safe-bottom, 0px) + 24px)" }}
+              mobileOffset={{ bottom: "calc(var(--mobile-tabbar-h, 0px) + var(--safe-bottom, 0px) + 12px)" }}
               richColors
               closeButton
               duration={3000}

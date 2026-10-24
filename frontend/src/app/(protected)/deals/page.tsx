@@ -48,10 +48,11 @@ export default function DealsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-3 flex items-center justify-between">
+      {/* On mobile only the pipeline picker stays (title and buttons live in the nav bar) */}
+      <div className={`shrink-0 px-6 pt-5 pb-3 flex items-center justify-between max-lg:px-4 max-lg:pt-1 max-lg:pb-2 ${pipelines.length > 1 ? "" : "max-lg:hidden"}`}>
         <div className="flex items-center gap-3">
-          <Kanban className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">Deals</h1>
+          <Kanban className="h-5 w-5 text-primary max-lg:hidden" />
+          <h1 className="text-title font-semibold text-on-surface max-lg:hidden">Deals</h1>
 
           {/* Pipeline selector */}
           {pipelines.length > 1 && (
@@ -73,6 +74,7 @@ export default function DealsPage() {
         <Button
           variant="ghost"
           size="sm"
+          className="max-lg:hidden"
           onClick={() => createPipeline.mutate({ name: `Pipeline ${(pipelines.length || 0) + 1}` })}
           disabled={createPipeline.isPending}
         >
@@ -84,7 +86,14 @@ export default function DealsPage() {
       {/* Board */}
       {activePipeline && (
         <div className="flex-1 min-h-0">
-          <PipelineBoard pipeline={activePipeline} />
+          <PipelineBoard
+            pipeline={activePipeline}
+            mobileMore={[{
+              label: "New Pipeline",
+              disabled: createPipeline.isPending,
+              onSelect: () => createPipeline.mutate({ name: `Pipeline ${(pipelines.length || 0) + 1}` }),
+            }]}
+          />
         </div>
       )}
     </div>

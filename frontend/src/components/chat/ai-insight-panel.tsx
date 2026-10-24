@@ -61,7 +61,10 @@ const shown = (value: string | null | undefined) =>
 
 export function AiInsightPanel({ conversationId }: AiInsightPanelProps) {
   const qc = useQueryClient();
-  const [expanded, setExpanded] = useState(true);
+  // Open by default on desktop; collapsed on phones so the chat keeps its room
+  const [expanded, setExpanded] = useState(
+    () => typeof window === "undefined" || window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [showKb, setShowKb] = useState(false);
   // Analysis costs credits, so it runs only when asked (or was already run this session)
   const [requestedFor, setRequestedFor] = useState<string | null>(null);

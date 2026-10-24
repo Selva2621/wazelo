@@ -155,8 +155,8 @@ export default function RolesPermissionsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+      {/* Header (phones/tablets: title in the iOS nav bar, buttons in the save bar below) */}
+      <div className="flex items-start justify-between max-lg:hidden">
         <div>
           <p className="text-label text-on-surface-variant mb-1">
             Admin &gt; Roles &amp; Permissions
@@ -256,6 +256,30 @@ export default function RolesPermissionsPage() {
           </span>
         </div>
       </Card>
+
+      {/* Phones/tablets: Reset / Save float above the tab bar while there are changes */}
+      {hasChanges && (
+        <div className="lg:hidden h-16" aria-hidden />
+      )}
+      {hasChanges && (
+        <div className="lg:hidden fixed inset-x-0 z-30 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] px-4 pb-3 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))]">
+          <div className="ios-floating-card flex items-center gap-2 !p-2">
+            <Button variant="ghost" onClick={resetChanges} className="h-11 flex-1">
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+            <Button
+              variant="primary"
+              onClick={saveChanges}
+              loading={updateMutation.isPending}
+              className="h-11 flex-[2]"
+            >
+              <Save className="h-4 w-4" />
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -276,7 +300,7 @@ function GroupRows({
       <tr className="bg-surface-container/20">
         <td
           colSpan={4}
-          className="px-5 py-2.5 text-label font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="px-5 py-2.5 text-label font-semibold uppercase tracking-wide text-on-surface-variant max-lg:px-1 max-lg:pt-4 max-lg:pb-0 max-lg:text-left!"
         >
           {group.label}
         </td>
@@ -338,7 +362,7 @@ function ToggleSwitch({
       disabled={disabled}
       onClick={onChange}
       className={`
-        relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+        relative inline-flex h-5 w-9 items-center rounded-full transition-colors max-lg:h-[31px] max-lg:w-[51px] max-lg:shrink-0
         focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 focus:ring-offset-surface
         ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
         ${checked ? "bg-primary" : "bg-surface-container-high"}
@@ -346,8 +370,8 @@ function ToggleSwitch({
     >
       <span
         className={`
-          inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm
-          ${checked ? "translate-x-[18px]" : "translate-x-[3px]"}
+          inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm max-lg:h-[27px] max-lg:w-[27px]
+          ${checked ? "translate-x-[18px] max-lg:translate-x-[22px]" : "translate-x-[3px] max-lg:translate-x-[2px]"}
         `}
       />
       {disabled && checked && (

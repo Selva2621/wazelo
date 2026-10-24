@@ -12,7 +12,7 @@ export default function WhatsAppSettingsPage() {
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-[520px]">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 max-lg:hidden">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#25D366]/15">
             <MessageCircle className="h-5 w-5 text-[#25D366]" />
           </div>

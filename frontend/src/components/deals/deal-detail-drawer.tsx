@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/modal";
-import { useUpdateDeal, useDeleteDeal } from "@/hooks/use-deals";
+import { useUpdateDeal, useDeleteDeal, useMoveDeal } from "@/hooks/use-deals";
 import type { Deal, PipelineStage } from "@/lib/types/deals";
 import { DealProposals } from "@/components/proposals/deal-proposals";
 
@@ -27,6 +27,8 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
 
   const updateDeal = useUpdateDeal();
   const deleteDeal = useDeleteDeal();
+  // Phones can't drag cards between columns, so the drawer offers "Move to" there
+  const moveDeal = useMoveDeal();
 
   const hasChanges =
     title !== deal.title ||
@@ -101,6 +103,25 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
                 style={{ backgroundColor: deal.stage.color || "#6b7280" }}
               />
               <p className="text-body-lg font-semibold text-on-surface">{deal.stage.name}</p>
+            </div>
+            <div className="lg:hidden pt-2">
+              <p className="mb-1.5 text-label text-on-surface-variant">Move to</p>
+              <div className="flex gap-2 mobile-scroll-x">
+                {stages
+                  .filter((st) => st.id !== deal.stageId)
+                  .map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      disabled={moveDeal.isPending}
+                      onClick={() => moveDeal.mutate({ pipelineId, dealId: deal.id, stageId: st.id })}
+                      className="flex min-h-9 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label font-medium text-on-surface active:bg-surface-container disabled:opacity-50"
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: st.color || "#6b7280" }} />
+                      {st.name}
+                    </button>
+                  ))}
+              </div>
             </div>
           </div>
 

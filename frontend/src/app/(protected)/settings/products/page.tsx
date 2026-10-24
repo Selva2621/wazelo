@@ -37,6 +37,7 @@ import { ProductFormModal } from "@/components/products/product-form-modal";
 import { CategoryFormModal } from "@/components/products/category-form-modal";
 import type { Product, ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -117,10 +118,21 @@ export default function ProductsPage() {
     return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
   }
 
+  // Mobile: category edit/delete live in the "…" sheet (no hover on touch)
+  const activeCategory = (categories ?? []).find((c) => c.id === activeCategoryTab);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+      <MobilePageActions
+        primary={{ label: "New Product", onClick: openCreate }}
+        more={[
+          { label: "New Category", onSelect: () => { setEditCategory(undefined); setCategoryModalOpen(true); } },
+          activeCategory && { label: `Edit "${activeCategory.name}"`, onSelect: () => { setEditCategory(activeCategory); setCategoryModalOpen(true); } },
+          activeCategory && { label: `Delete "${activeCategory.name}"`, destructive: true, onSelect: () => setDeleteCatTarget(activeCategory) },
+        ]}
+      />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between max-lg:hidden">
         <div>
           <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
             <Package className="h-6 w-6 text-primary" />
@@ -142,7 +154,7 @@ export default function ProductsPage() {
 
       {/* Category filter tabs */}
       {(categories ?? []).length > 0 && (
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap mobile-scroll-x">
           {[
             { id: "ALL", label: "All", count: (products ?? []).length, color: null },
             ...(categories ?? []).map((c) => ({
@@ -171,7 +183,7 @@ export default function ProductsPage() {
                 <span className="text-caption opacity-60">({tab.count})</span>
               </button>
               {tab.id !== "ALL" && tab.id !== "NONE" && (
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity max-lg:hidden">
                   <IconButton size="xs"
                     onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }}
                     className="hover:text-primary"

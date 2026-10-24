@@ -15,11 +15,12 @@ export function PushPromptBanner() {
   if (!shouldPrompt) return null;
 
   return (
-    <div className="px-4 pt-3" role="region" aria-label="Turn on notifications">
-      <div className="flex items-center gap-3 rounded-xl border border-outline-variant bg-surface-container px-4 py-3 text-on-surface">
+    <div className="px-4 pt-3 max-lg:pt-1 max-lg:pb-2" role="region" aria-label="Turn on notifications">
+      <div className="flex items-center gap-3 rounded-xl border border-outline-variant bg-surface-container px-4 py-3 text-on-surface max-lg:gap-2.5 max-lg:border-0 max-lg:bg-surface-container-lowest max-lg:py-2.5 max-lg:pl-3 max-lg:pr-1.5">
         <BellRing className="h-4.5 w-4.5 shrink-0 text-primary" aria-hidden />
         <p className="min-w-0 flex-1 text-body">
-          Get alerts on this device when WhatsApp disconnects, even with Wazelo closed.
+          <span className="max-lg:hidden">Get alerts on this device when WhatsApp disconnects, even with Wazelo closed.</span>
+          <span className="text-[15px] leading-5 lg:hidden">Get alerts if WhatsApp disconnects</span>
         </p>
         <Button size="sm" onClick={enable} loading={isPending}>
           Enable
