@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { sanitizePromptInput } from '@/common/utils/prompt-sanitizer.util';
+import { Injectable, Logger } from '@nestjs/common';
+import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
 import { KbChunkRepository, ChunkHit } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
 import { OrgContextService } from '../../domain/services/org-context.service';
+import { checkReply, ReplyBlockReason } from '../../domain/services/reply-guard';
 
 export interface KnowledgeSource {
   documentId: string | null;
@@ -17,6 +18,8 @@ export interface KnowledgeAnswer {
   found: boolean;
   confidence: number;
   sources: KnowledgeSource[];
+  /** Set when the reply check stopped the answer (answer is then empty): a person should take over */
+  blocked?: ReplyBlockReason;
 }
 
 export interface KnowledgeQuestion {
@@ -28,11 +31,23 @@ export interface KnowledgeQuestion {
   flowId?: string;
   /** The org's own instructions (tone, language, rules), e.g. a chatbot flow's prompt */
   instructions?: string | null;
+  /** What the team (and earlier bot replies) sent in this chat: links in it may be repeated */
+  teamText?: string;
   maxTokens?: number;
 }
 
 const PASSAGES = 6;
 const PASSAGE_CHARS = 1200;
+
+/** Our fixed rules (also what the reply check makes sure is never echoed back). */
+const KB_RULES = [
+  'You answer customers on behalf of this business.',
+  'Use ONLY the business profile above and the numbered knowledge passages. Never invent prices, policies, dates or contact details.',
+  "If they don't contain the answer, say politely that you'll check with the team and get back, and set found to false.",
+  "Reply in the customer's language, short and friendly (2–4 sentences), like a WhatsApp message. No markdown headings.",
+  UNTRUSTED_DATA_RULE,
+  'Return ONLY valid JSON: {"answer": "...", "found": true|false, "sources": [passage numbers used], "confidence": 0.0-1.0}',
+];
 
 /**
  * One way to answer from what the org taught us (website pages, uploaded documents,
@@ -41,6 +56,8 @@ const PASSAGE_CHARS = 1200;
  */
 @Injectable()
 export class KbAnswerService {
+  private readonly logger = new Logger(KbAnswerService.name);
+
   constructor(
     private readonly chunks: KbChunkRepository,
     private readonly aiProvider: AiProviderService,
@@ -59,32 +76,47 @@ export class KbAnswerService {
     // Nothing to answer from: don't spend an AI call (or the org's credits) on a guess
     if (!hits.length && !profile) return none;
 
+    // Website pages and documents can carry hidden instructions too, so they're cleaned like customer text
     const knowledge = hits
-      .map((h, i) => `[${i + 1}] ${sanitizePromptInput(h.title ?? 'Untitled', 200)}\n${h.content.slice(0, PASSAGE_CHARS)}`)
+      .map(
+        (h, i) =>
+          `[${i + 1}] ${sanitizePromptInput(h.title ?? 'Untitled', 200)}\n${sanitizePromptInput(h.content, PASSAGE_CHARS)}`,
+      )
       .join('\n\n---\n\n');
+    const instructions = q.instructions ? sanitizePromptInput(q.instructions, 2000) : '';
+    const conversation = q.conversation ? sanitizePromptInput(q.conversation.slice(-4000), 4000) : '';
 
     const system = [
       profile ? `${profile}\n\n---` : '',
-      q.instructions ? `Instructions from the business:\n${sanitizePromptInput(q.instructions, 2000)}\n\n---` : '',
-      'You answer customers on behalf of this business.',
-      'Use ONLY the business profile above and the numbered knowledge passages. Never invent prices, policies, dates or contact details.',
-      "If they don't contain the answer, say politely that you'll check with the team and get back, and set found to false.",
-      "Reply in the customer's language, short and friendly (2–4 sentences), like a WhatsApp message. No markdown headings.",
-      'Return ONLY valid JSON: {"answer": "...", "found": true|false, "sources": [passage numbers used], "confidence": 0.0-1.0}',
+      instructions ? `Instructions from the business:\n${instructions}\n\n---` : '',
+      ...KB_RULES,
     ]
       .filter(Boolean)
       .join('\n');
 
     const user = [
-      knowledge ? `Knowledge passages:\n${knowledge}` : 'Knowledge passages: (none matched)',
-      q.conversation ? `Conversation so far:\n${q.conversation.slice(-4000)}` : '',
-      `Customer question: ${question}`,
+      knowledge ? `Knowledge passages:\n${wrapUntrusted('passages', knowledge)}` : 'Knowledge passages: (none matched)',
+      conversation ? `Conversation so far:\n${wrapUntrusted('conversation', conversation)}` : '',
+      `Customer question:\n${wrapUntrusted('customer_question', question)}`,
     ]
       .filter(Boolean)
       .join('\n\n');
 
     const result = await this.aiProvider.complete({ systemPrompt: system, userPrompt: user, maxTokens: q.maxTokens ?? 500 });
-    return parseAnswer(result.text, hits);
+    const parsed = parseAnswer(result.text, hits);
+    if (!parsed.answer) return parsed;
+
+    const check = checkReply({
+      reply: parsed.answer,
+      ownInstructions: KB_RULES.join('\n'),
+      trustedText: [profile, knowledge, instructions, q.teamText].filter(Boolean).join('\n'),
+      customerText: `${conversation}\n${question}`,
+    });
+    if (!check.ok) {
+      this.logger.warn(`KB answer blocked for org ${q.orgId}: ${check.reason}`);
+      return { ...none, blocked: check.reason };
+    }
+    return parsed;
   }
 }
 

@@ -12,8 +12,9 @@ const publicPaths = [
 // (it creates the session, and must not be bounced to /dashboard by a stale hint).
 const sessionHandoffPaths = ["/auth/google/complete"];
 
-// Login-free token pages: /wa/<token> (reconnect WhatsApp from the phone), /p/<token> (a client's proposal)
-const openPrefixes = ["/wa/", "/p/"];
+// Login-free token pages: /wa/<token> (reconnect WhatsApp from the phone), /p/<token> (a client's proposal),
+// /csat/<conversationId> (the satisfaction survey a customer opens from WhatsApp)
+const openPrefixes = ["/wa/", "/p/", "/csat/"];
 
 const superAdminPublicPaths = ["/super-admin/login"];
 

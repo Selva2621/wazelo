@@ -5,7 +5,8 @@ import { EVENT_NAMES } from '@/common/constants';
 import { BotBehaviorRepository, BotSettingsInput } from '../../infrastructure/repositories/bot-behavior.repository';
 import { isOpen } from '../../domain/services/bot-hours';
 
-export type HandoffReason = 'ASKED_FOR_PERSON' | 'UNANSWERED';
+/** REPLY_BLOCKED: the AI's reply failed the safety check (likely a prompt injection), so a person answers instead */
+export type HandoffReason = 'ASKED_FOR_PERSON' | 'UNANSWERED' | 'REPLY_BLOCKED';
 
 /** Questions in a row the bot couldn't answer before it hands the chat over. */
 export const MISSES_BEFORE_HANDOFF = 2;

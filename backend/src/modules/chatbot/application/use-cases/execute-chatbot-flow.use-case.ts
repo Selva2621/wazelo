@@ -16,6 +16,19 @@ import { ChatbotSessionStatus } from '@prisma/client';
 import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
 import { BotBehaviorService, HandoffReason } from '../services/bot-behavior.service';
 import { wantsHuman } from '../../domain/services/handoff-intent';
+import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
+import { checkReply } from '@/modules/ai/domain/services/reply-guard';
+
+/** Used when the flow has no prompt of its own. */
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
+
+IMPORTANT RULES:
+- Identify which product the customer is asking about from their message.
+- Answer ONLY using information from the product documentation provided. Do not make up information.
+- If the documentation covers multiple products, use only the relevant product's information.
+- If you cannot find the answer in the documentation, say: "I don't have specific information about that. Let me connect you with a human agent who can help."
+- Keep responses concise (under 150 words), friendly, and professional.
+- If the customer hasn't specified a product and you have docs for multiple products, ask which product they need help with.`;
 
 interface FlowNode {
   id: string;
@@ -98,7 +111,7 @@ export class ExecuteChatbotFlowUseCase {
     }
 
     if (!flow) {
-      this.logger.debug(`No chatbot flow matched for org ${orgId}, message: "${messageBody}"`);
+      this.logger.debug(`No chatbot flow matched for org ${orgId} (conversation ${conversationId})`);
       return null;
     }
 
@@ -166,10 +179,15 @@ export class ExecuteChatbotFlowUseCase {
       }),
     );
 
-    const context = messages
-      .reverse()
-      .map((m) => `${m.direction === 'INBOUND' ? 'Customer' : 'Agent'}: ${m.body || `[${m.type}]`}`)
-      .join('\n');
+    // Each message is cleaned on its own, so "ignore previous instructions" is caught
+    // at the start of a message, not hidden behind the "Customer:" label
+    const chat = messages.reverse().map((m) => ({
+      inbound: m.direction === 'INBOUND',
+      body: m.body ? sanitizePromptInput(m.body, 1000) : `[${m.type}]`,
+    }));
+    const context = chat.map((m) => `${m.inbound ? 'Customer' : 'Agent'}: ${m.body}`).join('\n');
+    const teamText = chat.filter((m) => !m.inbound).map((m) => m.body).join('\n');
+    const customerText = [contactPhone, ...chat.filter((m) => m.inbound).map((m) => m.body)].join('\n');
 
     // Knowledge on: answer from the org's website pages, documents, articles and profile
     // (the same answers the widget and inbox KB search give)
@@ -180,7 +198,11 @@ export class ExecuteChatbotFlowUseCase {
         conversation: context,
         flowId: flow.id,
         instructions: flow.aiSystemPrompt,
+        teamText,
       });
+      if (kb.blocked) {
+        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+      }
       if (kb.answer && kb.found) {
         await this.botBehavior.answered(conversationId);
         return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
@@ -200,19 +222,8 @@ export class ExecuteChatbotFlowUseCase {
       // Nothing to answer from: fall through to a conversation-only reply
     }
 
-    const defaultSystemPrompt = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
-
-IMPORTANT RULES:
-- Identify which product the customer is asking about from their message.
-- Answer ONLY using information from the product documentation provided. Do not make up information.
-- If the documentation covers multiple products, use only the relevant product's information.
-- If you cannot find the answer in the documentation, say: "I don't have specific information about that. Let me connect you with a human agent who can help."
-- Keep responses concise (under 150 words), friendly, and professional.
-- If the customer hasn't specified a product and you have docs for multiple products, ask which product they need help with.`;
-
-    const systemPrompt = flow.aiSystemPrompt || defaultSystemPrompt;
-
-    const userPrompt = `Conversation so far:\n${context}\n\nReply to the customer's latest message as the agent:`;
+    const systemPrompt = `${flow.aiSystemPrompt || DEFAULT_SYSTEM_PROMPT}\n\n${UNTRUSTED_DATA_RULE}`;
+    const userPrompt = `Conversation so far:\n${wrapUntrusted('conversation', context)}\n\nReply to the customer's latest message as the agent:`;
 
     const result = await this.aiProvider.complete({
       systemPrompt,
@@ -220,7 +231,22 @@ IMPORTANT RULES:
       maxTokens: 500,
     });
 
-    return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, result.text);
+    const reply = cleanReply(result.text);
+    if (reply) {
+      const check = checkReply({
+        reply,
+        // The business's own prompt may hold facts the bot should repeat, so only our fixed text counts as a leak
+        ownInstructions: `${flow.aiSystemPrompt ? '' : DEFAULT_SYSTEM_PROMPT}\n${UNTRUSTED_DATA_RULE}`,
+        trustedText: `${flow.aiSystemPrompt ?? ''}\n${teamText}`,
+        customerText,
+      });
+      if (!check.ok) {
+        this.logger.warn(`AI reply blocked in conversation ${conversationId}: ${check.reason}`);
+        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+      }
+    }
+
+    return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, reply);
   }
 
   /** Tells the customer a person will reply (or when, after hours) and pauses the bot in the chat. */
@@ -260,7 +286,7 @@ IMPORTANT RULES:
       messageId,
     });
 
-    this.logger.log(`AI chatbot replied in conversation ${conversationId}: "${replyText.slice(0, 50)}..."`);
+    this.logger.log(`AI chatbot replied in conversation ${conversationId} (${replyText.length} chars)`);
     return { replied: true, text: replyText };
   }
 

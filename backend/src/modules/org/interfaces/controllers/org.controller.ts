@@ -30,6 +30,7 @@ import { GetOrgSettingsUseCase } from '../../application/use-cases/get-org-setti
 import { UpdateOrgSettingsUseCase } from '../../application/use-cases/update-org-settings.use-case';
 import { RebuildOrgMemoryUseCase } from '../../application/use-cases/rebuild-org-memory.use-case';
 import { OrgAiMemoryService } from '../../domain/services/org-ai-memory.service';
+import { FreelancerProfileResolverService } from '../../application/services/freelancer-profile-resolver.service';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -57,12 +58,20 @@ export class OrgController {
     private readonly orgAiMemory: OrgAiMemoryService,
     private readonly docProcessor: DocumentProcessorService,
     private readonly prisma: PrismaService,
+    private readonly freelancerProfiles: FreelancerProfileResolverService,
   ) {}
 
   @Get('settings')
   @Permissions(PERMISSIONS.ORG_READ)
   async getSettings(@CurrentUser() user: JwtPayload) {
     return this.getOrgSettingsUseCase.execute(user.orgId);
+  }
+
+  /** Freelancer lines of work for setup and settings (cards + search keywords) */
+  @Get('freelancer-profiles')
+  @Permissions(PERMISSIONS.ORG_READ)
+  async getFreelancerProfiles() {
+    return this.freelancerProfiles.catalog();
   }
 
   @Patch('settings')

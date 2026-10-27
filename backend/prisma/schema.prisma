@@ -3801,6 +3801,36 @@ model PlatformSetting {
   @@map("platform_settings")
 }
 
+/// A freelancer line of work that isn't built in, saved the first time someone
+/// types it under "Something else" (AI writes its pitch templates once). Shared by
+/// all orgs: the next person with the same service reuses it, and it shows as a
+/// setup card. Platform data like PlatformSetting, so no org_id.
+model FreelancerServiceProfile {
+  id             String    @id @default(uuid()) @db.Uuid
+  /// Stored in Organization.freelancerTypes, e.g. INTERIOR_DESIGN (max 30 chars, like the column)
+  key            String    @unique @db.VarChar(30)
+  /// Card title, e.g. "Interior Designer"
+  label          String    @db.VarChar(60)
+  /// Card subtitle
+  description    String    @db.VarChar(120)
+  /// Fills {{lead.service}}, e.g. "interior design"
+  serviceLabel   String    @map("service_label") @db.VarChar(120)
+  /// { intro, portfolio, followup, packages } template bodies
+  pitch          Json      @db.JsonB
+  /// Normalised texts people typed that mean this service
+  aliases        String[]  @default([])
+  /// A super admin can hide a card (orgs that have it keep their templates)
+  isActive       Boolean   @default(true) @map("is_active")
+  usageCount     Int       @default(1) @map("usage_count")
+  /// Org whose setup created it; no FK
+  createdByOrgId String?   @map("created_by_org_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  @@map("freelancer_service_profiles")
+}
+
 // ─────────────────────────────────────────────
 // ORG ENTITLEMENT OVERRIDES (super admin only)
 // Per-org limit / feature overrides on top of the plan. Deliberately separate

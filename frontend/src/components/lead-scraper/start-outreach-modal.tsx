@@ -39,7 +39,7 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
   // Written for their line of work (chosen in onboarding)
   const { data: orgSettings } = useOrgSettings();
   const [steps, setSteps] = useState<{ name: string; delayMinutes: number; messageBody: string }[]>(() =>
-    getOutreachSteps(orgSettings?.freelancerTypes, orgSettings?.freelancerService),
+    getOutreachSteps(orgSettings?.freelancerTypes, orgSettings?.freelancerServiceLabel ?? orgSettings?.freelancerService),
   );
   const [onlyNew, setOnlyNew] = useState(true);
 

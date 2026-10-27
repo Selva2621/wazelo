@@ -14,6 +14,52 @@ export const FREELANCER_TYPE_OPTIONS = [
 
 export type FreelancerTypeValue = (typeof FREELANCER_TYPE_OPTIONS)[number]["value"];
 
+export interface FreelancerTypeOption {
+  value: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  popular: boolean;
+}
+
+const OTHER_OPTION = FREELANCER_TYPE_OPTIONS.find((o) => o.value === "OTHER")!;
+
+/**
+ * Every line of work from the server catalog (built in + super admin), then
+ * "Something else" last. Before it loads, the five classic types.
+ */
+export function freelancerTypeOptions(
+  catalog?: { key: string; label: string; description: string; keywords?: string[]; popular?: boolean }[],
+): FreelancerTypeOption[] {
+  const types = catalog?.length
+    ? catalog.map((c) => ({ value: c.key, label: c.label, description: c.description, keywords: c.keywords ?? [], popular: !!c.popular }))
+    : FREELANCER_TYPE_OPTIONS.filter((o) => o.value !== "OTHER").map((o) => ({ ...o, keywords: [], popular: true }));
+  return [...types, { ...OTHER_OPTION, keywords: [], popular: true }];
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * What to show: with a search, every match (label, description or keyword);
+ * otherwise the popular ones plus anything already picked, or all of them.
+ * "Something else" always stays.
+ */
+export function visibleFreelancerOptions(
+  options: FreelancerTypeOption[],
+  { query, selected, showAll }: { query: string; selected: readonly string[]; showAll: boolean },
+): FreelancerTypeOption[] {
+  const q = norm(query);
+  if (q) {
+    return options.filter(
+      (o) =>
+        o.value === "OTHER" ||
+        selected.includes(o.value) ||
+        [o.label, o.description, ...o.keywords].some((t) => norm(t).includes(q) || q.split(" ").every((w) => norm(t).includes(w))),
+    );
+  }
+  return showAll ? options : options.filter((o) => o.popular || selected.includes(o.value));
+}
+
 interface OutreachStep {
   name: string;
   delayMinutes: number;

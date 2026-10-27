@@ -133,17 +133,19 @@ interface PresetOrgSettings {
   orgType?: OrgType;
   freelancerTypes?: readonly string[] | null;
   freelancerService?: string | null;
+  freelancerServiceLabel?: string | null;
 }
 
 /** Presets for this org. The outreach intro is written for the freelancer's line of work. */
 export function getSequencePresets(org?: PresetOrgSettings): SequencePreset[] {
   const isFreelancer = org?.orgType === "FREELANCER";
+  const service = org?.freelancerServiceLabel ?? org?.freelancerService;
   const outreach: SequencePreset = {
     id: "lead-outreach",
     name: isFreelancer ? "Cold outreach" : "Scraped lead outreach",
     description: "First contact with leads from the lead scraper",
     exitOnReply: true,
-    steps: getOutreachSteps(isFreelancer ? org?.freelancerTypes : null, isFreelancer ? org?.freelancerService : null).map(
+    steps: getOutreachSteps(isFreelancer ? org?.freelancerTypes : null, isFreelancer ? service : null).map(
       (s) => ({ ...s, messageType: "TEXT" as const }),
     ),
   };

@@ -44,6 +44,17 @@ export function useOrgSettings() {
   });
 }
 
+/** Saved freelancer lines of work, shown as extra cards in setup and settings */
+export function useFreelancerProfiles(enabled = true) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return useQuery({
+    queryKey: [...settingsKeys.org(), "freelancer-profiles"],
+    queryFn: () => settingsApi.getFreelancerProfiles(),
+    enabled: isAuthenticated && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useWhatsAppConfig() {
   return useQuery({
     queryKey: settingsKeys.whatsapp(),

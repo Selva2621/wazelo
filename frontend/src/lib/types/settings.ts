@@ -21,6 +21,8 @@ export interface OrgSettings {
   freelancerTypes?: string[];
   /** Their own description of the service, when freelancerTypes includes OTHER */
   freelancerService?: string | null;
+  /** Saved cards' services plus the OTHER text, in words, for intro/outreach copy (null when all built in) */
+  freelancerServiceLabel?: string | null;
   brandColors?: {
     primary?: string;
     secondary?: string;
@@ -28,6 +30,18 @@ export interface OrgSettings {
   /** Which org types a super admin has left open to new setups */
   orgTypeSetup?: { TEAM: boolean; FREELANCER: boolean };
   updatedAt: string;
+}
+
+/** A freelancer line of work offered in setup (built in, or added by a super admin) */
+export interface FreelancerCard {
+  key: string;
+  label: string;
+  description: string;
+  /** Search words */
+  keywords: string[];
+  /** Shown before "Show all" */
+  popular: boolean;
+  builtIn: boolean;
 }
 
 export interface UpdateOrgSettingsRequest {

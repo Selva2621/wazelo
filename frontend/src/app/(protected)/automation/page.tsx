@@ -85,7 +85,7 @@ export default function AutomationPage() {
   const firstName = useAuthStore((s) => s.user?.firstName);
   const presets = getAutomationPresets(orgSettings?.orgType, {
     ...DEFAULT_PRESET_PROFILE,
-    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerService },
+    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerServiceLabel ?? orgSettings?.freelancerService },
   });
   const [preset, setPreset] = useState<AutomationPreset | null>(null);
   // An active chatbot already answers first messages — a welcome rule would be a second reply

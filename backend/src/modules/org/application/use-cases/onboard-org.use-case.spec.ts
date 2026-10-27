@@ -15,6 +15,8 @@ function setup(
     hasAny?: boolean;
     existingTemplates?: string[];
     hasFreelancerPipeline?: boolean;
+    savedProfiles?: Record<string, unknown>;
+    resolvedOther?: unknown;
   } = {},
 ) {
   const hasAny = jest.fn().mockResolvedValue(overrides.hasAny ?? false);
@@ -63,15 +65,32 @@ function setup(
   };
   const rbacService = { seedDefaultPermissionsForOrg: jest.fn() };
   const orgAiMemory = { rebuild: jest.fn() };
+  const freelancerProfiles = {
+    savedProfiles: jest.fn().mockResolvedValue(overrides.savedProfiles ?? {}),
+    resolveTyped: jest.fn().mockResolvedValue(overrides.resolvedOther ?? null),
+  };
 
   const useCase = new OnboardOrgUseCase(
     orgRepository as never,
     repo as never,
     rbacService as never,
     orgAiMemory as never,
+    freelancerProfiles as never,
   );
-  return { useCase, repo, rbacService, orgAiMemory };
+  return { useCase, repo, rbacService, orgAiMemory, freelancerProfiles };
 }
+
+/** A type a super admin added (not built in) */
+const BAKER = {
+  label: 'Home Baker',
+  serviceLabel: 'custom cakes and baking',
+  pitch: {
+    intro: 'Hi {{contact.name}}, I bake custom cakes for every occasion. Can I share some designs?',
+    portfolio: 'Hi {{contact.name}}, my recent cakes: {{lead.portfolio_link}}.',
+    followup: 'Hi {{contact.name}}, I can send a free tasting box with your first order.',
+    packages: 'Hi {{contact.name}}, my cake packages:\n- Birthday: 1 kg\n- Wedding: tiered',
+  },
+};
 
 describe('OnboardOrgUseCase', () => {
   it('signup: seeds everything including the trial, then marks the org onboarded', async () => {
@@ -181,6 +200,60 @@ describe('OnboardOrgUseCase', () => {
   it('uses the typed-in service for OTHER', () => {
     const intro = buildFreelancerTemplates(['OTHER'], 'interior design').find((t) => t.name === 'freelancer_lead_intro')!;
     expect(intro.body).toContain('interior design');
+  });
+
+  it('"Something else": uses the matched catalog type for the pitch templates', async () => {
+    const { useCase, repo, freelancerProfiles } = setup({
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerTypes: ['OTHER'], freelancerService: 'cakes' },
+      existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
+      resolvedOther: BAKER,
+    });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    expect(freelancerProfiles.resolveTyped).toHaveBeenCalledWith('cakes');
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string; body: string }[];
+    expect(seeded.find((t) => t.name === 'pitch_packages_other')!.body).toContain('cake packages');
+    expect(seeded.find((t) => t.name === 'freelancer_lead_intro')!.body).toContain('custom cakes and baking');
+  });
+
+  it('"Something else" with no catalog match: generic wording with their service', async () => {
+    const { useCase, repo } = setup({
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerTypes: ['OTHER'], freelancerService: 'tuition' },
+      existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
+    });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string; body: string }[];
+    expect(seeded.find((t) => t.name === 'pitch_intro_other')!.body).toContain('I offer tuition');
+  });
+
+  it('a super admin type picked in setup gets its wording', async () => {
+    const { useCase, repo, freelancerProfiles } = setup({
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerTypes: ['HOME_BAKER'] },
+      existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
+      savedProfiles: { HOME_BAKER: BAKER },
+    });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    expect(freelancerProfiles.resolveTyped).not.toHaveBeenCalled();
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string; body: string }[];
+    expect(seeded.find((t) => t.name === 'pitch_intro_home_baker')!.body).toContain('custom cakes');
+  });
+
+  it('a new built-in type gets its hand-written templates', async () => {
+    const { useCase, repo } = setup({
+      org: { orgType: OrgType.FREELANCER, onboardedAt: new Date(), freelancerTypes: ['ARCHITECT_CIVIL'] },
+      existingTemplates: SHOPIFY_SYSTEM_TEMPLATES.map((t) => t.name),
+    });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string; body: string }[];
+    expect(seeded.find((t) => t.name === 'pitch_intro_architect_civil')!.body).toContain('structural designs');
+    expect(seeded.find((t) => t.name === 'freelancer_lead_intro')!.body).toContain('architecture and civil engineering');
   });
 
   it('org-type-changed to FREELANCER: adds the Client Deals pipeline as the default', async () => {

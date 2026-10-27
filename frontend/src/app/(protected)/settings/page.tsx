@@ -68,6 +68,7 @@ import {
   useUpdateIntegration,
   useDeleteIntegration,
   useTestIntegration,
+  useFreelancerProfiles,
 } from "@/hooks/use-settings";
 import {
   useNotificationPreferences,
@@ -100,7 +101,7 @@ import type {
   IntegrationProvider,
   WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
-import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
+import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
 import { COUNTRIES, CURRENCY_CODES, DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
 import { cn } from "@/lib/utils";
@@ -350,6 +351,11 @@ function OrganizationSection() {
   const [freelancerService, setFreelancerService] = useState("");
   const isFreelancer = data?.orgType === "FREELANCER";
   const hasOther = freelancerTypes.includes("OTHER");
+  const { data: catalog } = useFreelancerProfiles(isFreelancer);
+  const typeOptions = freelancerTypeOptions(catalog);
+  const [typeQuery, setTypeQuery] = useState("");
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  const visibleTypes = visibleFreelancerOptions(typeOptions, { query: typeQuery, selected: freelancerTypes, showAll: showAllTypes });
 
   const toggleFreelancerType = (value: string) =>
     setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
@@ -510,8 +516,16 @@ function OrganizationSection() {
                 <p id="freelancer-types-label" className="text-label font-medium text-on-surface-variant">
                   What do you do? <span className="text-on-surface-variant/60">(pick all that apply)</span>
                 </p>
+                <input
+                  type="search"
+                  aria-label="Search your line of work"
+                  value={typeQuery}
+                  onChange={(e) => setTypeQuery(e.target.value)}
+                  placeholder="Search, e.g. civil, tutor, makeup"
+                  className="w-full h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                />
                 <div role="group" aria-labelledby="freelancer-types-label" className="flex flex-wrap gap-2">
-                  {FREELANCER_TYPE_OPTIONS.map((option) => {
+                  {visibleTypes.map((option) => {
                     const selected = freelancerTypes.includes(option.value);
                     return (
                       <button
@@ -532,6 +546,15 @@ function OrganizationSection() {
                     );
                   })}
                 </div>
+                {!typeQuery.trim() && visibleTypes.length < typeOptions.length && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTypes(true)}
+                    className="text-body text-primary hover:underline"
+                  >
+                    Show all {typeOptions.length - 1} types
+                  </button>
+                )}
                 {hasOther && (
                   <input
                     type="text"

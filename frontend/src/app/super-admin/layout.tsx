@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Building2, CreditCard,
-  LifeBuoy, LogOut, Package, ShieldCheck, ScrollText, Receipt, Activity, Megaphone, Menu, X, BarChart3, Users, TicketPercent, Settings, Sparkles,
+  LifeBuoy, LogOut, Package, ShieldCheck, ScrollText, Receipt, Activity, Megaphone, Menu, X, BarChart3, Users, TicketPercent, Settings, Sparkles, Briefcase,
 } from "lucide-react";
 import { useSuperAdminAuthStore } from "@/stores/super-admin-auth-store";
 import { refreshSuperAdminSession } from "@/lib/api/super-admin-client";
@@ -23,6 +23,7 @@ const navItems = [
   { href: "/super-admin/plans", icon: Package, label: "Plans" },
   { href: "/super-admin/coupons", icon: TicketPercent, label: "Coupons" },
   { href: "/super-admin/ai", icon: Sparkles, label: "AI" },
+  { href: "/super-admin/freelancer-types", icon: Briefcase, label: "Freelancer types" },
   { href: "/super-admin/tickets", icon: LifeBuoy, label: "Help Tickets" },
   { href: "/super-admin/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/super-admin/system", icon: Activity, label: "System Health" },

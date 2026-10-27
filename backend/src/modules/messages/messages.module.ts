@@ -39,6 +39,7 @@ import { AssignConversationUseCase } from './application/use-cases/assign-conver
 import { SyncTemplatesUseCase } from './application/use-cases/sync-templates.use-case';
 import { SendTemplateMessageUseCase } from './application/use-cases/send-template-message.use-case';
 import { GenerateTemplateUseCase } from './application/use-cases/generate-template.use-case';
+import { RewriteTemplateUseCase } from './application/use-cases/rewrite-template.use-case';
 import { OutboundMessageService } from './application/services/outbound-message.service';
 
 // Controllers
@@ -80,6 +81,7 @@ import { TemplatesController } from './interfaces/controllers/templates.controll
     SyncTemplatesUseCase,
     SendTemplateMessageUseCase,
     GenerateTemplateUseCase,
+    RewriteTemplateUseCase,
     OutboundMessageService,
   ],
   exports: [

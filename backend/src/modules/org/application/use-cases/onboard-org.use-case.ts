@@ -17,6 +17,7 @@ import {
   SystemTemplate,
 } from '@/shared/constants/system-templates';
 import { buildFreelancerTemplates } from '@/shared/constants/freelancer-profiles';
+import { FreelancerProfileResolverService } from '../services/freelancer-profile-resolver.service';
 
 /**
  * - signup           — new org: full onboarding including the free trial
@@ -47,6 +48,7 @@ export class OnboardOrgUseCase {
     private readonly onboardingRepository: OrgOnboardingRepository,
     private readonly rbacService: RbacService,
     private readonly orgAiMemory: OrgAiMemoryService,
+    private readonly freelancerProfiles: FreelancerProfileResolverService,
   ) {}
 
   async execute(orgId: string, mode: OnboardingMode): Promise<void> {
@@ -167,7 +169,9 @@ export class OnboardOrgUseCase {
     const templates: SystemTemplate[] = [
       ...SHOPIFY_SYSTEM_TEMPLATES,
       // Worded for their lines of work (services filled in, plus pitch templates per type)
-      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerTypes, freelancerService) : []),
+      ...(orgType === OrgType.FREELANCER
+        ? await this.freelancerTemplates(freelancerTypes ?? [], freelancerService)
+        : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(
@@ -178,5 +182,21 @@ export class OnboardOrgUseCase {
     if (missing.length === 0) return;
 
     await this.onboardingRepository.createSystemTemplates(orgId, missing);
+  }
+
+  /**
+   * Types they picked use their hand-written wording (built in, or added by a super
+   * admin). A "Something else" service is matched to a catalog type by keywords;
+   * with no match it gets generic wording with their service filled in. No AI.
+   */
+  private async freelancerTemplates(
+    types: readonly string[],
+    service?: string | null,
+  ): Promise<SystemTemplate[]> {
+    const [profiles, otherProfile] = await Promise.all([
+      this.freelancerProfiles.savedProfiles(types),
+      types.includes('OTHER') && service?.trim() ? this.freelancerProfiles.resolveTyped(service) : null,
+    ]);
+    return buildFreelancerTemplates(types, service, { profiles, otherProfile });
   }
 }

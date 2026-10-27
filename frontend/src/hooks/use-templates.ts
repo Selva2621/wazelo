@@ -79,6 +79,12 @@ export function useDeleteTemplate() {
   });
 }
 
+export function useRewriteTemplate() {
+  return useMutation({
+    mutationFn: (data: { body: string; service: string }) => templatesApi.rewrite(data),
+  });
+}
+
 export function useGenerateTemplate() {
   return useMutation({
     mutationFn: (data: { prompt: string; category?: string; language?: string }) =>

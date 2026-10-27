@@ -2,13 +2,13 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Users, User, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Users, User, ArrowRight, ArrowLeft, Check, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useOrgSettings, useUpdateOrgSettings } from "@/hooks/use-settings";
+import { useFreelancerProfiles, useOrgSettings, useUpdateOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FREELANCER_TYPE_OPTIONS, type FreelancerTypeValue } from "@/lib/constants/outreach";
+import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
 import { DEFAULT_COUNTRY_CODE, browserTimezone, detectCountryCode, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
 
@@ -82,10 +82,21 @@ export default function OrgTypePage() {
   const [chosenMode, setMode] = useState<Mode | null>(null);
   // With a single type open, it is preselected
   const mode = chosenMode ?? (cards.length === 1 ? cards[0].mode : null);
-  const [freelancerTypes, setFreelancerTypes] = useState<FreelancerTypeValue[]>([]);
+  const [freelancerTypes, setFreelancerTypes] = useState<string[]>([]);
   const hasOther = freelancerTypes.includes("OTHER");
+  // Every line of work (built in + super admin); popular ones first, search for the rest
+  const { data: catalog } = useFreelancerProfiles(step === 2);
+  const typeOptions = freelancerTypeOptions(catalog);
+  const [typeQuery, setTypeQuery] = useState("");
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  const visibleTypes = visibleFreelancerOptions(typeOptions, {
+    query: typeQuery,
+    selected: freelancerTypes,
+    showAll: showAllTypes,
+  });
+  const hiddenCount = typeOptions.length - visibleTypes.length;
 
-  const toggleFreelancerType = (value: FreelancerTypeValue) =>
+  const toggleFreelancerType = (value: string) =>
     setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
   const [otherService, setOtherService] = useState("");
   // Guessed from the browser (the server renders the default); sets the phone code, currency and timezone
@@ -193,8 +204,18 @@ export default function OrgTypePage() {
           </>
         ) : (
           <div className="mb-6 space-y-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+              <Input
+                aria-label="Search your line of work"
+                value={typeQuery}
+                onChange={(e) => setTypeQuery(e.target.value)}
+                placeholder="Search, e.g. civil, tutor, makeup"
+                className="pl-9"
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {FREELANCER_TYPE_OPTIONS.map((option) => (
+              {visibleTypes.map((option) => (
                 <ChoiceCard
                   key={option.value}
                   selected={freelancerTypes.includes(option.value)}
@@ -204,6 +225,21 @@ export default function OrgTypePage() {
                 />
               ))}
             </div>
+            {typeQuery.trim() && visibleTypes.every((o) => o.value === "OTHER" || freelancerTypes.includes(o.value)) && (
+              <p className="text-label text-on-surface-variant text-center">
+                No match. Pick &ldquo;Something else&rdquo; and type your service.
+              </p>
+            )}
+            {!typeQuery.trim() && hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTypes(true)}
+                className="mx-auto flex items-center gap-1 text-body text-primary hover:underline max-lg:min-h-11"
+              >
+                Show all {typeOptions.length - 1} types
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
             {hasOther && (
               <div>
                 <label htmlFor="other-service" className="text-label font-medium text-on-surface-variant">
@@ -213,7 +249,7 @@ export default function OrgTypePage() {
                   id="other-service"
                   value={otherService}
                   onChange={(e) => setOtherService(e.target.value)}
-                  placeholder="e.g. interior design, tuition, accounting"
+                  placeholder="e.g. cake baking, pet grooming"
                   maxLength={120}
                   className="mt-1"
                   autoFocus

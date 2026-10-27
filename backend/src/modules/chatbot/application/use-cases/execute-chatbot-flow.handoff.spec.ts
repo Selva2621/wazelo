@@ -11,7 +11,7 @@ const payload = {
   messageType: 'text',
 };
 
-function setup(opts: { paused?: boolean; kb?: { answer: string; found: boolean }; secondMiss?: boolean } = {}) {
+function setup(opts: { paused?: boolean; kb?: { answer: string; found: boolean; blocked?: string }; secondMiss?: boolean } = {}) {
   const deps = {
     prisma: { message: { findMany: jest.fn().mockResolvedValue([]) } },
     chatbotRepo: {
@@ -92,6 +92,24 @@ describe('AI chatbot handover', () => {
     await useCase.execute(payload);
     expect(deps.misses.record).toHaveBeenCalled();
     expect(deps.behavior.handOff).toHaveBeenCalledWith('org-1', 'conv-1', 'UNANSWERED');
+    expect(sent()).toEqual(['Someone from our team will reply shortly.']);
+    expect(deps.credits.charge).not.toHaveBeenCalled();
+  });
+
+  it('hands over without charging when the KB answer was blocked', async () => {
+    const { useCase, deps, sent } = setup({ kb: { answer: '', found: false, blocked: 'UNKNOWN_LINK' } });
+    await useCase.execute(payload);
+    expect(deps.behavior.handOff).toHaveBeenCalledWith('org-1', 'conv-1', 'REPLY_BLOCKED');
+    expect(sent()).toEqual(['Someone from our team will reply shortly.']);
+    expect(deps.credits.charge).not.toHaveBeenCalled();
+    expect(deps.misses.record).not.toHaveBeenCalled();
+  });
+
+  it('hands over when a conversation-only reply has an unknown link', async () => {
+    const { useCase, deps, sent } = setup({ kb: { answer: '', found: false } });
+    deps.aiProvider.complete.mockResolvedValue({ text: 'Pay here: https://evil-pay.xyz' });
+    await useCase.execute(payload);
+    expect(deps.behavior.handOff).toHaveBeenCalledWith('org-1', 'conv-1', 'REPLY_BLOCKED');
     expect(sent()).toEqual(['Someone from our team will reply shortly.']);
     expect(deps.credits.charge).not.toHaveBeenCalled();
   });

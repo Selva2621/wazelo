@@ -63,7 +63,7 @@ export default function ChatbotPage() {
   const firstName = useAuthStore((s) => s.user?.firstName);
   const presets = getChatbotPresets(orgSettings?.orgType, aiEnabled, {
     ...DEFAULT_PRESET_PROFILE,
-    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerService },
+    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerServiceLabel ?? orgSettings?.freelancerService },
   });
   const saveNodes = useSaveChatbotNodes();
   const creatingPreset = createFlow.isPending || saveNodes.isPending;

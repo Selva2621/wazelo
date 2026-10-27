@@ -1,6 +1,7 @@
 import apiClient from "./client";
 import type {
   OrgSettings,
+  FreelancerCard,
   UpdateOrgSettingsRequest,
   OrgAiMemory,
   WhatsAppConfig,
@@ -43,11 +44,15 @@ export const settingsApi = {
         orgType: d.orgType,
         freelancerTypes: d.freelancerTypes,
         freelancerService: d.freelancerService,
+        freelancerServiceLabel: d.freelancerServiceLabel ?? null,
         brandColors: d.branding?.brandColors,
         orgTypeSetup: d.orgTypeSetup,
         updatedAt: d.updatedAt,
       } as OrgSettings;
     }),
+
+  /** Saved freelancer lines of work (extra setup cards) */
+  getFreelancerProfiles: () => apiClient.get<FreelancerCard[]>("/org/freelancer-profiles").then((r) => r.data ?? []),
 
   updateOrgSettings: (data: UpdateOrgSettingsRequest) =>
     apiClient

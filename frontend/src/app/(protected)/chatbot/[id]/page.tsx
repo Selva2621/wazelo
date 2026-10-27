@@ -1019,8 +1019,10 @@ function ChatbotEditorInner() {
         },
       }))
     );
+  // initialized: also wire the handlers once the saved nodes load, otherwise they
+  // stay as the no-op placeholders until the first node is added
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNodeId, handleSelectNode, handleDeleteNode]);
+  }, [selectedNodeId, handleSelectNode, handleDeleteNode, initialized]);
 
   const onConnect = useCallback(
     (connection: Connection) => {

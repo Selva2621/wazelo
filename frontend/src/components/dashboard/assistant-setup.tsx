@@ -262,7 +262,7 @@ export function AssistantSetup({ locked, onDone }: { locked?: boolean; onDone?: 
   const introDetails = {
     name: firstName,
     freelancerTypes: org?.freelancerTypes,
-    service: org?.freelancerService,
+    service: org?.freelancerServiceLabel ?? org?.freelancerService,
     portfolioUrl: portfolioUrl.trim() || undefined,
     style: introStyle,
   };

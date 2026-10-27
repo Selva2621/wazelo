@@ -23,6 +23,9 @@ import {
   UpdateAiSettingsUseCase,
 } from './application/use-cases/ai-settings.use-cases';
 import { SuperAdminAiController } from './interfaces/controllers/super-admin-ai.controller';
+import { OrgModule } from '@/modules/org/org.module';
+import { FreelancerTypesUseCases } from './application/use-cases/freelancer-types.use-cases';
+import { SuperAdminFreelancerTypesController } from './interfaces/controllers/super-admin-freelancer-types.controller';
 
 // Repositories
 import { SuperAdminRepository } from './infrastructure/repositories/super-admin.repository';
@@ -167,7 +170,8 @@ import { ManualInvoiceRepository } from './infrastructure/repositories/manual-in
 import { SuperAdminBillingOpsController } from './interfaces/controllers/super-admin-billing-ops.controller';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule, AiModule],
+  // OrgModule: the freelancer type catalog
+  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule, AiModule, OrgModule],
   controllers: [
     SuperAdminAuthController,
     SuperAdminAccountsController,
@@ -184,8 +188,10 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     SuperAdminNotificationsController,
     SuperAdminSettingsController,
     SuperAdminAiController,
+    SuperAdminFreelancerTypesController,
   ],
   providers: [
+    FreelancerTypesUseCases,
     // Repositories
     SuperAdminRepository,
     SuperAdminSessionRepository,

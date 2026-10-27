@@ -26,6 +26,7 @@ import { TemplateRepository } from '../../infrastructure/repositories/template.r
 import { SyncTemplatesUseCase } from '../../application/use-cases/sync-templates.use-case';
 import { SendTemplateMessageUseCase } from '../../application/use-cases/send-template-message.use-case';
 import { GenerateTemplateUseCase } from '../../application/use-cases/generate-template.use-case';
+import { RewriteTemplateUseCase } from '../../application/use-cases/rewrite-template.use-case';
 import {
   IsNotEmpty,
   IsOptional,
@@ -65,6 +66,11 @@ class GenerateTemplateDto {
   @IsOptional() @IsString() @MaxLength(10) language?: string;
 }
 
+class RewriteTemplateDto {
+  @IsString() @IsNotEmpty() @MaxLength(1024) body: string;
+  @IsString() @IsNotEmpty() @MaxLength(120) service: string;
+}
+
 class SendTemplateDto {
   @IsUUID() channelId: string;
   @IsUUID() templateId: string;
@@ -81,6 +87,7 @@ export class TemplatesController {
     private readonly syncTemplates: SyncTemplatesUseCase,
     private readonly sendTemplate: SendTemplateMessageUseCase,
     private readonly generateTemplate: GenerateTemplateUseCase,
+    private readonly rewriteTemplate: RewriteTemplateUseCase,
   ) {}
 
   @Get()
@@ -166,6 +173,16 @@ export class TemplatesController {
       category: dto.category,
       language: dto.language,
     });
+  }
+
+  /** "Rewrite for my service": AI suggestion only; the user reviews and saves it */
+  @Post('rewrite')
+  @Permissions(PERMISSIONS.MESSAGES_SEND)
+  @PlatformFeature('ai')
+  @AiCredits('template_generate')
+  @HttpCode(HttpStatus.OK)
+  async rewrite(@Body() dto: RewriteTemplateDto) {
+    return this.rewriteTemplate.execute({ body: dto.body, service: dto.service });
   }
 
   @Post('sync')

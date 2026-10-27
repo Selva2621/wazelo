@@ -24,7 +24,9 @@ import {
   useUpdateTemplate,
   useDeleteTemplate,
   useGenerateTemplate,
+  useRewriteTemplate,
 } from "@/hooks/use-templates";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { useProducts } from "@/hooks/use-products";
 import { listFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import type { MessageTemplate } from "@/lib/types/templates";
@@ -93,6 +95,10 @@ export default function TemplatesPage() {
   const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const generateTemplate = useGenerateTemplate();
+  const rewriteTemplate = useRewriteTemplate();
+  const { data: orgSettings } = useOrgSettings();
+  const isFreelancer = orgSettings?.orgType === "FREELANCER";
+  const service = (orgSettings?.freelancerServiceLabel ?? orgSettings?.freelancerService ?? "").trim();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -185,6 +191,26 @@ export default function TemplatesPage() {
           setAiLanguage("en");
           setShowForm(true);
         },
+      },
+    );
+  };
+
+  // Freelancers: reword the message for their own service (AI credits; they review, then save)
+  const handleRewrite = () => {
+    setFormError("");
+    if (!service) {
+      setFormError("Add what you do in Settings → Organization first, then try again.");
+      return;
+    }
+    rewriteTemplate.mutate(
+      { body: body.trim(), service },
+      {
+        onSuccess: (r) => setBody(r.body),
+        onError: (err) =>
+          setFormError(
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+              "Couldn't rewrite it right now. Please try again.",
+          ),
       },
     );
   };
@@ -334,7 +360,21 @@ export default function TemplatesPage() {
                       : "border-outline-variant/20 bg-surface focus:border-primary focus:ring-primary/30"
                   }`}
                 />
-                <div className="flex justify-end mt-1">
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  {isFreelancer && body.trim() ? (
+                    <button
+                      type="button"
+                      onClick={handleRewrite}
+                      disabled={rewriteTemplate.isPending}
+                      title={service ? `Rewrite for: ${service} (uses AI credits)` : "Add what you do in Settings first"}
+                      className="inline-flex items-center gap-1 text-label font-medium text-primary hover:underline disabled:opacity-50 max-lg:min-h-11"
+                    >
+                      {rewriteTemplate.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {rewriteTemplate.isPending ? "Rewriting…" : "Rewrite for my service"}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                   <p className="text-caption text-on-surface-variant/50 tabular-nums">
                     {body.length} / 4,096
                   </p>
