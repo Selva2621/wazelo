@@ -20,6 +20,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusBadge } from "@/components/super-admin/status-badge";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 import { cn, formatMoney } from "@/lib/utils";
 
 type Tab = "payments" | "invoices";
@@ -36,9 +39,6 @@ const INVOICE_STATUSES = ["", "PAID", "OPEN", "DRAFT", "VOID", "UNCOLLECTIBLE"];
 function fmtDate(value?: string | null) {
   return value ? new Date(value).toLocaleDateString() : "—";
 }
-
-const selectClass =
-  "bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary";
 
 /** Deleted orgs keep their billing history but have no detail page, so no link. */
 function OrgCell({ org }: { org?: { id: string; name: string; deletedAt?: string | null } | null }) {
@@ -189,9 +189,9 @@ function RecordRefundForm({ payment, titleId, onDone }: { payment: RefundablePay
       {refunds.length > 0 && (
         <div>
           <h3 className="text-body-lg font-medium text-on-surface-variant mb-1">Previous refunds</h3>
-          <ul className="divide-y divide-outline-variant/40 rounded-lg border border-outline-variant">
+          <ul className="divide-y divide-outline-variant/60">
             {refunds.map((r) => (
-              <li key={r.id} className="px-3 py-2 text-body">
+              <li key={r.id} className="py-2 text-body">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-on-surface tabular-nums">{money(r.amountInCents)}</span>
                   <span className="text-label text-on-surface-variant">{fmtDate(r.createdAt)}</span>
@@ -379,17 +379,20 @@ export default function SuperAdminBillingPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">Billing</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Payments and invoices across all organizations.
-          {orgId && <> Showing one organization · <Link href="/super-admin/billing" className="text-primary hover:underline">show all</Link></>}
-        </p>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Billing"
+        count={data?.total}
+        description={
+          orgId ? (
+            <>One organization · <Link href="/super-admin/billing" className="text-primary hover:underline">show all</Link></>
+          ) : undefined
+        }
+        actions={<ExportCsvButton list={tab} params={filters} />}
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Billing records" className="flex gap-1 rounded-lg bg-surface-container/30 p-1">
+      <FilterBar>
+        <div role="tablist" aria-label="Billing records" className="inline-flex rounded-lg border border-outline-variant p-0.5">
           {(["payments", "invoices"] as const).map((t) => (
             <button
               key={t}
@@ -397,14 +400,15 @@ export default function SuperAdminBillingPage() {
               aria-selected={tab === t}
               onClick={() => switchTab(t)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-body font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                tab === t ? "bg-surface-container text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface",
+                "rounded-md px-3 py-1 text-body capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                tab === t ? "bg-primary/10 text-primary font-medium" : "text-on-surface-variant hover:text-on-surface",
               )}
             >
               {t}
             </button>
           ))}
         </div>
+        <FilterBarDivider />
         <SearchInput
           aria-label={`Search ${tab} by organization or invoice number`}
           value={search}
@@ -412,21 +416,20 @@ export default function SuperAdminBillingPage() {
           placeholder="Search organization or invoice #…"
           className="w-full sm:max-w-xs"
         />
-        <select
-          aria-label={`Filter ${tab} by status`}
+        <FilterSelect
+          label={`Filter ${tab} by status`}
+          active={!!status}
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className={selectClass}
         >
           {(tab === "payments" ? PAYMENT_STATUSES : INVOICE_STATUSES).map((s) => (
-            <option key={s} value={s}>{s || "All statuses"}</option>
+            <option key={s} value={s}>{s ? sentenceCase(s) : "All statuses"}</option>
           ))}
-        </select>
-        <ExportCsvButton list={tab} params={filters} className="sm:ml-auto" />
-      </div>
+        </FilterSelect>
+      </FilterBar>
 
-      <div role="tabpanel" className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
+      <div role="tabpanel" className={TABLE_CARD}>
+        <table className="w-full text-body">
           <caption className="sr-only">{tab === "payments" ? "Payments" : "Invoices"}</caption>
           <thead>
             <tr className="border-b border-outline-variant text-left">
@@ -437,14 +440,14 @@ export default function SuperAdminBillingPage() {
                 SORT_FIELDS[tab][h] ? (
                   <SortableTh key={h} label={h} field={SORT_FIELDS[tab][h]} sort={sort} onSort={changeSort} />
                 ) : (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
+                  <th key={h} scope="col" className={TH}>
                     {h === "Actions" ? <span className="sr-only">{h}</span> : h}
                   </th>
                 ),
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/40">
+          <tbody className="divide-y divide-outline-variant/60">
             {active.isLoading ? (
               <tr>
                 <td colSpan={colCount} className="py-12 text-center" role="status">
@@ -467,7 +470,7 @@ export default function SuperAdminBillingPage() {
               </td></tr>
             ) : tab === "payments" ? (
               rows.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-container transition-colors">
+                <tr key={p.id} className={TR}>
                   <td className="px-4 py-3">
                     <OrgCell org={p.organization} />
                   </td>
@@ -494,7 +497,7 @@ export default function SuperAdminBillingPage() {
               ))
             ) : (
               rows.map((inv) => (
-                <tr key={inv.id} className="hover:bg-surface-container transition-colors">
+                <tr key={inv.id} className={TR}>
                   <td className="px-4 py-3 text-on-surface font-mono text-body">
                     {inv.pdfUrl ? (
                       <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="hover:text-primary">

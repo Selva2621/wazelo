@@ -38,14 +38,14 @@ export function SortableTh({ label, field, sort, onSort, firstOrder = "desc", cl
     <th
       scope="col"
       aria-sort={active ? (sort.order === "asc" ? "ascending" : "descending") : "none"}
-      className={cn("px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap", className)}
+      className={cn("h-10 px-4 text-left text-label text-on-surface-variant font-medium whitespace-nowrap", className)}
     >
       <button
         type="button"
         onClick={() => onSort(nextSort(sort, field, firstOrder))}
         className={cn(
           "-mx-1 inline-flex items-center gap-1 rounded px-1 transition-colors hover:text-on-surface",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           active && "text-on-surface",
         )}
       >

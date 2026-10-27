@@ -28,6 +28,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 
 /* ─── Form state: numbers stay strings while typing ─── */
 
@@ -330,18 +331,21 @@ function Editor({ proposal }: { proposal: Proposal }) {
       />
 
       {/* Top bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href="/proposals" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface max-lg:hidden">
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Proposals
-        </Link>
-        <span className="text-label text-on-surface-variant max-lg:hidden">/</span>
-        <span className="text-body font-medium text-on-surface">{proposal.number}</span>
-        <ProposalStatusBadge status={proposal.status} expired={proposal.expired} />
-        <span className="text-label text-on-surface-variant" aria-live="polite">
-          {locked ? "" : update.isPending ? "Saving…" : dirty ? "Unsaved" : "Saved"}
-        </span>
-
-        <div className="ml-auto flex flex-wrap items-center gap-2 max-lg:hidden">
+      <Link href="/proposals" className="inline-flex items-center gap-1 rounded text-label text-on-surface-variant outline-none hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus max-lg:hidden">
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Proposals
+      </Link>
+      <PageHeader
+        title={proposal.number}
+        description={
+          <span className="flex items-center gap-2">
+            <ProposalStatusBadge status={proposal.status} expired={proposal.expired} />
+            <span className="text-label text-on-surface-variant" aria-live="polite">
+              {locked ? "" : update.isPending ? "Saving…" : dirty ? "Unsaved" : "Saved"}
+            </span>
+          </span>
+        }
+        actions={
+        <div className="flex flex-wrap items-center gap-2 max-lg:hidden">
           {!locked && (
             <Button variant="secondary" size="sm" onClick={runDraft} loading={draft.isPending} disabled={busy || update.isPending}>
               <Sparkles className="h-4 w-4" aria-hidden />
@@ -380,7 +384,8 @@ function Editor({ proposal }: { proposal: Proposal }) {
             </IconButton>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* What the client did */}
       {proposal.status === "CHANGES_REQUESTED" && (
@@ -549,7 +554,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
         <section aria-label="Preview" className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1rem)]">
           <p className="mb-2 text-label text-on-surface-variant">What {proposal.contact.name?.split(" ")[0] || "your client"} sees</p>
           <div className="max-h-[calc(100dvh-var(--header-height)-6rem)] overflow-y-auto rounded-xl border border-outline-variant shadow-sm">
-            <ProposalDocument data={preview} className="p-6 sm:p-8" />
+            <ProposalDocument data={preview} headingLevel="h2" className="p-6 sm:p-8" />
           </div>
         </section>
       </div>

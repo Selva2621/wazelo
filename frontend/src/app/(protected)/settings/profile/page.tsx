@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, Lock, Save, CheckCircle2 } from "lucide-react";
+import { Lock, Save, CheckCircle2 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUpdateProfile, useChangePassword } from "@/hooks/use-users";
@@ -88,19 +89,12 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden">
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">
-            My Profile
-          </h1>
-        </div>
-      </div>
+      <PageHeader title="My profile" className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden" />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
         {/* Profile Info */}
-        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
+        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-4 mb-2">
             <Avatar
               name={`${user.firstName} ${user.lastName}`}
@@ -136,20 +130,22 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                First Name
+              <label htmlFor="profile-first-name" className="text-label font-medium text-on-surface-variant">
+                First name
               </label>
               <Input
+                id="profile-first-name"
                 value={firstName}
                 onChange={(e) => { setFirstName(e.target.value); setProfileSuccess(false); }}
                 placeholder="First name"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Last Name
+              <label htmlFor="profile-last-name" className="text-label font-medium text-on-surface-variant">
+                Last name
               </label>
               <Input
+                id="profile-last-name"
                 value={lastName}
                 onChange={(e) => { setLastName(e.target.value); setProfileSuccess(false); }}
                 placeholder="Last name"
@@ -158,10 +154,11 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
-              Email Address
+            <label htmlFor="profile-email" className="text-label font-medium text-on-surface-variant">
+              Email address
             </label>
             <Input
+              id="profile-email"
               type="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setProfileSuccess(false); }}
@@ -176,17 +173,16 @@ export default function ProfilePage() {
             size="sm"
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            Save Changes
+            Save changes
           </Button>
         </div>
 
         {/* Change Password */}
-        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
+        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Lock className="h-4 w-4 text-on-surface-variant" />
-            <h3 className="text-body-lg font-semibold text-on-surface">
-              Change Password
-            </h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">
+              Change password
+            </h2>
           </div>
 
           {passwordSuccess && (
@@ -203,10 +199,11 @@ export default function ProfilePage() {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
-              Current Password
+            <label htmlFor="profile-current-password" className="text-label font-medium text-on-surface-variant">
+              Current password
             </label>
             <Input
+              id="profile-current-password"
               type="password"
               value={oldPassword}
               onChange={(e) => { setOldPassword(e.target.value); setPasswordError(""); setPasswordSuccess(false); }}
@@ -216,10 +213,11 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                New Password
+              <label htmlFor="profile-new-password" className="text-label font-medium text-on-surface-variant">
+                New password
               </label>
               <Input
+                id="profile-new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
@@ -227,10 +225,11 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Confirm New Password
+              <label htmlFor="profile-confirm-password" className="text-label font-medium text-on-surface-variant">
+                Confirm new password
               </label>
               <Input
+                id="profile-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
@@ -251,7 +250,7 @@ export default function ProfilePage() {
             size="sm"
           >
             <Lock className="h-3.5 w-3.5 mr-1.5" />
-            Change Password
+            Change password
           </Button>
         </div>
       </div>

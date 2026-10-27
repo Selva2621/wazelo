@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, ShieldAlert, Monitor, KeyRound } from "lucide-react";
+import { Monitor } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   useSAMe,
   useSASetupTwoFactor,
@@ -78,7 +79,7 @@ function describeDevice(ua: string | null): string {
   return `${browser} on ${os}`;
 }
 
-const sectionClass = "bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4";
+const sectionClass = "bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 space-y-4";
 
 function PasswordSection() {
   const changePassword = useSAChangePassword();
@@ -113,14 +114,11 @@ function PasswordSection() {
 
   return (
     <section aria-labelledby="password-heading" className={sectionClass}>
-      <div className="flex items-start gap-3">
-        <KeyRound className="h-5 w-5 text-on-surface-variant shrink-0 mt-0.5" aria-hidden />
-        <div>
-          <h2 id="password-heading" className="text-title-sm font-semibold text-on-surface">Password</h2>
-          <p className="text-body text-on-surface-variant mt-1">
-            Changing it signs out your other devices. This one stays signed in.
-          </p>
-        </div>
+      <div>
+        <h2 id="password-heading" className="text-title-sm font-semibold text-on-surface">Password</h2>
+        <p className="text-body text-on-surface-variant mt-1">
+          Changing it signs out your other devices. This one stays signed in.
+        </p>
       </div>
       <form onSubmit={submit} className="space-y-4 max-w-sm" noValidate>
         {error && <Alert variant="error">{error}</Alert>}
@@ -260,8 +258,8 @@ export default function SuperAdminSecurityPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
-      <h1 className="text-title font-semibold text-on-surface">Security</h1>
+    <div className="p-4 lg:p-6 space-y-5 max-w-2xl">
+      <PageHeader title="Security" />
 
       {newCodes && (
         <div className={sectionClass}>
@@ -272,22 +270,16 @@ export default function SuperAdminSecurityPage() {
       <PasswordSection />
 
       <section aria-labelledby="twofa-heading" className={sectionClass}>
-        <div className="flex items-start gap-3">
-          {me.twoFactorEnabled ? (
-            <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" aria-hidden />
-          ) : (
-            <ShieldAlert className="h-5 w-5 text-warning shrink-0 mt-0.5" aria-hidden />
-          )}
-          <div>
-            <h2 id="twofa-heading" className="text-title-sm font-semibold text-on-surface">
-              Two-factor authentication — {me.twoFactorEnabled ? "On" : "Off"}
-            </h2>
-            <p className="text-body text-on-surface-variant mt-1">
-              {me.twoFactorRequired
-                ? "Required for every super admin account. It can't be turned off."
-                : "This account can reach every organization. With two-factor on, a stolen password alone can't sign in."}
-            </p>
-          </div>
+        <div>
+          <h2 id="twofa-heading" className="flex items-center gap-2 text-title-sm font-semibold text-on-surface">
+            Two-factor authentication
+            <Badge variant={me.twoFactorEnabled ? "success" : "warning"}>{me.twoFactorEnabled ? "On" : "Off"}</Badge>
+          </h2>
+          <p className="text-body text-on-surface-variant mt-1">
+            {me.twoFactorRequired
+              ? "Required for every super admin account. It can't be turned off."
+              : "This account can reach every organization. With two-factor on, a stolen password alone can't sign in."}
+          </p>
         </div>
 
         {me.twoFactorEnabled ? (

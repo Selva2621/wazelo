@@ -1,6 +1,7 @@
 "use client";
 
 import { useProducts } from "@/hooks/use-products";
+import { FilterSelect } from "@/components/ui/filter-bar";
 
 interface ProductFilterSelectProps {
   value: string;
@@ -8,23 +9,20 @@ interface ProductFilterSelectProps {
   className?: string;
 }
 
+/** Product filter in the shared filter-bar style. Hidden when the org has no products. */
 export function ProductFilterSelect({ value, onChange, className }: ProductFilterSelectProps) {
   const { data: products } = useProducts();
 
   if (!products || products.length === 0) return null;
 
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={className || "h-9 rounded-lg border border-outline-variant bg-surface-container-low px-2.5 text-body text-on-surface outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30 appearance-none cursor-pointer"}
-    >
-      <option value="">All Products</option>
+    <FilterSelect label="Product" active={!!value} value={value} onChange={(e) => onChange(e.target.value)} className={className}>
+      <option value="">All products</option>
       {products
         .filter((p) => p.status === "ACTIVE")
         .map((p) => (
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
-    </select>
+    </FilterSelect>
   );
 }

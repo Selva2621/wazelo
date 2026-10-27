@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-rbac";
 import { useAuthStore } from "@/stores/auth-store";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
@@ -156,40 +157,34 @@ export default function RolesPermissionsPage() {
   return (
     <div className="flex-1 p-6 space-y-6">
       {/* Header (phones/tablets: title in the iOS nav bar, buttons in the save bar below) */}
-      <div className="flex items-start justify-between max-lg:hidden">
-        <div>
-          <p className="text-label text-on-surface-variant mb-1">
-            Admin &gt; Roles &amp; Permissions
-          </p>
-          <h1 className="text-headline font-semibold text-on-surface">
-            Roles &amp; Permissions
-          </h1>
-          <p className="text-body text-on-surface-variant mt-1">
-            Manage what each role can access in your organization
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetChanges}
-            disabled={!hasChanges}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reset
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={saveChanges}
-            disabled={!hasChanges}
-            loading={updateMutation.isPending}
-          >
-            <Save className="h-4 w-4" />
-            Save Changes
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        className="max-lg:hidden"
+        title="Roles & permissions"
+        description="What each role can access"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetChanges}
+              disabled={!hasChanges}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={saveChanges}
+              disabled={!hasChanges}
+              loading={updateMutation.isPending}
+            >
+              <Save className="h-4 w-4" />
+              Save changes
+            </Button>
+          </>
+        }
+      />
 
       {/* Success / Error alerts */}
       {saveSuccess && (
@@ -215,14 +210,14 @@ export default function RolesPermissionsPage() {
             <table className="w-full">
               {/* Sticky Header */}
               <thead className="sticky top-0 z-10">
-                <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant min-w-[300px]">
+                <tr className="border-b border-outline-variant bg-surface-container-low">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant min-w-[300px]">
                     Permission
                   </th>
                   {ALL_ROLES.map((role) => (
                     <th
                       key={role}
-                      className="px-5 py-3 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant w-[140px]"
+                      className="px-5 py-3 text-center text-label font-medium text-on-surface-variant w-[140px]"
                     >
                       <div className="flex items-center justify-center gap-1.5">
                         {role === "ADMIN" && (
@@ -249,9 +244,9 @@ export default function RolesPermissionsPage() {
         )}
 
         {/* Info footer */}
-        <div className="px-5 py-3 border-t border-outline-variant/15 flex items-center gap-2">
+        <div className="px-5 py-3 border-t border-outline-variant flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 text-on-surface-variant/50" />
-          <span className="text-caption text-on-surface-variant/60">
+          <span className="text-caption text-on-surface-variant">
             Admin role always has full access and cannot be modified.
           </span>
         </div>
@@ -275,7 +270,7 @@ export default function RolesPermissionsPage() {
               className="h-11 flex-[2]"
             >
               <Save className="h-4 w-4" />
-              Save Changes
+              Save changes
             </Button>
           </div>
         </div>
@@ -297,10 +292,10 @@ function GroupRows({
   return (
     <>
       {/* Group header */}
-      <tr className="bg-surface-container/20">
+      <tr className="bg-surface-container-low/60">
         <td
           colSpan={4}
-          className="px-5 py-2.5 text-label font-semibold uppercase tracking-wide text-on-surface-variant max-lg:px-1 max-lg:pt-4 max-lg:pb-0 max-lg:text-left!"
+          className="px-5 py-2.5 text-label font-semibold text-on-surface max-lg:px-1 max-lg:pt-4 max-lg:pb-0 max-lg:text-left!"
         >
           {group.label}
         </td>
@@ -309,7 +304,7 @@ function GroupRows({
       {group.permissions.map((perm, idx) => (
         <tr
           key={perm.id}
-          className={`border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors ${
+          className={`border-b border-outline-variant/60 last:border-0 hover:bg-surface-container-low transition-colors ${
             idx % 2 === 0 ? "" : "bg-surface-container/5"
           }`}
         >
@@ -363,7 +358,7 @@ function ToggleSwitch({
       onClick={onChange}
       className={`
         relative inline-flex h-5 w-9 items-center rounded-full transition-colors max-lg:h-[31px] max-lg:w-[51px] max-lg:shrink-0
-        focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 focus:ring-offset-surface
+        outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface
         ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
         ${checked ? "bg-primary" : "bg-surface-container-high"}
       `}

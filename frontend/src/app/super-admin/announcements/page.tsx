@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
+import { CARD, TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
 
 type Target = "ALL" | "PLAN" | "ORG";
 type Severity = "INFO" | "WARNING" | "CRITICAL";
@@ -134,7 +136,7 @@ function OrgPicker({
                 <button
                   type="button"
                   onClick={() => onChange(o)}
-                  className="w-full text-left px-3 py-2 text-body-lg text-on-surface hover:bg-surface-container focus-visible:bg-surface-container focus-visible:outline-none"
+                  className="w-full text-left px-3 py-2 text-body-lg text-on-surface hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 >
                   {o.name}
                 </button>
@@ -306,16 +308,11 @@ export default function SuperAdminAnnouncementsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">Announcements</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Messages shown as a banner at the top of tenants&apos; app — maintenance, outages, new features.
-        </p>
-      </div>
+    <div className="p-4 lg:p-6 space-y-6 max-w-5xl">
+      <PageHeader title="Announcements" count={announcements?.length} description="Banners at the top of tenants' app" />
 
       {/* Create */}
-      <form ref={formRef} onSubmit={submit} className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4 scroll-mt-20" aria-labelledby={fid("form")}>
+      <form ref={formRef} onSubmit={submit} className={cn(CARD, "p-5 space-y-4 scroll-mt-20")} aria-labelledby={fid("form")}>
         <h2 id={fid("form")} className="text-body-lg font-medium text-on-surface">
           {editing ? "Edit announcement" : "New announcement"}
         </h2>
@@ -397,7 +394,7 @@ export default function SuperAdminAnnouncementsPage() {
       </form>
 
       {/* List */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby={fid("list")}>
+      <section className={TABLE_CARD} aria-labelledby={fid("list")}>
         <h2 id={fid("list")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">All announcements</h2>
         {isLoading ? (
           <div className="flex justify-center py-10" role="status"><Spinner className="text-primary" /><span className="sr-only">Loading…</span></div>
@@ -411,26 +408,26 @@ export default function SuperAdminAnnouncementsPage() {
         ) : !announcements?.length ? (
           <p className="px-4 pb-4 pt-1 text-body-lg text-on-surface-variant">No announcements yet.</p>
         ) : (
-          <table className="w-full mt-2 text-body-lg">
+          <table className="w-full mt-2 text-body">
             <caption className="sr-only">Announcements, newest first</caption>
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 {["Announcement", "State", "Audience", "Window", "Dismissed by", ""].map((h, i) => (
-                  <th key={i} scope="col" className="px-4 py-2 text-label font-medium text-on-surface-variant whitespace-nowrap">
+                  <th key={i} scope="col" className={TH}>
                     {h || <span className="sr-only">Actions</span>}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/40">
+            <tbody className="divide-y divide-outline-variant/60">
               {announcements.map((a: any) => {
                 const state = stateOf(a);
                 return (
-                  <tr key={a.id}>
+                  <tr key={a.id} className={TR}>
                     <td className="px-4 py-3 max-w-sm">
                       <p className="text-on-surface font-medium">{a.title}</p>
                       <p className="text-label text-on-surface-variant line-clamp-2">{a.body}</p>
-                      <p className="text-label text-on-surface-variant mt-0.5">{a.severity}{a.dismissible ? "" : " · not dismissible"}</p>
+                      <p className="text-label text-on-surface-variant mt-0.5">{sentenceCase(a.severity)}{a.dismissible ? "" : " · not dismissible"}</p>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={state.variant}>{state.label}</Badge>

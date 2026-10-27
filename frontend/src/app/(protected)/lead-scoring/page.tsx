@@ -26,6 +26,7 @@ import type { LeadScoringRule, CreateScoringRuleRequest } from "@/lib/types/lead
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 
 // ─── Rule Form Modal ───────────────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ function RuleForm({ initial, onSave, onClose, isPending }: RuleFormProps) {
             </Button>
             <Button type="submit" size="sm" disabled={isPending || !name.trim()}>
               {isPending ? <Spinner size="sm" className="mr-1.5" /> : null}
-              {initial ? "Save Changes" : "Create Rule"}
+              {initial ? "Save changes" : "Create rule"}
             </Button>
           </div>
         </form>
@@ -202,12 +203,15 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
   const isPositive = rule.points >= 0;
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-container/50 transition-colors group border-b border-outline-variant/8 last:border-0 max-lg:flex-wrap max-lg:gap-x-3 max-lg:gap-y-1.5">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-container-low transition-colors group border-b border-outline-variant/40 last:border-0 max-lg:flex-wrap max-lg:gap-x-3 max-lg:gap-y-1.5">
       {/* Toggle */}
       <button
+        type="button"
         onClick={() => onToggle(rule)}
-        className="shrink-0 text-on-surface-variant hover:text-primary transition-colors max-lg:-m-2.5 max-lg:p-2.5"
+        className="shrink-0 rounded-md text-on-surface-variant outline-none hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-focus max-lg:-m-2.5 max-lg:p-2.5"
         title={rule.enabled ? "Disable rule" : "Enable rule"}
+        aria-label={rule.enabled ? "Disable rule" : "Enable rule"}
+        aria-pressed={rule.enabled}
       >
         {rule.enabled ? (
           <ToggleRight className="h-5 w-5 text-primary" />
@@ -305,24 +309,20 @@ export default function LeadScoringPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
-      <MobilePageActions primary={{ label: "New Rule", onClick: () => setShowCreate(true) }} />
+      <MobilePageActions primary={{ label: "New rule", onClick: () => setShowCreate(true) }} />
 
       {/* Header: on mobile the nav bar has the title and "+" */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:hidden">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">Lead Scoring</h1>
-          {rules && rules.length > 0 && (
-            <span className="text-label text-on-surface-variant/60">
-              {enabledCount} active rule{enabledCount !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          New Rule
-        </Button>
-      </div>
+      <PageHeader
+        className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden"
+        title="Lead scoring"
+        count={rules?.length}
+        actions={
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            New rule
+          </Button>
+        }
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 max-lg:px-4 max-lg:pt-2">
@@ -335,7 +335,7 @@ export default function LeadScoringPage() {
 
         {/* Error */}
         {isError && (
-          <div className="rounded-xl bg-error/10 border border-error/20 p-4 flex items-center gap-3">
+          <div className="rounded-2xl bg-error-container p-4 flex items-center gap-3">
             <AlertCircle className="h-4 w-4 text-error shrink-0" />
             <p className="text-body text-error">Failed to load scoring rules. Please refresh.</p>
           </div>
@@ -347,7 +347,7 @@ export default function LeadScoringPage() {
             icon={<TrendingUp className="h-14 w-14" />}
             title="No scoring rules yet"
             description="Create rules to automatically score leads based on their activity — helping your team prioritize the hottest contacts."
-            actionLabel="Create First Rule"
+            actionLabel="Create first rule"
             onAction={() => setShowCreate(true)}
           />
         )}
@@ -355,16 +355,16 @@ export default function LeadScoringPage() {
         {/* Stats row */}
         {rules && rules.length > 0 && (
           <div className="grid grid-cols-3 gap-3 max-lg:gap-2">
-            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Total Rules</p>
+            <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4">
+              <p className="text-label text-on-surface-variant mb-1">Total rules</p>
               <p className="text-headline font-semibold text-on-surface tabular-nums">{rules.length}</p>
             </div>
-            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Active Rules</p>
-              <p className="text-headline font-semibold text-primary tabular-nums">{enabledCount}</p>
+            <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4">
+              <p className="text-label text-on-surface-variant mb-1">Active rules</p>
+              <p className="text-headline font-semibold text-on-surface tabular-nums">{enabledCount}</p>
             </div>
-            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4">
-              <p className="text-caption text-on-surface-variant/60 uppercase tracking-wider mb-1">Max Possible Score</p>
+            <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4">
+              <p className="text-label text-on-surface-variant mb-1">Max possible score</p>
               <p className={`text-headline font-semibold tabular-nums ${totalPoints >= 0 ? "text-success" : "text-error"}`}>
                 {totalPoints >= 0 ? "+" : ""}{totalPoints}
               </p>
@@ -374,32 +374,27 @@ export default function LeadScoringPage() {
 
         {/* How scoring works info */}
         {rules && rules.length > 0 && (
-          <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 flex items-start gap-3">
-            <TrendingUp className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <div className="text-label text-on-surface-variant leading-relaxed">
-              <span className="font-medium text-on-surface">How it works:</span>{" "}
-              Each time a contact triggers a signal (e.g. sends a message), matching rules fire and add/subtract points from their lead score (0–100).
-              High-scoring leads appear highlighted in your Contacts list.
-            </div>
-          </div>
+          <p className="text-label text-on-surface-variant">
+            Matching rules add or subtract points when a contact triggers a signal. Scores run 0–100.
+          </p>
         )}
 
         {/* Rules Table */}
         {rules && rules.length > 0 && (
-          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
+          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
             {/* Table header */}
-            <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant/10 bg-surface-container/40 max-lg:hidden">
+            <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant max-lg:hidden">
               <div className="w-5 shrink-0" />
-              <div className="w-44 shrink-0 text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-44 shrink-0 text-label font-medium text-on-surface-variant">
                 Signal
               </div>
-              <div className="flex-1 text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="flex-1 text-label font-medium text-on-surface-variant">
                 Rule
               </div>
-              <div className="w-20 shrink-0 text-right text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-20 shrink-0 text-right text-label font-medium text-on-surface-variant">
                 Points
               </div>
-              <div className="w-28 shrink-0 text-center text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">
+              <div className="w-28 shrink-0 text-center text-label font-medium text-on-surface-variant">
                 Limit
               </div>
               <div className="w-16 shrink-0" />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Radio, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
@@ -111,19 +112,13 @@ export default function ChannelsPage() {
         />
       )}
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/15 max-lg:hidden">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Radio className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-title font-semibold text-on-surface">Channels</h1>
-              <p className="text-body-lg text-on-surface-variant">
-                Manage communication channels for your organization
-              </p>
-            </div>
-          </div>
-
-          {canCreate && !showForm && !editingChannel && (
+      <PageHeader
+        title="Channels"
+        className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden"
+        actions={
+          canCreate &&
+          !showForm &&
+          !editingChannel && (
             <Button
               variant="primary"
               onClick={() => {
@@ -132,14 +127,14 @@ export default function ChannelsPage() {
               }}
             >
               <Plus className="h-4 w-4 mr-1.5" />
-              Add Channel
+              Add channel
             </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 max-lg:overflow-visible">
+      <div className="flex-1 overflow-y-auto px-6 pb-4 max-lg:overflow-visible max-lg:pt-4">
         {/* Create form */}
         {showForm && (
           <ChannelForm

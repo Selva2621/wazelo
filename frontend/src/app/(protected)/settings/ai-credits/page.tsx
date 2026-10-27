@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuthStore } from "@/stores/auth-store";
@@ -293,7 +294,11 @@ export default function AiCreditsPage() {
       <div className="p-6 max-w-3xl">
         <Alert variant="error">
           Couldn&apos;t load AI credits.{" "}
-          <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="rounded underline hover:no-underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
             Try again
           </button>
         </Alert>
@@ -305,19 +310,16 @@ export default function AiCreditsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="p-6 space-y-6 max-w-4xl">
+      <div className="p-6 space-y-6 max-w-3xl">
         <div className="space-y-1 max-lg:hidden">
           <Link
             href="/settings/billing"
-            className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface"
+            className="inline-flex items-center gap-1 rounded text-label text-on-surface-variant hover:text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Billing
           </Link>
-          <h1 className="flex items-center gap-2 text-title font-semibold text-on-surface">
-            <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-            AI Credits
-          </h1>
+          <PageHeader title="AI credits" />
         </div>
 
         {outOfCredits && (

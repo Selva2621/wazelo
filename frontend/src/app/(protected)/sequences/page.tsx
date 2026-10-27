@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Workflow, BarChart3, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Tabs } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { Pagination } from "@/components/ui/pagination";
@@ -57,7 +59,7 @@ export default function SequencesPage() {
   const resumeSequence = useResumeSequence();
   const cancelSequence = useCancelSequence();
   const deleteSequence = useDeleteSequence();
-  useMobileTitle(analyticsId ? "Sequence Analytics" : undefined);
+  useMobileTitle(analyticsId ? "Sequence analytics" : undefined);
 
   // Analytics view
   if (analyticsId) {
@@ -70,9 +72,8 @@ export default function SequencesPage() {
           <button type="button" onClick={() => setAnalyticsId(null)} className="lg:hidden min-h-11 text-body font-medium text-primary">
             All sequences
           </button>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2 max-lg:hidden">
-            <BarChart3 className="h-6 w-6 text-primary" />
-            Sequence Analytics
+          <h1 className="text-headline font-semibold text-on-surface max-lg:hidden">
+            Sequence analytics
           </h1>
         </div>
         <SequenceAnalytics sequenceId={analyticsId} onClose={() => setAnalyticsId(null)} />
@@ -82,35 +83,33 @@ export default function SequencesPage() {
 
   return (
     <div className="space-y-4 max-lg:px-4 max-lg:pt-2">
-      <MobilePageActions primary={{ label: "New Sequence", onClick: () => setShowCreate(true) }} />
+      <MobilePageActions primary={{ label: "New sequence", onClick: () => setShowCreate(true) }} />
 
       {/* Header: on mobile the nav bar has the title and "+" */}
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <Workflow className="h-6 w-6 text-primary" />
-            Sequences
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            A first message plus automatic follow-ups
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" /> New Sequence
-        </Button>
-      </div>
+      <PageHeader
+        className="max-lg:hidden"
+        title="Sequences"
+        count={data?.total}
+        description="A first message plus automatic follow-ups"
+        actions={
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1 h-4 w-4" /> New sequence
+          </Button>
+        }
+      />
 
       <WhatsAppRequiredBanner action="send sequences" />
 
-      {/* Status tabs */}
-      <Tabs
-        tabs={STATUS_TABS}
-        activeTab={statusFilter}
-        onTabChange={(val) => {
-          setStatusFilter(val);
-          setPage(0);
-        }}
-      />
+      <FilterBar className="mobile-scroll-x">
+        <Tabs
+          tabs={STATUS_TABS}
+          activeTab={statusFilter}
+          onTabChange={(val) => {
+            setStatusFilter(val);
+            setPage(0);
+          }}
+        />
+      </FilterBar>
 
       {/* Content */}
       {isLoading ? (

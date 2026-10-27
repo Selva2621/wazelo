@@ -73,9 +73,8 @@ export function ConversationList({
 
   return (
     <div className="flex h-full flex-col bg-surface-container-lowest max-lg:bg-surface">
-      {/* Header (mobile: the nav bar's large title already says Inbox) */}
+      {/* No "Inbox" heading: the header bar (desktop) and nav bar (mobile) already say it */}
       <div className="shrink-0 px-4 pt-4 pb-2 space-y-3 max-lg:pt-1">
-        <h2 className="text-title-sm font-semibold text-on-surface max-lg:hidden">Inbox</h2>
         <SearchInput
           placeholder="Search conversations..."
           value={search}

@@ -37,11 +37,24 @@ import { useOrgSettings } from "@/hooks/use-settings";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
+/** Desktop sidebar folds items that share a parent into one expandable row. */
+export type NavParentKey = "leads" | "settings";
+
+export const NAV_PARENTS: Record<NavParentKey, { label: string; icon: ReactNode }> = {
+  leads: { label: "Leads", icon: <ScanSearch className="h-5 w-5" /> },
+  settings: { label: "Settings", icon: <Settings className="h-5 w-5" /> },
+};
+
 export interface NavItemDef {
   href: string;
   icon: ReactNode;
   label: string;
-  countKey?: "inbox";
+  /** "inbox": unread chats (highlighted); "contacts": total contacts */
+  countKey?: "inbox" | "contacts";
+  /** Shown as a sub-item of this parent in the desktop sidebar (flat everywhere else). */
+  parent?: NavParentKey;
+  /** Shorter label used under the parent, e.g. "Pipeline" under "Leads". */
+  childLabel?: string;
   /** Roles that can see this item. Undefined = all roles. */
   roles?: Role[];
   /** Plan feature flag required to see this item. */
@@ -61,7 +74,7 @@ interface NavGroup {
 
 export interface NavSectionDef {
   label: string;
-  items: Pick<NavItemDef, "href" | "icon" | "label">[];
+  items: Pick<NavItemDef, "href" | "icon" | "label" | "countKey" | "parent" | "childLabel">[];
 }
 
 const navGroups: NavGroup[] = [
@@ -80,9 +93,9 @@ const navGroups: NavGroup[] = [
   {
     label: "Sales",
     items: [
-      { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts" },
-      { href: "/leads/scraper", icon: <ScanSearch className="h-5 w-5" />, label: "Lead Scraper" },
-      { href: "/leads/pipeline", icon: <Kanban className="h-5 w-5" />, label: "Lead Pipeline" },
+      { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts", countKey: "contacts" },
+      { href: "/leads/scraper", icon: <ScanSearch className="h-5 w-5" />, label: "Lead scraper", parent: "leads", childLabel: "Scraper" },
+      { href: "/leads/pipeline", icon: <Kanban className="h-5 w-5" />, label: "Lead pipeline", parent: "leads", childLabel: "Pipeline" },
       { href: "/deals", icon: <Briefcase className="h-5 w-5" />, label: "Deals", freelancerOnly: true },
       { href: "/proposals", icon: <ScrollText className="h-5 w-5" />, label: "Proposals" },
       { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
@@ -108,7 +121,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/automation", icon: <Zap className="h-5 w-5" />, label: "Automation", feature: "automation" },
       { href: "/chatbot", icon: <Bot className="h-5 w-5" />, label: "Chatbot" },
-      { href: "/settings/chat-widget", icon: <Globe className="h-5 w-5" />, label: "Chat Widget", roles: ["ADMIN"] },
+      { href: "/settings/chat-widget", icon: <Globe className="h-5 w-5" />, label: "Chat widget", roles: ["ADMIN"] },
     ],
   },
   {
@@ -126,10 +139,10 @@ const navGroups: NavGroup[] = [
     items: [
       // Everyone needs their own number connected before anything can be sent
       { href: "/settings/whatsapp", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp" },
-      { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"] },
+      { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"], parent: "settings", childLabel: "Workspace" },
       // { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
-      { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"] },
-      { href: "/settings/ai-credits", icon: <Sparkles className="h-5 w-5" />, label: "AI Credits", roles: ["ADMIN", "MANAGER"] },
+      { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"], parent: "settings" },
+      { href: "/settings/ai-credits", icon: <Sparkles className="h-5 w-5" />, label: "AI credits", roles: ["ADMIN", "MANAGER"], parent: "settings" },
     ],
   },
   {
@@ -143,14 +156,14 @@ const navGroups: NavGroup[] = [
 const adminNavItems = [
   { href: "/admin/users", icon: <Users className="h-5 w-5" />, label: "Users" },
   { href: "/admin/teams", icon: <UsersRound className="h-5 w-5" />, label: "Teams" },
-  { href: "/admin/whatsapp-sessions", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp Sessions" },
+  { href: "/admin/whatsapp-sessions", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp sessions" },
   { href: "/admin/roles-permissions", icon: <Shield className="h-5 w-5" />, label: "Permissions" },
-  { href: "/admin/audit-logs", icon: <FileText className="h-5 w-5" />, label: "Audit Logs" },
+  { href: "/admin/audit-logs", icon: <FileText className="h-5 w-5" />, label: "Audit logs" },
   { href: "/admin/gdpr", icon: <ShieldCheck className="h-5 w-5" />, label: "GDPR" },
 ];
 
 const managerNavItems = [
-  { href: "/team", icon: <UsersRound className="h-5 w-5" />, label: "My Team" },
+  { href: "/team", icon: <UsersRound className="h-5 w-5" />, label: "My team" },
 ];
 
 /** Every nav item regardless of access, for route titles and back labels. */

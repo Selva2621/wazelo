@@ -39,7 +39,7 @@ export function DailyBars({ title, points, unit }: DailyBarsProps) {
   const every = Math.max(1, Math.ceil(points.length / 6));
 
   return (
-    <figure className="bg-surface-container-low border border-outline-variant rounded-xl p-4 flex flex-col gap-3 min-w-0">
+    <figure className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex flex-col gap-3 min-w-0">
       <figcaption className="flex items-baseline justify-between gap-2">
         <span className="text-body-lg font-medium text-on-surface">{title}</span>
         <span className="text-label text-on-surface-variant tabular-nums">
@@ -62,7 +62,7 @@ export function DailyBars({ title, points, unit }: DailyBarsProps) {
                 role="listitem"
                 tabIndex={0}
                 aria-label={`${dayLabel(p.date, "long")}: ${p.value.toLocaleString()} ${unit}`}
-                className="group relative flex h-full flex-1 items-end rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="group relative flex h-full flex-1 items-end rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <div
                   className="w-full rounded-t-[4px] bg-chart-bar transition-opacity group-hover:opacity-80"
@@ -89,7 +89,7 @@ export function DailyBars({ title, points, unit }: DailyBarsProps) {
       </div>
 
       <details className="text-label text-on-surface-variant">
-        <summary className="cursor-pointer select-none w-fit rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <summary className="cursor-pointer select-none w-fit rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Show table
         </summary>
         <table id={tableId} className="mt-2 w-full text-label">

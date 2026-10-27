@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ShieldAlert,
-  Filter,
   X,
   ChevronDown,
   ChevronUp,
@@ -11,6 +10,8 @@ import {
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuditLogs } from "@/hooks/use-rbac";
 import { useAuthStore } from "@/stores/auth-store";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,21 +21,24 @@ import type { AuditLog, QueryAuditLogsParams } from "@/lib/types/rbac";
 import { PAGE_SIZE } from "@/lib/constants";
 
 const ACTION_OPTIONS = [
-  { value: "", label: "All Actions" },
-  { value: "PERMISSION_DENIED", label: "Permission Denied" },
-  { value: "CROSS_TENANT_ACCESS_BLOCKED", label: "Cross-Tenant Blocked" },
-  { value: "ROLE_PERMISSION_UPDATED", label: "Role Permission Updated" },
+  { value: "", label: "All actions" },
+  { value: "PERMISSION_DENIED", label: "Permission denied" },
+  { value: "CROSS_TENANT_ACCESS_BLOCKED", label: "Cross-tenant blocked" },
+  { value: "ROLE_PERMISSION_UPDATED", label: "Role permission updated" },
   { value: "LOGIN_SUCCESS", label: "Login" },
   { value: "LOGOUT", label: "Logout" },
-  { value: "USER_CREATED", label: "User Created" },
-  { value: "USER_UPDATED", label: "User Updated" },
-  { value: "ORG_SETTINGS_UPDATED", label: "Org Settings Updated" },
-  { value: "CHATBOT_FLOW_UPDATED", label: "Chatbot Flow Updated" },
-  { value: "CHATBOT_SETTINGS_UPDATED", label: "Bot Settings Updated" },
-  { value: "KB_DOCUMENT_UPLOADED", label: "Knowledge Document Uploaded" },
-  { value: "KB_SOURCE_ADDED", label: "Website Added to Knowledge" },
-  { value: "AI_REPLY_LIMIT_REACHED", label: "AI Reply Limit Reached" },
+  { value: "USER_CREATED", label: "User created" },
+  { value: "USER_UPDATED", label: "User updated" },
+  { value: "ORG_SETTINGS_UPDATED", label: "Org settings updated" },
+  { value: "CHATBOT_FLOW_UPDATED", label: "Chatbot flow updated" },
+  { value: "CHATBOT_SETTINGS_UPDATED", label: "Bot settings updated" },
+  { value: "KB_DOCUMENT_UPLOADED", label: "Knowledge document uploaded" },
+  { value: "KB_SOURCE_ADDED", label: "Website added to knowledge" },
+  { value: "AI_REPLY_LIMIT_REACHED", label: "AI reply limit reached" },
 ];
+
+const DATE_INPUT_CLASS =
+  "h-8 rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 text-label text-on-surface outline-none transition-colors hover:border-outline focus-visible:ring-2 focus-visible:ring-focus max-lg:h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-2";
 
 function getActionBadgeVariant(action: string): "error" | "warning" | "primary" | "default" {
   if (action.includes("DENIED") || action.includes("BLOCKED")) return "error";
@@ -45,7 +49,7 @@ function getActionBadgeVariant(action: string): "error" | "warning" | "primary" 
 }
 
 export default function AuditLogsPage() {
-  usePageTitle("Audit Logs");
+  usePageTitle("Audit logs");
 
   const user = useAuthStore((s) => s.user);
   const [actionFilter, setActionFilter] = useState("");
@@ -92,58 +96,54 @@ export default function AuditLogsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header (the iOS nav bar shows the title on phones/tablets) */}
-      <div className="max-lg:hidden">
-        <p className="text-label text-on-surface-variant mb-1">
-          Admin &gt; Audit Logs
-        </p>
-        <h1 className="text-headline font-semibold text-on-surface">Audit Logs</h1>
-        <p className="text-body text-on-surface-variant mt-1">
-          Track all security and access events in your organization
-        </p>
-      </div>
+      <div className="space-y-4">
+        {/* Phones/tablets: the iOS nav bar shows the title */}
+        <PageHeader className="max-lg:hidden" title="Audit logs" count={total} />
 
-      {/* Filter Bar */}
-      <Card className="!p-0">
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4 max-lg:px-4">
-          <Filter className="h-4 w-4 text-on-surface-variant shrink-0" />
-
-          <select
+        {/* Every filter on one row; phones keep the full-width select and date rows */}
+        <FilterBar>
+          <FilterSelect
+            label="Action"
+            active={!!actionFilter}
             value={actionFilter}
             onChange={(e) => {
               setActionFilter(e.target.value);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1"
+            className="max-lg:h-11 max-lg:w-full"
           >
             {ACTION_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
-          </select>
+          </FilterSelect>
+
+          <FilterBarDivider />
 
           {/* Phones: the two dates share one full-width row */}
           <div className="flex items-center gap-2 max-lg:w-full">
             <input
               type="date"
+              aria-label="From date"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-2"
+              className={DATE_INPUT_CLASS}
               placeholder="From"
             />
             <span className="text-label text-on-surface-variant">to</span>
             <input
               type="date"
+              aria-label="To date"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-2"
+              className={DATE_INPUT_CLASS}
               placeholder="To"
             />
           </div>
@@ -155,11 +155,11 @@ export default function AuditLogsPage() {
             </Button>
           )}
 
-          <span className="ml-auto text-label text-on-surface-variant">
+          <span className="ml-auto text-label text-on-surface-variant lg:hidden">
             {total} event{total !== 1 ? "s" : ""}
           </span>
-        </div>
-      </Card>
+        </FilterBar>
+      </div>
 
       {/* Logs Table */}
       <Card className="!p-0 overflow-hidden">
@@ -184,20 +184,20 @@ export default function AuditLogsPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant w-8" />
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant w-8" />
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     Timestamp
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     Action
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     User
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     Target
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     IP Address
                   </th>
                 </tr>

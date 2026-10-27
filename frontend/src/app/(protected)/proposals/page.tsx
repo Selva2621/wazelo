@@ -9,6 +9,8 @@ import type { ProposalStatus } from "@/lib/api/proposals";
 import { money } from "@/components/proposals/proposal-document";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { cn } from "@/lib/utils";
 
 const FILTERS: { value: ProposalStatus | undefined; label: string }[] = [
@@ -35,27 +37,28 @@ export default function ProposalsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6 max-lg:space-y-4 max-lg:pt-2">
       {/* Title: the iOS nav bar shows it on mobile */}
-      <div className="max-lg:hidden">
-        <h1 className="text-title font-semibold text-on-surface">Proposals</h1>
-        <p className="text-body text-on-surface-variant">Create one from a chat or a deal. Clients accept from a link.</p>
-      </div>
+      <PageHeader className="max-lg:hidden" title="Proposals" count={data?.length} />
 
-      <div role="tablist" aria-label="Filter by status" className="flex flex-wrap gap-1.5 mobile-scroll-x">
-        {FILTERS.map((f) => (
-          <button
-            key={f.label}
-            role="tab"
-            aria-selected={status === f.value}
-            onClick={() => setStatus(f.value)}
-            className={cn(
-              "rounded-full border px-3 py-1 max-lg:py-1.5 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/40",
-              status === f.value ? "border-primary bg-primary text-on-primary" : "border-outline-variant text-on-surface-variant hover:border-outline",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <FilterBar className="mobile-scroll-x">
+        <div role="tablist" aria-label="Filter by status" className="flex gap-1.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.label}
+              role="tab"
+              aria-selected={status === f.value}
+              onClick={() => setStatus(f.value)}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1 max-lg:py-1.5 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                status === f.value
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </FilterBar>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" className="text-primary" /></div>
@@ -66,10 +69,10 @@ export default function ProposalsPage() {
           <p className="text-label text-on-surface-variant">Open a chat or a deal and click &ldquo;Send proposal&rdquo;.</p>
         </div>
       ) : (
-        <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-low">
+        <ul className="divide-y divide-outline-variant overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
           {data.map((p) => (
             <li key={p.id}>
-              <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 max-lg:gap-x-3 outline-none hover:bg-surface-container focus-visible:bg-surface-container">
+              <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 max-lg:gap-x-3 outline-none hover:bg-surface-container-low focus-visible:bg-surface-container-low">
                 <div className="min-w-0 flex-1 max-lg:basis-full">
                   <p className="truncate text-body font-medium text-on-surface">{p.title}</p>
                   <p className="truncate text-label text-on-surface-variant">

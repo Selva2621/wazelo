@@ -244,6 +244,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  /* Secondary accent (product chips, sequence branches, deal value). Was used but never defined. */
+  --color-tertiary: var(--chart-5);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
@@ -279,9 +281,9 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  --sidebar-width: 256px;
-  /* Floating rail: 52px pill + 12px gutters (see "Floating sidebar") */
-  --sidebar-collapsed: 76px;
+  --sidebar-width: 264px;
+  /* Floating rail: 64px panel + 12px gutters (see "Floating sidebar") */
+  --sidebar-collapsed: 88px;
   --header-height: 64px;
 }
 
@@ -303,29 +305,132 @@
   }
 }
 
-/* ─── Entrance cascade (app pages) ───
+/* ─── Entrance motion (app pages) ───
+   One soft, decelerating curve for every entrance. Content rises a little, grows from
+   98.5% and fades in, in a short cascade, so a page assembles instead of popping in.
+
    `.page-stagger`: wrapper set by PageTransition; each top-level section of the page
-   fades up in turn. `.stagger`: opt-in for a grid or list whose items should cascade.
+   rises in turn. `.stagger`: opt-in for a grid or list whose items should cascade.
+   Table rows on a page cascade too (first 12 rows; later rows just appear).
    fill-mode `backwards` only holds the start frame during the delay and keeps nothing
    afterwards, so no transform lingers to break `position: fixed` modals inside. */
+:root {
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --enter-duration: 640ms;
+  --enter-step: 70ms;
+}
 @keyframes enter-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(26px) scale(0.985);
   }
 }
-.page-stagger > * > *,
-.stagger > * {
-  animation: enter-up 280ms var(--ease-standard) backwards;
+@keyframes enter-row {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
-.page-stagger > * > :nth-child(2), .stagger > :nth-child(2) { animation-delay: 50ms; }
-.page-stagger > * > :nth-child(3), .stagger > :nth-child(3) { animation-delay: 100ms; }
-.page-stagger > * > :nth-child(4), .stagger > :nth-child(4) { animation-delay: 150ms; }
-.page-stagger > * > :nth-child(5), .stagger > :nth-child(5) { animation-delay: 200ms; }
-.page-stagger > * > :nth-child(n + 6), .stagger > :nth-child(n + 6) { animation-delay: 250ms; }
+/* :not([class*="animate-"]): an element with its own animation (a loading spinner, a
+   skeleton pulse) keeps it; an entrance would replace it for good, not just at the start */
+.page-stagger > * > :not([class*="animate-"]),
+.stagger > :not([class*="animate-"]) {
+  animation: enter-up var(--enter-duration) var(--ease-emphasized) backwards;
+  animation-delay: calc(var(--enter-step) * var(--enter-i, 0));
+}
+.page-stagger > * > :nth-child(2), .stagger > :nth-child(2) { --enter-i: 1; }
+.page-stagger > * > :nth-child(3), .stagger > :nth-child(3) { --enter-i: 2; }
+.page-stagger > * > :nth-child(4), .stagger > :nth-child(4) { --enter-i: 3; }
+.page-stagger > * > :nth-child(5), .stagger > :nth-child(5) { --enter-i: 4; }
+.page-stagger > * > :nth-child(6), .stagger > :nth-child(6) { --enter-i: 5; }
+.page-stagger > * > :nth-child(n + 7), .stagger > :nth-child(n + 7) { --enter-i: 6; }
+
+/* Rows: smaller rise, quicker steps, after the sections have started */
+.page-stagger tbody > tr:nth-child(-n + 12):not([class*="animate-"]),
+.stagger-rows > :nth-child(-n + 12):not([class*="animate-"]) {
+  animation: enter-row 520ms var(--ease-emphasized) backwards;
+  animation-delay: calc(160ms + 35ms * var(--row-i, 0));
+}
+.page-stagger tbody > tr:nth-child(2), .stagger-rows > :nth-child(2) { --row-i: 1; }
+.page-stagger tbody > tr:nth-child(3), .stagger-rows > :nth-child(3) { --row-i: 2; }
+.page-stagger tbody > tr:nth-child(4), .stagger-rows > :nth-child(4) { --row-i: 3; }
+.page-stagger tbody > tr:nth-child(5), .stagger-rows > :nth-child(5) { --row-i: 4; }
+.page-stagger tbody > tr:nth-child(6), .stagger-rows > :nth-child(6) { --row-i: 5; }
+.page-stagger tbody > tr:nth-child(7), .stagger-rows > :nth-child(7) { --row-i: 6; }
+.page-stagger tbody > tr:nth-child(8), .stagger-rows > :nth-child(8) { --row-i: 7; }
+.page-stagger tbody > tr:nth-child(n + 9), .stagger-rows > :nth-child(n + 9) { --row-i: 8; }
+
+/* Page title: letters rise and untilt one after another (SplitText sets --char-i) */
+@keyframes char-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em) rotate(6deg);
+  }
+}
+.split-char {
+  display: inline-block;
+  white-space: pre;
+  transform-origin: 0 100%;
+  animation: char-in 720ms var(--ease-emphasized) backwards;
+  animation-delay: calc(40ms + 22ms * var(--char-i, 0));
+}
+/* Eyebrow / description under a title: a small fade-up just after the letters start */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.rise-in {
+  animation: rise-in 600ms var(--ease-emphasized) 120ms backwards;
+}
+
+/* Bars and meters grow from zero: add .grow-x (left to right) or .grow-y (bottom up) to
+   the filled part; --grow-i staggers a set of bars */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.grow-x,
+.grow-y,
+/* Every progress fill on a page (rounded full-height bar with an inline width) grows too */
+.page-stagger :is(.rounded-full, .rounded).h-full[style*="width"]:not([class*="animate-"]) {
+  animation: grow-x 900ms var(--ease-emphasized) backwards;
+  animation-delay: calc(220ms + 45ms * var(--grow-i, 0));
+}
+.grow-x,
+.page-stagger :is(.rounded-full, .rounded).h-full[style*="width"] {
+  transform-origin: left center;
+}
+.grow-y {
+  transform-origin: center bottom;
+  animation-name: grow-y;
+}
+
+/* Theme switch: the new theme spreads in a circle from the button (View Transitions;
+   theme-store runs the clip-path animation). Without this the default crossfade plays. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-stagger > * > *,
-  .stagger > * {
+  .page-stagger > * > :not([class*="animate-"]),
+  .stagger > :not([class*="animate-"]),
+  .page-stagger tbody > tr:not([class*="animate-"]),
+  .stagger-rows > :not([class*="animate-"]),
+  .split-char,
+  .rise-in,
+  .grow-x,
+  .grow-y,
+  .page-stagger :is(.rounded-full, .rounded).h-full[style*="width"] {
     animation: none;
   }
 }
@@ -592,16 +697,6 @@ body {
   }
 }
 
-/* Rail items in Glass: soft pill with an orange icon circle */
-[data-theme="ember-glass"] .side-tab[data-active="true"] a {
-  background-color: rgb(255 255 255 / 0.06);
-}
-[data-theme="ember-glass"] .side-tab a > span:first-child {
-  border-radius: 9999px;
-}
-[data-theme="ember-glass"] .side-tab[data-active="true"] a > span:first-child {
-  box-shadow: 0 0 20px -4px rgb(245 158 11 / 0.55);
-}
 
 /* ─── Floating sidebar (desktop, all themes) ───
    The rail floats 12px off the viewport edges as a rounded panel; --sidebar-width and
@@ -620,27 +715,6 @@ body {
   }
   .app-sidebar[data-collapsed="true"] {
     width: calc(var(--sidebar-collapsed) - 24px);
-  }
-  /* Centre the logo in the 52px rail */
-  .app-sidebar[data-collapsed="true"] > a:first-child {
-    padding-inline: 12px;
-  }
-  /* Collapsed rail: 4px + 4px + 36px icon + 4px + 4px = 52px, so icons sit dead centre */
-  .app-sidebar[data-collapsed="true"] .side-tab a {
-    margin-inline: 4px;
-    padding-right: 0;
-  }
-  .app-sidebar[data-collapsed="true"] .side-tab a > span:first-child {
-    margin-inline: 4px;
-  }
-  /* NavSection's list carries pl-2.5 for the expanded layout; in the 52px rail it pushed
-     every icon ~10px right and clipped it against the rail edge */
-  .app-sidebar[data-collapsed="true"] nav ul {
-    padding-left: 0;
-  }
-  /* Account row: centre the avatar in the rail */
-  .app-sidebar[data-collapsed="true"] > div:last-child {
-    padding-inline: 4px;
   }
 }
 
@@ -669,7 +743,7 @@ body {
 }
 .app-sidebar .side-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background-color: var(--outline);
+  background-color: var(--side-line, var(--outline));
 }
 .app-sidebar .side-scroll::-webkit-scrollbar-track {
   background: transparent;
@@ -700,38 +774,138 @@ body {
   }
 }
 
-/* Expanded sidebar: the active row is a page-coloured tab that runs to the rail's edge and
-   fuses into the content through inverted corners. The rail's right border is dropped so
-   no hairline separates tab and page. Not in Glass: its canvas is a gradient, so a
-   solid page-coloured tab would read as a hole (Glass keeps the soft pill). */
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) {
-  border-right-color: transparent;
-  /* Otherwise the rail's own fill shows through the transparent border as a 1px line */
-  background-clip: padding-box;
+/* ─── Sidebar panel ───
+   A dark panel in every theme (light pages included), so navigation reads as its own
+   surface. Colours are local --side-* tokens; components use them through Tailwind
+   arbitrary values (text-[var(--side-dim)] …). */
+.app-sidebar {
+  --side-bg: #15171c;
+  --side-card: rgb(255 255 255 / 0.04);
+  --side-tile: rgb(255 255 255 / 0.08);
+  --side-text: #f2f3f5;
+  --side-dim: #aeb2bb;
+  --side-faint: #80858f;
+  --side-hover: rgb(255 255 255 / 0.05);
+  --side-active: rgb(255 255 255 / 0.09);
+  --side-line: rgb(255 255 255 / 0.09);
+  /* Bright accent that reads on the dark panel (the light theme's primary is too dark) */
+  --side-accent: #f59e0b;
+  --side-on-accent: #1a1d27;
+  color-scheme: dark;
+  background-color: var(--side-bg);
+  color: var(--side-text);
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before,
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
+[data-theme="emerald-night"] .app-sidebar {
+  --side-bg: #121a17;
+  --side-accent: #10b981;
+}
+[data-theme="ember-glass"] .app-sidebar {
+  --side-bg: rgb(14 15 20 / 0.74);
+}
+@media (min-width: 1024px) {
+  .app-sidebar {
+    border-color: rgb(255 255 255 / 0.06);
+  }
+}
+
+/* Active row: thin accent bar on the panel side (NavItem renders .side-bar) */
+.side-bar {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 9999px;
+  background: var(--side-accent);
+}
+/* Icon pop when a row becomes active */
+@keyframes side-pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+.side-icon-pop {
+  animation: side-pop 380ms var(--ease-emphasized, ease-out);
+}
+/* Count pill (expanded) and dot (collapsed rail) */
+.side-count {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--side-text);
+  background: var(--side-tile);
+}
+.side-count-hi {
+  color: var(--side-on-accent);
+  background: var(--side-accent);
+}
+.side-dot {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--side-text);
+  box-shadow: 0 0 0 2px var(--side-bg);
+}
+.side-dot-hi {
+  background: var(--side-accent);
+}
+/* Sub-items: a vertical line under the parent icon with a curved branch to each child */
+.side-tree > li {
+  position: relative;
+}
+.side-tree > li::before {
   content: "";
   position: absolute;
-  right: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 9999px;
-  background: var(--sidebar);
-  pointer-events: none;
+  left: 22px;
+  top: 0;
+  width: 11px;
+  height: 50%;
+  border-left: 1.5px solid var(--side-line);
+  border-bottom: 1.5px solid var(--side-line);
+  border-bottom-left-radius: 9px;
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before {
-  top: -32px;
-  box-shadow: 16px 16px 0 0 var(--surface);
+.side-tree > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  bottom: 0;
+  border-left: 1.5px solid var(--side-line);
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
-  bottom: -32px;
-  box-shadow: 16px -16px 0 0 var(--surface);
+.side-divider {
+  display: none;
 }
-/* Glass, expanded: keep the soft pill shape for the active row */
-[data-theme="ember-glass"] .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"] a {
-  margin-right: 0.625rem;
-  border-radius: 0.75rem;
+
+/* Collapsed rail: icons centred, counts become dots, section labels become dividers */
+@media (min-width: 1024px) {
+  .app-sidebar[data-collapsed="true"] .side-row {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .app-sidebar[data-collapsed="true"] .side-dot {
+    display: block;
+  }
+  .app-sidebar[data-collapsed="true"] .side-divider {
+    display: block;
+    height: 1px;
+    margin: 10px 10px;
+    background: var(--side-line);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-icon-pop {
+    animation: none;
+  }
 }
 
 /* ═══ Mobile / installed app (iOS style) ═══

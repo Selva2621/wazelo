@@ -1,13 +1,13 @@
 "use client";
 
-import { X, Filter } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FilterSelect } from "@/components/ui/filter-bar";
 import { useContactsStore } from "@/stores/contacts-store";
 import { useOrgMembers, useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStatus } from "@/lib/types/contacts";
-import { IconButton } from "@/components/ui/icon-button";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -17,7 +17,27 @@ const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
 ];
 
-export function ContactFilters() {
+function RemovableChip({ label, onRemove, kind }: { label: string; onRemove: () => void; kind: "tag" | "product" }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 pl-2.5 pr-1 text-label text-primary">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${kind} filter ${label}`}
+        className="grid size-6 place-items-center rounded-md outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Owner, tag and product filters. Renders bare controls (no wrapper) so the page can put them
+ * in its FilterBar. Pass showStatus={false} when the page already has status tabs.
+ */
+export function ContactFilters({ showStatus = true }: { showStatus?: boolean }) {
   const {
     filterStatus,
     filterOwnerId,
@@ -40,52 +60,49 @@ export function ContactFilters() {
   const hasFilters = filterStatus || filterOwnerId || filterSource || filterTagIds.length > 0 || filterProductIds.length > 0;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <Filter className="h-4 w-4 text-on-surface-variant/50 shrink-0" />
+    <>
+      {showStatus && (
+        <FilterSelect
+          label="Status"
+          active={!!filterStatus}
+          value={filterStatus ?? ""}
+          onChange={(e) => setFilterStatus(e.target.value ? (e.target.value as LeadStatus) : null)}
+        >
+          <option value="">All statuses</option>
+          {LEAD_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </FilterSelect>
+      )}
 
-      {/* Status */}
-      <select
-        value={filterStatus ?? ""}
-        onChange={(e) =>
-          setFilterStatus(e.target.value ? (e.target.value as LeadStatus) : null)
-        }
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
-      >
-        <option value="">All Statuses</option>
-        {LEAD_STATUSES.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Owner — admin/manager only */}
       {isAdminOrManager && (
-        <select
+        <FilterSelect
+          label="Owner"
+          active={!!filterOwnerId}
           value={filterOwnerId ?? ""}
           onChange={(e) => setFilterOwnerId(e.target.value || null)}
-          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
         >
-          <option value="">All Owners</option>
+          <option value="">All owners</option>
           {(members ?? []).map((m) => (
             <option key={m.id} value={m.id}>
               {m.firstName} {m.lastName}
             </option>
           ))}
-        </select>
+        </FilterSelect>
       )}
 
-      {/* Tags */}
-      <select
+      <FilterSelect
+        label="Add tag filter"
         value=""
         onChange={(e) => {
           if (e.target.value && !filterTagIds.includes(e.target.value)) {
             setFilterTagIds([...filterTagIds, e.target.value]);
           }
         }}
-        className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
       >
-        <option value="">Filter by Tag</option>
+        <option value="">Tag</option>
         {(orgTags ?? [])
           .filter((t) => !filterTagIds.includes(t.id))
           .map((t) => (
@@ -93,72 +110,50 @@ export function ContactFilters() {
               {t.name}
             </option>
           ))}
-      </select>
+      </FilterSelect>
 
-      {/* Active tag chips */}
-      {filterTagIds.map((tagId) => {
-        const tag = orgTags?.find((t) => t.id === tagId);
-        return (
-          <span
-            key={tagId}
-            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-caption text-primary"
-          >
-            {tag?.name ?? tagId}
-            <IconButton size="xs"
-              onClick={() =>
-                setFilterTagIds(filterTagIds.filter((id) => id !== tagId))
-              }
-              className="hover:bg-primary/20" aria-label="Close">
-              <X className="h-2.5 w-2.5" />
-            </IconButton>
-          </span>
-        );
-      })}
+      {filterTagIds.map((tagId) => (
+        <RemovableChip
+          key={tagId}
+          kind="tag"
+          label={orgTags?.find((t) => t.id === tagId)?.name ?? tagId}
+          onRemove={() => setFilterTagIds(filterTagIds.filter((id) => id !== tagId))}
+        />
+      ))}
 
-      {/* Products */}
       {products && products.length > 0 && (
-        <select
+        <FilterSelect
+          label="Add product filter"
           value=""
           onChange={(e) => {
             if (e.target.value && !filterProductIds.includes(e.target.value)) {
               setFilterProductIds([...filterProductIds, e.target.value]);
             }
           }}
-          className="h-8 rounded-lg bg-surface-container-low px-2.5 text-label text-on-surface-variant outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
         >
-          <option value="">Filter by Product</option>
+          <option value="">Product</option>
           {products
             .filter((p) => p.status === "ACTIVE" && !filterProductIds.includes(p.id))
             .map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-        </select>
+        </FilterSelect>
       )}
 
-      {/* Active product chips */}
-      {filterProductIds.map((productId) => {
-        const product = products?.find((p) => p.id === productId);
-        return (
-          <span
-            key={productId}
-            className="inline-flex items-center gap-1 rounded-full bg-tertiary/10 px-2 py-0.5 text-caption text-tertiary"
-          >
-            {product?.name ?? productId}
-            <IconButton size="xs"
-              onClick={() => setFilterProductIds(filterProductIds.filter((id) => id !== productId))}
-              className="hover:bg-tertiary/20" aria-label="Close">
-              <X className="h-2.5 w-2.5" />
-            </IconButton>
-          </span>
-        );
-      })}
+      {filterProductIds.map((productId) => (
+        <RemovableChip
+          key={productId}
+          kind="product"
+          label={products?.find((p) => p.id === productId)?.name ?? productId}
+          onRemove={() => setFilterProductIds(filterProductIds.filter((id) => id !== productId))}
+        />
+      ))}
 
-      {/* Clear all */}
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-label">
           Clear
         </Button>
       )}
-    </div>
+    </>
   );
 }

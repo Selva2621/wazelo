@@ -13,6 +13,9 @@ import { StatusBadge } from "@/components/super-admin/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 
 // "NONE" = orgs that never subscribed; "DELETED" = soft-deleted orgs (both handled by the backend filter)
 const STATUS_OPTIONS = ["", "ACTIVE", "TRIAL", "PAST_DUE", "GRACE_PERIOD", "EXPIRED", "CANCELLED", "NONE", "DELETED"];
@@ -38,10 +41,14 @@ export default function SuperAdminOrgsPage() {
   const { data, isLoading, isError, refetch } = useSAOrgs({ page, limit: PAGE_SIZE, ...filters });
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-title font-semibold text-on-surface">Organizations</h1>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Organizations"
+        count={data?.total}
+        actions={<ExportCsvButton list="organizations" params={filters} />}
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <FilterBar>
         <SearchInput
           aria-label="Search organizations by name or slug"
           value={search}
@@ -49,31 +56,30 @@ export default function SuperAdminOrgsPage() {
           placeholder="Search name or slug…"
           className="w-full sm:max-w-sm"
         />
-        <select
-          aria-label="Filter by subscription status"
+        <FilterSelect
+          label="Filter by subscription status"
+          active={!!status}
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s] ?? sentenceCase(s)}</option>
           ))}
-        </select>
-        <ExportCsvButton list="organizations" params={filters} className="sm:ml-auto" />
-      </div>
+        </FilterSelect>
+      </FilterBar>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
+      <div className={TABLE_CARD}>
+        <table className="w-full text-body">
           <thead>
             <tr className="border-b border-outline-variant text-left">
               <SortableTh label="Organization" field="name" firstOrder="asc" sort={sort} onSort={changeSort} />
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Plan</th>
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Status</th>
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Users</th>
+              <th scope="col" className={TH}>Plan</th>
+              <th scope="col" className={TH}>Status</th>
+              <th scope="col" className={TH}>Users</th>
               <SortableTh label="Created" field="createdAt" sort={sort} onSort={changeSort} />
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/40">
+          <tbody className="divide-y divide-outline-variant/60">
             {isLoading ? (
               <tr><td colSpan={5} className="py-12 text-center"><Spinner className="mx-auto text-primary" /></td></tr>
             ) : isError ? (
@@ -90,7 +96,7 @@ export default function SuperAdminOrgsPage() {
                 {debouncedSearch ? `No organizations match “${debouncedSearch}”` : "No organizations found"}
               </td></tr>
             ) : data?.orgs?.map((org: any) => (
-              <tr key={org.id} className="hover:bg-surface-container transition-colors">
+              <tr key={org.id} className={TR}>
                 <td className="px-4 py-3">
                   <Link href={`/super-admin/organizations/${org.id}`} className="font-medium text-on-surface hover:text-primary">
                     {org.name}
@@ -117,7 +123,7 @@ export default function SuperAdminOrgsPage() {
 
         {data && data.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-            <span className="text-label text-on-surface-variant">{data.total} total</span>
+            <span className="text-label tabular-nums text-on-surface-variant">{data.total} total</span>
             <div className="flex items-center gap-2">
               <IconButton size="xs" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />

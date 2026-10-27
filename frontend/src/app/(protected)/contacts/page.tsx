@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Users, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
+import { Plus, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
 import { useContactsStore } from "@/stores/contacts-store";
@@ -148,94 +151,78 @@ export default function ContactsPage() {
           placeholder={data ? `Search ${data.total} contacts` : "Search contacts"}
           className="w-full lg:hidden"
         />
-        <div className="flex items-center justify-between max-lg:hidden">
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">
-              Contacts
-            </h1>
-            {data && (
-              <span className="text-body text-on-surface-variant/60">
-                {data.total} total
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchInput
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search contacts..."
-              className="w-64"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => exportContacts.mutate()}
-              loading={exportContacts.isPending}
-              title="Export CSV"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowImport(true)}
-              title="Import CSV"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowMerge(true)}
-              title="Merge contacts"
-            >
-              <GitMerge className="h-4 w-4" />
-            </Button>
-            {/* View toggle */}
-            <div className="flex items-center rounded-lg border border-outline-variant/20 p-0.5 gap-0.5">
-              <button
-                onClick={() => setView("list")}
-                title="List view"
-                className={`p-1.5 rounded-md transition-colors ${
-                  view === "list"
-                    ? "bg-primary/15 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                }`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setView("kanban")}
-                title="Kanban view"
-                className={`p-1.5 rounded-md transition-colors ${
-                  view === "kanban"
-                    ? "bg-primary/15 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                }`}
-              >
-                <Kanban className="h-4 w-4" />
-              </button>
-            </div>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              New Contact
-            </Button>
-          </div>
-        </div>
-
-        {/* Status tabs */}
-        <Tabs
-          tabs={tabsWithCounts}
-          activeTab={statusTab}
-          onTabChange={handleStatusTabChange}
+        <PageHeader
+          className="max-lg:hidden"
+          title="Contacts"
+          count={data?.total}
+          actions={
+            <>
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search contacts"
+                className="w-64"
+              />
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => exportContacts.mutate()}
+                  loading={exportContacts.isPending}
+                  title="Export CSV"
+                  aria-label="Export CSV"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowImport(true)} title="Import CSV" aria-label="Import CSV">
+                  <Upload className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowMerge(true)} title="Merge contacts" aria-label="Merge contacts">
+                  <GitMerge className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* View toggle */}
+              <div role="group" aria-label="View" className="flex items-center gap-0.5 rounded-lg border border-outline-variant p-0.5">
+                {(
+                  [
+                    { id: "list", label: "List view", Icon: LayoutList },
+                    { id: "kanban", label: "Board view", Icon: Kanban },
+                  ] as const
+                ).map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setView(id)}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={view === id}
+                    className={cn(
+                      "rounded-md p-1.5 outline-none transition-colors duration-120 ease-standard focus-visible:ring-2 focus-visible:ring-focus",
+                      view === id
+                        ? "bg-primary/12 text-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                New contact
+              </Button>
+            </>
+          }
         />
 
-        {/* Lead-source groups */}
-        <ContactSourceGroups />
-
-        {/* Filters */}
-        <ContactFilters />
+        {/* Every filter on one row: status, source, then owner / tag / product */}
+        <FilterBar className="mobile-scroll-x">
+          <Tabs tabs={tabsWithCounts} activeTab={statusTab} onTabChange={handleStatusTabChange} />
+          <FilterBarDivider />
+          <ContactSourceGroups />
+          <FilterBarDivider />
+          <ContactFilters showStatus={false} />
+        </FilterBar>
       </div>
 
       {/* Content */}

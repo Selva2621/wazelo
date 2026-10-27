@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Check, Globe, Code, Copy, Smartphone, RefreshCw } from "lucide-react";
+import { Check, Code, Copy, Smartphone, RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useWidgetConfig, useUpdateWidgetConfig } from "@/hooks/use-widget";
 import { uploadApi } from "@/lib/api/messages";
@@ -19,12 +20,16 @@ function SkeletonBox({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-xl bg-surface-container-highest", className)} />;
 }
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
+function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) {
   return (
-    <div
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={label}
       onClick={onChange}
       className={cn(
-        "relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0",
+        "relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-focus",
         enabled ? "bg-primary" : "bg-surface-container-highest",
       )}
     >
@@ -34,12 +39,12 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void 
           enabled ? "translate-x-[22px]" : "translate-x-0.5",
         )}
       />
-    </div>
+    </button>
   );
 }
 
 const inputCls =
-  "w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
+  "w-full mt-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
 
 // ── Build the inline widget HTML injected into the preview iframe ─────────────
 
@@ -480,81 +485,75 @@ export default function ChatWidgetSettingsPage() {
   }
 
   return (
-    <div className="flex gap-6 items-start max-lg:flex-col max-lg:items-stretch max-lg:px-4 max-lg:pb-4">
+    <div className="space-y-5 max-lg:px-4 max-lg:pb-4">
+      <PageHeader title="Chat widget" className="max-lg:hidden" />
+
+    <div className="flex gap-6 items-start max-lg:flex-col max-lg:items-stretch">
 
       {/* ── Left: Form ──────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-4">
-
-        <div className="max-lg:hidden">
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary" />
-            Chat Widget
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Embed a live chat widget on your website
-          </p>
-        </div>
+      <div className="flex-1 min-w-0 max-w-2xl space-y-4 max-lg:max-w-none">
 
         {/* Enable */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">Enable Widget</p>
+              <p className="text-body-lg font-medium text-on-surface">Enable widget</p>
               <p className="text-label text-on-surface-variant">Show widget on your website</p>
             </div>
-            <Toggle enabled={form.enabled} onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))} />
+            <Toggle label="Enable widget" enabled={form.enabled} onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))} />
           </div>
         </div>
 
         {/* Appearance */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
-          <p className="text-body font-semibold text-on-surface">Appearance</p>
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
+          <h2 className="text-body font-semibold text-on-surface">Appearance</h2>
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Company Name</label>
-              <input value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
+              <label htmlFor="widget-company" className="text-label font-medium text-on-surface-variant">Company name</label>
+              <input id="widget-company" value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
             </div>
             <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Position</label>
-              <select value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
+              <label htmlFor="widget-position" className="text-label font-medium text-on-surface-variant">Position</label>
+              <select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
                 {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Primary Color</label>
+              <label htmlFor="widget-color" className="text-label font-medium text-on-surface-variant">Primary color</label>
               <div className="flex items-center gap-2 mt-1">
-                <input type="color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant/30 cursor-pointer p-0.5" />
-                <input value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                <input type="color" aria-label="Pick primary color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant cursor-pointer p-0.5" />
+                <input id="widget-color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
               </div>
             </div>
             <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">WhatsApp Number</label>
-              <input value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
+              <label htmlFor="widget-whatsapp" className="text-label font-medium text-on-surface-variant">WhatsApp number</label>
+              <input id="widget-whatsapp" value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
             </div>
           </div>
 
           <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Welcome Message</label>
-            <textarea value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
+            <label htmlFor="widget-welcome" className="text-label font-medium text-on-surface-variant">Welcome message</label>
+            <textarea id="widget-welcome" value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
           </div>
           <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Input Placeholder</label>
-            <input value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
+            <label htmlFor="widget-placeholder" className="text-label font-medium text-on-surface-variant">Input placeholder</label>
+            <input id="widget-placeholder" value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
           </div>
           <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Avatar / Logo</label>
+            <label htmlFor="widget-avatar" className="text-label font-medium text-on-surface-variant">Avatar / logo</label>
             <div className="flex items-center gap-2 mt-1">
               {/* Preview */}
               {form.avatarUrl ? (
-                <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" />
+                <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant flex-shrink-0" />
               ) : (
-                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/40 border border-outline-variant/20">
+                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/60 border border-outline-variant">
                   Logo
                 </div>
               )}
               {/* URL input */}
               <input
+                id="widget-avatar"
                 value={form.avatarUrl}
                 onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
                 placeholder="https://example.com/logo.png"
@@ -581,36 +580,38 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* Pre-chat form */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">Pre-chat Form</p>
+              <p className="text-body-lg font-medium text-on-surface">Pre-chat form</p>
               <p className="text-label text-on-surface-variant">Collect visitor name &amp; phone before chat starts</p>
             </div>
-            <Toggle enabled={form.preChatFormEnabled} onChange={() => setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled }))} />
+            <Toggle label="Pre-chat form" enabled={form.preChatFormEnabled} onChange={() => setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled }))} />
           </div>
         </div>
 
         {/* AI Assistant */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">AI Assistant</p>
+              <p className="text-body-lg font-medium text-on-surface">AI assistant</p>
               <p className="text-label text-on-surface-variant">
                 Auto-reply using your org&apos;s Knowledge Base &amp; product data
               </p>
             </div>
             <Toggle
+              label="AI assistant"
               enabled={form.aiAssistantEnabled}
               onChange={() => setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled }))}
             />
           </div>
           {form.aiAssistantEnabled && (
             <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
-                Custom Instructions (optional)
+              <label htmlFor="widget-ai-prompt" className="text-label font-medium text-on-surface-variant">
+                Custom instructions (optional)
               </label>
               <textarea
+                id="widget-ai-prompt"
                 value={form.aiSystemPrompt}
                 onChange={(e) => setForm((f) => ({ ...f, aiSystemPrompt: e.target.value }))}
                 rows={4}
@@ -618,7 +619,7 @@ export default function ChatWidgetSettingsPage() {
                 placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our products. If unsure, ask the visitor to leave their contact details.`}
                 className={cn(inputCls, "resize-none mt-1")}
               />
-              <p className="text-caption text-on-surface-variant/40 mt-1 text-right">
+              <p className="text-caption text-on-surface-variant/60 mt-1 text-right tabular-nums">
                 {(form.aiSystemPrompt ?? "").length}/2000
               </p>
             </div>
@@ -628,7 +629,7 @@ export default function ChatWidgetSettingsPage() {
         {/* Save */}
         <div className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={updateConfig.isPending}>
-            {updateConfig.isPending ? "Saving..." : "Save Settings"}
+            {updateConfig.isPending ? "Saving..." : "Save changes"}
           </Button>
           {updateConfig.isSuccess && (
             <span className="text-body text-success flex items-center gap-1">
@@ -641,17 +642,17 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* Embed Code */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-2">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Code className="h-4 w-4 text-primary" />
-            <p className="text-body font-semibold text-on-surface">Embed Code</p>
+            <Code className="h-4 w-4 text-on-surface-variant" aria-hidden />
+            <h2 className="text-body font-semibold text-on-surface">Embed code</h2>
           </div>
           <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
           <div className="relative">
             <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10 max-lg:whitespace-pre-wrap max-lg:break-all">
               <code>{embedCode}</code>
             </pre>
-            <button onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors" title="Copy">
+            <button type="button" onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus" title={copied ? "Copied" : "Copy embed code"} aria-label={copied ? "Copied" : "Copy embed code"}>
               {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-on-surface-variant" />}
             </button>
           </div>
@@ -660,11 +661,11 @@ export default function ChatWidgetSettingsPage() {
 
       {/* ── Right: Live Preview ──────────────────────────────────────────── */}
       <div className="w-[380px] flex-shrink-0 sticky top-6 max-lg:static max-lg:w-full">
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container overflow-hidden">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
           {/* Panel header */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/10">
-            <Smartphone className="h-4 w-4 text-primary" />
-            <p className="text-body font-semibold text-on-surface">Live Preview</p>
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant">
+            <Smartphone className="h-4 w-4 text-on-surface-variant" aria-hidden />
+            <h2 className="text-body font-semibold text-on-surface">Live preview</h2>
             <span className="ml-1 text-caption text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
               Interactive
             </span>
@@ -672,7 +673,7 @@ export default function ChatWidgetSettingsPage() {
           </div>
 
           {/* Browser chrome */}
-          <div className="px-3 py-2 bg-surface-container-highest flex items-center gap-2 border-b border-outline-variant/10">
+          <div className="px-3 py-2 bg-surface-container-highest flex items-center gap-2 border-b border-outline-variant">
             <div className="flex gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-error/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
@@ -689,7 +690,7 @@ export default function ChatWidgetSettingsPage() {
           </div>
 
           {/* Hint */}
-          <div className="px-4 py-2.5 border-t border-outline-variant/10 flex items-center gap-1.5">
+          <div className="px-4 py-2.5 border-t border-outline-variant flex items-center gap-1.5">
             <RefreshCw className="h-3 w-3 text-on-surface-variant/40" />
             <p className="text-caption text-on-surface-variant/50">
               Click the chat button · Type a message · Test pre-chat form{form.aiAssistantEnabled ? " · AI enabled" : ""}
@@ -698,6 +699,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
       </div>
 
+    </div>
     </div>
   );
 }

@@ -16,6 +16,9 @@ import { TicketSlaBadge, WaitingOnUs, useNow } from "@/components/super-admin/ti
 import { cn } from "@/lib/utils";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
 const COLUMNS = ["Title", "Org", "Category", "Priority", "Status", "First reply", "Assignee", "Created", "Updated"];
 
@@ -79,10 +82,14 @@ export default function SuperAdminTicketsPage() {
   const { data, isLoading, isError, refetch } = useSATickets({ page, limit: PAGE_SIZE, ...filters });
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-title font-semibold text-on-surface">Help Tickets</h1>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Help tickets"
+        count={data?.total}
+        actions={<ExportCsvButton list="tickets" params={filters} />}
+      />
 
-      <div className="flex gap-2 flex-wrap">
+      <FilterBar>
         <SearchInput
           aria-label="Search tickets by title or organization"
           value={search}
@@ -90,46 +97,46 @@ export default function SuperAdminTicketsPage() {
           placeholder="Search title or organization…"
           className="w-full sm:max-w-xs"
         />
+        <FilterBarDivider />
         {[
           { label: "Filter by status", value: status, onChange: (v: string) => { setStatus(v); setPage(1); }, options: STATUS_OPTIONS, placeholder: "All statuses" },
           { label: "Filter by category", value: category, onChange: (v: string) => { setCategory(v); setPage(1); }, options: CATEGORY_OPTIONS, placeholder: "All categories" },
           { label: "Filter by priority", value: priority, onChange: (v: string) => { setPriority(v); setPage(1); }, options: PRIORITY_OPTIONS, placeholder: "All priorities" },
         ].map((sel) => (
-          <select key={sel.label} aria-label={sel.label} value={sel.value} onChange={(e) => sel.onChange(e.target.value)}
-            className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
-            {sel.options.map((s) => <option key={s} value={s}>{s || sel.placeholder}</option>)}
-          </select>
+          <FilterSelect key={sel.label} label={sel.label} active={!!sel.value} value={sel.value} onChange={(e) => sel.onChange(e.target.value)}>
+            {sel.options.map((s) => <option key={s} value={s}>{s ? sentenceCase(s) : sel.placeholder}</option>)}
+          </FilterSelect>
         ))}
-        <select
-          aria-label="Filter by assignee"
+        <FilterSelect
+          label="Filter by assignee"
+          active={!!assignee}
           value={assignee}
           onChange={(e) => { setAssignee(e.target.value); setPage(1); }}
-          className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Anyone</option>
           <option value="me">Assigned to me</option>
           <option value="unassigned">Unassigned</option>
-        </select>
+        </FilterSelect>
+        <FilterBarDivider />
         <button
           type="button"
           aria-pressed={needsReply}
           onClick={() => { setNeedsReply((v) => !v); setPage(1); }}
           title="Open tickets where the customer spoke last or nobody has replied yet"
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-body-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-label transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             needsReply
-              ? "border-primary bg-primary/10 text-primary font-medium"
-              : "border-outline-variant bg-surface-container text-on-surface hover:bg-surface-container-high",
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
           )}
         >
           <span className={cn("h-1.5 w-1.5 rounded-full", needsReply ? "bg-primary" : "bg-on-surface-variant")} aria-hidden />
           Waiting on us
         </button>
-        <ExportCsvButton list="tickets" params={filters} className="sm:ml-auto" />
-      </div>
+      </FilterBar>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
+      <div className={TABLE_CARD}>
+        <table className="w-full text-body">
           <caption className="sr-only">Help tickets</caption>
           <thead>
             <tr className="border-b border-outline-variant text-left">
@@ -144,12 +151,12 @@ export default function SuperAdminTicketsPage() {
                     onSort={changeSort}
                   />
                 ) : (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium">{h}</th>
+                  <th key={h} scope="col" className={TH}>{h}</th>
                 ),
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/40">
+          <tbody className="divide-y divide-outline-variant/60">
             {isLoading ? (
               <tr>
                 <td colSpan={COLUMNS.length} className="py-12 text-center" role="status">
@@ -173,7 +180,7 @@ export default function SuperAdminTicketsPage() {
                   : needsReply ? "No customers are waiting on a reply" : "No tickets found"}
               </td></tr>
             ) : data?.tickets?.map((t) => (
-              <tr key={t.id} className="hover:bg-surface-container transition-colors">
+              <tr key={t.id} className={TR}>
                 <td className="px-4 py-3">
                   <Link href={`/super-admin/tickets/${t.id}`} className="font-medium text-on-surface hover:text-primary line-clamp-1">{t.title}</Link>
                   <p className="text-label text-on-surface-variant">{t.user?.firstName} {t.user?.lastName}</p>

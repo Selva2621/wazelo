@@ -112,7 +112,7 @@ export function OrgActionsPanel({ orgId, orgName, orgSlug, orgTimezone, orgStatu
   return (
     <section
       aria-labelledby={`${titleId}-panel`}
-      className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4"
+      className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 space-y-4"
     >
       <h2 id={`${titleId}-panel`} className="text-body-lg font-medium text-on-surface">Manage</h2>
 

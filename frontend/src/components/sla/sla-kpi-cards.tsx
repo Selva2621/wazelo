@@ -34,11 +34,11 @@ export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
 
   const cards = [
     {
-      label: "SLA Compliance",
+      label: "SLA compliance",
       value: `${compliance.complianceRate.toFixed(1)}%`,
       rate: `${compliance.total - compliance.breached} / ${compliance.total} within SLA`,
       icon: ShieldCheck,
-      accent: "border-l-success",
+      accent: "max-lg:border-l-success",
       rateColor:
         compliance.complianceRate >= 90
           ? "text-success"
@@ -47,17 +47,17 @@ export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
             : "text-error",
     },
     {
-      label: "Avg Response Time",
+      label: "Avg response time",
       value: formatMs(totalAvgMs),
       rate: avgResponseByUser.length > 0
         ? `Across ${avgResponseByUser.reduce((s, u) => s + u.count, 0)} conversations`
         : null,
       icon: Clock,
-      accent: "border-l-primary",
+      accent: "max-lg:border-l-primary",
       rateColor: "text-on-surface-variant/60",
     },
     {
-      label: "Active Breaches",
+      label: "Active breaches",
       value: activeBreaches.toString(),
       rate:
         activeBreaches === 0
@@ -66,15 +66,15 @@ export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
             ? "1 breach needs attention"
             : `${activeBreaches} breaches need attention`,
       icon: AlertTriangle,
-      accent: "border-l-error",
+      accent: "max-lg:border-l-error",
       rateColor: activeBreaches === 0 ? "text-success" : "text-error",
     },
     {
-      label: "Tracked Conversations",
+      label: "Tracked conversations",
       value: compliance.total.toLocaleString(),
       rate: `${compliance.breached} breached`,
       icon: Activity,
-      accent: "border-l-warning",
+      accent: "max-lg:border-l-warning",
       rateColor:
         compliance.breached === 0 ? "text-success" : "text-on-surface-variant/60",
     },
@@ -85,11 +85,12 @@ export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 ${card.accent} p-4`}
+          // Desktop: plain card, numbers only; phones keep the coloured edge and icon to scan by
+          className={`rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 ${card.accent}`}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <card.icon className="h-4 w-4 text-on-surface-variant/60" />
-            <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
+          <div className="flex items-center gap-2 mb-2 lg:mb-1">
+            <card.icon className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
+            <span className="text-label text-on-surface-variant max-lg:text-caption max-lg:uppercase max-lg:tracking-wide max-lg:text-on-surface-variant/60">
               {card.label}
             </span>
           </div>

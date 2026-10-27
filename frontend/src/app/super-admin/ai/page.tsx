@@ -24,8 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { cn, formatMoney } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
 
-const sectionClass = "bg-surface-container-low border border-outline-variant rounded-xl p-5";
+const sectionClass = "bg-surface-container-lowest border border-outline-variant rounded-2xl p-5";
 const selectClass =
   "h-10 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-body-lg text-on-surface outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30";
 const n = (value: number) => value.toLocaleString("en-IN");
@@ -230,7 +231,7 @@ function ModelPicker({
 }
 
 const footerClass =
-  "flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant bg-surface-container px-5 py-3";
+  "flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant bg-surface-container-low px-5 py-3";
 
 /** Provider, key, model. Re-mounted (keyed) when the saved values change. */
 function ProviderCard({ settings }: { settings: SAAiSettings }) {
@@ -468,7 +469,7 @@ function CostsCard({ settings }: { settings: SAAiSettings }) {
       <div className="grid gap-x-8 px-5 pb-2 md:grid-cols-2">
         {groups.map((group) => (
           <div key={group.title} className="pb-3">
-            <h3 className="border-b border-outline-variant pb-1.5 pt-2 text-label font-medium uppercase tracking-wide text-on-surface-variant">
+            <h3 className="border-b border-outline-variant pb-1.5 pt-2 text-label font-medium text-on-surface-variant">
               {group.title}
             </h3>
             <ul>
@@ -571,7 +572,7 @@ function PackRow({ pack, onView }: { pack: SAAiCreditPack; onView: () => void })
 
 function SalesTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-outline-variant bg-surface px-3 py-2.5">
+    <div className="rounded-xl py-1">
       <p className="text-label text-on-surface-variant">{label}</p>
       <p className="text-body-lg font-semibold tabular-nums text-on-surface">{value}</p>
     </div>
@@ -666,7 +667,7 @@ function PackDetail({ packId, titleId, onClose }: { packId: string; titleId: str
 
       <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
         <section aria-labelledby="pack-sales-heading" className="space-y-3">
-          <h3 id="pack-sales-heading" className="text-label font-medium uppercase tracking-wide text-on-surface-variant">
+          <h3 id="pack-sales-heading" className="text-label font-medium text-on-surface-variant">
             Sales
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -678,7 +679,7 @@ function PackDetail({ packId, titleId, onClose }: { packId: string; titleId: str
         </section>
 
         <section aria-labelledby="pack-buyers-heading" className="space-y-2">
-          <h3 id="pack-buyers-heading" className="text-label font-medium uppercase tracking-wide text-on-surface-variant">
+          <h3 id="pack-buyers-heading" className="text-label font-medium text-on-surface-variant">
             Latest purchases
           </h3>
           {sales.recent.length === 0 ? (
@@ -705,7 +706,7 @@ function PackDetail({ packId, titleId, onClose }: { packId: string; titleId: str
         </section>
 
         <form id="pack-edit-form" onSubmit={save} noValidate className="space-y-3" aria-labelledby="pack-edit-heading">
-          <h3 id="pack-edit-heading" className="text-label font-medium uppercase tracking-wide text-on-surface-variant">
+          <h3 id="pack-edit-heading" className="text-label font-medium text-on-surface-variant">
             Details
           </h3>
           <div className="space-y-1.5">
@@ -757,7 +758,7 @@ function PackDetail({ packId, titleId, onClose }: { packId: string; titleId: str
         </form>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant bg-surface-container px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant bg-surface-container-low px-5 py-3">
         <Button type="button" variant="ghost" onClick={toggle} disabled={update.isPending}>
           {pack.isActive ? "Stop selling" : "Put on sale"}
         </Button>
@@ -865,7 +866,7 @@ function PacksCard({ packs }: { packs: SAAiCreditPack[] }) {
 
       {packs.length === 0 ? (
         !open && (
-          <div className="mx-5 mb-5 rounded-lg border border-dashed border-outline-variant px-5 py-8 text-center">
+          <div className="mx-5 mb-5 px-5 py-8 text-center">
             <p className="text-body text-on-surface">No packs yet</p>
             <p className="text-label text-on-surface-variant">Workspaces can&apos;t buy extra credits until you add one.</p>
           </div>
@@ -892,8 +893,8 @@ function PacksCard({ packs }: { packs: SAAiCreditPack[] }) {
 
 function StatTile({ label, calls, credits }: { label: string; calls: number; credits: number }) {
   return (
-    <div className="rounded-lg border border-outline-variant bg-surface px-4 py-3">
-      <p className="text-label font-medium uppercase tracking-wide text-on-surface-variant">{label}</p>
+    <div className="rounded-xl py-1">
+      <p className="text-label text-on-surface-variant">{label}</p>
       <p className="mt-1 text-title font-semibold tabular-nums text-on-surface">{n(credits)}</p>
       <p className="text-label tabular-nums text-on-surface-variant">
         credits · {n(calls)} {calls === 1 ? "call" : "calls"}
@@ -907,7 +908,7 @@ function BarList({ title, rows }: { title: string; rows: { key: string; label: s
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <div className="space-y-2">
-      <h3 className="text-label font-medium uppercase tracking-wide text-on-surface-variant">{title}</h3>
+      <h3 className="text-label font-medium text-on-surface-variant">{title}</h3>
       <ul className="space-y-2">
         {rows.map((r) => (
           <li key={r.key}>
@@ -945,7 +946,7 @@ function UsagePanel({ labels }: { labels: Map<string, string> }) {
           </div>
 
           {month.calls === 0 ? (
-            <div className="rounded-lg border border-dashed border-outline-variant px-4 py-6 text-center">
+            <div className="px-4 py-6 text-center">
               <Sparkles className="mx-auto mb-2 h-5 w-5 text-on-surface-variant" aria-hidden />
               <p className="text-body text-on-surface">No AI usage yet</p>
               <p className="text-label text-on-surface-variant">Top workspaces and actions show up here.</p>
@@ -1000,23 +1001,21 @@ export default function SuperAdminAiPage() {
   const labels = new Map(settings.actions.map((a) => [a.action, a.label]));
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">AI</h1>
-          <p className="text-body text-on-surface-variant">
-            One model for the whole platform. Workspaces spend credits from their plan, then from packs they buy.
-          </p>
-        </div>
-        <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-label">
-          <span
-            className={cn("h-2 w-2 shrink-0 rounded-full", settings.apiKeySet ? "bg-success" : "bg-warning")}
-            aria-hidden
-          />
-          <span className="text-on-surface">{PROVIDER_LABELS[settings.provider]?.replace(/ \(.*\)$/, "") ?? settings.provider}</span>
-          <span className="truncate font-mono text-on-surface-variant">{settings.model}</span>
-        </div>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5 max-w-6xl">
+      <PageHeader
+        title="AI"
+        description="One model for the platform"
+        actions={
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-label">
+            <span
+              className={cn("h-2 w-2 shrink-0 rounded-full", settings.apiKeySet ? "bg-success" : "bg-warning")}
+              aria-hidden
+            />
+            <span className="text-on-surface">{PROVIDER_LABELS[settings.provider]?.replace(/ \(.*\)$/, "") ?? settings.provider}</span>
+            <span className="truncate font-mono text-on-surface-variant">{settings.model}</span>
+          </div>
+        }
+      />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
         <div className="space-y-5 min-w-0">

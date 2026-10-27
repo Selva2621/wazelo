@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { SearchContactResult, SearchConversationResult, SearchCampaignResult } from "@/lib/types/search";
 import { inboxChatHref } from "@/lib/inbox-link";
+import { PageHeader } from "@/components/layout/page-header";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,9 +58,9 @@ function highlight(text: string, query: string) {
 function SectionHeader({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
   return (
     <div className="flex items-center gap-2 px-1 mb-2">
-      <span className="text-on-surface-variant/60">{icon}</span>
-      <span className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant/60">{label}</span>
-      <span className="ml-auto text-caption text-on-surface-variant/40">{count} result{count !== 1 ? "s" : ""}</span>
+      <span className="text-on-surface-variant">{icon}</span>
+      <h2 className="text-label font-semibold text-on-surface">{label}</h2>
+      <span className="ml-auto text-caption tabular-nums text-on-surface-variant">{count} result{count !== 1 ? "s" : ""}</span>
     </div>
   );
 }
@@ -72,12 +73,12 @@ function ContactResults({ contacts, query, onNavigate }: {
   return (
     <div>
       <SectionHeader icon={<Users className="h-3.5 w-3.5" />} label="Contacts" count={contacts.length} />
-      <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest overflow-hidden">
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
         {contacts.map((c, i) => (
           <button
             key={c.id}
             onClick={() => onNavigate(c.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 transition-colors text-left group ${i < contacts.length - 1 ? "border-b border-outline-variant/8" : ""}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 outline-none hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus transition-colors text-left group ${i < contacts.length - 1 ? "border-b border-outline-variant/60" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <span className="text-label font-semibold text-primary">
@@ -112,12 +113,12 @@ function ConversationResults({ conversations, query, onNavigate }: {
   return (
     <div>
       <SectionHeader icon={<MessageSquare className="h-3.5 w-3.5" />} label="Conversations" count={conversations.length} />
-      <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest overflow-hidden">
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
         {conversations.map((c, i) => (
           <button
             key={c.id}
             onClick={() => onNavigate(c)}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 transition-colors text-left group ${i < conversations.length - 1 ? "border-b border-outline-variant/8" : ""}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 outline-none hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus transition-colors text-left group ${i < conversations.length - 1 ? "border-b border-outline-variant/60" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
               <MessageSquare className="h-3.5 w-3.5 text-on-surface-variant/60" />
@@ -151,12 +152,12 @@ function CampaignResults({ campaigns, query, onNavigate }: {
   return (
     <div>
       <SectionHeader icon={<Megaphone className="h-3.5 w-3.5" />} label="Campaigns" count={campaigns.length} />
-      <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest overflow-hidden">
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
         {campaigns.map((c, i) => (
           <button
             key={c.id}
             onClick={() => onNavigate(c.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 transition-colors text-left group ${i < campaigns.length - 1 ? "border-b border-outline-variant/8" : ""}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 outline-none hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus transition-colors text-left group ${i < campaigns.length - 1 ? "border-b border-outline-variant/60" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
               <Megaphone className="h-3.5 w-3.5 text-on-surface-variant/60" />
@@ -215,21 +216,19 @@ export default function SearchPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-4 max-lg:pt-1">
-        <div className="flex items-center gap-3 mb-4 max-lg:hidden">
-          <Search className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">Search</h1>
-        </div>
+        <PageHeader className="mb-4 max-lg:hidden" title="Search" />
 
         {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant/50 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
           <input
             autoFocus
             type="text"
+            aria-label="Search"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Search contacts, conversations, campaigns..."
-            className="w-full pl-10 pr-10 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+            placeholder="Search contacts, conversations, campaigns"
+            className="w-full pl-10 pr-10 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant text-body-lg text-on-surface placeholder:text-on-surface-variant outline-none transition-colors hover:border-outline focus-visible:ring-2 focus-visible:ring-focus"
           />
           {isFetching && (
             <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary animate-spin" />
@@ -262,7 +261,7 @@ export default function SearchPage() {
 
         {/* Error */}
         {isError && (
-          <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
+          <div className="rounded-2xl bg-error-container border border-error/20 p-4 text-center">
             <p className="text-body text-error">Search failed. Please try again.</p>
           </div>
         )}

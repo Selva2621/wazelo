@@ -1229,22 +1229,25 @@ function ChatbotEditorInner() {
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-outline-variant bg-surface-container-low z-10">
         <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-1 max-lg:gap-2">
           <IconButton size="sm"
-            onClick={() => router.push("/chatbot")} aria-label="Back" className="max-lg:hidden">
+            onClick={() => router.push("/chatbot")} aria-label="Back to chatbot flows" title="Back to chatbot flows" className="max-lg:hidden">
             <ArrowLeft className="h-4 w-4" />
           </IconButton>
-          <input
-            value={flowName}
-            onChange={(e) => setFlowName(e.target.value)}
-            aria-label="Flow name"
-            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[220px] focus:ring-0 max-lg:w-auto max-lg:min-w-0 max-lg:flex-1"
-          />
+          {/* The editable name is the page's one heading */}
+          <h1 className="min-w-0 max-lg:flex-1">
+            <input
+              value={flowName}
+              onChange={(e) => setFlowName(e.target.value)}
+              aria-label="Flow name"
+              className="w-[220px] rounded-md border-none bg-transparent px-1 text-title-sm font-semibold text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:w-full max-lg:min-w-0"
+            />
+          </h1>
           <span className={`max-lg:shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium ${flow.isActive ? "bg-success-container text-success" : "bg-surface-container-highest text-on-surface-variant"}`}>
             {flow.isActive ? "Active" : "Draft"}
           </span>
           {aiEnabled && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium bg-warning-container text-warning max-lg:shrink-0">
               <Sparkles className="h-3 w-3" />
-              AI Mode
+              AI mode
             </span>
           )}
           {validationErrors.length > 0 && !aiEnabled && (
@@ -1265,11 +1268,13 @@ function ChatbotEditorInner() {
           )}
           {!aiEnabled && (
             <button
+              type="button"
+              aria-pressed={showTestPanel}
               onClick={() => {
                 setShowTestPanel((v) => !v);
                 setSelectedNodeId(null);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 showTestPanel ? "bg-primary/10 text-primary" : "hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
               }`}
             >

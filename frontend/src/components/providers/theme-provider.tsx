@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useThemeStore } from "@/stores/theme-store";
+import { useThemeStore, THEMES } from "@/stores/theme-store";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useThemeStore((s) => s.theme);
@@ -16,7 +16,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     <>
       <script
         dangerouslySetInnerHTML={{
-          __html: `try{var t=JSON.parse(localStorage.getItem("crm-theme")||"{}"),v=t&&t.state&&t.state.theme;document.documentElement.setAttribute("data-theme",v||"daylight")}catch(e){}`,
+          // Only known themes: an unknown saved value would leave the page with no theme
+          __html: `try{var k=${JSON.stringify(THEMES.map((t) => t.id))},t=JSON.parse(localStorage.getItem("crm-theme")||"{}"),v=t&&t.state&&t.state.theme;document.documentElement.setAttribute("data-theme",k.indexOf(v)>-1?v:"daylight")}catch(e){}`,
         }}
       />
       {children}

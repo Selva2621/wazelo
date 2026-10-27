@@ -6,13 +6,15 @@ import {
   Map, Briefcase, Globe, Search, Linkedin, Play, Clock,
   CheckCircle2, XCircle, Loader2, Users, ArrowRight,
   Trash2, RotateCcw, Copy,
-  StickyNote, X, ChevronDown, Ban, Sparkles,
+  StickyNote, X, Ban, Sparkles,
 } from "lucide-react";
 import {
   useScrapeRuns, useTriggerScrapeRun,
   useDeleteScrapeRun, useReRunScrape, useCancelScrapeRun,
 } from "@/hooks/use-lead-scraper";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -106,7 +108,7 @@ const SOURCE_LABELS: Record<ScrapeSource, string> = {
 };
 
 const SOURCE_OPTIONS = [
-  { value: "", label: "All Sources" },
+  { value: "", label: "All sources" },
   { value: "GOOGLE_MAPS", label: "Google Maps" },
   { value: "UPWORK_JOBS", label: "Upwork Jobs" },
   { value: "FREELANCER_IN", label: "Freelancer.in" },
@@ -115,7 +117,7 @@ const SOURCE_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All Status" },
+  { value: "", label: "All statuses" },
   { value: "COMPLETED", label: "Done" },
   { value: "RUNNING", label: "Running" },
   { value: "PENDING", label: "Pending" },
@@ -472,16 +474,11 @@ export default function LeadScraperPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 max-lg:space-y-6">
       {/* Header (the iOS nav bar shows the title on mobile) */}
-      <div className="max-lg:hidden">
-        <h1 className="text-headline font-semibold text-on-surface">Lead Scraper</h1>
-        <p className="text-body-lg text-on-surface-variant mt-1">
-          Pick a source, search for leads, review the results, then import the ones you want.
-        </p>
-      </div>
+      <PageHeader className="max-lg:hidden" title="Lead scraper" description="Search a source, review, then import" />
 
       {/* Scraper catalog */}
       <div>
-        <h2 className="text-body-lg font-semibold text-on-surface mb-3">Pick a Scraper</h2>
+        <h2 className="text-title-sm font-semibold text-on-surface mb-3">Pick a scraper</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {SCRAPERS.map((s) => (
             <button
@@ -646,57 +643,46 @@ export default function LeadScraperPage() {
       <div className="space-y-4">
         {/* Section header + filters */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <h2 className="text-body-lg font-semibold text-on-surface">Recent Runs</h2>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-title-sm font-semibold text-on-surface">Recent runs</h2>
             {total > 0 && (
-              <span className="text-label text-on-surface-variant">({total} total)</span>
-            )}
-            {activeFilterCount > 0 && (
-              <span className="bg-primary text-on-primary text-caption font-semibold px-1.5 py-0.5 rounded-full">
-                {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
-              </span>
+              <span className="text-body tabular-nums text-on-surface-variant">{total}</span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap max-lg:w-full">
-            {/* Source filter */}
-            <div className="relative">
-              <select
-                value={filterSource}
-                onChange={(e) => { setFilterSource(e.target.value as ScrapeSource | ""); setPage(0); }}
-                className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
-              >
-                {SOURCE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
-            </div>
-
-            {/* Status filter */}
-            <div className="relative">
-              <select
-                value={filterStatus}
-                onChange={(e) => { setFilterStatus(e.target.value as ScrapeRunStatus | ""); setPage(0); }}
-                className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
-            </div>
+          <FilterBar className="mobile-scroll-x max-lg:w-full">
+            <FilterSelect
+              label="Source"
+              active={filterSource !== ""}
+              value={filterSource}
+              onChange={(e) => { setFilterSource(e.target.value as ScrapeSource | ""); setPage(0); }}
+            >
+              {SOURCE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              label="Status"
+              active={filterStatus !== ""}
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value as ScrapeRunStatus | ""); setPage(0); }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </FilterSelect>
 
             {/* Clear filters */}
             {activeFilterCount > 0 && (
               <button
+                type="button"
                 onClick={() => { setFilterSource(""); setFilterStatus(""); setPage(0); }}
-                className="flex items-center gap-1 text-label text-error hover:underline"
+                className="flex items-center gap-1 rounded-md px-1 text-label text-on-surface-variant outline-none hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <X className="w-3 h-3" /> Clear
               </button>
             )}
-          </div>
+          </FilterBar>
         </div>
 
         {/* Run list */}

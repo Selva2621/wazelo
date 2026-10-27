@@ -48,7 +48,7 @@ const RECIPIENT_TABS = [
 ];
 
 export default function CampaignDetailPage() {
-  usePageTitle("Campaign Details");
+  usePageTitle("Campaign details");
   // Short title for the compact iOS nav bar
   useMobileTitle("Campaign");
   useCampaignSocket();
@@ -99,7 +99,7 @@ export default function CampaignDetailPage() {
           Campaign not found.
         </p>
         <Button variant="ghost" onClick={() => router.push("/campaigns")}>
-          Back to Campaigns
+          Back to campaigns
         </Button>
       </div>
     );
@@ -128,15 +128,16 @@ export default function CampaignDetailPage() {
         {/* Back + Header */}
         <div>
           <button
+            type="button"
             onClick={() => router.push("/campaigns")}
-            className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors mb-3 max-lg:hidden"
+            className="mb-3 flex items-center gap-1.5 rounded-md text-body text-on-surface-variant outline-none transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus max-lg:hidden"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Campaigns
+            Campaigns
           </button>
 
-          <div className="flex items-start justify-between max-lg:flex-col max-lg:gap-3">
-            <div className="max-lg:w-full max-lg:min-w-0">
+          <div className="flex items-start justify-between gap-4 max-lg:flex-col max-lg:gap-3">
+            <div className="min-w-0 max-lg:w-full">
               <div className="flex items-center gap-3 mb-1 max-lg:flex-wrap max-lg:gap-2">
                 <h1 className="text-headline font-semibold text-on-surface max-lg:text-title max-lg:break-words">
                   {campaign.name}
@@ -148,16 +149,16 @@ export default function CampaignDetailPage() {
                 {isRunning && (
                   <span className="flex items-center gap-1 text-caption text-error font-medium">
                     <span className="h-2 w-2 rounded-full bg-error animate-pulse" />
-                    LIVE
+                    Live
                   </span>
                 )}
               </div>
               {campaign.description && (
-                <p className="text-body text-on-surface-variant/70 mb-2">
+                <p className="text-body text-on-surface-variant mb-2">
                   {campaign.description}
                 </p>
               )}
-              <div className="flex gap-4 text-label text-on-surface-variant/60 max-lg:flex-col max-lg:gap-0.5">
+              <div className="flex gap-4 text-label text-on-surface-variant max-lg:flex-col max-lg:gap-0.5">
                 <span>Started: {formatDate(campaign.startedAt)}</span>
                 <span>Completed: {formatDate(campaign.completedAt)}</span>
                 {campaign.scheduledAt && (
@@ -255,31 +256,31 @@ export default function CampaignDetailPage() {
         {/* Two-column layout */}
         <div className="grid grid-cols-[1fr_1.5fr] gap-6 max-lg:grid-cols-1 max-lg:gap-4">
           {/* Left: Campaign Info */}
-          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
-            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
-              Campaign Details
-            </p>
+          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
+            <h2 className="text-title-sm font-semibold text-on-surface">
+              Details
+            </h2>
             <div className="space-y-3">
               <div>
-                <p className="text-caption text-on-surface-variant/60">
-                  Message Type
+                <p className="text-caption text-on-surface-variant">
+                  Message type
                 </p>
                 <p className="text-body text-on-surface">
                   {campaign.messageType}
                 </p>
               </div>
               <div>
-                <p className="text-caption text-on-surface-variant/60">
+                <p className="text-caption text-on-surface-variant">
                   Audience
                 </p>
                 <p className="text-body text-on-surface">
                   {campaign.audienceType === "ALL"
-                    ? "All Contacts"
+                    ? "All contacts"
                     : "Filtered"}
                 </p>
               </div>
               <div>
-                <p className="text-caption text-on-surface-variant/60">
+                <p className="text-caption text-on-surface-variant">
                   Timezone
                 </p>
                 <p className="text-body text-on-surface">
@@ -291,10 +292,10 @@ export default function CampaignDetailPage() {
             {/* Message Preview */}
             {campaign.messageBody && (
               <div>
-                <p className="text-caption text-on-surface-variant/60 mb-2">
-                  Message Preview
+                <p className="text-caption text-on-surface-variant mb-2">
+                  Message
                 </p>
-                <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary-container/10 border border-primary/10 p-3">
+                <div className="rounded-xl bg-surface-container-low p-3">
                   <p className="text-body text-on-surface whitespace-pre-wrap break-words">
                     {campaign.messageBody}
                   </p>
@@ -304,13 +305,13 @@ export default function CampaignDetailPage() {
           </div>
 
           {/* Right: Recipients Table */}
-          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 max-lg:min-w-0 max-lg:p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wide">
+          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 max-lg:min-w-0 max-lg:p-4">
+            <div className="flex items-baseline gap-2 mb-3">
+              <h2 className="text-title-sm font-semibold text-on-surface">
                 Recipients
-              </p>
-              <span className="text-label text-on-surface-variant/60">
-                {campaign.totalRecipients.toLocaleString()} total
+              </h2>
+              <span className="text-body tabular-nums text-on-surface-variant">
+                {campaign.totalRecipients.toLocaleString()}
               </span>
             </div>
 

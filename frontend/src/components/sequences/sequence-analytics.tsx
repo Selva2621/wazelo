@@ -110,10 +110,10 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
             <table className="table-auto w-full">
               <thead>
                 <tr className="bg-surface-container-low border-b border-outline-variant/15">
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Contact</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Current Step</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Enrolled</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Contact</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Status</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Current Step</th>
+                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Enrolled</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">

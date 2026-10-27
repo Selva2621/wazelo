@@ -100,7 +100,7 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
   return (
     <section
       aria-labelledby={`${titleId}-panel`}
-      className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4"
+      className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 space-y-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={`${titleId}-panel`} className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
@@ -138,7 +138,7 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
           <div className="flex flex-wrap gap-3">
             {balances.length ? (
               balances.map((b) => (
-                <div key={b.currency} className="bg-surface-container rounded-lg px-4 py-3 min-w-[140px]">
+                <div key={b.currency} className="rounded-xl py-1 pr-4 min-w-[140px]">
                   <div className="text-title font-semibold text-on-surface tabular-nums">
                     {formatMoney(b.balanceInCents, b.currency)}
                   </div>

@@ -7,7 +7,6 @@ import {
   Power,
   PowerOff,
   Trash2,
-  Zap,
   AlertCircle,
   Save,
   Plus,
@@ -714,7 +713,7 @@ export default function AutomationRuleEditorPage() {
           icon={<AlertCircle className="h-12 w-12 text-error" />}
           title="Rule not found"
           description="This automation rule does not exist or was deleted."
-          actionLabel="Back to Automation"
+          actionLabel="Back to automation"
           onAction={() => router.push("/automation")}
         />
       </div>
@@ -736,29 +735,32 @@ export default function AutomationRuleEditorPage() {
         ]}
       />
       {/* ── Header ── */}
-      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant/10 bg-surface-container-low">
+      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant bg-surface-container-low">
         <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-1 max-lg:gap-2">
           {/* Mobile: the nav bar has Back */}
           <IconButton size="sm"
             onClick={() => router.push("/automation")}
             className="max-lg:hidden"
-            aria-label="Back"
+            aria-label="Back to automation"
+            title="Back to automation"
           >
             <ArrowLeft className="h-4 w-4" />
           </IconButton>
-          <Zap className="h-4 w-4 text-on-surface-variant max-lg:hidden" />
-          <input
-            value={name}
-            onChange={(e) => { setName(e.target.value); markDirty(); }}
-            aria-label="Rule name"
-            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0 max-lg:w-auto max-lg:min-w-0 max-lg:flex-1"
-          />
+          {/* The editable name is the page's one heading */}
+          <h1 className="min-w-0 max-lg:flex-1">
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); markDirty(); }}
+              aria-label="Rule name"
+              className="w-[240px] rounded-md border-none bg-transparent px-1 text-title-sm font-semibold text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:w-full max-lg:min-w-0"
+            />
+          </h1>
           <RuleStatusBadge status={rule.status} />
         </div>
 
         <div className="flex items-center gap-2 max-lg:shrink-0">
           {isDirty && (
-            <span className="text-caption text-on-surface-variant/50 max-lg:hidden">Unsaved changes</span>
+            <span className="text-caption text-on-surface-variant max-lg:hidden">Unsaved changes</span>
           )}
           {saved && (
             <span className="flex items-center gap-1 text-caption text-success max-lg:hidden">
@@ -801,18 +803,20 @@ export default function AutomationRuleEditorPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="shrink-0 flex gap-0 border-b border-outline-variant/10 px-6">
+      <div className="shrink-0 flex gap-0 border-b border-outline-variant px-6">
         {(["builder", "logs"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-body font-medium border-b-2 transition-colors ${
+            aria-pressed={activeTab === tab}
+            className={`px-4 py-2.5 text-body font-medium border-b-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            {tab === "builder" ? "Rule Builder" : "Execution Logs"}
+            {tab === "builder" ? "Rule builder" : "Execution logs"}
           </button>
         ))}
       </div>

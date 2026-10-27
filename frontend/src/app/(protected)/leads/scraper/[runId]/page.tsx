@@ -6,8 +6,14 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
   Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, ChevronDown, Rocket, Ban,
+  Filter, X, Rocket, Ban,
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import {
+  FilterBar as SharedFilterBar,
+  FilterBarDivider,
+  FilterSelect as SharedFilterSelect,
+} from "@/components/ui/filter-bar";
 import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
 import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "@/hooks/use-lead-scraper";
 import { useQuery } from "@tanstack/react-query";
@@ -131,19 +137,18 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
-      >
-        <option value="" disabled>{label}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
-    </div>
+    <SharedFilterSelect
+      label={label}
+      // The first option is each filter's "all" value
+      active={value !== options[0]?.value}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="" disabled>{label}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </SharedFilterSelect>
   );
 }
 
@@ -177,46 +182,38 @@ function FilterBar({
   ].filter(Boolean).length;
 
   return (
-    <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3 max-lg:p-3">
-      {/* Top row: search + active indicator */}
+    <div className="space-y-3">
+      {/* Top row: search + count */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-          {activeCount > 0 && (
-            <span className="bg-primary text-on-primary text-caption font-semibold w-4 h-4 rounded-full flex items-center justify-center">
-              {activeCount}
-            </span>
-          )}
-        </div>
-
         {/* Search */}
         <input
           type="text"
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
-          placeholder="Search name, company, category, skills…"
-          className="flex-1 min-w-[200px] max-lg:min-w-0 max-lg:basis-full max-lg:order-last text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+          placeholder="Search name, company, category, skills"
+          aria-label="Search results"
+          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 text-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
 
         {/* Showing count */}
-        <span className="text-label text-on-surface-variant ml-auto shrink-0">
+        <span className="text-label tabular-nums text-on-surface-variant ml-auto shrink-0">
           {visibleCount} of {resultCount}
         </span>
 
         {/* Clear all */}
         {activeCount > 0 && (
           <button
+            type="button"
             onClick={() => onChange(DEFAULT_FILTERS)}
-            className="flex items-center gap-1 text-label text-error hover:underline shrink-0"
+            className="flex items-center gap-1 rounded-md px-1 text-label text-on-surface-variant outline-none hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus shrink-0"
           >
-            <X className="w-3 h-3" /> Clear all
+            <X className="w-3 h-3" /> Clear {activeCount}
           </button>
         )}
       </div>
 
-      {/* Filter chips row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Every filter on one row */}
+      <SharedFilterBar className="mobile-scroll-x">
         {/* Lead score */}
         {hasScores && (
           <>
@@ -232,16 +229,18 @@ function FilterBar({
               ]}
             />
             <button
+              type="button"
               onClick={() => onChange({ sortByScore: !filters.sortByScore })}
               aria-pressed={filters.sortByScore}
-              className={`text-label px-3 py-1.5 rounded-lg border transition-colors ${
+              className={`h-8 shrink-0 text-label px-3 rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 filters.sortByScore
-                  ? "bg-primary text-on-primary border-primary"
-                  : "bg-surface-container text-on-surface border-outline-variant hover:border-primary/50"
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-outline hover:text-on-surface"
               }`}
             >
               Best leads first
             </button>
+            <FilterBarDivider />
           </>
         )}
 
@@ -335,14 +334,15 @@ function FilterBar({
           <span className="ml-auto text-caption text-on-surface-variant">
             Quick:
             <button
+              type="button"
               onClick={() => onChange({ waStatus: "active", imported: "no", hasPhone: "yes" })}
-              className="ml-1.5 text-primary hover:underline font-medium"
+              className="ml-1.5 rounded text-primary hover:underline font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               WA active, not imported
             </button>
           </span>
         )}
-      </div>
+      </SharedFilterBar>
     </div>
   );
 }
@@ -821,43 +821,36 @@ export default function ScrapeRunResultsPage() {
         className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors max-lg:hidden"
       >
         <ArrowLeft className="w-4 h-4" />
-        Lead Scraper
+        Lead scraper
       </Link>
 
       {/* Run header */}
-      <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-5 max-lg:p-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-title font-semibold text-on-surface">{SOURCE_LABELS[run.source]}</h1>
-              <StatusBadge status={run.status} />
-            </div>
-            <p className="text-body-lg text-on-surface-variant mt-1">
-              <span className="font-medium">{run.keywords}</span>
+      <div className="space-y-3">
+        <PageHeader
+          title={SOURCE_LABELS[run.source]}
+          description={
+            <>
+              <span className="font-medium text-on-surface">{run.keywords}</span>
               {run.location && <> · {run.location}</>}
-            </p>
-          </div>
+            </>
+          }
+          actions={<StatusBadge status={run.status} />}
+        />
 
-          <div className="flex items-center gap-4 text-center max-lg:w-full max-lg:justify-around">
-            <div>
-              <p className="text-title font-semibold text-on-surface">{run.resultCount}</p>
-              <p className="text-caption text-on-surface-variant">Found</p>
-            </div>
-            <div className="w-px h-8 bg-outline-variant" />
-            <div>
-              <p className="text-title font-semibold text-on-surface">{results.filter((r) => !r.imported).length}</p>
-              <p className="text-caption text-on-surface-variant">Not imported</p>
-            </div>
-            <div className="w-px h-8 bg-outline-variant" />
-            <div>
-              <p className="text-title font-semibold text-success">{importedCount}</p>
-              <p className="text-caption text-on-surface-variant">Imported</p>
-            </div>
-          </div>
+        <div className="flex items-baseline gap-6 text-body text-on-surface-variant max-lg:justify-between max-lg:gap-3">
+          <span>
+            <span className="font-semibold tabular-nums text-on-surface">{run.resultCount}</span> found
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums text-on-surface">{results.filter((r) => !r.imported).length}</span> not imported
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums text-success">{importedCount}</span> imported
+          </span>
         </div>
 
         {run.status === "FAILED" && run.errorMessage && (
-          <p className="mt-3 text-label text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
+          <p className="text-label text-error bg-error-container rounded-lg px-3 py-2">{run.errorMessage}</p>
         )}
       </div>
 

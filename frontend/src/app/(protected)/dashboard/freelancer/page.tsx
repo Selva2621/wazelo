@@ -29,11 +29,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { SplitText } from "@/components/ui/split-text";
 
 // Bento layout from the Stitch "Wazelo - Bento Grid Layout" screen, built on the shared
 // tokens so it follows the app's themes. One radius system: 24px cards, 16px tiles, pill buttons.
-const CARD = "rounded-3xl border border-outline-variant bg-surface-container-lowest";
-const TILE = "rounded-2xl border border-outline-variant/60 bg-surface-container-low/40";
+// Quiet Ops: one card level only. Items inside a card are plain rows (TILE), never boxed again.
+const CARD = "rounded-2xl border border-outline-variant bg-surface-container-lowest";
+const TILE = "rounded-xl";
 
 const ACTION_CLASS =
   "inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 text-body font-medium text-on-surface transition-colors hover:border-primary-container/60 hover:bg-primary/5 active:scale-[0.98]";
@@ -68,8 +70,9 @@ function Kpi({
 }) {
   return (
     // Phones: two tiles per row, icon above the numbers
-    <Link href={href} className={cn(CARD, "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-primary/40 max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:rounded-2xl max-lg:active:scale-[0.98]")}>
-      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl max-sm:size-10 max-sm:rounded-xl", tone)}>{icon}</span>
+    <Link href={href} className={cn(CARD, "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-outline max-sm:flex-col max-sm:items-start max-sm:gap-3 max-lg:active:scale-[0.98]")}>
+      {/* Desktop: numbers only; the coloured icon tile stays on phones, where tiles scan by colour */}
+      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl max-sm:size-10 max-sm:rounded-xl lg:hidden", tone)}>{icon}</span>
       <span className="min-w-0 max-sm:w-full">
         <span className="block truncate text-label text-on-surface-variant">{label}</span>
         <span className="flex items-baseline gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-0">
@@ -99,19 +102,22 @@ function QuickActions({ className }: { className?: string }) {
   ];
   return (
     <nav aria-label="Quick actions" className={className}>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Desktop: one row of slim shortcuts. Phones/tablets: iOS tiles, icon above the label */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:flex lg:flex-wrap lg:gap-2">
         {actions.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
-            // Phones/tablets: iOS tiles, icon above the label so it never truncates
-            className={cn(CARD, "flex items-center gap-3 px-4 py-3 text-body font-semibold text-on-surface transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98] max-lg:flex-col max-lg:items-start max-lg:gap-2.5 max-lg:rounded-2xl max-lg:p-3.5")}
+            className={cn(
+              "flex h-9 items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-3.5 text-body font-medium text-on-surface",
+              "outline-none transition-colors duration-120 ease-standard hover:border-outline hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.98]",
+              "max-lg:h-auto max-lg:flex-col max-lg:items-start max-lg:gap-2.5 max-lg:rounded-2xl max-lg:p-3.5 max-lg:font-semibold",
+            )}
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Icon className="h-4.5 w-4.5" />
+            <span className="text-primary max-lg:grid max-lg:size-9 max-lg:shrink-0 max-lg:place-items-center max-lg:rounded-xl max-lg:bg-primary/10">
+              <Icon className="h-4 w-4 max-lg:h-4.5 max-lg:w-4.5" />
             </span>
             <span className="truncate max-lg:w-full">{label}</span>
-            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-on-surface-variant/40 max-lg:hidden" />
           </Link>
         ))}
       </div>
@@ -145,7 +151,7 @@ function ThisWeek() {
               { label: "Replies", short: "Replies", value: replies },
               { label: "Read", short: "Read", value: totals?.read ?? 0 },
             ].map((s) => (
-              <div key={s.label} className={cn(TILE, "px-3 py-2.5")}>
+              <div key={s.label} className={cn(TILE, "py-1")}>
                 {/* Phones: the short label fits a third of the card */}
                 <p className="truncate text-caption text-on-surface-variant max-sm:hidden">{s.label}</p>
                 <p className="truncate text-caption text-on-surface-variant sm:hidden">{s.short}</p>
@@ -157,13 +163,13 @@ function ThisWeek() {
           <div className="mt-4 flex-1">
             <p className="mb-2 text-caption text-on-surface-variant">Messages per day</p>
             <div className="flex h-20 items-end gap-2" role="img" aria-label="Messages per day this week">
-              {(series.length ? series : Array.from({ length: 7 }, (_, i) => ({ date: String(i), total: 0 }))).map((d) => {
+              {(series.length ? series : Array.from({ length: 7 }, (_, i) => ({ date: String(i), total: 0 }))).map((d, i) => {
                 const isToday = series.length > 0 && new Date(d.date).toDateString() === todayKey;
                 return (
                   <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                     <div
-                      className={cn("w-full rounded-md", isToday ? "bg-primary" : d.total ? "bg-primary/30" : "bg-surface-container")}
-                      style={{ height: `${Math.max(8, (d.total / peak) * 100)}%` }}
+                      className={cn("grow-y w-full rounded-md", isToday ? "bg-primary" : d.total ? "bg-primary/30" : "bg-surface-container")}
+                      style={{ height: `${Math.max(8, (d.total / peak) * 100)}%`, "--grow-i": i } as React.CSSProperties}
                       title={`${d.total} messages`}
                     />
                     <span className={cn("text-caption", isToday ? "font-semibold text-primary" : "text-on-surface-variant")}>
@@ -239,17 +245,16 @@ export default function FreelancerDashboard() {
       <MobilePageActions primary={{ label: "Add lead", onClick: () => router.push("/contacts?action=new") }} />
 
       {/* Greeting */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display font-semibold text-on-surface max-lg:text-title">Hey, {firstName}</h1>
-          <p className="mt-1 text-body-lg text-on-surface-variant max-lg:mt-0 max-lg:text-body">Your client pipeline overview</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-headline font-semibold text-on-surface max-lg:text-title">
+          <SplitText text={`Hey, ${firstName}`} />
+        </h1>
         <Link
           href="/contacts?action=new"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-body font-semibold text-on-primary shadow-[0_0_24px_-6px_var(--primary-glow)] transition-transform active:scale-[0.98] max-lg:hidden"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-body font-semibold text-on-primary outline-none transition-[opacity,transform] duration-120 ease-standard hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98] max-lg:hidden"
         >
           <Plus className="h-4 w-4" />
-          Add Lead
+          Add lead
         </Link>
       </div>
 
@@ -279,7 +284,7 @@ export default function FreelancerDashboard() {
           />
 
           {needsYouCount === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl bg-surface-container-low px-4 py-8 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
               <span className="grid size-12 place-items-center rounded-full bg-success/10 text-success">
                 <Check className="h-6 w-6" />
               </span>
@@ -293,12 +298,12 @@ export default function FreelancerDashboard() {
               </Link>
             </div>
           ) : (
-            <ul className="flex-1 space-y-2.5">
+            <ul className="stagger-rows flex-1 space-y-2.5">
               {awaitingReply.map((c) => (
                 <li key={`chat-${c.id}`}>
                   <Link
                     href="/inbox"
-                    className={cn(TILE, "flex items-center gap-3 p-3 transition-colors hover:border-primary/40 hover:bg-primary/5")}
+                    className={cn(TILE, "-mx-2 flex items-center gap-3 p-2 transition-colors duration-120 ease-standard hover:bg-surface-container-low")}
                   >
                     <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-success/10 text-success">
                       <MessageSquare className="h-5 w-5" />
@@ -332,7 +337,7 @@ export default function FreelancerDashboard() {
               {dueFollowUps.map((f) => {
                 const due = formatFollowUp(f.nextFollowUpAt);
                 return (
-                  <li key={`follow-${f.id}`} className={cn(TILE, "flex items-center gap-3 p-3")}>
+                  <li key={`follow-${f.id}`} className={cn(TILE, "-mx-2 flex items-center gap-3 p-2")}>
                     <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-warning/10 text-warning">
                       <AlarmClock className="h-5 w-5" />
                     </span>
@@ -427,8 +432,8 @@ export default function FreelancerDashboard() {
               </Link>
             }
           />
-          <ul className="stagger flex-1 space-y-3">
-            {stages.map((s) => (
+          <ul className="stagger-rows flex-1 space-y-3">
+            {stages.map((s, i) => (
               <li key={s.label}>
                 <div className="flex items-center justify-between text-body">
                   <span className={s.count ? "font-medium text-on-surface" : "text-on-surface-variant"}>{s.label}</span>
@@ -436,8 +441,8 @@ export default function FreelancerDashboard() {
                 </div>
                 <div className="mt-1.5 h-1.5 rounded-full bg-surface-container">
                   <div
-                    className="h-1.5 rounded-full bg-primary transition-[width] duration-500 ease-standard"
-                    style={{ width: `${(s.count / maxStage) * 100}%` }}
+                    className="grow-x h-1.5 rounded-full bg-primary transition-[width] duration-500 ease-standard"
+                    style={{ width: `${(s.count / maxStage) * 100}%`, "--grow-i": i } as React.CSSProperties}
                   />
                 </div>
               </li>

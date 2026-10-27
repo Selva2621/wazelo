@@ -176,28 +176,29 @@ export default function ContactDetailPage() {
     <div className="max-w-5xl mx-auto space-y-6 pb-10 max-lg:space-y-4 max-lg:px-4 max-lg:pt-2">
       {/* Mobile: Send Message is the nav bar button, the other actions sit in its "…" menu */}
       <MobilePageActions
-        primary={{ label: "Send Message", onClick: () => setShowSendMessage(true), icon: <MessageSquare className="h-[22px] w-[22px]" aria-hidden /> }}
+        primary={{ label: "Send message", onClick: () => setShowSendMessage(true), icon: <MessageSquare className="h-[22px] w-[22px]" aria-hidden /> }}
         moreTitle={contact.name || contact.phoneNumber}
         more={[
-          { label: "Open Chat", onSelect: openConversation },
+          { label: "Open chat", onSelect: openConversation },
           !editing && { label: "Edit", onSelect: startEditing },
-          { label: "Assign Owner", onSelect: () => setShowAssign(true) },
-          { label: "Export Data", onSelect: handleExport },
-          { label: "Delete Contact", onSelect: () => setShowDeleteConfirm(true), destructive: true },
+          { label: "Assign owner", onSelect: () => setShowAssign(true) },
+          { label: "Export data", onSelect: handleExport },
+          { label: "Delete contact", onSelect: () => setShowDeleteConfirm(true), destructive: true },
         ]}
       />
 
       {/* Back nav (the iOS nav bar has Back on mobile) */}
       <button
         onClick={() => router.push("/contacts")}
-        className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors max-lg:hidden"
+        type="button"
+        className="flex items-center gap-1.5 rounded text-body text-on-surface-variant outline-none hover:text-on-surface transition-colors focus-visible:ring-2 focus-visible:ring-focus max-lg:hidden"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Contacts
+        Contacts
       </button>
 
       {/* Profile Card */}
-      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
         {/* Header row */}
         <div className="flex items-start gap-5 max-lg:flex-wrap max-lg:gap-3">
           <Avatar
@@ -276,40 +277,43 @@ export default function ContactDetailPage() {
             <IconButton size="sm"
               onClick={() => setShowAssign(true)}
               className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
-              title="Assign Owner" aria-label="Assign Owner">
+              title="Assign owner" aria-label="Assign owner">
               <UserPlus className="h-4 w-4" />
             </IconButton>
-            <Button size="sm" className="max-lg:hidden" onClick={() => setShowSendMessage(true)}>
-              <MessageSquare className="h-4 w-4 mr-1" /> Send Message
-            </Button>
-            <Button size="sm" variant="secondary" className="max-lg:hidden" onClick={openConversation}>
-              Open Chat
-            </Button>
             <IconButton size="sm"
               onClick={handleExport}
               className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
-              title="Export Data" aria-label="Export Data">
+              title="Export data" aria-label="Export data">
               <Download className="h-4 w-4" />
             </IconButton>
             <IconButton size="sm" variant="danger"
               onClick={() => setShowDeleteConfirm(true)}
               className="max-lg:hidden"
-              title="Delete Contact" aria-label="Delete Contact">
+              title="Delete contact" aria-label="Delete contact">
               <Trash2 className="h-4 w-4" />
             </IconButton>
+            {/* Primary action last */}
+            <Button size="sm" variant="secondary" className="max-lg:hidden" onClick={openConversation}>
+              Open chat
+            </Button>
+            <Button size="sm" className="max-lg:hidden" onClick={() => setShowSendMessage(true)}>
+              <MessageSquare className="h-4 w-4 mr-1" /> Send message
+            </Button>
           </div>
         </div>
 
         {/* Lead status row */}
         <div className="space-y-1.5">
-          <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Lead Status</p>
+          <p className="text-label text-on-surface-variant">Lead status</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             {LEAD_STATUSES.map((s) => (
               <button
                 key={s.value}
+                type="button"
                 onClick={() => handleStatusChange(s.value)}
                 disabled={changeStatus.isPending}
-                className={`transition-opacity ${contact.leadStatus === s.value ? "opacity-100" : "opacity-35 hover:opacity-70"}`}
+                aria-pressed={contact.leadStatus === s.value}
+                className={`rounded-full outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-focus ${contact.leadStatus === s.value ? "opacity-100" : "opacity-35 hover:opacity-70"}`}
               >
                 <LeadStatusBadge status={s.value} />
               </button>
@@ -324,8 +328,8 @@ export default function ContactDetailPage() {
       </div>
 
       {/* Tabs content */}
-      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
-        <div className="px-6 pt-4 border-b border-outline-variant/10 max-lg:px-3 max-lg:pt-2">
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
+        <div className="px-6 pt-4 border-b border-outline-variant max-lg:px-3 max-lg:pt-2">
           <Tabs tabs={PAGE_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
@@ -357,7 +361,7 @@ export default function ContactDetailPage() {
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Delete Contact"
+        title="Delete contact"
         message="This contact and all associated data will be soft-deleted."
         confirmLabel="Delete"
         variant="danger"
@@ -382,8 +386,8 @@ function OverviewTab({ contact, contactId }: { contact: any; contactId: string }
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Contact Info */}
       <div className="space-y-3">
-        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-          Contact Information
+        <h3 className="text-title-sm font-semibold text-on-surface">
+          Contact information
         </h3>
         <div className="space-y-2">
           <InfoRow label="Phone" value={contact.phoneNumber} />
@@ -459,8 +463,8 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-          Custom Fields
+        <h3 className="text-title-sm font-semibold text-on-surface">
+          Custom fields
         </h3>
         {!editing ? (
           <button onClick={startEdit} className="text-label text-primary hover:underline">
@@ -550,14 +554,14 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
           Deals <span className="text-on-surface-variant/50 font-normal">({deals?.length || 0})</span>
         </h3>
         <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Create Deal
+          <Plus className="h-3.5 w-3.5 mr-1" /> Create deal
         </Button>
       </div>
 
       {deals && deals.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
           {deals.map((deal) => (
-            <div key={deal.id} className="p-4 rounded-xl bg-surface-container border border-outline-variant/10 space-y-2">
+            <div key={deal.id} className="p-3 rounded-xl transition-colors hover:bg-surface-container-low space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-body-lg font-medium text-on-surface">{deal.title}</span>
                 <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
@@ -626,9 +630,10 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
               }
             }}
             defaultValue=""
-            className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface"
+            aria-label="Assign product"
+            className="h-8 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-label text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <option value="" disabled>+ Assign Product</option>
+            <option value="" disabled>+ Assign product</option>
             {available.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -637,9 +642,9 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
       </div>
 
       {contactProducts && contactProducts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
           {contactProducts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-container border border-outline-variant/10">
+            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl transition-colors hover:bg-surface-container-low">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Package className="h-4 w-4 text-primary" />

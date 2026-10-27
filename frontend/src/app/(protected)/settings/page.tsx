@@ -126,6 +126,7 @@ import {
 } from "@/hooks/use-settings";
 import type { SlaPolicy } from "@/lib/types/sla";
 import { IconButton } from "@/components/ui/icon-button";
+import { PageHeader } from "@/components/layout/page-header";
 
 type SettingsTab =
   | "organization"
@@ -269,13 +270,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="max-lg:hidden">
-        <h1 className="text-headline font-semibold text-on-surface">Settings</h1>
-        <p className="text-body text-on-surface-variant mt-1">
-          Manage your organization, integrations, and system configuration
-        </p>
-      </div>
+      <PageHeader title="Settings" className="max-lg:hidden" />
 
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
@@ -290,18 +285,19 @@ export default function SettingsPage() {
                   {group.tabs.map((tab) => (
                     <button
                       key={tab.id}
+                      type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
+                      aria-current={activeTab === tab.id ? "page" : undefined}
+                      className={cn(
+                        "flex h-9 w-full items-center gap-3 rounded-lg px-3 text-body font-medium transition-colors duration-120 ease-standard",
+                        "outline-none focus-visible:ring-2 focus-visible:ring-focus",
                         activeTab === tab.id
                           ? "bg-primary/10 text-primary"
-                          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                      }`}
+                          : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                      )}
                     >
                       <tab.icon className="h-4 w-4 shrink-0" />
                       {tab.label}
-                      {activeTab === tab.id && (
-                        <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                      )}
                     </button>
                   ))}
                 </div>
@@ -311,7 +307,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className={cn("flex-1 min-w-0", !tabParam && "max-lg:hidden")}>
+        {/* Forms read best at a fixed width; tabs with tables and logs keep the full column */}
+        <div
+          className={cn(
+            "flex-1 min-w-0",
+            !["developer-api", "webhooks", "sla"].includes(activeTab) && "max-w-3xl",
+            !tabParam && "max-lg:hidden",
+          )}
+        >
           {activeTab === "organization" && <OrganizationSection />}
           {activeTab === "ai-memory" && <AiMemorySection />}
           {activeTab === "whatsapp" && <WhatsAppSection />}
@@ -1471,13 +1474,13 @@ function NotificationsSection() {
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-              <th className="py-2.5 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-left text-label font-medium text-on-surface-variant">
                 Notification Type
               </th>
-              <th className="py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-center text-label font-medium text-on-surface-variant">
                 In-App
               </th>
-              <th className="py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-center text-label font-medium text-on-surface-variant">
                 Email
               </th>
             </tr>

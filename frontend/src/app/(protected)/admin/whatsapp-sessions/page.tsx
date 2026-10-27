@@ -13,11 +13,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
 type StatusFilter = "" | "CONNECTED" | "DISCONNECTED" | "RECONNECTING" | "CONNECTING";
 
 export default function AdminWhatsAppSessionsPage() {
-  usePageTitle("WhatsApp Sessions");
+  usePageTitle("WhatsApp sessions");
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [userSearch, setUserSearch] = useState("");
@@ -57,49 +59,50 @@ export default function AdminWhatsAppSessionsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header (the iOS nav bar shows the title on phones/tablets) */}
-      <div className="max-lg:hidden">
-        <p className="text-label text-on-surface-variant mb-1">
-          Admin &gt; WhatsApp Sessions
-        </p>
-        <h1 className="text-headline font-semibold text-on-surface">
-          WhatsApp Sessions
-        </h1>
-      </div>
+      <div className="space-y-4">
+        {/* Phones/tablets: the iOS nav bar shows the title */}
+        <PageHeader className="max-lg:hidden" title="WhatsApp sessions" count={total} />
 
-      <Card className="!p-0 overflow-hidden">
-        {/* Filter bar */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-outline-variant/15 max-lg:flex-wrap max-lg:px-4">
-          <select
+        {/* Filters on one row; phones put the search on its own full-width row first */}
+        <FilterBar className="max-lg:gap-3">
+          <div className="relative w-64 max-lg:order-first max-lg:w-full max-lg:basis-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+            <input
+              type="text"
+              aria-label="Search by user name"
+              placeholder="Search users"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="h-8 max-lg:h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant outline-none transition-colors hover:border-outline focus-visible:ring-2 focus-visible:ring-focus"
+            />
+          </div>
+
+          <FilterBarDivider />
+
+          <FilterSelect
+            label="Status"
+            active={!!statusFilter}
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as StatusFilter);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary max-lg:h-11"
+            className="max-lg:h-11"
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             <option value="CONNECTED">Connected</option>
             <option value="DISCONNECTED">Disconnected</option>
             <option value="RECONNECTING">Reconnecting</option>
             <option value="CONNECTING">Connecting</option>
-          </select>
+          </FilterSelect>
 
-          <div className="relative flex-1 max-w-[280px] max-lg:order-first max-lg:max-w-none max-lg:basis-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder="Search by user name..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              className="h-9 max-lg:h-11 w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest pl-9 pr-3 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <span className="ml-auto text-label text-on-surface-variant">
+          <span className="ml-auto text-label text-on-surface-variant lg:hidden">
             {total} session{total !== 1 ? "s" : ""}
           </span>
-        </div>
+        </FilterBar>
+      </div>
+
+      <Card className="!p-0 overflow-hidden">
 
         {/* Table */}
         {isLoading ? (
@@ -117,20 +120,20 @@ export default function AdminWhatsAppSessionsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                <tr className="border-b border-outline-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     User
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     Phone
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
-                    Last Active
+                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
+                    Last active
                   </th>
-                  <th className="px-5 py-3 text-right text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <th className="px-5 py-3 text-right text-label font-medium text-on-surface-variant">
                     Actions
                   </th>
                 </tr>
@@ -139,7 +142,7 @@ export default function AdminWhatsAppSessionsPage() {
                 {filtered.map((s) => (
                   <tr
                     key={s.id}
-                    className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/30 transition-colors"
+                    className="border-b border-outline-variant/60 last:border-0 hover:bg-surface-container-low transition-colors"
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -155,7 +158,7 @@ export default function AdminWhatsAppSessionsPage() {
                           <p className="text-body font-medium text-on-surface truncate">
                             {s.user
                               ? `${s.user.firstName} ${s.user.lastName}`
-                              : "Unknown User"}
+                              : "Unknown user"}
                           </p>
                           {s.user?.email && (
                             <p className="text-caption text-on-surface-variant truncate">
@@ -235,7 +238,7 @@ export default function AdminWhatsAppSessionsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/15">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant">
             <span className="text-label text-on-surface-variant">
               Page {page} of {totalPages}
             </span>

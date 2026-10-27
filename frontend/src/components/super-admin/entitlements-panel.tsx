@@ -139,7 +139,7 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
       </p>
 
       {/* Limits */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby={fid("limits")}>
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby={fid("limits")}>
         <h2 id={fid("limits")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">Limits</h2>
         <table className="w-full mt-2 text-body-lg">
           <caption className="sr-only">Usage limits: plan, override and effective value</caption>
@@ -182,7 +182,7 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
       </section>
 
       {/* Features */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby={fid("features")}>
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby={fid("features")}>
         <h2 id={fid("features")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">Features</h2>
         <table className="w-full mt-2 text-body-lg">
           <caption className="sr-only">Features: plan, override and effective state</caption>

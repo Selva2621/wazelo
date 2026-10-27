@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterSelect } from "@/components/ui/filter-bar";
+import { CARD, sentenceCase } from "@/components/super-admin/list-styles";
+import { cn } from "@/lib/utils";
 import {
   FIRST_RESPONSE_HOURS,
   TicketSlaBadge,
@@ -161,68 +165,72 @@ export default function SATicketDetailPage() {
   if (!ticket) return <div className="p-6 text-on-surface-variant">Ticket not found</div>;
 
   return (
-    <div className="p-6 max-w-3xl space-y-5">
-      <div className="flex items-start gap-3">
+    <div className="p-4 lg:p-6 max-w-3xl space-y-5">
+      <div className="flex items-start gap-2">
         <Link
           href="/super-admin/tickets"
           aria-label="Back to tickets"
-          className="text-on-surface-variant hover:text-on-surface mt-0.5 rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          title="Back to tickets"
+          className="text-on-surface-variant hover:text-on-surface mt-1 rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <ChevronLeft className="h-5 w-5" aria-hidden />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-title font-semibold text-on-surface">{ticket.title}</h1>
-          <div className="flex flex-wrap gap-2 mt-1 text-label text-on-surface-variant">
-            <span>{ticket.organization?.name}</span>
-            <span aria-hidden>·</span>
-            <span>{ticket.user?.firstName} {ticket.user?.lastName}</span>
-            <span aria-hidden>·</span>
-            <span>{ticket.category}</span>
-            <span aria-hidden>·</span>
-            <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
-          </div>
-          <div className="mt-2">
-            <TicketSlaInfo ticket={ticket} />
-          </div>
-        </div>
-        <div>
-          <label htmlFor="ticket-status" className="sr-only">Ticket status</label>
-          <select
-            id="ticket-status"
-            value={ticket.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            disabled={statusMutation.isPending}
-            className="bg-surface-container border border-outline-variant text-on-surface text-body-lg rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-          </select>
-        </div>
+        <PageHeader
+          className="min-w-0 flex-1"
+          title={ticket.title}
+          description={
+            <span className="flex flex-wrap gap-x-2 text-label">
+              <span>{ticket.organization?.name}</span>
+              <span aria-hidden>·</span>
+              <span>{ticket.user?.firstName} {ticket.user?.lastName}</span>
+              <span aria-hidden>·</span>
+              <span>{sentenceCase(ticket.category ?? "")}</span>
+              <span aria-hidden>·</span>
+              <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+            </span>
+          }
+          actions={
+            <FilterSelect
+              id="ticket-status"
+              label="Ticket status"
+              value={ticket.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              disabled={statusMutation.isPending}
+            >
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{sentenceCase(s)}</option>)}
+            </FilterSelect>
+          }
+        />
       </div>
 
-      {/* Assignment */}
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="ticket-assignee" className="text-body-lg text-on-surface-variant">Assignee</label>
-        <select
-          id="ticket-assignee"
-          value={ticket.assignedToId ?? ""}
-          onChange={(e) => handleAssign(e.target.value || null)}
-          disabled={assignMutation.isPending}
-          className="bg-surface-container border border-outline-variant text-on-surface text-body-lg rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">Unassigned</option>
-          {(assignees ?? []).map((a) => (
-            <option key={a.id} value={a.id}>{a.name}{a.id === me?.id ? " (me)" : ""}</option>
-          ))}
-        </select>
-        {me && ticket.assignedToId !== me.id && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => handleAssign(me.id)} disabled={assignMutation.isPending}>
-            Assign to me
-          </Button>
-        )}
+      {/* SLA + assignment */}
+      <div className="space-y-3">
+        <TicketSlaInfo ticket={ticket} />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-label font-medium text-on-surface">Assignee</span>
+          <FilterSelect
+            id="ticket-assignee"
+            label="Assignee"
+            active={!!ticket.assignedToId}
+            value={ticket.assignedToId ?? ""}
+            onChange={(e) => handleAssign(e.target.value || null)}
+            disabled={assignMutation.isPending}
+          >
+            <option value="">Unassigned</option>
+            {(assignees ?? []).map((a) => (
+              <option key={a.id} value={a.id}>{a.name}{a.id === me?.id ? " (me)" : ""}</option>
+            ))}
+          </FilterSelect>
+          {me && ticket.assignedToId !== me.id && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => handleAssign(me.id)} disabled={assignMutation.isPending}>
+              Assign to me
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Description */}
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
+      <div className={cn(CARD, "p-4")}>
         <p className="text-body-lg text-on-surface whitespace-pre-wrap">{ticket.description}</p>
       </div>
 
@@ -283,7 +291,7 @@ export default function SATicketDetailPage() {
 
       {/* Reply box */}
       {ticket.status !== "CLOSED" && (
-        <form onSubmit={handleReply} className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-3">
+        <form onSubmit={handleReply} className={cn(CARD, "p-4 space-y-3")}>
           <label htmlFor="ticket-reply" className="block text-body-lg font-medium text-on-surface-variant">
             Reply to customer
           </label>
@@ -293,7 +301,7 @@ export default function SATicketDetailPage() {
             onChange={(e) => setReplyBody(e.target.value)}
             placeholder="Write a reply..."
             rows={3}
-            className="w-full bg-surface-container border border-outline-variant text-on-surface text-body-lg rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary resize-none placeholder:text-placeholder"
+            className="w-full bg-surface-container-low border border-outline-variant text-on-surface text-body-lg rounded-lg px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus resize-none placeholder:text-placeholder"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
@@ -310,7 +318,7 @@ export default function SATicketDetailPage() {
               {replyMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 : internal ? <Lock className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-              {internal ? "Add internal note" : "Send Reply"}
+              {internal ? "Add internal note" : "Send reply"}
             </Button>
           </div>
         </form>

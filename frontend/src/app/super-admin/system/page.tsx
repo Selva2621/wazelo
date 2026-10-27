@@ -18,7 +18,6 @@ import {
   Power,
   RefreshCw,
   RotateCcw,
-  Gauge,
   Server,
   ServerCrash,
   ToggleLeft,
@@ -60,6 +59,8 @@ import type {
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 
 type ObsTab = "overview" | "queues" | "failed-jobs" | "alerts" | "errors" | "kill-switches";
 
@@ -86,17 +87,11 @@ export default function SystemHealthPage() {
   );
 
   return (
-    <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">System Health</h1>
-        <p className="text-body-lg text-on-surface-variant mt-1">
-          Platform-wide health, queues, alerts, errors and kill switches across all organizations
-        </p>
-      </div>
+    <div className="flex-1 p-4 lg:p-6 space-y-6">
+      <PageHeader title="System health" />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-container/30 p-1 rounded-lg w-fit">
+      <div role="tablist" aria-label="System health sections" className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-outline-variant p-0.5 w-fit">
         {(
           [
             { id: "overview", label: "Overview", icon: Activity },
@@ -109,14 +104,18 @@ export default function SystemHealthPage() {
         ).map((tab) => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body font-medium transition-colors ${
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-md text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
               activeTab === tab.id
-                ? "bg-surface-container text-on-surface shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-on-surface-variant hover:text-on-surface",
+            )}
           >
-            <tab.icon className="h-3.5 w-3.5" />
+            <tab.icon className="h-3.5 w-3.5" aria-hidden />
             {tab.label}
           </button>
         ))}
@@ -211,8 +210,7 @@ function OverviewSection() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-title-sm">
-              <Gauge className="h-5 w-5" />
-              Latest Metrics
+              Latest metrics
             </CardTitle>
           </CardHeader>
           <CardContent className="!p-0">
@@ -281,7 +279,7 @@ function QueuesSection() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-body font-semibold text-on-surface">
-          Queue Status
+          Queue status
         </h3>
         <Button variant="ghost" size="sm" onClick={() => refetch()}>
           <RefreshCw className="h-3.5 w-3.5" />
@@ -414,20 +412,18 @@ function FailedJobsSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <label htmlFor="failed-jobs-queue" className={labelClass}>
-            Queue
-          </label>
-          <select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterBar>
+          <FilterSelect
             id="failed-jobs-queue"
+            label="Filter by queue"
+            active={!!queue}
             value={queue}
             onChange={(e) => {
               setQueue(e.target.value);
               setPage(1);
               setOpen(null);
             }}
-            className={inputClass}
           >
             <option value="">All queues</option>
             {queueNames.map((name) => (
@@ -435,8 +431,8 @@ function FailedJobsSection() {
                 {name}
               </option>
             ))}
-          </select>
-        </div>
+          </FilterSelect>
+        </FilterBar>
         <div className="flex items-center gap-3">
           {isFetching && !isLoading && (
             <span role="status" className="text-label text-on-surface-variant">
@@ -1078,13 +1074,10 @@ function AlertsSection() {
       {/* Alert Rules */}
       <Card>
         <CardHeader className="flex items-center justify-between gap-3 space-y-0">
-          <CardTitle className="flex items-center gap-2 text-title-sm">
-            <Bell className="h-5 w-5" />
-            Alert Rules
+          <CardTitle className="flex items-baseline gap-2 text-title-sm">
+            Alert rules
             {rules && (
-              <Badge variant="default" className="ml-2">
-                {rules.length}
-              </Badge>
+              <span className="text-body font-normal tabular-nums text-on-surface-variant">{rules.length}</span>
             )}
           </CardTitle>
           <Button size="sm" onClick={openCreate}>
@@ -1240,8 +1233,7 @@ function AlertsSection() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-title-sm">
-            <AlertTriangle className="h-5 w-5" />
-            Alert History
+            Alert history
           </CardTitle>
         </CardHeader>
         <CardContent className="!p-0">
@@ -1353,8 +1345,7 @@ function ErrorsSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
-          <Bug className="h-5 w-5" />
-          Error Groups
+          Error groups
         </CardTitle>
       </CardHeader>
       <CardContent className="!p-0">

@@ -135,7 +135,7 @@ export default function TeamDetailPage({
           icon={<Users className="h-16 w-16" />}
           title="Team not found"
           description="This team may have been deleted or does not exist."
-          actionLabel="Back to Teams"
+          actionLabel="Back to teams"
           onAction={() => router.push("/admin/teams")}
         />
       </div>
@@ -145,10 +145,10 @@ export default function TeamDetailPage({
   return (
     <div className="p-6 space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-body max-lg:hidden">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-body max-lg:hidden">
         <button
           onClick={() => router.push("/admin/teams")}
-          className="text-on-surface-variant hover:text-on-surface transition-colors"
+          className="rounded text-on-surface-variant outline-none transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus"
         >
           Teams
         </button>
@@ -157,11 +157,11 @@ export default function TeamDetailPage({
       </nav>
 
       {/* Team info card */}
-      <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
         {/* Card header */}
-        <div className="flex items-start justify-between px-6 py-5 bg-surface-container/30 border-b border-outline-variant/10 max-lg:flex-col max-lg:gap-3 max-lg:px-4 max-lg:py-4">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-outline-variant max-lg:flex-col max-lg:gap-3 max-lg:px-4 max-lg:py-4">
           <div className="flex items-center gap-4 max-lg:w-full max-lg:min-w-0 max-lg:gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 lg:hidden">
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div className="max-lg:min-w-0 max-lg:flex-1">
@@ -179,7 +179,7 @@ export default function TeamDetailPage({
                   )}
                 </div>
               ) : (
-                <h1 className="text-title font-semibold text-on-surface">{team.name}</h1>
+                <h1 className="text-headline font-semibold text-on-surface max-lg:text-title">{team.name}</h1>
               )}
               <p className="text-label text-on-surface-variant mt-0.5">
                 Created {new Date(team.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
@@ -213,9 +213,9 @@ export default function TeamDetailPage({
         </div>
 
         {/* Manager row */}
-        <div className="px-6 py-4 flex items-center gap-6 border-b border-outline-variant/10 max-lg:flex-wrap max-lg:gap-x-6 max-lg:gap-y-4 max-lg:px-4">
+        <div className="px-6 py-4 flex items-center gap-6 max-lg:flex-wrap max-lg:gap-x-6 max-lg:gap-y-4 max-lg:px-4">
           <div className="space-y-0.5 min-w-[120px] max-lg:basis-full">
-            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Manager</p>
+            <p className="text-label text-on-surface-variant">Manager</p>
             {isEditing ? (
               <select
                 value={editManagerId}
@@ -245,12 +245,12 @@ export default function TeamDetailPage({
           </div>
 
           <div className="space-y-0.5">
-            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Members</p>
+            <p className="text-label text-on-surface-variant">Members</p>
             <p className="text-body text-on-surface mt-1">{team.members.length}</p>
           </div>
 
           <div className="space-y-0.5">
-            <p className="text-caption font-medium text-on-surface-variant uppercase tracking-wider">Last Updated</p>
+            <p className="text-label text-on-surface-variant">Last updated</p>
             <p className="text-body text-on-surface mt-1">
               {new Date(team.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
             </p>
@@ -263,8 +263,8 @@ export default function TeamDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="text-body-lg font-semibold text-on-surface">
             Members
-            <span className="ml-2 text-body font-normal text-on-surface-variant">
-              ({team.members.length})
+            <span className="ml-2 text-body font-normal tabular-nums text-on-surface-variant">
+              {team.members.length}
             </span>
           </h2>
           {isEditing && !addingMember && (
@@ -276,14 +276,14 @@ export default function TeamDetailPage({
               title={availableToAdd.length === 0 ? "All users are already members" : "Add member"}
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-              Add Member
+              Add member
             </Button>
           )}
         </div>
 
         {/* Add member inline form (edit mode only) */}
         {isEditing && addingMember && (
-          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 max-lg:flex-wrap max-lg:[&>button]:h-11 max-lg:[&>button]:flex-1">
+          <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 max-lg:flex-wrap max-lg:[&>button]:h-11 max-lg:[&>button]:flex-1">
             <select
               value={newMemberUserId}
               onChange={(e) => setNewMemberUserId(e.target.value)}
@@ -312,16 +312,16 @@ export default function TeamDetailPage({
 
         {/* Members table */}
         {team.members.length === 0 ? (
-          <div className="rounded-xl border border-outline-variant/15 px-6 py-10 text-center">
+          <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest px-6 py-10 text-center">
             <p className="text-body text-on-surface-variant">
               No members yet.
               {isEditing
-                ? " Click \"Add Member\" above to invite someone."
+                ? " Click \"Add member\" above to invite someone."
                 : " Switch to Edit mode to add members."}
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
             <Table>
               <TableHeader>
                 <TableHeaderRow>

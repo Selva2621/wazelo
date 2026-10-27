@@ -27,6 +27,7 @@ import type { Team } from "@/lib/types/teams";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function AdminTeamsPage() {
   usePageTitle("Teams");
@@ -116,25 +117,33 @@ export default function AdminTeamsPage() {
     <div className="p-6 space-y-5">
       {/* Phones/tablets: the iOS nav bar carries the title and the + button */}
       <MobilePageActions primary={{ label: "Create team", onClick: () => setShowCreate(true) }} />
-      {/* Header */}
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Teams</h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage your organization&apos;s teams and members
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Create Team
-        </Button>
-      </div>
+      <PageHeader
+        className="max-lg:hidden"
+        title="Teams"
+        count={allTeams.length}
+        actions={
+          <>
+            {allTeams.length > 0 && (
+              <SearchInput
+                placeholder="Search teams or managers"
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-64"
+              />
+            )}
+            <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Create team
+            </Button>
+          </>
+        }
+      />
 
       {/* Create team form */}
       {showCreate && (
-        <div className="rounded-xl border border-outline-variant/15 p-5 space-y-4 bg-surface-container/30">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-body-lg font-semibold text-on-surface">New Team</h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">New team</h2>
             <IconButton size="xs"
               onClick={closeCreate} aria-label="Close">
               <X className="h-4 w-4" />
@@ -149,7 +158,7 @@ export default function AdminTeamsPage() {
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">Team Name</label>
+              <label className="text-label font-medium text-on-surface-variant">Team name</label>
               <input
                 type="text"
                 placeholder="e.g. Support Team"
@@ -178,7 +187,7 @@ export default function AdminTeamsPage() {
           <div className="flex gap-2 pt-1">
             <Button size="sm" onClick={handleCreateTeam} disabled={createTeam.isPending}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              {createTeam.isPending ? "Creating..." : "Create Team"}
+              {createTeam.isPending ? "Creating..." : "Create team"}
             </Button>
             <Button variant="secondary" size="sm" onClick={closeCreate}>
               Cancel
@@ -187,12 +196,13 @@ export default function AdminTeamsPage() {
         </div>
       )}
 
-      {/* Search */}
+      {/* Phones/tablets: search sits under the nav bar; desktop has it in the header */}
       {allTeams.length > 0 && (
         <SearchInput
-          placeholder="Search by team name or manager..."
+          placeholder="Search teams or managers"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full lg:hidden"
         />
       )}
 
@@ -202,7 +212,7 @@ export default function AdminTeamsPage() {
           icon={<Users className="h-16 w-16" />}
           title="No teams yet"
           description="Create your first team to organize your employees."
-          actionLabel="Create Team"
+          actionLabel="Create team"
           onAction={() => setShowCreate(true)}
         />
       ) : filtered.length === 0 ? (
@@ -215,7 +225,7 @@ export default function AdminTeamsPage() {
         />
       ) : (
         <>
-          <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
             <Table>
               <TableHeader>
                 <TableHeaderRow>
@@ -270,7 +280,7 @@ export default function AdminTeamsPage() {
                         <IconButton size="xs"
                           onClick={() => router.push(`/admin/teams/${team.id}`)}
                           className="hover:text-primary hover:bg-primary/10 max-lg:size-10"
-                          title="View / Edit team" aria-label="View / Edit team">
+                          title="View team" aria-label="View team">
                           <Eye className="h-3.5 w-3.5" />
                         </IconButton>
                         <IconButton size="xs" variant="danger"
@@ -299,7 +309,7 @@ export default function AdminTeamsPage() {
       {/* Delete confirmation */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete Team"
+        title="Delete team"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"

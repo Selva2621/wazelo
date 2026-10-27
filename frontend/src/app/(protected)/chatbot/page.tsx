@@ -26,6 +26,7 @@ import {
   useDeleteChatbotFlow,
 } from "@/hooks/use-chatbot";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -138,7 +139,7 @@ export default function ChatbotPage() {
                 <Bot className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <h2 className="text-title font-semibold text-on-surface">Create Your First Chatbot</h2>
+            <h2 className="text-title font-semibold text-on-surface">Create your first chatbot</h2>
             <p className="text-body text-on-surface-variant mt-2">
               Pick a ready-made flow and edit it, or start from a blank one. New flows stay off until you activate them.
             </p>
@@ -147,7 +148,7 @@ export default function ChatbotPage() {
           <div className="flex justify-center">
             <Button variant="secondary" onClick={handleCreate} disabled={creatingPreset}>
               <Zap className="h-4 w-4 mr-2" />
-              Blank Custom Flow
+              Blank custom flow
             </Button>
           </div>
         </div>
@@ -161,40 +162,44 @@ export default function ChatbotPage() {
       <MobilePageActions
         primary={
           aiEnabled
-            ? { label: "AI Chatbot", onClick: () => !createFlow.isPending && handleCreateAiBot() }
-            : { label: "Custom Flow", onClick: () => !createFlow.isPending && handleCreate() }
+            ? { label: "AI chatbot", onClick: () => !createFlow.isPending && handleCreateAiBot() }
+            : { label: "Custom flow", onClick: () => !createFlow.isPending && handleCreate() }
         }
         more={[
-          aiEnabled && { label: "Custom Flow", onSelect: handleCreate, disabled: createFlow.isPending },
+          aiEnabled && { label: "Custom flow", onSelect: handleCreate, disabled: createFlow.isPending },
           aiEnabled && { label: "Bot knowledge", onSelect: () => router.push("/chatbot/knowledge") },
         ]}
       />
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:hidden">
-        <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">Chatbot Flows</h1>
-          <Badge variant="muted">{flows.length}</Badge>
-        </div>
-        <div className="flex gap-2">
-          {aiEnabled && (
-            <Button size="sm" variant="secondary" onClick={() => router.push("/chatbot/knowledge")}>
-              <BookOpen className="h-3.5 w-3.5 mr-1.5" />
-              Bot knowledge
+      <PageHeader
+        className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden"
+        title="Chatbot flows"
+        count={flows.length}
+        actions={
+          <>
+            {aiEnabled && (
+              <Button variant="secondary" onClick={() => router.push("/chatbot/knowledge")}>
+                <BookOpen className="mr-1 h-4 w-4" />
+                Bot knowledge
+              </Button>
+            )}
+            <Button
+              variant={aiEnabled ? "secondary" : "primary"}
+              onClick={handleCreate}
+              disabled={createFlow.isPending}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Custom flow
             </Button>
-          )}
-          <Button size="sm" variant="secondary" onClick={handleCreate} disabled={createFlow.isPending}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Custom Flow
-          </Button>
-          {aiEnabled && (
-            <Button size="sm" onClick={handleCreateAiBot} disabled={createFlow.isPending}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              AI Chatbot
-            </Button>
-          )}
-        </div>
-      </div>
+            {aiEnabled && (
+              <Button onClick={handleCreateAiBot} disabled={createFlow.isPending}>
+                <Sparkles className="mr-1 h-4 w-4" />
+                AI chatbot
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Flow list */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -204,7 +209,7 @@ export default function ChatbotPage() {
           {flows.map((flow) => (
             <div
               key={flow.id}
-              className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-4 hover:border-primary/20 hover:shadow-sm transition-all"
+              className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 transition-colors hover:border-outline"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0">
@@ -277,6 +282,8 @@ export default function ChatbotPage() {
                   size="sm"
                   onClick={() => setDeleteId(flow.id)}
                   className="text-error hover:text-error ml-auto"
+                  title="Delete flow"
+                  aria-label={`Delete ${flow.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

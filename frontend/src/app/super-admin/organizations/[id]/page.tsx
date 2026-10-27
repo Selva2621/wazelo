@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, CreditCard, Activity, Gauge } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { CARD, TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
 import { useSAOrg } from "@/hooks/use-super-admin";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
@@ -89,24 +91,28 @@ export default function OrgDetailPage() {
   const deleted = !!org.deletedAt;
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center gap-3">
+    <div className="p-4 lg:p-6 space-y-5">
+      <div className="flex items-start gap-2">
         <Link
           href="/super-admin/organizations"
           aria-label="Back to organizations"
-          className="text-on-surface-variant hover:text-on-surface rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          title="Back to organizations"
+          className="mt-1 text-on-surface-variant hover:text-on-surface rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <ChevronLeft className="h-5 w-5" aria-hidden />
         </Link>
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">{org.name}</h1>
-          <p className="text-label text-on-surface-variant">{org.slug} · {org.orgType}</p>
-        </div>
-        {deleted && <Badge variant="error">Deleted</Badge>}
-        {org.status === "SUSPENDED" && (
-          <StatusBadge status="SUSPENDED" />
-        )}
-        {subscription?.status && <StatusBadge status={subscription.status} />}
+        <PageHeader
+          className="min-w-0 flex-1"
+          title={org.name}
+          description={`${org.slug} · ${sentenceCase(org.orgType ?? "")}`}
+          actions={
+            <>
+              {deleted && <Badge variant="error">Deleted</Badge>}
+              {org.status === "SUSPENDED" && <StatusBadge status="SUSPENDED" />}
+              {subscription?.status && <StatusBadge status={subscription.status} />}
+            </>
+          }
+        />
       </div>
 
       {deleted && (
@@ -136,8 +142,8 @@ export default function OrgDetailPage() {
             aria-controls="org-tabpanel"
             onClick={() => setTab(t)}
             className={cn(
-              "px-4 py-2 text-body-lg font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-t-lg",
-              tab === t ? "text-on-surface border-b-2 border-primary" : "text-on-surface-variant hover:text-on-surface",
+              "-mb-px px-3 py-2 text-body whitespace-nowrap border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-t-lg",
+              tab === t ? "text-on-surface font-medium border-primary" : "text-on-surface-variant border-transparent hover:text-on-surface",
             )}
           >
             {t}
@@ -162,15 +168,13 @@ export default function OrgDetailPage() {
               </div>
             )}
             {/* Subscription card */}
-            <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-3">
-              <h2 className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
-                <CreditCard className="h-4 w-4" aria-hidden /> Subscription
-              </h2>
+            <section className={cn(CARD, "p-5 space-y-3")}>
+              <h2 className="text-body-lg font-semibold text-on-surface">Subscription</h2>
               {subscription ? (
                 <dl className="space-y-2 text-body-lg">
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Plan</dt><dd className="text-on-surface">{subscription.plan?.name}</dd></div>
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Status</dt><dd><StatusBadge status={subscription.status} /></dd></div>
-                  <div className="flex justify-between"><dt className="text-on-surface-variant">Billing</dt><dd className="text-on-surface">{subscription.billingCycle}</dd></div>
+                  <div className="flex justify-between"><dt className="text-on-surface-variant">Billing</dt><dd className="text-on-surface">{sentenceCase(subscription.billingCycle ?? "")}</dd></div>
                   <div className="flex justify-between"><dt className="text-on-surface-variant">Price</dt><dd className="text-on-surface">{formatMoney(subscription.priceInCents, subscription.currency)}</dd></div>
                   {subscription.trialEndsAt && (
                     <div className="flex justify-between"><dt className="text-on-surface-variant">Trial ends</dt><dd className="text-on-surface">{new Date(subscription.trialEndsAt).toLocaleDateString()}</dd></div>
@@ -183,11 +187,9 @@ export default function OrgDetailPage() {
             </section>
 
             {/* Counts card */}
-            <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-3">
-              <h2 className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
-                <Activity className="h-4 w-4" aria-hidden /> Activity
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
+            <section className={cn(CARD, "p-5 space-y-3")}>
+              <h2 className="text-body-lg font-semibold text-on-surface">Activity</h2>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 {[
                   { label: "Users", value: users?.length },
                   { label: "Contacts", value: counts?.contacts },
@@ -195,8 +197,8 @@ export default function OrgDetailPage() {
                   { label: "Messages (30d)", value: counts?.messages },
                   { label: "Tickets", value: counts?.helpTickets },
                 ].map(({ label, value }) => (
-                  <div key={label} className="bg-surface-container rounded-lg p-3">
-                    <div className="text-title font-semibold text-on-surface">{value ?? 0}</div>
+                  <div key={label} className="rounded-xl py-2">
+                    <div className="text-title font-semibold tabular-nums text-on-surface">{value ?? 0}</div>
                     <div className="text-label text-on-surface-variant">{label}</div>
                   </div>
                 ))}
@@ -208,10 +210,8 @@ export default function OrgDetailPage() {
         {tab === "WhatsApp" && <MessagingHealthPanel orgId={org.id} />}
 
         {tab === "Usage" && (
-          <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4 max-w-2xl">
-            <h2 className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
-              <Gauge className="h-4 w-4" aria-hidden /> Usage this billing period
-            </h2>
+          <section className={cn(CARD, "p-5 space-y-4 max-w-2xl")}>
+            <h2 className="text-body-lg font-semibold text-on-surface">Usage this billing period</h2>
             {usageRecords?.length ? (
               <div className="space-y-4">
                 {usageRecords.map((u: any) => (
@@ -231,7 +231,7 @@ export default function OrgDetailPage() {
 
         {tab === "Limits & features" &&
           (deleted ? (
-            <p className="bg-surface-container-low border border-outline-variant rounded-xl p-5 text-body-lg text-on-surface-variant max-w-2xl">
+            <p className={cn(CARD, "p-5 text-body-lg text-on-surface-variant max-w-2xl")}>
               Limits and features can&apos;t be changed while the organization is deleted. Restore it first.
             </p>
           ) : (
@@ -240,22 +240,22 @@ export default function OrgDetailPage() {
 
         {tab === "Billing history" && (
           // Phones/tablets: the table scrolls sideways inside its card
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden max-lg:overflow-x-auto">
+          <div className={TABLE_CARD}>
             {subscriptionHistory?.length ? (
-              <table className="w-full text-body-lg">
+              <table className="w-full text-body">
                 <caption className="sr-only">Subscription history</caption>
                 <thead>
                   <tr className="border-b border-outline-variant text-left">
-                    <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Plan</th>
-                    <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Status</th>
-                    <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Price</th>
-                    <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Started</th>
-                    <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Period end</th>
+                    <th scope="col" className={TH}>Plan</th>
+                    <th scope="col" className={TH}>Status</th>
+                    <th scope="col" className={TH}>Price</th>
+                    <th scope="col" className={TH}>Started</th>
+                    <th scope="col" className={TH}>Period end</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-outline-variant/40">
+                <tbody className="divide-y divide-outline-variant/60">
                   {subscriptionHistory.map((s: any) => (
-                    <tr key={s.id}>
+                    <tr key={s.id} className={TR}>
                       <td className="px-4 py-3 text-on-surface">{s.plan?.name ?? "—"}</td>
                       <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
                       <td className="px-4 py-3 text-on-surface">
@@ -276,23 +276,23 @@ export default function OrgDetailPage() {
         {tab === "Credits" && <OrgCreditsPanel orgId={org.id} defaultCurrency={subscription?.currency} />}
 
         {tab === "Users" && (
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden max-lg:overflow-x-auto">
-            <table className="w-full text-body-lg">
+          <div className={TABLE_CARD}>
+            <table className="w-full text-body">
               <caption className="sr-only">Users</caption>
               <thead>
                 <tr className="border-b border-outline-variant text-left">
-                  <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Name</th>
-                  <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Email</th>
-                  <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Role</th>
-                  <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Last Login</th>
+                  <th scope="col" className={TH}>Name</th>
+                  <th scope="col" className={TH}>Email</th>
+                  <th scope="col" className={TH}>Role</th>
+                  <th scope="col" className={TH}>Last login</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/40">
+              <tbody className="divide-y divide-outline-variant/60">
                 {!users?.length && (
                   <tr><td colSpan={4} className="py-12 text-center text-on-surface-variant">No users in this organization</td></tr>
                 )}
                 {users?.map((u: any) => (
-                  <tr key={u.id} className="hover:bg-surface-container transition-colors">
+                  <tr key={u.id} className={TR}>
                     <td className="px-4 py-3 text-on-surface">{u.firstName} {u.lastName}</td>
                     <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
                     <td className="px-4 py-3"><span className="text-label bg-surface-container px-2 py-0.5 rounded text-on-surface-variant">{u.role}</span></td>
@@ -305,7 +305,7 @@ export default function OrgDetailPage() {
         )}
 
         {tab === "Tickets" && (
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
+          <div className={cn(CARD, "p-5")}>
             <p className="text-body-lg text-on-surface-variant">
               {counts?.helpTickets > 0
                 ? <Link href={`/super-admin/tickets?orgId=${org.id}`} className="text-primary hover:underline">View {counts.helpTickets} tickets for this org →</Link>

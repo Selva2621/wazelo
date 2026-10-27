@@ -38,7 +38,7 @@ export function MonthlyBars({ title, points, unit, format = (v) => v.toLocaleStr
   const peak = points.find((p) => p.value === max && max > 0);
 
   return (
-    <figure className="bg-surface-container-low border border-outline-variant rounded-xl p-4 flex flex-col gap-3 min-w-0">
+    <figure className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex flex-col gap-3 min-w-0">
       <figcaption className="flex items-baseline justify-between gap-2">
         <span className="text-body-lg font-medium text-on-surface">{title}</span>
         <span className="text-label text-on-surface-variant tabular-nums">

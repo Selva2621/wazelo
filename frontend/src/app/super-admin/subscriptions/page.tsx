@@ -13,6 +13,9 @@ import { StatusBadge } from "@/components/super-admin/status-badge";
 import { formatMoney } from "@/lib/utils";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 
 const STATUS_OPTIONS = ["", "ACTIVE", "TRIAL", "PAST_DUE", "GRACE_PERIOD", "EXPIRED", "CANCELLED"];
 
@@ -41,10 +44,14 @@ export default function SuperAdminSubscriptionsPage() {
   const { data, isLoading, isError, refetch } = useSASubscriptions({ page, limit: PAGE_SIZE, ...filters });
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-title font-semibold text-on-surface">All Subscriptions</h1>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Subscriptions"
+        count={data?.total}
+        actions={<ExportCsvButton list="subscriptions" params={filters} />}
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <FilterBar>
         <SearchInput
           aria-label="Search subscriptions by organization name or slug"
           value={search}
@@ -52,31 +59,30 @@ export default function SuperAdminSubscriptionsPage() {
           placeholder="Search organization…"
           className="w-full sm:max-w-xs"
         />
-        <select
-          aria-label="Filter by subscription status"
+        <FilterSelect
+          label="Filter by subscription status"
+          active={!!status}
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s || "All statuses"}</option>)}
-        </select>
-        <ExportCsvButton list="subscriptions" params={filters} className="sm:ml-auto" />
-      </div>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s ? sentenceCase(s) : "All statuses"}</option>)}
+        </FilterSelect>
+      </FilterBar>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
+      <div className={TABLE_CARD}>
+        <table className="w-full text-body">
           <thead>
             <tr className="border-b border-outline-variant text-left">
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Organization</th>
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Plan</th>
+              <th scope="col" className={TH}>Organization</th>
+              <th scope="col" className={TH}>Plan</th>
               <SortableTh label="Status" field="status" firstOrder="asc" sort={sort} onSort={changeSort} />
-              <th scope="col" className="px-4 py-3 text-on-surface-variant font-medium">Cycle</th>
+              <th scope="col" className={TH}>Cycle</th>
               <SortableTh label="Price" field="priceInCents" sort={sort} onSort={changeSort} />
-              <SortableTh label="Period End" field="currentPeriodEnd" firstOrder="asc" sort={sort} onSort={changeSort} />
+              <SortableTh label="Period end" field="currentPeriodEnd" firstOrder="asc" sort={sort} onSort={changeSort} />
               <SortableTh label="Created" field="createdAt" sort={sort} onSort={changeSort} />
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/40">
+          <tbody className="divide-y divide-outline-variant/60">
             {isLoading ? (
               <tr><td colSpan={7} className="py-12 text-center"><Spinner className="mx-auto text-primary" /></td></tr>
             ) : isError ? (
@@ -93,7 +99,7 @@ export default function SuperAdminSubscriptionsPage() {
                 {debouncedSearch ? `No subscriptions match “${debouncedSearch}”` : "No subscriptions found"}
               </td></tr>
             ) : data.subscriptions.map((sub: any) => (
-              <tr key={sub.id} className="hover:bg-surface-container transition-colors">
+              <tr key={sub.id} className={TR}>
                 <td className="px-4 py-3">
                   <Link href={`/super-admin/organizations/${sub.organization?.id}`} className="font-medium text-on-surface hover:text-primary">
                     {sub.organization?.name}

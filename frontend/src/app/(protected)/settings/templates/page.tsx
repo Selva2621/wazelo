@@ -32,6 +32,7 @@ import { listFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/cust
 import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 
 // The inline form sits at the top of the page; on phones bring it into view
 function scrollTopOnMobile() {
@@ -267,43 +268,40 @@ export default function TemplatesPage() {
   return (
     <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
       <MobilePageActions
-        primary={{ label: "New Template", onClick: () => { resetForm(); setShowForm(true); scrollTopOnMobile(); } }}
+        primary={{ label: "New template", onClick: () => { resetForm(); setShowForm(true); scrollTopOnMobile(); } }}
         more={[{ label: "Generate with AI", onSelect: () => setShowAiModal(true) }]}
       />
       {/* Header */}
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <FileText className="h-6 w-6 text-primary" />
-            Message Templates
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Create reusable message templates for campaigns and quick replies
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setShowAiModal(true)}>
-            <Sparkles className="h-4 w-4 mr-1" /> Generate with AI
-          </Button>
-          <Button onClick={() => { resetForm(); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> New Template
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Message templates"
+        count={templates?.length}
+        className="max-lg:hidden"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowAiModal(true)}>
+              <Sparkles className="h-4 w-4 mr-1" /> Generate with AI
+            </Button>
+            <Button onClick={() => { resetForm(); setShowForm(true); }}>
+              <Plus className="h-4 w-4 mr-1" /> New template
+            </Button>
+          </>
+        }
+      />
 
       {/* Create/Edit Form — 2 column layout */}
       {showForm && (
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container overflow-hidden">
-          <div className="px-5 py-4 border-b border-outline-variant/10">
-            <h3 className="text-body-lg font-semibold text-on-surface">
-              {editId ? "Edit Template" : "Create Template"}
-            </h3>
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
+          <div className="px-5 py-4 border-b border-outline-variant">
+            <h2 className="text-body-lg font-semibold text-on-surface">
+              {editId ? "Edit template" : "New template"}
+            </h2>
           </div>
 
-          <div className="grid grid-cols-[1fr_280px] divide-x divide-outline-variant/10 max-lg:grid-cols-1 max-lg:divide-x-0 max-lg:divide-y">
+          <div className="grid grid-cols-[1fr_280px] divide-x divide-outline-variant max-lg:grid-cols-1 max-lg:divide-x-0 max-lg:divide-y">
             {/* Left: Template fields */}
             <div className="p-5 space-y-3">
               <input
+                aria-label="Template name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Template name * (e.g. welcome_offer)"
@@ -313,6 +311,7 @@ export default function TemplatesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <select
+                  aria-label="Category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -323,6 +322,7 @@ export default function TemplatesPage() {
                 </select>
 
                 <select
+                  aria-label="Language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -335,12 +335,13 @@ export default function TemplatesPage() {
 
               {/* Body textarea with drag-drop */}
               <div>
-                <p className="text-caption font-medium text-on-surface-variant mb-1.5">
-                  Message Body *
+                <label htmlFor="template-body" className="block text-caption font-medium text-on-surface-variant mb-1.5">
+                  Message body *
                   <span className="ml-2 font-normal opacity-60 max-lg:hidden">— drag fields from the right panel to insert</span>
                   <span className="ml-2 font-normal opacity-60 lg:hidden">— tap a field below to insert</span>
-                </p>
+                </label>
                 <textarea
+                  id="template-body"
                   ref={textareaRef}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -367,7 +368,7 @@ export default function TemplatesPage() {
                       onClick={handleRewrite}
                       disabled={rewriteTemplate.isPending}
                       title={service ? `Rewrite for: ${service} (uses AI credits)` : "Add what you do in Settings first"}
-                      className="inline-flex items-center gap-1 text-label font-medium text-primary hover:underline disabled:opacity-50 max-lg:min-h-11"
+                      className="inline-flex items-center gap-1 rounded text-label font-medium text-primary hover:underline disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-11"
                     >
                       {rewriteTemplate.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
                       {rewriteTemplate.isPending ? "Rewriting…" : "Rewrite for my service"}
@@ -397,19 +398,19 @@ export default function TemplatesPage() {
                   disabled={createTemplate.isPending || updateTemplate.isPending}
                   loading={createTemplate.isPending || updateTemplate.isPending}
                 >
-                  {editId ? "Update Template" : "Create Template"}
+                  {editId ? "Save changes" : "Create template"}
                 </Button>
               </div>
             </div>
 
             {/* Right: Contact fields + Product selector */}
-            <div className="flex flex-col divide-y divide-outline-variant/10 overflow-y-auto max-h-[520px]">
+            <div className="flex flex-col divide-y divide-outline-variant overflow-y-auto max-h-[520px]">
               {/* Contact Fields */}
               <div className="p-4">
                 <div className="flex items-center gap-1.5 mb-3">
-                  <User className="h-3.5 w-3.5 text-primary" />
-                  <p className="text-caption font-semibold text-on-surface uppercase tracking-wide">
-                    Contact Fields
+                  <User className="h-3.5 w-3.5 text-on-surface-variant" aria-hidden />
+                  <p className="text-caption font-semibold text-on-surface">
+                    Contact fields
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -424,8 +425,16 @@ export default function TemplatesPage() {
                           e.dataTransfer.effectAllowed = "copy";
                         }}
                         onClick={() => insertAtCursor(variable)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            insertAtCursor(variable);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                         title={`Insert ${variable}`}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface border border-outline-variant/20 text-caption text-on-surface-variant cursor-grab active:cursor-grabbing hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors select-none"
+                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface border border-outline-variant outline-none focus-visible:ring-2 focus-visible:ring-focus text-caption text-on-surface-variant cursor-grab active:cursor-grabbing hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors select-none"
                       >
                         <GripVertical className="h-3 w-3 opacity-40 shrink-0" />
                         <span className="font-medium">{field.fieldLabel}</span>
@@ -440,9 +449,9 @@ export default function TemplatesPage() {
               {products && products.length > 0 && (
                 <div className="p-4">
                   <div className="flex items-center gap-1.5 mb-3">
-                    <Package className="h-3.5 w-3.5 text-primary" />
-                    <p className="text-caption font-semibold text-on-surface uppercase tracking-wide">
-                      Link to Product
+                    <Package className="h-3.5 w-3.5 text-on-surface-variant" aria-hidden />
+                    <p className="text-caption font-semibold text-on-surface">
+                      Link to product
                     </p>
                   </div>
                   <p className="text-caption text-on-surface-variant/60 mb-2">
@@ -453,7 +462,8 @@ export default function TemplatesPage() {
                     <button
                       type="button"
                       onClick={() => setProductId("")}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border ${
+                      aria-pressed={!productId}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                         !productId
                           ? "border-primary/40 bg-primary/5 text-primary font-medium"
                           : "border-transparent text-on-surface-variant hover:bg-surface"
@@ -469,7 +479,8 @@ export default function TemplatesPage() {
                           key={p.id}
                           type="button"
                           onClick={() => setProductId(p.id === productId ? "" : p.id)}
-                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border ${
+                          aria-pressed={productId === p.id}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-label text-left transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                             productId === p.id
                               ? "border-primary/40 bg-primary/5 text-primary font-medium"
                               : "border-transparent text-on-surface-variant hover:bg-surface"
@@ -491,7 +502,7 @@ export default function TemplatesPage() {
       {templates && templates.length > 0 && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           {/* Category tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container border border-outline-variant/10 mobile-scroll-x max-lg:w-full">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container mobile-scroll-x max-lg:w-full">
             {(["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const).map((cat) => {
               const label = cat === "" ? "All" : cat === "SHOPIFY" ? "Shopify" : cat;
               const count = cat === "" ? templates.length : templates.filter((t) => t.category === cat).length;
@@ -499,8 +510,10 @@ export default function TemplatesPage() {
               return (
                 <button
                   key={cat}
+                  type="button"
                   onClick={() => setCategoryFilter(cat)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
+                  aria-pressed={categoryFilter === cat}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                     categoryFilter === cat
                       ? cat === "SHOPIFY"
                         ? "bg-success/15 text-success"
@@ -523,9 +536,10 @@ export default function TemplatesPage() {
           </div>
 
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/10 min-w-[200px] max-lg:w-full">
-            <Search className="h-4 w-4 text-on-surface-variant/40 shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant min-w-[200px] focus-within:ring-2 focus-within:ring-focus max-lg:w-full">
+            <Search className="h-4 w-4 text-on-surface-variant/60 shrink-0" aria-hidden />
             <input
+              aria-label="Search templates"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search templates..."
@@ -537,15 +551,15 @@ export default function TemplatesPage() {
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-outline-variant/10 overflow-hidden">
+        <div className="rounded-2xl border border-outline-variant overflow-hidden">
           <Table>
             <TableHeader>
               <TableHeaderRow>
-                <TableHead>Template Name</TableHead>
+                <TableHead>Template name</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Language</TableHead>
-                <TableHead>Body Preview</TableHead>
+                <TableHead>Body preview</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableHeaderRow>
@@ -626,12 +640,14 @@ export default function TemplatesPage() {
                         <IconButton size="xs"
                           onClick={() => startEdit(tpl)}
                           className="hover:text-primary hover:bg-primary/10"
-                          title="Edit" aria-label="Edit">
+                          title="Edit template" aria-label="Edit template">
                           <Pencil className="h-3.5 w-3.5" />
                         </IconButton>
                         {isShopify ? (
                           <span
                             title="System template — cannot be deleted"
+                            aria-label="System template — cannot be deleted"
+                            role="img"
                             className="p-1.5 rounded-lg text-on-surface-variant/25 cursor-not-allowed"
                           >
                             <Lock className="h-3.5 w-3.5" />
@@ -640,7 +656,7 @@ export default function TemplatesPage() {
                           <IconButton size="xs" variant="danger"
                             onClick={() => setDeleteTarget(tpl)}
                            
-                            title="Delete" aria-label="Delete">
+                            title="Delete template" aria-label="Delete template">
                             <Trash2 className="h-3.5 w-3.5" />
                           </IconButton>
                         )}
@@ -662,7 +678,7 @@ export default function TemplatesPage() {
             icon={<FileText className="h-8 w-8" />}
             title="No templates yet"
             description="Create reusable message templates for campaigns and quick replies"
-            actionLabel="Create Template"
+            actionLabel="New template"
             onAction={() => { resetForm(); setShowForm(true); }}
           />
         )
@@ -674,27 +690,28 @@ export default function TemplatesPage() {
         onClose={() => { setShowAiModal(false); setAiPrompt(""); }}
         dismissible={!generateTemplate.isPending}
         aria-labelledby="ai-template-modal-title"
-        className="max-w-md border border-outline-variant/15 bg-surface"
+        className="max-w-md border border-outline-variant bg-surface"
       >
         {() => (
           <>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h3 id="ai-template-modal-title" className="text-body-lg font-semibold text-on-surface">Generate Template with AI</h3>
+                <Sparkles className="h-4 w-4 text-primary" aria-hidden />
+                <h2 id="ai-template-modal-title" className="text-body-lg font-semibold text-on-surface">Generate template with AI</h2>
               </div>
               <IconButton size="xs"
-                onClick={() => { setShowAiModal(false); setAiPrompt(""); }} aria-label="Close">
+                onClick={() => { setShowAiModal(false); setAiPrompt(""); }} aria-label="Close" title="Close">
                 <X className="h-4 w-4" />
               </IconButton>
             </div>
 
             <div className="p-5 space-y-3">
               <div>
-                <p className="text-caption font-medium text-on-surface-variant mb-1.5">
+                <label htmlFor="ai-template-prompt" className="block text-caption font-medium text-on-surface-variant mb-1.5">
                   Describe the template you want *
-                </p>
+                </label>
                 <textarea
+                  id="ai-template-prompt"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="e.g. Welcome a new customer after signup and offer a 10% discount"
@@ -706,8 +723,9 @@ export default function TemplatesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-caption font-medium text-on-surface-variant mb-1.5">Category</p>
+                  <label htmlFor="ai-template-category" className="block text-caption font-medium text-on-surface-variant mb-1.5">Category</label>
                   <select
+                    id="ai-template-category"
                     value={aiCategory}
                     onChange={(e) => setAiCategory(e.target.value)}
                     className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -718,8 +736,9 @@ export default function TemplatesPage() {
                   </select>
                 </div>
                 <div>
-                  <p className="text-caption font-medium text-on-surface-variant mb-1.5">Language</p>
+                  <label htmlFor="ai-template-language" className="block text-caption font-medium text-on-surface-variant mb-1.5">Language</label>
                   <select
+                    id="ai-template-language"
                     value={aiLanguage}
                     onChange={(e) => setAiLanguage(e.target.value)}
                     className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -736,7 +755,7 @@ export default function TemplatesPage() {
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-outline-variant/10">
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-outline-variant">
               <Button variant="ghost" size="sm" onClick={() => { setShowAiModal(false); setAiPrompt(""); }}>
                 Cancel
               </Button>
@@ -757,7 +776,7 @@ export default function TemplatesPage() {
       {/* Delete confirmation */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete Template"
+        title="Delete template"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"

@@ -39,7 +39,17 @@ const date = (iso: string | null) =>
  * The proposal as the client sees it: a clean one-page quote. Used by the
  * editor's live preview and the public /p/:token page (and its print/PDF).
  */
-export function ProposalDocument({ data, className }: { data: ProposalDocumentData; className?: string }) {
+export function ProposalDocument({
+  data,
+  className,
+  headingLevel = "h1",
+}: {
+  data: ProposalDocumentData;
+  className?: string;
+  /** "h2" when shown as a preview inside a page that has its own h1 (the editor). */
+  headingLevel?: "h1" | "h2";
+}) {
+  const Title = headingLevel;
   const { totals, currency } = data;
   const issued = date(data.issuedAt);
   const valid = date(data.validUntil);
@@ -70,7 +80,7 @@ export function ProposalDocument({ data, className }: { data: ProposalDocumentDa
 
       <section className="space-y-2 py-6">
         {data.clientName && <p className="text-sm text-[#59636e]">For {data.clientName}</p>}
-        <h1 className="text-2xl font-semibold leading-tight text-balance">{data.title || "Untitled proposal"}</h1>
+        <Title className="text-2xl font-semibold leading-tight text-balance">{data.title || "Untitled proposal"}</Title>
         {data.intro && <p className="whitespace-pre-line leading-relaxed text-[#31373d]">{data.intro}</p>}
       </section>
 

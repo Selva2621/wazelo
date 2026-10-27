@@ -12,6 +12,9 @@ import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/layout/page-header";
+import { CARD, TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { cn } from "@/lib/utils";
 
 const inputClass =
   "w-full h-10 px-3 text-body-lg rounded-lg border border-outline-variant bg-surface-container-low text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
@@ -158,20 +161,18 @@ export default function SuperAdminFreelancerTypesPage() {
     );
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Freelancer types</h1>
-          <p className="text-body-lg text-on-surface-variant">
-            Lines of work freelancers pick in setup. Each one comes with ready-made templates.
-          </p>
-        </div>
-        <Button onClick={() => openForm(null)}>
-          <Plus className="h-4 w-4" aria-hidden /> Add type
-        </Button>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Freelancer types"
+        description="Picked by freelancers in setup"
+        actions={
+          <Button onClick={() => openForm(null)}>
+            <Plus className="h-4 w-4" aria-hidden /> Add type
+          </Button>
+        }
+      />
 
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
+      <section className={TABLE_CARD}>
         <h2 className="px-4 pt-4 text-body-lg font-semibold text-on-surface">Added by you</h2>
         {isLoading ? (
           <div className="py-12 flex justify-center" role="status">
@@ -192,20 +193,20 @@ export default function SuperAdminFreelancerTypesPage() {
             onAction={() => openForm(null)}
           />
         ) : (
-          <table className="w-full text-body-lg">
+          <table className="w-full text-body">
             <caption className="sr-only">Freelancer types added by super admins</caption>
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 {["Type", "Search words", "Orgs", "Status", "Actions"].map((h) => (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
+                  <th key={h} scope="col" className={TH}>
                     {h === "Actions" ? <span className="sr-only">{h}</span> : h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/40">
+            <tbody className="divide-y divide-outline-variant/60">
               {custom.map((t) => (
-                <tr key={t.id} className="hover:bg-surface-container transition-colors">
+                <tr key={t.id} className={TR}>
                   <td className="px-4 py-3">
                     <div className="text-on-surface font-medium">{t.label}</div>
                     <div className="text-body text-on-surface-variant">{t.description}</div>
@@ -231,12 +232,14 @@ export default function SuperAdminFreelancerTypesPage() {
         )}
       </section>
 
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
-        <h2 className="text-body-lg font-semibold text-on-surface">Built in ({data?.builtIn.length ?? 0})</h2>
-        <p className="text-body text-on-surface-variant mb-3">Written into the app. Popular ones show first in setup.</p>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      <section className={cn(CARD, "p-4")}>
+        <h2 className="flex items-baseline gap-2 text-body-lg font-semibold text-on-surface">
+          Built in <span className="text-body font-normal tabular-nums text-on-surface-variant">{data?.builtIn.length ?? 0}</span>
+        </h2>
+        <p className="text-body text-on-surface-variant mb-3">Popular ones show first in setup.</p>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {(data?.builtIn ?? []).map((b) => (
-            <li key={b.key} className="rounded-lg border border-outline-variant/60 px-3 py-2">
+            <li key={b.key} className="rounded-xl px-3 py-2 transition-colors hover:bg-surface-container-low">
               <div className="flex items-center gap-2 text-body-lg text-on-surface">
                 {b.label}
                 {b.popular && <Badge variant="muted">Popular</Badge>}

@@ -9,6 +9,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
 import type { OrgUser } from "@/lib/api/users";
 import type { Team } from "@/lib/types/teams";
 
@@ -41,19 +42,15 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
     ? teams.filter((t) => t.managerId === currentUserId)
     : teams;
 
+  const hint = role === "ADMIN" ? "Pick a person or team to open their chats" : "Pick a team member to open their chats";
+
   return (
     <div className="flex h-[calc(100vh-var(--header-height))]">
       {/* User/Team List */}
       <div className="w-full max-w-3xl mx-auto p-6 space-y-4">
         {/* Header */}
-        <div>
-          <h2 className="text-title font-semibold text-on-surface max-lg:hidden">Inbox</h2>
-          <p className="text-body text-on-surface-variant mt-1 max-lg:mt-0">
-            {role === "ADMIN"
-              ? "Select a user or team to view their conversations"
-              : "Select a team member to view their conversations"}
-          </p>
-        </div>
+        <PageHeader title="Inbox" description={hint} className="max-lg:hidden" />
+        <p className="text-body text-on-surface-variant lg:hidden">{hint}</p>
 
         {/* View Toggle (Admin only — managers just see teams) */}
         {role === "ADMIN" && (

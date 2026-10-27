@@ -59,7 +59,7 @@ export function CampaignRecipientsTable({
   return (
     <div>
       {/* Header */}
-      <div className="max-lg:hidden grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="max-lg:hidden grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-label font-medium text-on-surface-variant border-b border-outline-variant">
         <span>Contact</span>
         <span>Phone</span>
         <span>Status</span>

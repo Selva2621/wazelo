@@ -24,10 +24,11 @@ function GroupChip({
       title={title}
       aria-pressed={active}
       className={cn(
-        "inline-flex items-center gap-1.5 max-w-64 rounded-full border px-3 py-1 text-label transition-colors",
+        "inline-flex h-8 items-center gap-1.5 max-w-64 rounded-full border px-3 text-label transition-colors duration-120 ease-standard",
+        "outline-none focus-visible:ring-2 focus-visible:ring-focus",
         active
-          ? "border-primary/30 bg-primary/15 text-primary"
-          : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container",
+          ? "border-primary/30 bg-primary/10 text-primary"
+          : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
       )}
     >
       <span className="truncate">{label}</span>
@@ -66,8 +67,10 @@ export function ContactSourceGroups() {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5 flex-wrap">
+    // `contents`: the chips join the page's FilterBar row; the scrape-run row wraps below it
+    <div className="contents">
+      {/* Phones: one line inside the sideways-scrolling filter row (don't shrink and stack) */}
+      <div className="flex shrink-0 items-center gap-1.5 flex-wrap max-lg:flex-nowrap">
         <GroupChip
           active={!filterSource}
           label="All sources"
@@ -85,7 +88,7 @@ export function ContactSourceGroups() {
         ))}
 
         {filterSource && activeCount > 0 && (
-          <Button size="sm" onClick={runCampaign} className="ml-auto">
+          <Button size="sm" variant="secondary" onClick={runCampaign} className="h-8">
             <Megaphone className="h-3.5 w-3.5 mr-1" />
             Campaign to {activeLabel} · {activeCount}
           </Button>
@@ -94,7 +97,7 @@ export function ContactSourceGroups() {
 
       {/* Scraped leads, one group per scrape run */}
       {filterSource === "WEB_SCRAPE" && data.scrapeRuns.length > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap pl-3 border-l-2 border-outline-variant/20">
+        <div className="flex basis-full items-center gap-1.5 flex-wrap pl-3 border-l-2 border-outline-variant">
           <ScanSearch className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
           {data.scrapeRuns.map((r) => (
             <GroupChip

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Briefcase } from "lucide-react";
 import { usePipelines, useCreateDeal } from "@/hooks/use-deals";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { LeadStatusBadge } from "@/components/contacts/lead-status-badge";
@@ -53,7 +54,7 @@ function PipelineCard({
       draggable
       onDragStart={(e) => onDragStart(e, contact.id)}
       onClick={() => onClick(contact.id)}
-      className="cursor-grab active:cursor-grabbing bg-surface-container rounded-lg p-3 border border-outline-variant/10 hover:border-outline-variant/30 hover:bg-surface-container-high transition-colors space-y-2"
+      className="cursor-grab active:cursor-grabbing bg-surface-container-lowest rounded-xl p-3 border border-outline-variant hover:border-outline transition-colors space-y-2"
     >
       {/* Avatar + name */}
       <div className="flex items-center gap-2.5 min-w-0">
@@ -214,12 +215,11 @@ export default function LeadPipelinePage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       {/* The iOS nav bar shows the title on mobile */}
-      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/10 max-lg:hidden">
-        <h1 className="text-title font-semibold text-on-surface">Lead Pipeline</h1>
-        <p className="text-body-lg text-on-surface-variant mt-0.5">
-          Scraped leads tracked through your sales stages. Drag cards to update status.
-        </p>
-      </div>
+      <PageHeader
+        className="shrink-0 px-6 pt-5 pb-1 max-lg:hidden"
+        title="Lead pipeline"
+        description="Drag a card to change its status"
+      />
 
       {/* Kanban board */}
       {/* Mobile: one column per screen, swipe sideways with snap */}

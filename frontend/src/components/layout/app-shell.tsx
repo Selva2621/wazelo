@@ -44,6 +44,32 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
     return () => io.disconnect();
   }, []);
 
+  // One title per screen: most pages render their own <h1>, so the header shows the title
+  // only when the page has none, or once that heading has scrolled out of view.
+  const mainRef = useRef<HTMLElement>(null);
+  const [pageHeading, setPageHeading] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const find = () => setPageHeading(main.querySelector<HTMLElement>("h1"));
+    const frame = requestAnimationFrame(find);
+    const mo = new MutationObserver(find);
+    mo.observe(main, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      mo.disconnect();
+    };
+  }, []);
+  const [headingInView, setHeadingInView] = useState(false);
+  useEffect(() => {
+    if (!pageHeading) return;
+    const io = new IntersectionObserver(([entry]) => setHeadingInView(entry.isIntersecting), {
+      rootMargin: "-64px 0px 0px 0px",
+    });
+    io.observe(pageHeading);
+    return () => io.disconnect();
+  }, [pageHeading]);
+
   const offset = collapsed ? "lg:ml-[var(--sidebar-collapsed)]" : "lg:ml-[var(--sidebar-width)]";
 
   return (
@@ -62,7 +88,12 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
           />
         )}
       </AnimatePresence>
-      <Header scrolled={scrolled} offsetClassName={offset} />
+      <Header
+        scrolled={scrolled}
+        offsetClassName={offset}
+        pageHasHeading={pageHeading !== null}
+        showTitle={!pageHeading || !headingInView}
+      />
       {/* Phones and tablets: iOS nav bar + tab bar (the desktop header is hidden by CSS there) */}
       {isMobile && (
         // Suspense: the nav bar reads search params (settings sections)
@@ -71,6 +102,7 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
         </Suspense>
       )}
       <main
+        ref={mainRef}
         className={cn(
           "app-main transition-[margin-left] duration-200 ease-standard",
           offset,

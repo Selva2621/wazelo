@@ -15,6 +15,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CURRENCIES } from "@/components/super-admin/org-credits-panel";
+import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
 import { cn, formatMoney, parseMoneyInput } from "@/lib/utils";
 
 const CODE_PATTERN = /^[A-Z0-9_-]{3,40}$/;
@@ -178,7 +180,7 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
         />
       </div>
 
-      <div role="radiogroup" aria-label="Discount type" className="flex gap-1 rounded-lg bg-surface-container/30 p-1 w-fit">
+      <div role="radiogroup" aria-label="Discount type" className="inline-flex rounded-lg border border-outline-variant p-0.5">
         {(["PERCENT", "FIXED"] as const).map((k) => (
           <button
             key={k}
@@ -188,8 +190,8 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
             onClick={() => set("kind", k)}
             disabled={pending}
             className={cn(
-              "rounded-md px-3 py-1.5 text-body font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              form.kind === k ? "bg-surface-container text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface",
+              "rounded-md px-3 py-1.5 text-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              form.kind === k ? "bg-primary/10 text-primary font-medium" : "text-on-surface-variant hover:text-on-surface",
             )}
           >
             {k === "PERCENT" ? "Percentage" : "Fixed amount"}
@@ -329,18 +331,19 @@ export default function SuperAdminCouponsPage() {
     });
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Coupons</h1>
-          <p className="text-body-lg text-on-surface-variant">Discounts on a subscription&apos;s first payment.</p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" aria-hidden /> New coupon
-        </Button>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Coupons"
+        count={coupons?.length}
+        description="First payment only"
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" aria-hidden /> New coupon
+          </Button>
+        }
+      />
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
+      <div className={TABLE_CARD}>
         {isLoading ? (
           <div className="py-12 flex justify-center" role="status">
             <Spinner className="text-primary" />
@@ -360,22 +363,22 @@ export default function SuperAdminCouponsPage() {
             onAction={() => setCreating(true)}
           />
         ) : (
-          <table className="w-full text-body-lg">
+          <table className="w-full text-body">
             <caption className="sr-only">Coupons</caption>
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 {["Code", "Discount", "Plans", "Redemptions", "Valid", "Status", "Actions"].map((h) => (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
+                  <th key={h} scope="col" className={TH}>
                     {h === "Actions" ? <span className="sr-only">{h}</span> : h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/40">
+            <tbody className="divide-y divide-outline-variant/60">
               {rows.map((c) => {
                 const state = couponState(c);
                 return (
-                  <tr key={c.id} className="hover:bg-surface-container transition-colors">
+                  <tr key={c.id} className={TR}>
                     <td className="px-4 py-3 font-mono text-body text-on-surface">{c.code}</td>
                     <td className="px-4 py-3 text-on-surface tabular-nums">{discountLabel(c)}</td>
                     <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate" title={c.plans.map((p) => p.name).join(", ")}>

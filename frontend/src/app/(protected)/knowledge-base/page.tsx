@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Plus, Search, Eye, ThumbsUp, Pencil, Trash2, Globe, Lock } from "lucide-react";
+import { BookOpen, Plus, Eye, ThumbsUp, Pencil, Trash2, Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,7 +22,7 @@ import { Modal } from "@/components/ui/modal";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 export default function KnowledgeBasePage() {
-  usePageTitle("Knowledge Base");
+  usePageTitle("Knowledge base");
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -80,42 +83,47 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="space-y-4">
-      <MobilePageActions primary={{ label: "New Article", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            Knowledge Base
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">Manage help articles for your team and customers</p>
-        </div>
-        <Button onClick={() => { resetForm(); setEditId(null); setShowCreate(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> New Article
-        </Button>
-      </div>
+      <MobilePageActions primary={{ label: "New article", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
+      <PageHeader
+        className="max-lg:hidden"
+        title="Knowledge base"
+        count={data?.total}
+        actions={
+          <>
+            <SearchInput
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="Search articles"
+              className="w-64"
+            />
+            <Button onClick={() => { resetForm(); setEditId(null); setShowCreate(true); }}>
+              <Plus className="mr-1 h-4 w-4" /> New article
+            </Button>
+          </>
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 max-lg:gap-2 max-lg:px-4">
-        <div className="relative flex-1 max-w-xs max-lg:max-w-none max-lg:min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant/50" />
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            placeholder="Search articles..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-        <select
+      {/* Filters (phones/tablets: search sits here, the nav bar has the title) */}
+      <FilterBar className="max-lg:flex-nowrap max-lg:px-4">
+        <SearchInput
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          placeholder="Search articles"
+          className="min-w-0 flex-1 lg:hidden"
+        />
+        <FilterSelect
+          label="Category"
+          active={categoryFilter !== ""}
           value={categoryFilter}
           onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
-          className="rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none max-lg:max-w-[45%]"
+          className="max-lg:max-w-[45vw]"
         >
-          <option value="">All Categories</option>
+          <option value="">All categories</option>
           {categories?.map((c) => (
             <option key={c.id} value={c.id}>{c.name} ({c._count.articles})</option>
           ))}
-        </select>
-      </div>
+        </FilterSelect>
+      </FilterBar>
 
       {/* Articles table */}
       {isLoading ? (
@@ -125,7 +133,7 @@ export default function KnowledgeBasePage() {
           icon={<BookOpen className="h-12 w-12" />}
           title="No articles yet"
           description="Create your first knowledge base article."
-          actionLabel="New Article"
+          actionLabel="New article"
           onAction={() => setShowCreate(true)}
         />
       ) : (
@@ -201,7 +209,7 @@ export default function KnowledgeBasePage() {
         {() => (
           <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-              <h2 id="kb-article-modal-title" className="text-title font-semibold text-on-surface">{editId ? "Edit Article" : "New Article"}</h2>
+              <h2 id="kb-article-modal-title" className="text-title font-semibold text-on-surface">{editId ? "Edit article" : "New article"}</h2>
               <button aria-label="Close" onClick={() => { setShowCreate(false); setEditId(null); resetForm(); }} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
@@ -219,7 +227,7 @@ export default function KnowledgeBasePage() {
                 </label>
                 <label className="flex items-center gap-2 text-body cursor-pointer">
                   <input type="checkbox" checked={form.isInternal} onChange={(e) => setForm((f) => ({ ...f, isInternal: e.target.checked }))} className="rounded" />
-                  Internal Only
+                  Internal only
                 </label>
               </div>
             </div>

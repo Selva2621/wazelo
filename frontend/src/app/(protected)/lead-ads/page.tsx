@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs } from "@/components/ui/tabs";
 import { SearchInput } from "@/components/ui/search-input";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { LeadAdsStatsCards } from "@/components/lead-ads/lead-ads-stats-cards";
 import { LeadAdsPlatformBreakdown } from "@/components/lead-ads/lead-ads-platform-breakdown";
@@ -91,7 +93,7 @@ export default function LeadAdsPage() {
   ], []);
 
   const platformTabs = useMemo(() => [
-    { id: "all", label: "All Platforms" },
+    { id: "all", label: "All platforms" },
     { id: "facebook", label: "Facebook" },
     { id: "instagram", label: "Instagram" },
     { id: "whatsapp", label: "WhatsApp" },
@@ -102,15 +104,17 @@ export default function LeadAdsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* ─── Header ─── */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
         {/* Title: the iOS nav bar shows it on mobile */}
-        <div className="flex items-center gap-2 max-lg:hidden">
-          <Target className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">
-            Lead Ads
-          </h1>
+        <PageHeader
+          className="max-lg:hidden"
+          title="Lead ads"
+          count={analytics?.totalLeads}
+          actions={<PeriodSelector value={period} onChange={setPeriod} />}
+        />
+        <div className="lg:hidden">
+          <PeriodSelector value={period} onChange={setPeriod} />
         </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       {/* ─── Content ─── */}
@@ -124,7 +128,7 @@ export default function LeadAdsPage() {
 
         {/* Error */}
         {isError && (
-          <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
+          <div className="rounded-2xl bg-error-container p-4 text-center">
             <p className="text-body text-error mb-2">
               Failed to load lead ads data
             </p>
@@ -166,21 +170,24 @@ export default function LeadAdsPage() {
             <div className="flex items-center gap-3 flex-wrap max-lg:gap-2">
               <div className="flex-1 min-w-[200px] max-w-xs max-lg:max-w-none max-lg:basis-full">
                 <SearchInput
-                  placeholder="Search by name, campaign..."
+                  placeholder="Search by name or campaign"
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
-              <Tabs
-                tabs={platformTabs}
-                activeTab={platformFilter}
-                onTabChange={(val) => { setPlatformFilter(val as LeadAdPlatform | "all"); setPage(1); }}
-              />
-              <Tabs
-                tabs={statusTabs}
-                activeTab={statusTab}
-                onTabChange={(val) => { setStatusTab(val as StatusTab); setPage(1); }}
-              />
+              <FilterBar className="mobile-scroll-x">
+                <Tabs
+                  tabs={platformTabs}
+                  activeTab={platformFilter}
+                  onTabChange={(val) => { setPlatformFilter(val as LeadAdPlatform | "all"); setPage(1); }}
+                />
+                <FilterBarDivider />
+                <Tabs
+                  tabs={statusTabs}
+                  activeTab={statusTab}
+                  onTabChange={(val) => { setStatusTab(val as StatusTab); setPage(1); }}
+                />
+              </FilterBar>
             </div>
 
             {/* ─── Entries Table ─── */}
@@ -189,7 +196,7 @@ export default function LeadAdsPage() {
                 <Spinner size="lg" />
               </div>
             ) : entriesData ? (
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
                 <LeadAdsEntryTable
                   entries={entriesData.data}
                   onRetry={isAdmin ? (id) => retryLead.mutate(id) : undefined}

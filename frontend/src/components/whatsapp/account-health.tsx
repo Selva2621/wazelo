@@ -9,13 +9,14 @@ import { motionTokens, springs } from "@/lib/motion-tokens";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { statusChipSegment, statusChipTone } from "@/components/ui/status-chip";
 import { useResumeSending, useSendHealth } from "@/hooks/use-whatsapp";
 import type { SendHealth } from "@/lib/api/whatsapp";
 
 const riskConfig = {
-  ok: { label: "Safe", variant: "success", icon: ShieldCheck, pill: "bg-success-container text-success border-success/20" },
-  warning: { label: "Careful", variant: "warning", icon: ShieldAlert, pill: "bg-warning-container text-warning border-warning/20" },
-  paused: { label: "Paused", variant: "error", icon: ShieldOff, pill: "bg-error-container text-error border-error/20" },
+  ok: { label: "Safe", variant: "success", icon: ShieldCheck, tone: "ok" },
+  warning: { label: "Careful", variant: "warning", icon: ShieldAlert, tone: "warning" },
+  paused: { label: "Paused", variant: "error", icon: ShieldOff, tone: "error" },
 } as const;
 
 const formatHour = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -187,11 +188,7 @@ export function AccountHealthPill() {
         aria-haspopup="dialog"
         aria-expanded={open}
         title="WhatsApp account health"
-        className={cn(
-          "flex h-10 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-opacity hover:opacity-80",
-          "outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-          risk.pill,
-        )}
+        className={cn(statusChipSegment, statusChipTone[risk.tone])}
       >
         <risk.icon className="h-3.5 w-3.5 shrink-0" />
         <span className="hidden xl:inline">WhatsApp</span> {risk.label}

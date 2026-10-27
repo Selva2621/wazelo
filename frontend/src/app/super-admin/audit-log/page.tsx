@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
 const ACTIONS: Record<string, string> = {
   SUPER_ADMIN_LOGIN: "Signed in",
@@ -79,8 +82,9 @@ const ATTENTION = new Set([
   "INVOICE_VOIDED",
   "CREDIT_REVOKED",
 ]);
+/** Date inputs sized to match the filter bar's selects */
 const inputClass =
-  "bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary";
+  "h-8 rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 text-label text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function targetLabel(entry: PlatformAuditEntry): string {
   const meta = entry.metadata ?? {};
@@ -168,59 +172,60 @@ export default function SuperAdminAuditLogPage() {
   const resetPage = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1); };
 
   return (
-    <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">Audit Log</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Every action taken in this portal. Entries can't be edited or deleted.
-          {orgId && <> Showing one organization · <Link href="/super-admin/audit-log" className="text-primary hover:underline">show all</Link></>}
-        </p>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Audit log"
+        count={data?.total}
+        description={
+          orgId ? (
+            <>One organization · <Link href="/super-admin/audit-log" className="text-primary hover:underline">show all</Link></>
+          ) : (
+            "Read-only record of every portal action"
+          )
+        }
+        actions={<ExportCsvButton list="audit-logs" params={filters} />}
+      />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:max-w-xs">
-          <label htmlFor="audit-search" className="block text-label text-on-surface-variant mb-1">Admin</label>
-          <SearchInput
-            id="audit-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search admin email…"
-          />
-        </div>
-        <div>
-          <label htmlFor="audit-action" className="block text-label text-on-surface-variant mb-1">Action</label>
-          <select id="audit-action" value={action} onChange={(e) => resetPage(setAction)(e.target.value)} className={inputClass}>
-            <option value="">All actions</option>
-            {Object.entries(ACTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="audit-from" className="block text-label text-on-surface-variant mb-1">From</label>
+      <FilterBar>
+        <SearchInput
+          id="audit-search"
+          aria-label="Search admin email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search admin email…"
+          className="w-full sm:max-w-xs"
+        />
+        <FilterSelect id="audit-action" label="Filter by action" active={!!action} value={action} onChange={(e) => resetPage(setAction)(e.target.value)}>
+          <option value="">All actions</option>
+          {Object.entries(ACTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </FilterSelect>
+        <FilterBarDivider />
+        <label htmlFor="audit-from" className="inline-flex items-center gap-1.5 text-label text-on-surface-variant">
+          From
           <input id="audit-from" type="date" value={from} max={to || undefined} onChange={(e) => resetPage(setFrom)(e.target.value)} className={inputClass} />
-        </div>
-        <div>
-          <label htmlFor="audit-to" className="block text-label text-on-surface-variant mb-1">To</label>
+        </label>
+        <label htmlFor="audit-to" className="inline-flex items-center gap-1.5 text-label text-on-surface-variant">
+          To
           <input id="audit-to" type="date" value={to} min={from || undefined} onChange={(e) => resetPage(setTo)(e.target.value)} className={inputClass} />
-        </div>
+        </label>
         {isFetching && !isLoading && (
-          <span role="status" className="text-label text-on-surface-variant pb-2.5">Updating…</span>
+          <span role="status" className="text-label text-on-surface-variant">Updating…</span>
         )}
-        <ExportCsvButton list="audit-logs" params={filters} className="sm:ml-auto" />
-      </div>
+      </FilterBar>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
+      <div className={TABLE_CARD}>
+        <table className="w-full text-body">
           <caption className="sr-only">Audit log entries</caption>
           <thead>
             <tr className="border-b border-outline-variant text-left">
               <th scope="col" className="w-10"><span className="sr-only">Details</span></th>
               <SortableTh label="When" field="createdAt" sort={sort} onSort={changeSort} />
               {["Who", "Action", "Target", "IP address"].map((h) => (
-                <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium">{h}</th>
+                <th key={h} scope="col" className={TH}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/40">
+          <tbody className="divide-y divide-outline-variant/60">
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="py-12 text-center" role="status">
@@ -245,7 +250,7 @@ export default function SuperAdminAuditLogPage() {
               const expanded = open === entry.id;
               return (
                 <Fragment key={entry.id}>
-                  <tr className={cn("hover:bg-surface-container transition-colors", ATTENTION.has(entry.action) && "bg-error/5")}>
+                  <tr className={cn(TR, ATTENTION.has(entry.action) && "bg-error/5")}>
                     <td className="pl-2">
                       <IconButton
                         size="sm"

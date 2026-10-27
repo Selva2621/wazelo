@@ -25,6 +25,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useProducts,
@@ -132,25 +133,21 @@ export default function ProductsPage() {
         ]}
       />
       {/* Header */}
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            Products
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage products and assign them to contacts, deals, and sequences
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
-            <Tag className="h-4 w-4 mr-1" /> New Category
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" /> New Product
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Products"
+        count={products?.length}
+        className="max-lg:hidden"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
+              <Tag className="h-4 w-4 mr-1" /> New category
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1" /> New product
+            </Button>
+          </>
+        }
+      />
 
       {/* Category filter tabs */}
       {(categories ?? []).length > 0 && (
@@ -169,8 +166,10 @@ export default function ProductsPage() {
           ].map((tab) => (
             <div key={tab.id} className="flex items-center gap-0.5 group">
               <button
+                type="button"
                 onClick={() => setActiveCategoryTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
+                aria-pressed={activeCategoryTab === tab.id}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                   activeCategoryTab === tab.id
                     ? "bg-primary/10 text-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
@@ -180,10 +179,10 @@ export default function ProductsPage() {
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: tab.color }} />
                 )}
                 {tab.label}
-                <span className="text-caption opacity-60">({tab.count})</span>
+                <span className="text-caption tabular-nums opacity-60">{tab.count}</span>
               </button>
               {tab.id !== "ALL" && tab.id !== "NONE" && (
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity max-lg:hidden">
+                <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center gap-0.5 transition-opacity max-lg:hidden">
                   <IconButton size="xs"
                     onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }}
                     className="hover:text-primary"
@@ -205,9 +204,10 @@ export default function ProductsPage() {
 
       {/* Search */}
       {(products ?? []).length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/10 max-w-sm">
-          <Search className="h-4 w-4 text-on-surface-variant/40" />
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant max-w-sm focus-within:ring-2 focus-within:ring-focus">
+          <Search className="h-4 w-4 text-on-surface-variant/60" aria-hidden />
           <input
+            aria-label="Search products"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products…"
@@ -218,7 +218,7 @@ export default function ProductsPage() {
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-outline-variant/10 overflow-hidden">
+        <div className="rounded-2xl border border-outline-variant overflow-hidden">
           <Table>
             <TableHeader>
               <TableHeaderRow>
@@ -264,7 +264,7 @@ export default function ProductsPage() {
 
                   <TableCell>
                     {product.category ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container border border-outline-variant/10">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container">
                         {product.category.color && (
                           <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
                         )}
@@ -280,7 +280,13 @@ export default function ProductsPage() {
                   </TableCell>
 
                   <TableCell>
-                    <button onClick={() => toggleStatus(product)} title="Toggle status">
+                    <button
+                      type="button"
+                      onClick={() => toggleStatus(product)}
+                      title="Toggle status"
+                      aria-label={`${product.name}: ${product.status === "ACTIVE" ? "active" : "inactive"}. Toggle status`}
+                      className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    >
                       <Badge variant={product.status === "ACTIVE" ? "success" : "muted"}>
                         {product.status === "ACTIVE"
                           ? <ToggleRight className="h-3 w-3 mr-1" />
@@ -301,13 +307,13 @@ export default function ProductsPage() {
                       <IconButton size="xs"
                         onClick={() => openEdit(product)}
                         className="hover:text-primary hover:bg-primary/10"
-                        title="Edit" aria-label="Edit">
+                        title="Edit product" aria-label="Edit product">
                         <Pencil className="h-3.5 w-3.5" />
                       </IconButton>
                       <IconButton size="xs" variant="danger"
                         onClick={() => setDeleteTarget(product)}
                        
-                        title="Delete" aria-label="Delete">
+                        title="Delete product" aria-label="Delete product">
                         <Trash2 className="h-3.5 w-3.5" />
                       </IconButton>
                     </div>
@@ -326,7 +332,7 @@ export default function ProductsPage() {
           icon={<Package className="h-8 w-8" />}
           title="No products yet"
           description="Create products to assign to contacts, deals, chatbot flows, and sequences"
-          actionLabel="Create Product"
+          actionLabel="New product"
           onAction={openCreate}
         />
       )}
@@ -348,7 +354,7 @@ export default function ProductsPage() {
       {/* Delete product */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete Product"
+        title="Delete product"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This will remove it from all contacts and deals.`}
         confirmLabel="Delete"
         variant="danger"
@@ -362,7 +368,7 @@ export default function ProductsPage() {
       {/* Delete category */}
       <ConfirmDialog
         open={!!deleteCatTarget}
-        title="Delete Category"
+        title="Delete category"
         message={`Delete "${deleteCatTarget?.name}"? Products in this category will become uncategorized.`}
         confirmLabel="Delete"
         variant="danger"

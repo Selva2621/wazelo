@@ -5,6 +5,7 @@ import { Users, MessageSquare, Wifi, WifiOff, Minus } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useTeams } from "@/hooks/use-teams";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/table";
 
 export default function ManagerTeamPage() {
-  usePageTitle("My Team");
+  usePageTitle("My team");
   const router = useRouter();
   const { data: teams, isLoading } = useTeams();
   const { data: sessionsData } = useAdminSessions();
@@ -63,15 +64,10 @@ export default function ManagerTeamPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="max-lg:hidden">
-        <h1 className="text-title font-semibold text-on-surface">My Team</h1>
-        <p className="text-body text-on-surface-variant mt-0.5">
-          View and manage your team members&apos; WhatsApp inboxes
-        </p>
-      </div>
+    <div className="p-6 space-y-5">
+      <PageHeader className="max-lg:hidden" title="My team" count={allMembers.length} />
 
-      <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
         <Table>
           <TableHeader>
             <TableHeaderRow>
@@ -111,7 +107,7 @@ export default function ManagerTeamPage() {
                     {!session ? (
                       <Badge variant="default" className="gap-1">
                         <Minus className="h-3 w-3" />
-                        No Session
+                        No session
                       </Badge>
                     ) : session.status === "CONNECTED" ? (
                       <Badge variant="success" className="gap-1">
@@ -135,7 +131,7 @@ export default function ManagerTeamPage() {
                       disabled={!session || session.status !== "CONNECTED"}
                     >
                       <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                      View Inbox
+                      View inbox
                     </Button>
                   </TableCell>
                 </TableRow>

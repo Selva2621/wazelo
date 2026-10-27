@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { AnimatePresence } from "motion/react";
-import { Plus, BarChart3, TrendingUp, DollarSign } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -89,34 +89,31 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <MobilePageActions primary={{ label: "Add Deal", onClick: () => setShowCreateModal(true) }} more={mobileMore} />
+      <MobilePageActions primary={{ label: "Add deal", onClick: () => setShowCreateModal(true) }} more={mobileMore} />
 
-      {/* Summary bar */}
+      {/* Summary bar: quiet numbers, primary action on the right */}
       {analytics && (
-        <div className="shrink-0 flex items-center gap-6 px-6 py-3 max-lg:flex-wrap max-lg:gap-x-4 max-lg:gap-y-1 max-lg:px-4 max-lg:py-2 border-b border-outline-variant/10 bg-surface-container/30">
-          <div className="flex items-center gap-2 text-body">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            <span className="text-on-surface-variant">Total:</span>
-            <span className="font-semibold text-on-surface">{analytics.totalDeals} deals</span>
+        <div className="shrink-0 flex items-center gap-6 px-6 py-2.5 max-lg:flex-wrap max-lg:gap-x-4 max-lg:gap-y-1 max-lg:px-4 max-lg:py-2 border-b border-outline-variant">
+          <div className="flex items-baseline gap-1.5 text-body">
+            <span className="text-on-surface-variant">Deals</span>
+            <span className="font-semibold tabular-nums text-on-surface">{analytics.totalDeals}</span>
           </div>
-          <div className="flex items-center gap-2 text-body">
-            <DollarSign className="h-4 w-4 text-tertiary" />
-            <span className="text-on-surface-variant">Value:</span>
-            <span className="font-semibold text-on-surface">{formatCurrency(Number(analytics.totalValue))}</span>
+          <div className="flex items-baseline gap-1.5 text-body">
+            <span className="text-on-surface-variant">Value</span>
+            <span className="font-semibold tabular-nums text-on-surface">{formatCurrency(Number(analytics.totalValue))}</span>
           </div>
           {analytics.byStatus.find((s) => s.status === "WON") && (
-            <div className="flex items-center gap-2 text-body">
-              <TrendingUp className="h-4 w-4 text-success" />
-              <span className="text-on-surface-variant">Won:</span>
-              <span className="font-semibold text-success">
-                {analytics.byStatus.find((s) => s.status === "WON")!.count} deals
+            <div className="flex items-baseline gap-1.5 text-body">
+              <span className="text-on-surface-variant">Won</span>
+              <span className="font-semibold tabular-nums text-success">
+                {analytics.byStatus.find((s) => s.status === "WON")!.count}
               </span>
             </div>
           )}
           <div className="ml-auto max-lg:hidden">
             <Button size="sm" onClick={() => setShowCreateModal(true)}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Add Deal
+              Add deal
             </Button>
           </div>
         </div>

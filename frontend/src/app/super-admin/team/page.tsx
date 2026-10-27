@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
+import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
 
 function errorMessage(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -216,21 +218,19 @@ export default function SuperAdminTeamPage() {
     (resetTwoFactor.isPending && resetTwoFactor.variables === id);
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Team</h1>
-          <p className="text-body-lg text-on-surface-variant">Super admins who can sign in to this portal.</p>
-        </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <UserPlus className="h-4 w-4" aria-hidden /> Add admin
-        </Button>
-      </div>
+    <div className="p-4 lg:p-6 space-y-6 max-w-5xl">
+      <PageHeader
+        title="Team"
+        count={admins?.length}
+        description="Super admins of this portal"
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            <UserPlus className="h-4 w-4" aria-hidden /> Add admin
+          </Button>
+        }
+      />
 
-      <section
-        className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto"
-        aria-label="Super admins"
-      >
+      <section className={TABLE_CARD} aria-label="Super admins">
         {isLoading ? (
           <div className="flex justify-center py-10" role="status">
             <Spinner className="text-primary" />
@@ -248,24 +248,20 @@ export default function SuperAdminTeamPage() {
         ) : !admins?.length ? (
           <p className="p-4 text-body-lg text-on-surface-variant">No super admins yet.</p>
         ) : (
-          <table className="w-full text-body-lg">
+          <table className="w-full text-body">
             <caption className="sr-only">Super admins</caption>
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 {["Admin", "Status", "Last sign-in", "Created", ""].map((h, i) => (
-                  <th
-                    key={i}
-                    scope="col"
-                    className="px-4 py-3 text-label font-medium text-on-surface-variant whitespace-nowrap"
-                  >
+                  <th key={i} scope="col" className={TH}>
                     {h || <span className="sr-only">Actions</span>}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/40">
+            <tbody className="divide-y divide-outline-variant/60">
               {admins.map((a) => (
-                <tr key={a.id}>
+                <tr key={a.id} className={TR}>
                   <td className="px-4 py-3">
                     <p className="text-on-surface font-medium">{a.name}</p>
                     <p className="text-label text-on-surface-variant break-all">{a.email}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
 import {
@@ -22,6 +23,7 @@ import {
   TrendingUp,
   Code,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuthStore } from "@/stores/auth-store";
@@ -316,26 +318,21 @@ export default function BillingPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1200px] mx-auto p-6 space-y-6">
-        {/* Breadcrumb + Header */}
-        <div className="max-lg:hidden">
-          <p className="text-label text-on-surface-variant/60 mb-1">
-            Settings &gt; Billing
-          </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-headline font-semibold text-on-surface">
-                Billing &amp; Subscription
-              </h1>
-              <p className="text-body text-on-surface-variant mt-1">
-                Manage your plan, track usage, and view payment history.
-              </p>
-            </div>
-          </div>
+        {/* Back link + title */}
+        <div className="space-y-1 max-lg:hidden">
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-1 rounded text-label text-on-surface-variant hover:text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+            Settings
+          </Link>
+          <PageHeader title="Billing" />
         </div>
 
-        {/* Current Plan — Gradient Hero Card */}
+        {/* Current plan */}
         {subscription && (
-          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-6">
+          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-6">
             <div className="flex items-start justify-between max-lg:flex-col max-lg:gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -351,7 +348,7 @@ export default function BillingPage() {
                     {formatDate(subscription.currentPeriodEnd)}
                   </span>
                 </p>
-                <p className="text-display font-semibold text-primary mt-2">
+                <p className="text-display font-semibold text-on-surface tabular-nums mt-2">
                   {formatMoney(subscription.plan.priceInCents, subscription.plan.currency)}
                   <span className="text-body-lg font-normal text-on-surface-variant">
                     /{subscription.plan.billingCycle === "MONTHLY" ? "mo" : "yr"}
@@ -366,7 +363,7 @@ export default function BillingPage() {
                 {subscription.scheduledPlanId && subscription.scheduledChangeAt && (() => {
                   const scheduledPayment = payments?.data?.find((p) => p.status === "SUCCEEDED");
                   return (
-                    <div className="mt-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 space-y-1.5">
+                    <div className="mt-2 border-l-2 border-warning pl-3 py-1 space-y-1.5">
                       <p className="text-label text-warning flex items-center gap-1.5 font-medium">
                         <ArrowDownCircle className="h-3.5 w-3.5 shrink-0" />
                         Plan change scheduled for {formatDate(subscription.scheduledChangeAt)}
@@ -420,7 +417,7 @@ export default function BillingPage() {
                     }}
                   >
                     <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                    Upgrade to a Plan
+                    Upgrade to a plan
                   </Button>
                 )}
                 {isAdmin && subscription.status === "ACTIVE" && (
@@ -431,7 +428,7 @@ export default function BillingPage() {
                     disabled={cancelMutation.isPending}
                     className="text-error hover:text-error"
                   >
-                    Cancel Plan
+                    Cancel plan
                   </Button>
                 )}
               </div>
@@ -458,9 +455,9 @@ export default function BillingPage() {
         {usage && (
           <div>
             <div className="flex items-center justify-between mb-3 max-lg:flex-col max-lg:items-start max-lg:gap-2">
-              <h3 className="text-body-lg font-semibold text-on-surface">
-                Current Usage
-              </h3>
+              <h2 className="text-body-lg font-semibold text-on-surface">
+                Current usage
+              </h2>
               <div className="flex items-center gap-3 max-lg:flex-wrap max-lg:gap-2">
                 {subscription?.status === "TRIAL" && (
                   <span className="text-caption text-warning bg-warning-container border border-warning/30 rounded-full px-2.5 py-0.5">
@@ -469,7 +466,7 @@ export default function BillingPage() {
                 )}
                 <Link
                   href="/settings/ai-credits"
-                  className="inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-1 rounded text-label font-medium text-primary hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   Buy AI credits
@@ -507,14 +504,14 @@ export default function BillingPage() {
               />
               <UsageCard
                 icon={Code}
-                label="API Calls"
+                label="API calls"
                 current={usage.apiCalls?.current ?? 0}
                 limit={usage.apiCalls?.limit ?? 0}
                 isTrial={subscription?.status === "TRIAL"}
               />
               <UsageCard
                 icon={Sparkles}
-                label="AI Credits"
+                label="AI credits"
                 current={usage.aiCredits?.current ?? 0}
                 limit={usage.aiCredits?.limit ?? 0}
                 extra={aiCreditsData?.wallet.purchased ?? 0}
@@ -537,21 +534,21 @@ export default function BillingPage() {
             {planChangeError && !confirmPlan && (
               <div className="mb-3 rounded-xl bg-error/10 border border-error/30 px-4 py-3 text-body-lg text-error flex items-center justify-between">
                 <span>{planChangeError}</span>
-                <button aria-label="Dismiss" onClick={() => setPlanChangeError(null)} className="ml-3 text-error/60 hover:text-error">✕</button>
+                <button type="button" aria-label="Dismiss" title="Dismiss" onClick={() => setPlanChangeError(null)} className="ml-3 rounded text-error/60 hover:text-error outline-none focus-visible:ring-2 focus-visible:ring-focus">✕</button>
               </div>
             )}
             <div className="flex items-center justify-between mb-3 max-lg:flex-col max-lg:items-start max-lg:gap-2">
-              <h3 className="text-body-lg font-semibold text-on-surface">
-                Subscription Tiers
-              </h3>
+              <h2 className="text-body-lg font-semibold text-on-surface">
+                Plans
+              </h2>
               {/* Monthly / Yearly toggle */}
               <div className="flex items-center gap-2.5">
                 <span className={`text-body font-medium ${!showYearly ? "text-on-surface" : "text-on-surface-variant"}`}>
                   Monthly
                 </span>
-                <button role="switch" aria-checked={showYearly} aria-label="Show yearly pricing"
+                <button type="button" role="switch" aria-checked={showYearly} aria-label="Show yearly pricing"
                   onClick={() => setShowYearly((v) => !v)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${showYearly ? "bg-primary" : "bg-surface-container-high"}`}
+                  className={`relative w-10 h-5 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${showYearly ? "bg-primary" : "bg-surface-container-high"}`}
                 >
                   <span
                     className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showYearly ? "translate-x-5" : "translate-x-0"}`}
@@ -599,15 +596,15 @@ export default function BillingPage() {
                         isTrial={isCurrent && subscription?.status === "TRIAL"}
                         buttonLabel={
                           isCurrent
-                            ? subscription?.status === "TRIAL" ? "On Trial" : "Active Plan"
+                            ? subscription?.status === "TRIAL" ? "On trial" : "Active plan"
                             : isEnterprise
-                              ? "Contact Us"
+                              ? "Contact us"
                               : !isAdmin
-                                ? "View Only"
+                                ? "View only"
                                 : !hasSubscription
-                                  ? "Select Plan"
+                                  ? "Select plan"
                                   : subscription?.status === "TRIAL" && plan.priceInCents > 0
-                                    ? "Pay & Upgrade"
+                                    ? "Pay & upgrade"
                                     : plan.priceInCents > (subscription?.plan.priceInCents ?? 0)
                                       ? "Upgrade"
                                       : "Downgrade"
@@ -624,9 +621,9 @@ export default function BillingPage() {
         {/* Billing History — Payments & Invoices */}
         <Card>
           <div className="p-6 pb-0">
-            <h3 className="text-title font-semibold text-on-surface mb-4">
-              Billing History
-            </h3>
+            <h2 className="text-title font-semibold text-on-surface mb-4">
+              Billing history
+            </h2>
             <Tabs
               tabs={[
                 { id: "payments", label: "Payments" },
@@ -688,7 +685,13 @@ export default function BillingPage() {
                             </span>
                           </TableCell>
                           <TableCell align="right">
-                            <span className="text-label text-primary font-medium">View →</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPaymentId(payment.id)}
+                              className="rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            >
+                              View →
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -756,10 +759,14 @@ export default function BillingPage() {
                             </span>
                           </TableCell>
                           <TableCell align="right">
-                            <span className="inline-flex items-center gap-1.5 text-label text-primary font-medium">
-                              <Download className="h-3.5 w-3.5" />
-                              View &amp; Download
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoiceId(invoice.id)}
+                              className="inline-flex items-center gap-1.5 rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            >
+                              <Download className="h-3.5 w-3.5" aria-hidden />
+                              View &amp; download
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -838,9 +845,9 @@ export default function BillingPage() {
                 <AlertTriangle className="h-5 w-5 text-error" />
               </div>
               <div>
-                <h3 id="cancel-plan-title" className="text-body-lg font-semibold text-on-surface">
+                <h2 id="cancel-plan-title" className="text-body-lg font-semibold text-on-surface">
                   Cancel {subscription?.plan.name}?
-                </h3>
+                </h2>
                 <p className="text-body text-on-surface-variant mt-1">
                   Your plan will remain active until the end of the current billing period. After that, access will be restricted.
                 </p>
@@ -853,7 +860,7 @@ export default function BillingPage() {
                 onClick={() => setShowCancelConfirm(false)}
                 disabled={cancelMutation.isPending}
               >
-                Keep Plan
+                Keep plan
               </Button>
               <Button
                 variant="primary"
@@ -866,7 +873,7 @@ export default function BillingPage() {
                 loading={cancelMutation.isPending}
                 className="bg-error hover:bg-error/90 text-on-error"
               >
-                Yes, Cancel
+                Yes, cancel
               </Button>
             </div>
           </>
@@ -903,22 +910,22 @@ function UsageCard({
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center lg:hidden">
               <Icon className="h-4 w-4 text-on-surface-variant" />
             </div>
-            <span className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+            <span className="text-label font-medium text-on-surface-variant">
               {label}
             </span>
           </div>
           {isAtLimit && (
-            <AlertTriangle className="h-4 w-4 text-error" />
+            <AlertTriangle className="h-4 w-4 text-error" aria-label="At limit" />
           )}
           {isNearLimit && !isAtLimit && (
-            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertTriangle className="h-4 w-4 text-warning" aria-label="Near limit" />
           )}
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-title font-semibold text-on-surface">
+          <span className="text-title font-semibold tabular-nums text-on-surface">
             {current.toLocaleString()}
           </span>
           <span className="text-label text-on-surface-variant">
@@ -934,9 +941,10 @@ function UsageCard({
               +{extra.toLocaleString()} extra
             </span>
           )}
-          {isTrial && (
-            <span className="text-caption font-medium text-warning bg-warning-container border border-warning/30 rounded px-1.5 py-0.5">
-              trial limit
+          {/* The section banner already says trial limits apply; flag only the cards that hit one */}
+          {isTrial && pct >= 100 && (
+            <span className="whitespace-nowrap rounded bg-warning-container px-1.5 py-0.5 text-caption font-medium text-warning">
+              At limit
             </span>
           )}
         </div>
@@ -1012,7 +1020,7 @@ function PlanCard({
         isCurrent
           ? "border-primary/30 ring-1 ring-primary/20"
           : isPopular
-            ? "border-primary/40 ring-2 ring-primary/20 shadow-lg"
+            ? "border-primary/40 ring-1 ring-primary/20"
             : isEnterprise
               ? "border-on-surface/10 bg-surface-container-low"
               : "hover:border-outline-variant/30 transition-colors"
@@ -1021,20 +1029,20 @@ function PlanCard({
       {/* Top banner — Active > Popular > Enterprise */}
       {isCurrent ? (
         <div className="bg-primary/10 px-4 py-1.5 text-center">
-          <span className="text-caption font-semibold text-primary uppercase tracking-wider">
-            Active Plan
+          <span className="text-caption font-semibold text-primary">
+            Active plan
           </span>
         </div>
       ) : isPopular ? (
         <div className="bg-primary px-4 py-1.5 text-center">
-          <span className="text-caption font-semibold text-on-primary uppercase tracking-wider">
-            Most Popular
+          <span className="text-caption font-semibold text-on-primary">
+            Most popular
           </span>
         </div>
       ) : isEnterprise ? (
         <div className="bg-on-surface/5 px-4 py-1.5 text-center">
-          <span className="text-caption font-semibold text-on-surface-variant uppercase tracking-wider">
-            Custom Pricing
+          <span className="text-caption font-semibold text-on-surface-variant">
+            Custom pricing
           </span>
         </div>
       ) : (
@@ -1082,7 +1090,7 @@ function PlanCard({
 
         {/* ── Section A: Usage ── */}
         <div className="space-y-2 mb-3">
-          <p className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
+          <p className="text-caption font-semibold text-on-surface-variant mb-2">
             Usage
           </p>
           <LimitRow
@@ -1108,14 +1116,14 @@ function PlanCard({
         </div>
 
         {/* ── Section B: Features with limits ── */}
-        <div className="border-t border-outline-variant/10 pt-3 space-y-2">
-          <p className="text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest mb-2">
+        <div className="border-t border-outline-variant pt-3 space-y-2">
+          <p className="text-caption font-semibold text-on-surface-variant mb-2">
             Features
           </p>
           <FeatureLimitRow label="Templates"   value={fmtFeatureLimit(plan.maxMessageTemplates, "")} />
-          <FeatureLimitRow label="API Access"  value={fmtFeatureLimit(plan.maxApiCallsPerMonth, "/mo")} />
+          <FeatureLimitRow label="API access"  value={fmtFeatureLimit(plan.maxApiCallsPerMonth, "/mo")} />
           <FeatureLimitRow
-            label="AI Credits"
+            label="AI credits"
             // 0 credits means unlimited only on plans that include AI
             value={plan.aiEnabled ? fmtFeatureLimit(plan.aiCreditsPerMonth, "/mo") : "Not included"}
             included={plan.aiEnabled}
@@ -1130,9 +1138,9 @@ function PlanCard({
         {isEnterprise && !isCurrent ? (
           <a
             href="mailto:sales@wazelo.in"
-            className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-on-surface/20 px-3 py-2 text-body font-medium text-on-surface hover:bg-surface-container transition-colors"
+            className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-outline-variant px-3 py-2 text-body font-medium text-on-surface hover:bg-surface-container transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            Contact Us
+            Contact us
           </a>
         ) : (
           <Button
@@ -1140,7 +1148,7 @@ function PlanCard({
             variant={
               isCurrent
                 ? "secondary"
-                : isPopular || buttonLabel === "Upgrade" || buttonLabel === "Pay & Upgrade"
+                : isPopular || buttonLabel === "Upgrade" || buttonLabel === "Pay & upgrade"
                   ? "primary"
                   : "secondary"
             }
@@ -1149,10 +1157,10 @@ function PlanCard({
             onClick={onSelect}
           >
             {isCurrent ? (
-              "Active Plan"
+              "Active plan"
             ) : isLoading ? (
               "Processing..."
-            ) : buttonLabel === "Upgrade" || buttonLabel === "Pay & Upgrade" ? (
+            ) : buttonLabel === "Upgrade" || buttonLabel === "Pay & upgrade" ? (
               <>
                 <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
                 {buttonLabel}
@@ -1216,11 +1224,11 @@ function UpgradeConfirmModal({
             <ArrowDownCircle className="h-5 w-5 text-warning" />
           )}
           <h2 id="upgrade-confirm-title" className="text-title font-semibold text-on-surface">
-            {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
+            {isUpgrade ? "Confirm upgrade" : "Confirm downgrade"}
           </h2>
         </div>
         <IconButton size="sm"
-          onClick={onCancel} aria-label="Close">
+          onClick={onCancel} aria-label="Close" title="Close">
           <X className="h-4 w-4" />
         </IconButton>
       </div>
@@ -1229,7 +1237,7 @@ function UpgradeConfirmModal({
         {/* Plan Comparison */}
         <div className="flex items-center gap-4">
           <div className="flex-1 rounded-xl bg-surface-container p-4 text-center">
-            <p className="text-caption text-on-surface-variant uppercase tracking-wider mb-1">
+            <p className="text-caption text-on-surface-variant mb-1">
               Current
             </p>
             <p className="text-body-lg font-semibold text-on-surface">
@@ -1241,8 +1249,8 @@ function UpgradeConfirmModal({
           </div>
           <div className="text-on-surface-variant/50">→</div>
           <div className="flex-1 rounded-xl bg-primary/10 border border-primary/20 p-4 text-center">
-            <p className="text-caption text-primary uppercase tracking-wider mb-1">
-              New Plan
+            <p className="text-caption text-primary mb-1">
+              New plan
             </p>
             <p className="text-body-lg font-semibold text-on-surface">
               {newPlan.name}
@@ -1258,13 +1266,13 @@ function UpgradeConfirmModal({
           <table className="w-full text-body">
             <thead>
               <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                <th className="px-4 py-2.5 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                <th className="px-4 py-2.5 text-left text-label font-medium text-on-surface-variant">
                   Feature
                 </th>
-                <th className="px-4 py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+                <th className="px-4 py-2.5 text-center text-label font-medium text-on-surface-variant">
                   Current
                 </th>
-                <th className="px-4 py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-primary">
+                <th className="px-4 py-2.5 text-center text-label font-medium text-primary">
                   New
                 </th>
               </tr>
@@ -1296,12 +1304,12 @@ function UpgradeConfirmModal({
                 next={formatLimit(newPlan.maxMessageTemplates)}
               />
               <CompareRow
-                label="API Calls/mo"
+                label="API calls/mo"
                 current={currentPlan.apiEnabled ? formatLimit(currentPlan.maxApiCallsPerMonth) : "—"}
                 next={newPlan.apiEnabled ? formatLimit(newPlan.maxApiCallsPerMonth) : "—"}
               />
               <CompareRow
-                label="AI Credits/mo"
+                label="AI credits/mo"
                 current={currentPlan.aiEnabled ? formatLimit(currentPlan.aiCreditsPerMonth) : "—"}
                 next={newPlan.aiEnabled ? formatLimit(newPlan.aiCreditsPerMonth) : "—"}
               />
@@ -1312,8 +1320,8 @@ function UpgradeConfirmModal({
         {/* Proration Details (upgrades only) */}
         {isUpgrade && (
           <div className="rounded-xl bg-surface-container p-4 space-y-2">
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-              Estimated Proration
+            <p className="text-label font-medium text-on-surface-variant">
+              Estimated proration
             </p>
             <div className="flex items-center justify-between text-body">
               <span className="text-on-surface-variant">
@@ -1371,7 +1379,7 @@ function UpgradeConfirmModal({
             loading={isLoading}
             disabled={!!error}
           >
-            {isUpgrade ? "Confirm Upgrade" : "Confirm Downgrade"}
+            {isUpgrade ? "Confirm upgrade" : "Confirm downgrade"}
           </Button>
         </div>
       </div>

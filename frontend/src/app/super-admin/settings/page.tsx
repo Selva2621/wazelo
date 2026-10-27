@@ -14,8 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
 
-const sectionClass = "bg-surface-container-low border border-outline-variant rounded-xl p-5";
+const sectionClass = "bg-surface-container-lowest border border-outline-variant rounded-2xl p-5";
 const CONSOLE_URL = "https://console.cloud.google.com/apis/credentials";
 
 /** Server message from an API error (Nest sends a string or an array of strings). */
@@ -290,7 +291,7 @@ function GoogleCredentialsCard({ settings }: { settings: PlatformSettings }) {
               className="font-mono"
               aria-describedby="google-redirect-uri-hint"
             />
-            <IconButton type="button" aria-label="Copy redirect URI" onClick={copyRedirect}>
+            <IconButton type="button" aria-label="Copy redirect URI" title="Copy redirect URI" onClick={copyRedirect}>
               {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </IconButton>
           </div>
@@ -375,8 +376,8 @@ export default function SuperAdminSettingsPage() {
   const switchDisabled = !google.configured || update.isPending;
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
-      <h1 className="text-title font-semibold text-on-surface">Settings</h1>
+    <div className="p-4 lg:p-6 space-y-5 max-w-2xl">
+      <PageHeader title="Settings" />
 
       <section aria-labelledby="sign-in-heading" className="space-y-3">
         <h2 id="sign-in-heading" className="text-title-sm font-semibold text-on-surface">

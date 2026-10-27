@@ -44,6 +44,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { IconButton } from "@/components/ui/icon-button";
+import { PageHeader } from "@/components/layout/page-header";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
@@ -53,7 +54,7 @@ function SessionStatusBadge({ status }: { status?: string }) {
     return (
       <Badge variant="default" className="gap-1">
         <Minus className="h-3 w-3" />
-        No Session
+        No session
       </Badge>
     );
   }
@@ -176,27 +177,25 @@ export default function AdminUsersPage() {
       <MobilePageActions
         primary={{ label: "Create user", onClick: () => setShowCreate(true) }}
       />
-      {/* Header */}
-      <div className="flex items-center justify-between max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Users</h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage org users, roles, and WhatsApp sessions
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
-          <UserPlus className="h-4 w-4 mr-1.5" />
-          Create User
-        </Button>
-      </div>
+      <PageHeader
+        className="max-lg:hidden"
+        title="Users"
+        count={users.length}
+        actions={
+          <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Create user
+          </Button>
+        }
+      />
 
       {/* Create user form */}
       {showCreate && (
-        <div className="rounded-xl border border-outline-variant/15 p-5 space-y-4 bg-surface-container/30">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-body-lg font-semibold text-on-surface">
-              Create New User
-            </h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">
+              Create new user
+            </h2>
             <IconButton size="xs"
               onClick={() => { setShowCreate(false); setFormError(""); }} aria-label="Close">
               <X className="h-4 w-4" />
@@ -212,7 +211,7 @@ export default function AdminUsersPage() {
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
-                First Name
+                First name
               </label>
               <input
                 type="text"
@@ -224,7 +223,7 @@ export default function AdminUsersPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">
-                Last Name
+                Last name
               </label>
               <input
                 type="text"
@@ -238,7 +237,7 @@ export default function AdminUsersPage() {
 
           <div className="space-y-1.5">
             <label className="text-label font-medium text-on-surface-variant">
-              Email Address
+              Email address
             </label>
             <input
               type="email"
@@ -281,7 +280,7 @@ export default function AdminUsersPage() {
           <div className="flex gap-2 pt-1">
             <Button onClick={handleCreateUser} disabled={createUser.isPending}>
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-              {createUser.isPending ? "Creating..." : "Create User"}
+              {createUser.isPending ? "Creating..." : "Create user"}
             </Button>
             <Button
               variant="secondary"
@@ -295,13 +294,12 @@ export default function AdminUsersPage() {
 
       {/* Pending invitations */}
       {pendingInvites.length > 0 && (
-        <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
-          <div className="px-4 py-2.5 bg-surface-container/40 border-b border-outline-variant/10">
-            <h3 className="text-body font-semibold text-on-surface-variant uppercase tracking-wider">
-              Pending Invitations ({pendingInvites.length})
-            </h3>
+        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+          <div className="flex items-baseline gap-2 border-b border-outline-variant px-4 py-2.5">
+            <h2 className="text-body font-semibold text-on-surface">Pending invitations</h2>
+            <span className="text-label tabular-nums text-on-surface-variant">{pendingInvites.length}</span>
           </div>
-          <div className="divide-y divide-outline-variant/10">
+          <div className="divide-y divide-outline-variant/60">
             {pendingInvites.map((inv) => (
               <div
                 key={inv.id}
@@ -330,7 +328,7 @@ export default function AdminUsersPage() {
                 </div>
                 <button
                   onClick={() => revokeInvitation.mutate(inv.id)}
-                  className="text-label text-error hover:text-error/80 transition-colors max-lg:min-h-11 max-lg:shrink-0 max-lg:px-1"
+                  className="rounded text-label text-error outline-none transition-colors hover:text-error/80 focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-11 max-lg:shrink-0 max-lg:px-1"
                 >
                   Revoke
                 </button>
@@ -346,11 +344,11 @@ export default function AdminUsersPage() {
           icon={<Users className="h-16 w-16" />}
           title="No users found"
           description="Invite users to your organization to get started."
-          actionLabel="Invite User"
+          actionLabel="Invite user"
           onAction={() => setShowCreate(true)}
         />
       ) : (
-        <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
           <Table>
             <TableHeader>
               <TableHeaderRow>
@@ -477,8 +475,8 @@ export default function AdminUsersPage() {
                           disabled={
                             !session || session.status !== "CONNECTED"
                           }
-                          title="View Inbox"
-                          aria-label="View Inbox"
+                          title="View inbox"
+                          aria-label="View inbox"
                           className="max-lg:size-10"
                         >
                           <MessageSquare className="h-3.5 w-3.5" />

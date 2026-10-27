@@ -30,8 +30,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { FaqsCard } from "@/components/knowledge/faqs-card";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 
-const card = "rounded-xl border border-outline-variant bg-surface-container-low";
+const card = "rounded-2xl border border-outline-variant bg-surface-container-lowest";
 const sectionTitle = "text-body-lg font-medium text-on-surface";
 const hint = "text-label text-on-surface-variant";
 
@@ -432,13 +433,18 @@ export default function ChatbotKnowledgePage() {
       />
       <div className="mx-auto max-w-6xl space-y-5 p-6">
         <div className="space-y-1">
-          <Link href="/chatbot" className="inline-flex items-center gap-1 text-label text-on-surface-variant hover:text-on-surface max-lg:hidden">
+          <Link href="/chatbot" className="inline-flex items-center gap-1 rounded-md text-label text-on-surface-variant outline-none hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus max-lg:hidden">
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Chatbot
           </Link>
-          <h1 className="text-title font-semibold text-on-surface max-lg:hidden">Bot knowledge</h1>
-          <p className="text-body text-on-surface-variant">
-            What your bot answers from, on WhatsApp and your website chat. Turn on &ldquo;Use knowledge base&rdquo; in a chatbot flow to use it.
+          <PageHeader
+            className="max-lg:hidden"
+            title="Bot knowledge"
+            description={<>What your bot answers from. Turn on &ldquo;Use knowledge base&rdquo; in a flow to use it.</>}
+          />
+          {/* Phones/tablets: the nav bar has the title */}
+          <p className="text-body text-on-surface-variant lg:hidden">
+            What your bot answers from. Turn on &ldquo;Use knowledge base&rdquo; in a flow to use it.
           </p>
         </div>
 

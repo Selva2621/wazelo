@@ -35,6 +35,8 @@ import { useAutomationSocket } from "@/hooks/use-automation-socket";
 import { useAutomationStore } from "@/stores/automation-store";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { AutomationRulesTable } from "@/components/automation/automation-rules-table";
 import { ExecutionLogsTable } from "@/components/automation/execution-logs-table";
@@ -50,7 +52,7 @@ const TAKE = 20;
 
 const MAIN_TABS = [
   { id: "rules", label: "Rules" },
-  { id: "logs", label: "Execution Logs" },
+  { id: "logs", label: "Execution logs" },
 ];
 
 const RULE_STATUS_TABS = [
@@ -159,40 +161,39 @@ export default function AutomationPage() {
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
         {/* Mobile: the nav bar shows the title and the "+" */}
         {activeTab === "rules" && (
-          <MobilePageActions primary={{ label: "New Rule", onClick: () => setShowCreateModal(true) }} />
+          <MobilePageActions primary={{ label: "New rule", onClick: () => setShowCreateModal(true) }} />
         )}
-        <div className="flex items-center justify-between max-lg:hidden">
-          <div className="flex items-center gap-3">
-            <Zap className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">
-              Automation
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeTab === "rules" && (
+        <PageHeader
+          className="max-lg:hidden"
+          title="Automation"
+          actions={
+            activeTab === "rules" ? (
               <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Rule
+                <Plus className="mr-1 h-4 w-4" />
+                New rule
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Main tabs: Rules | Logs */}
-        <Tabs
-          tabs={MAIN_TABS}
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
+            ) : undefined
+          }
         />
 
-        {/* Sub-tabs for Rules: All | Active | Inactive */}
-        {activeTab === "rules" && (
+        {/* One row: Rules | Logs, then the rule status filter */}
+        <FilterBar className="mobile-scroll-x">
           <Tabs
-            tabs={ruleStatusTabsWithCounts}
-            activeTab={ruleStatusTabId}
-            onTabChange={handleRuleStatusTabChange}
+            tabs={MAIN_TABS}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
           />
-        )}
+          {activeTab === "rules" && (
+            <>
+              <FilterBarDivider />
+              <Tabs
+                tabs={ruleStatusTabsWithCounts}
+                activeTab={ruleStatusTabId}
+                onTabChange={handleRuleStatusTabChange}
+              />
+            </>
+          )}
+        </FilterBar>
       </div>
 
       {/* Content */}

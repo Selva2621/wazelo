@@ -15,6 +15,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar } from "@/hooks/use-mobile-chrome";
+import { PageHeader } from "@/components/layout/page-header";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function useReply(ticketId: string) {
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   OPEN:        { label: "Open",        className: "bg-success/10 text-success border-success/20",  icon: <Circle className="h-3 w-3" /> },
-  IN_PROGRESS: { label: "In Progress", className: "bg-info/10 text-info border-info/20",           icon: <RefreshCw className="h-3 w-3" /> },
+  IN_PROGRESS: { label: "In progress", className: "bg-info/10 text-info border-info/20",           icon: <RefreshCw className="h-3 w-3" /> },
   RESOLVED:    { label: "Resolved",    className: "bg-chart-5/10 text-chart-5 border-chart-5/20",     icon: <CheckCircle2 className="h-3 w-3" /> },
   CLOSED:      { label: "Closed",      className: "bg-surface-container text-on-surface-variant border-outline-variant", icon: <X className="h-3 w-3" /> },
 };
@@ -154,7 +155,8 @@ function Pagination({ page, totalPages, total, onPage }: { page: number; totalPa
             <button
               key={p}
               onClick={() => onPage(p as number)}
-              className={`min-w-[28px] h-7 rounded-lg text-label font-medium transition-colors ${
+              aria-current={p === page ? "page" : undefined}
+              className={`min-w-[28px] h-7 rounded-lg text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 p === page
                   ? "bg-primary text-on-primary"
                   : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
@@ -242,7 +244,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <div className="flex items-center gap-2">
             <LifeBuoy className="h-4 w-4 text-primary" />
-            <h2 id="new-ticket-title" className="font-semibold text-on-surface text-body-lg">New Support Ticket</h2>
+            <h2 id="new-ticket-title" className="font-semibold text-on-surface text-body-lg">New support ticket</h2>
           </div>
           <IconButton size="xs" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
@@ -252,7 +254,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Title</label>
+            <label className="text-label font-medium text-on-surface-variant">Title</label>
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -266,7 +268,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
           {/* Category + Priority */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Category</label>
+              <label className="text-label font-medium text-on-surface-variant">Category</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as any })}
@@ -276,7 +278,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Priority</label>
+              <label className="text-label font-medium text-on-surface-variant">Priority</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
@@ -289,7 +291,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Description</label>
+            <label className="text-label font-medium text-on-surface-variant">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -302,7 +304,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
 
           {/* Image upload */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
+            <label className="text-label font-medium text-on-surface-variant">
               Attachment <span className="normal-case font-normal text-on-surface-variant/50">(optional · max 16 MB)</span>
             </label>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageSelect} className="hidden" />
@@ -349,7 +351,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
               className="flex-1"
             >
               {(uploading || create.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-              {uploading ? "Uploading…" : create.isPending ? "Submitting…" : "Submit Ticket"}
+              {uploading ? "Uploading…" : create.isPending ? "Submitting…" : "Submit ticket"}
             </Button>
           </div>
         </form>
@@ -386,7 +388,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
       <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant flex-shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors group"
+          className="flex items-center gap-1.5 rounded text-body-lg text-on-surface-variant outline-none hover:text-on-surface transition-colors focus-visible:ring-2 focus-visible:ring-focus group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
@@ -454,7 +456,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                 <div key={r.id} className={`flex ${isSupport ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] max-lg:max-w-[88%]`}>
                     <div className={`text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5 ${isSupport ? "justify-end" : ""}`}>
-                      <span className="font-medium text-on-surface">{isSupport ? "Support Team" : "You"}</span>
+                      <span className="font-medium text-on-surface">{isSupport ? "Support team" : "You"}</span>
                       <span>·</span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
                     </div>
@@ -498,7 +500,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                    
                   >
                     {reply.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Send Reply
+                    Send reply
                   </Button>
                 </div>
               </div>
@@ -509,24 +511,24 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
         {/* Right sidebar: ticket meta */}
         <div className="w-64 border-l border-outline-variant flex-shrink-0 px-5 py-5 space-y-5 overflow-y-auto hidden lg:block">
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Status</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Status</p>
             <StatusBadge status={ticket.status} />
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priority</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Priority</p>
             <PriorityDot priority={ticket.priority} />
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Category</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Category</p>
             <p className="text-body-lg text-on-surface">{ticket.category.replace("_", " ")}</p>
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Opened</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Opened</p>
             <p className="text-body-lg text-on-surface">{new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
           {ticket.closedAt && (
             <div>
-              <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Closed</p>
+              <p className="text-label font-medium text-on-surface-variant mb-2">Closed</p>
               <p className="text-body-lg text-on-surface">{new Date(ticket.closedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
             </div>
           )}
@@ -547,10 +549,10 @@ function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
   const total: number = data?.total ?? 0;
 
   return (
-    <div className="border border-outline-variant rounded-2xl overflow-hidden">
+    <div className="border border-outline-variant rounded-2xl overflow-hidden bg-surface-container-lowest">
       <table className="w-full text-body-lg">
         <thead>
-          <tr className="bg-surface-container/60 border-b border-outline-variant text-label text-on-surface-variant font-medium uppercase tracking-wide">
+          <tr className="border-b border-outline-variant text-label text-on-surface-variant font-medium">
             <th className="text-left px-5 py-3">Ticket</th>
             <th className="text-left px-4 py-3 hidden sm:table-cell">Category</th>
             <th className="text-left px-4 py-3 hidden md:table-cell">Priority</th>
@@ -579,7 +581,7 @@ function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
             <tr
               key={t.id}
               onClick={() => onSelect(t.id)}
-              className="hover:bg-surface-container/50 cursor-pointer transition-colors group"
+              className="hover:bg-surface-container-low cursor-pointer transition-colors group"
             >
               <td className="px-5 py-3.5 max-w-[220px]">
                 <div className="flex items-start gap-2">
@@ -636,22 +638,16 @@ export default function SupportPage() {
 
   return (
     <div className="flex flex-col p-6 gap-5" style={{ height: "calc(100vh - var(--header-height))" }}>
-      <MobilePageActions primary={{ label: "New Ticket", onClick: () => setShowModal(true) }} />
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0 max-lg:hidden">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <LifeBuoy className="h-5 w-5 text-primary" /> Support
-          </h1>
-          <p className="text-body-lg text-on-surface-variant mt-0.5">Submit and track your support tickets</p>
-        </div>
-        <Button size="lg"
-          onClick={() => setShowModal(true)}
-         
-        >
-          <Plus className="h-4 w-4" /> New Ticket
-        </Button>
-      </div>
+      <MobilePageActions primary={{ label: "New ticket", onClick: () => setShowModal(true) }} />
+      <PageHeader
+        className="flex-shrink-0 max-lg:hidden"
+        title="Support"
+        actions={
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="h-4 w-4" /> New ticket
+          </Button>
+        }
+      />
 
       {/* DataTable — fills remaining height */}
       <div className="flex-1 min-h-0 overflow-auto">

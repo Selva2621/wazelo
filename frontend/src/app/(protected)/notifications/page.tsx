@@ -18,6 +18,8 @@ import { SwipeRow } from "@/components/ios/swipe-row";
 import { ActionSheet } from "@/components/ios/action-sheet";
 import { TYPE_ICONS, timeAgo } from "@/components/notifications/notification-center";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/lib/types/notifications";
 
@@ -74,6 +76,33 @@ export default function NotificationsPage() {
         </button>
       </MobileNavActions>
 
+      {/* Desktop has no nav bar: the title row carries the bulk actions */}
+      <PageHeader
+        className="mb-4 max-lg:hidden"
+        title="Notifications"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => clearRead.mutate()}
+              disabled={clearRead.isPending}
+              className="text-error hover:bg-error/10 hover:text-error"
+            >
+              <Trash2 className="h-4 w-4" /> Clear read
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => markAll.mutate()}
+              disabled={unreadCount === 0 || markAll.isPending}
+            >
+              <CheckCheck className="h-4 w-4" /> Mark all read
+            </Button>
+          </>
+        }
+      />
+
       <div className="mb-3 flex items-center gap-3 px-4 lg:px-0">
         <SegmentedControl
           label="Show"
@@ -85,25 +114,6 @@ export default function NotificationsPage() {
           ]}
           className="flex-1 lg:max-w-xs"
         />
-        {/* Desktop has no nav bar: show the bulk actions here */}
-        <div className="hidden items-center gap-2 lg:flex">
-          <button
-            type="button"
-            onClick={() => markAll.mutate()}
-            disabled={unreadCount === 0 || markAll.isPending}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-body text-on-surface hover:bg-surface-container disabled:opacity-40"
-          >
-            <CheckCheck className="h-4 w-4" /> Mark all read
-          </button>
-          <button
-            type="button"
-            onClick={() => clearRead.mutate()}
-            disabled={clearRead.isPending}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-body text-error hover:bg-error/10 disabled:opacity-40"
-          >
-            <Trash2 className="h-4 w-4" /> Clear read
-          </button>
-        </div>
       </div>
 
       {isLoading ? (

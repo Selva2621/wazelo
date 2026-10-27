@@ -3,8 +3,10 @@
 import { useId, useState } from "react";
 import { Package, Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useSAPlans, useSACreatePlan, useSAUpdatePlan, useSAPlanLifecycle } from "@/hooks/use-super-admin";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -14,7 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import type { Plan, BillingCycle } from "@/lib/types/billing";
 import type { PlanEditMode, PlanUpdateResult } from "@/lib/api/super-admin";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -553,43 +555,43 @@ export default function SuperAdminPlansPage() {
   const isSaving = createPlan.isPending || updatePlan.isPending;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Package className="w-5 h-5 text-primary-container" aria-hidden />
-          </div>
-          <div>
-            <h1 className="text-title font-semibold text-on-surface">Plan Management</h1>
-            <p className="text-body-lg text-on-surface-variant">Create and manage subscription plans</p>
-          </div>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-2" aria-hidden />
-          New Plan
-        </Button>
-      </div>
+    <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-5">
+      <PageHeader
+        title="Plans"
+        count={plans.length}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="w-4 h-4" aria-hidden />
+            New plan
+          </Button>
+        }
+      />
 
-      <label className="mb-3 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
-        <input
-          type="checkbox"
-          checked={showInactive}
-          onChange={(e) => setShowInactive(e.target.checked)}
-          className="h-4 w-4 rounded border-outline accent-primary"
-        />
-        Show inactive plans ({inactiveCount})
-      </label>
-      <label className="mb-3 ml-6 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
-        <input
-          type="checkbox"
-          checked={showArchived}
-          onChange={(e) => setShowArchived(e.target.checked)}
-          className="h-4 w-4 rounded border-outline accent-primary"
-        />
-        Show archived ({archivedCount})
-      </label>
+      <FilterBar>
+        {[
+          { label: "Show inactive", count: inactiveCount, on: showInactive, set: setShowInactive },
+          { label: "Show archived", count: archivedCount, on: showArchived, set: setShowArchived },
+        ].map((chip) => (
+          <button
+            key={chip.label}
+            type="button"
+            aria-pressed={chip.on}
+            onClick={() => chip.set(!chip.on)}
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-label transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              chip.on
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
+            )}
+          >
+            {chip.on && <Check className="h-3.5 w-3.5" aria-hidden />}
+            {chip.label}
+            <span className="tabular-nums opacity-70">{chip.count}</span>
+          </button>
+        ))}
+      </FilterBar>
 
-      <Card>
+      <div className={TABLE_CARD}>
         {isLoading ? (
           <div className="flex items-center justify-center h-32" role="status">
             <Spinner />
@@ -605,26 +607,26 @@ export default function SuperAdminPlansPage() {
             </p>
           </div>
         ) : !plans.length ? (
-          <div className="flex flex-col items-center justify-center h-40 text-on-surface-variant">
+          <div className="flex flex-col items-center justify-center h-40 px-4 text-center text-on-surface-variant">
             <Package className="w-10 h-10 mb-2 opacity-30" aria-hidden />
-            <p className="text-body-lg">
+            <p className="text-body">
               {allPlans.length ? "No active plans. Show inactive plans to reactivate one." : "No plans yet. Create your first plan."}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-body-lg">
+            <table className="w-full text-body">
               <caption className="sr-only">Subscription plans</caption>
               <thead>
                 <tr className="border-b border-outline-variant text-left">
                   {["Plan", "Cycle", "Price", "Subscribers", "Users", "Sessions", "Messages", "Features", "Status", "Actions"].map((h) => (
-                    <th key={h} scope="col" className="px-4 py-3 text-label font-medium text-on-surface-variant">{h}</th>
+                    <th key={h} scope="col" className={TH}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant">
+              <tbody className="divide-y divide-outline-variant/60">
                 {plans.map((plan) => (
-                  <tr key={plan.id} className="hover:bg-surface-container-low transition-colors">
+                  <tr key={plan.id} className={TR}>
                     <td className="px-4 py-3">
                       <div className="font-medium text-on-surface">{plan.name}</div>
                       <div className="text-label text-on-surface-variant">{plan.slug} · v{plan.version}</div>
@@ -669,6 +671,7 @@ export default function SuperAdminPlansPage() {
                           onClick={() => openEdit(plan)}
                           className="hover:text-primary-container hover:bg-primary/10"
                           aria-label={`Edit ${plan.name}`}
+                          title="Edit"
                         >
                           <Pencil className="w-4 h-4" aria-hidden />
                         </IconButton>
@@ -690,6 +693,7 @@ export default function SuperAdminPlansPage() {
                               role="switch"
                               aria-checked={plan.isActive}
                               aria-label={`${plan.name} active`}
+                              title={plan.isActive ? "Deactivate" : "Activate"}
                               disabled={updatePlan.isPending}
                               onClick={() => handleToggle(plan)}
                             >
@@ -730,7 +734,7 @@ export default function SuperAdminPlansPage() {
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
       <Modal
         open={modal.open}

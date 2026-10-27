@@ -26,11 +26,12 @@ export function PageTransition({ children }: { children: ReactNode }) {
       key={pathname}
       // h-full keeps full-height pages (inbox) sized to <main>; it is a no-op elsewhere.
       className="page-stagger h-full"
-      initial={{ opacity: 0, y: motionTokens.distance.md }}
+      // Only a quick fade here: the sections inside rise in a cascade (.page-stagger), so
+      // moving the whole page as well would double the motion
+      initial={{ opacity: 0 }}
       animate={{
         opacity: 1,
-        y: 0,
-        transition: { duration: motionTokens.duration.slow, ease: motionTokens.easing.standard },
+        transition: { duration: motionTokens.duration.base, ease: motionTokens.easing.standard },
       }}
     >
       {children}

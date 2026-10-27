@@ -59,7 +59,7 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-3" aria-labelledby="wa-health-heading">
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 space-y-3" aria-labelledby="wa-health-heading">
         <div className="flex flex-wrap items-center gap-3">
           <h2 id="wa-health-heading" className="text-body-lg font-medium text-on-surface">WhatsApp health</h2>
           <Badge variant={overall.variant}>
@@ -82,7 +82,7 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
               value: data.assessment.failureRate === null ? "—" : `${(data.assessment.failureRate * 100).toFixed(1)}%`,
             },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-surface-container rounded-lg p-3">
+            <div key={label} className="rounded-xl py-1">
               <dt className="text-label text-on-surface-variant">{label}</dt>
               <dd className="text-title font-semibold text-on-surface tabular-nums">{value}</dd>
             </div>
@@ -91,7 +91,7 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
       </section>
 
       {/* Sessions */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby="wa-sessions-heading">
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby="wa-sessions-heading">
         <h3 id="wa-sessions-heading" className="px-4 pt-4 text-body-lg font-medium text-on-surface">
           WhatsApp numbers ({data.sessions.length})
         </h3>
@@ -126,7 +126,7 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
       </section>
 
       {/* Channels */}
-      <section className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto" aria-labelledby="wa-channels-heading">
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby="wa-channels-heading">
         <h3 id="wa-channels-heading" className="px-4 pt-4 text-body-lg font-medium text-on-surface">
           Channels ({data.channels.length})
         </h3>
@@ -172,7 +172,7 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
 
       {/* Failure reasons */}
       {data.failureReasons.length > 0 && (
-        <section className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-2" aria-labelledby="wa-failures-heading">
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 space-y-2" aria-labelledby="wa-failures-heading">
           <h3 id="wa-failures-heading" className="text-body-lg font-medium text-on-surface">
             Top failure reasons ({data.windowDays}d)
           </h3>

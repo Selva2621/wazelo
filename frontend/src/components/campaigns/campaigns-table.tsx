@@ -118,7 +118,7 @@ export function CampaignsTable({
       </ul>
 
       {/* Header */}
-      <div className="max-lg:hidden grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
+      <div className="max-lg:hidden grid grid-cols-[1fr_90px_80px_120px_80px_80px_36px] gap-2 px-4 py-2.5 text-label font-medium text-on-surface-variant border-b border-outline-variant">
         <span>Campaign</span>
         <span>Status</span>
         <span>Recipients</span>
