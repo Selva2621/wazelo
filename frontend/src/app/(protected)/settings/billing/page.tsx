@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
@@ -61,18 +61,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
-import { Pagination } from "@/components/ui/pagination";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import type {
+  Payment,
+  Invoice,
   Plan,
   SubscriptionPlanSummary,
   SubscriptionStatus,
@@ -123,6 +116,130 @@ function getInvoiceStatusColor(status: InvoiceStatus) {
   return map[status] ?? "text-on-surface-variant";
 }
 
+// ─── Billing History Columns ──────────────────
+
+function paymentColumns(onOpen: (id: string) => void): DataTableColumn<Payment>[] {
+  return [
+    {
+      id: "date",
+      header: "Date",
+      cellClassName: "text-body text-on-surface",
+      cell: (payment) => formatDate(payment.createdAt),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      cellClassName: "text-body text-on-surface font-medium",
+      cell: (payment) => (
+        <>
+          {formatMoney(payment.amountInCents, payment.currency)}{" "}
+          <span className="text-caption text-on-surface-variant font-normal">
+            {payment.currency}
+          </span>
+        </>
+      ),
+    },
+    {
+      id: "method",
+      header: "Method",
+      cellClassName: "text-body text-on-surface-variant capitalize",
+      cell: (payment) => payment.paymentMethod?.replace("_", " ") ?? "—",
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (payment) => (
+        <span className={`text-label font-medium ${getPaymentStatusColor(payment.status)}`}>
+          {payment.status}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (payment) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(payment.id);
+          }}
+          className="rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          View →
+        </button>
+      ),
+    },
+  ];
+}
+
+function invoiceColumns(onOpen: (id: string) => void): DataTableColumn<Invoice>[] {
+  return [
+    {
+      id: "invoice",
+      header: "Invoice",
+      cellClassName: "text-body text-on-surface font-medium",
+      cell: (invoice) => invoice.invoiceNumber,
+    },
+    {
+      id: "period",
+      header: "Period",
+      cellClassName: "text-body text-on-surface-variant",
+      cell: (invoice) => (
+        <>
+          {formatDate(invoice.periodStart)} — {formatDate(invoice.periodEnd)}
+        </>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      cellClassName: "text-body text-on-surface font-medium",
+      cell: (invoice) => (
+        <>
+          {formatMoney(invoice.amountInCents, invoice.currency)}{" "}
+          <span className="text-caption text-on-surface-variant font-normal">
+            {invoice.currency}
+          </span>
+        </>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (invoice) => (
+        <span className={`text-label font-medium ${getInvoiceStatusColor(invoice.status)}`}>
+          {invoice.status}
+        </span>
+      ),
+    },
+    {
+      id: "action",
+      header: "Action",
+      align: "right",
+      skeleton: "none",
+      cell: (invoice) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(invoice.id);
+          }}
+          className="inline-flex items-center gap-1.5 rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          View &amp; download
+        </button>
+      ),
+    },
+  ];
+}
+
 // ─── Main Page ────────────────────────────────
 
 export default function BillingPage() {
@@ -163,6 +280,9 @@ export default function BillingPage() {
   const [planChangeError, setPlanChangeError] = useState<string | null>(null);
   // Cancel confirmation modal
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Billing history table columns (setters are stable)
+  const paymentCols = useMemo(() => paymentColumns(setSelectedPaymentId), []);
+  const invoiceCols = useMemo(() => invoiceColumns(setSelectedInvoiceId), []);
 
   if (user?.role !== "ADMIN") {
     return (
@@ -637,149 +757,56 @@ export default function BillingPage() {
           {/* Payments Tab */}
           {historyTab === "payments" && (
             <div className="mt-4">
-              {paymentsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Spinner size="lg" className="text-primary" />
-                </div>
-              ) : !payments?.data?.length ? (
-                <div className="text-center py-12">
-                  <CreditCard className="h-10 w-10 text-on-surface-variant/30 mx-auto mb-3" />
-                  <p className="text-body text-on-surface-variant">
-                    No payment history yet
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableHeaderRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead align="right">&nbsp;</TableHead>
-                      </TableHeaderRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.data.map((payment) => (
-                        <TableRow
-                          key={payment.id}
-                          className="cursor-pointer"
-                          onClick={() => setSelectedPaymentId(payment.id)}
-                        >
-                          <TableCell className="text-body text-on-surface">
-                            {formatDate(payment.createdAt)}
-                          </TableCell>
-                          <TableCell className="text-body text-on-surface font-medium">
-                            {formatMoney(payment.amountInCents, payment.currency)}{" "}
-                            <span className="text-caption text-on-surface-variant font-normal">
-                              {payment.currency}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-body text-on-surface-variant capitalize">
-                            {payment.paymentMethod?.replace("_", " ") ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`text-label font-medium ${getPaymentStatusColor(payment.status)}`}>
-                              {payment.status}
-                            </span>
-                          </TableCell>
-                          <TableCell align="right">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPaymentId(payment.id)}
-                              className="rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                            >
-                              View →
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Pagination
-                    page={paymentPage}
-                    totalPages={payments.totalPages}
-                    total={payments.total}
-                    onPageChange={setPaymentPage}
-                  />
-                </>
-              )}
+              <DataTable
+                label="Payments"
+                columns={paymentCols}
+                rows={payments?.data ?? []}
+                rowKey={(payment) => payment.id}
+                rowLabel={(payment) => `payment from ${formatDate(payment.createdAt)}`}
+                loading={paymentsLoading}
+                skeletonRows={5}
+                onRowClick={(payment) => setSelectedPaymentId(payment.id)}
+                rowClassName={() => "cursor-pointer"}
+                pagination={{
+                  page: paymentPage - 1,
+                  pageSize: PAGE_SIZE,
+                  total: payments?.total ?? 0,
+                  onPageChange: (p) => setPaymentPage(p + 1),
+                }}
+                empty={{
+                  icon: <CreditCard className="h-10 w-10" />,
+                  title: "No payment history yet",
+                  compact: true,
+                }}
+              />
             </div>
           )}
 
           {/* Invoices Tab */}
           {historyTab === "invoices" && (
             <div className="mt-4">
-              {invoicesLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Spinner size="lg" className="text-primary" />
-                </div>
-              ) : !invoices?.data?.length ? (
-                <div className="text-center py-12">
-                  <FileText className="h-10 w-10 text-on-surface-variant/30 mx-auto mb-3" />
-                  <p className="text-body text-on-surface-variant">
-                    No invoices yet
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableHeaderRow>
-                        <TableHead>Invoice</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead align="right">Action</TableHead>
-                      </TableHeaderRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.data.map((invoice) => (
-                        <TableRow
-                          key={invoice.id}
-                          className="cursor-pointer"
-                          onClick={() => setSelectedInvoiceId(invoice.id)}
-                        >
-                          <TableCell className="text-body text-on-surface font-medium">
-                            {invoice.invoiceNumber}
-                          </TableCell>
-                          <TableCell className="text-body text-on-surface-variant">
-                            {formatDate(invoice.periodStart)} — {formatDate(invoice.periodEnd)}
-                          </TableCell>
-                          <TableCell className="text-body text-on-surface font-medium">
-                            {formatMoney(invoice.amountInCents, invoice.currency)}{" "}
-                            <span className="text-caption text-on-surface-variant font-normal">
-                              {invoice.currency}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`text-label font-medium ${getInvoiceStatusColor(invoice.status)}`}>
-                              {invoice.status}
-                            </span>
-                          </TableCell>
-                          <TableCell align="right">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedInvoiceId(invoice.id)}
-                              className="inline-flex items-center gap-1.5 rounded text-label text-primary font-medium hover:underline outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                            >
-                              <Download className="h-3.5 w-3.5" aria-hidden />
-                              View &amp; download
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Pagination
-                    page={invoicePage}
-                    totalPages={invoices.totalPages}
-                    total={invoices.total}
-                    onPageChange={setInvoicePage}
-                  />
-                </>
-              )}
+              <DataTable
+                label="Invoices"
+                columns={invoiceCols}
+                rows={invoices?.data ?? []}
+                rowKey={(invoice) => invoice.id}
+                rowLabel={(invoice) => `invoice ${invoice.invoiceNumber}`}
+                loading={invoicesLoading}
+                skeletonRows={5}
+                onRowClick={(invoice) => setSelectedInvoiceId(invoice.id)}
+                rowClassName={() => "cursor-pointer"}
+                pagination={{
+                  page: invoicePage - 1,
+                  pageSize: PAGE_SIZE,
+                  total: invoices?.total ?? 0,
+                  onPageChange: (p) => setInvoicePage(p + 1),
+                }}
+                empty={{
+                  icon: <FileText className="h-10 w-10" />,
+                  title: "No invoices yet",
+                  compact: true,
+                }}
+              />
             </div>
           )}
         </Card>

@@ -14,8 +14,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Pagination } from "@/components/ui/pagination";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
 import type { AuditLog, QueryAuditLogsParams } from "@/lib/types/rbac";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -69,7 +68,6 @@ export default function AuditLogsPage() {
 
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const clearFilters = () => {
     setActionFilter("");
@@ -79,6 +77,44 @@ export default function AuditLogsPage() {
   };
 
   const hasFilters = actionFilter || startDate || endDate;
+
+  const columns: DataTableColumn<AuditLog>[] = [
+    {
+      id: "timestamp",
+      header: "Timestamp",
+      cell: (log) => (
+        <div className="flex items-center gap-2">
+          {/* Phones: the whole card toggles details, so the chevron is hidden */}
+          <span className="shrink-0 text-on-surface-variant/50 max-lg:hidden" aria-hidden>
+            {expandedId === log.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </span>
+          <span className="text-label text-on-surface-variant font-mono">{formatTimestamp(log.createdAt)}</span>
+        </div>
+      ),
+    },
+    { id: "action", header: "Action", skeleton: "badge", cell: (log) => <ActionBadge action={log.action} /> },
+    { id: "user", header: "User", skeleton: "avatar", cell: (log) => <UserCell log={log} /> },
+    {
+      id: "target",
+      header: "Target",
+      cell: (log) =>
+        log.targetType ? (
+          <div>
+            <span className="text-label text-on-surface-variant">{log.targetType}</span>
+            {log.targetId && (
+              <p className="text-caption text-on-surface-variant/60 font-mono truncate max-w-[160px]">{log.targetId}</p>
+            )}
+          </div>
+        ) : (
+          <span className="text-label text-on-surface-variant/40">—</span>
+        ),
+    },
+    {
+      id: "ip",
+      header: "IP Address",
+      cell: (log) => <span className="text-label text-on-surface-variant font-mono">{log.ipAddress ?? "—"}</span>,
+    },
+  ];
 
   // Guard: ADMIN only
   if (user?.role !== "ADMIN") {
@@ -163,181 +199,63 @@ export default function AuditLogsPage() {
 
       {/* Logs Table */}
       <Card className="!p-0 overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" className="text-primary" />
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <ShieldAlert className="h-10 w-10 text-on-surface-variant/40 mb-3" />
-            <p className="text-body-lg text-on-surface-variant">
-              No audit logs found
-            </p>
-            {hasFilters && (
-              <p className="text-label text-on-surface-variant/60 mt-1">
-                Try adjusting your filters
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant w-8" />
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Timestamp
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Action
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    User
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Target
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    IP Address
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log, idx) => (
-                  <LogRow
-                    key={log.id}
-                    log={log}
-                    idx={idx}
-                    expanded={expandedId === log.id}
-                    onToggle={() =>
-                      setExpandedId(expandedId === log.id ? null : log.id)
-                    }
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          onPageChange={setPage}
+        <DataTable
+          label="Audit logs"
+          columns={columns}
+          rows={logs}
+          rowKey={(log) => log.id}
+          rowLabel={(log) => `${formatActionLabel(log.action)} details`}
+          loading={isLoading}
+          // Clicking a row opens its details underneath
+          onRowClick={(log) => setExpandedId(expandedId === log.id ? null : log.id)}
+          rowClassName={() => "cursor-pointer"}
+          renderExpandedRow={(log) => <LogDetail log={log} />}
+          isRowExpanded={(log) => expandedId === log.id}
+          pagination={{
+            page: page - 1,
+            pageSize: PAGE_SIZE,
+            total,
+            onPageChange: (p) => setPage(p + 1),
+          }}
+          empty={{
+            icon: <ShieldAlert className="h-10 w-10" />,
+            title: "No audit logs found",
+            ...(hasFilters && { description: "Try adjusting your filters" }),
+          }}
         />
       </Card>
     </div>
   );
 }
 
-// ─── Log Row Component ────────────────────────
-function LogRow({
-  log,
-  idx,
-  expanded,
-  onToggle,
-}: {
-  log: AuditLog;
-  idx: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const userName = log.user
-    ? `${log.user.firstName} ${log.user.lastName}`
-    : "System";
-
+// ─── User cell ────────────────────────────────
+function UserCell({ log }: { log: AuditLog }) {
+  const userName = log.user ? `${log.user.firstName} ${log.user.lastName}` : "System";
   return (
-    <>
-      <tr
-        className={`border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors cursor-pointer ${
-          idx % 2 === 0 ? "" : "bg-surface-container/5"
-        }`}
-        onClick={onToggle}
-      >
-        {/* Phones: the whole card toggles details, so the chevron cell is hidden */}
-        <td className="px-5 py-3 max-lg:hidden!">
-          <button aria-expanded={expanded} aria-label={expanded ? "Collapse row" : "Expand row"} className="text-on-surface-variant/50 hover:text-on-surface-variant">
-            {expanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-        </td>
-        <td className="px-5 py-3">
-          <span className="text-label text-on-surface-variant font-mono">
-            {formatTimestamp(log.createdAt)}
-          </span>
-        </td>
-        <td className="px-5 py-3">
-          <ActionBadge action={log.action} />
-        </td>
-        <td className="px-5 py-3">
-          <div className="flex items-center gap-2">
-            <Avatar name={userName} size="sm" />
-            <div className="min-w-0">
-              <p className="text-body font-medium text-on-surface truncate">
-                {userName}
-              </p>
-              {log.user?.email && (
-                <p className="text-caption text-on-surface-variant truncate">
-                  {log.user.email}
-                </p>
-              )}
-            </div>
-          </div>
-        </td>
-        <td className="px-5 py-3">
-          {log.targetType ? (
-            <div>
-              <span className="text-label text-on-surface-variant">
-                {log.targetType}
-              </span>
-              {log.targetId && (
-                <p className="text-caption text-on-surface-variant/60 font-mono truncate max-w-[160px]">
-                  {log.targetId}
-                </p>
-              )}
-            </div>
-          ) : (
-            <span className="text-label text-on-surface-variant/40">—</span>
-          )}
-        </td>
-        <td className="px-5 py-3">
-          <span className="text-label text-on-surface-variant font-mono">
-            {log.ipAddress ?? "—"}
-          </span>
-        </td>
-      </tr>
+    <div className="flex items-center gap-2">
+      <Avatar name={userName} size="sm" />
+      <div className="min-w-0">
+        <p className="text-body font-medium text-on-surface truncate">{userName}</p>
+        {log.user?.email && <p className="text-caption text-on-surface-variant truncate">{log.user.email}</p>}
+      </div>
+    </div>
+  );
+}
 
-      {/* Expanded detail row */}
-      {expanded && (
-        <tr className="bg-surface-container/10">
-          <td colSpan={6} className="px-5 py-4 max-lg:px-1 max-lg:py-2 max-lg:text-left!">
-            <div className="space-y-2">
-              <p className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
-                Details
-              </p>
-              {log.metadata ? (
-                <pre className="text-label text-on-surface-variant bg-surface-container-lowest rounded-lg p-3 overflow-x-auto max-h-[200px] font-mono">
-                  {JSON.stringify(log.metadata, null, 2)}
-                </pre>
-              ) : (
-                <p className="text-label text-on-surface-variant/50">
-                  No additional details
-                </p>
-              )}
-              {log.userAgent && (
-                <p className="text-caption text-on-surface-variant/50 truncate">
-                  UA: {log.userAgent}
-                </p>
-              )}
-            </div>
-          </td>
-        </tr>
+// ─── Expanded detail row ──────────────────────
+function LogDetail({ log }: { log: AuditLog }) {
+  return (
+    <div className="space-y-2 text-left">
+      <p className="text-caption font-semibold uppercase tracking-wider text-on-surface-variant">Details</p>
+      {log.metadata ? (
+        <pre className="text-label text-on-surface-variant bg-surface-container-lowest rounded-lg p-3 overflow-x-auto max-h-[200px] font-mono">
+          {JSON.stringify(log.metadata, null, 2)}
+        </pre>
+      ) : (
+        <p className="text-label text-on-surface-variant/50">No additional details</p>
       )}
-    </>
+      {log.userAgent && <p className="text-caption text-on-surface-variant/50 truncate">UA: {log.userAgent}</p>}
+    </div>
   );
 }
 

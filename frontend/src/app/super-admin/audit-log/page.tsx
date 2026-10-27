@@ -1,20 +1,18 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { useSAAuditLogs } from "@/hooks/use-super-admin";
 import type { PlatformAuditEntry } from "@/lib/api/super-admin";
 import { useDebounce } from "@/hooks/use-debounce";
-import { Spinner } from "@/components/ui/spinner";
 import { SearchInput } from "@/components/ui/search-input";
-import { IconButton } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
-import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
-import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { NEWEST_FIRST, nextSort, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
@@ -171,6 +169,45 @@ export default function SuperAdminAuditLogPage() {
 
   const resetPage = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1); };
 
+  const columns: DataTableColumn<PlatformAuditEntry>[] = [
+    {
+      id: "createdAt",
+      header: "When",
+      sortable: true,
+      cellClassName: "text-on-surface-variant whitespace-nowrap",
+      cell: (entry) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="shrink-0 text-on-surface-variant/50" aria-hidden>
+            {open === entry.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </span>
+          <time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time>
+        </span>
+      ),
+    },
+    {
+      id: "who",
+      header: "Who",
+      cellClassName: "text-on-surface",
+      cell: (entry) =>
+        entry.actorEmail ?? (entry.actorType === "SYSTEM" ? "System" : (entry.metadata?.email as string) ?? "Unknown"),
+    },
+    {
+      id: "action",
+      header: "Action",
+      skeleton: "badge",
+      cell: (entry) => (
+        <Badge variant={ATTENTION.has(entry.action) ? "error" : "muted"}>{actionLabel(entry.action)}</Badge>
+      ),
+    },
+    { id: "target", header: "Target", cellClassName: "text-on-surface-variant", cell: (entry) => targetLabel(entry) },
+    {
+      id: "ip",
+      header: "IP address",
+      cellClassName: "text-on-surface-variant font-mono text-body",
+      cell: (entry) => entry.ipAddress ?? "—",
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-5">
       <PageHeader
@@ -214,94 +251,27 @@ export default function SuperAdminAuditLogPage() {
       </FilterBar>
 
       <div className={TABLE_CARD}>
-        <table className="w-full text-body">
-          <caption className="sr-only">Audit log entries</caption>
-          <thead>
-            <tr className="border-b border-outline-variant text-left">
-              <th scope="col" className="w-10"><span className="sr-only">Details</span></th>
-              <SortableTh label="When" field="createdAt" sort={sort} onSort={changeSort} />
-              {["Who", "Action", "Target", "IP address"].map((h) => (
-                <th key={h} scope="col" className={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/60">
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="py-12 text-center" role="status">
-                  <Spinner className="mx-auto text-primary" />
-                  <span className="sr-only">Loading audit log…</span>
-                </td>
-              </tr>
-            ) : isError ? (
-              <tr>
-                <td colSpan={6} className="py-12 text-center text-error" role="alert">
-                  Could not load the audit log.{" "}
-                  <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-                    Try again
-                  </button>
-                </td>
-              </tr>
-            ) : !data?.items.length ? (
-              <tr><td colSpan={6} className="py-12 text-center text-on-surface-variant">
-                {debouncedSearch ? `No entries match “${debouncedSearch}”` : "No entries match these filters"}
-              </td></tr>
-            ) : data.items.map((entry) => {
-              const expanded = open === entry.id;
-              return (
-                <Fragment key={entry.id}>
-                  <tr className={cn(TR, ATTENTION.has(entry.action) && "bg-error/5")}>
-                    <td className="pl-2">
-                      <IconButton
-                        size="sm"
-                        aria-expanded={expanded}
-                        aria-controls={`audit-details-${entry.id}`}
-                        aria-label={`${expanded ? "Hide" : "Show"} details`}
-                        onClick={() => setOpen(expanded ? null : entry.id)}
-                      >
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} aria-hidden />
-                      </IconButton>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                      <time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface">
-                      {entry.actorEmail ?? (entry.actorType === "SYSTEM" ? "System" : (entry.metadata?.email as string) ?? "Unknown")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={ATTENTION.has(entry.action) ? "error" : "muted"}>
-                        {actionLabel(entry.action)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">{targetLabel(entry)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant font-mono text-body">{entry.ipAddress ?? "—"}</td>
-                  </tr>
-                  {expanded && (
-                    <tr id={`audit-details-${entry.id}`}>
-                      <td />
-                      <td colSpan={5} className="px-4 pb-4"><Details entry={entry} /></td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-            <span className="text-label text-on-surface-variant">{data.total} entries</span>
-            <div className="flex items-center gap-2">
-              <IconButton size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page">
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-              </IconButton>
-              <span className="text-label text-on-surface-variant">{page} / {data.totalPages}</span>
-              <IconButton size="sm" onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} aria-label="Next page">
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </IconButton>
-            </div>
-          </div>
-        )}
+        <DataTable
+          label="Audit log entries"
+          columns={columns}
+          rows={data?.items ?? []}
+          rowKey={(entry) => entry.id}
+          rowActionLabel={(entry) => `${open === entry.id ? "Hide" : "Show"} details for ${actionLabel(entry.action)}`}
+          rowClassName={(entry) => (ATTENTION.has(entry.action) ? "bg-error/5" : undefined)}
+          loading={isLoading}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            title: debouncedSearch ? `No entries match “${debouncedSearch}”` : "No entries match these filters",
+            compact: true,
+          }}
+          onRowClick={(entry) => setOpen(open === entry.id ? null : entry.id)}
+          renderExpandedRow={(entry) => <Details entry={entry} />}
+          isRowExpanded={(entry) => open === entry.id}
+          sort={{ id: sort.field, order: sort.order }}
+          onSortChange={(next) => changeSort(nextSort(sort, next.id, "desc"))}
+          pagination={data ? { page: page - 1, pageSize: 25, total: data.total, onPageChange: (p) => setPage(p + 1) } : undefined}
+        />
       </div>
     </div>
   );

@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Wifi, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Wifi, Search, RefreshCw } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAdminSessions, useAdminForceDisconnect, useAdminForceReconnect } from "@/hooks/use-whatsapp";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { PAGE_SIZE } from "@/lib/constants";
-import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
@@ -56,6 +54,117 @@ export default function AdminWhatsAppSessionsPage() {
         return name.includes(userSearch.toLowerCase());
       })
     : sessions;
+
+  const columns: DataTableColumn<(typeof sessions)[number]>[] = [
+    {
+      id: "user",
+      header: "User",
+      skeleton: "avatar",
+      cell: (s) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            name={
+              s.user
+                ? `${s.user.firstName} ${s.user.lastName}`
+                : "Unknown"
+            }
+            size="sm"
+          />
+          <div className="min-w-0">
+            <p className="text-body font-medium text-on-surface truncate">
+              {s.user
+                ? `${s.user.firstName} ${s.user.lastName}`
+                : "Unknown user"}
+            </p>
+            {s.user?.email && (
+              <p className="text-caption text-on-surface-variant truncate">
+                {s.user.email}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "phone",
+      header: "Phone",
+      cell: (s) => (
+        <span className="text-body text-on-surface">
+          {s.phoneNumber ?? "—"}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (s) => <SessionStatusBadge status={s.status} />,
+    },
+    {
+      id: "lastActive",
+      header: "Last active",
+      skeleton: "short",
+      cell: (s) => (
+        <span className="text-label text-on-surface-variant">
+          {s.lastActiveAt
+            ? formatRelativeTime(new Date(s.lastActiveAt))
+            : "Never"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (s) => (
+        <div className="flex items-center justify-end gap-2">
+          {s.status === "DISCONNECTED" && latestSessionIdPerUser.has(s.id) && s.hasCreds && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => forceReconnect.mutate(s.id)}
+              loading={forceReconnect.isPending}
+              title="Reconnect without re-scanning QR"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reconnect
+            </Button>
+          )}
+          {s.status === "DISCONNECTED" && latestSessionIdPerUser.has(s.id) && !s.hasCreds && (
+            <span className="text-caption text-on-surface-variant/50 italic">
+              Needs QR re-scan
+            </span>
+          )}
+          {s.status === "DISCONNECTED" && !latestSessionIdPerUser.has(s.id) && (
+            <span className="text-caption text-on-surface-variant/30 italic">
+              Old session
+            </span>
+          )}
+          {(s.status === "CONNECTED" || s.status === "RECONNECTING") && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() =>
+                forceDisconnect.mutate({
+                  userId: s.userId,
+                  reason: "Admin force disconnect",
+                })
+              }
+              loading={forceDisconnect.isPending}
+            >
+              Disconnect
+            </Button>
+          )}
+          {s.status === "CONNECTING" && (
+            <span className="text-label text-on-surface-variant/50">
+              Waiting for QR...
+            </span>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="flex-1 p-6 space-y-6">
@@ -104,158 +213,28 @@ export default function AdminWhatsAppSessionsPage() {
 
       <Card className="!p-0 overflow-hidden">
 
-        {/* Table */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" className="text-primary" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Wifi className="h-10 w-10 text-on-surface-variant/40 mb-3" />
-            <p className="text-body-lg text-on-surface-variant">
-              No sessions found
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-outline-variant">
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    User
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Phone
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Status
-                  </th>
-                  <th className="px-5 py-3 text-left text-label font-medium text-on-surface-variant">
-                    Last active
-                  </th>
-                  <th className="px-5 py-3 text-right text-label font-medium text-on-surface-variant">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => (
-                  <tr
-                    key={s.id}
-                    className="border-b border-outline-variant/60 last:border-0 hover:bg-surface-container-low transition-colors"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={
-                            s.user
-                              ? `${s.user.firstName} ${s.user.lastName}`
-                              : "Unknown"
-                          }
-                          size="sm"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-body font-medium text-on-surface truncate">
-                            {s.user
-                              ? `${s.user.firstName} ${s.user.lastName}`
-                              : "Unknown user"}
-                          </p>
-                          {s.user?.email && (
-                            <p className="text-caption text-on-surface-variant truncate">
-                              {s.user.email}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="text-body text-on-surface">
-                        {s.phoneNumber ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <SessionStatusBadge status={s.status} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="text-label text-on-surface-variant">
-                        {s.lastActiveAt
-                          ? formatRelativeTime(new Date(s.lastActiveAt))
-                          : "Never"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {s.status === "DISCONNECTED" && latestSessionIdPerUser.has(s.id) && s.hasCreds && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => forceReconnect.mutate(s.id)}
-                            loading={forceReconnect.isPending}
-                            title="Reconnect without re-scanning QR"
-                          >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                            Reconnect
-                          </Button>
-                        )}
-                        {s.status === "DISCONNECTED" && latestSessionIdPerUser.has(s.id) && !s.hasCreds && (
-                          <span className="text-caption text-on-surface-variant/50 italic">
-                            Needs QR re-scan
-                          </span>
-                        )}
-                        {s.status === "DISCONNECTED" && !latestSessionIdPerUser.has(s.id) && (
-                          <span className="text-caption text-on-surface-variant/30 italic">
-                            Old session
-                          </span>
-                        )}
-                        {(s.status === "CONNECTED" || s.status === "RECONNECTING") && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              forceDisconnect.mutate({
-                                userId: s.userId,
-                                reason: "Admin force disconnect",
-                              })
-                            }
-                            loading={forceDisconnect.isPending}
-                          >
-                            Disconnect
-                          </Button>
-                        )}
-                        {s.status === "CONNECTING" && (
-                          <span className="text-label text-on-surface-variant/50">
-                            Waiting for QR...
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant">
-            <span className="text-label text-on-surface-variant">
-              Page {page} of {totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <IconButton size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1} aria-label="Previous page" className="max-lg:size-11">
-                <ChevronLeft className="h-4 w-4" />
-              </IconButton>
-              <IconButton size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages} aria-label="Next page" className="max-lg:size-11">
-                <ChevronRight className="h-4 w-4" />
-              </IconButton>
-            </div>
-          </div>
-        )}
+        <DataTable
+          label="WhatsApp sessions"
+          columns={columns}
+          rows={filtered}
+          rowKey={(s) => s.id}
+          rowLabel={(s) => (s.user ? `${s.user.firstName} ${s.user.lastName}` : "Unknown user")}
+          loading={isLoading}
+          skeletonRows={6}
+          pagination={{
+            page: page - 1,
+            pageSize: PAGE_SIZE,
+            total,
+            onPageChange: (p) => setPage(p + 1),
+          }}
+          // The user search only filters the current page, so keep the pager reachable
+          // when this page has no matches but others might.
+          empty={
+            totalPages > 1
+              ? undefined
+              : { icon: <Wifi className="h-12 w-12" />, title: "No sessions found", description: "" }
+          }
+        />
       </Card>
     </div>
   );

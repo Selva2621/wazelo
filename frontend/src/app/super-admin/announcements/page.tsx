@@ -18,7 +18,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
-import { CARD, TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { CARD, TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
 
 type Target = "ALL" | "PLAN" | "ORG";
 type Severity = "INFO" | "WARNING" | "CRITICAL";
@@ -307,6 +308,87 @@ export default function SuperAdminAnnouncementsPage() {
     });
   };
 
+  const columns: DataTableColumn<NonNullable<typeof announcements>[number]>[] = [
+    {
+      id: "announcement",
+      header: "Announcement",
+      className: "max-w-sm",
+      cell: (a) => (
+        <>
+          <p className="text-on-surface font-medium">{a.title}</p>
+          <p className="text-label text-on-surface-variant line-clamp-2">{a.body}</p>
+          <p className="text-label text-on-surface-variant mt-0.5">{sentenceCase(a.severity)}{a.dismissible ? "" : " · not dismissible"}</p>
+        </>
+      ),
+    },
+    {
+      id: "state",
+      header: "State",
+      skeleton: "badge",
+      cell: (a) => {
+        const state = stateOf(a);
+        return <Badge variant={state.variant}>{state.label}</Badge>;
+      },
+    },
+    {
+      id: "audience",
+      header: "Audience",
+      cellClassName: "text-on-surface-variant",
+      cell: (a) => (a.targetType === "ALL" ? "Everyone" : a.targetType === "PLAN" ? `Plan: ${a.targetPlanSlug}` : orgName(a)),
+    },
+    {
+      id: "window",
+      header: "Window",
+      cellClassName: "text-on-surface-variant whitespace-nowrap",
+      cell: (a) => (
+        <>
+          {new Date(a.startsAt).toLocaleString()}
+          <span className="block text-label">{a.endsAt ? `until ${new Date(a.endsAt).toLocaleString()}` : "no end"}</span>
+        </>
+      ),
+    },
+    {
+      id: "dismissals",
+      header: "Dismissed by",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant tabular-nums",
+      cell: (a) => `${a.dismissals} users`,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cellClassName: "whitespace-nowrap",
+      cell: (a) => (
+        <>
+          {!a.archivedAt && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => startEdit(a)}
+              disabled={editing?.id === a.id}
+              aria-label={`Edit ${a.title}`}
+            >
+              Edit
+            </Button>
+          )}
+          {a.archivedAt ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => doRestore(a)} disabled={restore.isPending}>
+              Restore
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setArchiveTarget(a)} disabled={archive.isPending}>
+              Archive
+            </Button>
+          )}
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-5xl">
       <PageHeader title="Announcements" count={announcements?.length} description="Banners at the top of tenants' app" />
@@ -396,79 +478,23 @@ export default function SuperAdminAnnouncementsPage() {
       {/* List */}
       <section className={TABLE_CARD} aria-labelledby={fid("list")}>
         <h2 id={fid("list")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">All announcements</h2>
-        {isLoading ? (
-          <div className="flex justify-center py-10" role="status"><Spinner className="text-primary" /><span className="sr-only">Loading…</span></div>
-        ) : isError ? (
-          <p className="px-4 pb-4 pt-1 text-body-lg text-error" role="alert">
-            Could not load announcements.{" "}
-            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-              Try again
-            </button>
-          </p>
-        ) : !announcements?.length ? (
-          <p className="px-4 pb-4 pt-1 text-body-lg text-on-surface-variant">No announcements yet.</p>
-        ) : (
-          <table className="w-full mt-2 text-body">
-            <caption className="sr-only">Announcements, newest first</caption>
-            <thead>
-              <tr className="border-b border-outline-variant text-left">
-                {["Announcement", "State", "Audience", "Window", "Dismissed by", ""].map((h, i) => (
-                  <th key={i} scope="col" className={TH}>
-                    {h || <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/60">
-              {announcements.map((a: any) => {
-                const state = stateOf(a);
-                return (
-                  <tr key={a.id} className={TR}>
-                    <td className="px-4 py-3 max-w-sm">
-                      <p className="text-on-surface font-medium">{a.title}</p>
-                      <p className="text-label text-on-surface-variant line-clamp-2">{a.body}</p>
-                      <p className="text-label text-on-surface-variant mt-0.5">{sentenceCase(a.severity)}{a.dismissible ? "" : " · not dismissible"}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={state.variant}>{state.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">
-                      {a.targetType === "ALL" ? "Everyone" : a.targetType === "PLAN" ? `Plan: ${a.targetPlanSlug}` : orgName(a)}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                      {new Date(a.startsAt).toLocaleString()}
-                      <span className="block text-label">{a.endsAt ? `until ${new Date(a.endsAt).toLocaleString()}` : "no end"}</span>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant tabular-nums">{a.dismissals} users</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {!a.archivedAt && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEdit(a)}
-                          disabled={editing?.id === a.id}
-                          aria-label={`Edit ${a.title}`}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                      {a.archivedAt ? (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => doRestore(a)} disabled={restore.isPending}>
-                          Restore
-                        </Button>
-                      ) : (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setArchiveTarget(a)} disabled={archive.isPending}>
-                          Archive
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          label="Announcements"
+          columns={columns}
+          rows={announcements ?? []}
+          rowKey={(a) => a.id}
+          rowLabel={(a) => a.title}
+          loading={isLoading}
+          skeletonRows={4}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <Megaphone className="h-12 w-12" />,
+            title: "No announcements yet",
+            compact: true,
+          }}
+          wrapperClassName="mt-2"
+        />
       </section>
 
       <ConfirmDialog

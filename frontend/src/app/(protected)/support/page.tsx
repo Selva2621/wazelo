@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LifeBuoy, Plus, X, Loader2, ChevronRight, ArrowLeft, Send,
-  ImageIcon, ChevronLeft, MessageSquare, Tag, AlertCircle, Clock,
+  ImageIcon, MessageSquare, Tag, AlertCircle, Clock,
   Paperclip, CheckCircle2, Circle, RefreshCw,
 } from "lucide-react";
 import apiClient from "@/lib/api/client";
@@ -16,6 +16,7 @@ import { Modal } from "@/components/ui/modal";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar } from "@/hooks/use-mobile-chrome";
 import { PageHeader } from "@/components/layout/page-header";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -120,59 +121,6 @@ function AuthImage({ url, className }: { url: string; className?: string }) {
     <a href={url} target="_blank" rel="noreferrer">
       <img src={url} alt="attachment" className={className} onError={() => setFailed(true)} />
     </a>
-  );
-}
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-function Pagination({ page, totalPages, total, onPage }: { page: number; totalPages: number; total: number; onPage: (p: number) => void }) {
-  if (totalPages <= 1) return null;
-
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (page > 3) pages.push("...");
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-    if (page < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-      <p className="text-label text-on-surface-variant">{total} ticket{total !== 1 ? "s" : ""}</p>
-      <div className="flex items-center gap-1">
-        <IconButton size="sm"
-          onClick={() => onPage(page - 1)}
-          disabled={page === 1} aria-label="Previous page">
-          <ChevronLeft className="h-4 w-4" />
-        </IconButton>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-on-surface-variant text-label">…</span>
-          ) : (
-            <button
-              key={p}
-              onClick={() => onPage(p as number)}
-              aria-current={p === page ? "page" : undefined}
-              className={`min-w-[28px] h-7 rounded-lg text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
-                p === page
-                  ? "bg-primary text-on-primary"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-              }`}
-            >
-              {p}
-            </button>
-          )
-        )}
-        <IconButton size="sm"
-          onClick={() => onPage(page + 1)}
-          disabled={page === totalPages} aria-label="Next page">
-          <ChevronRight className="h-4 w-4" />
-        </IconButton>
-      </div>
-    </div>
   );
 }
 
@@ -540,84 +488,97 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
 
 // ─── Ticket List (DataTable) ──────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tickets come from an untyped local API
+type Ticket = any;
+
+const ticketColumns: DataTableColumn<Ticket>[] = [
+  {
+    id: "ticket",
+    header: "Ticket",
+    className: "max-w-[220px]",
+    cell: (t) => (
+      <div className="flex items-start gap-2">
+        {t.attachmentUrl && <Paperclip className="h-3.5 w-3.5 text-on-surface-variant flex-shrink-0 mt-0.5" />}
+        <div className="min-w-0">
+          <p className="font-medium text-on-surface truncate group-hover:text-primary transition-colors">{t.title}</p>
+          <p className="text-label text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "category",
+    header: "Category",
+    cellClassName: "text-on-surface-variant",
+    cell: (t) => t.category?.replace("_", " "),
+  },
+  {
+    id: "priority",
+    header: "Priority",
+    skeleton: "short",
+    cell: (t) => <PriorityDot priority={t.priority} />,
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (t) => <StatusBadge status={t.status} />,
+  },
+  {
+    id: "replies",
+    header: "Replies",
+    skeleton: "short",
+    cellClassName: "text-on-surface-variant",
+    cell: (t) => (
+      <span className="flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5" />
+        {t._count?.replies ?? 0}
+      </span>
+    ),
+  },
+  {
+    id: "date",
+    header: "Date",
+    skeleton: "short",
+    cellClassName: "text-on-surface-variant whitespace-nowrap",
+    cell: (t) => new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+  },
+  {
+    id: "open",
+    header: "Open",
+    hideHeader: true,
+    className: "w-8",
+    skeleton: "none",
+    cell: () => <ChevronRight className="h-4 w-4 text-on-surface-variant group-hover:text-primary transition-colors" />,
+  },
+];
+
 function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useTickets(page);
 
-  const tickets: any[] = data?.tickets ?? [];
-  const totalPages: number = data?.totalPages ?? 1;
+  const tickets: Ticket[] = data?.tickets ?? [];
   const total: number = data?.total ?? 0;
 
   return (
     <div className="border border-outline-variant rounded-2xl overflow-hidden bg-surface-container-lowest">
-      <table className="w-full text-body-lg">
-        <thead>
-          <tr className="border-b border-outline-variant text-label text-on-surface-variant font-medium">
-            <th className="text-left px-5 py-3">Ticket</th>
-            <th className="text-left px-4 py-3 hidden sm:table-cell">Category</th>
-            <th className="text-left px-4 py-3 hidden md:table-cell">Priority</th>
-            <th className="text-left px-4 py-3">Status</th>
-            <th className="text-left px-4 py-3 hidden lg:table-cell">Replies</th>
-            <th className="text-left px-4 py-3 hidden lg:table-cell">Date</th>
-            <th className="px-4 py-3 w-8" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-outline-variant/50">
-          {isLoading ? (
-            <tr>
-              <td colSpan={7} className="py-16 text-center">
-                <Spinner className="mx-auto text-primary" />
-              </td>
-            </tr>
-          ) : tickets.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="py-16 text-center">
-                <LifeBuoy className="h-10 w-10 mx-auto mb-3 text-on-surface-variant opacity-20" />
-                <p className="font-medium text-on-surface">No tickets yet</p>
-                <p className="text-label text-on-surface-variant mt-1">Create a ticket and we'll get back to you.</p>
-              </td>
-            </tr>
-          ) : tickets.map((t) => (
-            <tr
-              key={t.id}
-              onClick={() => onSelect(t.id)}
-              className="hover:bg-surface-container-low cursor-pointer transition-colors group"
-            >
-              <td className="px-5 py-3.5 max-w-[220px]">
-                <div className="flex items-start gap-2">
-                  {t.attachmentUrl && <Paperclip className="h-3.5 w-3.5 text-on-surface-variant flex-shrink-0 mt-0.5" />}
-                  <div className="min-w-0">
-                    <p className="font-medium text-on-surface truncate group-hover:text-primary transition-colors">{t.title}</p>
-                    <p className="text-label text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant hidden sm:table-cell">
-                {t.category?.replace("_", " ")}
-              </td>
-              <td className="px-4 py-3.5 hidden md:table-cell">
-                <PriorityDot priority={t.priority} />
-              </td>
-              <td className="px-4 py-3.5">
-                <StatusBadge status={t.status} />
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant hidden lg:table-cell">
-                <span className="flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {t._count?.replies ?? 0}
-                </span>
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant whitespace-nowrap hidden lg:table-cell">
-                {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-              </td>
-              <td className="px-4 py-3.5">
-                <ChevronRight className="h-4 w-4 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Pagination page={page} totalPages={totalPages} total={total} onPage={setPage} />
+      <DataTable
+        label="Support tickets"
+        columns={ticketColumns}
+        rows={tickets}
+        rowKey={(t) => t.id}
+        rowLabel={(t) => t.title}
+        loading={isLoading}
+        skeletonRows={6}
+        onRowClick={(t) => onSelect(t.id)}
+        rowClassName={() => "group"}
+        pagination={{ page: page - 1, pageSize: PAGE_SIZE, total, onPageChange: (p) => setPage(p + 1) }}
+        empty={{
+          icon: <LifeBuoy className="h-12 w-12" />,
+          title: "No tickets yet",
+          description: "Create a ticket and we'll get back to you.",
+        }}
+      />
     </div>
   );
 }

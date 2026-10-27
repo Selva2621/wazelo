@@ -1,8 +1,8 @@
 "use client";
 
+import { Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type {
   CampaignRecipient,
   CampaignRecipientStatus,
@@ -19,6 +19,47 @@ const RECIPIENT_STATUS_CONFIG: Record<
   FAILED: { label: "Failed", variant: "error" },
   SKIPPED: { label: "Skipped", variant: "muted" },
 };
+
+function processedTime(r: CampaignRecipient): string {
+  return r.processedAt ? new Date(r.processedAt).toLocaleTimeString() : "—";
+}
+
+const columns: DataTableColumn<CampaignRecipient>[] = [
+  {
+    id: "contact",
+    header: "Contact",
+    cell: (r) => (
+      <span className="block truncate text-body text-on-surface">
+        {r.contact?.name || "Unknown"}
+      </span>
+    ),
+  },
+  {
+    id: "phone",
+    header: "Phone",
+    className: "w-[120px]",
+    cellClassName: "text-label text-on-surface-variant/60 tabular-nums",
+    cell: (r) => r.contactPhone,
+  },
+  {
+    id: "status",
+    header: "Status",
+    className: "w-[90px]",
+    skeleton: "badge",
+    cell: (r) => {
+      const cfg = RECIPIENT_STATUS_CONFIG[r.status];
+      return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+    },
+  },
+  {
+    id: "processed",
+    header: "Processed",
+    className: "w-[100px]",
+    skeleton: "short",
+    cellClassName: "text-caption text-on-surface-variant/60",
+    cell: processedTime,
+  },
+];
 
 interface RecipientsTableProps {
   recipients: CampaignRecipient[];
@@ -37,85 +78,39 @@ export function CampaignRecipientsTable({
   isLoading,
   onPageChange,
 }: RecipientsTableProps) {
-  const currentPage = Math.floor(skip / take);
-  const totalPages = Math.ceil(total / take);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (recipients.length === 0) {
-    return (
-      <p className="text-center text-body text-on-surface-variant/60 py-8">
-        No recipients yet.
-      </p>
-    );
-  }
-
   return (
-    <div>
-      {/* Header */}
-      <div className="max-lg:hidden grid grid-cols-[1fr_120px_90px_100px] gap-2 px-4 py-2 text-label font-medium text-on-surface-variant border-b border-outline-variant">
-        <span>Contact</span>
-        <span>Phone</span>
-        <span>Status</span>
-        <span>Processed</span>
-      </div>
-
-      {/* Rows */}
-      {recipients.map((r) => {
+    <DataTable
+      label="Recipients"
+      columns={columns}
+      rows={recipients}
+      rowKey={(r) => r.id}
+      rowLabel={(r) => r.contact?.name || r.contactPhone}
+      loading={isLoading}
+      skeletonRows={6}
+      pagination={{ page: Math.floor(skip / take), pageSize: take, total, onPageChange }}
+      empty={{
+        icon: <Users className="h-10 w-10" />,
+        title: "No recipients yet",
+        compact: true,
+      }}
+      // Phones: name + status on top, phone + processed time below
+      renderMobileRow={(r) => {
         const cfg = RECIPIENT_STATUS_CONFIG[r.status];
         return (
-          <div
-            key={r.id}
-            className="grid grid-cols-[1fr_120px_90px_100px] gap-2 items-center px-4 py-2.5 border-b border-outline-variant/10 max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-y-0.5 max-lg:px-0"
-          >
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 px-4 py-2.5">
             <span className="text-body text-on-surface truncate">
               {r.contact?.name || "Unknown"}
             </span>
-            <span className="text-label text-on-surface-variant/60 tabular-nums max-lg:order-2">
+            <Badge variant={cfg.variant} className="justify-self-end">{cfg.label}</Badge>
+            <span className="text-label text-on-surface-variant/60 tabular-nums">
               {r.contactPhone}
             </span>
-            <Badge variant={cfg.variant} className="max-lg:order-1 max-lg:justify-self-end">{cfg.label}</Badge>
-            <span className="text-caption text-on-surface-variant/60 max-lg:order-3 max-lg:text-right">
-              {r.processedAt
-                ? new Date(r.processedAt).toLocaleTimeString()
-                : "—"}
+            <span className="text-caption text-on-surface-variant/60 text-right">
+              {processedTime(r)}
             </span>
           </div>
         );
-      })}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 max-lg:px-0">
-          <p className="text-label text-on-surface-variant/60">
-            {skip + 1}–{Math.min(skip + take, total)} of {total}
-          </p>
-          <div className="flex gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+      }}
+    />
   );
 }

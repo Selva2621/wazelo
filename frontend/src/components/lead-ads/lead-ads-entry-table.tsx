@@ -1,20 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { RefreshCw, Target, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { LeadAdSourceBadge } from "./lead-ads-source-badge";
 import { LEAD_AD_STATUS_LABELS } from "@/lib/types/lead-ads";
 import type { LeadAdEntry, LeadAdStatus } from "@/lib/types/lead-ads";
@@ -58,109 +50,133 @@ export function LeadAdsEntryTable({
   onRetry,
   isRetrying,
 }: LeadAdsEntryTableProps) {
-  if (entries.length === 0) {
-    return (
-      <EmptyState
-        icon={<Target className="h-12 w-12" />}
-        title="No leads found"
-        description="Leads from your social ad campaigns will appear here in real-time. Try adjusting your filters."
-      />
-    );
-  }
+  const columns = useMemo<DataTableColumn<LeadAdEntry>[]>(
+    () => [
+      {
+        id: "source",
+        header: "Source",
+        skeleton: "badge",
+        cell: (entry) => <LeadAdSourceBadge platform={entry.platform} />,
+      },
+      {
+        id: "contact",
+        header: "Contact",
+        cell: (entry) => {
+          const contact = extractContactInfo(entry);
+          return (
+            <>
+              <p className="text-body font-medium text-on-surface">
+                {contact.name}
+              </p>
+              <p className="text-caption text-on-surface-variant/60">
+                {contact.phone !== "—" ? contact.phone : contact.email}
+              </p>
+            </>
+          );
+        },
+      },
+      {
+        id: "campaign",
+        header: "Campaign / Ad",
+        cell: (entry) => (
+          <>
+            <p className="text-body text-on-surface truncate max-w-[200px]">
+              {entry.campaignName || "—"}
+            </p>
+            {entry.adName && (
+              <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
+                {entry.adName}
+              </p>
+            )}
+          </>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        skeleton: "badge",
+        cell: (entry) => (
+          <>
+            <Badge variant={statusVariant[entry.status]}>
+              {LEAD_AD_STATUS_LABELS[entry.status]}
+            </Badge>
+            {entry.errorMessage && (
+              <Tooltip content={entry.errorMessage} side="bottom">
+                <p className="text-caption text-error mt-1 truncate max-w-[160px] cursor-help">
+                  {entry.errorMessage}
+                </p>
+              </Tooltip>
+            )}
+          </>
+        ),
+      },
+      {
+        id: "received",
+        header: "Received",
+        skeleton: "short",
+        cellClassName: "text-label text-on-surface-variant",
+        cell: (entry) => formatTimeAgo(entry.createdAt),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        align: "right",
+        skeleton: "none",
+        cell: (entry) => (
+          <div className="flex items-center justify-end gap-1">
+            {entry.contactId && (
+              <Tooltip content="View contact" side="left">
+                <Link href={`/contacts?id=${entry.contactId}`}>
+                  <Button variant="ghost" size="sm">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </Tooltip>
+            )}
+            {entry.status === "FAILED" && onRetry && (
+              <Tooltip content={`Retry (${entry.retryCount}/3 attempts)`} side="left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRetry(entry.id)}
+                  disabled={isRetrying}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isRetrying ? "animate-spin" : ""}`} />
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [onRetry, isRetrying],
+  );
 
   return (
     <div>
-      <div className="px-5 py-3 border-b border-outline-variant/10">
-        <h3 className="text-body font-medium text-on-surface-variant">
-          Lead Entries
-          <span className="ml-2 text-caption text-on-surface-variant/50">
-            {entries.length} result{entries.length !== 1 ? "s" : ""}
-          </span>
-        </h3>
-      </div>
+      {entries.length > 0 && (
+        <div className="px-5 py-3 border-b border-outline-variant/10">
+          <h3 className="text-body font-medium text-on-surface-variant">
+            Lead Entries
+            <span className="ml-2 text-caption text-on-surface-variant/50">
+              {entries.length} result{entries.length !== 1 ? "s" : ""}
+            </span>
+          </h3>
+        </div>
+      )}
 
-      <Table>
-        <TableHeader>
-          <TableHeaderRow>
-            <TableHead>Source</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Campaign / Ad</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Received</TableHead>
-            <TableHead align="right">Actions</TableHead>
-          </TableHeaderRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map((entry) => {
-            const contact = extractContactInfo(entry);
-            return (
-              <TableRow key={entry.id}>
-                <TableCell>
-                  <LeadAdSourceBadge platform={entry.platform} />
-                </TableCell>
-                <TableCell>
-                  <p className="text-body font-medium text-on-surface">
-                    {contact.name}
-                  </p>
-                  <p className="text-caption text-on-surface-variant/60">
-                    {contact.phone !== "—" ? contact.phone : contact.email}
-                  </p>
-                </TableCell>
-                <TableCell>
-                  <p className="text-body text-on-surface truncate max-w-[200px]">
-                    {entry.campaignName || "—"}
-                  </p>
-                  {entry.adName && (
-                    <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
-                      {entry.adName}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant[entry.status]}>
-                    {LEAD_AD_STATUS_LABELS[entry.status]}
-                  </Badge>
-                  {entry.errorMessage && (
-                    <Tooltip content={entry.errorMessage} side="bottom">
-                      <p className="text-caption text-error mt-1 truncate max-w-[160px] cursor-help">
-                        {entry.errorMessage}
-                      </p>
-                    </Tooltip>
-                  )}
-                </TableCell>
-                <TableCell className="text-label text-on-surface-variant">
-                  {formatTimeAgo(entry.createdAt)}
-                </TableCell>
-                <TableCell align="right">
-                  <div className="flex items-center justify-end gap-1">
-                    {entry.contactId && (
-                      <Tooltip content="View contact" side="left">
-                        <Link href={`/contacts?id=${entry.contactId}`}>
-                          <Button variant="ghost" size="sm">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
-                        </Link>
-                      </Tooltip>
-                    )}
-                    {entry.status === "FAILED" && onRetry && (
-                      <Tooltip content={`Retry (${entry.retryCount}/3 attempts)`} side="left">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRetry(entry.id)}
-                          disabled={isRetrying}
-                        >
-                          <RefreshCw className={`h-3.5 w-3.5 ${isRetrying ? "animate-spin" : ""}`} />
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <DataTable
+        label="Lead entries"
+        columns={columns}
+        rows={entries}
+        rowKey={(entry) => entry.id}
+        rowLabel={(entry) => extractContactInfo(entry).name}
+        empty={{
+          icon: <Target className="h-12 w-12" />,
+          title: "No leads found",
+          description: "Leads from your social ad campaigns will appear here in real-time. Try adjusting your filters.",
+        }}
+      />
     </div>
   );
 }

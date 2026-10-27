@@ -11,11 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CURRENCIES } from "@/components/super-admin/org-credits-panel";
-import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { cn, formatMoney, parseMoneyInput } from "@/lib/utils";
 
@@ -330,6 +329,51 @@ export default function SuperAdminCouponsPage() {
       onSettled: () => setDeactivating(null),
     });
 
+  const columns: DataTableColumn<Coupon>[] = [
+    { id: "code", header: "Code", cellClassName: "font-mono text-body text-on-surface", cell: (c) => c.code },
+    { id: "discount", header: "Discount", skeleton: "short", cellClassName: "text-on-surface tabular-nums", cell: (c) => discountLabel(c) },
+    {
+      id: "plans",
+      header: "Plans",
+      cellClassName: "text-on-surface-variant max-w-xs truncate",
+      cell: (c) => (
+        <span title={c.plans.map((p) => p.name).join(", ")}>
+          {c.plans.length ? c.plans.map((p) => p.name).join(", ") : "All plans"}
+        </span>
+      ),
+    },
+    {
+      id: "redemptions",
+      header: "Redemptions",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant tabular-nums",
+      cell: (c) => <>{c.redemptionCount} / {c.maxRedemptions ?? "∞"}</>,
+    },
+    { id: "valid", header: "Valid", cellClassName: "text-on-surface-variant whitespace-nowrap", cell: (c) => validityLabel(c) },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (c) => {
+        const state = couponState(c);
+        return <Badge variant={STATE_VARIANT[state]}>{state}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (c) =>
+        c.active && (
+          <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeactivating(c)}>
+            Deactivate
+          </Button>
+        ),
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-5">
       <PageHeader
@@ -344,64 +388,24 @@ export default function SuperAdminCouponsPage() {
       />
 
       <div className={TABLE_CARD}>
-        {isLoading ? (
-          <div className="py-12 flex justify-center" role="status">
-            <Spinner className="text-primary" />
-            <span className="sr-only">Loading…</span>
-          </div>
-        ) : isError ? (
-          <p className="py-12 text-center text-error" role="alert">
-            Could not load coupons.{" "}
-            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">Try again</button>
-          </p>
-        ) : !rows.length ? (
-          <EmptyState
-            icon={<TicketPercent className="h-10 w-10" aria-hidden />}
-            title="No coupons yet"
-            description="Create a code to discount a first payment."
-            actionLabel="New coupon"
-            onAction={() => setCreating(true)}
-          />
-        ) : (
-          <table className="w-full text-body">
-            <caption className="sr-only">Coupons</caption>
-            <thead>
-              <tr className="border-b border-outline-variant text-left">
-                {["Code", "Discount", "Plans", "Redemptions", "Valid", "Status", "Actions"].map((h) => (
-                  <th key={h} scope="col" className={TH}>
-                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/60">
-              {rows.map((c) => {
-                const state = couponState(c);
-                return (
-                  <tr key={c.id} className={TR}>
-                    <td className="px-4 py-3 font-mono text-body text-on-surface">{c.code}</td>
-                    <td className="px-4 py-3 text-on-surface tabular-nums">{discountLabel(c)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate" title={c.plans.map((p) => p.name).join(", ")}>
-                      {c.plans.length ? c.plans.map((p) => p.name).join(", ") : "All plans"}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant tabular-nums">
-                      {c.redemptionCount} / {c.maxRedemptions ?? "∞"}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{validityLabel(c)}</td>
-                    <td className="px-4 py-3"><Badge variant={STATE_VARIANT[state]}>{state}</Badge></td>
-                    <td className="px-4 py-3 text-right">
-                      {c.active && (
-                        <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeactivating(c)}>
-                          Deactivate
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          label="Coupons"
+          columns={columns}
+          rows={rows}
+          rowKey={(c) => c.id}
+          rowLabel={(c) => c.code}
+          loading={isLoading}
+          skeletonRows={5}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <TicketPercent className="h-10 w-10" aria-hidden />,
+            title: "No coupons yet",
+            description: "Create a code to discount a first payment.",
+            actionLabel: "New coupon",
+            onAction: () => setCreating(true),
+          }}
+        />
       </div>
 
       <Modal

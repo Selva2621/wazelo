@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/layout/page-header";
-import { CARD, TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { CARD, TABLE_CARD } from "@/components/super-admin/list-styles";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -160,6 +159,49 @@ export default function SuperAdminFreelancerTypesPage() {
       },
     );
 
+  const columns: DataTableColumn<FreelancerTypeEntry>[] = [
+    {
+      id: "type",
+      header: "Type",
+      cell: (t) => (
+        <>
+          <div className="text-on-surface font-medium">{t.label}</div>
+          <div className="text-body text-on-surface-variant">{t.description}</div>
+        </>
+      ),
+    },
+    {
+      id: "keywords",
+      header: "Search words",
+      cellClassName: "text-body text-on-surface-variant max-w-xs truncate",
+      cell: (t) => <span title={t.keywords.join(", ")}>{t.keywords.join(", ") || "—"}</span>,
+    },
+    { id: "orgs", header: "Orgs", skeleton: "short", cellClassName: "tabular-nums text-on-surface", cell: (t) => t.usageCount },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (t) => <Badge variant={t.isActive ? "success" : "muted"}>{t.isActive ? "Shown" : "Hidden"}</Badge>,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cellClassName: "whitespace-nowrap",
+      cell: (t) => (
+        <>
+          <Button size="sm" variant="ghost" onClick={() => openForm(t)}>Edit</Button>
+          <Button size="sm" variant="ghost" onClick={() => toggle(t)} disabled={update.isPending}>
+            {t.isActive ? "Hide" : "Show"}
+          </Button>
+          <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeleting(t)}>Delete</Button>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-5">
       <PageHeader
@@ -174,62 +216,24 @@ export default function SuperAdminFreelancerTypesPage() {
 
       <section className={TABLE_CARD}>
         <h2 className="px-4 pt-4 text-body-lg font-semibold text-on-surface">Added by you</h2>
-        {isLoading ? (
-          <div className="py-12 flex justify-center" role="status">
-            <Spinner className="text-primary" />
-            <span className="sr-only">Loading…</span>
-          </div>
-        ) : isError ? (
-          <p className="py-12 text-center text-error" role="alert">
-            Could not load freelancer types.{" "}
-            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">Try again</button>
-          </p>
-        ) : !custom.length ? (
-          <EmptyState
-            icon={<Briefcase className="h-10 w-10" aria-hidden />}
-            title="No extra types yet"
-            description="The built-in types below cover most freelancers. Add one when people keep typing the same service."
-            actionLabel="Add type"
-            onAction={() => openForm(null)}
-          />
-        ) : (
-          <table className="w-full text-body">
-            <caption className="sr-only">Freelancer types added by super admins</caption>
-            <thead>
-              <tr className="border-b border-outline-variant text-left">
-                {["Type", "Search words", "Orgs", "Status", "Actions"].map((h) => (
-                  <th key={h} scope="col" className={TH}>
-                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/60">
-              {custom.map((t) => (
-                <tr key={t.id} className={TR}>
-                  <td className="px-4 py-3">
-                    <div className="text-on-surface font-medium">{t.label}</div>
-                    <div className="text-body text-on-surface-variant">{t.description}</div>
-                  </td>
-                  <td className="px-4 py-3 text-body text-on-surface-variant max-w-xs truncate" title={t.keywords.join(", ")}>
-                    {t.keywords.join(", ") || "—"}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-on-surface">{t.usageCount}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={t.isActive ? "success" : "muted"}>{t.isActive ? "Shown" : "Hidden"}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Button size="sm" variant="ghost" onClick={() => openForm(t)}>Edit</Button>
-                    <Button size="sm" variant="ghost" onClick={() => toggle(t)} disabled={update.isPending}>
-                      {t.isActive ? "Hide" : "Show"}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeleting(t)}>Delete</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          label="Freelancer types added by super admins"
+          columns={columns}
+          rows={custom}
+          rowKey={(t) => t.id}
+          rowLabel={(t) => t.label}
+          loading={isLoading}
+          skeletonRows={4}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <Briefcase className="h-10 w-10" aria-hidden />,
+            title: "No extra types yet",
+            description: "The built-in types below cover most freelancers. Add one when people keep typing the same service.",
+            actionLabel: "Add type",
+            onAction: () => openForm(null),
+          }}
+        />
       </section>
 
       <section className={cn(CARD, "p-4")}>

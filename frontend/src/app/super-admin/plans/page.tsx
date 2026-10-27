@@ -6,7 +6,8 @@ import { useSAPlans, useSACreatePlan, useSAUpdatePlan, useSAPlanLifecycle } from
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -554,6 +555,159 @@ export default function SuperAdminPlansPage() {
 
   const isSaving = createPlan.isPending || updatePlan.isPending;
 
+  const columns: DataTableColumn<Plan>[] = [
+    {
+      id: "plan",
+      header: "Plan",
+      cell: (plan) => (
+        <>
+          <div className="font-medium text-on-surface">{plan.name}</div>
+          <div className="text-label text-on-surface-variant">{plan.slug} · v{plan.version}</div>
+        </>
+      ),
+    },
+    {
+      id: "cycle",
+      header: "Cycle",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => (plan.billingCycle === "MONTHLY" ? "Monthly" : "Yearly"),
+    },
+    {
+      id: "price",
+      header: "Price",
+      skeleton: "short",
+      cellClassName: "font-medium text-on-surface",
+      cell: (plan) => formatMoney(plan.priceInCents, plan.currency),
+    },
+    {
+      id: "subscribers",
+      header: "Subscribers",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => (plan.liveSubscribers ?? 0).toLocaleString(),
+    },
+    { id: "users", header: "Users", skeleton: "short", cellClassName: "text-on-surface-variant", cell: (plan) => formatLimit(plan.maxUsers) },
+    {
+      id: "sessions",
+      header: "Sessions",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => formatLimit(plan.maxWhatsappSessions),
+    },
+    {
+      id: "messages",
+      header: "Messages",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => formatLimit(plan.maxMessagesPerMonth),
+    },
+    {
+      id: "features",
+      header: "Features",
+      skeleton: "badge",
+      cell: (plan) => (
+        <div className="flex flex-wrap gap-1">
+          {plan.campaignsEnabled && <Badge variant="muted" className="text-label">Campaigns</Badge>}
+          {plan.automationEnabled && <Badge variant="muted" className="text-label">Auto</Badge>}
+          {plan.apiEnabled && <Badge variant="muted" className="text-label">API</Badge>}
+          {plan.aiEnabled && <Badge variant="muted" className="text-label">AI</Badge>}
+          {plan.shopifyEnabled && <Badge variant="muted" className="text-label">Shopify</Badge>}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (plan) => (
+        <>
+          {plan.archivedAt ? (
+            <Badge variant="muted" className="text-label">Archived</Badge>
+          ) : plan.isActive ? (
+            <Badge className="text-label bg-success-container text-success border-success/30">Active</Badge>
+          ) : (plan.liveSubscribers ?? 0) > 0 ? (
+            <Badge variant="warning" className="text-label">Retired · grandfathered</Badge>
+          ) : (
+            <Badge variant="muted" className="text-label">Inactive</Badge>
+          )}
+          {plan.isDefault && (
+            <Badge className="text-label ml-1 bg-primary/10 text-primary-container border-primary/30">Default</Badge>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      skeleton: "none",
+      cell: (plan) => (
+        <div className="flex items-center gap-2">
+          <IconButton
+            size="sm"
+            onClick={() => openEdit(plan)}
+            className="hover:text-primary-container hover:bg-primary/10"
+            aria-label={`Edit ${plan.name}`}
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" aria-hidden />
+          </IconButton>
+          {plan.archivedAt ? (
+            <IconButton
+              size="sm"
+              onClick={() => handleUnarchive(plan)}
+              disabled={lifecycleBusy}
+              className="hover:text-primary-container hover:bg-primary/10"
+              aria-label={`Unarchive ${plan.name}`}
+              title="Unarchive"
+            >
+              <ArchiveRestore className="w-4 h-4" aria-hidden />
+            </IconButton>
+          ) : (
+            <>
+              <IconButton
+                size="sm"
+                role="switch"
+                aria-checked={plan.isActive}
+                aria-label={`${plan.name} active`}
+                title={plan.isActive ? "Deactivate" : "Activate"}
+                disabled={updatePlan.isPending}
+                onClick={() => handleToggle(plan)}
+              >
+                {plan.isActive ? (
+                  <ToggleRight className="w-4 h-4 text-success" aria-hidden />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" aria-hidden />
+                )}
+              </IconButton>
+              <IconButton
+                size="sm"
+                onClick={() => setArchiving(plan)}
+                disabled={lifecycleBusy}
+                aria-label={`Archive ${plan.name}`}
+                title="Archive"
+              >
+                <Archive className="w-4 h-4" aria-hidden />
+              </IconButton>
+            </>
+          )}
+          {(plan.liveSubscribers ?? 0) === 0 && (
+            <IconButton
+              size="sm"
+              onClick={() => setDeleting(plan)}
+              disabled={lifecycleBusy}
+              className="hover:text-error hover:bg-error/10"
+              aria-label={`Delete ${plan.name}`}
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden />
+            </IconButton>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-5">
       <PageHeader
@@ -592,148 +746,22 @@ export default function SuperAdminPlansPage() {
       </FilterBar>
 
       <div className={TABLE_CARD}>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32" role="status">
-            <Spinner />
-            <span className="sr-only">Loading plans…</span>
-          </div>
-        ) : isError ? (
-          <div className="flex items-center justify-center h-32 text-body-lg text-error" role="alert">
-            <p>
-              Could not load plans.{" "}
-              <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-                Try again
-              </button>
-            </p>
-          </div>
-        ) : !plans.length ? (
-          <div className="flex flex-col items-center justify-center h-40 px-4 text-center text-on-surface-variant">
-            <Package className="w-10 h-10 mb-2 opacity-30" aria-hidden />
-            <p className="text-body">
-              {allPlans.length ? "No active plans. Show inactive plans to reactivate one." : "No plans yet. Create your first plan."}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-body">
-              <caption className="sr-only">Subscription plans</caption>
-              <thead>
-                <tr className="border-b border-outline-variant text-left">
-                  {["Plan", "Cycle", "Price", "Subscribers", "Users", "Sessions", "Messages", "Features", "Status", "Actions"].map((h) => (
-                    <th key={h} scope="col" className={TH}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/60">
-                {plans.map((plan) => (
-                  <tr key={plan.id} className={TR}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-on-surface">{plan.name}</div>
-                      <div className="text-label text-on-surface-variant">{plan.slug} · v{plan.version}</div>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">
-                      {plan.billingCycle === "MONTHLY" ? "Monthly" : "Yearly"}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-on-surface">
-                      {formatMoney(plan.priceInCents, plan.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">{(plan.liveSubscribers ?? 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxUsers)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxWhatsappSessions)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxMessagesPerMonth)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {plan.campaignsEnabled && <Badge variant="muted" className="text-label">Campaigns</Badge>}
-                        {plan.automationEnabled && <Badge variant="muted" className="text-label">Auto</Badge>}
-                        {plan.apiEnabled && <Badge variant="muted" className="text-label">API</Badge>}
-                        {plan.aiEnabled && <Badge variant="muted" className="text-label">AI</Badge>}
-                        {plan.shopifyEnabled && <Badge variant="muted" className="text-label">Shopify</Badge>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {plan.archivedAt ? (
-                        <Badge variant="muted" className="text-label">Archived</Badge>
-                      ) : plan.isActive ? (
-                        <Badge className="text-label bg-success-container text-success border-success/30">Active</Badge>
-                      ) : (plan.liveSubscribers ?? 0) > 0 ? (
-                        <Badge variant="warning" className="text-label">Retired · grandfathered</Badge>
-                      ) : (
-                        <Badge variant="muted" className="text-label">Inactive</Badge>
-                      )}
-                      {plan.isDefault && (
-                        <Badge className="text-label ml-1 bg-primary/10 text-primary-container border-primary/30">Default</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <IconButton
-                          size="sm"
-                          onClick={() => openEdit(plan)}
-                          className="hover:text-primary-container hover:bg-primary/10"
-                          aria-label={`Edit ${plan.name}`}
-                          title="Edit"
-                        >
-                          <Pencil className="w-4 h-4" aria-hidden />
-                        </IconButton>
-                        {plan.archivedAt ? (
-                          <IconButton
-                            size="sm"
-                            onClick={() => handleUnarchive(plan)}
-                            disabled={lifecycleBusy}
-                            className="hover:text-primary-container hover:bg-primary/10"
-                            aria-label={`Unarchive ${plan.name}`}
-                            title="Unarchive"
-                          >
-                            <ArchiveRestore className="w-4 h-4" aria-hidden />
-                          </IconButton>
-                        ) : (
-                          <>
-                            <IconButton
-                              size="sm"
-                              role="switch"
-                              aria-checked={plan.isActive}
-                              aria-label={`${plan.name} active`}
-                              title={plan.isActive ? "Deactivate" : "Activate"}
-                              disabled={updatePlan.isPending}
-                              onClick={() => handleToggle(plan)}
-                            >
-                              {plan.isActive ? (
-                                <ToggleRight className="w-4 h-4 text-success" aria-hidden />
-                              ) : (
-                                <ToggleLeft className="w-4 h-4" aria-hidden />
-                              )}
-                            </IconButton>
-                            <IconButton
-                              size="sm"
-                              onClick={() => setArchiving(plan)}
-                              disabled={lifecycleBusy}
-                              aria-label={`Archive ${plan.name}`}
-                              title="Archive"
-                            >
-                              <Archive className="w-4 h-4" aria-hidden />
-                            </IconButton>
-                          </>
-                        )}
-                        {(plan.liveSubscribers ?? 0) === 0 && (
-                          <IconButton
-                            size="sm"
-                            onClick={() => setDeleting(plan)}
-                            disabled={lifecycleBusy}
-                            className="hover:text-error hover:bg-error/10"
-                            aria-label={`Delete ${plan.name}`}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" aria-hidden />
-                          </IconButton>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          label="Subscription plans"
+          columns={columns}
+          rows={plans}
+          rowKey={(plan) => plan.id}
+          rowLabel={(plan) => plan.name}
+          loading={isLoading}
+          skeletonRows={5}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <Package className="w-10 h-10" aria-hidden />,
+            title: allPlans.length ? "No active plans" : "No plans yet",
+            description: allPlans.length ? "Show inactive plans to reactivate one." : "Create your first plan.",
+          }}
+        />
       </div>
 
       <Modal

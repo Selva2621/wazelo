@@ -2,20 +2,9 @@
 
 import { Users, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadScoreBadge } from "./lead-score-badge";
 import type { Contact } from "@/lib/types/contacts";
@@ -35,13 +24,8 @@ interface ContactsTableProps {
   onSelectionChange?: (ids: Set<string>) => void;
 }
 
-const checkboxClass =
-  "size-4 cursor-pointer rounded border-outline-variant accent-primary align-middle";
-
-
 function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
+  const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
@@ -51,6 +35,110 @@ function timeAgo(dateStr: string): string {
   if (days < 30) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
 }
+
+const displayName = (c: Contact) => c.name || c.phoneNumber;
+
+/** First two chips, then "+N". */
+function ChipList<T>({ items, render }: { items: T[]; render: (item: T) => React.ReactNode }) {
+  return (
+    <div className="flex gap-1 overflow-hidden">
+      {items.slice(0, 2).map(render)}
+      {items.length > 2 && <span className="text-caption text-on-surface-variant/60">+{items.length - 2}</span>}
+    </div>
+  );
+}
+
+const columns: DataTableColumn<Contact>[] = [
+  {
+    id: "contact",
+    header: "Contact",
+    skeleton: "avatar",
+    cell: (c) => (
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar name={displayName(c)} src={c.avatarUrl} size="sm" />
+        <div className="min-w-0">
+          <p className="truncate text-body font-medium text-on-surface">{c.name || "Unknown"}</p>
+          <p className="truncate text-caption text-on-surface-variant">{c.phoneNumber}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "email",
+    header: "Email",
+    cellClassName: "max-w-[180px] truncate text-label text-on-surface-variant",
+    cell: (c) => c.email || "—",
+  },
+  { id: "status", header: "Status", skeleton: "badge", cell: (c) => <LeadStatusBadge status={c.leadStatus} /> },
+  { id: "score", header: "Score", skeleton: "short", cell: (c) => <LeadScoreBadge score={c.leadScore} /> },
+  {
+    id: "owner",
+    header: "Owner",
+    cellClassName: "truncate text-label text-on-surface-variant",
+    cell: (c) => `${c.owner.firstName} ${c.owner.lastName}`,
+  },
+  {
+    id: "tags",
+    header: "Tags",
+    skeleton: "badge",
+    cell: (c) => (
+      <ChipList
+        items={c.contactTags}
+        render={(ct) => (
+          <Badge key={ct.id} variant="muted">
+            {ct.tag.name}
+          </Badge>
+        )}
+      />
+    ),
+  },
+  {
+    id: "products",
+    header: "Products",
+    skeleton: "badge",
+    cell: (c) => (
+      <ChipList
+        items={c.contactProducts || []}
+        render={(cp) => (
+          <Badge key={cp.product.id} variant="info">
+            {cp.product.name}
+          </Badge>
+        )}
+      />
+    ),
+  },
+  {
+    id: "source",
+    header: "Source",
+    skeleton: "badge",
+    cell: (c) => <Badge variant="default">{SOURCE_LABELS[c.source] ?? c.source}</Badge>,
+  },
+  {
+    id: "created",
+    header: "Created",
+    skeleton: "short",
+    cellClassName: "text-caption text-on-surface-variant",
+    cell: (c) => timeAgo(c.createdAt),
+  },
+  {
+    id: "open",
+    header: "Profile",
+    hideHeader: true,
+    align: "right",
+    skeleton: "none",
+    cell: (c) => (
+      <Link
+        href={`/contacts/${c.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex rounded-lg p-1.5 text-on-surface-variant outline-none transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-focus"
+        title="View full profile"
+        aria-label={`View ${displayName(c)} profile`}
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+      </Link>
+    ),
+  },
+];
 
 export function ContactsTable({
   contacts,
@@ -64,214 +152,30 @@ export function ContactsTable({
   selectedIds,
   onSelectionChange,
 }: ContactsTableProps) {
-  const currentPage = Math.floor(skip / take) + 1;
-  const totalPages = Math.ceil(total / take);
-  const selectable = !!selectedIds && !!onSelectionChange;
-  const selectedOnPage = selectable ? contacts.filter((c) => selectedIds.has(c.id)).length : 0;
-  const allSelected = contacts.length > 0 && selectedOnPage === contacts.length;
-
-  const toggleOne = (id: string) => {
-    if (!selectable) return;
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    onSelectionChange(next);
-  };
-
-  const toggleAll = () => {
-    if (!selectable) return;
-    const next = new Set(selectedIds);
-    for (const c of contacts) {
-      if (allSelected) next.delete(c.id);
-      else next.add(c.id);
-    }
-    onSelectionChange(next);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-0">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 px-5 py-3 border-b border-outline-variant/10"
-          >
-            <div className="h-9 w-9 rounded-full bg-surface-container animate-pulse" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-32 rounded bg-surface-container animate-pulse" />
-              <div className="h-3 w-24 rounded bg-surface-container animate-pulse" />
-            </div>
-            <div className="h-5 w-16 rounded-full bg-surface-container animate-pulse" />
-            <div className="h-3.5 w-24 rounded bg-surface-container animate-pulse" />
-            <div className="h-5 w-12 rounded-full bg-surface-container animate-pulse" />
-            <div className="h-3.5 w-16 rounded bg-surface-container animate-pulse" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (contacts.length === 0) {
-    return (
-      <EmptyState
-        icon={<Users className="h-12 w-12" />}
-        title="No contacts found"
-        description="Create your first contact or adjust your filters."
-        actionLabel="Create Contact"
-        onAction={onCreateClick}
-      />
-    );
-  }
+  const selection = selectedIds && onSelectionChange ? { selected: selectedIds, onChange: onSelectionChange } : undefined;
+  const anySelected = !!selectedIds && contacts.some((c) => selectedIds.has(c.id));
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Bottom room for the floating bulk bar so the last rows stay reachable */}
-      <Table stickyHeader className={cn("flex-1 min-h-0", selectedOnPage > 0 && "pb-24")}>
-        <TableHeader>
-          <TableHeaderRow>
-            {selectable && (
-              <TableHead className="w-10 pr-0">
-                <input
-                  type="checkbox"
-                  className={checkboxClass}
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = selectedOnPage > 0 && !allSelected;
-                  }}
-                  onChange={toggleAll}
-                  aria-label={allSelected ? "Deselect all on this page" : "Select all on this page"}
-                />
-              </TableHead>
-            )}
-            <TableHead>Contact</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Score</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead>Tags</TableHead>
-            <TableHead>Products</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead align="right"></TableHead>
-          </TableHeaderRow>
-        </TableHeader>
-        <TableBody>
-          {contacts.map((contact) => (
-            <TableRow
-              key={contact.id}
-              className={cn(
-                "cursor-pointer",
-                selectable && selectedIds.has(contact.id) && "bg-primary/5 hover:bg-primary/8",
-              )}
-              onClick={() => onRowClick(contact.id)}
-            >
-              {selectable && (
-                <TableCell className="w-10 pr-0" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    className={checkboxClass}
-                    checked={selectedIds.has(contact.id)}
-                    onChange={() => toggleOne(contact.id)}
-                    aria-label={`Select ${contact.name || contact.phoneNumber}`}
-                  />
-                </TableCell>
-              )}
-              <TableCell>
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar
-                    name={contact.name || contact.phoneNumber}
-                    src={contact.avatarUrl}
-                    size="sm"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-body font-medium text-on-surface truncate">
-                      {contact.name || "Unknown"}
-                    </p>
-                    <p className="text-caption text-on-surface-variant/60 truncate">
-                      {contact.phoneNumber}
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-
-              <TableCell className="text-label text-on-surface-variant truncate max-w-[180px]">
-                {contact.email || "—"}
-              </TableCell>
-
-              <TableCell>
-                <LeadStatusBadge status={contact.leadStatus} />
-              </TableCell>
-
-              <TableCell>
-                <LeadScoreBadge score={contact.leadScore} />
-              </TableCell>
-
-              <TableCell className="text-label text-on-surface-variant truncate">
-                {contact.owner.firstName} {contact.owner.lastName}
-              </TableCell>
-
-              <TableCell>
-                <div className="flex gap-1 overflow-hidden">
-                  {contact.contactTags.slice(0, 2).map((ct) => (
-                    <Badge key={ct.id} variant="muted">
-                      {ct.tag.name}
-                    </Badge>
-                  ))}
-                  {contact.contactTags.length > 2 && (
-                    <span className="text-caption text-on-surface-variant/50">
-                      +{contact.contactTags.length - 2}
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-
-              <TableCell>
-                <div className="flex gap-1 overflow-hidden">
-                  {(contact.contactProducts || []).slice(0, 2).map((cp) => (
-                    <Badge key={cp.product.id} variant="info">
-                      {cp.product.name}
-                    </Badge>
-                  ))}
-                  {(contact.contactProducts || []).length > 2 && (
-                    <span className="text-caption text-on-surface-variant/50">
-                      +{(contact.contactProducts || []).length - 2}
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-
-              <TableCell>
-                <Badge variant="default">
-                  {SOURCE_LABELS[contact.source] ?? contact.source}
-                </Badge>
-              </TableCell>
-
-              <TableCell className="text-caption text-on-surface-variant/60">
-                {timeAgo(contact.createdAt)}
-              </TableCell>
-
-              <TableCell>
-                <Link
-                  href={`/contacts/${contact.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors inline-flex"
-                  title="View full profile"
-                  aria-label={`View ${contact.name || contact.phoneNumber} profile`}
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Pagination
-        page={currentPage}
-        totalPages={totalPages}
-        total={total}
-        onPageChange={(p) => onPageChange(p - 1)}
-      />
-    </div>
+    <DataTable
+      label="Contacts"
+      columns={columns}
+      rows={contacts}
+      rowKey={(c) => c.id}
+      rowLabel={displayName}
+      loading={isLoading}
+      onRowClick={(c) => onRowClick(c.id)}
+      selection={selection}
+      pagination={{ page: Math.floor(skip / take), pageSize: take, total, onPageChange }}
+      stickyHeader
+      // Bottom room for the floating bulk bar so the last rows stay reachable
+      className={anySelected ? "pb-24" : undefined}
+      empty={{
+        icon: <Users className="h-12 w-12" />,
+        title: "No contacts found",
+        description: "Create your first contact or adjust your filters.",
+        actionLabel: "New contact",
+        onAction: onCreateClick,
+      }}
+    />
   );
 }

@@ -4,12 +4,8 @@ import { useState } from "react";
 import { SlidersHorizontal, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listFieldDefinitions, createFieldDefinition, updateFieldDefinition, deleteFieldDefinition,
@@ -79,6 +75,25 @@ export default function CustomFieldsPage() {
     setShowCreate(true);
   };
 
+  const columns: DataTableColumn<CustomFieldDefinition>[] = [
+    { id: "label", header: "Label", cellClassName: "text-body font-medium text-on-surface", cell: (f) => f.fieldLabel },
+    { id: "name", header: "Field name", cellClassName: "text-label text-on-surface-variant font-mono", cell: (f) => f.fieldName },
+    { id: "type", header: "Type", skeleton: "badge", cell: (f) => <Badge variant="muted" className="text-caption">{f.fieldType}</Badge> },
+    { id: "required", header: "Required", skeleton: "short", cellClassName: "text-label", cell: (f) => (f.isRequired ? "Yes" : "—") },
+    { id: "default", header: "Default", cellClassName: "text-label text-on-surface-variant", cell: (f) => f.defaultValue || "—" },
+    {
+      id: "actions",
+      header: "Actions",
+      skeleton: "none",
+      cell: (f) => (
+        <div className="flex items-center gap-1">
+          <IconButton size="xs" onClick={() => startEdit(f)} className="hover:text-primary" aria-label="Edit field" title="Edit field"><Pencil className="h-3.5 w-3.5" /></IconButton>
+          <IconButton size="xs" variant="danger" onClick={() => deleteMut.mutate(f.id)} aria-label="Delete field" title="Delete field"><Trash2 className="h-3.5 w-3.5" /></IconButton>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
       <MobilePageActions primary={{ label: "New field", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
@@ -108,47 +123,22 @@ export default function CustomFieldsPage() {
         ))}
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" className="text-primary" /></div>
-      ) : !fields?.length ? (
-        <EmptyState
-          icon={<SlidersHorizontal className="h-12 w-12" />}
-          title={`No custom fields for ${entityFilter}s`}
-          description="Create custom fields to capture additional data."
-          actionLabel="New field"
-          onAction={() => setShowCreate(true)}
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Label</TableHead>
-              <TableHead>Field name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Required</TableHead>
-              <TableHead>Default</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {fields.map((f) => (
-              <TableRow key={f.id}>
-                <TableCell className="text-body font-medium text-on-surface">{f.fieldLabel}</TableCell>
-                <TableCell className="text-label text-on-surface-variant font-mono">{f.fieldName}</TableCell>
-                <TableCell><Badge variant="muted" className="text-caption">{f.fieldType}</Badge></TableCell>
-                <TableCell className="text-label">{f.isRequired ? "Yes" : "—"}</TableCell>
-                <TableCell className="text-label text-on-surface-variant">{f.defaultValue || "—"}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <IconButton size="xs" onClick={() => startEdit(f)} className="hover:text-primary" aria-label="Edit field" title="Edit field"><Pencil className="h-3.5 w-3.5" /></IconButton>
-                    <IconButton size="xs" variant="danger" onClick={() => deleteMut.mutate(f.id)} aria-label="Delete field" title="Delete field"><Trash2 className="h-3.5 w-3.5" /></IconButton>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        label="Custom fields"
+        columns={columns}
+        rows={fields ?? []}
+        rowKey={(f) => f.id}
+        rowLabel={(f) => f.fieldLabel}
+        loading={isLoading}
+        skeletonRows={5}
+        empty={{
+          icon: <SlidersHorizontal className="h-12 w-12" />,
+          title: `No custom fields for ${entityFilter}s`,
+          description: "Create custom fields to capture additional data.",
+          actionLabel: "New field",
+          onAction: () => setShowCreate(true),
+        }}
+      />
 
       {/* Create/Edit Modal */}
       <Modal

@@ -1,8 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { Clock, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ScheduledMessageStatusBadge } from "./scheduled-message-status-badge";
 import type { ScheduledMessage } from "@/lib/types/scheduler";
 import { IconButton } from "@/components/ui/icon-button";
@@ -47,60 +47,12 @@ export function ScheduledMessagesTable({
   onPageChange,
   onCreateClick,
 }: ScheduledMessagesTableProps) {
-  const currentPage = Math.floor(skip / take);
-  const totalPages = Math.ceil(total / take);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-0">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 px-4 py-3.5 border-b border-outline-variant/10"
-          >
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-32 rounded bg-surface-container animate-pulse" />
-              <div className="h-3 w-48 rounded bg-surface-container animate-pulse" />
-            </div>
-            <div className="h-5 w-16 rounded-full bg-surface-container animate-pulse" />
-            <div className="h-3.5 w-20 rounded bg-surface-container animate-pulse" />
-            <div className="h-3.5 w-36 rounded bg-surface-container animate-pulse" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (messages.length === 0) {
-    return (
-      <EmptyState
-        icon={<Clock className="h-12 w-12" />}
-        title="No scheduled messages"
-        description="Schedule your first message to send it automatically at a specific time."
-        actionLabel="Schedule Message"
-        onAction={onCreateClick}
-      />
-    );
-  }
-
-  return (
-    <div>
-      {/* Header */}
-      <div className="grid grid-cols-[1fr_100px_80px_160px_60px] gap-2 px-4 py-2.5 text-caption font-medium text-on-surface-variant uppercase tracking-wide border-b border-outline-variant/15">
-        <span>Message</span>
-        <span>Contact</span>
-        <span>Status</span>
-        <span>Scheduled At</span>
-        <span />
-      </div>
-
-      {/* Rows */}
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className="grid grid-cols-[1fr_100px_80px_160px_60px] gap-2 items-center px-4 py-3.5 border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors"
-        >
-          {/* Message preview */}
+  const columns = useMemo<DataTableColumn<ScheduledMessage>[]>(
+    () => [
+      {
+        id: "message",
+        header: "Message",
+        cell: (msg) => (
           <div className="min-w-0">
             <p className="text-body font-medium text-on-surface truncate">
               {truncateBody(msg.messageBody)}
@@ -109,63 +61,70 @@ export function ScheduledMessagesTable({
               {msg.messageType}
             </p>
           </div>
-
-          {/* Contact phone */}
-          <span className="text-label text-on-surface-variant truncate">
+        ),
+      },
+      {
+        id: "contact",
+        header: "Contact",
+        className: "w-[100px]",
+        cell: (msg) => (
+          <span className="block text-label text-on-surface-variant truncate">
             {msg.contactPhone}
           </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        className: "w-20",
+        skeleton: "badge",
+        cell: (msg) => <ScheduledMessageStatusBadge status={msg.status} />,
+      },
+      {
+        id: "scheduledAt",
+        header: "Scheduled At",
+        className: "w-40",
+        cellClassName: "text-label text-on-surface-variant tabular-nums",
+        cell: (msg) => formatScheduledAt(msg.scheduledAt, msg.timezone),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        hideHeader: true,
+        align: "center",
+        className: "w-[60px]",
+        skeleton: "none",
+        cell: (msg) =>
+          msg.status === "PENDING" ? (
+            <IconButton size="sm" variant="danger"
+              onClick={() => onCancel(msg.id)}
+              disabled={isCancelling}
+              title="Cancel message" aria-label="Cancel message">
+              <X className="h-4 w-4" />
+            </IconButton>
+          ) : null,
+      },
+    ],
+    [onCancel, isCancelling],
+  );
 
-          {/* Status */}
-          <div>
-            <ScheduledMessageStatusBadge status={msg.status} />
-          </div>
-
-          {/* Scheduled at */}
-          <span className="text-label text-on-surface-variant tabular-nums">
-            {formatScheduledAt(msg.scheduledAt, msg.timezone)}
-          </span>
-
-          {/* Cancel action */}
-          <div className="flex justify-center">
-            {msg.status === "PENDING" && (
-              <IconButton size="sm" variant="danger"
-                onClick={() => onCancel(msg.id)}
-                disabled={isCancelling}
-               
-                title="Cancel message" aria-label="Cancel message">
-                <X className="h-4 w-4" />
-              </IconButton>
-            )}
-          </div>
-        </div>
-      ))}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-label text-on-surface-variant/60">
-            {skip + 1}–{Math.min(skip + take, total)} of {total}
-          </p>
-          <div className="flex gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+  return (
+    <DataTable
+      label="Scheduled messages"
+      columns={columns}
+      rows={messages}
+      rowKey={(msg) => msg.id}
+      rowLabel={(msg) => truncateBody(msg.messageBody)}
+      loading={isLoading}
+      skeletonRows={6}
+      pagination={{ page: Math.floor(skip / take), pageSize: take, total, onPageChange }}
+      empty={{
+        icon: <Clock className="h-12 w-12" />,
+        title: "No scheduled messages",
+        description: "Schedule your first message to send it automatically at a specific time.",
+        actionLabel: "Schedule Message",
+        onAction: onCreateClick,
+      }}
+    />
   );
 }

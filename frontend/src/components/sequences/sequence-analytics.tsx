@@ -4,7 +4,8 @@ import { Users, CheckCircle2, LogOut, MessageSquare, Clock, Activity } from "luc
 import { useSequenceAnalytics, useSequenceRecipients } from "@/hooks/use-sequences";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
-import type { SequenceRecipientStatus } from "@/lib/types/sequences";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import type { SequenceRecipient, SequenceRecipientStatus } from "@/lib/types/sequences";
 
 interface SequenceAnalyticsProps {
   sequenceId: string;
@@ -17,6 +18,43 @@ const RECIPIENT_STATUS_VARIANTS: Record<SequenceRecipientStatus, "success" | "in
   EXITED: "warning",
   PAUSED: "error",
 };
+
+const recipientColumns: DataTableColumn<SequenceRecipient>[] = [
+  {
+    id: "contact",
+    header: "Contact",
+    cell: (r) => (
+      <>
+        <p className="text-body font-medium text-on-surface">
+          {r.contact.name || r.contact.phoneNumber}
+        </p>
+        {r.contact.name && (
+          <p className="text-caption text-on-surface-variant/60">{r.contact.phoneNumber}</p>
+        )}
+      </>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (r) => <Badge variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{r.status}</Badge>,
+  },
+  {
+    id: "currentStep",
+    header: "Current Step",
+    skeleton: "short",
+    cellClassName: "text-label text-on-surface-variant",
+    cell: (r) => `Step ${r.currentStep + 1}`,
+  },
+  {
+    id: "enrolled",
+    header: "Enrolled",
+    skeleton: "short",
+    cellClassName: "text-caption text-on-surface-variant",
+    cell: (r) => new Date(r.enrolledAt).toLocaleDateString(),
+  },
+];
 
 export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProps) {
   const { data, isLoading } = useSequenceAnalytics(sequenceId);
@@ -101,47 +139,21 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
       {/* Recipients Table */}
       <div>
         <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Recipients</h3>
-        {recipientsLoading ? (
-          <div className="flex justify-center py-6"><Spinner size="sm" /></div>
-        ) : !recipientsData || recipientsData.data.length === 0 ? (
-          <p className="text-label text-on-surface-variant/50 py-4 text-center">No recipients enrolled yet.</p>
-        ) : (
-          <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
-            <table className="table-auto w-full">
-              <thead>
-                <tr className="bg-surface-container-low border-b border-outline-variant/15">
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Contact</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Status</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Current Step</th>
-                  <th className="text-left px-4 py-2.5 text-caption font-medium text-on-surface-variant/60">Enrolled</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10">
-                {recipientsData.data.map((r) => (
-                  <tr key={r.id} className="hover:bg-surface-container/50 transition-colors">
-                    <td className="px-4 py-2.5">
-                      <p className="text-body font-medium text-on-surface">
-                        {r.contact.name || r.contact.phoneNumber}
-                      </p>
-                      {r.contact.name && (
-                        <p className="text-caption text-on-surface-variant/60">{r.contact.phoneNumber}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{r.status}</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-label text-on-surface-variant">
-                      Step {r.currentStep + 1}
-                    </td>
-                    <td className="px-4 py-2.5 text-caption text-on-surface-variant">
-                      {new Date(r.enrolledAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          label="Recipients"
+          columns={recipientColumns}
+          rows={recipientsData?.data ?? []}
+          rowKey={(r) => r.id}
+          rowLabel={(r) => r.contact.name || r.contact.phoneNumber}
+          loading={recipientsLoading}
+          skeletonRows={4}
+          wrapperClassName="rounded-xl border border-outline-variant/15 overflow-hidden"
+          empty={{
+            icon: <Users className="h-10 w-10" />,
+            title: "No recipients enrolled yet",
+            compact: true,
+          }}
+        />
       </div>
     </div>
   );

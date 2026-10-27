@@ -1,16 +1,9 @@
 "use client";
 
 import { AlertTriangle, CheckCircle, Eye } from "lucide-react";
+import { useMemo } from "react";
 import type { SlaBreachLog, SlaPolicy } from "@/lib/types/sla";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 function formatMs(ms: number): string {
   if (ms < 1000) return "<1s";
@@ -72,7 +65,95 @@ export function SlaBreachTable({
   onAcknowledge,
   isAcknowledging,
 }: SlaBreachTableProps) {
-  const policyMap = new Map(policies.map((p) => [p.id, p]));
+  const columns = useMemo<DataTableColumn<SlaBreachLog>[]>(() => {
+    const policyMap = new Map(policies.map((p) => [p.id, p]));
+    const cols: DataTableColumn<SlaBreachLog>[] = [
+      {
+        id: "status",
+        header: "Status",
+        skeleton: "badge",
+        cell: (breach) => {
+          const config = statusConfig[breach.status];
+          const StatusIcon = config.icon;
+          return (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium ${config.className}`}
+            >
+              <StatusIcon className="h-3 w-3" />
+              {config.label}
+            </span>
+          );
+        },
+      },
+      {
+        id: "policy",
+        header: "Policy",
+        cellClassName: "text-on-surface font-medium",
+        cell: (breach) => policyMap.get(breach.policyId)?.name ?? "Unknown",
+      },
+      {
+        id: "metric",
+        header: "Metric",
+        cellClassName: "text-on-surface-variant",
+        cell: (breach) => metricLabels[breach.metricType] ?? breach.metricType,
+      },
+      {
+        id: "threshold",
+        header: "Threshold",
+        align: "right",
+        skeleton: "short",
+        cellClassName: "tabular-nums text-on-surface-variant",
+        cell: (breach) => formatMs(breach.thresholdMs),
+      },
+      {
+        id: "actual",
+        header: "Actual",
+        align: "right",
+        skeleton: "short",
+        cellClassName: "tabular-nums text-error font-medium",
+        cell: (breach) => formatMs(breach.actualMs),
+      },
+      {
+        id: "overBy",
+        header: "Over By",
+        align: "right",
+        skeleton: "short",
+        cellClassName: "tabular-nums text-error",
+        cell: (breach) => `+${formatMs(breach.actualMs - breach.thresholdMs)}`,
+      },
+      {
+        id: "when",
+        header: "When",
+        align: "right",
+        skeleton: "short",
+        cellClassName: "text-on-surface-variant/60",
+        cell: (breach) => formatTimeAgo(breach.createdAt),
+      },
+    ];
+    if (onAcknowledge) {
+      cols.push({
+        id: "action",
+        header: "Action",
+        align: "right",
+        skeleton: "none",
+        cell: (breach) =>
+          breach.status === "ACTIVE" ? (
+            <button
+              onClick={() => onAcknowledge(breach.id)}
+              disabled={isAcknowledging}
+              className="text-caption text-primary hover:text-primary/80 font-medium disabled:opacity-50"
+            >
+              Acknowledge
+            </button>
+          ) : (
+            <span className="text-caption text-on-surface-variant/40">
+              —
+            </span>
+          ),
+      });
+    }
+    return cols;
+  }, [policies, onAcknowledge, isAcknowledging]);
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
@@ -85,81 +166,18 @@ export function SlaBreachTable({
         </span>
       </div>
 
-      {breaches.length === 0 ? (
-        <div className="py-8 text-center text-body text-on-surface-variant/40">
-          No breaches found — all SLAs are being met
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Policy</TableHead>
-              <TableHead>Metric</TableHead>
-              <TableHead align="right">Threshold</TableHead>
-              <TableHead align="right">Actual</TableHead>
-              <TableHead align="right">Over By</TableHead>
-              <TableHead align="right">When</TableHead>
-              {onAcknowledge && <TableHead align="right">Action</TableHead>}
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {breaches.map((breach) => {
-              const config = statusConfig[breach.status];
-              const StatusIcon = config.icon;
-              const policy = policyMap.get(breach.policyId);
-
-              return (
-                <TableRow key={breach.id}>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-medium ${config.className}`}
-                    >
-                      <StatusIcon className="h-3 w-3" />
-                      {config.label}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-on-surface font-medium">
-                    {policy?.name ?? "Unknown"}
-                  </TableCell>
-                  <TableCell className="text-on-surface-variant">
-                    {metricLabels[breach.metricType] ?? breach.metricType}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums text-on-surface-variant">
-                    {formatMs(breach.thresholdMs)}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums text-error font-medium">
-                    {formatMs(breach.actualMs)}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums text-error">
-                    +{formatMs(breach.actualMs - breach.thresholdMs)}
-                  </TableCell>
-                  <TableCell align="right" className="text-on-surface-variant/60">
-                    {formatTimeAgo(breach.createdAt)}
-                  </TableCell>
-                  {onAcknowledge && (
-                    <TableCell align="right">
-                      {breach.status === "ACTIVE" ? (
-                        <button
-                          onClick={() => onAcknowledge(breach.id)}
-                          disabled={isAcknowledging}
-                          className="text-caption text-primary hover:text-primary/80 font-medium disabled:opacity-50"
-                        >
-                          Acknowledge
-                        </button>
-                      ) : (
-                        <span className="text-caption text-on-surface-variant/40">
-                          —
-                        </span>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        label="SLA breaches"
+        columns={columns}
+        rows={breaches}
+        rowKey={(breach) => breach.id}
+        empty={{
+          icon: <CheckCircle className="h-10 w-10" />,
+          title: "No breaches found",
+          description: "All SLAs are being met.",
+          compact: true,
+        }}
+      />
     </div>
   );
 }

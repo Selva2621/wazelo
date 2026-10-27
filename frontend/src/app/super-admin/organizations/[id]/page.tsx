@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, CreditCard, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { CARD, TABLE_CARD, TH, TR, sentenceCase } from "@/components/super-admin/list-styles";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { CARD, TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
 import { useSAOrg } from "@/hooks/use-super-admin";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
@@ -30,6 +31,44 @@ const USAGE_LABELS: Record<string, string> = {
   AI_CREDITS: "AI credits",
   MESSAGE_TEMPLATES: "Message templates",
 };
+
+/** A row from the (untyped) organization detail response */
+type OrgDetailRow = NonNullable<ReturnType<typeof useSAOrg>["data"]>;
+
+const historyColumns: DataTableColumn<OrgDetailRow>[] = [
+  { id: "plan", header: "Plan", cellClassName: "text-on-surface", cell: (s) => s.plan?.name ?? "—" },
+  { id: "status", header: "Status", skeleton: "badge", cell: (s) => <StatusBadge status={s.status} /> },
+  {
+    id: "price",
+    header: "Price",
+    cellClassName: "text-on-surface",
+    cell: (s) => <>{formatMoney(s.priceInCents, s.currency)} / {s.billingCycle === "YEARLY" ? "yr" : "mo"}</>,
+  },
+  { id: "started", header: "Started", cellClassName: "text-on-surface-variant", cell: (s) => new Date(s.createdAt).toLocaleDateString() },
+  {
+    id: "periodEnd",
+    header: "Period end",
+    cellClassName: "text-on-surface-variant",
+    cell: (s) => new Date(s.currentPeriodEnd).toLocaleDateString(),
+  },
+];
+
+const userColumns: DataTableColumn<OrgDetailRow>[] = [
+  { id: "name", header: "Name", cellClassName: "text-on-surface", cell: (u) => <>{u.firstName} {u.lastName}</> },
+  { id: "email", header: "Email", cellClassName: "text-on-surface-variant", cell: (u) => u.email },
+  {
+    id: "role",
+    header: "Role",
+    skeleton: "badge",
+    cell: (u) => <span className="text-label bg-surface-container px-2 py-0.5 rounded text-on-surface-variant">{u.role}</span>,
+  },
+  {
+    id: "lastLogin",
+    header: "Last login",
+    cellClassName: "text-on-surface-variant",
+    cell: (u) => (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"),
+  },
+];
 
 function UsageMeter({ label, value, limit }: { label: string; value: number; limit: number }) {
   const unlimited = limit === 0;
@@ -241,35 +280,17 @@ export default function OrgDetailPage() {
         {tab === "Billing history" && (
           // Phones/tablets: the table scrolls sideways inside its card
           <div className={TABLE_CARD}>
-            {subscriptionHistory?.length ? (
-              <table className="w-full text-body">
-                <caption className="sr-only">Subscription history</caption>
-                <thead>
-                  <tr className="border-b border-outline-variant text-left">
-                    <th scope="col" className={TH}>Plan</th>
-                    <th scope="col" className={TH}>Status</th>
-                    <th scope="col" className={TH}>Price</th>
-                    <th scope="col" className={TH}>Started</th>
-                    <th scope="col" className={TH}>Period end</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/60">
-                  {subscriptionHistory.map((s: any) => (
-                    <tr key={s.id} className={TR}>
-                      <td className="px-4 py-3 text-on-surface">{s.plan?.name ?? "—"}</td>
-                      <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
-                      <td className="px-4 py-3 text-on-surface">
-                        {formatMoney(s.priceInCents, s.currency)} / {s.billingCycle === "YEARLY" ? "yr" : "mo"}
-                      </td>
-                      <td className="px-4 py-3 text-on-surface-variant">{new Date(s.createdAt).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-on-surface-variant">{new Date(s.currentPeriodEnd).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="p-5 text-body-lg text-on-surface-variant">No subscriptions yet.</p>
-            )}
+            <DataTable
+              label="Subscription history"
+              columns={historyColumns}
+              rows={subscriptionHistory ?? []}
+              rowKey={(s) => s.id}
+              empty={{
+                icon: <CreditCard className="h-12 w-12" />,
+                title: "No subscriptions yet",
+                compact: true,
+              }}
+            />
           </div>
         )}
 
@@ -277,30 +298,17 @@ export default function OrgDetailPage() {
 
         {tab === "Users" && (
           <div className={TABLE_CARD}>
-            <table className="w-full text-body">
-              <caption className="sr-only">Users</caption>
-              <thead>
-                <tr className="border-b border-outline-variant text-left">
-                  <th scope="col" className={TH}>Name</th>
-                  <th scope="col" className={TH}>Email</th>
-                  <th scope="col" className={TH}>Role</th>
-                  <th scope="col" className={TH}>Last login</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/60">
-                {!users?.length && (
-                  <tr><td colSpan={4} className="py-12 text-center text-on-surface-variant">No users in this organization</td></tr>
-                )}
-                {users?.map((u: any) => (
-                  <tr key={u.id} className={TR}>
-                    <td className="px-4 py-3 text-on-surface">{u.firstName} {u.lastName}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
-                    <td className="px-4 py-3"><span className="text-label bg-surface-container px-2 py-0.5 rounded text-on-surface-variant">{u.role}</span></td>
-                    <td className="px-4 py-3 text-on-surface-variant">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              label="Users"
+              columns={userColumns}
+              rows={users ?? []}
+              rowKey={(u) => u.id}
+              empty={{
+                icon: <Users className="h-12 w-12" />,
+                title: "No users in this organization",
+                compact: true,
+              }}
+            />
           </div>
         )}
 

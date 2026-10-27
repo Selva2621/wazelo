@@ -1,15 +1,8 @@
 "use client";
 
+import { Users } from "lucide-react";
 import type { TeamPerformanceResponse } from "@/lib/types/analytics";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 function formatMs(ms: number | null): string {
   if (ms === null) return "—";
@@ -20,6 +13,61 @@ function formatMs(ms: number | null): string {
   const remainingSec = seconds % 60;
   return `${minutes}m ${remainingSec}s`;
 }
+
+type TeamUser = TeamPerformanceResponse["users"][number];
+
+const columns: DataTableColumn<TeamUser>[] = [
+  {
+    id: "name",
+    header: "Name",
+    cellClassName: "text-on-surface font-medium",
+    cell: (user) => (
+      <>
+        {user.firstName} {user.lastName}
+      </>
+    ),
+  },
+  {
+    id: "sent",
+    header: "Sent",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface",
+    cell: (user) => user.messagesSent.toLocaleString(),
+  },
+  {
+    id: "received",
+    header: "Received",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface-variant",
+    cell: (user) => user.messagesReceived.toLocaleString(),
+  },
+  {
+    id: "avgResponse",
+    header: "Avg Response",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface-variant",
+    cell: (user) => formatMs(user.avgResponseTimeMs),
+  },
+  {
+    id: "converted",
+    header: "Converted",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-success",
+    cell: (user) => user.contactsConverted,
+  },
+  {
+    id: "activeConvos",
+    header: "Active Convos",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface-variant",
+    cell: (user) => user.activeConversations,
+  },
+];
 
 interface TeamPerformanceTableProps {
   data: TeamPerformanceResponse;
@@ -34,48 +82,18 @@ export function TeamPerformanceTable({ data }: TeamPerformanceTableProps) {
         Team Performance
       </h3>
 
-      {sorted.length === 0 ? (
-        <div className="py-8 text-center text-body text-on-surface-variant">
-          No team data available
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Name</TableHead>
-              <TableHead align="right">Sent</TableHead>
-              <TableHead align="right">Received</TableHead>
-              <TableHead align="right">Avg Response</TableHead>
-              <TableHead align="right">Converted</TableHead>
-              <TableHead align="right">Active Convos</TableHead>
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((user) => (
-              <TableRow key={user.userId}>
-                <TableCell className="text-on-surface font-medium">
-                  {user.firstName} {user.lastName}
-                </TableCell>
-                <TableCell align="right" className="tabular-nums text-on-surface">
-                  {user.messagesSent.toLocaleString()}
-                </TableCell>
-                <TableCell align="right" className="tabular-nums text-on-surface-variant">
-                  {user.messagesReceived.toLocaleString()}
-                </TableCell>
-                <TableCell align="right" className="tabular-nums text-on-surface-variant">
-                  {formatMs(user.avgResponseTimeMs)}
-                </TableCell>
-                <TableCell align="right" className="tabular-nums text-success">
-                  {user.contactsConverted}
-                </TableCell>
-                <TableCell align="right" className="tabular-nums text-on-surface-variant">
-                  {user.activeConversations}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        label="Team performance"
+        columns={columns}
+        rows={sorted}
+        rowKey={(user) => user.userId}
+        rowLabel={(user) => `${user.firstName} ${user.lastName}`}
+        empty={{
+          icon: <Users className="h-10 w-10" />,
+          title: "No team data available",
+          compact: true,
+        }}
+      />
     </div>
   );
 }

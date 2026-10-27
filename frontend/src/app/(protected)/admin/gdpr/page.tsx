@@ -2,15 +2,60 @@
 
 import { ShieldCheck, Download, Trash2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useQuery } from "@tanstack/react-query";
-import { listDataRequests } from "@/lib/api/gdpr";
+import { listDataRequests, type DataRequest } from "@/lib/api/gdpr";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { PageHeader } from "@/components/layout/page-header";
+
+const columns: DataTableColumn<DataRequest>[] = [
+  {
+    id: "contact",
+    header: "Contact",
+    cell: (req) => (
+      <div className="min-w-0">
+        <p className="text-body font-medium text-on-surface">{req.contact.name || "Unknown"}</p>
+        <p className="text-caption text-on-surface-variant/60">{req.contact.phoneNumber}</p>
+      </div>
+    ),
+  },
+  {
+    id: "type",
+    header: "Type",
+    skeleton: "badge",
+    cell: (req) => (
+      <Badge variant={req.requestType === "export" ? "info" : "error"}>
+        {req.requestType === "export" ? (
+          <><Download className="h-3 w-3 mr-0.5" />Export</>
+        ) : (
+          <><Trash2 className="h-3 w-3 mr-0.5" />Erasure</>
+        )}
+      </Badge>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (req) => (
+      <Badge variant={req.status === "completed" ? "success" : req.status === "failed" ? "error" : "warning"}>
+        {req.status}
+      </Badge>
+    ),
+  },
+  {
+    id: "requested",
+    header: "Requested",
+    cellClassName: "text-caption text-on-surface-variant",
+    cell: (req) => new Date(req.createdAt).toLocaleString(),
+  },
+  {
+    id: "completed",
+    header: "Completed",
+    cellClassName: "text-caption text-on-surface-variant",
+    cell: (req) => (req.completedAt ? new Date(req.completedAt).toLocaleString() : "—"),
+  },
+];
 
 export default function GdprPage() {
   usePageTitle("GDPR & data privacy");
@@ -57,59 +102,20 @@ export default function GdprPage() {
       </div>
 
       {/* Requests table */}
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" className="text-primary" /></div>
-      ) : !data?.data.length ? (
-        <EmptyState
-          icon={<ShieldCheck className="h-12 w-12" />}
-          title="No data requests"
-          description="Data export and erasure requests will appear here when initiated from the Contacts module."
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Contact</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Requested</TableHead>
-              <TableHead>Completed</TableHead>
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {data.data.map((req) => (
-              <TableRow key={req.id}>
-                <TableCell>
-                  <div className="min-w-0">
-                    <p className="text-body font-medium text-on-surface">{req.contact.name || "Unknown"}</p>
-                    <p className="text-caption text-on-surface-variant/60">{req.contact.phoneNumber}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={req.requestType === "export" ? "info" : "error"}>
-                    {req.requestType === "export" ? (
-                      <><Download className="h-3 w-3 mr-0.5" />Export</>
-                    ) : (
-                      <><Trash2 className="h-3 w-3 mr-0.5" />Erasure</>
-                    )}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={req.status === "completed" ? "success" : req.status === "failed" ? "error" : "warning"}>
-                    {req.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-caption text-on-surface-variant">
-                  {new Date(req.createdAt).toLocaleString()}
-                </TableCell>
-                <TableCell className="text-caption text-on-surface-variant">
-                  {req.completedAt ? new Date(req.completedAt).toLocaleString() : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        label="Data requests"
+        columns={columns}
+        rows={data?.data ?? []}
+        rowKey={(req) => req.id}
+        rowLabel={(req) => req.contact.name || req.contact.phoneNumber}
+        loading={isLoading}
+        skeletonRows={6}
+        empty={{
+          icon: <ShieldCheck className="h-12 w-12" />,
+          title: "No data requests",
+          description: "Data export and erasure requests will appear here when initiated from the Contacts module.",
+        }}
+      />
     </div>
   );
 }

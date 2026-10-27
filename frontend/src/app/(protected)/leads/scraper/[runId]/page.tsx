@@ -19,17 +19,13 @@ import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "
 import { useQuery } from "@tanstack/react-query";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead,
-  TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-modal";
 import { TypeFilter } from "@/components/lead-scraper/type-filter";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { Pagination } from "@/components/ui/pagination";
 
 /** Results per page on a run (a run holds up to 200) */
 const RESULTS_PAGE_SIZE = 25;
@@ -381,44 +377,14 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ResultRow({
-  result, selected, onToggle, waStatus,
-}: {
-  result: ScrapeResult;
-  selected: boolean;
-  onToggle: () => void;
-  waStatus?: CheckWhatsAppResult;
-}) {
-  // Imported rows stay selectable so they can be pitched
-  return (
-    <TableRow
-      onClick={onToggle}
-      className={
-        selected
-          ? "bg-primary/5 cursor-pointer"
-          : "cursor-pointer hover:bg-surface-container-low"
-      }
-    >
-      {/* Checkbox */}
-      <TableCell>
-        <div
-          role="checkbox"
-          aria-checked={selected}
-          aria-label={`Select ${result.name ?? "lead"}`}
-          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-            selected
-              ? "border-primary bg-primary"
-              : "border-outline-variant"
-          }`}
-        >
-          {selected && (
-            <CheckCircle2 className="w-2.5 h-2.5 text-on-primary" />
-          )}
-        </div>
-      </TableCell>
-
-      {/* Name + category (one block so the mobile card title stacks) */}
-      <TableCell>
+/** Result table columns; the phone cell needs the WhatsApp check answers */
+function resultColumns(waStatusMap: Record<string, CheckWhatsAppResult>): DataTableColumn<ScrapeResult>[] {
+  return [
+    {
+      // Name + category (one block so the mobile card title stacks)
+      id: "name",
+      header: "Name",
+      cell: (result) => (
         <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="font-medium text-body text-on-surface truncate max-w-[200px] max-lg:max-w-none">
@@ -467,11 +433,15 @@ function ResultRow({
           )}
         </div>
         </div>
-      </TableCell>
-
-      {/* Phone + WA + Email */}
-      <TableCell>
-        {result.phone || result.email ? (
+      ),
+    },
+    {
+      // Phone + WA + Email
+      id: "phone",
+      header: "Phone",
+      cell: (result) => {
+        const waStatus = result.phone ? waStatusMap[result.phone] : undefined;
+        return result.phone || result.email ? (
           <div className="flex flex-col gap-0.5">
             {result.phone && (
               <>
@@ -499,24 +469,27 @@ function ResultRow({
           </div>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Address */}
-      <TableCell>
-        {result.address || result.location ? (
+        );
+      },
+    },
+    {
+      id: "address",
+      header: "Address",
+      cell: (result) =>
+        result.address || result.location ? (
           <span className="flex items-start gap-1 text-label text-on-surface-variant max-w-[220px]">
             <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
             <span className="line-clamp-2">{result.address || result.location}</span>
           </span>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Website */}
-      <TableCell>
-        {result.website ? (
+        ),
+    },
+    {
+      id: "website",
+      header: "Website",
+      cell: (result) =>
+        result.website ? (
           <a
             href={result.website}
             target="_blank"
@@ -529,12 +502,14 @@ function ResultRow({
           </a>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Rating */}
-      <TableCell>
-        {result.rating ? (
+        ),
+    },
+    {
+      id: "rating",
+      header: "Rating",
+      skeleton: "short",
+      cell: (result) =>
+        result.rating ? (
           <span className="flex items-center gap-1 text-label whitespace-nowrap">
             <Star className="w-3 h-3 fill-warning text-warning" />
             <span className="font-medium text-on-surface">{result.rating.toFixed(1)}</span>
@@ -544,11 +519,12 @@ function ResultRow({
           </span>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Details */}
-      <TableCell>
+        ),
+    },
+    {
+      id: "details",
+      header: "Details",
+      cell: (result) => (
         <div className="flex flex-col gap-1 max-w-[200px]">
           {result.description && (
             <p className="text-caption text-on-surface-variant line-clamp-2">{result.description}</p>
@@ -597,10 +573,13 @@ function ResultRow({
             <span className="text-label text-on-surface-variant">—</span>
           )}
         </div>
-      </TableCell>
-
-      {/* Source link */}
-      <TableCell>
+      ),
+    },
+    {
+      id: "source",
+      header: "Source",
+      skeleton: "short",
+      cell: (result) => (
         <a
           href={result.sourceUrl}
           target="_blank"
@@ -610,9 +589,9 @@ function ResultRow({
         >
           View
         </a>
-      </TableCell>
-    </TableRow>
-  );
+      ),
+    },
+  ];
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -945,61 +924,42 @@ export default function ScrapeRunResultsPage() {
                 </div>
               </div>
 
-              {/* No results after filtering */}
-              {filteredResults.length === 0 ? (
-                <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-10 text-center">
-                  <Filter className="w-7 h-7 text-on-surface-variant mx-auto mb-2" />
-                  <p className="text-body-lg text-on-surface-variant">No results match the current filters.</p>
-                  <button
-                    onClick={() => { setFilters(DEFAULT_FILTERS); setPage(1); }}
-                    className="mt-2 text-label text-primary hover:underline"
-                  >
-                    Clear filters
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:-mx-3 max-lg:border-0 max-lg:rounded-none">
-                  <Table>
-                    <TableHeader>
-                      <TableHeaderRow>
-                        <TableHead>
-                          <input
-                            type="checkbox"
-                            className="accent-primary w-4 h-4"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            title="Select all visible"
-                          />
-                        </TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Address</TableHead>
-                        <TableHead>Website</TableHead>
-                        <TableHead>Rating</TableHead>
-                        <TableHead>Details</TableHead>
-                        <TableHead>Source</TableHead>
-                      </TableHeaderRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pagedResults.map((result) => (
-                        <ResultRow
-                          key={result.id}
-                          result={result}
-                          selected={selected.has(result.id)}
-                          onToggle={() => toggleOne(result.id)}
-                          waStatus={result.phone ? waStatusMap[result.phone] : undefined}
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Pagination
-                    page={currentPage}
-                    totalPages={totalPages}
-                    total={filteredResults.length}
-                    onPageChange={setPage}
-                  />
-                </div>
-              )}
+              {/* Header checkbox and row clicks cover every filtered result, not just this page */}
+              <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:-mx-3 max-lg:border-0 max-lg:rounded-none">
+                <DataTable
+                  label="Scrape results"
+                  columns={resultColumns(waStatusMap)}
+                  rows={pagedResults}
+                  rowKey={(r) => r.id}
+                  rowLabel={(r) => r.name ?? "lead"}
+                  // Clicking a row selects it here (it doesn't open anything)
+                  rowActionLabel={(r) => `Select ${r.name ?? "lead"}`}
+                  // Imported rows stay selectable so they can be pitched
+                  onRowClick={(r) => toggleOne(r.id)}
+                  rowClassName={() => "cursor-pointer"}
+                  selection={{
+                    selected,
+                    onChange: setSelected,
+                    toggleAll,
+                    allChecked: allSelected,
+                    someChecked: false,
+                    toggleAllLabel: "Select all visible",
+                  }}
+                  pagination={{
+                    page: currentPage - 1,
+                    pageSize: RESULTS_PAGE_SIZE,
+                    total: filteredResults.length,
+                    onPageChange: (p) => setPage(p + 1),
+                  }}
+                  empty={{
+                    icon: <Filter className="w-7 h-7" />,
+                    title: "No results match the current filters.",
+                    actionLabel: "Clear filters",
+                    onAction: () => { setFilters(DEFAULT_FILTERS); setPage(1); },
+                    compact: true,
+                  }}
+                />
+              </div>
             </>
           )}
         </>

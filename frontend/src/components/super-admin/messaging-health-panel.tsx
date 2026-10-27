@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, MinusCircle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, MinusCircle, Radio, Smartphone, XCircle } from "lucide-react";
 import { useSAOrgMessagingHealth } from "@/hooks/use-super-admin";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 
 const STATUS: Record<string, { label: string; icon: typeof CheckCircle2; variant: "success" | "warning" | "error" | "muted" }> = {
@@ -34,8 +35,68 @@ function ago(value?: string | null) {
   return new Date(value).toLocaleDateString();
 }
 
-const th = "px-4 py-2 text-label font-medium text-on-surface-variant text-left whitespace-nowrap";
-const td = "px-4 py-2 text-body-lg";
+const td = "text-body-lg";
+
+/** A row from the (untyped) messaging-health response */
+type HealthRow = NonNullable<ReturnType<typeof useSAOrgMessagingHealth>["data"]>;
+
+const sessionColumns: DataTableColumn<HealthRow>[] = [
+  { id: "number", header: "Number", cellClassName: cn(td, "font-mono text-body"), cell: (s) => s.phoneNumber ?? "—" },
+  {
+    id: "owner",
+    header: "Owner",
+    cellClassName: cn(td, "text-on-surface-variant"),
+    cell: (s) => [s.user?.firstName, s.user?.lastName].filter(Boolean).join(" ") || s.user?.email,
+  },
+  { id: "status", header: "Status", cell: (s) => <span className={cn(td, "font-medium", CONNECTION_STYLE[s.status])}>{s.status}</span> },
+  { id: "lastHeartbeat", header: "Last heartbeat", cellClassName: cn(td, "text-on-surface-variant"), cell: (s) => ago(s.lastHeartbeatAt) },
+  { id: "lastActive", header: "Last active", cellClassName: cn(td, "text-on-surface-variant"), cell: (s) => ago(s.lastActiveAt) },
+  {
+    id: "reconnects",
+    header: "Reconnects",
+    skeleton: "short",
+    cellClassName: cn(td, "text-on-surface-variant tabular-nums"),
+    cell: (s) => s.reconnectCount,
+  },
+];
+
+const channelColumns: DataTableColumn<HealthRow>[] = [
+  {
+    id: "channel",
+    header: "Channel",
+    cellClassName: td,
+    cell: (c) => (
+      <>
+        <span className="text-on-surface">{c.name}</span>
+        {c.externalHandle && <span className="block text-label text-on-surface-variant">{c.externalHandle}</span>}
+      </>
+    ),
+  },
+  { id: "type", header: "Type", cellClassName: cn(td, "text-on-surface-variant"), cell: (c) => c.type },
+  {
+    id: "status",
+    header: "Status",
+    cell: (c) => (
+      <span className={cn(td, "font-medium", CONNECTION_STYLE[c.status])}>
+        {c.status}
+        {c.suspendReason && <span className="block text-label text-on-surface-variant font-normal">{c.suspendReason}</span>}
+      </span>
+    ),
+  },
+  { id: "lastActive", header: "Last active", cellClassName: cn(td, "text-on-surface-variant"), cell: (c) => ago(c.lastActiveAt) },
+  {
+    id: "lastError",
+    header: "Last error",
+    cellClassName: cn(td, "text-on-surface-variant max-w-xs"),
+    cell: (c) =>
+      c.lastError ? (
+        <>
+          <span className="line-clamp-2" title={c.lastError}>{c.lastError}</span>
+          <span className="text-label">{ago(c.lastErrorAt)}</span>
+        </>
+      ) : "—",
+  },
+];
 
 /** WhatsApp sessions, channels and 7-day send outcomes for one org — support triage. */
 export function MessagingHealthPanel({ orgId }: { orgId: string }) {
@@ -95,34 +156,18 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
         <h3 id="wa-sessions-heading" className="px-4 pt-4 text-body-lg font-medium text-on-surface">
           WhatsApp numbers ({data.sessions.length})
         </h3>
-        {data.sessions.length ? (
-          <table className="w-full mt-2">
-            <caption className="sr-only">WhatsApp sessions</caption>
-            <thead>
-              <tr className="border-b border-outline-variant">
-                {["Number", "Owner", "Status", "Last heartbeat", "Last active", "Reconnects"].map((h) => (
-                  <th key={h} scope="col" className={th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/40">
-              {data.sessions.map((s: any) => (
-                <tr key={s.id}>
-                  <td className={cn(td, "font-mono text-body")}>{s.phoneNumber ?? "—"}</td>
-                  <td className={cn(td, "text-on-surface-variant")}>
-                    {[s.user?.firstName, s.user?.lastName].filter(Boolean).join(" ") || s.user?.email}
-                  </td>
-                  <td className={cn(td, "font-medium", CONNECTION_STYLE[s.status])}>{s.status}</td>
-                  <td className={cn(td, "text-on-surface-variant")}>{ago(s.lastHeartbeatAt)}</td>
-                  <td className={cn(td, "text-on-surface-variant")}>{ago(s.lastActiveAt)}</td>
-                  <td className={cn(td, "text-on-surface-variant tabular-nums")}>{s.reconnectCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="px-4 pb-4 pt-1 text-body-lg text-on-surface-variant">No WhatsApp numbers connected.</p>
-        )}
+        <DataTable
+          label="WhatsApp sessions"
+          columns={sessionColumns}
+          rows={data.sessions}
+          rowKey={(s) => s.id}
+          wrapperClassName="mt-2"
+          empty={{
+            icon: <Smartphone className="h-10 w-10" />,
+            title: "No WhatsApp numbers connected",
+            compact: true,
+          }}
+        />
       </section>
 
       {/* Channels */}
@@ -130,44 +175,18 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
         <h3 id="wa-channels-heading" className="px-4 pt-4 text-body-lg font-medium text-on-surface">
           Channels ({data.channels.length})
         </h3>
-        {data.channels.length ? (
-          <table className="w-full mt-2">
-            <caption className="sr-only">Messaging channels</caption>
-            <thead>
-              <tr className="border-b border-outline-variant">
-                {["Channel", "Type", "Status", "Last active", "Last error"].map((h) => (
-                  <th key={h} scope="col" className={th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/40">
-              {data.channels.map((c: any) => (
-                <tr key={c.id}>
-                  <td className={td}>
-                    <span className="text-on-surface">{c.name}</span>
-                    {c.externalHandle && <span className="block text-label text-on-surface-variant">{c.externalHandle}</span>}
-                  </td>
-                  <td className={cn(td, "text-on-surface-variant")}>{c.type}</td>
-                  <td className={cn(td, "font-medium", CONNECTION_STYLE[c.status])}>
-                    {c.status}
-                    {c.suspendReason && <span className="block text-label text-on-surface-variant font-normal">{c.suspendReason}</span>}
-                  </td>
-                  <td className={cn(td, "text-on-surface-variant")}>{ago(c.lastActiveAt)}</td>
-                  <td className={cn(td, "text-on-surface-variant max-w-xs")}>
-                    {c.lastError ? (
-                      <>
-                        <span className="line-clamp-2" title={c.lastError}>{c.lastError}</span>
-                        <span className="text-label">{ago(c.lastErrorAt)}</span>
-                      </>
-                    ) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="px-4 pb-4 pt-1 text-body-lg text-on-surface-variant">No channels configured.</p>
-        )}
+        <DataTable
+          label="Messaging channels"
+          columns={channelColumns}
+          rows={data.channels}
+          rowKey={(c) => c.id}
+          wrapperClassName="mt-2"
+          empty={{
+            icon: <Radio className="h-10 w-10" />,
+            title: "No channels configured",
+            compact: true,
+          }}
+        />
       </section>
 
       {/* Failure reasons */}

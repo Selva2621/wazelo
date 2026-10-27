@@ -15,15 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -114,6 +106,118 @@ export default function ProductsPage() {
   function toggleStatus(p: Product) {
     updateProduct.mutate({ id: p.id, status: p.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" });
   }
+
+  const columns: DataTableColumn<Product>[] = [
+    {
+      id: "product",
+      header: "Product",
+      skeleton: "avatar",
+      cell: (product) => (
+        <div className="flex items-center gap-2.5">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-8 h-8 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Package className="h-4 w-4 text-primary" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-body font-medium text-on-surface truncate">{product.name}</p>
+            {product.description && (
+              <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
+                {product.description}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "sku",
+      header: "SKU",
+      cellClassName: "text-label text-on-surface-variant font-mono",
+      cell: (product) => product.sku || "—",
+    },
+    {
+      id: "category",
+      header: "Category",
+      skeleton: "badge",
+      cell: (product) =>
+        product.category ? (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container">
+            {product.category.color && (
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
+            )}
+            {product.category.name}
+          </span>
+        ) : (
+          <span className="text-label text-on-surface-variant/40">—</span>
+        ),
+    },
+    {
+      id: "price",
+      header: "Price",
+      skeleton: "short",
+      cellClassName: "text-body font-medium text-on-surface",
+      cell: (product) => formatPrice(product.price, product.currency),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (product) => (
+        <button
+          type="button"
+          onClick={() => toggleStatus(product)}
+          title="Toggle status"
+          aria-label={`${product.name}: ${product.status === "ACTIVE" ? "active" : "inactive"}. Toggle status`}
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <Badge variant={product.status === "ACTIVE" ? "success" : "muted"}>
+            {product.status === "ACTIVE"
+              ? <ToggleRight className="h-3 w-3 mr-1" />
+              : <ToggleLeft className="h-3 w-3 mr-1" />}
+            {product.status}
+          </Badge>
+        </button>
+      ),
+    },
+    {
+      id: "created",
+      header: "Created",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (product) =>
+        new Date(product.createdAt).toLocaleDateString("en-IN", {
+          day: "numeric", month: "short", year: "numeric",
+        }),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (product) => (
+        <div className="flex items-center justify-end gap-1">
+          <IconButton size="xs"
+            onClick={() => openEdit(product)}
+            className="hover:text-primary hover:bg-primary/10"
+            title="Edit product" aria-label="Edit product">
+            <Pencil className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="xs" variant="danger"
+            onClick={() => setDeleteTarget(product)}
+            title="Delete product" aria-label="Delete product">
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
 
   if (productsLoading || catsLoading) {
     return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
@@ -219,109 +323,13 @@ export default function ProductsPage() {
       {/* Table */}
       {filtered.length > 0 ? (
         <div className="rounded-2xl border border-outline-variant overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead align="right">Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-8 h-8 rounded-lg object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Package className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-body font-medium text-on-surface truncate">{product.name}</p>
-                        {product.description && (
-                          <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="text-label text-on-surface-variant font-mono">
-                    {product.sku || "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    {product.category ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container">
-                        {product.category.color && (
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
-                        )}
-                        {product.category.name}
-                      </span>
-                    ) : (
-                      <span className="text-label text-on-surface-variant/40">—</span>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="text-body font-medium text-on-surface">
-                    {formatPrice(product.price, product.currency)}
-                  </TableCell>
-
-                  <TableCell>
-                    <button
-                      type="button"
-                      onClick={() => toggleStatus(product)}
-                      title="Toggle status"
-                      aria-label={`${product.name}: ${product.status === "ACTIVE" ? "active" : "inactive"}. Toggle status`}
-                      className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                    >
-                      <Badge variant={product.status === "ACTIVE" ? "success" : "muted"}>
-                        {product.status === "ACTIVE"
-                          ? <ToggleRight className="h-3 w-3 mr-1" />
-                          : <ToggleLeft className="h-3 w-3 mr-1" />}
-                        {product.status}
-                      </Badge>
-                    </button>
-                  </TableCell>
-
-                  <TableCell className="text-label text-on-surface-variant">
-                    {new Date(product.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "short", year: "numeric",
-                    })}
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton size="xs"
-                        onClick={() => openEdit(product)}
-                        className="hover:text-primary hover:bg-primary/10"
-                        title="Edit product" aria-label="Edit product">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </IconButton>
-                      <IconButton size="xs" variant="danger"
-                        onClick={() => setDeleteTarget(product)}
-                       
-                        title="Delete product" aria-label="Delete product">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </IconButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            label="Products"
+            columns={columns}
+            rows={filtered}
+            rowKey={(product) => product.id}
+            rowLabel={(product) => product.name}
+          />
         </div>
       ) : (products ?? []).length > 0 ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">

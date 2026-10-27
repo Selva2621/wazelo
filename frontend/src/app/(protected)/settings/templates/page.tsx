@@ -8,15 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState, LoadError } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useTemplates,
@@ -252,6 +244,129 @@ export default function TemplatesPage() {
     setShowForm(true);
     scrollTopOnMobile();
   };
+
+  const columns: DataTableColumn<MessageTemplate>[] = [
+    {
+      id: "name",
+      header: "Template name",
+      skeleton: "avatar",
+      cell: (tpl) => {
+        const isShopify = isShopifyTemplate(tpl);
+        const shopifyType = isShopify ? getShopifyType(tpl) : null;
+        const ShopifyIcon = shopifyType === "cart_abandoned" ? ShoppingCart : ShoppingBag;
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isShopify ? "bg-success/10" : "bg-primary/10"}`}>
+              {isShopify
+                ? <ShopifyIcon className="h-4 w-4 text-success" />
+                : <FileText className="h-4 w-4 text-primary" />
+              }
+            </div>
+            <div>
+              <span className="text-body font-medium text-on-surface">
+                {tpl.name}
+              </span>
+              {isShopify && (
+                <p className="text-caption text-success/70 leading-none mt-0.5">
+                  {shopifyType ? SHOPIFY_TEMPLATE_TYPES[shopifyType] ?? shopifyType : "Shopify"}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "product",
+      header: "Product",
+      skeleton: "badge",
+      cell: (tpl) => {
+        const linkedProductId = getProductId(tpl);
+        const linkedProductName = linkedProductId ? productMap[linkedProductId] : null;
+        return linkedProductName ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container text-caption text-on-surface-variant border border-outline-variant/15">
+            <Package className="h-3 w-3 opacity-60" />
+            {linkedProductName}
+          </span>
+        ) : (
+          <span className="text-label text-on-surface-variant/40">—</span>
+        );
+      },
+    },
+    {
+      id: "category",
+      header: "Category",
+      skeleton: "badge",
+      cell: (tpl) =>
+        isShopifyTemplate(tpl) ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-caption font-medium text-success border border-success/20">
+            <ShoppingBag className="h-3 w-3" />
+            Shopify
+          </span>
+        ) : (
+          <span className="text-label text-on-surface-variant">
+            {tpl.category || "—"}
+          </span>
+        ),
+    },
+    {
+      id: "language",
+      header: "Language",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant uppercase",
+      cell: (tpl) => tpl.language,
+    },
+    {
+      id: "body",
+      header: "Body preview",
+      cellClassName: "text-label text-on-surface-variant truncate max-w-[240px]",
+      cell: (tpl) => extractBody(tpl) || "—",
+    },
+    {
+      id: "created",
+      header: "Created",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (tpl) =>
+        new Date(tpl.createdAt).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (tpl) => (
+        <div className="flex items-center justify-end gap-1">
+          <IconButton size="xs"
+            onClick={() => startEdit(tpl)}
+            className="hover:text-primary hover:bg-primary/10"
+            title="Edit template" aria-label="Edit template">
+            <Pencil className="h-3.5 w-3.5" />
+          </IconButton>
+          {isShopifyTemplate(tpl) ? (
+            <span
+              title="System template — cannot be deleted"
+              aria-label="System template — cannot be deleted"
+              role="img"
+              className="p-1.5 rounded-lg text-on-surface-variant/25 cursor-not-allowed"
+            >
+              <Lock className="h-3.5 w-3.5" />
+            </span>
+          ) : (
+            <IconButton size="xs" variant="danger"
+              onClick={() => setDeleteTarget(tpl)}
+              title="Delete template" aria-label="Delete template">
+              <Trash2 className="h-3.5 w-3.5" />
+            </IconButton>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -552,121 +667,13 @@ export default function TemplatesPage() {
       {/* Table */}
       {filtered.length > 0 ? (
         <div className="rounded-2xl border border-outline-variant overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>Template name</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Language</TableHead>
-                <TableHead>Body preview</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((tpl) => {
-                const bodyText = extractBody(tpl);
-                const linkedProductId = getProductId(tpl);
-                const linkedProductName = linkedProductId ? productMap[linkedProductId] : null;
-                const isShopify = isShopifyTemplate(tpl);
-                const shopifyType = isShopify ? getShopifyType(tpl) : null;
-                const ShopifyIcon = shopifyType === "cart_abandoned" ? ShoppingCart : ShoppingBag;
-                return (
-                  <TableRow key={tpl.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isShopify ? "bg-success/10" : "bg-primary/10"}`}>
-                          {isShopify
-                            ? <ShopifyIcon className="h-4 w-4 text-success" />
-                            : <FileText className="h-4 w-4 text-primary" />
-                          }
-                        </div>
-                        <div>
-                          <span className="text-body font-medium text-on-surface">
-                            {tpl.name}
-                          </span>
-                          {isShopify && (
-                            <p className="text-caption text-success/70 leading-none mt-0.5">
-                              {shopifyType ? SHOPIFY_TEMPLATE_TYPES[shopifyType] ?? shopifyType : "Shopify"}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      {linkedProductName ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container text-caption text-on-surface-variant border border-outline-variant/15">
-                          <Package className="h-3 w-3 opacity-60" />
-                          {linkedProductName}
-                        </span>
-                      ) : (
-                        <span className="text-label text-on-surface-variant/40">—</span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {isShopify ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-caption font-medium text-success border border-success/20">
-                          <ShoppingBag className="h-3 w-3" />
-                          Shopify
-                        </span>
-                      ) : (
-                        <span className="text-label text-on-surface-variant">
-                          {tpl.category || "—"}
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-label text-on-surface-variant uppercase">
-                      {tpl.language}
-                    </TableCell>
-
-                    <TableCell className="text-label text-on-surface-variant truncate max-w-[240px]">
-                      {bodyText || "—"}
-                    </TableCell>
-
-                    <TableCell className="text-label text-on-surface-variant">
-                      {new Date(tpl.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <IconButton size="xs"
-                          onClick={() => startEdit(tpl)}
-                          className="hover:text-primary hover:bg-primary/10"
-                          title="Edit template" aria-label="Edit template">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </IconButton>
-                        {isShopify ? (
-                          <span
-                            title="System template — cannot be deleted"
-                            aria-label="System template — cannot be deleted"
-                            role="img"
-                            className="p-1.5 rounded-lg text-on-surface-variant/25 cursor-not-allowed"
-                          >
-                            <Lock className="h-3.5 w-3.5" />
-                          </span>
-                        ) : (
-                          <IconButton size="xs" variant="danger"
-                            onClick={() => setDeleteTarget(tpl)}
-                           
-                            title="Delete template" aria-label="Delete template">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </IconButton>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            label="Templates"
+            columns={columns}
+            rows={filtered}
+            rowKey={(tpl) => tpl.id}
+            rowLabel={(tpl) => tpl.name}
+          />
         </div>
       ) : templates && templates.length > 0 && search ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">

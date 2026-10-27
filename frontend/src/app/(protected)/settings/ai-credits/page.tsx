@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -17,16 +17,7 @@ import type { AiCreditEntry, AiCreditPackOffer, AiCreditWallet } from "@/lib/api
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableHeaderRow,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn, formatMoney } from "@/lib/utils";
 
 const sectionClass = "bg-surface-container-low border border-outline-variant rounded-xl";
@@ -159,6 +150,38 @@ function entryChange(e: AiCreditEntry): { text: string; positive: boolean } {
   return { text: spent === 0 ? "0" : `−${n(spent)}`, positive: false };
 }
 
+const historyColumns: DataTableColumn<AiCreditEntry>[] = [
+  {
+    id: "date",
+    header: "Date",
+    cellClassName: "whitespace-nowrap text-on-surface-variant",
+    cell: (e) =>
+      new Date(e.createdAt).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+  },
+  {
+    id: "activity",
+    header: "Activity",
+    cell: (e) => (e.kind === "PURCHASE" ? "Purchased credits" : e.label ?? e.action ?? "AI"),
+  },
+  {
+    id: "credits",
+    header: "Credits",
+    align: "right",
+    skeleton: "short",
+    cell: (e) => {
+      const change = entryChange(e);
+      return (
+        <span className={cn("tabular-nums", change.positive ? "text-success" : "text-on-surface")}>{change.text}</span>
+      );
+    },
+  },
+];
+
 function HistoryTable() {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useAiCreditHistory(page);
@@ -169,54 +192,26 @@ function HistoryTable() {
         History
       </h2>
       <div className={cn(sectionClass, "overflow-x-auto")}>
-        {isLoading ? (
-          <div className="flex justify-center py-8" role="status">
-            <Spinner />
-            <span className="sr-only">Loading history…</span>
-          </div>
-        ) : !data || data.entries.length === 0 ? (
-          <p className="p-5 text-body text-on-surface-variant">No AI usage yet.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Activity</TableHead>
-                <TableHead className="text-right">Credits</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {data.entries.map((e) => {
-                const change = entryChange(e);
-                return (
-                  <TableRow key={e.id}>
-                    <TableCell className="whitespace-nowrap text-on-surface-variant">
-                      {new Date(e.createdAt).toLocaleString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </TableCell>
-                    <TableCell>{e.kind === "PURCHASE" ? "Purchased credits" : e.label ?? e.action ?? "AI"}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums", change.positive ? "text-success" : "text-on-surface")}>
-                      {change.text}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-      {data && (
-        <Pagination
-          page={page}
-          total={data.total}
-          totalPages={Math.ceil(data.total / HISTORY_PAGE_SIZE)}
-          onPageChange={setPage}
+        <DataTable
+          label="AI credit history"
+          columns={historyColumns}
+          rows={data?.entries ?? []}
+          rowKey={(e) => e.id}
+          loading={isLoading}
+          skeletonRows={5}
+          pagination={{
+            page: page - 1,
+            pageSize: HISTORY_PAGE_SIZE,
+            total: data?.total ?? 0,
+            onPageChange: (p) => setPage(p + 1),
+          }}
+          empty={{
+            icon: <Sparkles className="h-10 w-10" />,
+            title: "No AI usage yet",
+            compact: true,
+          }}
         />
-      )}
+      </div>
     </section>
   );
 }

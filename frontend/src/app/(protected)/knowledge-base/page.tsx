@@ -7,12 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
   useKbArticles, useKbCategories, useCreateArticle, useUpdateArticle, useDeleteArticle,
 } from "@/hooks/use-knowledge-base";
@@ -81,6 +76,78 @@ export default function KnowledgeBasePage() {
     setShowCreate(true);
   };
 
+  const columns: DataTableColumn<NonNullable<typeof data>["data"][number]>[] = [
+    {
+      id: "title",
+      header: "Title",
+      cell: (article) => (
+        <div className="min-w-0">
+          <p className="text-body font-medium text-on-surface truncate max-w-[250px]">{article.title}</p>
+          {article.tags.length > 0 && (
+            <div className="flex gap-1 mt-0.5">
+              {article.tags.slice(0, 3).map((t) => (
+                <span key={t} className="text-caption text-on-surface-variant/60 bg-surface-container-high rounded px-1">{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "category",
+      header: "Category",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (article) => article.category?.name || "—",
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (article) => (
+        <div className="flex items-center gap-1">
+          {article.isPublished ? (
+            <Badge variant="success"><Globe className="h-3 w-3 mr-0.5" />Published</Badge>
+          ) : (
+            <Badge variant="muted">Draft</Badge>
+          )}
+          {article.isInternal && <Badge variant="warning"><Lock className="h-3 w-3 mr-0.5" />Internal</Badge>}
+        </div>
+      ),
+    },
+    {
+      id: "views",
+      header: "Views",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (article) => <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{article.viewCount}</span>,
+    },
+    {
+      id: "helpful",
+      header: "Helpful",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (article) => <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{article.helpfulCount}</span>,
+    },
+    {
+      id: "updated",
+      header: "Updated",
+      skeleton: "short",
+      cellClassName: "text-caption text-on-surface-variant",
+      cell: (article) => new Date(article.updatedAt).toLocaleDateString(),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      skeleton: "none",
+      cell: (article) => (
+        <div className="flex items-center gap-1">
+          <IconButton size="xs" onClick={() => startEdit(article)} className="hover:text-primary" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></IconButton>
+          <IconButton size="xs" variant="danger" onClick={() => deleteArticle.mutate(article.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></IconButton>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <MobilePageActions primary={{ label: "New article", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
@@ -126,78 +193,23 @@ export default function KnowledgeBasePage() {
       </FilterBar>
 
       {/* Articles table */}
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" className="text-primary" /></div>
-      ) : !data?.data.length ? (
-        <EmptyState
-          icon={<BookOpen className="h-12 w-12" />}
-          title="No articles yet"
-          description="Create your first knowledge base article."
-          actionLabel="New article"
-          onAction={() => setShowCreate(true)}
-        />
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Views</TableHead>
-                <TableHead>Helpful</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {data.data.map((article) => (
-                <TableRow key={article.id}>
-                  <TableCell>
-                    <div className="min-w-0">
-                      <p className="text-body font-medium text-on-surface truncate max-w-[250px]">{article.title}</p>
-                      {article.tags.length > 0 && (
-                        <div className="flex gap-1 mt-0.5">
-                          {article.tags.slice(0, 3).map((t) => (
-                            <span key={t} className="text-caption text-on-surface-variant/60 bg-surface-container-high rounded px-1">{t}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-label text-on-surface-variant">{article.category?.name || "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {article.isPublished ? (
-                        <Badge variant="success"><Globe className="h-3 w-3 mr-0.5" />Published</Badge>
-                      ) : (
-                        <Badge variant="muted">Draft</Badge>
-                      )}
-                      {article.isInternal && <Badge variant="warning"><Lock className="h-3 w-3 mr-0.5" />Internal</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-label text-on-surface-variant">
-                    <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{article.viewCount}</span>
-                  </TableCell>
-                  <TableCell className="text-label text-on-surface-variant">
-                    <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{article.helpfulCount}</span>
-                  </TableCell>
-                  <TableCell className="text-caption text-on-surface-variant">
-                    {new Date(article.updatedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <IconButton size="xs" onClick={() => startEdit(article)} className="hover:text-primary" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></IconButton>
-                      <IconButton size="xs" variant="danger" onClick={() => deleteArticle.mutate(article.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></IconButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {data.total > take && <Pagination total={data.total} totalPages={Math.ceil(data.total / take)} page={page} onPageChange={setPage} />}
-        </>
-      )}
+      <DataTable
+        label="Articles"
+        columns={columns}
+        rows={data?.data ?? []}
+        rowKey={(article) => article.id}
+        rowLabel={(article) => article.title}
+        loading={isLoading}
+        skeletonRows={6}
+        pagination={{ page, pageSize: take, total: data?.total ?? 0, onPageChange: setPage }}
+        empty={{
+          icon: <BookOpen className="h-12 w-12" />,
+          title: "No articles yet",
+          description: "Create your first knowledge base article.",
+          actionLabel: "New article",
+          onAction: () => setShowCreate(true),
+        }}
+      />
 
       {/* Create/Edit Modal */}
       <Modal

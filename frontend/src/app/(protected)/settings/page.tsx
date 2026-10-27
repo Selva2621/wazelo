@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiTryIt, publicApiBase } from "@/components/settings/api-try-it";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -82,7 +82,8 @@ import {
   useRevokeApiKey,
   useRotateApiKey,
 } from "@/hooks/use-developer";
-import type { DeveloperApiKey } from "@/lib/types/developer";
+import type { DeveloperApiKey, DeveloperApiRequestLog } from "@/lib/types/developer";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrowserPushCard } from "@/components/notifications/browser-push-card";
 import { Button } from "@/components/ui/button";
@@ -2160,6 +2161,117 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
 
 // ─── Developer API Section ──────────────────────
 
+type ApiEndpoint = [method: string, path: string, desc: string, scopes: string];
+
+const API_ENDPOINTS: ApiEndpoint[] = [
+  ["POST", "/developer/messages/send", "Send a text, media or interactive message", "write, messages"],
+  ["POST", "/developer/messages/send-bulk", "Send one message to up to 100 numbers", "write, messages"],
+  ["POST", "/developer/messages/send-template", "Send a saved template with variables", "write, messages"],
+  ["GET", "/developer/messages", "List messages (cursor pagination)", "read, messages"],
+  ["GET", "/developer/messages/:id", "Get a message and its status events", "read, messages"],
+  ["GET", "/developer/templates", "List templates", "read, messages"],
+  ["POST", "/developer/templates", "Create or update a template", "write, messages"],
+  ["GET", "/developer/contacts", "List contacts (cursor pagination)", "read, contacts"],
+  ["POST", "/developer/contacts", "Create a contact (returns existing one if the phone exists)", "write, contacts"],
+  ["GET", "/developer/contacts/:id", "Get a contact", "read, contacts"],
+  ["PUT", "/developer/contacts/:id", "Update name, email or metadata", "write, contacts"],
+  ["GET", "/developer/session/status", "Check the WhatsApp connection", "read"],
+];
+
+const apiEndpointColumns: DataTableColumn<ApiEndpoint>[] = [
+  {
+    id: "method",
+    header: "Method",
+    cellClassName: "font-mono text-label",
+    cell: ([method]) => (
+      <span className={`px-1.5 py-0.5 rounded text-caption font-semibold ${
+        method === "POST" ? "bg-primary/10 text-primary" :
+        method === "DELETE" ? "bg-error/10 text-error" :
+        method === "PUT" ? "bg-warning/10 text-warning" :
+        "bg-surface-container text-on-surface"
+      }`}>
+        {method}
+      </span>
+    ),
+  },
+  {
+    id: "endpoint",
+    header: "Endpoint",
+    cellClassName: "font-mono text-label text-on-surface",
+    cell: ([, path]) => `/api/v1${path}`,
+  },
+  {
+    id: "description",
+    header: "Description",
+    cellClassName: "text-label text-on-surface-variant font-sans",
+    cell: ([, , desc]) => desc,
+  },
+  {
+    id: "scopes",
+    header: "Scopes",
+    cellClassName: "font-mono text-label text-on-surface-variant whitespace-nowrap",
+    cell: ([, , , scopes]) => scopes,
+  },
+];
+
+const apiLogColumns: DataTableColumn<DeveloperApiRequestLog>[] = [
+  {
+    id: "time",
+    header: "Time",
+    cellClassName: "align-top text-on-surface-variant text-label whitespace-nowrap",
+    cell: (log) => new Date(log.createdAt).toLocaleString(),
+  },
+  {
+    id: "request",
+    header: "Request",
+    cellClassName: "align-top",
+    cell: (log) => (
+      <>
+        <span className="font-mono text-label">
+          <span className="font-semibold">{log.method}</span>{" "}
+          {log.path.replace(/^\/api\/v1/, "")}
+        </span>
+        {log.errorMessage && (
+          <p className="text-caption text-error mt-0.5 max-w-[360px]">{log.errorMessage}</p>
+        )}
+      </>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cellClassName: "align-top",
+    cell: (log) => (
+      <span className={`px-1.5 py-0.5 rounded text-caption font-medium font-mono ${
+        log.statusCode < 300 ? "bg-success/10 text-success" :
+        log.statusCode < 500 ? "bg-warning/10 text-warning" :
+        "bg-error/10 text-error"
+      }`}>
+        {log.statusCode}
+      </span>
+    ),
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    skeleton: "short",
+    cellClassName: "align-top text-on-surface-variant text-label tabular-nums",
+    cell: (log) => `${log.durationMs} ms`,
+  },
+  {
+    id: "key",
+    header: "Key",
+    cellClassName: "align-top text-on-surface-variant text-label",
+    cell: (log) => (
+      <>
+        {log.apiKeyName ?? "Deleted key"}
+        {log.apiKeyPrefix && <span className="font-mono text-caption block">{log.apiKeyPrefix}…</span>}
+      </>
+    ),
+  },
+];
+
 function DeveloperApiSection() {
   const { data: stats, isLoading: statsLoading } = useDeveloperDashboard();
   const { data: keys, isLoading: keysLoading } = useApiKeys();
@@ -2180,6 +2292,98 @@ function DeveloperApiSection() {
     sectionParam === "keys" || sectionParam === "docs" || sectionParam === "logs" ? sectionParam : "overview",
   );
   const [keyConfirm, setKeyConfirm] = useState<{ type: "rotate" | "revoke"; id: string; name: string } | null>(null);
+
+  const rotatePending = rotateKey.isPending;
+  const revokePending = revokeKey.isPending;
+  const apiKeyColumns = useMemo<DataTableColumn<DeveloperApiKey>[]>(
+    () => [
+      { id: "name", header: "Name", cellClassName: "font-medium text-on-surface", cell: (key) => key.name },
+      {
+        id: "key",
+        header: "Key",
+        cell: (key) => (
+          <code className="text-label bg-surface-container px-2 py-0.5 rounded font-mono">
+            {key.keyPrefix}...
+          </code>
+        ),
+      },
+      {
+        id: "scopes",
+        header: "Scopes",
+        skeleton: "badge",
+        cell: (key) => (
+          <div className="flex flex-wrap gap-1">
+            {key.scopes.map((s) => (
+              <span key={s} className="px-1.5 py-0.5 bg-surface-container rounded text-caption">{s}</span>
+            ))}
+          </div>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        skeleton: "badge",
+        cell: (key) =>
+          key.isActive ? (
+            <span className="flex items-center gap-1 text-primary text-label">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Active
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-error text-label">
+              <XCircle className="h-3.5 w-3.5" /> Revoked
+            </span>
+          ),
+      },
+      {
+        id: "lastUsed",
+        header: "Last Used",
+        skeleton: "short",
+        cellClassName: "text-on-surface-variant",
+        cell: (key) => (key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"),
+      },
+      {
+        id: "expires",
+        header: "Expires",
+        skeleton: "short",
+        cellClassName: "text-on-surface-variant",
+        cell: (key) =>
+          !key.expiresAt ? (
+            "Never"
+          ) : new Date(key.expiresAt) < new Date() ? (
+            <span className="text-error">Expired</span>
+          ) : (
+            new Date(key.expiresAt).toLocaleDateString()
+          ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        skeleton: "none",
+        cell: (key) =>
+          key.isActive && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => setKeyConfirm({ type: "rotate", id: key.id, name: key.name })}
+                disabled={rotatePending}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
+              >
+                <RotateCw className="h-3 w-3" />
+                Rotate
+              </button>
+              <button
+                onClick={() => setKeyConfirm({ type: "revoke", id: key.id, name: key.name })}
+                disabled={revokePending}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
+              >
+                <Trash2 className="h-3 w-3" />
+                Revoke
+              </button>
+            </div>
+          ),
+      },
+    ],
+    [rotatePending, revokePending],
+  );
 
   const AVAILABLE_SCOPES = ["read", "write", "messages", "contacts"];
 
@@ -2412,93 +2616,20 @@ function DeveloperApiSection() {
               )}
 
               {/* Keys Table */}
-              {keysLoading ? (
-                <SectionLoader />
-              ) : keys && keys.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-body">
-                    <thead>
-                      <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                        <th className="pb-2 font-medium">Name</th>
-                        <th className="pb-2 font-medium">Key</th>
-                        <th className="pb-2 font-medium">Scopes</th>
-                        <th className="pb-2 font-medium">Status</th>
-                        <th className="pb-2 font-medium">Last Used</th>
-                        <th className="pb-2 font-medium">Expires</th>
-                        <th className="pb-2 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {keys.map((key) => (
-                        <tr key={key.id} className="border-b border-outline-variant/10">
-                          <td className="py-3 font-medium text-on-surface">{key.name}</td>
-                          <td className="py-3">
-                            <code className="text-label bg-surface-container px-2 py-0.5 rounded font-mono">
-                              {key.keyPrefix}...
-                            </code>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {key.scopes.map((s) => (
-                                <span key={s} className="px-1.5 py-0.5 bg-surface-container rounded text-caption">{s}</span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            {key.isActive ? (
-                              <span className="flex items-center gap-1 text-primary text-label">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Active
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-error text-label">
-                                <XCircle className="h-3.5 w-3.5" /> Revoked
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 text-on-surface-variant">
-                            {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"}
-                          </td>
-                          <td className="py-3 text-on-surface-variant">
-                            {!key.expiresAt ? (
-                              "Never"
-                            ) : new Date(key.expiresAt) < new Date() ? (
-                              <span className="text-error">Expired</span>
-                            ) : (
-                              new Date(key.expiresAt).toLocaleDateString()
-                            )}
-                          </td>
-                          <td className="py-3">
-                            {key.isActive && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => setKeyConfirm({ type: "rotate", id: key.id, name: key.name })}
-                                  disabled={rotateKey.isPending}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
-                                >
-                                  <RotateCw className="h-3 w-3" />
-                                  Rotate
-                                </button>
-                                <button
-                                  onClick={() => setKeyConfirm({ type: "revoke", id: key.id, name: key.name })}
-                                  disabled={revokeKey.isPending}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                  Revoke
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center py-8 text-on-surface-variant text-body">
-                  No API keys yet. Create one to get started.
-                </p>
-              )}
+              <DataTable
+                label="API keys"
+                columns={apiKeyColumns}
+                rows={keys ?? []}
+                rowKey={(key) => key.id}
+                rowLabel={(key) => key.name}
+                loading={keysLoading}
+                skeletonRows={3}
+                empty={{
+                  icon: <Key className="h-10 w-10" />,
+                  title: "No API keys yet",
+                  description: "Create one to get started.",
+                }}
+              />
             </CardContent>
           </Card>
         </div>
@@ -2680,50 +2811,13 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
               </a>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-body">
-                  <thead>
-                    <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                      <th className="pb-2 font-medium">Method</th>
-                      <th className="pb-2 font-medium">Endpoint</th>
-                      <th className="pb-2 font-medium">Description</th>
-                      <th className="pb-2 font-medium">Scopes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="font-mono text-label">
-                    {[
-                      ["POST", "/developer/messages/send", "Send a text, media or interactive message", "write, messages"],
-                      ["POST", "/developer/messages/send-bulk", "Send one message to up to 100 numbers", "write, messages"],
-                      ["POST", "/developer/messages/send-template", "Send a saved template with variables", "write, messages"],
-                      ["GET", "/developer/messages", "List messages (cursor pagination)", "read, messages"],
-                      ["GET", "/developer/messages/:id", "Get a message and its status events", "read, messages"],
-                      ["GET", "/developer/templates", "List templates", "read, messages"],
-                      ["POST", "/developer/templates", "Create or update a template", "write, messages"],
-                      ["GET", "/developer/contacts", "List contacts (cursor pagination)", "read, contacts"],
-                      ["POST", "/developer/contacts", "Create a contact (returns existing one if the phone exists)", "write, contacts"],
-                      ["GET", "/developer/contacts/:id", "Get a contact", "read, contacts"],
-                      ["PUT", "/developer/contacts/:id", "Update name, email or metadata", "write, contacts"],
-                      ["GET", "/developer/session/status", "Check the WhatsApp connection", "read"],
-                    ].map(([method, path, desc, scopes]) => (
-                      <tr key={`${method}-${path}`} className="border-b border-outline-variant/10">
-                        <td className="py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-caption font-semibold ${
-                            method === "POST" ? "bg-primary/10 text-primary" :
-                            method === "DELETE" ? "bg-error/10 text-error" :
-                            method === "PUT" ? "bg-warning/10 text-warning" :
-                            "bg-surface-container text-on-surface"
-                          }`}>
-                            {method}
-                          </span>
-                        </td>
-                        <td className="py-2 text-on-surface">/api/v1{path}</td>
-                        <td className="py-2 text-on-surface-variant font-sans">{desc}</td>
-                        <td className="py-2 text-on-surface-variant whitespace-nowrap">{scopes}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                label="API endpoints"
+                columns={apiEndpointColumns}
+                rows={API_ENDPOINTS}
+                rowKey={([method, path]) => `${method}-${path}`}
+                rowLabel={([method, path]) => `${method} ${path}`}
+              />
               <div className="mt-4 space-y-1 text-label text-on-surface-variant">
                 <p>
                   Send your key in the <code className="bg-surface-container px-1 rounded">X-API-Key</code> header.
@@ -2795,57 +2889,18 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
             <p className="text-label text-on-surface-variant">Last 50 requests made with your API keys. Kept for 30 days.</p>
           </CardHeader>
           <CardContent>
-            {logs?.data && logs.data.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-body">
-                  <thead>
-                    <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                      <th className="pb-2 font-medium">Time</th>
-                      <th className="pb-2 font-medium">Request</th>
-                      <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 font-medium">Duration</th>
-                      <th className="pb-2 font-medium">Key</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.data.map((log) => (
-                      <tr key={log.id} className="border-b border-outline-variant/10 align-top">
-                        <td className="py-2.5 pr-3 text-on-surface-variant text-label whitespace-nowrap">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <span className="font-mono text-label">
-                            <span className="font-semibold">{log.method}</span>{" "}
-                            {log.path.replace(/^\/api\/v1/, "")}
-                          </span>
-                          {log.errorMessage && (
-                            <p className="text-caption text-error mt-0.5 max-w-[360px]">{log.errorMessage}</p>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <span className={`px-1.5 py-0.5 rounded text-caption font-medium font-mono ${
-                            log.statusCode < 300 ? "bg-success/10 text-success" :
-                            log.statusCode < 500 ? "bg-warning/10 text-warning" :
-                            "bg-error/10 text-error"
-                          }`}>
-                            {log.statusCode}
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-3 text-on-surface-variant text-label tabular-nums">{log.durationMs} ms</td>
-                        <td className="py-2.5 text-on-surface-variant text-label">
-                          {log.apiKeyName ?? "Deleted key"}
-                          {log.apiKeyPrefix && <span className="font-mono text-caption block">{log.apiKeyPrefix}…</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-center py-8 text-on-surface-variant text-body">
-                No API requests yet. Requests made with your API keys show up here.
-              </p>
-            )}
+            <DataTable
+              label="API requests"
+              columns={apiLogColumns}
+              rows={logs?.data ?? []}
+              rowKey={(log) => log.id}
+              rowLabel={(log) => `${log.method} ${log.path}`}
+              empty={{
+                icon: <Activity className="h-10 w-10" />,
+                title: "No API requests yet",
+                description: "Requests made with your API keys show up here.",
+              }}
+            />
           </CardContent>
         </Card>
       )}

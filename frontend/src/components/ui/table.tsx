@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
 
 /* ─── Root ─── */
 interface TableProps {
@@ -84,14 +84,17 @@ export function TableBody({ children, className }: TableProps) {
 }
 
 /* ─── Body Row ─── */
-interface TableRowProps extends TableProps {
+interface TableRowProps
+  extends TableProps,
+    Pick<HTMLAttributes<HTMLTableRowElement>, "tabIndex" | "onKeyDown" | "aria-label" | "aria-expanded"> {
   onClick?: () => void;
 }
 
-export function TableRow({ children, className, onClick }: TableRowProps) {
+export function TableRow({ children, className, onClick, ...rest }: TableRowProps) {
   return (
     <tr
       onClick={onClick}
+      {...rest}
       className={cn(
         "border-b border-outline-variant/60 transition-colors duration-120 ease-standard hover:bg-surface-container-low",
         onClick && "cursor-pointer",

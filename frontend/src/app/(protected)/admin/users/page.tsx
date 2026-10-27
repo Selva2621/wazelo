@@ -32,17 +32,9 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import type { OrgUser } from "@/lib/api/users";
 import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
@@ -163,13 +155,199 @@ export default function AdminUsersPage() {
     );
   };
 
-  if (usersLoading) {
-    return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <Spinner size="lg" className="text-primary" />
-      </div>
-    );
-  }
+  const columns: DataTableColumn<OrgUser>[] = [
+    {
+      id: "user",
+      header: "User",
+      skeleton: "avatar",
+      cell: (user) => {
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar
+                name={`${user.firstName} ${user.lastName}`}
+                size="sm"
+              />
+              {user.isOnline && (
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface-container-lowest" />
+              )}
+            </div>
+            <div>
+              <p className="text-body-lg font-medium text-on-surface">
+                {user.firstName} {user.lastName}
+                {isSelf && (
+                  <span className="text-caption text-on-surface-variant ml-1.5">
+                    (you)
+                  </span>
+                )}
+              </p>
+              <p className="text-label text-on-surface-variant">
+                {user.email}
+              </p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "role",
+      header: "Role",
+      skeleton: "badge",
+      cell: (user) => {
+        const isSelf = user.id === currentUser?.id;
+        return changingRoleUserId === user.id ? (
+          <div className="flex items-center gap-1.5">
+            <select
+              value={newRole}
+              onChange={(e) =>
+                setNewRole(e.target.value as Role)
+              }
+              className="rounded-md border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="EMPLOYEE">Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            <button
+              onClick={() => handleChangeRole(user.id)}
+              className="text-caption text-primary hover:text-primary/80 font-medium"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setChangingRoleUserId(null)}
+              className="text-caption text-on-surface-variant hover:text-on-surface"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              if (!isSelf) {
+                setChangingRoleUserId(user.id);
+                setNewRole(user.role);
+              }
+            }}
+            disabled={isSelf}
+            className="group flex items-center gap-1.5"
+            title={isSelf ? "Cannot change own role" : "Click to change role"}
+          >
+            <Badge
+              variant={
+                user.role === "ADMIN"
+                  ? "primary"
+                  : user.role === "MANAGER"
+                    ? "info"
+                    : "default"
+              }
+            >
+              {user.role}
+            </Badge>
+            {!isSelf && (
+              <Shield className="h-3 w-3 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
+            )}
+          </button>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (user) => <UserStatusBadge status={user.status} />,
+    },
+    {
+      id: "whatsapp",
+      header: "WhatsApp",
+      skeleton: "badge",
+      cell: (user) => {
+        const session = sessionByUser.get(user.id) as
+          | { status: string; phoneNumber: string | null }
+          | undefined;
+        return (
+          <div className="flex items-center gap-2">
+            <SessionStatusBadge status={session?.status} />
+            {session?.phoneNumber && (
+              <span className="text-caption text-on-surface-variant">
+                {session.phoneNumber}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (user) => {
+        const session = sessionByUser.get(user.id) as
+          | { status: string; phoneNumber: string | null }
+          | undefined;
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            {/* View Inbox */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                router.push(`/admin/users/${user.id}/inbox`)
+              }
+              disabled={
+                !session || session.status !== "CONNECTED"
+              }
+              title="View inbox"
+              aria-label="View inbox"
+              className="max-lg:size-10"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </Button>
+
+            {/* Disable / Enable */}
+            {!isSelf && (
+              <>
+                {user.status === "ACTIVE" ? (
+                  <IconButton size="xs"
+                    onClick={() => disableUser.mutate(user.id)}
+                    className="hover:text-warning hover:bg-warning/10 max-lg:size-10"
+                    title="Disable user" aria-label="Disable user">
+                    <Ban className="h-3.5 w-3.5" />
+                  </IconButton>
+                ) : user.status === "SUSPENDED" ? (
+                  <IconButton size="xs"
+                    onClick={() => enableUser.mutate(user.id)}
+                    className="hover:text-success hover:bg-success/10 max-lg:size-10"
+                    title="Enable user" aria-label="Enable user">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  </IconButton>
+                ) : null}
+
+                {/* Delete */}
+                <IconButton size="xs" variant="danger"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
+                      )
+                    ) {
+                      deleteUser.mutate(user.id);
+                    }
+                  }}
+                  className="max-lg:size-10"
+                  title="Delete user" aria-label="Delete user">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </IconButton>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -339,7 +517,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users table */}
-      {users.length === 0 ? (
+      {!usersLoading && users.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No users found"
@@ -349,182 +527,15 @@ export default function AdminUsersPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>WhatsApp</TableHead>
-                <TableHead align="right">Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => {
-                const session = sessionByUser.get(user.id) as
-                  | { status: string; phoneNumber: string | null }
-                  | undefined;
-                const isSelf = user.id === currentUser?.id;
-
-                return (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar
-                            name={`${user.firstName} ${user.lastName}`}
-                            size="sm"
-                          />
-                          {user.isOnline && (
-                            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface-container-lowest" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-body-lg font-medium text-on-surface">
-                            {user.firstName} {user.lastName}
-                            {isSelf && (
-                              <span className="text-caption text-on-surface-variant ml-1.5">
-                                (you)
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-label text-on-surface-variant">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {changingRoleUserId === user.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            value={newRole}
-                            onChange={(e) =>
-                              setNewRole(e.target.value as Role)
-                            }
-                            className="rounded-md border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          >
-                            <option value="EMPLOYEE">Employee</option>
-                            <option value="MANAGER">Manager</option>
-                            <option value="ADMIN">Admin</option>
-                          </select>
-                          <button
-                            onClick={() => handleChangeRole(user.id)}
-                            className="text-caption text-primary hover:text-primary/80 font-medium"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setChangingRoleUserId(null)}
-                            className="text-caption text-on-surface-variant hover:text-on-surface"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (!isSelf) {
-                              setChangingRoleUserId(user.id);
-                              setNewRole(user.role);
-                            }
-                          }}
-                          disabled={isSelf}
-                          className="group flex items-center gap-1.5"
-                          title={isSelf ? "Cannot change own role" : "Click to change role"}
-                        >
-                          <Badge
-                            variant={
-                              user.role === "ADMIN"
-                                ? "primary"
-                                : user.role === "MANAGER"
-                                  ? "info"
-                                  : "default"
-                            }
-                          >
-                            {user.role}
-                          </Badge>
-                          {!isSelf && (
-                            <Shield className="h-3 w-3 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
-                          )}
-                        </button>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <UserStatusBadge status={user.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <SessionStatusBadge status={session?.status} />
-                        {session?.phoneNumber && (
-                          <span className="text-caption text-on-surface-variant">
-                            {session.phoneNumber}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell align="right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* View Inbox */}
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/admin/users/${user.id}/inbox`)
-                          }
-                          disabled={
-                            !session || session.status !== "CONNECTED"
-                          }
-                          title="View inbox"
-                          aria-label="View inbox"
-                          className="max-lg:size-10"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                        </Button>
-
-                        {/* Disable / Enable */}
-                        {!isSelf && (
-                          <>
-                            {user.status === "ACTIVE" ? (
-                              <IconButton size="xs"
-                                onClick={() => disableUser.mutate(user.id)}
-                                className="hover:text-warning hover:bg-warning/10 max-lg:size-10"
-                                title="Disable user" aria-label="Disable user">
-                                <Ban className="h-3.5 w-3.5" />
-                              </IconButton>
-                            ) : user.status === "SUSPENDED" ? (
-                              <IconButton size="xs"
-                                onClick={() => enableUser.mutate(user.id)}
-                                className="hover:text-success hover:bg-success/10 max-lg:size-10"
-                                title="Enable user" aria-label="Enable user">
-                                <CheckCircle className="h-3.5 w-3.5" />
-                              </IconButton>
-                            ) : null}
-
-                            {/* Delete */}
-                            <IconButton size="xs" variant="danger"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
-                                  )
-                                ) {
-                                  deleteUser.mutate(user.id);
-                                }
-                              }}
-                              className="max-lg:size-10"
-                              title="Delete user" aria-label="Delete user">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </IconButton>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            label="Users"
+            columns={columns}
+            rows={users}
+            rowKey={(u) => u.id}
+            rowLabel={(u) => `${u.firstName} ${u.lastName}`}
+            loading={usersLoading}
+            skeletonRows={6}
+          />
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Check, Copy, UserPlus } from "lucide-react";
+import { Check, Copy, ShieldCheck, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   useSAAdmins,
@@ -16,9 +16,9 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Spinner } from "@/components/ui/spinner";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/layout/page-header";
-import { TABLE_CARD, TH, TR } from "@/components/super-admin/list-styles";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
 
 function errorMessage(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -217,6 +217,76 @@ export default function SuperAdminTeamPage() {
     (setDisabled.isPending && setDisabled.variables?.id === id) ||
     (resetTwoFactor.isPending && resetTwoFactor.variables === id);
 
+  const columns: DataTableColumn<SuperAdminMember>[] = [
+    {
+      id: "admin",
+      header: "Admin",
+      cell: (a) => (
+        <>
+          <p className="text-on-surface font-medium">{a.name}</p>
+          <p className="text-label text-on-surface-variant break-all">{a.email}</p>
+        </>
+      ),
+    },
+    { id: "status", header: "Status", skeleton: "badge", cell: (a) => <AdminBadges admin={a} /> },
+    {
+      id: "lastSignIn",
+      header: "Last sign-in",
+      cellClassName: "text-on-surface-variant whitespace-nowrap",
+      cell: (a) => (a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString() : "Never"),
+    },
+    {
+      id: "created",
+      header: "Created",
+      cellClassName: "text-on-surface-variant whitespace-nowrap",
+      cell: (a) => new Date(a.createdAt).toLocaleDateString(),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      skeleton: "none",
+      cell: (a) =>
+        !a.isYou && (
+          <div className="flex justify-end gap-1 whitespace-nowrap">
+            {a.totpEnabled && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={rowBusy(a.id)}
+                onClick={() => setResetTarget(a)}
+              >
+                Reset 2FA
+              </Button>
+            )}
+            {a.disabledAt ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={setDisabled.isPending && setDisabled.variables?.id === a.id}
+                disabled={rowBusy(a.id)}
+                onClick={() => changeDisabled(a, false)}
+              >
+                Enable
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={rowBusy(a.id)}
+                onClick={() => setDisableTarget(a)}
+              >
+                Disable
+              </Button>
+            )}
+          </div>
+        ),
+    },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-5xl">
       <PageHeader
@@ -231,94 +301,22 @@ export default function SuperAdminTeamPage() {
       />
 
       <section className={TABLE_CARD} aria-label="Super admins">
-        {isLoading ? (
-          <div className="flex justify-center py-10" role="status">
-            <Spinner className="text-primary" />
-            <span className="sr-only">Loading…</span>
-          </div>
-        ) : isError ? (
-          <div className="p-4">
-            <Alert variant="error">
-              Could not load the team.{" "}
-              <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-                Try again
-              </button>
-            </Alert>
-          </div>
-        ) : !admins?.length ? (
-          <p className="p-4 text-body-lg text-on-surface-variant">No super admins yet.</p>
-        ) : (
-          <table className="w-full text-body">
-            <caption className="sr-only">Super admins</caption>
-            <thead>
-              <tr className="border-b border-outline-variant text-left">
-                {["Admin", "Status", "Last sign-in", "Created", ""].map((h, i) => (
-                  <th key={i} scope="col" className={TH}>
-                    {h || <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/60">
-              {admins.map((a) => (
-                <tr key={a.id} className={TR}>
-                  <td className="px-4 py-3">
-                    <p className="text-on-surface font-medium">{a.name}</p>
-                    <p className="text-label text-on-surface-variant break-all">{a.email}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <AdminBadges admin={a} />
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                    {a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString() : "Never"}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                    {new Date(a.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    {!a.isYou && (
-                      <div className="flex justify-end gap-1 whitespace-nowrap">
-                        {a.totpEnabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={rowBusy(a.id)}
-                            onClick={() => setResetTarget(a)}
-                          >
-                            Reset 2FA
-                          </Button>
-                        )}
-                        {a.disabledAt ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            loading={setDisabled.isPending && setDisabled.variables?.id === a.id}
-                            disabled={rowBusy(a.id)}
-                            onClick={() => changeDisabled(a, false)}
-                          >
-                            Enable
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={rowBusy(a.id)}
-                            onClick={() => setDisableTarget(a)}
-                          >
-                            Disable
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          label="Super admins"
+          columns={columns}
+          rows={admins ?? []}
+          rowKey={(a) => a.id}
+          rowLabel={(a) => a.name}
+          loading={isLoading}
+          skeletonRows={4}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <ShieldCheck className="h-12 w-12" />,
+            title: "No super admins yet",
+            compact: true,
+          }}
+        />
       </section>
 
       <Modal

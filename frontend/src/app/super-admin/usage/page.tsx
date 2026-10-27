@@ -6,6 +6,8 @@ import { useSAUsage } from "@/hooks/use-super-admin";
 import { DailyBars } from "@/components/super-admin/daily-bars";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { CARD } from "@/components/super-admin/list-styles";
@@ -30,6 +32,49 @@ export default function SuperAdminUsagePage() {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const { data, isLoading, isError, isFetching, refetch } = useSAUsage(days);
   const topMax = Math.max(0, ...(data?.topOrgs ?? []).map((o) => o.outbound));
+
+  const topOrgColumns: DataTableColumn<NonNullable<typeof data>["topOrgs"][number]>[] = [
+    {
+      id: "organization",
+      header: "Organization",
+      cell: (o) => (
+        <Link href={`/super-admin/organizations/${o.orgId}`} className="text-on-surface hover:text-primary">
+          {o.name}
+        </Link>
+      ),
+    },
+    {
+      id: "sent",
+      header: "Sent",
+      className: "w-1/2",
+      skeleton: "bar",
+      cell: (o) => (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-2 rounded-full bg-surface-container" aria-hidden>
+            <div
+              className="h-2 rounded-full bg-chart-bar"
+              style={{ width: `${topMax > 0 ? Math.max(2, (o.outbound / topMax) * 100) : 0}%` }}
+            />
+          </div>
+          <span className="tabular-nums text-on-surface w-16 text-right">{o.outbound.toLocaleString()}</span>
+        </div>
+      ),
+    },
+    {
+      id: "failed",
+      header: "Failed",
+      align: "right",
+      cellClassName: "tabular-nums text-on-surface-variant",
+      cell: (o) => o.failed.toLocaleString(),
+    },
+    {
+      id: "failRate",
+      header: "Fail rate",
+      align: "right",
+      cellClassName: "tabular-nums text-on-surface-variant",
+      cell: (o) => pct(o.failed, o.outbound),
+    },
+  ];
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
@@ -103,47 +148,17 @@ export default function SuperAdminUsagePage() {
             <h2 id="top-orgs-heading" className="text-body-lg font-semibold text-on-surface">
               Top organizations by messages sent
             </h2>
-            {data.topOrgs.length === 0 ? (
-              <p className="text-body text-on-surface-variant">No messages sent in the last {data.days} days.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-body">
-                  <caption className="sr-only">Top 10 organizations by messages sent, last {data.days} days</caption>
-                  <thead>
-                    <tr className="text-left border-b border-outline-variant">
-                      <th scope="col" className="py-2 pr-3 text-label font-medium text-on-surface-variant">Organization</th>
-                      <th scope="col" className="py-2 pr-3 text-label font-medium text-on-surface-variant w-1/2">Sent</th>
-                      <th scope="col" className="py-2 pr-3 text-label font-medium text-on-surface-variant text-right">Failed</th>
-                      <th scope="col" className="py-2 text-label font-medium text-on-surface-variant text-right">Fail rate</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant/40">
-                    {data.topOrgs.map((o) => (
-                      <tr key={o.orgId}>
-                        <td className="py-2 pr-3">
-                          <Link href={`/super-admin/organizations/${o.orgId}`} className="text-on-surface hover:text-primary">
-                            {o.name}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-surface-container" aria-hidden>
-                              <div
-                                className="h-2 rounded-full bg-chart-bar"
-                                style={{ width: `${topMax > 0 ? Math.max(2, (o.outbound / topMax) * 100) : 0}%` }}
-                              />
-                            </div>
-                            <span className="tabular-nums text-on-surface w-16 text-right">{o.outbound.toLocaleString()}</span>
-                          </div>
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums text-on-surface-variant">{o.failed.toLocaleString()}</td>
-                        <td className="py-2 text-right tabular-nums text-on-surface-variant">{pct(o.failed, o.outbound)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <DataTable
+              label={`Top 10 organizations by messages sent, last ${data.days} days`}
+              columns={topOrgColumns}
+              rows={data.topOrgs}
+              rowKey={(o) => o.orgId}
+              empty={{
+                icon: <Send className="h-10 w-10" />,
+                title: `No messages sent in the last ${data.days} days`,
+                compact: true,
+              }}
+            />
           </section>
         </div>
       )}

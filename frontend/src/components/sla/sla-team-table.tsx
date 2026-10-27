@@ -5,15 +5,8 @@ import type {
   SlaBreachByUser,
   SlaAvgResponseByUser,
 } from "@/lib/types/sla";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { Users } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 function formatMs(ms: number): string {
   if (ms < 1000) return "<1s";
@@ -26,6 +19,85 @@ function formatMs(ms: number): string {
   const remainingMin = minutes % 60;
   return `${hours}h ${remainingMin}m`;
 }
+
+interface TeamRow {
+  userId: string;
+  name: string;
+  breaches: number;
+  avgMs: number;
+  conversations: number;
+}
+
+function complianceRateOf(row: TeamRow): string {
+  return row.conversations > 0
+    ? (
+        ((row.conversations - row.breaches) /
+          row.conversations) *
+        100
+      ).toFixed(1)
+    : "100.0";
+}
+
+const columns: DataTableColumn<TeamRow>[] = [
+  {
+    id: "name",
+    header: "Name",
+    cellClassName: "text-on-surface font-medium",
+    cell: (row) => row.name,
+  },
+  {
+    id: "avgResponse",
+    header: "Avg Response",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface-variant",
+    cell: (row) => (row.avgMs > 0 ? formatMs(row.avgMs) : "—"),
+  },
+  {
+    id: "conversations",
+    header: "Conversations",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums text-on-surface",
+    cell: (row) => row.conversations,
+  },
+  {
+    id: "breaches",
+    header: "Breaches",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums",
+    cell: (row) => (
+      <span className={row.breaches === 0 ? "text-success" : "text-error"}>
+        {row.breaches}
+      </span>
+    ),
+  },
+  {
+    id: "compliance",
+    header: "Compliance",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "tabular-nums",
+    cell: (row) => {
+      const complianceRate = complianceRateOf(row);
+      const complianceNum = parseFloat(complianceRate);
+      return (
+        <span
+          className={
+            complianceNum >= 90
+              ? "text-success"
+              : complianceNum >= 70
+                ? "text-warning"
+                : "text-error"
+          }
+        >
+          {complianceRate}%
+        </span>
+      );
+    },
+  },
+];
 
 interface UserInfo {
   id: string;
@@ -55,7 +127,7 @@ export function SlaTeamTable({ performance, users }: SlaTeamTableProps) {
     ...avgResponseByUser.map((r: SlaAvgResponseByUser) => r.assignedUserId),
   ]);
 
-  const rows = Array.from(allUserIds)
+  const rows: TeamRow[] = Array.from(allUserIds)
     .map((userId) => {
       const user = userMap.get(userId);
       return {
@@ -74,68 +146,18 @@ export function SlaTeamTable({ performance, users }: SlaTeamTableProps) {
         Team SLA Performance
       </h3>
 
-      {rows.length === 0 ? (
-        <div className="py-8 text-center text-body text-on-surface-variant/40">
-          No team performance data available
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Name</TableHead>
-              <TableHead align="right">Avg Response</TableHead>
-              <TableHead align="right">Conversations</TableHead>
-              <TableHead align="right">Breaches</TableHead>
-              <TableHead align="right">Compliance</TableHead>
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => {
-              const complianceRate =
-                row.conversations > 0
-                  ? (
-                      ((row.conversations - row.breaches) /
-                        row.conversations) *
-                      100
-                    ).toFixed(1)
-                  : "100.0";
-              const complianceNum = parseFloat(complianceRate);
-
-              return (
-                <TableRow key={row.userId}>
-                  <TableCell className="text-on-surface font-medium">
-                    {row.name}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums text-on-surface-variant">
-                    {row.avgMs > 0 ? formatMs(row.avgMs) : "—"}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums text-on-surface">
-                    {row.conversations}
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums">
-                    <span className={row.breaches === 0 ? "text-success" : "text-error"}>
-                      {row.breaches}
-                    </span>
-                  </TableCell>
-                  <TableCell align="right" className="tabular-nums">
-                    <span
-                      className={
-                        complianceNum >= 90
-                          ? "text-success"
-                          : complianceNum >= 70
-                            ? "text-warning"
-                            : "text-error"
-                      }
-                    >
-                      {complianceRate}%
-                    </span>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        label="Team SLA performance"
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.userId}
+        rowLabel={(row) => row.name}
+        empty={{
+          icon: <Users className="h-10 w-10" />,
+          title: "No team performance data available",
+          compact: true,
+        }}
+      />
     </div>
   );
 }

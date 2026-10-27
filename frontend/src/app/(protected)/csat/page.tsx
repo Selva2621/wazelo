@@ -7,21 +7,13 @@ import { useCsatStats, useCsatSurveys } from "@/hooks/use-csat";
 import { useUsers } from "@/hooks/use-users";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { ProductFilterSelect } from "@/components/ui/product-filter-select";
 import { PageHeader } from "@/components/layout/page-header";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
+import type { CsatSurvey } from "@/lib/types/csat";
 import { PAGE_SIZE } from "@/lib/constants";
 
 function periodToDateRange(period: AnalyticsPeriod) {
@@ -73,6 +65,45 @@ export default function CsatPage() {
   }, [usersData]);
 
   const isEmpty = stats && stats.totalResponses === 0;
+
+  const surveyColumns: DataTableColumn<CsatSurvey>[] = [
+    {
+      id: "contact",
+      header: "Contact",
+      cellClassName: "text-body text-on-surface font-medium",
+      cell: (s) => s.contactPhone,
+    },
+    {
+      id: "agent",
+      header: "Agent",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (s) => userMap.get(s.agentId) ?? "—",
+    },
+    { id: "rating", header: "Rating", cell: (s) => renderStars(s.rating) },
+    {
+      id: "comment",
+      header: "Comment",
+      cellClassName: "text-label text-on-surface-variant truncate max-w-[200px]",
+      cell: (s) => s.comment || "—",
+    },
+    {
+      id: "sent",
+      header: "Sent",
+      skeleton: "short",
+      cellClassName: "text-caption text-on-surface-variant/60",
+      cell: (s) => new Date(s.sentAt).toLocaleDateString(),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (s) => (
+        <Badge variant={s.respondedAt ? "success" : "warning"}>
+          {s.respondedAt ? "Responded" : "Pending"}
+        </Badge>
+      ),
+    },
+  ];
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
@@ -236,61 +267,30 @@ export default function CsatPage() {
             </div>
 
             {/* Recent Surveys Table */}
-            {surveysLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Spinner size="lg" />
-              </div>
-            ) : surveysData && surveysData.data.length > 0 ? (
+            {(surveysLoading || (surveysData && surveysData.data.length > 0)) && (
               <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
                 <div className="px-5 py-3 border-b border-outline-variant">
                   <h2 className="text-title-sm font-semibold text-on-surface">
                     Recent responses
                   </h2>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableHeaderRow>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Rating</TableHead>
-                      <TableHead>Comment</TableHead>
-                      <TableHead>Sent</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableHeaderRow>
-                  </TableHeader>
-                  <TableBody>
-                    {surveysData.data.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="text-body text-on-surface font-medium">
-                          {s.contactPhone}
-                        </TableCell>
-                        <TableCell className="text-label text-on-surface-variant">
-                          {userMap.get(s.agentId) ?? "—"}
-                        </TableCell>
-                        <TableCell>{renderStars(s.rating)}</TableCell>
-                        <TableCell className="text-label text-on-surface-variant truncate max-w-[200px]">
-                          {s.comment || "—"}
-                        </TableCell>
-                        <TableCell className="text-caption text-on-surface-variant/60">
-                          {new Date(s.sentAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={s.respondedAt ? "success" : "warning"}>
-                            {s.respondedAt ? "Responded" : "Pending"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  page={page}
-                  totalPages={Math.ceil(surveysData.total / PAGE_SIZE)}
-                  total={surveysData.total}
-                  onPageChange={setPage}
+                <DataTable
+                  label="Recent responses"
+                  columns={surveyColumns}
+                  rows={surveysData?.data ?? []}
+                  rowKey={(s) => s.id}
+                  rowLabel={(s) => s.contactPhone}
+                  loading={surveysLoading}
+                  skeletonRows={5}
+                  pagination={{
+                    page: page - 1,
+                    pageSize: PAGE_SIZE,
+                    total: surveysData?.total ?? 0,
+                    onPageChange: (p) => setPage(p + 1),
+                  }}
                 />
               </div>
-            ) : null}
+            )}
           </>
         )}
       </div>

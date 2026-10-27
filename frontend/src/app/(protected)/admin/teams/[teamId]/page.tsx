@@ -24,17 +24,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Team } from "@/lib/types/teams";
 import { IconButton } from "@/components/ui/icon-button";
+
+type TeamMember = Team["members"][number];
 
 export default function TeamDetailPage({
   params,
@@ -141,6 +135,80 @@ export default function TeamDetailPage({
       </div>
     );
   }
+
+  const memberColumns: DataTableColumn<TeamMember>[] = [
+    {
+      id: "member",
+      header: "Member",
+      skeleton: "avatar",
+      cell: (member) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            name={`${member.user.firstName} ${member.user.lastName}`}
+            size="sm"
+          />
+          <p className="text-body font-medium text-on-surface">
+            {member.user.firstName} {member.user.lastName}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "role",
+      header: "Role",
+      skeleton: "badge",
+      cell: (member) => (
+        <Badge
+          variant={
+            member.user.role === "ADMIN"
+              ? "primary"
+              : member.user.role === "MANAGER"
+                ? "info"
+                : "default"
+          }
+        >
+          {member.user.role}
+        </Badge>
+      ),
+    },
+    {
+      id: "email",
+      header: "Email",
+      cell: (member) => (
+        <span className="text-label text-on-surface-variant">
+          {member.user.email}
+        </span>
+      ),
+    },
+    {
+      id: "added",
+      header: "Added",
+      cell: (member) => (
+        <span className="text-label text-on-surface-variant">
+          {new Date(member.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    ...(isEditing
+      ? [
+          {
+            id: "remove",
+            header: "Remove",
+            align: "right" as const,
+            cell: (member: TeamMember) => (
+              <IconButton size="sm" variant="danger"
+                onClick={() =>
+                  removeMember.mutate({ teamId: team.id, userId: member.user.id })
+                }
+               
+                title="Remove member" aria-label="Remove member">
+                <UserMinus className="h-4 w-4" />
+              </IconButton>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -322,69 +390,13 @@ export default function TeamDetailPage({
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
-            <Table>
-              <TableHeader>
-                <TableHeaderRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Added</TableHead>
-                  {isEditing && <TableHead align="right">Remove</TableHead>}
-                </TableHeaderRow>
-              </TableHeader>
-              <TableBody>
-                {team.members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={`${member.user.firstName} ${member.user.lastName}`}
-                          size="sm"
-                        />
-                        <p className="text-body font-medium text-on-surface">
-                          {member.user.firstName} {member.user.lastName}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          member.user.role === "ADMIN"
-                            ? "primary"
-                            : member.user.role === "MANAGER"
-                              ? "info"
-                              : "default"
-                        }
-                      >
-                        {member.user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-label text-on-surface-variant">
-                        {member.user.email}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-label text-on-surface-variant">
-                        {new Date(member.createdAt).toLocaleDateString()}
-                      </span>
-                    </TableCell>
-                    {isEditing && (
-                      <TableCell align="right">
-                        <IconButton size="sm" variant="danger"
-                          onClick={() =>
-                            removeMember.mutate({ teamId: team.id, userId: member.user.id })
-                          }
-                         
-                          title="Remove member" aria-label="Remove member">
-                          <UserMinus className="h-4 w-4" />
-                        </IconButton>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              label="Members"
+              columns={memberColumns}
+              rows={team.members}
+              rowKey={(m) => m.id}
+              rowLabel={(m) => `${m.user.firstName} ${m.user.lastName}`}
+            />
           </div>
         )}
       </div>

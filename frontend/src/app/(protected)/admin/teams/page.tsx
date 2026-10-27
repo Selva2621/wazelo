@@ -9,20 +9,10 @@ import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchInput } from "@/components/ui/search-input";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Team } from "@/lib/types/teams";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
@@ -59,7 +49,6 @@ export default function AdminTeamsPage() {
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       `${t.manager.firstName} ${t.manager.lastName}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pagedTeams = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSearchChange = (value: string) => {
@@ -105,13 +94,81 @@ export default function AdminTeamsPage() {
     setNewTeamManagerId("");
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <Spinner size="lg" className="text-primary" />
-      </div>
-    );
-  }
+  const columns: DataTableColumn<Team>[] = [
+    {
+      id: "team",
+      header: "Team",
+      cell: (team) => (
+        <span className="text-body-lg font-medium text-on-surface">
+          {team.name}
+        </span>
+      ),
+    },
+    {
+      id: "manager",
+      header: "Manager",
+      skeleton: "avatar",
+      cell: (team) => (
+        <div className="flex items-center gap-2">
+          <Avatar
+            name={`${team.manager.firstName} ${team.manager.lastName}`}
+            size="sm"
+          />
+          <div>
+            <p className="text-body text-on-surface">
+              {team.manager.firstName} {team.manager.lastName}
+            </p>
+            <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "members",
+      header: "Members",
+      skeleton: "badge",
+      cell: (team) => (
+        <Badge variant="info">
+          {team.members.length} member{team.members.length !== 1 ? "s" : ""}
+        </Badge>
+      ),
+    },
+    {
+      id: "created",
+      header: "Created",
+      skeleton: "short",
+      cell: (team) => (
+        <span className="text-label text-on-surface-variant">
+          {new Date(team.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (team) => (
+        <div
+          className="flex items-center justify-end gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <IconButton size="xs"
+            onClick={() => router.push(`/admin/teams/${team.id}`)}
+            className="hover:text-primary hover:bg-primary/10 max-lg:size-10"
+            title="View team" aria-label="View team">
+            <Eye className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="xs" variant="danger"
+            onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
+            className="max-lg:size-10"
+            title="Delete team" aria-label="Delete team">
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="p-6 space-y-5">
@@ -207,7 +264,7 @@ export default function AdminTeamsPage() {
       )}
 
       {/* Empty states */}
-      {allTeams.length === 0 ? (
+      {!isLoading && allTeams.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No teams yet"
@@ -215,7 +272,7 @@ export default function AdminTeamsPage() {
           actionLabel="Create team"
           onAction={() => setShowCreate(true)}
         />
-      ) : filtered.length === 0 ? (
+      ) : !isLoading && filtered.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No teams match your search"
@@ -224,86 +281,24 @@ export default function AdminTeamsPage() {
           onAction={() => handleSearchChange("")}
         />
       ) : (
-        <>
-          <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
-            <Table>
-              <TableHeader>
-                <TableHeaderRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead align="right">Actions</TableHead>
-                </TableHeaderRow>
-              </TableHeader>
-              <TableBody>
-                {pagedTeams.map((team) => (
-                  <TableRow
-                    key={team.id}
-                    onClick={() => router.push(`/admin/teams/${team.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <TableCell>
-                      <span className="text-body-lg font-medium text-on-surface">
-                        {team.name}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar
-                          name={`${team.manager.firstName} ${team.manager.lastName}`}
-                          size="sm"
-                        />
-                        <div>
-                          <p className="text-body text-on-surface">
-                            {team.manager.firstName} {team.manager.lastName}
-                          </p>
-                          <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="info">
-                        {team.members.length} member{team.members.length !== 1 ? "s" : ""}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-label text-on-surface-variant">
-                        {new Date(team.createdAt).toLocaleDateString()}
-                      </span>
-                    </TableCell>
-                    <TableCell align="right">
-                      <div
-                        className="flex items-center justify-end gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <IconButton size="xs"
-                          onClick={() => router.push(`/admin/teams/${team.id}`)}
-                          className="hover:text-primary hover:bg-primary/10 max-lg:size-10"
-                          title="View team" aria-label="View team">
-                          <Eye className="h-3.5 w-3.5" />
-                        </IconButton>
-                        <IconButton size="xs" variant="danger"
-                          onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
-                          className="max-lg:size-10"
-                          title="Delete team" aria-label="Delete team">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </IconButton>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={filtered.length}
-            onPageChange={setPage}
+        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+          <DataTable
+            label="Teams"
+            columns={columns}
+            rows={pagedTeams}
+            rowKey={(t) => t.id}
+            rowLabel={(t) => t.name}
+            loading={isLoading}
+            skeletonRows={6}
+            onRowClick={(t) => router.push(`/admin/teams/${t.id}`)}
+            pagination={{
+              page: page - 1,
+              pageSize: PAGE_SIZE,
+              total: filtered.length,
+              onPageChange: (p) => setPage(p + 1),
+            }}
           />
-        </>
+        </div>
       )}
 
       {/* Delete confirmation */}
