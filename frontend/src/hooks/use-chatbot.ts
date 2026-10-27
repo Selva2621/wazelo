@@ -12,6 +12,16 @@ export const chatbotKeys = {
   analytics: (id: string) => ["chatbot", "analytics", id] as const,
 };
 
+/** Health strip + suspicious messages on the Chatbot page */
+export function useBotInsights(enabled = true, days = 7) {
+  return useQuery({
+    queryKey: ["chatbot", "insights", days],
+    queryFn: () => chatbotApi.getInsights(days),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useBotBehavior() {
   return useQuery({ queryKey: ["chatbot", "behavior"], queryFn: () => chatbotApi.getBehavior() });
 }

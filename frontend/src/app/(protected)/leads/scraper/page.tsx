@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Map, Briefcase, Globe, Search, Linkedin, Play, Clock,
   CheckCircle2, XCircle, Loader2, Users, ArrowRight,
-  Trash2, RotateCcw, Copy, ChevronLeft, ChevronRight,
+  Trash2, RotateCcw, Copy,
   StickyNote, X, ChevronDown, Ban, Sparkles,
 } from "lucide-react";
 import {
@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Pagination } from "@/components/ui/pagination";
 import { ScrapeFilters, countActiveFilters, DEFAULT_LEAD_FILTERS } from "@/components/lead-scraper/scrape-filters";
 import { SuggestInput, SuggestMulti, type RecentSearch } from "@/components/lead-scraper/business-type-input";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
@@ -729,44 +730,14 @@ export default function LeadScraperPage() {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2 max-lg:flex-col max-lg:gap-2">
-            <span className="text-label text-on-surface-variant">
-              Page {page + 1} of {totalPages} · {total} runs
-            </span>
-            <div className="flex items-center gap-1">
-              <IconButton size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="border border-outline-variant" aria-label="Previous page">
-                <ChevronLeft className="w-4 h-4" />
-              </IconButton>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const pageNum = totalPages <= 5 ? i : Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`w-7 h-7 text-label rounded-lg transition-colors ${
-                      pageNum === page
-                        ? "bg-primary text-on-primary font-semibold"
-                        : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                    }`}
-                  >
-                    {pageNum + 1}
-                  </button>
-                );
-              })}
-              <IconButton size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="border border-outline-variant" aria-label="Next page">
-                <ChevronRight className="w-4 h-4" />
-              </IconButton>
-            </div>
-          </div>
-        )}
+        {/* Pagination (shared component is 1-based; this page's state is 0-based for `skip`) */}
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={(p) => setPage(p - 1)}
+          className="px-0 border-t-0"
+        />
       </div>
     </div>
   );

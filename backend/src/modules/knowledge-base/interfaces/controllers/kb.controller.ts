@@ -22,6 +22,8 @@ import { Type } from 'class-transformer';
 import { KbIndexService } from '../../application/services/kb-index.service';
 import { KbFaqsUseCase, MAX_ANSWER, MAX_QUESTION } from '../../application/use-cases/kb-faqs.use-cases';
 import { KbUnansweredUseCase } from '../../application/use-cases/kb-unanswered.use-cases';
+import { AuditAction } from '@prisma/client';
+import { Audited } from '@/modules/audit/interfaces/decorators/audited.decorator';
 import {
   AddWebsiteSourceUseCase,
   ManageWebsiteSourcesUseCase,
@@ -90,6 +92,7 @@ export class KbController {
 
   @Patch('sources/:id')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_SOURCE_UPDATED, targetType: 'KbSource', idParam: 'id' })
   updateSource(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -108,6 +111,7 @@ export class KbController {
 
   @Post('unanswered/:id/answer')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_FAQ_ADDED, targetType: 'KbMiss', idParam: 'id' })
   @HttpCode(HttpStatus.OK)
   answerUnanswered(
     @CurrentUser('orgId') orgId: string,
@@ -141,6 +145,7 @@ export class KbController {
 
   @Post('faqs')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_FAQ_ADDED, targetType: 'KbFaq' })
   publishFaqs(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: PublishFaqsDto) {
     return this.faqs.publish(orgId, userId, dto.items);
   }
@@ -155,6 +160,7 @@ export class KbController {
 
   @Post('sources')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_SOURCE_ADDED, targetType: 'KbSource' })
   addSource(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: AddWebsiteSourceDto) {
     return this.addWebsite.execute(orgId, userId, dto.url);
   }
@@ -168,6 +174,7 @@ export class KbController {
 
   @Delete('sources/:id')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_SOURCE_DELETED, targetType: 'KbSource', idParam: 'id' })
   removeSource(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.websites.remove(orgId, id);
   }
@@ -197,6 +204,7 @@ export class KbController {
 
   @Post('articles')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_ARTICLE_CREATED, targetType: 'KbArticle' })
   async createArticle(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string, @Body() dto: CreateArticleDto) {
     const article = await this.repo.createArticle({ orgId, authorId: userId, ...dto });
     await this.kbIndex.indexArticle(article.id);
@@ -256,6 +264,7 @@ export class KbController {
 
   @Patch('articles/:id')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_ARTICLE_UPDATED, targetType: 'KbArticle', idParam: 'id' })
   async updateArticle(
     @CurrentUser('orgId') orgId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -274,6 +283,7 @@ export class KbController {
 
   @Delete('articles/:id')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_ARTICLE_DELETED, targetType: 'KbArticle', idParam: 'id' })
   async deleteArticle(@CurrentUser('orgId') orgId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.repo.softDelete(id, orgId);
     await this.kbIndex.indexArticle(id);
@@ -292,6 +302,7 @@ export class KbController {
 
   @Post('documents/upload')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_DOCUMENT_UPLOADED, targetType: 'KbDocument' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -354,6 +365,7 @@ export class KbController {
 
   @Delete('documents/:id')
   @Permissions(PERMISSIONS.SETTINGS_MANAGE)
+  @Audited({ action: AuditAction.KB_DOCUMENT_DELETED, targetType: 'KbDocument', idParam: 'id' })
   @HttpCode(HttpStatus.OK)
   async deleteDocument(
     @CurrentUser('orgId') orgId: string,

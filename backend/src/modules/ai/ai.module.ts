@@ -4,6 +4,9 @@ import { PlatformSettingsModule } from '@/modules/platform-settings/platform-set
 import { EncryptionService } from '@/common/services';
 import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 import { AiProviderService } from './domain/services/ai-provider.service';
+import { AiReplyLimiterService } from './domain/services/ai-reply-limiter.service';
+import { AiReplyLogRepository } from './infrastructure/repositories/ai-reply-log.repository';
+import { AiReplyTrailService } from './application/services/ai-reply-trail.service';
 import { KbAnswerService } from './application/services/kb-answer.service';
 import { KbChunkRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
 import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
@@ -23,6 +26,11 @@ import { AiController } from './interfaces/controllers/ai.controller';
   controllers: [AiController],
   providers: [
     AiProviderService,
+    // Caps automatic AI replies per widget visitor / IP / org and per WhatsApp chat
+    AiReplyLimiterService,
+    // One row per automatic bot decision (cost, outcome, no message text)
+    AiReplyLogRepository,
+    AiReplyTrailService,
     // Answers from website pages / documents / articles (shared by chatbot, widget, inbox)
     KbChunkRepository,
     KbAnswerService,
@@ -43,6 +51,9 @@ import { AiController } from './interfaces/controllers/ai.controller';
   ],
   exports: [
     AiProviderService,
+    AiReplyLimiterService,
+    AiReplyLogRepository,
+    AiReplyTrailService,
     KbChunkRepository,
     KbAnswerService,
     KbMissRepository,

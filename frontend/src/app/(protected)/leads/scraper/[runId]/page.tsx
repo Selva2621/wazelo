@@ -23,6 +23,10 @@ import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
+
+/** Results per page on a run (a run holds up to 200) */
+const RESULTS_PAGE_SIZE = 25;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -621,8 +625,12 @@ export default function ScrapeRunResultsPage() {
   const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
 
-  const updateFilters = (patch: Partial<ActiveFilters>) =>
+  // Results page (1-based); any filter change goes back to the first page
+  const [page, setPage] = useState(1);
+  const updateFilters = (patch: Partial<ActiveFilters>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
 
   // Fetch run details
   const { data: run, isLoading: runLoading } = useQuery({
@@ -712,6 +720,11 @@ export default function ScrapeRunResultsPage() {
       ? [...matched].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
       : matched;
   }, [results, filters, waStatusMap]);
+
+  // Shown a page at a time; select-all, import and export still cover every filtered result
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / RESULTS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedResults = filteredResults.slice((currentPage - 1) * RESULTS_PAGE_SIZE, currentPage * RESULTS_PAGE_SIZE);
 
   const allSelected = filteredResults.length > 0 && filteredResults.every((r) => selected.has(r.id));
 
@@ -945,7 +958,7 @@ export default function ScrapeRunResultsPage() {
                   <Filter className="w-7 h-7 text-on-surface-variant mx-auto mb-2" />
                   <p className="text-body-lg text-on-surface-variant">No results match the current filters.</p>
                   <button
-                    onClick={() => setFilters(DEFAULT_FILTERS)}
+                    onClick={() => { setFilters(DEFAULT_FILTERS); setPage(1); }}
                     className="mt-2 text-label text-primary hover:underline"
                   >
                     Clear filters
@@ -975,7 +988,7 @@ export default function ScrapeRunResultsPage() {
                       </TableHeaderRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredResults.map((result) => (
+                      {pagedResults.map((result) => (
                         <ResultRow
                           key={result.id}
                           result={result}
@@ -986,6 +999,12 @@ export default function ScrapeRunResultsPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    total={filteredResults.length}
+                    onPageChange={setPage}
+                  />
                 </div>
               )}
             </>

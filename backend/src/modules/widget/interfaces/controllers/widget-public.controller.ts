@@ -6,6 +6,7 @@ import {
   Param,
   Res,
   Headers,
+  Ip,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { Public } from '@/common/decorators/public.decorator';
@@ -84,10 +85,12 @@ export class WidgetPublicController {
     @Param('orgSlug') orgSlug: string,
     @Body() dto: SendWidgetMessageDto,
     @Res() res: Response,
+    @Ip() ip: string,
   ) {
     Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
-    const result = await this.sendWidgetMessageUseCase.execute(orgSlug, dto);
+    // The IP caps AI replies across visitor ids (see SendWidgetMessageUseCase)
+    const result = await this.sendWidgetMessageUseCase.execute(orgSlug, dto, ip);
     return res.status(201).json(result);
   }
 

@@ -9,6 +9,10 @@ export interface KbRagResult {
   /** articleId holds the document id for website pages / uploaded documents (slug is then empty) */
   sources: { articleId: string; title: string; slug: string; url?: string | null; relevance: number }[];
   confidence: number;
+  /** Why there's no answer, when the reply check stopped it */
+  blocked?: string;
+  /** The AI call behind it (absent when no AI was called) */
+  usage?: { model?: string; tokens?: number };
 }
 
 @Injectable()
@@ -32,7 +36,7 @@ export class KbRagSearchUseCase {
 
     // Website pages, uploaded documents and published articles, ranked by full-text search
     const result = await this.kbAnswer.answer({ orgId, question: query, maxTokens: 600 });
-    if (!result.answer || !result.found) return { answer: '', sources: [], confidence: 0 };
+    if (!result.answer || !result.found) return { answer: '', sources: [], confidence: 0, blocked: result.blocked, usage: result.usage };
 
     const articleIds = result.sources.map((s) => s.articleId).filter((id): id is string => !!id);
     const articles = articleIds.length
@@ -54,6 +58,7 @@ export class KbRagSearchUseCase {
         relevance: 1 - i * 0.1,
       })),
       confidence: result.confidence,
+      usage: result.usage,
     };
   }
 

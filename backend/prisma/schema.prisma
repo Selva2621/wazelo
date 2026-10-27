@@ -294,6 +294,25 @@ enum AuditAction {
   // Chat Widget actions (Phase 4)
   WIDGET_CONFIG_UPDATED
 
+  // Chatbot & knowledge base (what the AI assistant says)
+  CHATBOT_FLOW_CREATED
+  CHATBOT_FLOW_UPDATED
+  CHATBOT_FLOW_ACTIVATED
+  CHATBOT_FLOW_DEACTIVATED
+  CHATBOT_FLOW_DELETED
+  CHATBOT_SETTINGS_UPDATED
+  KB_SOURCE_ADDED
+  KB_SOURCE_UPDATED
+  KB_SOURCE_DELETED
+  KB_DOCUMENT_UPLOADED
+  KB_DOCUMENT_DELETED
+  KB_ARTICLE_CREATED
+  KB_ARTICLE_UPDATED
+  KB_ARTICLE_DELETED
+  KB_FAQ_ADDED
+  // An org's automatic AI replies hit a safety limit (possible credit-draining abuse)
+  AI_REPLY_LIMIT_REACHED
+
   // Settings & Configuration actions (EPIC 12)
   SETTING_UPDATED
   SETTING_DELETED
@@ -545,6 +564,7 @@ model Organization {
   aiCreditEntries          AiCreditEntry[]
   kbSources                KbSource[]
   kbMisses                 KbMiss[]
+  aiReplyLogs              AiReplyLog[]
   botSettings              BotSettings?
   kbChunks                 KbChunk[]
 
@@ -3449,6 +3469,54 @@ model KbMiss {
   @@unique([orgId, questionKey])
   @@index([orgId, resolvedAt])
   @@map("kb_misses")
+}
+
+enum AiReplyOutcome {
+  // The bot replied from knowledge or the conversation
+  ANSWERED
+  // Not in the knowledge: the polite "I'll check with the team" reply
+  NOT_FOUND
+  // The reply check stopped the AI's reply (likely a prompt injection)
+  BLOCKED
+  // The chat went to a person (asked for one, or kept missing)
+  HANDED_OFF
+  // Over an AI reply limit (widget visitor / IP / org, or chat per day)
+  LIMITED
+  // No AI on the plan, switched off, or out of credits
+  NO_CREDITS
+  // The AI call failed or returned nothing
+  FAILED
+}
+
+/// One row per automatic bot decision (WhatsApp chatbot or website widget): what the
+/// bot did and what it cost. Never the message text. Feeds the bot health and
+/// suspicious-messages cards, and lets a complaint be traced. Append-only log.
+model AiReplyLog {
+  id              String         @id @default(uuid()) @db.Uuid
+  orgId           String         @map("org_id") @db.Uuid
+  /// WHATSAPP or WIDGET
+  channel         String         @db.VarChar(20)
+  conversationId  String?        @map("conversation_id") @db.Uuid
+  widgetSessionId String?        @map("widget_session_id") @db.Uuid
+  flowId          String?        @map("flow_id") @db.Uuid
+  outcome         AiReplyOutcome
+  /// Why: e.g. UNKNOWN_LINK, PROMPT_LEAK, ASKED_FOR_PERSON, UNANSWERED, chat, session, ip
+  reason          String?        @db.VarChar(40)
+  model           String?        @db.VarChar(100)
+  tokens          Int?
+  /// AI credits were charged for this reply
+  charged         Boolean        @default(false)
+  /// Knowledge passages the answer cited
+  sourcesUsed     Int            @default(0) @map("sources_used")
+  confidence      Float?
+  latencyMs       Int?           @map("latency_ms")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([orgId, outcome, createdAt])
+  @@map("ai_reply_logs")
 }
 
 // How the org's AI bot hands chats over to people, and its opening hours.

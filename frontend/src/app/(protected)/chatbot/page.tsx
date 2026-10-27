@@ -29,8 +29,8 @@ import { Button } from "@/components/ui/button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { BotHealthStrip } from "@/components/chatbot/bot-health-strip";
 
 const PRESET_ICONS: Record<ChatbotPresetIcon, typeof Bot> = {
   qualify: ClipboardList,
@@ -198,6 +198,7 @@ export default function ChatbotPage() {
 
       {/* Flow list */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
+        {aiEnabled && <BotHealthStrip className="mb-5" />}
         <RecipeCards className="mb-5" items={recipeItems} onPick={handlePreset} disabled={creatingPreset} />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {flows.map((flow) => (

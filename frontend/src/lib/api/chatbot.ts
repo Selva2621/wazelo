@@ -26,7 +26,36 @@ export interface BotBehavior {
 
 export type BotBehaviorInput = Partial<Omit<BotBehavior, "timezone" | "openNow">>;
 
+/** Bot health for the last N days, from the AI reply trail (no message text) */
+export interface BotInsights {
+  days: number;
+  total: number;
+  answered: number;
+  notFound: number;
+  handedOff: number;
+  blocked: number;
+  limited: number;
+  noCredits: number;
+  failed: number;
+  /** answered ÷ times the bot tried; null when it didn't try */
+  answerRate: number | null;
+  tokens: number;
+  credits: number;
+  suspicious: {
+    id: string;
+    channel: "WHATSAPP" | "WIDGET" | string;
+    outcome: "BLOCKED" | "LIMITED";
+    reason: string | null;
+    conversationId: string | null;
+    contactPhone: string | null;
+    repeats: number;
+    at: string;
+  }[];
+}
+
 export const chatbotApi = {
+  getInsights: (days = 7) => apiClient.get<BotInsights>("/chatbot/insights", { params: { days } }).then((r) => r.data),
+
   getBehavior: () => apiClient.get<BotBehavior>("/chatbot/behavior").then((r) => r.data),
 
   saveBehavior: (data: BotBehaviorInput) => apiClient.put<BotBehavior>("/chatbot/behavior", data).then((r) => r.data),

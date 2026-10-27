@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ShieldAlert,
-  Search,
   Filter,
   X,
   ChevronDown,
@@ -16,7 +15,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Pagination } from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import type { AuditLog, QueryAuditLogsParams } from "@/lib/types/rbac";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -31,10 +29,16 @@ const ACTION_OPTIONS = [
   { value: "USER_CREATED", label: "User Created" },
   { value: "USER_UPDATED", label: "User Updated" },
   { value: "ORG_SETTINGS_UPDATED", label: "Org Settings Updated" },
+  { value: "CHATBOT_FLOW_UPDATED", label: "Chatbot Flow Updated" },
+  { value: "CHATBOT_SETTINGS_UPDATED", label: "Bot Settings Updated" },
+  { value: "KB_DOCUMENT_UPLOADED", label: "Knowledge Document Uploaded" },
+  { value: "KB_SOURCE_ADDED", label: "Website Added to Knowledge" },
+  { value: "AI_REPLY_LIMIT_REACHED", label: "AI Reply Limit Reached" },
 ];
 
 function getActionBadgeVariant(action: string): "error" | "warning" | "primary" | "default" {
   if (action.includes("DENIED") || action.includes("BLOCKED")) return "error";
+  if (action.includes("LIMIT_REACHED")) return "warning";
   if (action.includes("PERMISSION") || action.includes("ROLE")) return "warning";
   if (action.includes("LOGIN") || action.includes("CREATED")) return "primary";
   return "default";

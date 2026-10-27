@@ -12,6 +12,21 @@ export interface AiCompletionRequest {
 
 export interface AiCompletionResponse {
   text: string;
+  /** Model that answered (for the AI reply trail) */
+  model?: string;
+  /** Prompt + completion tokens, when the provider reports them */
+  tokens?: number;
+}
+
+/** Total tokens from the usage block each provider returns (shapes differ) */
+function totalTokens(data: Record<string, any>): number | undefined {
+  const u = data?.usage ?? data?.usageMetadata ?? data?.meta?.billed_units ?? data?.meta?.tokens;
+  if (!u) return undefined;
+  const total =
+    u.total_tokens ??
+    u.totalTokenCount ??
+    (u.prompt_tokens ?? u.input_tokens ?? 0) + (u.completion_tokens ?? u.output_tokens ?? 0);
+  return typeof total === 'number' && total > 0 ? total : undefined;
 }
 
 /**
@@ -92,7 +107,7 @@ export class AiProviderService {
     try {
       const result = await this.completeWith(conn, req);
       if (result.text.trim()) markAiAnswered();
-      return result;
+      return { ...result, model: result.model ?? conn.model };
     } catch (error) {
       this.logger.error(`AI completion failed (${conn.provider}): ${error.message}`, error.stack);
       return { text: '' };
@@ -171,7 +186,7 @@ export class AiProviderService {
     }
 
     const data = await response.json();
-    return { text: data.choices?.[0]?.message?.content || '' };
+    return { text: data.choices?.[0]?.message?.content || '', tokens: totalTokens(data) };
   }
 
   // ── Anthropic (custom format) ──
@@ -197,7 +212,7 @@ export class AiProviderService {
     }
 
     const data = await response.json();
-    return { text: data.content?.[0]?.text || '' };
+    return { text: data.content?.[0]?.text || '', tokens: totalTokens(data) };
   }
 
   // ── Google Gemini (custom format) ──
@@ -227,7 +242,7 @@ export class AiProviderService {
     }
 
     const data = await response.json();
-    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || '' };
+    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', tokens: totalTokens(data) };
   }
 
   // ── Cohere (custom format) ──
@@ -254,7 +269,7 @@ export class AiProviderService {
     }
 
     const data = await response.json();
-    return { text: data.message?.content?.[0]?.text || '' };
+    return { text: data.message?.content?.[0]?.text || '', tokens: totalTokens(data) };
   }
 
   // ── HuggingFace Inference API ──
@@ -284,6 +299,6 @@ export class AiProviderService {
     }
 
     const data = await response.json();
-    return { text: data.choices?.[0]?.message?.content || '' };
+    return { text: data.choices?.[0]?.message?.content || '', tokens: totalTokens(data) };
   }
 }

@@ -6,7 +6,7 @@ import { BotBehaviorRepository, BotSettingsInput } from '../../infrastructure/re
 import { isOpen } from '../../domain/services/bot-hours';
 
 /** REPLY_BLOCKED: the AI's reply failed the safety check (likely a prompt injection), so a person answers instead */
-export type HandoffReason = 'ASKED_FOR_PERSON' | 'UNANSWERED' | 'REPLY_BLOCKED';
+export type HandoffReason = 'ASKED_FOR_PERSON' | 'UNANSWERED' | 'REPLY_BLOCKED' | 'REPLY_LIMIT';
 
 /** Questions in a row the bot couldn't answer before it hands the chat over. */
 export const MISSES_BEFORE_HANDOFF = 2;
@@ -57,11 +57,20 @@ export class BotBehaviorService {
     return !!state?.botPausedUntil && state.botPausedUntil > now;
   }
 
-  /** Pauses the bot in the chat and returns the message to send the customer. */
-  async handOff(orgId: string, conversationId: string, reason: HandoffReason): Promise<string> {
+  /**
+   * Pauses the bot in the chat and returns the message to send the customer.
+   * `pauseHours` overrides the org's setting (longer pause for repeat safety stops).
+   */
+  async handOff(
+    orgId: string,
+    conversationId: string,
+    reason: HandoffReason,
+    options: { pauseHours?: number } = {},
+  ): Promise<string> {
     const [settings, timezone] = await Promise.all([this.repo.settings(orgId), this.repo.timezone(orgId)]);
     const now = new Date();
-    await this.repo.pause(conversationId, orgId, new Date(now.getTime() + settings.pauseHours * 3_600_000));
+    const hours = Math.max(options.pauseHours ?? 0, settings.pauseHours);
+    await this.repo.pause(conversationId, orgId, new Date(now.getTime() + hours * 3_600_000));
     const open = isOpen(settings, timezone, now);
     this.events.emit(EVENT_NAMES.CHATBOT_SESSION_HANDED_OFF, { orgId, conversationId, reason, teamOpen: open });
     this.logger.log(`Bot handed conversation ${conversationId} to the team (${reason}, ${open ? 'open' : 'after hours'})`);

@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
@@ -23,6 +24,9 @@ import { ExecuteChatbotFlowUseCase } from '../../application/use-cases/execute-c
 import { SimulateChatbotFlowUseCase } from '../../application/use-cases/simulate-chatbot-flow.use-case';
 import { CreateFlowDto, UpdateFlowDto, SaveNodesDto, SimulateFlowDto, BotBehaviorDto } from '../../application/dto';
 import { BotBehaviorService } from '../../application/services/bot-behavior.service';
+import { AuditAction } from '@prisma/client';
+import { Audited } from '@/modules/audit/interfaces/decorators/audited.decorator';
+import { GetBotInsightsUseCase } from '../../application/use-cases/get-bot-insights.use-case';
 
 @Controller('chatbot')
 export class ChatbotController {
@@ -32,6 +36,7 @@ export class ChatbotController {
     private readonly simulateChatbotFlow: SimulateChatbotFlowUseCase,
     private readonly usageTracking: UsageTrackingService,
     private readonly botBehavior: BotBehaviorService,
+    private readonly botInsights: GetBotInsightsUseCase,
   ) {}
 
   /** An AI-replying flow needs AI on the org's plan */
@@ -51,12 +56,14 @@ export class ChatbotController {
 
   @Put('behavior')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_SETTINGS_UPDATED, targetType: 'BotSettings' })
   saveBehavior(@CurrentUser('orgId') orgId: string, @Body() dto: BotBehaviorDto) {
     return this.botBehavior.saveSettings(orgId, dto);
   }
 
   @Post('flows')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_CREATED, targetType: 'ChatbotFlow' })
   @HttpCode(HttpStatus.CREATED)
   async createFlow(
     @CurrentUser() user: JwtPayload,
@@ -73,6 +80,14 @@ export class ChatbotController {
       aiSystemPrompt: dto.aiSystemPrompt,
       useKnowledgeBase: dto.useKnowledgeBase,
     });
+  }
+
+  /** Bot health for the last N days (default 7, max 90) and recent suspicious messages */
+  @Get('insights')
+  @Roles('ADMIN', 'MANAGER')
+  getInsights(@CurrentUser('orgId') orgId: string, @Query('days') days?: string) {
+    const n = Math.min(90, Math.max(1, Number.parseInt(days ?? '7', 10) || 7));
+    return this.botInsights.execute(orgId, n);
   }
 
   @Get('flows')
@@ -94,6 +109,7 @@ export class ChatbotController {
 
   @Patch('flows/:flowId')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_UPDATED, targetType: 'ChatbotFlow', idParam: 'flowId' })
   async updateFlow(
     @CurrentUser() user: JwtPayload,
     @Param('flowId', ParseUUIDPipe) flowId: string,
@@ -107,6 +123,7 @@ export class ChatbotController {
 
   @Post('flows/:flowId/nodes')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_UPDATED, targetType: 'ChatbotFlow', idParam: 'flowId' })
   @HttpCode(HttpStatus.OK)
   async saveNodes(
     @CurrentUser() user: JwtPayload,
@@ -121,6 +138,7 @@ export class ChatbotController {
 
   @Post('flows/:flowId/activate')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_ACTIVATED, targetType: 'ChatbotFlow', idParam: 'flowId' })
   @HttpCode(HttpStatus.OK)
   async activateFlow(
     @CurrentUser() user: JwtPayload,
@@ -134,6 +152,7 @@ export class ChatbotController {
 
   @Post('flows/:flowId/deactivate')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_DEACTIVATED, targetType: 'ChatbotFlow', idParam: 'flowId' })
   @HttpCode(HttpStatus.OK)
   async deactivateFlow(
     @CurrentUser() user: JwtPayload,
@@ -146,6 +165,7 @@ export class ChatbotController {
 
   @Delete('flows/:flowId')
   @Roles('ADMIN', 'MANAGER')
+  @Audited({ action: AuditAction.CHATBOT_FLOW_DELETED, targetType: 'ChatbotFlow', idParam: 'flowId' })
   @HttpCode(HttpStatus.OK)
   async deleteFlow(
     @CurrentUser() user: JwtPayload,

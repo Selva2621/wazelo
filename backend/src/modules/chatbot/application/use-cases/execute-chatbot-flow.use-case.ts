@@ -18,6 +18,10 @@ import { BotBehaviorService, HandoffReason } from '../services/bot-behavior.serv
 import { wantsHuman } from '../../domain/services/handoff-intent';
 import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
 import { checkReply } from '@/modules/ai/domain/services/reply-guard';
+import { AiReplyLimiterService, AI_REPLY_LIMITS } from '@/modules/ai/domain/services/ai-reply-limiter.service';
+import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { AiReplyOutcome, AuditAction } from '@prisma/client';
+import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
 
 /** Used when the flow has no prompt of its own. */
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
@@ -38,6 +42,10 @@ interface FlowNode {
 }
 
 const MAX_NODE_DEPTH = 20;
+
+/** Safety stops in one chat within REPEAT_STOP_DAYS that pause the bot there for that long */
+const REPEAT_STOPS = 3;
+const REPEAT_STOP_DAYS = 7;
 
 /**
  * The model's reply as the customer should see it: the transcript we send labels
@@ -65,6 +73,9 @@ export class ExecuteChatbotFlowUseCase {
     private readonly kbAnswer: KbAnswerService,
     private readonly kbMisses: KbMissRepository,
     private readonly botBehavior: BotBehaviorService,
+    private readonly limiter: AiReplyLimiterService,
+    private readonly audit: AuditService,
+    private readonly trail: AiReplyTrailService,
   ) {}
 
   /**
@@ -158,15 +169,37 @@ export class ExecuteChatbotFlowUseCase {
       return null;
     }
 
+    // One trail row for whatever the bot decides below (no message text)
+    const done = this.trail.start({ orgId, channel: 'WHATSAPP', conversationId, flowId: flow.id });
+
     // Customer asked for a person: hand over (no AI needed, so no credits)
     if (wantsHuman(messageBody)) {
+      done({ outcome: AiReplyOutcome.HANDED_OFF, reason: 'ASKED_FOR_PERSON' });
       return this.handOff(orgId, conversationId, contactPhone, sessionId, 'ASKED_FOR_PERSON');
     }
 
     // No AI on the plan, switched off, or out of credits: stay quiet so a person replies
     if (!(await this.aiAllowed(orgId, 'chatbot_reply'))) {
       this.logger.log(`AI flow ${flow.id} skipped — AI not enabled or no AI credits left for org ${orgId}`);
+      done({ outcome: AiReplyOutcome.NO_CREDITS });
       return null;
+    }
+
+    // Too many bot replies in this chat today (a loop, or someone draining credits): a person takes over
+    const limit = this.limiter.tryTake([AI_REPLY_LIMITS.chat(conversationId)]);
+    if (!limit.ok) {
+      if (limit.firstBlock) {
+        this.logger.warn(`AI reply limit reached in conversation ${conversationId}; handing over`);
+        void this.audit.log({
+          orgId,
+          action: AuditAction.AI_REPLY_LIMIT_REACHED,
+          targetType: 'Conversation',
+          targetId: conversationId,
+          metadata: { channel: 'WHATSAPP', limit: 'chat' },
+        });
+      }
+      done({ outcome: AiReplyOutcome.LIMITED, reason: 'chat' });
+      return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_LIMIT');
     }
 
     // Build conversation context from last 20 messages (bodies are encrypted at rest)
@@ -200,12 +233,22 @@ export class ExecuteChatbotFlowUseCase {
         instructions: flow.aiSystemPrompt,
         teamText,
       });
+      const usage = { model: kb.usage?.model, tokens: kb.usage?.tokens };
       if (kb.blocked) {
-        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+        done({ outcome: AiReplyOutcome.BLOCKED, reason: kb.blocked, ...usage });
+        return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
       }
       if (kb.answer && kb.found) {
         await this.botBehavior.answered(conversationId);
-        return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        done({
+          outcome: sent ? AiReplyOutcome.ANSWERED : AiReplyOutcome.FAILED,
+          charged: !!sent,
+          sourcesUsed: kb.sources.length,
+          confidence: kb.confidence,
+          ...usage,
+        });
+        return sent;
       }
 
       // Not in the knowledge: log it for the owner, and after two in a row let a person take over
@@ -213,11 +256,14 @@ export class ExecuteChatbotFlowUseCase {
         .record(orgId, messageBody, 'WHATSAPP', conversationId)
         .catch((err) => this.logger.warn(`Couldn't log unanswered question: ${(err as Error).message}`));
       if (await this.botBehavior.missed(conversationId)) {
+        done({ outcome: AiReplyOutcome.HANDED_OFF, reason: 'UNANSWERED', ...usage });
         return this.handOff(orgId, conversationId, contactPhone, sessionId, 'UNANSWERED');
       }
       if (kb.answer) {
         // The polite "I'll check with the team" reply
-        return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        done({ outcome: sent ? AiReplyOutcome.NOT_FOUND : AiReplyOutcome.FAILED, charged: !!sent, ...usage });
+        return sent;
       }
       // Nothing to answer from: fall through to a conversation-only reply
     }
@@ -242,11 +288,37 @@ export class ExecuteChatbotFlowUseCase {
       });
       if (!check.ok) {
         this.logger.warn(`AI reply blocked in conversation ${conversationId}: ${check.reason}`);
-        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+        done({ outcome: AiReplyOutcome.BLOCKED, reason: check.reason, model: result.model, tokens: result.tokens });
+        return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
       }
     }
 
-    return this.sendAiReply(orgId, conversationId, contactPhone, sessionId, reply);
+    const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, reply);
+    done({
+      outcome: sent ? AiReplyOutcome.ANSWERED : AiReplyOutcome.FAILED,
+      charged: !!sent,
+      model: result.model,
+      tokens: result.tokens,
+    });
+    return sent;
+  }
+
+  /**
+   * A safety stop (blocked reply or reply limit) hands the chat over like any other.
+   * The 3rd one in a chat within a week pauses the bot there for a week, so someone
+   * probing the bot can't simply retry every day.
+   */
+  private async safetyHandOff(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    reason: 'REPLY_BLOCKED' | 'REPLY_LIMIT',
+  ) {
+    const earlier = await this.trail.recentSafetyStops(orgId, conversationId, REPEAT_STOP_DAYS);
+    if (earlier + 1 < REPEAT_STOPS) return this.handOff(orgId, conversationId, contactPhone, sessionId, reason);
+    this.logger.warn(`Repeat safety stops in conversation ${conversationId}: bot paused there for ${REPEAT_STOP_DAYS} days`);
+    return this.handOff(orgId, conversationId, contactPhone, sessionId, reason, { pauseHours: REPEAT_STOP_DAYS * 24 });
   }
 
   /** Tells the customer a person will reply (or when, after hours) and pauses the bot in the chat. */
@@ -256,8 +328,11 @@ export class ExecuteChatbotFlowUseCase {
     contactPhone: string,
     sessionId: string,
     reason: HandoffReason,
+    options?: { pauseHours?: number },
   ) {
-    const text = await this.botBehavior.handOff(orgId, conversationId, reason);
+    const text = options
+      ? await this.botBehavior.handOff(orgId, conversationId, reason, options)
+      : await this.botBehavior.handOff(orgId, conversationId, reason);
     await this.sendReply(orgId, conversationId, contactPhone, sessionId, text);
     return { replied: true, text };
   }

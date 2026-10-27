@@ -6,6 +6,10 @@ import { EVENT_NAMES } from '@/common/constants';
 import { KbRagSearchUseCase } from '@/modules/ai/application/use-cases/kb-rag-search.use-case';
 import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
 import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
+import { AiReplyLimiterService, AI_REPLY_LIMITS } from '@/modules/ai/domain/services/ai-reply-limiter.service';
+import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { AiReplyOutcome, AuditAction } from '@prisma/client';
+import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
 
 @Injectable()
 export class SendWidgetMessageUseCase {
@@ -17,9 +21,12 @@ export class SendWidgetMessageUseCase {
     private readonly kbRagSearch: KbRagSearchUseCase,
     private readonly aiCredits: AiCreditsService,
     private readonly kbMisses: KbMissRepository,
+    private readonly limiter: AiReplyLimiterService,
+    private readonly audit: AuditService,
+    private readonly trail: AiReplyTrailService,
   ) {}
 
-  async execute(orgSlug: string, dto: SendWidgetMessageDto) {
+  async execute(orgSlug: string, dto: SendWidgetMessageDto, ip?: string) {
     const orgId = await this.widgetRepository.findOrgIdBySlug(orgSlug);
     if (!orgId) throw new NotFoundException('Widget not found');
 
@@ -68,12 +75,28 @@ export class SendWidgetMessageUseCase {
 
     // AI assistant: generate reply using org's KB and product data
     let agentReply: { messageId: string; body: string; createdAt: Date } | undefined;
-    // Out of AI credits (or AI not on the plan): no auto-reply, a person answers
-    if (config.aiAssistantEnabled && (await this.aiCredits.canAfford(orgId, 'widget_reply'))) {
+    // Out of AI credits (or AI not on the plan), or over a reply limit: no auto-reply, a person answers
+    const done = config.aiAssistantEnabled
+      ? this.trail.start({ orgId, channel: 'WIDGET', widgetSessionId: session.id })
+      : null;
+    const affordable = !!done && (await this.aiCredits.canAfford(orgId, 'widget_reply'));
+    if (done && !affordable) done({ outcome: AiReplyOutcome.NO_CREDITS });
+    const overLimit = affordable ? this.overReplyLimit(orgId, session.id, ip) : null;
+    if (done && overLimit) done({ outcome: AiReplyOutcome.LIMITED, reason: overLimit });
+
+    if (done && affordable && !overLimit) {
       try {
         const ragResult = await this.kbRagSearch.execute(dto.body, orgId);
+        const usage = { model: ragResult.usage?.model, tokens: ragResult.usage?.tokens };
         if (ragResult.answer) {
           await this.aiCredits.charge(orgId, 'widget_reply');
+          done({
+            outcome: AiReplyOutcome.ANSWERED,
+            charged: true,
+            sourcesUsed: ragResult.sources.length,
+            confidence: ragResult.confidence,
+            ...usage,
+          });
           const agentMsg = await this.widgetRepository.addMessage(
             session.id,
             orgId,
@@ -88,12 +111,17 @@ export class SendWidgetMessageUseCase {
           this.logger.log(
             `AI reply generated for session=${session.id} confidence=${ragResult.confidence}`,
           );
+        } else if (ragResult.blocked) {
+          // The reply check stopped it (likely a prompt injection): a person answers
+          done({ outcome: AiReplyOutcome.BLOCKED, reason: ragResult.blocked, ...usage });
         } else {
           // Not in the knowledge base: shows up in the owner's unanswered questions
+          done({ outcome: AiReplyOutcome.NOT_FOUND, ...usage });
           await this.kbMisses.record(orgId, dto.body, 'WIDGET');
         }
       } catch (err) {
         // Non-fatal: log and continue — visitor message was already saved
+        done({ outcome: AiReplyOutcome.FAILED });
         this.logger.warn(
           `AI reply generation failed for session=${session.id}: ${(err as Error).message}`,
         );
@@ -106,5 +134,32 @@ export class SendWidgetMessageUseCase {
       createdAt: message.createdAt,
       agentReply,
     };
+  }
+
+  /**
+   * The widget is public and its visitor id comes from the browser, so AI replies are
+   * capped per session, per IP and per org: nobody can drain the org's AI credits.
+   * Returns the limit that's full ("session" / "ip" / "org"), or null when within limits.
+   */
+  private overReplyLimit(orgId: string, sessionId: string, ip?: string): string | null {
+    const result = this.limiter.tryTake([
+      AI_REPLY_LIMITS.widgetSession(sessionId),
+      ...(ip ? [AI_REPLY_LIMITS.widgetIp(ip)] : []),
+      AI_REPLY_LIMITS.widgetOrg(orgId),
+    ]);
+    if (result.ok) return null;
+    const scope = result.key.split(':')[1];
+    if (result.firstBlock) {
+      this.logger.warn(`Widget AI replies paused for org ${orgId}: ${scope} limit reached (session=${sessionId})`);
+      void this.audit.log({
+        orgId,
+        action: AuditAction.AI_REPLY_LIMIT_REACHED,
+        targetType: 'WidgetSession',
+        targetId: sessionId,
+        metadata: { channel: 'WIDGET', limit: scope },
+        ipAddress: ip,
+      });
+    }
+    return scope;
   }
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AiModule } from '@/modules/ai/ai.module';
 import { BillingModule } from '@/modules/billing/billing.module';
+import { AuditModule } from '@/modules/audit/audit.module';
 import { KbRepository } from './infrastructure/repositories/kb.repository';
 import { DocumentProcessorService } from './domain/services/document-processor.service';
 import { KbController, KbPublicController } from './interfaces/controllers/kb.controller';
@@ -18,7 +19,8 @@ import { KbUnansweredUseCase } from './application/use-cases/kb-unanswered.use-c
 
 @Module({
   // BillingModule: AI credits for article tag suggestions and website learning
-  imports: [AiModule, BillingModule],
+  // AuditModule: @Audited on knowledge changes (what the AI assistant answers from)
+  imports: [AiModule, BillingModule, AuditModule],
   controllers: [KbController, KbPublicController],
   providers: [
     KbRepository,

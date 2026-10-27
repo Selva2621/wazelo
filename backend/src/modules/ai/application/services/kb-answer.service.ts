@@ -20,6 +20,8 @@ export interface KnowledgeAnswer {
   sources: KnowledgeSource[];
   /** Set when the reply check stopped the answer (answer is then empty): a person should take over */
   blocked?: ReplyBlockReason;
+  /** The AI call behind it (absent when no AI was called) */
+  usage?: { model?: string; tokens?: number };
 }
 
 export interface KnowledgeQuestion {
@@ -103,7 +105,8 @@ export class KbAnswerService {
       .join('\n\n');
 
     const result = await this.aiProvider.complete({ systemPrompt: system, userPrompt: user, maxTokens: q.maxTokens ?? 500 });
-    const parsed = parseAnswer(result.text, hits);
+    const usage = { model: result.model, tokens: result.tokens };
+    const parsed = { ...parseAnswer(result.text, hits), usage };
     if (!parsed.answer) return parsed;
 
     const check = checkReply({
@@ -114,7 +117,7 @@ export class KbAnswerService {
     });
     if (!check.ok) {
       this.logger.warn(`KB answer blocked for org ${q.orgId}: ${check.reason}`);
-      return { ...none, blocked: check.reason };
+      return { ...none, blocked: check.reason, usage };
     }
     return parsed;
   }
