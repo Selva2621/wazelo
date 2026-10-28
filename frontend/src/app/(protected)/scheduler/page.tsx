@@ -127,7 +127,8 @@ export default function SchedulerPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card */}
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         <ScheduledMessagesTable
           messages={data?.data ?? []}
           total={data?.total ?? 0}

@@ -115,7 +115,7 @@ export default function ProfilePage() {
                 }
                 className="mt-1"
               >
-                {user.role}
+                {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
               </Badge>
             </div>
           </div>

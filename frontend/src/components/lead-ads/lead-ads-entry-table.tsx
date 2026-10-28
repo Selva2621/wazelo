@@ -97,7 +97,7 @@ export function LeadAdsEntryTable({
         skeleton: "badge",
         cell: (entry) => (
           <>
-            <Badge variant={statusVariant[entry.status]}>
+            <Badge dot variant={statusVariant[entry.status]}>
               {LEAD_AD_STATUS_LABELS[entry.status]}
             </Badge>
             {entry.errorMessage && (

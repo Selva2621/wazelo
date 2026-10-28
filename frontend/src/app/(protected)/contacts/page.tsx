@@ -229,7 +229,8 @@ export default function ContactsPage() {
       {view === "kanban" ? (
         <ContactKanbanBoard />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        // Desktop: room around the table card
+        <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
           {isError ? (
             <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
           ) : (

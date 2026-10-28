@@ -327,7 +327,7 @@ export default function SuperAdminAnnouncementsPage() {
       skeleton: "badge",
       cell: (a) => {
         const state = stateOf(a);
-        return <Badge variant={state.variant}>{state.label}</Badge>;
+        return <Badge dot variant={state.variant}>{state.label}</Badge>;
       },
     },
     {

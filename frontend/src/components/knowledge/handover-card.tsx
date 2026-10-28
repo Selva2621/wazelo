@@ -116,7 +116,7 @@ export function HandoverCard({ className }: { className?: string }) {
           </div>
           <div className="flex items-center gap-2">
             {saved.hoursEnabled && !dirty && (
-              <Badge variant={saved.openNow ? "success" : "muted"}>{saved.openNow ? "Open now" : "Closed now"}</Badge>
+              <Badge dot variant={saved.openNow ? "success" : "muted"}>{saved.openNow ? "Open now" : "Closed now"}</Badge>
             )}
             <Switch aria-labelledby="hours-label" checked={v.hoursEnabled} onChange={(on) => set({ hoursEnabled: on })} />
           </div>

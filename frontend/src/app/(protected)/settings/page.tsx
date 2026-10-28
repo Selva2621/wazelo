@@ -24,7 +24,6 @@ import {
   EyeOff,
   Copy,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   RotateCw,
   ChevronDown,
@@ -89,7 +88,7 @@ import { BrowserPushCard } from "@/components/notifications/browser-push-card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { Pagination } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
 import { PAGE_SIZE } from "@/lib/constants";
 import type {
   UpdateOrgSettingsRequest,
@@ -1892,10 +1891,10 @@ function WebhookCard({
               {webhook.url}
             </p>
             {isAutoDisabled && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error text-caption font-medium shrink-0">
-                <AlertTriangle className="h-3 w-3" />
+              <Badge variant="error" className="shrink-0 font-medium">
+                <AlertTriangle className="h-3 w-3" aria-hidden />
                 Auto-disabled
-              </span>
+              </Badge>
             )}
           </div>
           {webhook.description && (
@@ -2070,94 +2069,89 @@ function WebhookDeliveryLogs({ webhookId }: { webhookId: string }) {
     );
   }
 
-  const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
-
   return (
     <div className="space-y-1.5">
       <p className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
         Recent Deliveries
       </p>
-      <div className="space-y-1">
-        {deliveries.map((d) => (
-          <DeliveryRow key={d.id} delivery={d} />
-        ))}
-      </div>
-      {totalPages > 1 && (
-        <Pagination
-          page={deliveryPage}
-          totalPages={totalPages}
-          total={data?.total ?? 0}
-          onPageChange={setDeliveryPage}
-        />
-      )}
+      <DataTable
+        label="Webhook deliveries"
+        columns={deliveryColumns}
+        rows={deliveries}
+        rowKey={(d) => d.id}
+        rowLabel={(d) => `${d.eventType} delivery`}
+        pagination={{
+          page: deliveryPage - 1,
+          pageSize: PAGE_SIZE,
+          total: data?.total ?? 0,
+          onPageChange: (p) => setDeliveryPage(p + 1),
+        }}
+      />
     </div>
   );
 }
 
-function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
-  const statusConfig: Record<
-    WebhookDeliveryStatus,
-    { icon: typeof CheckCircle2; color: string; label: string }
-  > = {
-    SUCCESS: {
-      icon: CheckCircle2,
-      color: "text-primary",
-      label: "Success",
-    },
-    FAILED: {
-      icon: XCircle,
-      color: "text-error",
-      label: "Failed",
-    },
-    RETRYING: {
-      icon: RotateCw,
-      color: "text-warning",
-      label: "Retrying",
-    },
-    PENDING: {
-      icon: Clock,
-      color: "text-on-surface-variant",
-      label: "Pending",
-    },
-  };
+const DELIVERY_STATUS: Record<
+  WebhookDeliveryStatus,
+  { label: string; variant: "success" | "error" | "warning" | "muted" }
+> = {
+  SUCCESS: { label: "Success", variant: "success" },
+  FAILED: { label: "Failed", variant: "error" },
+  RETRYING: { label: "Retrying", variant: "warning" },
+  PENDING: { label: "Pending", variant: "muted" },
+};
 
-  const config = statusConfig[delivery.status];
-  const StatusIcon = config.icon;
-  const timestamp = new Date(delivery.createdAt).toLocaleString();
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded bg-surface-container-lowest/50 text-label">
-      <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
-      <span className="text-on-surface-variant font-mono shrink-0">
-        {delivery.eventType}
-      </span>
-      {delivery.httpStatus && (
-        <span
-          className={`shrink-0 ${
-            delivery.httpStatus >= 200 && delivery.httpStatus < 300
-              ? "text-primary"
-              : "text-error"
-          }`}
-        >
-          {delivery.httpStatus}
+const deliveryColumns: DataTableColumn<WebhookDelivery>[] = [
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (d) => {
+      const m = DELIVERY_STATUS[d.status] ?? { label: d.status, variant: "muted" as const };
+      return <Badge variant={m.variant} dot>{m.label}</Badge>;
+    },
+  },
+  {
+    id: "event",
+    header: "Event",
+    cellClassName: "font-mono text-label text-on-surface-variant whitespace-nowrap",
+    cell: (d) => d.eventType,
+  },
+  {
+    id: "http",
+    header: "HTTP",
+    skeleton: "short",
+    cellClassName: "text-label tabular-nums",
+    cell: (d) =>
+      d.httpStatus ? (
+        <span className={d.httpStatus >= 200 && d.httpStatus < 300 ? "text-success" : "text-error"}>
+          {d.httpStatus}
         </span>
-      )}
-      {delivery.duration !== null && (
-        <span className="text-on-surface-variant/50 shrink-0">
-          {delivery.duration}ms
-        </span>
-      )}
-      {delivery.error && (
-        <span className="text-error/70 truncate min-w-0">
-          {delivery.error}
-        </span>
-      )}
-      <span className="text-on-surface-variant/40 ml-auto shrink-0">
-        {timestamp}
-      </span>
-    </div>
-  );
-}
+      ) : (
+        "—"
+      ),
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    skeleton: "short",
+    cellClassName: "text-label tabular-nums text-on-surface-variant whitespace-nowrap",
+    cell: (d) => (d.duration !== null ? `${d.duration} ms` : "—"),
+  },
+  {
+    id: "error",
+    header: "Error",
+    cellClassName: "text-label text-error/70 max-w-[240px] truncate",
+    cell: (d) => d.error || "—",
+  },
+  {
+    id: "time",
+    header: "Time",
+    skeleton: "short",
+    cellClassName: "text-label text-on-surface-variant whitespace-nowrap",
+    cell: (d) => new Date(d.createdAt).toLocaleString(),
+  },
+];
 
 // ─── Developer API Section ──────────────────────
 
@@ -2325,13 +2319,9 @@ function DeveloperApiSection() {
         skeleton: "badge",
         cell: (key) =>
           key.isActive ? (
-            <span className="flex items-center gap-1 text-primary text-label">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Active
-            </span>
+            <Badge variant="success" dot>Active</Badge>
           ) : (
-            <span className="flex items-center gap-1 text-error text-label">
-              <XCircle className="h-3.5 w-3.5" /> Revoked
-            </span>
+            <Badge variant="error" dot>Revoked</Badge>
           ),
       },
       {
@@ -3176,10 +3166,10 @@ function ShopifySection() {
 
   if (isLoading) return <SectionLoader />;
 
-  const statusColor =
-    shopifyIntegration?.status === "ACTIVE" ? "text-success bg-success-container" :
-    shopifyIntegration?.status === "ERROR"  ? "text-error bg-error-container" :
-    "text-on-surface-variant bg-surface-container";
+  const statusVariant =
+    shopifyIntegration?.status === "ACTIVE" ? "success" :
+    shopifyIntegration?.status === "ERROR"  ? "error" :
+    "muted";
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -3227,7 +3217,9 @@ function ShopifySection() {
               <p className="text-body-lg font-semibold text-on-surface">{shopifyIntegration.displayName}</p>
               <p className="text-caption text-on-surface-variant/60">Connected · {new Date(shopifyIntegration.updatedAt).toLocaleDateString()}</p>
             </div>
-            <span className={`px-2 py-0.5 rounded-full text-caption font-medium ${statusColor}`}>{shopifyIntegration.status}</span>
+            <Badge variant={statusVariant} dot>
+              {shopifyIntegration.status.charAt(0) + shopifyIntegration.status.slice(1).toLowerCase().replace(/_/g, " ")}
+            </Badge>
           </div>
           <div className="px-4 py-3 space-y-2.5 border-b border-outline-variant/8">
             <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">Listening For</p>

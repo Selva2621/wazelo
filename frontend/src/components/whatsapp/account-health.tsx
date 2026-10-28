@@ -206,7 +206,7 @@ export function AccountHealthPill() {
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-body font-medium text-on-surface">Account health</p>
-              <Badge variant={risk.variant}>{risk.label}</Badge>
+              <Badge dot variant={risk.variant}>{risk.label}</Badge>
             </div>
             <AccountHealthDetails health={health} />
             <Link

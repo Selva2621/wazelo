@@ -197,10 +197,11 @@ export default function AutomationPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card (like Contacts) */}
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         {activeTab === "rules" && automationEnabled && (
           <RecipeCards
-            className="px-6 pt-4"
+            className="px-6 pt-4 lg:px-0 lg:pt-0 lg:pb-4"
             items={presets.map((p) => {
               const Icon = PRESET_ICONS[p.icon];
               const needs =

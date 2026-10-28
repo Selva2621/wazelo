@@ -71,7 +71,7 @@ export function ConversationSummaryPanel({ conversationId }: ConversationSummary
             {summary.sentiment && (
               <Badge variant="muted" className="text-caption">
                 {sentimentIcon[summary.sentiment]}
-                <span className="ml-1">{summary.sentiment}</span>
+                <span className="ml-1">{summary.sentiment.charAt(0) + summary.sentiment.slice(1).toLowerCase()}</span>
               </Badge>
             )}
             {summary.keyTopics.map((topic) => (

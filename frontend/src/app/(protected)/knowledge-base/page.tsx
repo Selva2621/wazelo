@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Plus, Eye, ThumbsUp, Pencil, Trash2, Globe, Lock } from "lucide-react";
+import { BookOpen, Plus, Eye, ThumbsUp, Pencil, Trash2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
@@ -106,9 +106,9 @@ export default function KnowledgeBasePage() {
       cell: (article) => (
         <div className="flex items-center gap-1">
           {article.isPublished ? (
-            <Badge variant="success"><Globe className="h-3 w-3 mr-0.5" />Published</Badge>
+            <Badge variant="success" dot>Published</Badge>
           ) : (
-            <Badge variant="muted">Draft</Badge>
+            <Badge variant="muted" dot>Draft</Badge>
           )}
           {article.isInternal && <Badge variant="warning"><Lock className="h-3 w-3 mr-0.5" />Internal</Badge>}
         </div>
@@ -149,7 +149,8 @@ export default function KnowledgeBasePage() {
   ];
 
   return (
-    <div className="space-y-4">
+    // Desktop: content inset like Contacts; phones keep their own spacing
+    <div className="space-y-4 lg:p-6">
       <MobilePageActions primary={{ label: "New article", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
       <PageHeader
         className="max-lg:hidden"

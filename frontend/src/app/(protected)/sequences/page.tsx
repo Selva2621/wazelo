@@ -64,7 +64,7 @@ export default function SequencesPage() {
   // Analytics view
   if (analyticsId) {
     return (
-      <div className="space-y-4 max-lg:px-4">
+      <div className="space-y-4 lg:p-6 max-lg:px-4">
         <div className="flex items-center gap-3 max-lg:gap-1">
           <IconButton size="sm" onClick={() => setAnalyticsId(null)} aria-label="Back">
             <ArrowLeft className="h-4 w-4 text-on-surface-variant" />
@@ -82,7 +82,7 @@ export default function SequencesPage() {
   }
 
   return (
-    <div className="space-y-4 max-lg:px-4 max-lg:pt-2">
+    <div className="space-y-4 lg:p-6 max-lg:px-4 max-lg:pt-2">
       <MobilePageActions primary={{ label: "New sequence", onClick: () => setShowCreate(true) }} />
 
       {/* Header: on mobile the nav bar has the title and "+" */}
@@ -132,11 +132,12 @@ export default function SequencesPage() {
           />
 
           {(data?.total ?? 0) > take && (
+            // Pagination is 1-based; this page's state is 0-based for `skip`
             <Pagination
               total={data?.total ?? 0}
               totalPages={Math.ceil((data?.total ?? 0) / take)}
-              page={page}
-              onPageChange={setPage}
+              page={page + 1}
+              onPageChange={(p) => setPage(p - 1)}
             />
           )}
         </>

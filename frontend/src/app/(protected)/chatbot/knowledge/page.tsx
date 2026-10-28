@@ -51,10 +51,10 @@ const credits = (n: number) => (n === 0 ? "free" : `${n} credit${n === 1 ? "" : 
 /* ─── Websites ─── */
 
 function statusBadge(s: KbWebsiteSource) {
-  if (s.status === "READY") return <Badge variant="success">{s.pages} pages</Badge>;
-  if (s.status === "FAILED") return <Badge variant="error">Failed</Badge>;
-  if (s.status === "QUEUED") return <Badge variant="muted">Queued</Badge>;
-  return <Badge variant="info">Reading…</Badge>;
+  if (s.status === "READY") return <Badge variant="success" dot>{s.pages} pages</Badge>;
+  if (s.status === "FAILED") return <Badge variant="error" dot>Failed</Badge>;
+  if (s.status === "QUEUED") return <Badge variant="muted" dot>Queued</Badge>;
+  return <Badge variant="info" dot pulse>Reading…</Badge>;
 }
 
 function WebsiteRow({ source, buildCost }: { source: KbWebsiteSource; buildCost: number }) {
@@ -237,7 +237,7 @@ function FilesCard() {
             <li key={d.id} className="flex items-center gap-3 py-2.5">
               <FileText className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-body text-on-surface">{d.title}</span>
-              {d.status === "READY" ? <Badge variant="success">Ready</Badge> : d.status === "FAILED" ? <Badge variant="error">Failed</Badge> : <Badge variant="muted">Processing</Badge>}
+              {d.status === "READY" ? <Badge variant="success" dot>Ready</Badge> : d.status === "FAILED" ? <Badge variant="error" dot>Failed</Badge> : <Badge variant="muted" dot>Processing</Badge>}
               <IconButton
                 aria-label={`Remove ${d.title}`}
                 disabled={remove.isPending}

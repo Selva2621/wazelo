@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Map, Briefcase, Globe, Search, Linkedin, Play, Clock,
-  CheckCircle2, XCircle, Loader2, Users, ArrowRight,
+  Map, Briefcase, Globe, Search, Linkedin, Play,
+  Loader2, Users, ArrowRight,
   Trash2, RotateCcw, Copy,
   StickyNote, X, Ban, Sparkles,
 } from "lucide-react";
@@ -12,13 +12,13 @@ import {
   useScrapeRuns, useTriggerScrapeRun,
   useDeleteScrapeRun, useReRunScrape, useCancelScrapeRun,
 } from "@/hooks/use-lead-scraper";
-import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { Pagination } from "@/components/ui/pagination";
 import { ScrapeFilters, countActiveFilters, DEFAULT_LEAD_FILTERS } from "@/components/lead-scraper/scrape-filters";
 import { SuggestInput, SuggestMulti, type RecentSearch } from "@/components/lead-scraper/business-type-input";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
@@ -127,20 +127,33 @@ const STATUS_OPTIONS = [
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
+const STATUS_BADGE: Record<ScrapeRunStatus, { label: string; variant: "muted" | "primary" | "success" | "error" }> = {
+  PENDING:   { label: "Pending",   variant: "muted" },
+  RUNNING:   { label: "Running",   variant: "primary" },
+  COMPLETED: { label: "Done",      variant: "success" },
+  FAILED:    { label: "Failed",    variant: "error" },
+  CANCELLED: { label: "Cancelled", variant: "muted" },
+};
+
 function StatusBadge({ status }: { status: ScrapeRunStatus }) {
-  const config: Record<ScrapeRunStatus, { label: string; className: string; icon: React.ReactNode }> = {
-    PENDING:   { label: "Pending",  className: "bg-surface-container text-on-surface-variant",  icon: <Clock className="w-3 h-3" /> },
-    RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                    icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-    COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                    icon: <CheckCircle2 className="w-3 h-3" /> },
-    FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                        icon: <XCircle className="w-3 h-3" /> },
-    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
-  };
-  const { label, className, icon } = config[status];
+  const { label, variant } = STATUS_BADGE[status];
   return (
-    <span className={`inline-flex items-center gap-1 text-label font-medium px-2 py-0.5 rounded-full ${className}`}>
-      {icon} {label}
-    </span>
+    <Badge variant={variant} dot pulse={status === "RUNNING"}>
+      {label}
+    </Badge>
   );
+}
+
+/** Notes are stored client-side in localStorage per run */
+const noteKey = (runId: string) => `scrape-run-note-${runId}`;
+
+function readStoredNote(runId: string) {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(noteKey(runId)) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function formatTimeAgo(iso: string) {
@@ -185,23 +198,20 @@ function NoteEditor({ runId, initial, onClose }: { runId: string; initial: strin
   );
 }
 
-// ─── Run history row ──────────────────────────────────────────────────────────
+// ─── Run history actions ──────────────────────────────────────────────────────
 
-function RunRow({
+function RunActions({
   run,
+  hasNote,
+  onToggleNote,
   onDuplicate,
 }: {
   run: ScrapeRun;
+  hasNote: boolean;
+  onToggleNote: () => void;
   onDuplicate: (run: ScrapeRun) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showNote, setShowNote] = useState(false);
-  // Notes stored client-side in localStorage per run
-  const noteKey = `scrape-run-note-${run.id}`;
-  const [note, setNote] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem(noteKey) ?? "";
-  });
 
   const deleteMutation = useDeleteScrapeRun();
   const reRunMutation = useReRunScrape();
@@ -211,52 +221,15 @@ function RunRow({
     deleteMutation.mutate(run.id, { onSuccess: () => setConfirmDelete(false) });
   };
 
-  const handleNoteClose = (val: string) => {
-    setNote(val);
-    localStorage.setItem(noteKey, val);
-    setShowNote(false);
-  };
-
   const isActive = run.status === "PENDING" || run.status === "RUNNING";
 
   return (
-    <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        {/* Left: info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-body-lg text-on-surface">{SOURCE_LABELS[run.source]}</span>
-            <StatusBadge status={run.status} />
-            {run.status === "COMPLETED" && run.resultCount > 0 && (
-              <span className="text-label text-on-surface-variant">
-                {run.resultCount} found
-                {run.importedCount > 0 && ` · ${run.importedCount} imported`}
-                {run.skippedCount > 0 && ` · ${run.skippedCount} duplicates removed`}
-              </span>
-            )}
-          </div>
-          <p className="text-label text-on-surface-variant mt-0.5 truncate">
-            <span className="font-medium">{run.keywords}</span>
-            {run.location && <> · {run.location}</>}
-            <span className="ml-2">· max {run.maxResults}</span>
-          </p>
-          {note && !showNote && (
-            <p className="mt-1 text-caption text-on-surface-variant italic flex items-center gap-1 max-lg:[overflow-wrap:anywhere]">
-              <StickyNote className="w-3 h-3 shrink-0" />
-              {note}
-            </p>
-          )}
-        </div>
-
-        {/* Right: time + actions */}
-        <div className="flex items-center gap-1 shrink-0 max-lg:w-full max-lg:gap-2">
-          <span className="text-label text-on-surface-variant mr-1 max-lg:mr-auto">{formatTimeAgo(run.createdAt)}</span>
-
+        <div className="flex items-center justify-end gap-1 max-lg:justify-start max-lg:gap-2">
           {/* Note toggle */}
           <button
-            onClick={() => setShowNote((v) => !v)}
+            onClick={onToggleNote}
             title="Add / edit note"
-            className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors ${note ? "text-primary" : "text-on-surface-variant"}`}
+            className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors ${hasNote ? "text-primary" : "text-on-surface-variant"}`}
           >
             <StickyNote className="w-3.5 h-3.5" />
           </button>
@@ -319,43 +292,48 @@ function RunRow({
             )
           )}
         </div>
-      </div>
-
-      {/* Note editor */}
-      {showNote && <NoteEditor runId={run.id} initial={note} onClose={handleNoteClose} />}
-
-      {/* Error */}
-      {run.status === "FAILED" && run.errorMessage && (
-        <p className="mt-2 text-label text-error bg-error/5 rounded-lg px-3 py-2 max-lg:[overflow-wrap:anywhere]">{run.errorMessage}</p>
-      )}
-
-      {/* View / Monitor link */}
-      {run.status === "COMPLETED" && run.resultCount > 0 && (
-        <div className="mt-3 border-t border-outline-variant/20 pt-3">
-          <Link
-            href={`/leads/scraper/${run.id}`}
-            className="inline-flex items-center gap-1.5 text-body-lg font-medium text-primary hover:underline"
-          >
-            View {run.resultCount} result{run.resultCount !== 1 ? "s" : ""}
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      )}
-      {run.status === "COMPLETED" && run.resultCount === 0 && (
-        <p className="mt-2 text-label text-on-surface-variant">No results found for this search.</p>
-      )}
-      {isActive && (
-        <div className="mt-3 border-t border-outline-variant/20 pt-3">
-          <Link
-            href={`/leads/scraper/${run.id}`}
-            className="inline-flex items-center gap-1.5 text-body-lg font-medium text-on-surface-variant hover:text-primary hover:underline"
-          >
-            Monitor run <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      )}
-    </div>
   );
+}
+
+// ─── Run history cells ────────────────────────────────────────────────────────
+
+function RunResults({ run }: { run: ScrapeRun }) {
+  const isActive = run.status === "PENDING" || run.status === "RUNNING";
+  if (run.status === "COMPLETED" && run.resultCount > 0) {
+    return (
+      <div className="min-w-0">
+        <Link
+          href={`/leads/scraper/${run.id}`}
+          className="inline-flex items-center gap-1 text-body font-medium text-primary hover:underline"
+        >
+          View {run.resultCount} result{run.resultCount !== 1 ? "s" : ""}
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+        {(run.importedCount > 0 || run.skippedCount > 0) && (
+          <p className="text-caption text-on-surface-variant">
+            {[
+              run.importedCount > 0 && `${run.importedCount} imported`,
+              run.skippedCount > 0 && `${run.skippedCount} duplicates removed`,
+            ].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </div>
+    );
+  }
+  if (run.status === "COMPLETED") {
+    return <span className="text-label text-on-surface-variant">No results found for this search.</span>;
+  }
+  if (isActive) {
+    return (
+      <Link
+        href={`/leads/scraper/${run.id}`}
+        className="inline-flex items-center gap-1 text-body font-medium text-on-surface-variant hover:text-primary hover:underline"
+      >
+        Monitor run <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    );
+  }
+  return <span className="text-label text-on-surface-variant/50">—</span>;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -387,7 +365,28 @@ export default function LeadScraperPage() {
   const { data: liveData } = useScrapeRuns(queryParams, hasActiveRuns ? 5000 : undefined);
   const runs = (liveData ?? data)?.runs ?? [];
   const total = (liveData ?? data)?.total ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Run notes: saved edits this session win over what localStorage held
+  const [noteEdits, setNoteEdits] = useState<Record<string, string>>({});
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+  const noteFor = (runId: string) => noteEdits[runId] ?? readStoredNote(runId);
+  const toggleNote = (runId: string) => {
+    const next = new Set(openNotes);
+    if (next.has(runId)) next.delete(runId);
+    else next.add(runId);
+    setOpenNotes(next);
+  };
+  const closeNote = (runId: string, val: string) => {
+    setNoteEdits((n) => ({ ...n, [runId]: val }));
+    try {
+      localStorage.setItem(noteKey(runId), val);
+    } catch {
+      // Storage blocked: the note still shows for this session
+    }
+    const next = new Set(openNotes);
+    next.delete(runId);
+    setOpenNotes(next);
+  };
 
   const selectedScraper = SCRAPERS.find((s) => s.source === selected);
 
@@ -686,43 +685,104 @@ export default function LeadScraperPage() {
         </div>
 
         {/* Run list */}
-        {isLoading ? (
-          <div className="flex justify-center py-10"><Spinner /></div>
-        ) : runs.length === 0 ? (
-          <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
-            <Users className="w-8 h-8 text-on-surface-variant mx-auto mb-2" />
-            {activeFilterCount > 0 ? (
-              <>
-                <p className="text-body-lg text-on-surface-variant">No runs match the current filters.</p>
-                <button
-                  onClick={() => { setFilterSource(""); setFilterStatus(""); setPage(0); }}
-                  className="mt-2 text-label text-primary hover:underline"
-                >
-                  Clear filters
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-body-lg text-on-surface-variant">No scraper runs yet.</p>
-                <p className="text-label text-on-surface-variant mt-1">Pick a scraper above and click Run to find leads.</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {runs.map((run) => (
-              <RunRow key={run.id} run={run} onDuplicate={handleDuplicate} />
-            ))}
-          </div>
-        )}
-
-        {/* Pagination (shared component is 1-based; this page's state is 0-based for `skip`) */}
-        <Pagination
-          page={page + 1}
-          totalPages={totalPages}
-          total={total}
-          onPageChange={(p) => setPage(p - 1)}
-          className="px-0 border-t-0"
+        <DataTable
+          label="Scraper runs"
+          columns={[
+            {
+              id: "search",
+              header: "Search",
+              cell: (run) => {
+                const note = noteFor(run.id);
+                return (
+                  <div className="min-w-0">
+                    <p className="truncate text-body font-medium text-on-surface">{SOURCE_LABELS[run.source]}</p>
+                    <p className="truncate text-caption text-on-surface-variant">
+                      <span className="font-medium">{run.keywords}</span>
+                      {run.location && <> · {run.location}</>}
+                      <span> · max {run.maxResults}</span>
+                    </p>
+                    {note && !openNotes.has(run.id) && (
+                      <p className="mt-1 text-caption text-on-surface-variant italic flex items-center gap-1 max-lg:[overflow-wrap:anywhere]">
+                        <StickyNote className="w-3 h-3 shrink-0" />
+                        {note}
+                      </p>
+                    )}
+                  </div>
+                );
+              },
+            },
+            {
+              id: "status",
+              header: "Status",
+              className: "w-28",
+              skeleton: "badge",
+              cell: (run) => <StatusBadge status={run.status} />,
+            },
+            {
+              id: "results",
+              header: "Results",
+              className: "w-48",
+              cell: (run) => <RunResults run={run} />,
+            },
+            {
+              id: "created",
+              header: "Created",
+              className: "w-24",
+              skeleton: "short",
+              cellClassName: "text-caption text-on-surface-variant",
+              cell: (run) => formatTimeAgo(run.createdAt),
+            },
+            {
+              id: "actions",
+              header: "Actions",
+              hideHeader: true,
+              align: "right",
+              className: "w-44",
+              skeleton: "none",
+              cell: (run) => (
+                <RunActions
+                  run={run}
+                  hasNote={!!noteFor(run.id)}
+                  onToggleNote={() => toggleNote(run.id)}
+                  onDuplicate={handleDuplicate}
+                />
+              ),
+            },
+          ]}
+          rows={runs}
+          rowKey={(run) => run.id}
+          rowLabel={(run) => `${SOURCE_LABELS[run.source]} — ${run.keywords}`}
+          loading={isLoading}
+          skeletonRows={4}
+          // Detail row: the note editor and a failed run's error
+          renderExpandedRow={(run) => (
+            <>
+              {run.status === "FAILED" && run.errorMessage && (
+                <p className="text-label text-error bg-error/5 rounded-lg px-3 py-2 max-lg:[overflow-wrap:anywhere]">{run.errorMessage}</p>
+              )}
+              {openNotes.has(run.id) && (
+                <NoteEditor runId={run.id} initial={noteFor(run.id)} onClose={(val) => closeNote(run.id, val)} />
+              )}
+            </>
+          )}
+          isRowExpanded={(run) => openNotes.has(run.id) || (run.status === "FAILED" && !!run.errorMessage)}
+          pagination={{ page, pageSize: PAGE_SIZE, total, onPageChange: setPage }}
+          empty={
+            activeFilterCount > 0
+              ? {
+                  icon: <Users className="h-8 w-8" />,
+                  title: "No runs match the current filters.",
+                  compact: true,
+                  actionLabel: "Clear filters",
+                  onAction: () => { setFilterSource(""); setFilterStatus(""); setPage(0); },
+                }
+              : {
+                  icon: <Users className="h-8 w-8" />,
+                  title: "No scraper runs yet.",
+                  description: "Pick a scraper above and click Run to find leads.",
+                  compact: true,
+                }
+          }
         />
       </div>
     </div>

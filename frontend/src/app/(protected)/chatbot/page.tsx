@@ -41,9 +41,9 @@ const PRESET_ICONS: Record<ChatbotPresetIcon, typeof Bot> = {
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
-  KEYWORD: "Keyword Match",
-  FIRST_MESSAGE: "First Message",
-  BUTTON_REPLY: "Button Reply",
+  KEYWORD: "Keyword match",
+  FIRST_MESSAGE: "First message",
+  BUTTON_REPLY: "Button reply",
 };
 
 export default function ChatbotPage() {
@@ -221,7 +221,7 @@ export default function ChatbotPage() {
                 {flow.aiEnabled && (
                   <Badge variant="primary" className="shrink-0 ml-1">AI</Badge>
                 )}
-                <Badge variant={flow.isActive ? "success" : "muted"} className="shrink-0 ml-1">
+                <Badge variant={flow.isActive ? "success" : "muted"} dot className="shrink-0 ml-1">
                   {flow.isActive ? "Active" : "Inactive"}
                 </Badge>
               </div>

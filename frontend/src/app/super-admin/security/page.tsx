@@ -273,7 +273,7 @@ export default function SuperAdminSecurityPage() {
         <div>
           <h2 id="twofa-heading" className="flex items-center gap-2 text-title-sm font-semibold text-on-surface">
             Two-factor authentication
-            <Badge variant={me.twoFactorEnabled ? "success" : "warning"}>{me.twoFactorEnabled ? "On" : "Off"}</Badge>
+            <Badge dot variant={me.twoFactorEnabled ? "success" : "warning"}>{me.twoFactorEnabled ? "On" : "Off"}</Badge>
           </h2>
           <p className="text-body text-on-surface-variant mt-1">
             {me.twoFactorRequired

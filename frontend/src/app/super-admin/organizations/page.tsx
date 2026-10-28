@@ -50,7 +50,7 @@ export default function SuperAdminOrgsPage() {
             {org.name}
           </Link>
           {status === "DELETED" || org.deletedAt ? (
-            <Badge variant="error" className="ml-2">Deleted</Badge>
+            <Badge dot variant="error" className="ml-2">Deleted</Badge>
           ) : org.status === "SUSPENDED" && (
             <span className="ml-2"><StatusBadge status="SUSPENDED" /></span>
           )}

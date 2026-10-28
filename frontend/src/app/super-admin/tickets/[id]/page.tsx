@@ -124,7 +124,7 @@ export default function SATicketDetailPage() {
     statusMutation.mutate(next, {
       onSuccess: () => {
         setConfirmClose(false);
-        toast.success(`Status changed to ${next.replace("_", " ")}.`);
+        toast.success(`Status changed to ${sentenceCase(next).toLowerCase()}.`);
       },
       onError: (err) => {
         setConfirmClose(false);

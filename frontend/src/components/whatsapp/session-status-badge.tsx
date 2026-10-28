@@ -20,10 +20,7 @@ export function SessionStatusBadge({ status, className }: SessionStatusBadgeProp
   const config = statusConfig[status] ?? statusConfig.DISCONNECTED;
 
   return (
-    <Badge variant={config.variant} className={className}>
-      {config.variant === "success" && (
-        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-      )}
+    <Badge dot pulse={config.variant === "success"} variant={config.variant} className={className}>
       {config.label}
     </Badge>
   );

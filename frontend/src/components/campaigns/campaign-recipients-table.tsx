@@ -48,7 +48,7 @@ const columns: DataTableColumn<CampaignRecipient>[] = [
     skeleton: "badge",
     cell: (r) => {
       const cfg = RECIPIENT_STATUS_CONFIG[r.status];
-      return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+      return <Badge dot variant={cfg.variant}>{cfg.label}</Badge>;
     },
   },
   {
@@ -101,7 +101,7 @@ export function CampaignRecipientsTable({
             <span className="text-body text-on-surface truncate">
               {r.contact?.name || "Unknown"}
             </span>
-            <Badge variant={cfg.variant} className="justify-self-end">{cfg.label}</Badge>
+            <Badge dot variant={cfg.variant} className="justify-self-end">{cfg.label}</Badge>
             <span className="text-label text-on-surface-variant/60 tabular-nums">
               {r.contactPhone}
             </span>

@@ -6,13 +6,13 @@ import {
   Package,
   Trash2,
   Pencil,
-  Search,
-  ToggleLeft,
-  ToggleRight,
   Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
+import { SearchInput } from "@/components/ui/search-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -177,11 +177,8 @@ export default function ProductsPage() {
           aria-label={`${product.name}: ${product.status === "ACTIVE" ? "active" : "inactive"}. Toggle status`}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <Badge variant={product.status === "ACTIVE" ? "success" : "muted"}>
-            {product.status === "ACTIVE"
-              ? <ToggleRight className="h-3 w-3 mr-1" />
-              : <ToggleLeft className="h-3 w-3 mr-1" />}
-            {product.status}
+          <Badge variant={product.status === "ACTIVE" ? "success" : "muted"} dot>
+            {product.status === "ACTIVE" ? "Active" : "Inactive"}
           </Badge>
         </button>
       ),
@@ -227,7 +224,8 @@ export default function ProductsPage() {
   const activeCategory = (categories ?? []).find((c) => c.id === activeCategoryTab);
 
   return (
-    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+    // Desktop: room around the page, like the other list pages
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions
         primary={{ label: "New Product", onClick: openCreate }}
         more={[
@@ -243,6 +241,15 @@ export default function ProductsPage() {
         className="max-lg:hidden"
         actions={
           <>
+            {(products ?? []).length > 0 && (
+              <SearchInput
+                aria-label="Search products"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products"
+                className="w-64"
+              />
+            )}
             <Button variant="secondary" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
               <Tag className="h-4 w-4 mr-1" /> New category
             </Button>
@@ -253,84 +260,65 @@ export default function ProductsPage() {
         }
       />
 
-      {/* Category filter tabs */}
-      {(categories ?? []).length > 0 && (
-        <div className="flex items-center gap-1 flex-wrap mobile-scroll-x">
-          {[
-            { id: "ALL", label: "All", count: (products ?? []).length, color: null },
-            ...(categories ?? []).map((c) => ({
-              id: c.id,
-              label: c.name,
-              count: (products ?? []).filter((p) => p.categoryId === c.id).length,
-              color: c.color,
-            })),
-            ...(uncategorizedCount > 0
-              ? [{ id: "NONE", label: "Uncategorized", count: uncategorizedCount, color: null }]
-              : []),
-          ].map((tab) => (
-            <div key={tab.id} className="flex items-center gap-0.5 group">
-              <button
-                type="button"
-                onClick={() => setActiveCategoryTab(tab.id)}
-                aria-pressed={activeCategoryTab === tab.id}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${
-                  activeCategoryTab === tab.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              >
-                {tab.color && (
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: tab.color }} />
-                )}
-                {tab.label}
-                <span className="text-caption tabular-nums opacity-60">{tab.count}</span>
-              </button>
-              {tab.id !== "ALL" && tab.id !== "NONE" && (
-                <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center gap-0.5 transition-opacity max-lg:hidden">
-                  <IconButton size="xs"
-                    onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }}
-                    className="hover:text-primary"
-                    title="Edit category" aria-label="Edit category">
-                    <Pencil className="h-3 w-3" />
-                  </IconButton>
-                  <IconButton size="xs" variant="danger"
-                    onClick={() => setDeleteCatTarget((categories ?? []).find((c) => c.id === tab.id) ?? null)}
-                   
-                    title="Delete category" aria-label="Delete category">
-                    <Trash2 className="h-3 w-3" />
-                  </IconButton>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      {/* Search on phones (desktop: in the header) */}
+      {(products ?? []).length > 0 && (
+        <SearchInput
+          aria-label="Search products"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search products"
+          className="w-full lg:hidden"
+        />
       )}
 
-      {/* Search */}
-      {(products ?? []).length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant max-w-sm focus-within:ring-2 focus-within:ring-focus">
-          <Search className="h-4 w-4 text-on-surface-variant/60" aria-hidden />
-          <input
-            aria-label="Search products"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products…"
-            className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
+      {/* Category chips; the chosen category's edit/delete sit beside them (phones: "…" sheet) */}
+      {(categories ?? []).length > 0 && (
+        <FilterBar className="mobile-scroll-x">
+          <Tabs
+            tabs={[
+              { id: "ALL", label: "All", count: (products ?? []).length },
+              ...(categories ?? []).map((c) => ({
+                id: c.id,
+                label: c.name,
+                count: (products ?? []).filter((p) => p.categoryId === c.id).length,
+              })),
+              ...(uncategorizedCount > 0
+                ? [{ id: "NONE", label: "Uncategorized", count: uncategorizedCount }]
+                : []),
+            ]}
+            activeTab={activeCategoryTab}
+            onTabChange={setActiveCategoryTab}
           />
-        </div>
+          {activeCategory && (
+            <>
+              <FilterBarDivider />
+              <div className="flex items-center gap-0.5 max-lg:hidden">
+                <IconButton size="xs"
+                  onClick={() => { setEditCategory(activeCategory); setCategoryModalOpen(true); }}
+                  className="hover:text-primary"
+                  title={`Edit "${activeCategory.name}"`} aria-label={`Edit category ${activeCategory.name}`}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </IconButton>
+                <IconButton size="xs" variant="danger"
+                  onClick={() => setDeleteCatTarget(activeCategory)}
+                  title={`Delete "${activeCategory.name}"`} aria-label={`Delete category ${activeCategory.name}`}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </IconButton>
+              </div>
+            </>
+          )}
+        </FilterBar>
       )}
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-outline-variant overflow-hidden">
-          <DataTable
-            label="Products"
-            columns={columns}
-            rows={filtered}
-            rowKey={(product) => product.id}
-            rowLabel={(product) => product.name}
-          />
-        </div>
+        <DataTable
+          label="Products"
+          columns={columns}
+          rows={filtered}
+          rowKey={(product) => product.id}
+          rowLabel={(product) => product.name}
+        />
       ) : (products ?? []).length > 0 ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">
           No products match your filters

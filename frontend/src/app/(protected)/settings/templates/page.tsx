@@ -2,8 +2,12 @@
 
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, FileText, Trash2, Pencil, Search, Package, GripVertical, User, Sparkles, X, ShoppingBag, ShoppingCart, Lock } from "lucide-react";
+import { Plus, FileText, Trash2, Pencil, Package, GripVertical, User, Sparkles, X, ShoppingBag, ShoppingCart, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { SearchInput } from "@/components/ui/search-input";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState, LoadError } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -32,6 +36,11 @@ function scrollTopOnMobile() {
 }
 
 const CATEGORIES = ["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const;
+
+// Stored as Meta's capitals; shown in sentence case ("MARKETING" → "Marketing")
+function categoryLabel(cat: string): string {
+  return cat.charAt(0) + cat.slice(1).toLowerCase();
+}
 
 const SHOPIFY_TEMPLATE_TYPES: Record<string, string> = {
   order_confirmation: "Order Confirmation",
@@ -299,14 +308,14 @@ export default function TemplatesPage() {
       skeleton: "badge",
       cell: (tpl) =>
         isShopifyTemplate(tpl) ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-caption font-medium text-success border border-success/20">
-            <ShoppingBag className="h-3 w-3" />
+          <Badge variant="success">
+            <ShoppingBag className="h-3 w-3" aria-hidden />
             Shopify
-          </span>
+          </Badge>
+        ) : tpl.category ? (
+          <Badge variant="muted">{categoryLabel(tpl.category)}</Badge>
         ) : (
-          <span className="text-label text-on-surface-variant">
-            {tpl.category || "—"}
-          </span>
+          <span className="text-label text-on-surface-variant/40">—</span>
         ),
     },
     {
@@ -381,7 +390,8 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+    // Desktop: room around the page, like the other list pages
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions
         primary={{ label: "New template", onClick: () => { resetForm(); setShowForm(true); scrollTopOnMobile(); } }}
         more={[{ label: "Generate with AI", onSelect: () => setShowAiModal(true) }]}
@@ -393,6 +403,15 @@ export default function TemplatesPage() {
         className="max-lg:hidden"
         actions={
           <>
+            {templates && templates.length > 0 && (
+              <SearchInput
+                aria-label="Search templates"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search templates"
+                className="w-64"
+              />
+            )}
             <Button variant="secondary" onClick={() => setShowAiModal(true)}>
               <Sparkles className="h-4 w-4 mr-1" /> Generate with AI
             </Button>
@@ -432,7 +451,7 @@ export default function TemplatesPage() {
                   className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                 >
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c || "No category"}</option>
+                    <option key={c} value={c}>{c ? categoryLabel(c) : "No category"}</option>
                   ))}
                 </select>
 
@@ -613,68 +632,39 @@ export default function TemplatesPage() {
         </div>
       )}
 
-      {/* Filter tabs + Search */}
+      {/* Category chips (only categories in use) + search on phones (desktop: in the header) */}
       {templates && templates.length > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* Category tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container mobile-scroll-x max-lg:w-full">
-            {(["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const).map((cat) => {
-              const label = cat === "" ? "All" : cat === "SHOPIFY" ? "Shopify" : cat;
-              const count = cat === "" ? templates.length : templates.filter((t) => t.category === cat).length;
-              if (count === 0 && cat !== "") return null;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategoryFilter(cat)}
-                  aria-pressed={categoryFilter === cat}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${
-                    categoryFilter === cat
-                      ? cat === "SHOPIFY"
-                        ? "bg-success/15 text-success"
-                        : "bg-primary/10 text-primary"
-                      : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-                  }`}
-                >
-                  {cat === "SHOPIFY" && <ShoppingBag className="h-3 w-3" />}
-                  {label}
-                  <span className={`text-caption px-1.5 py-0.5 rounded-full ${
-                    categoryFilter === cat
-                      ? cat === "SHOPIFY" ? "bg-success/20 text-success" : "bg-primary/15 text-primary"
-                      : "bg-outline-variant/15 text-on-surface-variant/60"
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant min-w-[200px] focus-within:ring-2 focus-within:ring-focus max-lg:w-full">
-            <Search className="h-4 w-4 text-on-surface-variant/60 shrink-0" aria-hidden />
-            <input
-              aria-label="Search templates"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search templates..."
-              className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
+        <>
+          <SearchInput
+            aria-label="Search templates"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates"
+            className="w-full lg:hidden"
+          />
+          <FilterBar className="mobile-scroll-x">
+            <Tabs
+              tabs={CATEGORIES.map((cat) => ({
+                id: cat,
+                label: cat === "" ? "All" : categoryLabel(cat),
+                count: cat === "" ? templates.length : templates.filter((t) => t.category === cat).length,
+              })).filter((tab) => tab.id === "" || tab.count > 0)}
+              activeTab={categoryFilter}
+              onTabChange={setCategoryFilter}
             />
-          </div>
-        </div>
+          </FilterBar>
+        </>
       )}
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-outline-variant overflow-hidden">
-          <DataTable
-            label="Templates"
-            columns={columns}
-            rows={filtered}
-            rowKey={(tpl) => tpl.id}
-            rowLabel={(tpl) => tpl.name}
-          />
-        </div>
+        <DataTable
+          label="Templates"
+          columns={columns}
+          rows={filtered}
+          rowKey={(tpl) => tpl.id}
+          rowLabel={(tpl) => tpl.name}
+        />
       ) : templates && templates.length > 0 && search ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">
           No templates match "{search}"
@@ -738,7 +728,7 @@ export default function TemplatesPage() {
                     className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c || "No category"}</option>
+                      <option key={c} value={c}>{c ? categoryLabel(c) : "No category"}</option>
                     ))}
                   </select>
                 </div>

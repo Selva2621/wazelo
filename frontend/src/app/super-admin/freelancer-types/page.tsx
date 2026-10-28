@@ -181,7 +181,7 @@ export default function SuperAdminFreelancerTypesPage() {
       id: "status",
       header: "Status",
       skeleton: "badge",
-      cell: (t) => <Badge variant={t.isActive ? "success" : "muted"}>{t.isActive ? "Shown" : "Hidden"}</Badge>,
+      cell: (t) => <Badge dot variant={t.isActive ? "success" : "muted"}>{t.isActive ? "Shown" : "Hidden"}</Badge>,
     },
     {
       id: "actions",

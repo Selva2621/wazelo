@@ -20,7 +20,7 @@ const statusVariant: Record<ChannelStatus, "success" | "warning" | "error" | "mu
 
 export function ChannelStatusBadge({ status, className }: ChannelStatusBadgeProps) {
   return (
-    <Badge variant={statusVariant[status]} className={className}>
+    <Badge dot variant={statusVariant[status]} className={className}>
       {CHANNEL_STATUS_LABELS[status]}
     </Badge>
   );

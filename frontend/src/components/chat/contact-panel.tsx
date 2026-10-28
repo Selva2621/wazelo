@@ -135,8 +135,9 @@ export function ContactPanel({
             {contact.name}
           </h3>
           <Badge
+            dot
             variant={statusVariant[contact.leadStatus] ?? "muted"}
-            className="mt-1.5 capitalize"
+            className="mt-1.5"
           >
             {currentStatusConfig.label}
           </Badge>

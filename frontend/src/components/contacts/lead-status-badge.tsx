@@ -22,7 +22,7 @@ interface LeadStatusBadgeProps {
 export function LeadStatusBadge({ status, className }: LeadStatusBadgeProps) {
   const config = statusConfig[status] ?? statusConfig.NEW;
   return (
-    <Badge variant={config.variant} className={className}>
+    <Badge variant={config.variant} className={className} dot>
       {config.label}
     </Badge>
   );

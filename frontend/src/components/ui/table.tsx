@@ -20,7 +20,7 @@ export function Table({ children, className, stickyHeader = false }: TableRootPr
     <div
       className={cn(
         stickyHeader
-          ? "overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-surface-container-low"
+          ? "overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-surface-container-lowest"
           : "overflow-x-auto",
         className,
       )}
@@ -122,7 +122,7 @@ export function TableCell({
   return (
     <td
       className={cn(
-        "px-4 py-2.5",
+        "px-4 py-3",
         align === "right" && "text-right",
         align === "center" && "text-center",
         className,

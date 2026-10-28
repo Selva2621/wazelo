@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import type { AuditLog, QueryAuditLogsParams } from "@/lib/types/rbac";
 import { PAGE_SIZE } from "@/lib/constants";
 
@@ -100,7 +101,7 @@ export default function AuditLogsPage() {
       cell: (log) =>
         log.targetType ? (
           <div>
-            <span className="text-label text-on-surface-variant">{log.targetType}</span>
+            <span className="text-label text-on-surface-variant">{formatActionLabel(log.targetType)}</span>
             {log.targetId && (
               <p className="text-caption text-on-surface-variant/60 font-mono truncate max-w-[160px]">{log.targetId}</p>
             )}
@@ -261,21 +262,7 @@ function LogDetail({ log }: { log: AuditLog }) {
 
 // ─── Action Badge ─────────────────────────────
 function ActionBadge({ action }: { action: string }) {
-  const variant = getActionBadgeVariant(action);
-  const colorClasses = {
-    error: "bg-error-container text-error",
-    warning: "bg-warning-container text-warning",
-    primary: "bg-primary-container/20 text-primary",
-    default: "bg-surface-container-high text-on-surface-variant",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md text-caption font-medium ${colorClasses[variant]}`}
-    >
-      {formatActionLabel(action)}
-    </span>
-  );
+  return <Badge variant={getActionBadgeVariant(action)}>{formatActionLabel(action)}</Badge>;
 }
 
 // ─── Helpers ──────────────────────────────────
@@ -291,9 +278,7 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+/** "USER_CREATED" → "User created" */
 function formatActionLabel(action: string): string {
-  return action
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return action.charAt(0).toUpperCase() + action.slice(1).toLowerCase().replace(/_/g, " ");
 }

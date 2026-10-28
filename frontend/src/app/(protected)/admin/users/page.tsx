@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Users,
   MessageSquare,
-  Wifi,
-  WifiOff,
-  Minus,
   UserPlus,
   Shield,
   Ban,
@@ -41,36 +38,20 @@ import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
+/** "QR_PENDING" → "Qr pending" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
+
 function SessionStatusBadge({ status }: { status?: string }) {
-  if (!status) {
-    return (
-      <Badge variant="default" className="gap-1">
-        <Minus className="h-3 w-3" />
-        No session
-      </Badge>
-    );
-  }
-  if (status === "CONNECTED") {
-    return (
-      <Badge variant="success" className="gap-1">
-        <Wifi className="h-3 w-3" />
-        Connected
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="warning" className="gap-1">
-      <WifiOff className="h-3 w-3" />
-      {status}
-    </Badge>
-  );
+  if (!status) return <Badge variant="default" dot>No session</Badge>;
+  if (status === "CONNECTED") return <Badge variant="success" dot>Connected</Badge>;
+  return <Badge variant="warning" dot>{sentenceCase(status)}</Badge>;
 }
 
 function UserStatusBadge({ status }: { status: string }) {
-  if (status === "ACTIVE") return <Badge variant="success">Active</Badge>;
-  if (status === "SUSPENDED") return <Badge variant="error">Disabled</Badge>;
-  if (status === "LOCKED") return <Badge variant="warning">Locked</Badge>;
-  return <Badge variant="muted">{status}</Badge>;
+  if (status === "ACTIVE") return <Badge variant="success" dot>Active</Badge>;
+  if (status === "SUSPENDED") return <Badge variant="error" dot>Disabled</Badge>;
+  if (status === "LOCKED") return <Badge variant="warning" dot>Locked</Badge>;
+  return <Badge variant="muted" dot>{sentenceCase(status)}</Badge>;
 }
 
 export default function AdminUsersPage() {
@@ -243,7 +224,7 @@ export default function AdminUsersPage() {
                     : "default"
               }
             >
-              {user.role}
+              {sentenceCase(user.role)}
             </Badge>
             {!isSelf && (
               <Shield className="h-3 w-3 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
@@ -497,7 +478,7 @@ export default function AdminUsersPage() {
                           : "default"
                     }
                   >
-                    {inv.role}
+                    {sentenceCase(inv.role)}
                   </Badge>
                   <span className="text-caption text-on-surface-variant">
                     Expires{" "}

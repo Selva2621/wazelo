@@ -1338,3 +1338,34 @@ html:not([data-theme="daylight"]) .ios-segmented-thumb {
     user-select: none;
   }
 }
+
+/* ─── Table card (DataTable, shared by every list page) ───
+   Desktop: a list sits in a white card with a faint border and a soft lift. A table that is
+   already inside a card (rounded + bordered or white container) stays flat, so there is never
+   a card inside a card. Phones keep their per-row cards (MobileTableLabels). */
+@media (min-width: 1024px) {
+  .data-table-card {
+    overflow: hidden;
+    border-radius: 20px;
+    border: 1px solid var(--outline-variant);
+    background-color: var(--surface-container-lowest);
+    box-shadow:
+      0 1px 2px rgb(20 28 45 / 0.05),
+      0 14px 32px -24px rgb(20 28 45 / 0.28);
+  }
+  :is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .bg-surface-container-lowest) .data-table-card {
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  /* …and the page's own card around it takes the same shape and lift, so every list matches */
+  :is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .bg-surface-container-lowest):has(.data-table-card) {
+    /* Some pages wrap the table in a bordered box with no fill; give it the card's white */
+    background-color: var(--surface-container-lowest);
+    border-radius: 20px;
+    box-shadow:
+      0 1px 2px rgb(20 28 45 / 0.05),
+      0 14px 32px -24px rgb(20 28 45 / 0.28);
+  }
+}

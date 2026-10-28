@@ -2,24 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FileText } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useProposals } from "@/hooks/use-proposals";
-import type { ProposalStatus } from "@/lib/api/proposals";
+import type { ProposalListItem, ProposalStatus } from "@/lib/api/proposals";
 import { money } from "@/components/proposals/proposal-document";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
-import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { cn } from "@/lib/utils";
+import { Tabs } from "@/components/ui/tabs";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
-const FILTERS: { value: ProposalStatus | undefined; label: string }[] = [
-  { value: undefined, label: "All" },
-  { value: "DRAFT", label: "Drafts" },
-  { value: "SENT", label: "Sent" },
-  { value: "VIEWED", label: "Viewed" },
-  { value: "CHANGES_REQUESTED", label: "Changes" },
-  { value: "ACCEPTED", label: "Accepted" },
+const FILTERS: { id: ProposalStatus | "ALL"; label: string }[] = [
+  { id: "ALL", label: "All" },
+  { id: "DRAFT", label: "Drafts" },
+  { id: "SENT", label: "Sent" },
+  { id: "VIEWED", label: "Viewed" },
+  { id: "CHANGES_REQUESTED", label: "Changes" },
+  { id: "ACCEPTED", label: "Accepted" },
 ];
 
 const ago = (iso: string) => {
@@ -29,65 +30,102 @@ const ago = (iso: string) => {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 
+const isExpired = (p: ProposalListItem) =>
+  !!p.validUntil && new Date(p.validUntil) < new Date() && (p.status === "SENT" || p.status === "VIEWED");
+
+const columns: DataTableColumn<ProposalListItem>[] = [
+  {
+    id: "proposal",
+    header: "Proposal",
+    cell: (p) => (
+      <div className="min-w-0">
+        <p className="truncate text-body font-medium text-on-surface">{p.title}</p>
+        <p className="truncate text-caption text-on-surface-variant">
+          {p.number} · {p.contact.name || p.contact.phoneNumber}
+          {p.deal ? ` · ${p.deal.title}` : ""}
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: "total",
+    header: "Total",
+    align: "right",
+    className: "w-32",
+    skeleton: "short",
+    cellClassName: "text-body tabular-nums text-on-surface",
+    cell: (p) => money(p.total, p.currency),
+  },
+  {
+    id: "status",
+    header: "Status",
+    className: "w-36",
+    skeleton: "badge",
+    cell: (p) => <ProposalStatusBadge status={p.status} expired={isExpired(p)} />,
+  },
+  {
+    id: "updated",
+    header: "Updated",
+    align: "right",
+    className: "w-24",
+    skeleton: "short",
+    cellClassName: "text-caption text-on-surface-variant",
+    cell: (p) => ago(p.updatedAt),
+  },
+];
+
 export default function ProposalsPage() {
   usePageTitle("Proposals");
+  const router = useRouter();
   const [status, setStatus] = useState<ProposalStatus | undefined>();
   const { data, isLoading } = useProposals(status ? { status } : undefined);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6 max-lg:space-y-4 max-lg:pt-2">
+    <div className="space-y-4 p-4 md:p-6 max-lg:pt-2">
       {/* Title: the iOS nav bar shows it on mobile */}
       <PageHeader className="max-lg:hidden" title="Proposals" count={data?.length} />
 
       <FilterBar className="mobile-scroll-x">
-        <div role="tablist" aria-label="Filter by status" className="flex gap-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f.label}
-              role="tab"
-              aria-selected={status === f.value}
-              onClick={() => setStatus(f.value)}
-              className={cn(
-                "shrink-0 rounded-full border px-3 py-1 max-lg:py-1.5 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                status === f.value
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          tabs={FILTERS}
+          activeTab={status ?? "ALL"}
+          onTabChange={(id) => setStatus(id === "ALL" ? undefined : (id as ProposalStatus))}
+        />
       </FilterBar>
 
-      {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" className="text-primary" /></div>
-      ) : !data?.length ? (
-        <div className="rounded-xl border border-dashed border-outline-variant px-6 py-14 text-center">
-          <FileText className="mx-auto h-8 w-8 text-on-surface-variant" aria-hidden />
-          <p className="mt-3 text-body text-on-surface">{status ? "No proposals here." : "No proposals yet."}</p>
-          <p className="text-label text-on-surface-variant">Open a chat or a deal and click &ldquo;Send proposal&rdquo;.</p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-outline-variant overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
-          {data.map((p) => (
-            <li key={p.id}>
-              <Link href={`/proposals/${p.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 max-lg:gap-x-3 outline-none hover:bg-surface-container-low focus-visible:bg-surface-container-low">
-                <div className="min-w-0 flex-1 max-lg:basis-full">
-                  <p className="truncate text-body font-medium text-on-surface">{p.title}</p>
-                  <p className="truncate text-label text-on-surface-variant">
-                    {p.number} · {p.contact.name || p.contact.phoneNumber}
-                    {p.deal ? ` · ${p.deal.title}` : ""}
-                  </p>
-                </div>
-                <span className="text-body tabular-nums text-on-surface">{money(p.total, p.currency)}</span>
-                <ProposalStatusBadge status={p.status} expired={!!p.validUntil && new Date(p.validUntil) < new Date() && (p.status === "SENT" || p.status === "VIEWED")} />
-                <span className="w-16 text-right text-label text-on-surface-variant max-lg:ml-auto">{ago(p.updatedAt)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataTable
+        label="Proposals"
+        columns={columns}
+        rows={data ?? []}
+        rowKey={(p) => p.id}
+        rowLabel={(p) => p.title}
+        loading={isLoading}
+        skeletonRows={6}
+        onRowClick={(p) => router.push(`/proposals/${p.id}`)}
+        empty={{
+          icon: <FileText className="h-12 w-12" />,
+          title: status ? "No proposals here." : "No proposals yet.",
+          description: "Open a chat or a deal and click “Send proposal”.",
+        }}
+        // Phones: iOS grouped list, one row per proposal
+        renderMobileRow={(p) => (
+          <Link
+            href={`/proposals/${p.id}`}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 outline-none active:bg-surface-container"
+          >
+            <div className="min-w-0 basis-full">
+              <p className="truncate text-body font-medium text-on-surface">{p.title}</p>
+              <p className="truncate text-label text-on-surface-variant">
+                {p.number} · {p.contact.name || p.contact.phoneNumber}
+                {p.deal ? ` · ${p.deal.title}` : ""}
+              </p>
+            </div>
+            <span className="text-body tabular-nums text-on-surface">{money(p.total, p.currency)}</span>
+            <ProposalStatusBadge status={p.status} expired={isExpired(p)} />
+            <span className="ml-auto text-label text-on-surface-variant">{ago(p.updatedAt)}</span>
+          </Link>
+        )}
+      />
     </div>
   );
 }

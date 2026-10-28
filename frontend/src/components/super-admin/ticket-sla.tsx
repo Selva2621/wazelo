@@ -67,19 +67,19 @@ export function TicketSlaBadge({ sla, now }: { sla: TicketSla; now: number }) {
     case "breached":
       return (
         <span title={dueLabel}>
-          <Badge variant="error">Overdue by {formatDuration(left)}</Badge>
+          <Badge dot variant="error">Overdue by {formatDuration(left)}</Badge>
         </span>
       );
     case "due":
       return (
         <span title={dueLabel}>
-          <Badge variant={left < HOUR_MS ? "warning" : "info"}>Reply due in {formatDuration(left)}</Badge>
+          <Badge dot variant={left < HOUR_MS ? "warning" : "info"}>Reply due in {formatDuration(left)}</Badge>
         </span>
       );
     case "met":
-      return <Badge variant="success">Replied in time</Badge>;
+      return <Badge dot variant="success">Replied in time</Badge>;
     case "missed":
-      return <Badge variant="muted">Replied late</Badge>;
+      return <Badge dot variant="muted">Replied late</Badge>;
     default:
       return <span className="text-on-surface-variant" aria-label="No SLA">—</span>;
   }

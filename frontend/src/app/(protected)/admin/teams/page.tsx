@@ -19,6 +19,9 @@ import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { PageHeader } from "@/components/layout/page-header";
 
+/** "MANAGER" → "Manager" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
+
 export default function AdminTeamsPage() {
   usePageTitle("Teams");
   const router = useRouter();
@@ -118,7 +121,7 @@ export default function AdminTeamsPage() {
             <p className="text-body text-on-surface">
               {team.manager.firstName} {team.manager.lastName}
             </p>
-            <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
+            <p className="text-caption text-on-surface-variant">{sentenceCase(team.manager.role)}</p>
           </div>
         </div>
       ),
@@ -234,7 +237,7 @@ export default function AdminTeamsPage() {
                 <option value="">Select manager</option>
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName} ({u.role})
+                    {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                   </option>
                 ))}
               </select>

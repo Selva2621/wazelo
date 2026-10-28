@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 
 const LIMIT_LABELS: Record<string, string> = {
@@ -41,6 +42,22 @@ function errorMessage(err: any, fallback: string): string {
   const message = err?.response?.data?.message;
   if (Array.isArray(message)) return message[0];
   return message ?? fallback;
+}
+
+/** One limit or feature row from the (untyped) entitlements response */
+interface EntitlementRow<V> {
+  key: string;
+  planValue: V | null;
+  effective: V | null;
+  overridden: boolean;
+  override?: {
+    id: string;
+    limitValue?: number | null;
+    enabled?: boolean;
+    reason?: string;
+    expiresAt?: string | null;
+    active?: boolean;
+  } | null;
 }
 
 type Editing =
@@ -141,73 +158,101 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
       {/* Limits */}
       <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby={fid("limits")}>
         <h2 id={fid("limits")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">Limits</h2>
-        <table className="w-full mt-2 text-body-lg">
-          <caption className="sr-only">Usage limits: plan, override and effective value</caption>
-          <thead>
-            <tr className="border-b border-outline-variant text-left">
-              {["Limit", "Plan", "Override", "Effective", ""].map((h, i) => (
-                <th key={i} scope="col" className="px-4 py-2 text-label font-medium text-on-surface-variant">
-                  {h || <span className="sr-only">Actions</span>}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/40">
-            {limits.map((l: any) => (
-              <tr key={l.key}>
-                <td className="px-4 py-2 text-on-surface">{LIMIT_LABELS[l.key] ?? l.key}</td>
-                <td className="px-4 py-2 text-on-surface-variant tabular-nums">{limitText(l.planValue)}</td>
-                <td className="px-4 py-2 tabular-nums">
+        <DataTable<EntitlementRow<number>>
+          label="Usage limits: plan, override and effective value"
+          rows={limits}
+          rowKey={(l) => l.key}
+          wrapperClassName="mt-2"
+          columns={[
+            { id: "limit", header: "Limit", cellClassName: "text-on-surface", cell: (l) => LIMIT_LABELS[l.key] ?? l.key },
+            { id: "plan", header: "Plan", cellClassName: "text-on-surface-variant tabular-nums", cell: (l) => limitText(l.planValue) },
+            {
+              id: "override",
+              header: "Override",
+              cellClassName: "tabular-nums",
+              cell: (l) => (
+                <>
                   {l.override ? <span className="text-on-surface">{limitText(l.override.limitValue)}</span> : <span className="text-on-surface-variant">—</span>}
                   {overrideNote(l.override)}
-                </td>
-                <td className={cn("px-4 py-2 tabular-nums font-medium", l.overridden ? "text-primary" : "text-on-surface")}>
+                </>
+              ),
+            },
+            {
+              id: "effective",
+              header: "Effective",
+              cell: (l) => (
+                <span className={cn("tabular-nums font-medium", l.overridden ? "text-primary" : "text-on-surface")}>
                   {limitText(l.effective)}
-                </td>
-                <td className="px-4 py-2 text-right whitespace-nowrap">
+                </span>
+              ),
+            },
+            {
+              id: "actions",
+              header: "Actions",
+              hideHeader: true,
+              align: "right",
+              cellClassName: "whitespace-nowrap",
+              cell: (l) => (
+                <>
                   <Button type="button" variant="ghost" size="sm" onClick={() => open({ kind: "LIMIT", key: l.key, current: l.override })}>
                     {l.override ? "Edit" : "Override"}
                   </Button>
                   {l.override && (
                     <Button type="button" variant="ghost" size="sm" disabled={remove.isPending}
-                      onClick={() => setRemoving({ id: l.override.id, label: LIMIT_LABELS[l.key] ?? l.key })}>
+                      onClick={() => l.override && setRemoving({ id: l.override.id, label: LIMIT_LABELS[l.key] ?? l.key })}>
                       Remove
                     </Button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </>
+              ),
+            },
+          ]}
+        />
       </section>
 
       {/* Features */}
       <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby={fid("features")}>
         <h2 id={fid("features")} className="px-4 pt-4 text-body-lg font-medium text-on-surface">Features</h2>
-        <table className="w-full mt-2 text-body-lg">
-          <caption className="sr-only">Features: plan, override and effective state</caption>
-          <thead>
-            <tr className="border-b border-outline-variant text-left">
-              {["Feature", "Plan", "Override", "Effective", ""].map((h, i) => (
-                <th key={i} scope="col" className="px-4 py-2 text-label font-medium text-on-surface-variant">
-                  {h || <span className="sr-only">Actions</span>}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/40">
-            {features.map((f: any) => (
-              <tr key={f.key}>
-                <td className="px-4 py-2 text-on-surface">{FEATURE_LABELS[f.key] ?? f.key}</td>
-                <td className="px-4 py-2 text-on-surface-variant">{f.planValue === null ? "—" : f.planValue ? "On" : "Off"}</td>
-                <td className="px-4 py-2">
+        <DataTable<EntitlementRow<boolean>>
+          label="Features: plan, override and effective state"
+          rows={features}
+          rowKey={(f) => f.key}
+          wrapperClassName="mt-2"
+          columns={[
+            { id: "feature", header: "Feature", cellClassName: "text-on-surface", cell: (f) => FEATURE_LABELS[f.key] ?? f.key },
+            {
+              id: "plan",
+              header: "Plan",
+              cellClassName: "text-on-surface-variant",
+              cell: (f) => (f.planValue === null ? "—" : f.planValue ? "On" : "Off"),
+            },
+            {
+              id: "override",
+              header: "Override",
+              cell: (f) => (
+                <>
                   {f.override ? <span className="text-on-surface">Forced {f.override.enabled ? "on" : "off"}</span> : <span className="text-on-surface-variant">—</span>}
                   {overrideNote(f.override)}
-                </td>
-                <td className={cn("px-4 py-2 font-medium", f.overridden ? "text-primary" : "text-on-surface")}>
+                </>
+              ),
+            },
+            {
+              id: "effective",
+              header: "Effective",
+              cell: (f) => (
+                <span className={cn("font-medium", f.overridden ? "text-primary" : "text-on-surface")}>
                   {f.effective ? "On" : "Off"}
-                </td>
-                <td className="px-4 py-2 text-right whitespace-nowrap">
+                </span>
+              ),
+            },
+            {
+              id: "actions",
+              header: "Actions",
+              hideHeader: true,
+              align: "right",
+              cellClassName: "whitespace-nowrap",
+              cell: (f) => (
+                <>
                   <Button type="button" variant="ghost" size="sm" onClick={() => open({ kind: "FEATURE", key: f.key, enabled: true, current: f.override })}>
                     Force on
                   </Button>
@@ -216,15 +261,15 @@ export function EntitlementsPanel({ orgId }: { orgId: string }) {
                   </Button>
                   {f.override && (
                     <Button type="button" variant="ghost" size="sm" disabled={remove.isPending}
-                      onClick={() => setRemoving({ id: f.override.id, label: FEATURE_LABELS[f.key] ?? f.key })}>
+                      onClick={() => f.override && setRemoving({ id: f.override.id, label: FEATURE_LABELS[f.key] ?? f.key })}>
                       Use plan
                     </Button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </>
+              ),
+            },
+          ]}
+        />
       </section>
 
       <Modal open={!!editing} onClose={() => !set.isPending && setEditing(null)} dismissible={!set.isPending} aria-labelledby={fid("dlg")} className="max-w-md">

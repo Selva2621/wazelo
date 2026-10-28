@@ -236,7 +236,9 @@ export function DataTable<T>({
   const totalPages = pagination ? Math.ceil(pagination.total / pagination.pageSize) : 0;
 
   return (
-    <div className={cn("flex flex-col", stickyHeader && "h-full", wrapperClassName)}>
+    // data-table-card: white card on desktop (globals.css); flattens itself inside another card
+    // Sticky tables: the card hugs its rows and only scrolls inside when they outgrow the space
+    <div className={cn("data-table-card flex flex-col", stickyHeader && "max-h-full", wrapperClassName)}>
       {renderMobileRow && !loading && (
         <ul className="mx-4 mb-4 mt-1 divide-y divide-outline-variant/40 overflow-hidden rounded-xl bg-surface-container-lowest lg:hidden">
           {rows.map((row, i) => (
@@ -247,7 +249,7 @@ export function DataTable<T>({
 
       <Table
         stickyHeader={stickyHeader}
-        className={cn(stickyHeader && "flex-1 min-h-0", renderMobileRow && "max-lg:hidden", className)}
+        className={cn(stickyHeader && "min-h-0", renderMobileRow && "max-lg:hidden", className)}
       >
         <caption className="sr-only">{label}</caption>
         <TableHeader>

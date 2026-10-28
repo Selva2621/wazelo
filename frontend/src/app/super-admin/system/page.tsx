@@ -377,11 +377,11 @@ function QueueCard({ queue }: { queue: QueueHealth }) {
           </span>
         </div>
         {queue.status !== "healthy" ? (
-          <Badge variant={queue.status === "critical" ? "error" : "warning"}>
+          <Badge dot variant={queue.status === "critical" ? "error" : "warning"}>
             {queue.status === "critical" ? "Backlog critical" : "Backlog building"}
           </Badge>
         ) : queue.failed > 0 ? (
-          <Badge variant="error">{queue.failed} failed</Badge>
+          <Badge dot variant="error">{queue.failed} failed</Badge>
         ) : null}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -483,7 +483,7 @@ function FailedJobsSection() {
       header: "State",
       skeleton: "badge",
       cell: (job) => (
-        <Badge variant={job.state === "failed" ? "error" : "warning"}>
+        <Badge dot variant={job.state === "failed" ? "error" : "warning"}>
           {job.state === "failed" ? "Failed" : "Expired"}
         </Badge>
       ),
@@ -523,7 +523,7 @@ function FailedJobsSection() {
       skeleton: "none",
       cell: (job) =>
         job.retried ? (
-          <Badge variant="muted">Retried</Badge>
+          <Badge dot variant="muted">Retried</Badge>
         ) : (
           <Button
             variant="ghost"
@@ -1086,7 +1086,7 @@ function AlertsSection() {
       header: "Status",
       skeleton: "badge",
       cell: (rule) => (
-        <Badge variant={rule.enabled ? "primary" : "default"}>
+        <Badge dot variant={rule.enabled ? "success" : "muted"}>
           {rule.enabled ? "Active" : "Disabled"}
         </Badge>
       ),

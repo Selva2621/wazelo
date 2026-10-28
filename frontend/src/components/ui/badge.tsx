@@ -13,6 +13,10 @@ interface BadgeProps {
   variant?: BadgeVariant;
   children: React.ReactNode;
   className?: string;
+  /** Leading dot in the badge colour (status pills). */
+  dot?: boolean;
+  /** Pulse the dot (live states such as a running campaign). */
+  pulse?: boolean;
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -25,15 +29,17 @@ const variantStyles: Record<BadgeVariant, string> = {
   muted: "bg-surface-container text-on-surface-variant",
 };
 
-export function Badge({ variant = "default", children, className }: BadgeProps) {
+export function Badge({ variant = "default", children, className, dot, pulse }: BadgeProps) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption",
+        dot && "gap-1.5 pl-2 pr-2.5 font-medium",
         variantStyles[variant],
         className,
       )}
     >
+      {dot && <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full bg-current", pulse && "animate-pulse")} />}
       {children}
     </span>
   );

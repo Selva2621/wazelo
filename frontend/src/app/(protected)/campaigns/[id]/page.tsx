@@ -266,7 +266,7 @@ export default function CampaignDetailPage() {
                   Message type
                 </p>
                 <p className="text-body text-on-surface">
-                  {campaign.messageType}
+                  {campaign.messageType.charAt(0) + campaign.messageType.slice(1).toLowerCase().replace(/_/g, " ")}
                 </p>
               </div>
               <div>

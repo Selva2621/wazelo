@@ -39,7 +39,7 @@ const columns: DataTableColumn<SubscriptionRow>[] = [
   },
   { id: "plan", header: "Plan", cellClassName: "text-on-surface", cell: (sub) => sub.plan?.name },
   { id: "status", header: "Status", sortable: true, skeleton: "badge", cell: (sub) => <StatusBadge status={sub.status} /> },
-  { id: "cycle", header: "Cycle", skeleton: "short", cellClassName: "text-on-surface-variant", cell: (sub) => sub.billingCycle },
+  { id: "cycle", header: "Cycle", skeleton: "short", cellClassName: "text-on-surface-variant", cell: (sub) => (sub.billingCycle ? sentenceCase(sub.billingCycle) : "—") },
   {
     id: "priceInCents",
     header: "Price",

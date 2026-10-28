@@ -91,29 +91,35 @@ function getStatusBadge(status: SubscriptionStatus) {
     CANCELLED: { label: "Cancelled", variant: "default" },
   };
   const m = map[status] ?? { label: status, variant: "default" as const };
-  return <Badge variant={m.variant}>{m.label}</Badge>;
+  return <Badge variant={m.variant} dot>{m.label}</Badge>;
 }
 
-function getPaymentStatusColor(status: PaymentStatus) {
-  const map: Record<PaymentStatus, string> = {
-    SUCCEEDED: "text-success",
-    PROCESSING: "text-warning",
-    FAILED: "text-error",
-    PENDING: "text-on-surface-variant",
-    REFUNDED: "text-on-surface-variant",
-  };
-  return map[status] ?? "text-on-surface-variant";
+type StatusBadgeVariant = "success" | "warning" | "error" | "muted";
+
+const PAYMENT_STATUS: Record<PaymentStatus, { label: string; variant: StatusBadgeVariant }> = {
+  SUCCEEDED: { label: "Succeeded", variant: "success" },
+  PROCESSING: { label: "Processing", variant: "warning" },
+  FAILED: { label: "Failed", variant: "error" },
+  PENDING: { label: "Pending", variant: "muted" },
+  REFUNDED: { label: "Refunded", variant: "muted" },
+};
+
+const INVOICE_STATUS: Record<InvoiceStatus, { label: string; variant: StatusBadgeVariant }> = {
+  PAID: { label: "Paid", variant: "success" },
+  OPEN: { label: "Open", variant: "warning" },
+  DRAFT: { label: "Draft", variant: "muted" },
+  VOID: { label: "Void", variant: "muted" },
+  UNCOLLECTIBLE: { label: "Uncollectible", variant: "error" },
+};
+
+function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  const m = PAYMENT_STATUS[status] ?? { label: status, variant: "muted" as const };
+  return <Badge variant={m.variant} dot>{m.label}</Badge>;
 }
 
-function getInvoiceStatusColor(status: InvoiceStatus) {
-  const map: Record<InvoiceStatus, string> = {
-    PAID: "text-success",
-    OPEN: "text-warning",
-    DRAFT: "text-on-surface-variant",
-    VOID: "text-on-surface-variant",
-    UNCOLLECTIBLE: "text-error",
-  };
-  return map[status] ?? "text-on-surface-variant";
+function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
+  const m = INVOICE_STATUS[status] ?? { label: status, variant: "muted" as const };
+  return <Badge variant={m.variant} dot>{m.label}</Badge>;
 }
 
 // ─── Billing History Columns ──────────────────
@@ -149,11 +155,7 @@ function paymentColumns(onOpen: (id: string) => void): DataTableColumn<Payment>[
       id: "status",
       header: "Status",
       skeleton: "badge",
-      cell: (payment) => (
-        <span className={`text-label font-medium ${getPaymentStatusColor(payment.status)}`}>
-          {payment.status}
-        </span>
-      ),
+      cell: (payment) => <PaymentStatusBadge status={payment.status} />,
     },
     {
       id: "actions",
@@ -212,11 +214,7 @@ function invoiceColumns(onOpen: (id: string) => void): DataTableColumn<Invoice>[
       id: "status",
       header: "Status",
       skeleton: "badge",
-      cell: (invoice) => (
-        <span className={`text-label font-medium ${getInvoiceStatusColor(invoice.status)}`}>
-          {invoice.status}
-        </span>
-      ),
+      cell: (invoice) => <InvoiceStatusBadge status={invoice.status} />,
     },
     {
       id: "action",

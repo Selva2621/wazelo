@@ -564,8 +564,8 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
             <div key={deal.id} className="p-3 rounded-xl transition-colors hover:bg-surface-container-low space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-body-lg font-medium text-on-surface">{deal.title}</span>
-                <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
-                  {deal.status}
+                <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"} dot>
+                  {deal.status.charAt(0) + deal.status.slice(1).toLowerCase().replace(/_/g, " ")}
                 </Badge>
               </div>
               {deal.value != null && (
@@ -651,8 +651,8 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
                 </div>
                 <div>
                   <p className="text-body font-medium text-on-surface">{p.name}</p>
-                  <Badge variant={p.status === "ACTIVE" ? "success" : "muted"} className="mt-0.5">
-                    {p.status}
+                  <Badge variant={p.status === "ACTIVE" ? "success" : "muted"} dot className="mt-0.5">
+                    {p.status.charAt(0) + p.status.slice(1).toLowerCase().replace(/_/g, " ")}
                   </Badge>
                 </div>
               </div>

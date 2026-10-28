@@ -19,6 +19,7 @@ import {
 import type { SAAiCreditPack, SAAiSettings } from "@/lib/api/super-admin-ai";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -283,7 +284,7 @@ function ProviderCard({ settings }: { settings: SAAiSettings }) {
         id="provider-heading"
         title="Provider"
         description="Every AI feature on the platform uses this model."
-        action={settings.apiKeySet ? <Badge variant="success">Connected</Badge> : <Badge variant="warning">No key</Badge>}
+        action={settings.apiKeySet ? <Badge dot variant="success">Connected</Badge> : <Badge dot variant="warning">No key</Badge>}
       />
 
       <form onSubmit={save} noValidate>
@@ -326,7 +327,7 @@ function ProviderCard({ settings }: { settings: SAAiSettings }) {
           <div className="space-y-1.5 md:col-span-2">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="ai-key">API key</Label>
-              <Badge variant={keySource.variant}>{keySource.label}</Badge>
+              <Badge dot variant={keySource.variant}>{keySource.label}</Badge>
             </div>
             <Input
               id="ai-key"
@@ -526,7 +527,8 @@ function CostsCard({ settings }: { settings: SAAiSettings }) {
   );
 }
 
-function PackRow({ pack, onView }: { pack: SAAiCreditPack; onView: () => void }) {
+/** Sell / stop and view buttons for one pack row (own mutation, so only that row shows a spinner). */
+function PackActions({ pack, onView }: { pack: SAAiCreditPack; onView: () => void }) {
   const update = useSAUpdateAiPack();
   const toggle = () =>
     update.mutate(
@@ -537,38 +539,69 @@ function PackRow({ pack, onView }: { pack: SAAiCreditPack; onView: () => void })
       },
     );
   return (
-    <li className={cn("flex items-center gap-4 px-5 py-3", !pack.isActive && "opacity-60")}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Sparkles className="h-4 w-4" aria-hidden />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-medium text-on-surface">
-          <span className="tabular-nums">{n(pack.credits)}</span> credits
-          <span className="font-normal text-on-surface-variant"> · {pack.name}</span>
-        </p>
-        <p className="text-label tabular-nums text-on-surface-variant">
-          {perCreditPrice(pack.priceInCents, pack.credits, pack.currency)} per credit
-        </p>
-      </div>
-      <p className="text-body-lg font-semibold tabular-nums text-on-surface">{formatMoney(pack.priceInCents, pack.currency)}</p>
-      <div className="flex items-center justify-end gap-2">
-        {pack.isActive ? <Badge variant="success">On sale</Badge> : <Badge variant="muted">Off sale</Badge>}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={toggle}
-          loading={update.isPending}
-          aria-label={`${pack.isActive ? "Stop selling" : "Sell"} ${pack.name}`}
-        >
-          {pack.isActive ? "Stop" : "Sell"}
-        </Button>
-        <Button size="sm" variant="secondary" onClick={onView} aria-label={`View ${pack.name} ${pack.currency} pack`}>
-          View
-        </Button>
-      </div>
-    </li>
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={toggle}
+        loading={update.isPending}
+        aria-label={`${pack.isActive ? "Stop selling" : "Sell"} ${pack.name}`}
+      >
+        {pack.isActive ? "Stop" : "Sell"}
+      </Button>
+      <Button size="sm" variant="secondary" onClick={onView} aria-label={`View ${pack.name} ${pack.currency} pack`}>
+        View
+      </Button>
+    </div>
   );
 }
+
+const packColumns = (onView: (id: string) => void): DataTableColumn<SAAiCreditPack>[] => [
+  {
+    id: "pack",
+    header: "Pack",
+    skeleton: "avatar",
+    cell: (pack) => (
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Sparkles className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-body font-medium text-on-surface">
+            <span className="tabular-nums">{n(pack.credits)}</span> credits
+            <span className="font-normal text-on-surface-variant"> · {pack.name}</span>
+          </p>
+          <p className="text-label tabular-nums text-on-surface-variant">
+            {perCreditPrice(pack.priceInCents, pack.credits, pack.currency)} per credit
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "price",
+    header: "Price",
+    align: "right",
+    skeleton: "short",
+    cellClassName: "text-body-lg font-semibold tabular-nums text-on-surface",
+    cell: (pack) => formatMoney(pack.priceInCents, pack.currency),
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (pack) =>
+      pack.isActive ? <Badge dot variant="success">On sale</Badge> : <Badge dot variant="muted">Off sale</Badge>,
+  },
+  {
+    id: "actions",
+    header: "Actions",
+    hideHeader: true,
+    align: "right",
+    skeleton: "none",
+    cell: (pack) => <PackActions pack={pack} onView={() => onView(pack.id)} />,
+  },
+];
 
 function SalesTile({ label, value }: { label: string; value: string }) {
   return (
@@ -872,11 +905,15 @@ function PacksCard({ packs }: { packs: SAAiCreditPack[] }) {
           </div>
         )
       ) : (
-        <ul className="divide-y divide-outline-variant border-t border-outline-variant">
-          {packs.map((p) => (
-            <PackRow key={p.id} pack={p} onView={() => setViewing(p.id)} />
-          ))}
-        </ul>
+        <DataTable
+          label="Credit packs"
+          columns={packColumns(setViewing)}
+          rows={packs}
+          rowKey={(p) => p.id}
+          rowLabel={(p) => p.name}
+          rowClassName={(p) => (!p.isActive ? "opacity-60" : undefined)}
+          wrapperClassName="border-t border-outline-variant"
+        />
       )}
 
       <Drawer

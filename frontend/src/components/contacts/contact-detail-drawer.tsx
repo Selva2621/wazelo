@@ -48,6 +48,9 @@ import { exportContactData, eraseContactData } from "@/lib/api/gdpr";
 import { SendMessageModal } from "./send-message-modal";
 import { IconButton } from "@/components/ui/icon-button";
 import { Drawer } from "@/components/ui/modal";
+import { CONTACT_SOURCE_LABELS } from "@/lib/constants/contact-sources";
+
+const DEAL_STATUS_LABELS: Record<string, string> = { OPEN: "Open", WON: "Won", LOST: "Lost" };
 
 interface ContactDetailDrawerProps {
   contactId: string | null;
@@ -373,7 +376,7 @@ export function ContactDetailDrawer({
                   )}
                   <div className="flex items-center gap-2 text-body text-on-surface-variant">
                     <Globe className="h-3.5 w-3.5 shrink-0" />
-                    <Badge variant="default">{contact.source}</Badge>
+                    <Badge variant="default">{CONTACT_SOURCE_LABELS[contact.source] ?? contact.source}</Badge>
                   </div>
                 </div>
               )}
@@ -687,8 +690,8 @@ function ContactDealsTab({ contactId, contactName }: { contactId: string; contac
           <div key={deal.id} className="p-3 rounded-lg bg-surface-container border border-outline-variant/10 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-body font-medium text-on-surface">{deal.title}</span>
-              <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
-                {deal.status}
+              <Badge dot variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
+                {DEAL_STATUS_LABELS[deal.status] ?? deal.status}
               </Badge>
             </div>
             <div className="flex items-center justify-between text-caption text-on-surface-variant/60">

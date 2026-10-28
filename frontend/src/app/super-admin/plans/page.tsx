@@ -608,11 +608,11 @@ export default function SuperAdminPlansPage() {
       skeleton: "badge",
       cell: (plan) => (
         <div className="flex flex-wrap gap-1">
-          {plan.campaignsEnabled && <Badge variant="muted" className="text-label">Campaigns</Badge>}
-          {plan.automationEnabled && <Badge variant="muted" className="text-label">Auto</Badge>}
-          {plan.apiEnabled && <Badge variant="muted" className="text-label">API</Badge>}
-          {plan.aiEnabled && <Badge variant="muted" className="text-label">AI</Badge>}
-          {plan.shopifyEnabled && <Badge variant="muted" className="text-label">Shopify</Badge>}
+          {plan.campaignsEnabled && <Badge variant="muted">Campaigns</Badge>}
+          {plan.automationEnabled && <Badge variant="muted">Auto</Badge>}
+          {plan.apiEnabled && <Badge variant="muted">API</Badge>}
+          {plan.aiEnabled && <Badge variant="muted">AI</Badge>}
+          {plan.shopifyEnabled && <Badge variant="muted">Shopify</Badge>}
         </div>
       ),
     },
@@ -623,16 +623,16 @@ export default function SuperAdminPlansPage() {
       cell: (plan) => (
         <>
           {plan.archivedAt ? (
-            <Badge variant="muted" className="text-label">Archived</Badge>
+            <Badge dot variant="muted">Archived</Badge>
           ) : plan.isActive ? (
-            <Badge className="text-label bg-success-container text-success border-success/30">Active</Badge>
+            <Badge dot variant="success">Active</Badge>
           ) : (plan.liveSubscribers ?? 0) > 0 ? (
-            <Badge variant="warning" className="text-label">Retired · grandfathered</Badge>
+            <Badge dot variant="warning">Retired · grandfathered</Badge>
           ) : (
-            <Badge variant="muted" className="text-label">Inactive</Badge>
+            <Badge dot variant="muted">Inactive</Badge>
           )}
           {plan.isDefault && (
-            <Badge className="text-label ml-1 bg-primary/10 text-primary-container border-primary/30">Default</Badge>
+            <Badge variant="primary" className="ml-1">Default</Badge>
           )}
         </>
       ),
@@ -731,16 +731,17 @@ export default function SuperAdminPlansPage() {
             type="button"
             aria-pressed={chip.on}
             onClick={() => chip.set(!chip.on)}
+            // Same pill chip as the shared Tabs, but each one toggles on its own
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-label transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
               chip.on
-                ? "border-primary/30 bg-primary/10 text-primary"
+                ? "border-transparent bg-on-surface text-surface"
                 : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
             )}
           >
             {chip.on && <Check className="h-3.5 w-3.5" aria-hidden />}
             {chip.label}
-            <span className="tabular-nums opacity-70">{chip.count}</span>
+            <span className={cn("tabular-nums", chip.on ? "text-surface/70" : "text-on-surface-variant/70")}>{chip.count}</span>
           </button>
         ))}
       </FilterBar>

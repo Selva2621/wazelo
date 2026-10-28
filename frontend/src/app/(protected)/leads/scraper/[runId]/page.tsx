@@ -4,10 +4,11 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
+  ArrowLeft, Loader2,
   Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, Rocket, Ban,
+  Filter, X, Rocket,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   FilterBar as SharedFilterBar,
@@ -98,28 +99,26 @@ const SOURCE_LABELS: Record<ScrapeSource, string> = {
 };
 
 function StatusBadge({ status }: { status: ScrapeRunStatus }) {
-  const config: Record<ScrapeRunStatus, { label: string; className: string; icon: React.ReactNode }> = {
-    PENDING:   { label: "Pending",  className: "bg-surface-container text-on-surface-variant", icon: <Clock className="w-3 h-3" /> },
-    RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                  icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-    COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                  icon: <CheckCircle2 className="w-3 h-3" /> },
-    FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                      icon: <XCircle className="w-3 h-3" /> },
-    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
+  const config: Record<ScrapeRunStatus, { label: string; variant: "muted" | "primary" | "success" | "error" }> = {
+    PENDING:   { label: "Pending",   variant: "muted" },
+    RUNNING:   { label: "Running",   variant: "primary" },
+    COMPLETED: { label: "Done",      variant: "success" },
+    FAILED:    { label: "Failed",    variant: "error" },
+    CANCELLED: { label: "Cancelled", variant: "muted" },
   };
-  const { label, className, icon } = config[status];
+  const { label, variant } = config[status];
   return (
-    <span className={`inline-flex items-center gap-1 text-label font-medium px-2 py-0.5 rounded-full ${className}`}>
-      {icon} {label}
-    </span>
+    <Badge variant={variant} dot pulse={status === "RUNNING"}>
+      {label}
+    </Badge>
   );
 }
 
 function WaBadge({ status }: { status: CheckWhatsAppResult | undefined }) {
   if (!status) return null;
-  if (status.exists === true)
-    return <span className="inline-flex items-center gap-1 text-caption text-success font-medium"><span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />WA Active</span>;
-  if (status.exists === false)
-    return <span className="inline-flex items-center gap-1 text-caption text-error font-medium"><span className="w-1.5 h-1.5 rounded-full bg-error inline-block" />Not on WA</span>;
-  return <span className="inline-flex items-center gap-1 text-caption text-on-surface-variant"><span className="w-1.5 h-1.5 rounded-full bg-outline-variant inline-block" />Unknown</span>;
+  if (status.exists === true) return <Badge variant="success" dot>WA active</Badge>;
+  if (status.exists === false) return <Badge variant="error" dot>Not on WA</Badge>;
+  return <Badge variant="muted" dot>Unknown</Badge>;
 }
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
@@ -228,9 +227,10 @@ function FilterBar({
               type="button"
               onClick={() => onChange({ sortByScore: !filters.sortByScore })}
               aria-pressed={filters.sortByScore}
-              className={`h-8 shrink-0 text-label px-3 rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+              // Same chip as the shared Tabs/FilterSelect: filled when on
+              className={`h-8 shrink-0 rounded-full border px-3 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 filters.sortByScore
-                  ? "border-primary/30 bg-primary/10 text-primary"
+                  ? "border-transparent bg-on-surface text-surface"
                   : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-outline hover:text-on-surface"
               }`}
             >

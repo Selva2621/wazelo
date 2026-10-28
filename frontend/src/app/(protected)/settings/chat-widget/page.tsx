@@ -470,7 +470,7 @@ export default function ChatWidgetSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex gap-6 h-full">
+      <div className="flex gap-6 h-full lg:p-6">
         <div className="flex-1 space-y-4">
           <SkeletonBox className="h-7 w-48" />
           <SkeletonBox className="h-20 rounded-2xl" />
@@ -485,7 +485,7 @@ export default function ChatWidgetSettingsPage() {
   }
 
   return (
-    <div className="space-y-5 max-lg:px-4 max-lg:pb-4">
+    <div className="space-y-5 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <PageHeader title="Chat widget" className="max-lg:hidden" />
 
     <div className="flex gap-6 items-start max-lg:flex-col max-lg:items-stretch">

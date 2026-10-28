@@ -4,6 +4,8 @@ import { useState } from "react";
 import { SlidersHorizontal, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Modal } from "@/components/ui/modal";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,7 +80,7 @@ export default function CustomFieldsPage() {
   const columns: DataTableColumn<CustomFieldDefinition>[] = [
     { id: "label", header: "Label", cellClassName: "text-body font-medium text-on-surface", cell: (f) => f.fieldLabel },
     { id: "name", header: "Field name", cellClassName: "text-label text-on-surface-variant font-mono", cell: (f) => f.fieldName },
-    { id: "type", header: "Type", skeleton: "badge", cell: (f) => <Badge variant="muted" className="text-caption">{f.fieldType}</Badge> },
+    { id: "type", header: "Type", skeleton: "badge", cell: (f) => <Badge variant="muted" className="text-caption">{f.fieldType.charAt(0).toUpperCase() + f.fieldType.slice(1)}</Badge> },
     { id: "required", header: "Required", skeleton: "short", cellClassName: "text-label", cell: (f) => (f.isRequired ? "Yes" : "—") },
     { id: "default", header: "Default", cellClassName: "text-label text-on-surface-variant", cell: (f) => f.defaultValue || "—" },
     {
@@ -95,7 +97,8 @@ export default function CustomFieldsPage() {
   ];
 
   return (
-    <div className="space-y-4 max-lg:px-4 max-lg:pb-4">
+    // Desktop: room around the page, like the other list pages
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions primary={{ label: "New field", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
       <PageHeader
         title="Custom fields"
@@ -108,20 +111,14 @@ export default function CustomFieldsPage() {
         }
       />
 
-      {/* Entity filter tabs */}
-      <div className="flex gap-1 bg-surface-container rounded-xl p-1 w-fit mobile-scroll-x max-lg:w-full">
-        {ENTITIES.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => setEntityFilter(e)}
-            aria-pressed={entityFilter === e}
-            className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus ${entityFilter === e ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"}`}
-          >
-            {e.charAt(0).toUpperCase() + e.slice(1)}s
-          </button>
-        ))}
-      </div>
+      {/* Entity filter chips */}
+      <FilterBar className="mobile-scroll-x">
+        <Tabs
+          tabs={ENTITIES.map((e) => ({ id: e, label: `${e.charAt(0).toUpperCase() + e.slice(1)}s` }))}
+          activeTab={entityFilter}
+          onTabChange={setEntityFilter}
+        />
+      </FilterBar>
 
       <DataTable
         label="Custom fields"

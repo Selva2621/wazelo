@@ -27,12 +27,12 @@ function GroupChip({
         "inline-flex h-8 items-center gap-1.5 max-w-64 rounded-full border px-3 text-label transition-colors duration-120 ease-standard",
         "outline-none focus-visible:ring-2 focus-visible:ring-focus",
         active
-          ? "border-primary/30 bg-primary/10 text-primary"
-          : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+          ? "border-transparent bg-on-surface text-surface"
+          : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
       )}
     >
       <span className="truncate">{label}</span>
-      <span className={cn("tabular-nums", active ? "text-primary/80" : "text-on-surface-variant/50")}>
+      <span className={cn("tabular-nums", active ? "text-surface/70" : "text-on-surface-variant/70")}>
         {count}
       </span>
     </button>

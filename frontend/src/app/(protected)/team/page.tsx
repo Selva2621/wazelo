@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Users, MessageSquare, Wifi, WifiOff, Minus } from "lucide-react";
+import { Users, MessageSquare } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useTeams } from "@/hooks/use-teams";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
@@ -86,19 +86,12 @@ export default function ManagerTeamPage() {
           | { status: string; phoneNumber: string | null }
           | undefined;
         return !session ? (
-          <Badge variant="default" className="gap-1">
-            <Minus className="h-3 w-3" />
-            No session
-          </Badge>
+          <Badge variant="default" dot>No session</Badge>
         ) : session.status === "CONNECTED" ? (
-          <Badge variant="success" className="gap-1">
-            <Wifi className="h-3 w-3" />
-            Connected
-          </Badge>
+          <Badge variant="success" dot>Connected</Badge>
         ) : (
-          <Badge variant="warning" className="gap-1">
-            <WifiOff className="h-3 w-3" />
-            {session.status}
+          <Badge variant="warning" dot>
+            {session.status.charAt(0) + session.status.slice(1).toLowerCase().replace(/_/g, " ")}
           </Badge>
         );
       },

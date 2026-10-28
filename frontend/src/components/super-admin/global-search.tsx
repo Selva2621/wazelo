@@ -38,7 +38,7 @@ function toGroups(r: SAGlobalSearchResult): ResultGroup[] {
         href: orgHref(o.id),
         label: o.name,
         sub: o.slug,
-        badge: o.deletedAt ? <Badge variant="error">Deleted</Badge> : undefined,
+        badge: o.deletedAt ? <Badge dot variant="error">Deleted</Badge> : undefined,
       })),
     },
     {

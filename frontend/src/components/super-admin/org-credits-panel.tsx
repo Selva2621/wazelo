@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { formatMoney, parseMoneyInput } from "@/lib/utils";
+import { sentenceCase } from "@/components/super-admin/list-styles";
 
 /** Billing currencies — Razorpay checkout takes INR and USD only */
 export const CURRENCIES = ["INR", "USD"];
@@ -48,7 +49,7 @@ const ledgerColumns: DataTableColumn<CreditEntry>[] = [
     id: "type",
     header: "Type",
     skeleton: "badge",
-    cell: (e) => <Badge variant={KIND_BADGE[e.kind]?.variant ?? "muted"}>{KIND_BADGE[e.kind]?.label ?? e.kind}</Badge>,
+    cell: (e) => <Badge variant={KIND_BADGE[e.kind]?.variant ?? "muted"}>{KIND_BADGE[e.kind]?.label ?? sentenceCase(e.kind)}</Badge>,
   },
   {
     id: "amount",

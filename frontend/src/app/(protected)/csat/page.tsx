@@ -98,7 +98,7 @@ export default function CsatPage() {
       header: "Status",
       skeleton: "badge",
       cell: (s) => (
-        <Badge variant={s.respondedAt ? "success" : "warning"}>
+        <Badge variant={s.respondedAt ? "success" : "warning"} dot>
           {s.respondedAt ? "Responded" : "Pending"}
         </Badge>
       ),

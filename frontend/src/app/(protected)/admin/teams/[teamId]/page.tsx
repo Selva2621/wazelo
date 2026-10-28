@@ -30,6 +30,9 @@ import { IconButton } from "@/components/ui/icon-button";
 
 type TeamMember = Team["members"][number];
 
+/** "MANAGER" → "Manager" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
+
 export default function TeamDetailPage({
   params,
 }: {
@@ -167,7 +170,7 @@ export default function TeamDetailPage({
                 : "default"
           }
         >
-          {member.user.role}
+          {sentenceCase(member.user.role)}
         </Badge>
       ),
     },
@@ -292,7 +295,7 @@ export default function TeamDetailPage({
               >
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName} ({u.role})
+                    {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                   </option>
                 ))}
               </select>
@@ -306,7 +309,7 @@ export default function TeamDetailPage({
                   <p className="text-body font-medium text-on-surface">
                     {team.manager.firstName} {team.manager.lastName}
                   </p>
-                  <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
+                  <p className="text-caption text-on-surface-variant">{sentenceCase(team.manager.role)}</p>
                 </div>
               </div>
             )}
@@ -360,7 +363,7 @@ export default function TeamDetailPage({
               <option value="">Select user to add</option>
               {availableToAdd.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.firstName} {u.lastName} ({u.role})
+                  {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                 </option>
               ))}
             </select>

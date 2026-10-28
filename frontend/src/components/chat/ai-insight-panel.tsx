@@ -100,7 +100,7 @@ export function AiInsightPanel({ conversationId }: AiInsightPanelProps) {
           <Brain className="h-3.5 w-3.5" />
           AI Insights
           {sentiment.data?.sentiment === "URGENT" && (
-            <Badge variant="error" className="ml-1 text-caption px-1.5 py-0">URGENT</Badge>
+            <Badge variant="error" className="ml-1 text-caption px-1.5 py-0">Urgent</Badge>
           )}
         </span>
         {expanded ? <ChevronUp className="h-3.5 w-3.5 text-on-surface-variant" /> : <ChevronDown className="h-3.5 w-3.5 text-on-surface-variant" />}
@@ -207,7 +207,7 @@ export function AiInsightPanel({ conversationId }: AiInsightPanelProps) {
                     }
                     className="text-caption px-1.5 py-0"
                   >
-                    {categorization.data.priority} priority
+                    {categorization.data.priority.charAt(0) + categorization.data.priority.slice(1).toLowerCase()} priority
                   </Badge>
                   <span className="text-caption text-on-surface-variant/50">
                     Language: {categorization.data.language.toUpperCase()}

@@ -32,6 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, type TabItem } from "@/components/ui/tabs";
 import type {
   Notification,
   NotificationType,
@@ -65,6 +66,11 @@ const PRIORITY_COLORS: Record<NotificationPriority, string> = {
 };
 
 type FilterTab = "all" | "unread";
+
+const FILTER_TABS: TabItem[] = [
+  { id: "all", label: "All" },
+  { id: "unread", label: "Unread" },
+];
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
@@ -206,20 +212,12 @@ export function NotificationCenter() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-1 px-5 py-2 border-b border-outline-variant/10">
-          {(["all", "unread"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1 rounded-md text-label font-medium transition-colors ${
-                filter === tab
-                  ? "bg-primary/10 text-primary"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {tab === "all" ? "All" : "Unread"}
-            </button>
-          ))}
+        <div className="px-5 py-1.5 border-b border-outline-variant/10">
+          <Tabs
+            tabs={FILTER_TABS}
+            activeTab={filter}
+            onTabChange={(id) => setFilter(id as FilterTab)}
+          />
         </div>
 
         {/* Notification List */}

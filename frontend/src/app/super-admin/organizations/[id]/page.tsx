@@ -60,7 +60,7 @@ const userColumns: DataTableColumn<OrgDetailRow>[] = [
     id: "role",
     header: "Role",
     skeleton: "badge",
-    cell: (u) => <span className="text-label bg-surface-container px-2 py-0.5 rounded text-on-surface-variant">{u.role}</span>,
+    cell: (u) => <Badge variant="muted">{sentenceCase(u.role ?? "")}</Badge>,
   },
   {
     id: "lastLogin",
@@ -146,7 +146,7 @@ export default function OrgDetailPage() {
           description={`${org.slug} · ${sentenceCase(org.orgType ?? "")}`}
           actions={
             <>
-              {deleted && <Badge variant="error">Deleted</Badge>}
+              {deleted && <Badge dot variant="error">Deleted</Badge>}
               {org.status === "SUSPENDED" && <StatusBadge status="SUSPENDED" />}
               {subscription?.status && <StatusBadge status={subscription.status} />}
             </>

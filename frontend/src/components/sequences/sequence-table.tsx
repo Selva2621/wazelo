@@ -16,6 +16,14 @@ const STATUS_VARIANTS: Record<SequenceStatus, "info" | "success" | "warning" | "
   CANCELLED: "error",
 };
 
+const STATUS_LABELS: Record<SequenceStatus, string> = {
+  DRAFT: "Draft",
+  ACTIVE: "Active",
+  PAUSED: "Paused",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
 interface SequenceTableProps {
   sequences: CampaignSequence[];
   onStart?: (id: string) => void;
@@ -59,7 +67,7 @@ export function SequenceTable({
         skeleton: "badge",
         cell: (seq) => (
           <div className="flex items-center gap-1.5">
-            <Badge variant={STATUS_VARIANTS[seq.status]}>{seq.status}</Badge>
+            <Badge dot variant={STATUS_VARIANTS[seq.status]}>{STATUS_LABELS[seq.status]}</Badge>
             {seq.triggerType && <Badge variant="info">Auto</Badge>}
           </div>
         ),

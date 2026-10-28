@@ -32,5 +32,5 @@ export function ScheduledMessageStatusBadge({
   status,
 }: ScheduledMessageStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  return <Badge dot variant={config.variant}>{config.label}</Badge>;
 }

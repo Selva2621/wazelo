@@ -6,6 +6,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
+import { sentenceCase } from "@/components/super-admin/list-styles";
 
 const STATUS: Record<string, { label: string; icon: typeof CheckCircle2; variant: "success" | "warning" | "error" | "muted" }> = {
   HEALTHY: { label: "Healthy", icon: CheckCircle2, variant: "success" },
@@ -14,17 +15,28 @@ const STATUS: Record<string, { label: string; icon: typeof CheckCircle2; variant
   NOT_CONNECTED: { label: "Not connected", icon: MinusCircle, variant: "muted" },
 };
 
-const CONNECTION_STYLE: Record<string, string> = {
-  CONNECTED: "text-success",
-  ACTIVE: "text-success",
-  CONNECTING: "text-warning",
-  RECONNECTING: "text-warning",
-  VERIFYING: "text-warning",
-  PENDING_SETUP: "text-on-surface-variant",
-  DISCONNECTED: "text-error",
-  ERROR: "text-error",
-  SUSPENDED: "text-error",
+const CONNECTION_VARIANT: Record<string, "success" | "warning" | "error" | "muted"> = {
+  CONNECTED: "success",
+  ACTIVE: "success",
+  CONNECTING: "warning",
+  RECONNECTING: "warning",
+  VERIFYING: "warning",
+  PENDING_SETUP: "muted",
+  DISCONNECTED: "error",
+  ERROR: "error",
+  SUSPENDED: "error",
 };
+
+function ConnectionBadge({ status }: { status: string }) {
+  return <Badge dot variant={CONNECTION_VARIANT[status] ?? "muted"}>{sentenceCase(status)}</Badge>;
+}
+
+type FailureReason = { reason: string; count: number };
+
+const failureColumns: DataTableColumn<FailureReason>[] = [
+  { id: "reason", header: "Reason", cellClassName: "text-body-lg text-on-surface break-words", cell: (f) => f.reason },
+  { id: "count", header: "Count", align: "right", cellClassName: "text-body-lg text-on-surface-variant tabular-nums", cell: (f) => f.count },
+];
 
 function ago(value?: string | null) {
   if (!value) return "never";
@@ -48,7 +60,7 @@ const sessionColumns: DataTableColumn<HealthRow>[] = [
     cellClassName: cn(td, "text-on-surface-variant"),
     cell: (s) => [s.user?.firstName, s.user?.lastName].filter(Boolean).join(" ") || s.user?.email,
   },
-  { id: "status", header: "Status", cell: (s) => <span className={cn(td, "font-medium", CONNECTION_STYLE[s.status])}>{s.status}</span> },
+  { id: "status", header: "Status", skeleton: "badge", cell: (s) => <ConnectionBadge status={s.status} /> },
   { id: "lastHeartbeat", header: "Last heartbeat", cellClassName: cn(td, "text-on-surface-variant"), cell: (s) => ago(s.lastHeartbeatAt) },
   { id: "lastActive", header: "Last active", cellClassName: cn(td, "text-on-surface-variant"), cell: (s) => ago(s.lastActiveAt) },
   {
@@ -72,15 +84,16 @@ const channelColumns: DataTableColumn<HealthRow>[] = [
       </>
     ),
   },
-  { id: "type", header: "Type", cellClassName: cn(td, "text-on-surface-variant"), cell: (c) => c.type },
+  { id: "type", header: "Type", cellClassName: cn(td, "text-on-surface-variant"), cell: (c) => (c.type ? sentenceCase(c.type) : "—") },
   {
     id: "status",
     header: "Status",
+    skeleton: "badge",
     cell: (c) => (
-      <span className={cn(td, "font-medium", CONNECTION_STYLE[c.status])}>
-        {c.status}
-        {c.suspendReason && <span className="block text-label text-on-surface-variant font-normal">{c.suspendReason}</span>}
-      </span>
+      <>
+        <ConnectionBadge status={c.status} />
+        {c.suspendReason && <span className="mt-0.5 block text-label text-on-surface-variant">{c.suspendReason}</span>}
+      </>
     ),
   },
   { id: "lastActive", header: "Last active", cellClassName: cn(td, "text-on-surface-variant"), cell: (c) => ago(c.lastActiveAt) },
@@ -191,18 +204,17 @@ export function MessagingHealthPanel({ orgId }: { orgId: string }) {
 
       {/* Failure reasons */}
       {data.failureReasons.length > 0 && (
-        <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 space-y-2" aria-labelledby="wa-failures-heading">
-          <h3 id="wa-failures-heading" className="text-body-lg font-medium text-on-surface">
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-2xl overflow-x-auto" aria-labelledby="wa-failures-heading">
+          <h3 id="wa-failures-heading" className="px-4 pt-4 text-body-lg font-medium text-on-surface">
             Top failure reasons ({data.windowDays}d)
           </h3>
-          <ul className="space-y-1">
-            {data.failureReasons.map((f: { reason: string; count: number }) => (
-              <li key={f.reason} className="flex justify-between gap-4 text-body-lg">
-                <span className="text-on-surface break-words">{f.reason}</span>
-                <span className="text-on-surface-variant tabular-nums shrink-0">{f.count}</span>
-              </li>
-            ))}
-          </ul>
+          <DataTable
+            label="Top failure reasons"
+            columns={failureColumns}
+            rows={data.failureReasons as FailureReason[]}
+            rowKey={(f) => f.reason}
+            wrapperClassName="mt-2"
+          />
         </section>
       )}
     </div>

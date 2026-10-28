@@ -90,7 +90,7 @@ export default function SuperAdminTicketsPage() {
       ),
     },
     { id: "org", header: "Org", cellClassName: "text-on-surface-variant", cell: (t) => t.organization?.name },
-    { id: "category", header: "Category", cellClassName: "text-on-surface-variant text-label", cell: (t) => t.category },
+    { id: "category", header: "Category", cellClassName: "text-on-surface-variant text-label", cell: (t) => (t.category ? sentenceCase(t.category) : "—") },
     { id: "priority", header: "Priority", sortable: true, skeleton: "badge", cell: (t) => priorityBadge(t.priority) },
     { id: "status", header: "Status", sortable: true, skeleton: "badge", cell: (t) => <StatusBadge status={t.status} /> },
     {
@@ -163,14 +163,15 @@ export default function SuperAdminTicketsPage() {
           aria-pressed={needsReply}
           onClick={() => { setNeedsReply((v) => !v); setPage(1); }}
           title="Open tickets where the customer spoke last or nobody has replied yet"
+          // Same pill chip as the shared Tabs (dark fill when on); it toggles on its own
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-label transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+            "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             needsReply
-              ? "border-primary/30 bg-primary/10 text-primary"
+              ? "border-transparent bg-on-surface text-surface"
               : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
           )}
         >
-          <span className={cn("h-1.5 w-1.5 rounded-full", needsReply ? "bg-primary" : "bg-on-surface-variant")} aria-hidden />
+          <span className={cn("h-1.5 w-1.5 rounded-full", needsReply ? "bg-surface" : "bg-on-surface-variant")} aria-hidden />
           Waiting on us
         </button>
       </FilterBar>

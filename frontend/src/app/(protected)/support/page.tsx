@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LifeBuoy, Plus, X, Loader2, ChevronRight, ArrowLeft, Send,
   ImageIcon, MessageSquare, Tag, AlertCircle, Clock,
-  Paperclip, CheckCircle2, Circle, RefreshCw,
+  Paperclip,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import apiClient from "@/lib/api/client";
 import { Spinner } from "@/components/ui/spinner";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -77,12 +78,15 @@ function useReply(ticketId: string) {
 
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  OPEN:        { label: "Open",        className: "bg-success/10 text-success border-success/20",  icon: <Circle className="h-3 w-3" /> },
-  IN_PROGRESS: { label: "In progress", className: "bg-info/10 text-info border-info/20",           icon: <RefreshCw className="h-3 w-3" /> },
-  RESOLVED:    { label: "Resolved",    className: "bg-chart-5/10 text-chart-5 border-chart-5/20",     icon: <CheckCircle2 className="h-3 w-3" /> },
-  CLOSED:      { label: "Closed",      className: "bg-surface-container text-on-surface-variant border-outline-variant", icon: <X className="h-3 w-3" /> },
+const STATUS_CONFIG: Record<string, { label: string; variant: "success" | "info" | "primary" | "muted" }> = {
+  OPEN:        { label: "Open",        variant: "success" },
+  IN_PROGRESS: { label: "In progress", variant: "info" },
+  RESOLVED:    { label: "Resolved",    variant: "primary" },
+  CLOSED:      { label: "Closed",      variant: "muted" },
 };
+
+/** "FEATURE_REQUEST" → "Feature request" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
 
 const PRIORITY_CONFIG: Record<string, { className: string; dot: string }> = {
   LOW:    { className: "text-on-surface-variant", dot: "bg-on-surface-variant/40" },
@@ -94,9 +98,9 @@ const PRIORITY_CONFIG: Record<string, { className: string; dot: string }> = {
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.CLOSED;
   return (
-    <span className={`inline-flex items-center gap-1 text-label px-2 py-0.5 rounded-full font-medium border ${cfg.className}`}>
-      {cfg.icon} {cfg.label}
-    </span>
+    <Badge variant={cfg.variant} dot>
+      {cfg.label}
+    </Badge>
   );
 }
 
@@ -105,7 +109,7 @@ function PriorityDot({ priority }: { priority: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 text-label font-medium ${cfg.className}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      {priority}
+      {sentenceCase(priority)}
     </span>
   );
 }
@@ -222,7 +226,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setForm({ ...form, category: e.target.value as any })}
                 className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
               >
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+                {CATEGORIES.map((c) => <option key={c} value={c}>{sentenceCase(c)}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
@@ -232,7 +236,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
                 className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
               >
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                {PRIORITIES.map((p) => <option key={p} value={p}>{sentenceCase(p)}</option>)}
               </select>
             </div>
           </div>
@@ -357,7 +361,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
             <div className="flex items-center flex-wrap gap-3 mt-2">
               <PriorityDot priority={ticket.priority} />
               <span className="flex items-center gap-1 text-label text-on-surface-variant">
-                <Tag className="h-3 w-3" /> {ticket.category.replace("_", " ")}
+                <Tag className="h-3 w-3" /> {sentenceCase(ticket.category)}
               </span>
               <span className="flex items-center gap-1 text-label text-on-surface-variant">
                 <Clock className="h-3 w-3" /> {new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -468,7 +472,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
           </div>
           <div>
             <p className="text-label font-medium text-on-surface-variant mb-2">Category</p>
-            <p className="text-body-lg text-on-surface">{ticket.category.replace("_", " ")}</p>
+            <p className="text-body-lg text-on-surface">{sentenceCase(ticket.category)}</p>
           </div>
           <div>
             <p className="text-label font-medium text-on-surface-variant mb-2">Opened</p>
@@ -510,7 +514,7 @@ const ticketColumns: DataTableColumn<Ticket>[] = [
     id: "category",
     header: "Category",
     cellClassName: "text-on-surface-variant",
-    cell: (t) => t.category?.replace("_", " "),
+    cell: (t) => (t.category ? sentenceCase(t.category) : null),
   },
   {
     id: "priority",

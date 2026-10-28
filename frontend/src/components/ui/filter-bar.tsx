@@ -28,10 +28,11 @@ export function FilterSelect({ label, active, className, wrapperClassName, child
       <select
         aria-label={label}
         className={cn(
-          "h-8 cursor-pointer appearance-none rounded-lg border pl-2.5 pr-7 text-label outline-none transition-colors duration-120 ease-standard",
+          "h-8 cursor-pointer appearance-none rounded-full border pl-3 pr-8 text-label font-medium outline-none transition-colors duration-120 ease-standard",
           "focus-visible:ring-2 focus-visible:ring-focus",
+          // Set filters read like the active chip (filled), so all filters share one language
           active
-            ? "border-primary/30 bg-primary/10 text-primary"
+            ? "border-transparent bg-on-surface text-surface"
             : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
           className,
         )}
@@ -42,8 +43,8 @@ export function FilterSelect({ label, active, className, wrapperClassName, child
       <ChevronDown
         aria-hidden
         className={cn(
-          "pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2",
-          active ? "text-primary" : "text-on-surface-variant",
+          "pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2",
+          active ? "text-surface" : "text-on-surface-variant",
         )}
       />
     </span>

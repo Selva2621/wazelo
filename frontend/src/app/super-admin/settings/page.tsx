@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -99,36 +100,39 @@ function WorkspaceTypesCard({ settings }: { settings: PlatformSettings }) {
       </h2>
 
       <div className={cn(sectionClass, "p-0 overflow-hidden")}>
-        <table className="w-full text-body">
-          <thead>
-            <tr className="border-b border-outline-variant text-left text-label text-on-surface-variant">
-              <th scope="col" className="px-5 py-3 font-medium">Type</th>
-              <th scope="col" className="px-5 py-3 font-medium text-right">Workspaces</th>
-              <th scope="col" className="px-5 py-3 font-medium text-right">New setup</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ORG_TYPE_ROWS.map((row) => {
-              const { setupEnabled, orgCount } = settings.orgTypes[row.type];
-              return (
-                <tr key={row.type} className="border-b border-outline-variant last:border-0">
-                  <th scope="row" className="px-5 py-3 text-left font-medium text-on-surface">{row.label}</th>
-                  <td className="px-5 py-3 text-right tabular-nums text-on-surface-variant">{orgCount}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end">
-                      <Switch
-                        on={setupEnabled}
-                        disabled={update.isPending}
-                        onClick={() => setPending({ row, next: !setupEnabled })}
-                        aria-label={`Allow new ${row.label} workspaces`}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          label="Workspace types"
+          rows={ORG_TYPE_ROWS}
+          rowKey={(row) => row.type}
+          columns={[
+            { id: "type", header: "Type", cellClassName: "font-medium text-on-surface", cell: (row) => row.label },
+            {
+              id: "workspaces",
+              header: "Workspaces",
+              align: "right",
+              cellClassName: "tabular-nums text-on-surface-variant",
+              cell: (row) => settings.orgTypes[row.type].orgCount,
+            },
+            {
+              id: "setup",
+              header: "New setup",
+              align: "right",
+              cell: (row) => {
+                const { setupEnabled } = settings.orgTypes[row.type];
+                return (
+                  <div className="flex justify-end">
+                    <Switch
+                      on={setupEnabled}
+                      disabled={update.isPending}
+                      onClick={() => setPending({ row, next: !setupEnabled })}
+                      aria-label={`Allow new ${row.label} workspaces`}
+                    />
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
       </div>
       <p className="text-label text-on-surface-variant">
         Off hides the type when a new workspace is set up. Existing workspaces aren&apos;t affected.
@@ -212,7 +216,7 @@ function GoogleCredentialsCard({ settings }: { settings: PlatformSettings }) {
     <div className={cn(sectionClass, "space-y-5")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-body-lg font-medium text-on-surface">Google sign-in</h3>
-        {google.configured ? <Badge variant="success">Configured</Badge> : <Badge variant="muted">Not configured</Badge>}
+        {google.configured ? <Badge dot variant="success">Configured</Badge> : <Badge dot variant="muted">Not configured</Badge>}
       </div>
 
       <ol className="list-decimal space-y-1 pl-5 text-body text-on-surface-variant">
@@ -401,7 +405,7 @@ export default function SuperAdminSettingsPage() {
               <span id="google-signup-label" className="text-body-lg font-medium text-on-surface">
                 Allow sign-up with Google
               </span>
-              {on ? <Badge variant="success">On</Badge> : <Badge variant="muted">Off</Badge>}
+              {on ? <Badge dot variant="success">On</Badge> : <Badge dot variant="muted">Off</Badge>}
             </div>
             <p id="google-signup-desc" className="mt-0.5 text-body text-on-surface-variant">
               New users can create a workspace with “Continue with Google”. When off, the button is hidden on the

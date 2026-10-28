@@ -181,7 +181,7 @@ function UserRow({
         variant={user.role === "ADMIN" ? "primary" : user.role === "MANAGER" ? "warning" : "muted"}
         className="shrink-0"
       >
-        {user.role}
+        {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
       </Badge>
       <MessageSquare className="h-4 w-4 text-on-surface-variant/40 group-hover:text-primary transition-colors shrink-0" />
       <ChevronRight className="h-4 w-4 text-on-surface-variant/30 group-hover:text-on-surface-variant transition-colors shrink-0" />

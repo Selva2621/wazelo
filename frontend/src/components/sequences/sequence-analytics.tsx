@@ -19,6 +19,13 @@ const RECIPIENT_STATUS_VARIANTS: Record<SequenceRecipientStatus, "success" | "in
   PAUSED: "error",
 };
 
+const RECIPIENT_STATUS_LABELS: Record<SequenceRecipientStatus, string> = {
+  ACTIVE: "Active",
+  COMPLETED: "Completed",
+  EXITED: "Exited",
+  PAUSED: "Paused",
+};
+
 const recipientColumns: DataTableColumn<SequenceRecipient>[] = [
   {
     id: "contact",
@@ -38,7 +45,7 @@ const recipientColumns: DataTableColumn<SequenceRecipient>[] = [
     id: "status",
     header: "Status",
     skeleton: "badge",
-    cell: (r) => <Badge variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{r.status}</Badge>,
+    cell: (r) => <Badge dot variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{RECIPIENT_STATUS_LABELS[r.status]}</Badge>,
   },
   {
     id: "currentStep",

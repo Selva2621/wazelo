@@ -38,8 +38,8 @@ const columns: DataTableColumn<DataRequest>[] = [
     header: "Status",
     skeleton: "badge",
     cell: (req) => (
-      <Badge variant={req.status === "completed" ? "success" : req.status === "failed" ? "error" : "warning"}>
-        {req.status}
+      <Badge variant={req.status === "completed" ? "success" : req.status === "failed" ? "error" : "warning"} dot>
+        {req.status.charAt(0).toUpperCase() + req.status.slice(1).toLowerCase().replace(/_/g, " ")}
       </Badge>
     ),
   },

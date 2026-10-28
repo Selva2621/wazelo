@@ -281,7 +281,8 @@ export default function CampaignsPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card */}
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         {isError ? (
           <LoadError what="campaigns" onRetry={() => refetch()} className="m-6" />
         ) : (

@@ -39,10 +39,10 @@ function AdminBadges({ admin }: { admin: SuperAdminMember }) {
   return (
     <div className="flex flex-wrap gap-1">
       {admin.isYou && <Badge variant="primary">You</Badge>}
-      {admin.disabledAt && <Badge variant="error">Disabled</Badge>}
-      {admin.locked && <Badge variant="warning">Locked</Badge>}
-      {admin.mustChangePassword && <Badge variant="info">Must set password</Badge>}
-      {admin.totpEnabled ? <Badge variant="success">2FA on</Badge> : <Badge variant="muted">2FA not set up</Badge>}
+      {admin.disabledAt && <Badge dot variant="error">Disabled</Badge>}
+      {admin.locked && <Badge dot variant="warning">Locked</Badge>}
+      {admin.mustChangePassword && <Badge dot variant="info">Must set password</Badge>}
+      {admin.totpEnabled ? <Badge dot variant="success">2FA on</Badge> : <Badge dot variant="muted">2FA not set up</Badge>}
     </div>
   );
 }

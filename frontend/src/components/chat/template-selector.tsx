@@ -172,7 +172,7 @@ export function TemplateSelector({
                   </span>
                   <Badge variant="muted">{tpl.language}</Badge>
                   {tpl.category && (
-                    <Badge variant="default">{tpl.category}</Badge>
+                    <Badge variant="default">{tpl.category.charAt(0) + tpl.category.slice(1).toLowerCase()}</Badge>
                   )}
                 </div>
                 <p className="text-label text-on-surface-variant/70 truncate mt-0.5">

@@ -356,7 +356,7 @@ export default function SuperAdminCouponsPage() {
       skeleton: "badge",
       cell: (c) => {
         const state = couponState(c);
-        return <Badge variant={STATE_VARIANT[state]}>{state}</Badge>;
+        return <Badge dot variant={STATE_VARIANT[state]}>{state}</Badge>;
       },
     },
     {

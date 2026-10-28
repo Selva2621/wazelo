@@ -19,7 +19,7 @@ import {
 } from "@/hooks/use-lead-scoring";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { SCORING_SIGNALS } from "@/lib/types/lead-scoring";
 import type { LeadScoringRule, CreateScoringRuleRequest } from "@/lib/types/lead-scoring";
@@ -189,88 +189,100 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-// ─── Rule Row ────────────────────────────────────────────────────────────────
+// ─── Rule Columns ────────────────────────────────────────────────────────────
 
-interface RuleRowProps {
-  rule: LeadScoringRule;
+interface RuleActions {
   onEdit: (rule: LeadScoringRule) => void;
   onDelete: (id: string) => void;
   onToggle: (rule: LeadScoringRule) => void;
 }
 
-function RuleRow({ rule, onEdit, onDelete, onToggle }: RuleRowProps) {
-  const signal = SCORING_SIGNALS.find((s) => s.value === rule.signal);
-  const isPositive = rule.points >= 0;
-
-  return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-container-low transition-colors group border-b border-outline-variant/40 last:border-0 max-lg:flex-wrap max-lg:gap-x-3 max-lg:gap-y-1.5">
-      {/* Toggle */}
-      <button
-        type="button"
-        onClick={() => onToggle(rule)}
-        className="shrink-0 rounded-md text-on-surface-variant outline-none hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-focus max-lg:-m-2.5 max-lg:p-2.5"
-        title={rule.enabled ? "Disable rule" : "Enable rule"}
-        aria-label={rule.enabled ? "Disable rule" : "Enable rule"}
-        aria-pressed={rule.enabled}
-      >
-        {rule.enabled ? (
-          <ToggleRight className="h-5 w-5 text-primary" />
-        ) : (
-          <ToggleLeft className="h-5 w-5" />
-        )}
-      </button>
-
-      {/* Signal */}
-      <div className="w-44 shrink-0 max-lg:order-2 max-lg:w-auto max-lg:ml-8">
-        <Badge variant={rule.enabled ? "primary" : "default"} className="text-caption">
-          {signal?.label ?? rule.signal}
+function ruleColumns({ onEdit, onDelete, onToggle }: RuleActions): DataTableColumn<LeadScoringRule>[] {
+  return [
+    {
+      id: "enabled",
+      header: "Enabled",
+      hideHeader: true,
+      className: "w-10",
+      skeleton: "short",
+      cell: (rule) => (
+        <button
+          type="button"
+          onClick={() => onToggle(rule)}
+          className="shrink-0 rounded-md text-on-surface-variant outline-none hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-focus max-lg:-m-2.5 max-lg:p-2.5"
+          title={rule.enabled ? "Disable rule" : "Enable rule"}
+          aria-label={rule.enabled ? "Disable rule" : "Enable rule"}
+          aria-pressed={rule.enabled}
+        >
+          {rule.enabled ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5" />}
+        </button>
+      ),
+    },
+    {
+      id: "signal",
+      header: "Signal",
+      className: "w-48",
+      skeleton: "badge",
+      cell: (rule) => (
+        <Badge variant={rule.enabled ? "primary" : "default"}>
+          {SCORING_SIGNALS.find((s) => s.value === rule.signal)?.label ?? rule.signal}
         </Badge>
-      </div>
-
-      {/* Name + description */}
-      <div className="flex-1 min-w-0">
-        <p className={`text-body font-medium truncate ${rule.enabled ? "text-on-surface" : "text-on-surface-variant/60"}`}>
-          {rule.name}
-        </p>
-        {rule.description && (
-          <p className="text-caption text-on-surface-variant/60 truncate mt-0.5">
-            {rule.description}
+      ),
+    },
+    {
+      id: "rule",
+      header: "Rule",
+      cell: (rule) => (
+        <div className="min-w-0">
+          <p className={`text-body font-medium truncate ${rule.enabled ? "text-on-surface" : "text-on-surface-variant/60"}`}>
+            {rule.name}
           </p>
-        )}
-      </div>
-
-      {/* Points */}
-      <div className="w-20 shrink-0 text-right max-lg:w-auto">
-        <span className={`text-body font-semibold tabular-nums ${isPositive ? "text-success" : "text-error"}`}>
-          {isPositive ? "+" : ""}{rule.points} pts
+          {rule.description && (
+            <p className="text-caption text-on-surface-variant/60 truncate mt-0.5">{rule.description}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "points",
+      header: "Points",
+      align: "right",
+      className: "w-24",
+      skeleton: "short",
+      cell: (rule) => (
+        <span className={`text-body font-semibold tabular-nums ${rule.points >= 0 ? "text-success" : "text-error"}`}>
+          {rule.points >= 0 ? "+" : ""}{rule.points} pts
         </span>
-      </div>
-
-      {/* Max fires */}
-      {/* Line break before signal + limit on mobile */}
-      <div className="hidden max-lg:block max-lg:order-1 max-lg:basis-full max-lg:h-0" aria-hidden />
-
-      <div className="w-28 shrink-0 text-label text-on-surface-variant/60 text-center max-lg:order-2 max-lg:w-auto">
-        {rule.maxPerContact === 0 ? "Unlimited" : `Max ${rule.maxPerContact}×`}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity max-lg:opacity-100">
-        <IconButton size="xs"
-          onClick={() => onEdit(rule)}
-         
-          title="Edit rule" aria-label="Edit rule">
-          <Pencil className="h-3.5 w-3.5" />
-        </IconButton>
-        <IconButton size="xs" variant="danger"
-          onClick={() => onDelete(rule.id)}
-         
-          title="Delete rule" aria-label="Delete rule">
-          <Trash2 className="h-3.5 w-3.5" />
-        </IconButton>
-      </div>
-    </div>
-  );
+      ),
+    },
+    {
+      id: "limit",
+      header: "Limit",
+      align: "center",
+      className: "w-28",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant/60",
+      cell: (rule) => (rule.maxPerContact === 0 ? "Unlimited" : `Max ${rule.maxPerContact}×`),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      className: "w-20",
+      skeleton: "none",
+      cell: (rule) => (
+        <div className="flex items-center justify-end gap-1">
+          <IconButton size="xs" onClick={() => onEdit(rule)} title="Edit rule" aria-label="Edit rule">
+            <Pencil className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="xs" variant="danger" onClick={() => onDelete(rule.id)} title="Delete rule" aria-label="Delete rule">
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -326,30 +338,12 @@ export default function LeadScoringPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 max-lg:px-4 max-lg:pt-2">
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Spinner size="lg" className="text-primary" />
-          </div>
-        )}
-
         {/* Error */}
         {isError && (
           <div className="rounded-2xl bg-error-container p-4 flex items-center gap-3">
             <AlertCircle className="h-4 w-4 text-error shrink-0" />
             <p className="text-body text-error">Failed to load scoring rules. Please refresh.</p>
           </div>
-        )}
-
-        {/* Empty */}
-        {!isLoading && !isError && rules?.length === 0 && (
-          <EmptyState
-            icon={<TrendingUp className="h-14 w-14" />}
-            title="No scoring rules yet"
-            description="Create rules to automatically score leads based on their activity — helping your team prioritize the hottest contacts."
-            actionLabel="Create first rule"
-            onAction={() => setShowCreate(true)}
-          />
         )}
 
         {/* Stats row */}
@@ -380,37 +374,24 @@ export default function LeadScoringPage() {
         )}
 
         {/* Rules Table */}
-        {rules && rules.length > 0 && (
-          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
-            {/* Table header */}
-            <div className="flex items-center gap-4 px-4 py-2.5 border-b border-outline-variant max-lg:hidden">
-              <div className="w-5 shrink-0" />
-              <div className="w-44 shrink-0 text-label font-medium text-on-surface-variant">
-                Signal
-              </div>
-              <div className="flex-1 text-label font-medium text-on-surface-variant">
-                Rule
-              </div>
-              <div className="w-20 shrink-0 text-right text-label font-medium text-on-surface-variant">
-                Points
-              </div>
-              <div className="w-28 shrink-0 text-center text-label font-medium text-on-surface-variant">
-                Limit
-              </div>
-              <div className="w-16 shrink-0" />
-            </div>
-
-            {/* Rows */}
-            {rules.map((rule) => (
-              <RuleRow
-                key={rule.id}
-                rule={rule}
-                onEdit={setEditingRule}
-                onDelete={handleDelete}
-                onToggle={handleToggle}
-              />
-            ))}
-          </div>
+        {!isError && (
+          <DataTable
+            label="Scoring rules"
+            columns={ruleColumns({ onEdit: setEditingRule, onDelete: handleDelete, onToggle: handleToggle })}
+            rows={rules ?? []}
+            rowKey={(r) => r.id}
+            rowLabel={(r) => r.name}
+            loading={isLoading}
+            skeletonRows={5}
+            empty={{
+              icon: <TrendingUp className="h-14 w-14" />,
+              title: "No scoring rules yet",
+              description:
+                "Create rules to automatically score leads based on their activity — helping your team prioritize the hottest contacts.",
+              actionLabel: "Create first rule",
+              onAction: () => setShowCreate(true),
+            }}
+          />
         )}
       </div>
 

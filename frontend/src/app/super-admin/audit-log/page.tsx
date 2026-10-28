@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
 import { NEWEST_FIRST, nextSort, type ListSort } from "@/components/super-admin/sortable-header";
-import { TABLE_CARD } from "@/components/super-admin/list-styles";
+import { TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
@@ -87,8 +87,9 @@ const inputClass =
 function targetLabel(entry: PlatformAuditEntry): string {
   const meta = entry.metadata ?? {};
   const name = (meta.planName ?? meta.title ?? meta.email ?? meta.label) as string | undefined;
-  if (name) return `${entry.targetType ?? ""} · ${name}`.replace(/^ · /, "");
-  return entry.targetType ?? "—";
+  const type = entry.targetType ? sentenceCase(entry.targetType) : "";
+  if (name) return `${type} · ${name}`.replace(/^ · /, "");
+  return type || "—";
 }
 
 function Details({ entry }: { entry: PlatformAuditEntry }) {

@@ -22,9 +22,15 @@ import { NEWEST_FIRST, nextSort, type ListSort } from "@/components/super-admin/
 import { TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
-import { cn, formatMoney } from "@/lib/utils";
+import { Tabs } from "@/components/ui/tabs";
+import { formatMoney } from "@/lib/utils";
 
 type Tab = "payments" | "invoices";
+
+const RECORD_TABS: { id: Tab; label: string }[] = [
+  { id: "payments", label: "Payments" },
+  { id: "invoices", label: "Invoices" },
+];
 
 /** Sortable column header → server sort field, per tab (server whitelist) */
 const SORT_FIELDS: Record<Tab, Record<string, string>> = {
@@ -46,7 +52,7 @@ function OrgCell({ org }: { org?: { id: string; name: string; deletedAt?: string
     return (
       <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
         {org.name}
-        <Badge variant="muted">Deleted</Badge>
+        <Badge dot variant="muted">Deleted</Badge>
       </span>
     );
   }
@@ -222,7 +228,7 @@ function RefundSummary({ payment }: { payment: RefundablePayment }) {
   if (refunded < payment.amountInCents) {
     return (
       <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-        <Badge variant="warning">Partly refunded</Badge>
+        <Badge dot variant="warning">Partly refunded</Badge>
         <span className="text-label text-on-surface-variant">{label}</span>
       </span>
     );
@@ -488,22 +494,7 @@ export default function SuperAdminBillingPage() {
       />
 
       <FilterBar>
-        <div role="tablist" aria-label="Billing records" className="inline-flex rounded-lg border border-outline-variant p-0.5">
-          {(["payments", "invoices"] as const).map((t) => (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => switchTab(t)}
-              className={cn(
-                "rounded-md px-3 py-1 text-body capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                tab === t ? "bg-primary/10 text-primary font-medium" : "text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <Tabs tabs={RECORD_TABS} activeTab={tab} onTabChange={(id) => switchTab(id as Tab)} />
         <FilterBarDivider />
         <SearchInput
           aria-label={`Search ${tab} by organization or invoice number`}
@@ -524,7 +515,7 @@ export default function SuperAdminBillingPage() {
         </FilterSelect>
       </FilterBar>
 
-      <div role="tabpanel" className={TABLE_CARD}>
+      <div className={TABLE_CARD}>
         <DataTable
           key={tab}
           label={tab === "payments" ? "Payments" : "Invoices"}

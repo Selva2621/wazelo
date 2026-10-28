@@ -10,7 +10,7 @@ const STATUS: Record<ProposalStatus, { label: string; variant: "muted" | "info" 
 };
 
 export function ProposalStatusBadge({ status, expired }: { status: ProposalStatus; expired?: boolean }) {
-  if (expired) return <Badge variant="error">Expired</Badge>;
+  if (expired) return <Badge dot variant="error">Expired</Badge>;
   const s = STATUS[status];
-  return <Badge variant={s.variant}>{s.label}</Badge>;
+  return <Badge dot variant={s.variant}>{s.label}</Badge>;
 }
