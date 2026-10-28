@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
 import { checkReply } from '@/modules/ai/domain/services/reply-guard';
 import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
 
@@ -17,15 +18,20 @@ const SYSTEM_PROMPT = [
  */
 @Injectable()
 export class RewriteTemplateUseCase {
-  constructor(private readonly aiProvider: AiProviderService) {}
+  constructor(
+    private readonly aiProvider: AiProviderService,
+    private readonly orgContext: OrgContextService,
+  ) {}
 
-  async execute(params: { body: string; service: string }): Promise<{ body: string }> {
+  async execute(params: { orgId: string; body: string; service: string }): Promise<{ body: string }> {
     const original = sanitizePromptInput(params.body, 1024);
     const service = sanitizePromptInput(params.service, 120);
     if (!original || !service) throw new BadRequestException('Add a message and your service first');
 
+    // Who the business is (tone, what it offers); the "no new prices or links" rule still applies
+    const ctx = await this.orgContext.getContext(params.orgId);
     const result = await this.aiProvider.complete({
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: ctx ? `${ctx}\n\n---\n\n${SYSTEM_PROMPT}` : SYSTEM_PROMPT,
       userPrompt: `Service: ${wrapUntrusted('customer_question', service)}\n\nTemplate to rewrite:\n${wrapUntrusted('passages', original)}`,
       maxTokens: 400,
     });

@@ -48,7 +48,10 @@ export class GenerateCampaignCopyUseCase {
       ? `${ctx}\n\n---\n\nYou are a WhatsApp marketing copywriter. Write concise, engaging WhatsApp campaign messages under 160 characters each. Use {{name}} for name personalization where natural. Return ONLY a valid JSON array of strings, no extra text.`
       : `You are a WhatsApp marketing copywriter. Write concise, engaging WhatsApp messages under 160 characters each. Use {{name}} for name personalization where natural. Return ONLY a valid JSON array of strings, no extra text.`;
 
+    // What the website/documents say about this goal (services, prices, offers)
+    const knowledge = await this.orgContext.getRelevantKnowledge(orgId, dto.goal);
     const userPrompt = [
+      knowledge ? `${knowledge}\n\n` : '',
       `Write ${count} different WhatsApp campaign messages for this goal: "${sanitizePromptInput(dto.goal, 500)}".`,
       dto.audienceDesc ? `Target audience: ${sanitizePromptInput(dto.audienceDesc, 300)}.` : '',
       dto.tone ? `Tone: ${sanitizePromptInput(dto.tone, 50)}.` : '',

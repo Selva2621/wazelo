@@ -1,7 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EVENT_NAMES } from '@/common/constants';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
+
+/**
+ * Summaries built before this could include team-only articles (they were not
+ * filtered out then), so those are rebuilt once instead of reused.
+ */
+const SUMMARY_RULES_SINCE = new Date('2026-10-28T22:00:00.000Z');
 
 @Injectable()
 export class OrgAiMemoryService {
@@ -11,6 +19,7 @@ export class OrgAiMemoryService {
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
     private readonly aiCredits: AiCreditsService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -28,7 +37,8 @@ export class OrgAiMemoryService {
           orderBy: { createdAt: 'desc' },
         }),
         this.prisma.kbArticle.findMany({
-          where: { orgId, isPublished: true, deletedAt: null },
+          // Team-only articles stay out: this summary also reaches customer-facing bots
+          where: { orgId, isPublished: true, isInternal: false, deletedAt: null },
           take: 30,
           orderBy: { updatedAt: 'desc' },
         }),
@@ -37,7 +47,7 @@ export class OrgAiMemoryService {
         }),
         this.prisma.orgAiMemory.findUnique({
           where: { orgId },
-          select: { documentText: true, documentName: true },
+          select: { documentText: true, documentName: true, kbSummary: true, builtAt: true },
         }),
       ]);
 
@@ -59,9 +69,17 @@ export class OrgAiMemoryService {
             )
           : null;
 
+      // The summary is an AI call (and credits): only redo it when an article changed.
+      // Product edits, settings saves and Shopify orders also rebuild the memory.
+      const summaryStillValid =
+        !!existing?.kbSummary &&
+        !!existing.builtAt &&
+        existing.builtAt > SUMMARY_RULES_SINCE &&
+        (await this.prisma.kbArticle.count({ where: { orgId, updatedAt: { gt: existing.builtAt } } })) === 0;
+
       // AI-generate a KB summary only if KB articles exist
-      let kbSummary: string | null = null;
-      if (kbArticles.length > 0 && (await this.aiCredits.canAfford(orgId, 'org_memory'))) {
+      let kbSummary: string | null = kbArticles.length > 0 && summaryStillValid ? existing!.kbSummary : null;
+      if (kbArticles.length > 0 && !summaryStillValid && (await this.aiCredits.canAfford(orgId, 'org_memory'))) {
         try {
           const kbText = kbArticles
             .map((a) => `## ${a.title}\n${String(a.body ?? '').slice(0, 500)}`)
@@ -117,6 +135,7 @@ export class OrgAiMemoryService {
         },
       });
 
+      this.events.emit(EVENT_NAMES.AI_MEMORY_UPDATED, { orgId });
       this.logger.log(`OrgAiMemory rebuilt for org ${orgId}`);
     } catch (err: unknown) {
       this.logger.error(
@@ -139,13 +158,24 @@ export class OrgAiMemoryService {
         documentName,
         builtAt: new Date(),
       },
+      // builtAt stays: it marks when the summary was built, which this doesn't touch
       update: {
         documentText,
         documentName,
-        builtAt: new Date(),
       },
     });
+    this.events.emit(EVENT_NAMES.AI_MEMORY_UPDATED, { orgId });
     this.logger.log(`OrgAiMemory document stored for org ${orgId}: ${documentName}`);
+  }
+
+  /** "Rules & tone" / instructions from Settings or Chatbot → Knowledge. */
+  async updateCustomContext(orgId: string, customContext: string | null | undefined): Promise<void> {
+    await this.prisma.orgAiMemory.upsert({
+      where: { orgId },
+      create: { orgId, customContext },
+      update: { customContext },
+    });
+    this.events.emit(EVENT_NAMES.AI_MEMORY_UPDATED, { orgId });
   }
 
   /**
@@ -156,6 +186,7 @@ export class OrgAiMemoryService {
       where: { orgId },
       data: { documentText: null, documentName: null },
     });
+    this.events.emit(EVENT_NAMES.AI_MEMORY_UPDATED, { orgId });
     this.logger.log(`OrgAiMemory document cleared for org ${orgId}`);
   }
 

@@ -3590,6 +3590,8 @@ model KbChunk {
   title      String?  @db.VarChar(500)
   content    String   @db.Text
   search     Unsupported("tsvector")?
+  /// Meaning vector (pgvector) for search by meaning; filled by KbEmbeddingWorker
+  embedding  Unsupported("vector(768)")?
   createdAt  DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])

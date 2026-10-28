@@ -274,8 +274,9 @@ export class KbController {
     if (!article) throw new NotFoundException('Article not found');
     await this.repo.updateArticle(id, orgId, dto as any);
     await this.kbIndex.indexArticle(id);
-    // Rebuild memory if publish state changed or content updated
-    if (dto.isPublished !== undefined || dto.body !== undefined || dto.title !== undefined) {
+    // Rebuild memory if publish state, team-only flag or content changed (a team-only
+    // article must leave the summary that customer-facing bots read)
+    if (dto.isPublished !== undefined || dto.isInternal !== undefined || dto.body !== undefined || dto.title !== undefined) {
       this.eventEmitter.emit(EVENT_NAMES.KB_ARTICLE_PUBLISHED, { orgId });
     }
     return this.repo.findByIdAndOrg(id, orgId);

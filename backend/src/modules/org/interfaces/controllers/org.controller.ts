@@ -128,11 +128,8 @@ export class OrgController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateAiMemoryDto,
   ) {
-    await this.prisma.orgAiMemory.upsert({
-      where: { orgId: user.orgId },
-      create: { orgId: user.orgId, customContext: dto.customContext },
-      update: { customContext: dto.customContext },
-    });
+    // Through the service, so every AI feature picks up the new rules right away
+    await this.orgAiMemory.updateCustomContext(user.orgId, dto.customContext);
     return { success: true };
   }
 

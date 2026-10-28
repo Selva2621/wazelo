@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
-import { KbChunkRepository, ChunkHit } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
+import type { ChunkHit } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
+import { KnowledgeSearchService } from '../../domain/services/knowledge-search.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
 import { OrgContextService } from '../../domain/services/org-context.service';
 import { checkReply, ReplyBlockReason } from '../../domain/services/reply-guard';
@@ -61,7 +62,8 @@ export class KbAnswerService {
   private readonly logger = new Logger(KbAnswerService.name);
 
   constructor(
-    private readonly chunks: KbChunkRepository,
+    // Keyword + meaning search (pgvector when embeddings are set up), org-scoped
+    private readonly chunks: KnowledgeSearchService,
     private readonly aiProvider: AiProviderService,
     private readonly orgContext: OrgContextService,
   ) {}
@@ -73,7 +75,8 @@ export class KbAnswerService {
 
     const [hits, profile] = await Promise.all([
       this.chunks.search(q.orgId, question, PASSAGES, { flowId: q.flowId }),
-      this.orgContext.getContext(q.orgId),
+      // Customers read these answers: no team-only material in the profile
+      this.orgContext.getContext(q.orgId, { forCustomers: true }),
     ]);
     // Nothing to answer from: don't spend an AI call (or the org's credits) on a guess
     if (!hits.length && !profile) return none;

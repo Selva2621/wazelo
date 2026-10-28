@@ -71,6 +71,8 @@ import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
 import { CrawlWebsiteWorker } from './knowledge/crawl-website.worker';
+import { KbEmbeddingWorker } from './knowledge/kb-embedding.worker';
+import { AiModule } from '@/modules/ai/ai.module';
 import { KnowledgeBaseModule } from '@/modules/knowledge-base/knowledge-base.module';
 import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
@@ -89,6 +91,8 @@ import { DealsModule } from '@/modules/deals/deals.module';
     ContactsModule,
     // CrawlWebsiteWorker reads org websites into the knowledge base
     KnowledgeBaseModule,
+    // KbEmbeddingWorker: meaning vectors for knowledge passages
+    AiModule,
     AuditModule,
     CampaignsModule,
     AutomationModule,
@@ -167,6 +171,7 @@ import { DealsModule } from '@/modules/deals/deals.module';
     // Lead Scraper workers
     LeadScraperWorker,
     CrawlWebsiteWorker,
+    KbEmbeddingWorker,
     ScrapeWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,

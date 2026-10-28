@@ -111,6 +111,59 @@ export class KbChunkRepository {
       LIMIT ${limit}`;
   }
 
+  /**
+   * Closest passages by meaning (pgvector cosine distance), with exactly the same
+   * workspace and visibility filters as `search`. `vector` is pgvector text "[…]".
+   */
+  async searchByVector(orgId: string, vector: string, limit = 6, opts: { flowId?: string } = {}): Promise<ChunkHit[]> {
+    const flowFilter = opts.flowId
+      ? Prisma.sql`AND (d.flow_id IS NULL OR d.flow_id = ${opts.flowId}::uuid)`
+      : Prisma.empty;
+    // One HNSW index serves every org. By default it only looks at the ~40 nearest
+    // vectors of ALL orgs and then applies the org filter, so a small org could get
+    // few or no results once many orgs share the table (never another org's rows,
+    // just fewer of its own). Iterative scan keeps searching until enough of this
+    // org's passages pass the filter; SET LOCAL limits it to this transaction.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL hnsw.iterative_scan = relaxed_order`;
+      await tx.$executeRaw`SET LOCAL hnsw.ef_search = 100`;
+      // relaxed_order can return near-ties slightly out of order: re-sort the final few
+      return tx.$queryRaw<ChunkHit[]>`
+        WITH nearest AS MATERIALIZED (
+          SELECT c.id, c.document_id AS "documentId", c.article_id AS "articleId", c.title, c.content,
+                 d.source_url AS "sourceUrl",
+                 c.embedding <=> ${vector}::vector AS distance
+          FROM kb_chunks c
+          LEFT JOIN kb_documents d ON d.id = c.document_id
+          LEFT JOIN kb_articles a ON a.id = c.article_id
+          WHERE c.org_id = ${orgId}::uuid
+            AND c.embedding IS NOT NULL
+            AND (
+              (c.document_id IS NOT NULL AND d.deleted_at IS NULL AND d.status = 'READY' ${flowFilter})
+              OR (c.article_id IS NOT NULL AND a.deleted_at IS NULL AND a.is_published = true AND a.is_internal = false)
+            )
+          ORDER BY c.embedding <=> ${vector}::vector
+          LIMIT ${limit}
+        )
+        SELECT id, "documentId", "articleId", title, content, "sourceUrl", 1 - distance AS rank
+        FROM nearest
+        ORDER BY distance`;
+    });
+  }
+
+  /** Passages still waiting for a meaning vector (new or re-read ones), oldest first. */
+  async findUnembedded(limit: number): Promise<{ id: string; title: string | null; content: string }[]> {
+    return this.prisma.$queryRaw<{ id: string; title: string | null; content: string }[]>`
+      SELECT id, title, content FROM kb_chunks
+      WHERE embedding IS NULL
+      ORDER BY created_at ASC
+      LIMIT ${limit}`;
+  }
+
+  async setEmbedding(id: string, vector: string): Promise<void> {
+    await this.prisma.$executeRaw`UPDATE kb_chunks SET embedding = ${vector}::vector WHERE id = ${id}::uuid`;
+  }
+
   async countForOrg(orgId: string): Promise<number> {
     return this.prisma.kbChunk.count({ where: { orgId } });
   }

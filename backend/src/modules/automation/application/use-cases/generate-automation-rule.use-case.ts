@@ -97,7 +97,10 @@ export class GenerateAutomationRuleUseCase {
 
     const result = await this.aiProvider.complete({
       systemPrompt,
-      userPrompt: `Generate an automation rule for: "${prompt}"`,
+      // Website/document details matching the request, e.g. so a reply message quotes real prices
+      userPrompt: [await this.orgContext.getRelevantKnowledge(orgId, prompt), `Generate an automation rule for: "${prompt}"`]
+        .filter(Boolean)
+        .join('\n\n'),
       maxTokens: 800,
     });
 

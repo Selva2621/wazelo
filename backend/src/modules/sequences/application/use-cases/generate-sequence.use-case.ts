@@ -73,9 +73,11 @@ export class GenerateSequenceUseCase {
   /** A full draft sequence (name, description, steps) from a plain-language goal. */
   async generate(orgId: string, prompt: string, stepCount: number): Promise<GeneratedSequence> {
     const count = clamp(Math.round(stepCount), MIN_STEPS, MAX_STEPS);
+    // What the website/documents say about this goal (services, prices, offers)
+    const knowledge = await this.orgContext.getRelevantKnowledge(orgId, prompt);
     const result = await this.aiProvider.complete({
       systemPrompt: await this.withOrgContext(orgId, GENERATE_PROMPT),
-      userPrompt: `Goal: "${prompt}"\nWrite exactly ${count} messages.`,
+      userPrompt: [knowledge, `Goal: "${prompt}"\nWrite exactly ${count} messages.`].filter(Boolean).join('\n\n'),
       maxTokens: 1600,
     });
 
@@ -105,9 +107,11 @@ export class GenerateSequenceUseCase {
 
   /** One message rewritten in the chosen style. */
   async rewriteStep(orgId: string, message: string, style: RewriteStyle, goal?: string): Promise<{ messageBody: string }> {
+    const knowledge = await this.orgContext.getRelevantKnowledge(orgId, goal || message);
     const result = await this.aiProvider.complete({
       systemPrompt: await this.withOrgContext(orgId, REWRITE_PROMPT),
       userPrompt: [
+        knowledge || null,
         goal ? `The sequence's goal: "${goal}"` : null,
         `Style: ${REWRITE_GUIDE[style]}`,
         `Message to rewrite:\n${message}`,

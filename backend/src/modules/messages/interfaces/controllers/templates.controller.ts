@@ -169,6 +169,7 @@ export class TemplatesController {
     @Body() dto: GenerateTemplateDto,
   ) {
     return this.generateTemplate.execute({
+      orgId: user.orgId,
       prompt: dto.prompt,
       category: dto.category,
       language: dto.language,
@@ -181,8 +182,8 @@ export class TemplatesController {
   @PlatformFeature('ai')
   @AiCredits('template_generate')
   @HttpCode(HttpStatus.OK)
-  async rewrite(@Body() dto: RewriteTemplateDto) {
-    return this.rewriteTemplate.execute({ body: dto.body, service: dto.service });
+  async rewrite(@CurrentUser() user: JwtPayload, @Body() dto: RewriteTemplateDto) {
+    return this.rewriteTemplate.execute({ orgId: user.orgId, body: dto.body, service: dto.service });
   }
 
   @Post('sync')

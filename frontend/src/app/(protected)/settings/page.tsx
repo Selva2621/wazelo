@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiTryIt, publicApiBase } from "@/components/settings/api-try-it";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -85,6 +85,17 @@ import type { DeveloperApiKey, DeveloperApiRequestLog } from "@/lib/types/develo
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrowserPushCard } from "@/components/notifications/browser-push-card";
+import {
+  FilesCard,
+  InstructionsCard,
+  WebsitesCard,
+  costOf,
+  knowledgeCard,
+} from "@/components/knowledge/knowledge-cards";
+import { UnansweredCard } from "@/components/knowledge/unanswered-card";
+import { FaqsCard } from "@/components/knowledge/faqs-card";
+import { useAiCredits } from "@/hooks/use-ai-credits";
+import { useProducts } from "@/hooks/use-products";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -120,8 +131,6 @@ import {
 import {
   useAiMemory,
   useRebuildAiMemory,
-  useUpdateAiMemory,
-  useUploadAiMemoryDocument,
   useDeleteAiMemoryDocument,
 } from "@/hooks/use-settings";
 import type { SlaPolicy } from "@/lib/types/sla";
@@ -161,7 +170,7 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
     label: "AI",
     tabs: [
       { id: "features", label: "Features & AI", icon: ToggleLeft },
-      { id: "ai-memory", label: "AI Memory", icon: Zap },
+      { id: "ai-memory", label: "Business Knowledge", icon: Zap },
     ],
   },
   {
@@ -632,208 +641,142 @@ function OrganizationSection() {
   );
 }
 
-// ─── AI Memory Section ──────────────────────────
+// ─── Business Knowledge Section ─────────────────
+// One place for what every AI feature knows about the business. The cards are
+// shared with Chatbot → Knowledge, so both pages edit the same data.
+
+const KNOWLEDGE_USED_BY = ["Chatbot", "Website chat", "Sequences", "Campaigns", "Automation", "Proposals", "Templates", "Reply suggestions"];
+
+function KnowledgeStep({ n, title, children, action }: { n: number; title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`bk-${n}`} className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id={`bk-${n}`} className="flex items-center gap-2 text-body-lg font-semibold text-on-surface">
+          <span aria-hidden className="grid size-6 place-items-center rounded-full bg-primary/10 text-caption font-semibold tabular-nums text-primary">
+            {n}
+          </span>
+          {title}
+        </h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function AiMemorySection() {
   const { data, isLoading } = useAiMemory();
   const rebuildMutation = useRebuildAiMemory();
-  const updateMutation = useUpdateAiMemory();
-  const uploadDocMutation = useUploadAiMemoryDocument();
   const deleteDocMutation = useDeleteAiMemoryDocument();
-  const [customContext, setCustomContext] = useState("");
-  const [customSaved, setCustomSaved] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (data) {
-      setCustomContext(data.customContext ?? "");
-    }
-  }, [data]);
-
-  const handleSaveCustom = () => {
-    updateMutation.mutate({ customContext }, {
-      onSuccess: () => {
-        setCustomSaved(true);
-        setTimeout(() => setCustomSaved(false), 2000);
-      },
-    });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    uploadDocMutation.mutate(file);
-    e.target.value = "";
-  };
+  const { data: creditsData } = useAiCredits();
+  const { data: products } = useProducts();
+  const buildCost = costOf(creditsData?.costs, "kb_build", 10);
+  const faqCost = costOf(creditsData?.costs, "faq_generate", 3);
+  const productCount = Array.isArray(products) ? products.length : 0;
 
   if (isLoading) return <SectionLoader />;
 
   return (
-    <div className="space-y-4">
-      {/* Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-title-sm">
-            <Zap className="h-5 w-5" />
-            AI Memory
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <p className="text-body text-on-surface-variant">
-            AI Memory gives every AI response context about your business — products, knowledge base, and Shopify store. It auto-rebuilds when you update your profile.
-          </p>
+    <div className="space-y-8">
+      {/* What this page is for, and everything that reads it */}
+      <div className={cn(knowledgeCard, "space-y-2 p-5")}>
+        <p className="text-body text-on-surface">
+          What the AI knows about your business. Fill it once — every AI feature uses it.
+        </p>
+        <ul className="flex flex-wrap gap-1.5" aria-label="Used by">
+          {KNOWLEDGE_USED_BY.map((f) => (
+            <li key={f} className="rounded-full border border-outline-variant bg-surface-container-low px-2.5 py-0.5 text-caption text-on-surface-variant">
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-          {data ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-body">
-                <span className="text-on-surface-variant">Last rebuilt</span>
-                <span className="text-on-surface font-medium">
-                  {data.builtAt
-                    ? new Date(data.builtAt).toLocaleString()
-                    : "Never"}
-                </span>
-              </div>
-              {data.shopifyStore && (
-                <div className="flex items-center justify-between text-body">
-                  <span className="text-on-surface-variant">Shopify store</span>
-                  <span className="text-on-surface font-medium">{data.shopifyStore}</span>
-                </div>
-              )}
-              {data.context && (
-                <div className="space-y-1.5">
-                  <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-                    Current Context
-                  </label>
-                  <pre className="w-full rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2.5 text-label text-on-surface/80 whitespace-pre-wrap font-mono overflow-auto max-h-64">
-                    {data.context}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-body text-on-surface-variant/60">
-              No memory built yet. Save your Business Profile to generate the first memory.
-            </p>
-          )}
+      <KnowledgeStep
+        n={1}
+        title="About your business"
+        action={
+          <Link href="/settings?tab=organization" className="text-label font-medium text-primary hover:underline">
+            Edit profile
+          </Link>
+        }
+      >
+        <p className="text-label text-on-surface-variant">
+          Name, industry and a short description come from your business profile.
+        </p>
+      </KnowledgeStep>
 
-          <div className="pt-1">
-            <Button
-              onClick={() => rebuildMutation.mutate()}
-              disabled={rebuildMutation.isPending}
-              size="sm"
-              variant="secondary"
-            >
-              <RotateCw className="h-4 w-4" />
-              {rebuildMutation.isPending ? "Rebuilding..." : "Rebuild Now"}
+      <KnowledgeStep
+        n={2}
+        title="Products & services"
+        action={
+          <Link href="/settings/products" className="text-label font-medium text-primary hover:underline">
+            Manage
+          </Link>
+        }
+      >
+        <p className="text-label text-on-surface-variant">
+          {productCount > 0
+            ? `${productCount} product${productCount === 1 ? "" : "s"} — names, prices and descriptions are used.`
+            : "No products yet. Add your services and prices so the AI can quote them."}
+        </p>
+      </KnowledgeStep>
+
+      <KnowledgeStep n={3} title="Website">
+        <WebsitesCard buildCost={buildCost} title="Your website" />
+      </KnowledgeStep>
+
+      <KnowledgeStep n={4} title="Documents">
+        <FilesCard title="Files" />
+        {/* The single document the old AI Memory page took: the team's AI uses it, customers' bots never do */}
+        {data?.documentName && (
+          <div className={cn(knowledgeCard, "flex items-center gap-3 px-5 py-3")}>
+            <FileCode className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-body text-on-surface">{data.documentName}</span>
+            <span title="Used when your team writes with AI; never shown to customers">
+              <Badge variant="muted" dot>Team AI only</Badge>
+            </span>
+            <Button size="sm" variant="ghost" onClick={() => deleteDocMutation.mutate()} disabled={deleteDocMutation.isPending} aria-label={`Remove ${data.documentName}`}>
+              <Trash2 className="h-4 w-4 text-error" />
             </Button>
-            {rebuildMutation.isSuccess && (
-              <span className="ml-3 text-label text-primary">Rebuilt!</span>
-            )}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </KnowledgeStep>
 
-      {/* Document Upload Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-sm">Upload Business Document</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-body text-on-surface-variant">
-            Upload a PDF, TXT, or CSV file (e.g. product catalog, company profile, FAQ sheet). The text will be extracted and injected into every AI response.
-          </p>
+      <KnowledgeStep n={5} title="FAQs">
+        <UnansweredCard className={knowledgeCard} />
+        <FaqsCard suggestCost={faqCost} className={knowledgeCard} />
+      </KnowledgeStep>
 
-          {data?.documentName ? (
-            <div className="flex items-center gap-3 rounded-lg border border-outline-variant/30 bg-surface-container px-4 py-3">
-              <FileCode className="h-5 w-5 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-body font-medium text-on-surface truncate">{data.documentName}</p>
-                <p className="text-caption text-on-surface-variant">Document indexed in AI memory</p>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteDocMutation.mutate()}
-                disabled={deleteDocMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 text-error" />
-              </Button>
-            </div>
+      <KnowledgeStep n={6} title="Rules & tone">
+        <InstructionsCard
+          title="Rules & tone"
+          description="How the AI should write and what it must or mustn't say — used by every AI feature."
+        />
+      </KnowledgeStep>
+
+      {/* What the AI actually receives, for the curious */}
+      <details className={cn(knowledgeCard, "p-5")}>
+        <summary className="cursor-pointer text-label font-medium text-on-surface">What the AI sees</summary>
+        <div className="mt-3 space-y-3">
+          {data?.context ? (
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container px-3 py-2.5 font-mono text-label text-on-surface/80">
+              {data.context}
+            </pre>
           ) : (
-            <div
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-outline-variant/30 py-8 cursor-pointer hover:border-primary/50 hover:bg-surface-container/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Activity className="h-8 w-8 text-on-surface-variant/40" />
-              <p className="text-body text-on-surface-variant">Click to upload a document</p>
-              <p className="text-caption text-on-surface-variant/60">PDF, TXT, CSV, Markdown — max 20 MB</p>
-            </div>
+            <p className="text-label text-on-surface-variant">Nothing yet. Save your business profile to start.</p>
           )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.txt,.csv,.md,text/plain,text/csv,text/markdown,application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {!data?.documentName && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadDocMutation.isPending}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadDocMutation.isPending ? "Uploading..." : "Choose File"}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => rebuildMutation.mutate()} loading={rebuildMutation.isPending} size="sm" variant="secondary">
+              <RotateCw className="h-4 w-4" />
+              Refresh
             </Button>
-          )}
-
-          {uploadDocMutation.isError && (
-            <p className="text-label text-error">
-              Upload failed. Make sure the file is a valid PDF, TXT, or CSV.
-            </p>
-          )}
-          {uploadDocMutation.isSuccess && (
-            <p className="text-label text-primary">
-              Document uploaded — {(uploadDocMutation.data as any)?.extractedLength?.toLocaleString()} characters extracted.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Custom Instructions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-sm">Custom Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-body text-on-surface-variant">
-            Add extra context that should be injected into every AI response — tone guidelines, specific rules, or business policies.
-          </p>
-          <textarea
-            value={customContext}
-            onChange={(e) => setCustomContext(e.target.value)}
-            placeholder="e.g. Always respond in a friendly tone. Never mention competitor products. Our support hours are 9am–6pm IST."
-            maxLength={2000}
-            rows={5}
-            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-          />
-          <p className="text-caption text-on-surface-variant/60 text-right">{customContext.length}/2000</p>
-          <Button
-            onClick={handleSaveCustom}
-            disabled={updateMutation.isPending}
-            size="sm"
-          >
-            <Save className="h-4 w-4" />
-            {updateMutation.isPending ? "Saving..." : "Save Instructions"}
-          </Button>
-          {customSaved && (
-            <span className="ml-3 text-label text-primary">Saved!</span>
-          )}
-        </CardContent>
-      </Card>
+            <span className="text-caption text-on-surface-variant">
+              Updated {data?.builtAt ? new Date(data.builtAt).toLocaleString() : "never"}. Website pages and files are matched to each request.
+            </span>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

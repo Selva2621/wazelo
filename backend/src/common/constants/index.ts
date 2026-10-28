@@ -295,6 +295,8 @@ export const EVENT_NAMES = {
   CHATBOT_SESSION_HANDED_OFF: 'chatbot.session_handed_off',
   // A person on the team sent a message in a conversation (the AI bot pauses there)
   CONVERSATION_AGENT_REPLIED: 'conversation.agent_replied',
+  // The org's AI memory (profile, rules, document) changed: cached AI context is dropped
+  AI_MEMORY_UPDATED: 'ai_memory.updated',
   // Someone typed a reply on the WhatsApp phone itself (not in the app): bots pause there too
   WHATSAPP_PHONE_REPLY: 'whatsapp.phone_reply',
 

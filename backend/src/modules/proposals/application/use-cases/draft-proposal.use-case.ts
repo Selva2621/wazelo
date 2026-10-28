@@ -72,10 +72,12 @@ export class DraftProposalUseCase {
     if (proposal.status === ProposalStatus.ACCEPTED) throw new BadRequestException('This proposal was accepted and can no longer be changed');
     await this.aiCredits.assertCanAfford(orgId, 'proposal_draft');
 
-    const [chat, catalog, profile] = await Promise.all([
+    const [chat, catalog, profile, knowledge] = await Promise.all([
       this.messages.findRecentByContactPhone(orgId, proposal.contact.phoneNumber, 60),
       this.repo.catalog(orgId),
       this.orgContext.getContext(orgId),
+      // Website/documents matching this proposal (packages, rates, terms)
+      this.orgContext.getRelevantKnowledge(orgId, [proposal.title, proposal.deal?.title].filter(Boolean).join(' ')),
     ]);
     const transcript = chat
       .reverse()
@@ -89,6 +91,7 @@ export class DraftProposalUseCase {
 
     const userPrompt = [
       profile ? `About the business:\n${profile}` : '',
+      knowledge,
       `Client: ${proposal.contact.name || 'the client'}`,
       `Currency: ${proposal.currency}`,
       proposal.deal ? `Deal: ${proposal.deal.title}` : '',

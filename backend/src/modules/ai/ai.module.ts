@@ -17,6 +17,8 @@ import { AutoCategorizeUseCase } from './application/use-cases/auto-categorize.u
 import { KbRagSearchUseCase } from './application/use-cases/kb-rag-search.use-case';
 import { DetectIntentUseCase } from './application/use-cases/detect-intent.use-case';
 import { OrgContextService } from './domain/services/org-context.service';
+import { EmbeddingService } from './domain/services/embedding.service';
+import { KnowledgeSearchService } from './domain/services/knowledge-search.service';
 import { SuggestRoutingUseCase } from './application/use-cases/suggest-routing.use-case';
 import { GenerateAiInsightsUseCase } from './application/use-cases/generate-ai-insights.use-case';
 import { AiController } from './interfaces/controllers/ai.controller';
@@ -33,6 +35,9 @@ import { AiController } from './interfaces/controllers/ai.controller';
     AiReplyTrailService,
     // Answers from website pages / documents / articles (shared by chatbot, widget, inbox)
     KbChunkRepository,
+    // Meaning vectors + keyword/meaning search over the knowledge (pgvector)
+    EmbeddingService,
+    KnowledgeSearchService,
     KbAnswerService,
     // Questions the chatbot/widget couldn't answer (the owner's report)
     KbMissRepository,
@@ -55,6 +60,8 @@ import { AiController } from './interfaces/controllers/ai.controller';
     AiReplyLogRepository,
     AiReplyTrailService,
     KbChunkRepository,
+    EmbeddingService,
+    KnowledgeSearchService,
     KbAnswerService,
     KbMissRepository,
     OrgContextService,
