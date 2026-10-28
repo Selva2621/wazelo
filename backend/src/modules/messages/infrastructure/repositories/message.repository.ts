@@ -69,6 +69,8 @@ export class MessageRepository {
   }
 
   async findById(id: string) {
+    // An undefined id would make Prisma drop the filter and return some other message
+    if (!id) return null;
     const msg = await this.prisma.message.findFirst({
       where: { id, deletedAt: null },
     });

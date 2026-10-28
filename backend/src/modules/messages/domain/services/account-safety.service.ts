@@ -4,6 +4,7 @@ import {
   CampaignStatus,
   MessageDirection,
   MessageStatus,
+  SequenceRecipientStatus,
   SequenceStatus,
 } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
@@ -21,6 +22,8 @@ import {
 const TZ_CACHE_MS = 10 * 60 * 1000;
 /** How often a message of a paused sequence re-checks whether it may go out */
 const SEQUENCE_PAUSE_RECHECK_MS = 15 * 60 * 1000;
+/** Rolling window for the per-contact limit on business-started messages */
+const CONTACT_BUDGET_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type BulkRelevance =
   | { action: 'send' }
@@ -77,12 +80,51 @@ export class AccountSafetyService {
       recipientIsCold,
     });
 
+    if (decision.allowed) {
+      // One person, many features: campaigns, sequences and automations together
+      // may only start this many conversations with a contact per rolling 24h
+      const contactHold = await this.contactBudgetHold(orgId, contactPhone, now);
+      if (contactHold) return contactHold;
+    }
+
     // Spread the restart so held messages don't all fire at the same minute
     if (!decision.allowed && decision.retryAt.getTime() > now.getTime() + 60_000) {
       const jitter = Math.round(Math.random() * SEND_SAFETY_CONFIG.BULK_RESUME_JITTER_MS);
       return { ...decision, retryAt: new Date(decision.retryAt.getTime() + jitter) };
     }
     return decision;
+  }
+
+  /**
+   * Held when the contact already got the daily number of business-started messages
+   * (campaign, sequence, automation) in the last 24h; retried once the oldest one ages out.
+   */
+  private async contactBudgetHold(
+    orgId: string,
+    contactPhone: string,
+    now: Date,
+  ): Promise<BulkSendDecision | null> {
+    const digits = contactPhone.replace(/^\+/, '');
+    const recent = await this.prisma.message.findMany({
+      where: {
+        orgId,
+        direction: MessageDirection.OUTBOUND,
+        deletedAt: null,
+        priority: { lt: 0 },
+        contactPhone: { in: [digits, `+${digits}`] },
+        sentAt: { gte: new Date(now.getTime() - CONTACT_BUDGET_WINDOW_MS) },
+      },
+      select: { sentAt: true },
+      orderBy: { sentAt: 'asc' },
+      take: SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY,
+    });
+    if (recent.length < SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY) return null;
+    const oldest = recent[0].sentAt!;
+    return {
+      allowed: false,
+      reason: `Contact already got ${SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY} messages from campaigns, sequences or automations today`,
+      retryAt: new Date(oldest.getTime() + CONTACT_BUDGET_WINDOW_MS + 60_000),
+    };
   }
 
   /**
@@ -168,6 +210,14 @@ export class AccountSafetyService {
       if (sequence?.status === SequenceStatus.PAUSED) {
         return { action: 'hold', reason: 'Sequence paused', retryAt: new Date(now.getTime() + SEQUENCE_PAUSE_RECHECK_MS) };
       }
+      // The contact replied (or was removed) after this step was queued: don't send it
+      const recipient = await this.prisma.sequenceRecipient.findFirst({
+        where: { sequenceId: metadata.sequenceId, contactPhone: { in: [digits, `+${digits}`] } },
+        select: { status: true },
+      });
+      if (recipient?.status === SequenceRecipientStatus.EXITED) {
+        return { action: 'drop', reason: 'Contact left the sequence', recipientStatus: CampaignRecipientStatus.SKIPPED };
+      }
     }
 
     return { action: 'send' };
@@ -200,6 +250,11 @@ export class AccountSafetyService {
         data: release
           ? { status: CampaignRecipientStatus.PENDING, messageId: null }
           : { status: recipientStatus, failedReason: reason, processedAt: new Date() },
+      }),
+      // A sequence step's record shows why it never went out
+      this.prisma.sequenceRecipientStep.updateMany({
+        where: { messageId, status: CampaignRecipientStatus.QUEUED },
+        data: { status: CampaignRecipientStatus.SKIPPED, failedReason: reason, processedAt: new Date() },
       }),
     ]);
   }

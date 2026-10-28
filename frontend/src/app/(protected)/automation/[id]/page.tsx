@@ -67,6 +67,8 @@ const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.El
   { value: "ADD_TAG",        label: "Add Tag",         icon: Tag,           color: "#ec4899" },
   { value: "UPDATE_STATUS",  label: "Update Status",   icon: RefreshCcw,    color: "#f59e0b" },
   { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence", icon: Workflow,  color: "#0ea5e9" },
+  { value: "STOP_SEQUENCE",  label: "Stop Sequence",  icon: Workflow,      color: "#64748b" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign Chat", icon: UserCheck,   color: "#22c55e" },
 ];
 
 const CONDITION_FIELDS = [
@@ -514,6 +516,32 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             value={String(row.actionConfig.sequenceId ?? "")}
             onChange={(e) => setConfig("sequenceId", e.target.value)}
           />
+        </div>
+      )}
+
+      {row.actionType === "STOP_SEQUENCE" && (
+        <div className="pl-8">
+          <Label className="text-caption">Sequence</Label>
+          <SequenceSelect
+            className={`${inputCls} mt-1`}
+            anyLabel="Every sequence they're in"
+            value={String(row.actionConfig.sequenceId ?? "")}
+            onChange={(e) => setConfig("sequenceId", e.target.value)}
+          />
+        </div>
+      )}
+
+      {row.actionType === "ASSIGN_CONVERSATION" && (
+        <div className="pl-8">
+          <Label className="text-caption">Give the chat to</Label>
+          <MemberSelect
+            className={`${inputCls} mt-1`}
+            value={String(row.actionConfig.assignToUserId ?? "")}
+            onChange={(e) => setConfig("assignToUserId", e.target.value)}
+          />
+          <p className="mt-1 text-caption text-on-surface-variant">
+            The chatbot and automatic replies pause in that chat until it&apos;s unassigned.
+          </p>
         </div>
       )}
 

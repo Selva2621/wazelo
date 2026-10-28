@@ -42,6 +42,8 @@ interface FlowNode {
 }
 
 const MAX_NODE_DEPTH = 20;
+/** A chat quiet this long counts as a new enquiry again (step-by-step "first message" flows restart) */
+const NEW_CHAT_QUIET_MS = 24 * 3_600_000;
 
 /** Safety stops in one chat within REPEAT_STOP_DAYS that pause the bot there for that long */
 const REPEAT_STOPS = 3;
@@ -87,6 +89,17 @@ export class ExecuteChatbotFlowUseCase {
   }
 
   /**
+   * A new enquiry: nothing else in this chat (either way) in the last 24 hours besides
+   * the message that just came in. A reply to our campaign, or a link sent mid-chat, isn't one.
+   */
+  private async isNewChat(conversationId: string): Promise<boolean> {
+    const recent = await this.prisma.message.count({
+      where: { conversationId, deletedAt: null, createdAt: { gte: new Date(Date.now() - NEW_CHAT_QUIET_MS) } },
+    });
+    return recent <= 1;
+  }
+
+  /**
    * Execute a chatbot flow for an incoming message.
    * If the flow has aiEnabled, it uses AI to generate a reply.
    * Otherwise, it walks through nodes (SEND_MESSAGE, AI_REPLY, etc.)
@@ -118,7 +131,7 @@ export class ExecuteChatbotFlowUseCase {
       flow = await this.chatbotRepo.findActiveFlowByTrigger(orgId, 'BUTTON_REPLY', messageBody);
     }
     if (!flow) {
-      flow = await this.chatbotRepo.findActiveFlowByTrigger(orgId, 'FIRST_MESSAGE');
+      flow = await this.chatbotRepo.findFirstMessageFlow(orgId, await this.isNewChat(conversationId));
     }
 
     if (!flow) {
@@ -516,11 +529,13 @@ export class ExecuteChatbotFlowUseCase {
       }
 
       case 'ASSIGN_AGENT': {
-        // Hand off to human agent
+        // Hand off to human agent: the session ends, and bots and automations stay
+        // quiet in the chat so the next message waits for a person instead of restarting a flow
         await this.chatbotRepo.updateSession(sessionId, {
           status: ChatbotSessionStatus.HANDED_OFF,
           completedAt: new Date(),
         });
+        await this.botBehavior.pauseFor(conversationId, orgId);
         break;
       }
 

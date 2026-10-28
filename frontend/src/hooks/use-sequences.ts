@@ -11,7 +11,15 @@ import {
   getSequenceRecipients,
   getSequenceAnalytics,
   startOutreach,
+  generateSequence,
+  rewriteSequenceStep,
+  updateSequence,
+  updateSequenceStep,
+  addSequenceStep,
+  deleteSequenceStep,
+  type SequenceRewriteStyle,
 } from "@/lib/api/sequences";
+import { toast } from "sonner";
 import type { CreateSequenceRequest, SequenceStatus } from "@/lib/types/sequences";
 
 export function useSequences(params?: { status?: SequenceStatus; take?: number; skip?: number }) {
@@ -26,6 +34,54 @@ export function useSequence(id: string | undefined) {
     queryKey: ["sequences", id],
     queryFn: () => getSequence(id!),
     enabled: !!id,
+  });
+}
+
+export interface SequenceEdits {
+  settings?: { name?: string; description?: string; exitOnReply?: boolean };
+  /** Existing messages whose fields changed */
+  updated: { stepId: string; name?: string; messageBody?: string; delayMinutes?: number }[];
+  /** Drafts only */
+  removed: string[];
+  /** Drafts only, appended in order */
+  added: { stepOrder: number; name?: string; messageBody: string; delayMinutes: number }[];
+}
+
+/** Save an edited sequence: only the parts that changed, in a safe order. */
+export function useSaveSequenceEdits(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (edits: SequenceEdits) => {
+      if (edits.settings && Object.keys(edits.settings).length) await updateSequence(id, edits.settings);
+      for (const u of edits.updated) {
+        const { stepId, ...fields } = u;
+        await updateSequenceStep(id, stepId, fields);
+      }
+      for (const stepId of edits.removed) await deleteSequenceStep(id, stepId);
+      for (const a of edits.added) await addSequenceStep(id, { ...a, messageType: "TEXT" });
+    },
+    onSuccess: () => {
+      toast.success("Sequence saved");
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't save the changes. Try again."),
+    // Refresh even after a partial failure, so the page shows what was actually saved
+    onSettled: () => qc.invalidateQueries({ queryKey: ["sequences"] }),
+  });
+}
+
+/** AI: draft a full sequence from a goal (spends AI credits). */
+export function useGenerateSequence() {
+  return useMutation({
+    mutationFn: (req: { prompt: string; stepCount: number }) => generateSequence(req),
+    onError: (err: Error) => toast.error(err.message || "Couldn't draft the sequence. Try again."),
+  });
+}
+
+/** AI: rewrite one step's message in a style (spends AI credits). */
+export function useRewriteSequenceStep() {
+  return useMutation({
+    mutationFn: (req: { message: string; style: SequenceRewriteStyle; goal?: string }) => rewriteSequenceStep(req),
+    onError: (err: Error) => toast.error(err.message || "Couldn't rewrite the message. Try again."),
   });
 }
 

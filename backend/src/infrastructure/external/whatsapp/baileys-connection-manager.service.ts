@@ -486,6 +486,7 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           // Our own sends come back as 'append'; a 'notify' fromMe was typed on the phone
           if (msg.key.fromMe && msg.key.remoteJid !== 'status@broadcast') {
             this.reportPhoneActivity(sessionId, orgId, userId);
+            this.reportPhoneReply(msg, sessionId, orgId);
           }
           if (msg.message?.pollUpdateMessage) {
             if (!msg.key.fromMe) await this.handlePollVote(sock, msg, sessionId);
@@ -554,6 +555,19 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Failed to request pairing code for ${sessionId}`, error);
       request.reject?.(error as Error);
     }
+  }
+
+  /** A reply typed on the phone to one contact: a person is handling that chat now. */
+  private reportPhoneReply(msg: WAMessage, sessionId: string, orgId: string): void {
+    const jid = msg.key.remoteJid || '';
+    const alt = (msg.key as { remoteJidAlt?: string }).remoteJidAlt;
+    const phoneJid = jid.endsWith('@s.whatsapp.net') ? jid : alt?.endsWith('@s.whatsapp.net') ? alt : null;
+    if (!phoneJid) return; // groups, broadcasts, or a LID we can't map to a number
+    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_PHONE_REPLY, {
+      orgId,
+      sessionId,
+      contactPhone: phoneJid.split('@')[0].split(':')[0],
+    });
   }
 
   private reportPhoneActivity(sessionId: string, orgId: string, userId: string): void {

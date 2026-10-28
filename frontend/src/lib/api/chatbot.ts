@@ -53,10 +53,22 @@ export interface BotInsights {
   }[];
 }
 
+export interface ChatBotState {
+  pausedUntil: string | null;
+}
+
 export const chatbotApi = {
   getInsights: (days = 7) => apiClient.get<BotInsights>("/chatbot/insights", { params: { days } }).then((r) => r.data),
 
   getBehavior: () => apiClient.get<BotBehavior>("/chatbot/behavior").then((r) => r.data),
+
+  /** Auto-replies in one chat: paused while a person handles it (null = bots may answer) */
+  getChatBot: (conversationId: string) =>
+    apiClient.get<ChatBotState>(`/chatbot/conversations/${conversationId}/bot`).then((r) => r.data),
+  pauseChatBot: (conversationId: string) =>
+    apiClient.post<ChatBotState>(`/chatbot/conversations/${conversationId}/bot/pause`).then((r) => r.data),
+  resumeChatBot: (conversationId: string) =>
+    apiClient.post<ChatBotState>(`/chatbot/conversations/${conversationId}/bot/resume`).then((r) => r.data),
 
   saveBehavior: (data: BotBehaviorInput) => apiClient.put<BotBehavior>("/chatbot/behavior", data).then((r) => r.data),
 

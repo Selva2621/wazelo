@@ -61,6 +61,37 @@ export class ChatbotController {
     return this.botBehavior.saveSettings(orgId, dto);
   }
 
+  // ─── Auto-replies in one chat (inbox: "Bot paused · Resume") ───
+
+  @Get('conversations/:conversationId/bot')
+  @Permissions(PERMISSIONS.CONVERSATIONS_READ)
+  getChatBot(
+    @CurrentUser('orgId') orgId: string,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ) {
+    return this.botBehavior.chatState(conversationId, orgId);
+  }
+
+  @Post('conversations/:conversationId/bot/pause')
+  @Permissions(PERMISSIONS.CONVERSATIONS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  pauseChatBot(
+    @CurrentUser('orgId') orgId: string,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ) {
+    return this.botBehavior.pauseChat(conversationId, orgId);
+  }
+
+  @Post('conversations/:conversationId/bot/resume')
+  @Permissions(PERMISSIONS.CONVERSATIONS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  resumeChatBot(
+    @CurrentUser('orgId') orgId: string,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ) {
+    return this.botBehavior.resumeChat(conversationId, orgId);
+  }
+
   @Post('flows')
   @Roles('ADMIN', 'MANAGER')
   @Audited({ action: AuditAction.CHATBOT_FLOW_CREATED, targetType: 'ChatbotFlow' })

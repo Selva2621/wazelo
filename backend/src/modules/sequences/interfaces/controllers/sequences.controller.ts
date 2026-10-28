@@ -10,6 +10,8 @@ import {
   ParseUUIDPipe,
   NotFoundException,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -30,6 +32,45 @@ import {
 } from '../../application/dto';
 import { CreateSequenceTemplateDto, UpdateSequenceTemplateDto } from '../../application/dto/sequence-template.dto';
 import { SequenceTemplateRepository } from '../../infrastructure/repositories/sequence-template.repository';
+import {
+  GenerateSequenceUseCase,
+  MAX_STEPS,
+  MIN_STEPS,
+  REWRITE_STYLES,
+  type RewriteStyle,
+} from '../../application/use-cases/generate-sequence.use-case';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
+import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+
+class GenerateSequenceDto {
+  @IsString()
+  @MinLength(5)
+  @MaxLength(600)
+  prompt: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(MIN_STEPS)
+  @Max(MAX_STEPS)
+  stepCount?: number;
+}
+
+class RewriteSequenceStepDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  message: string;
+
+  @IsIn(REWRITE_STYLES)
+  style: RewriteStyle;
+
+  /** The sequence's name/description, so the rewrite keeps its purpose. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  goal?: string;
+}
 
 @Controller('sequences')
 export class SequencesController {
@@ -39,7 +80,30 @@ export class SequencesController {
     private readonly audienceResolver: AudienceResolverService,
     private readonly queueService: QueueService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly generateSequence: GenerateSequenceUseCase,
   ) {}
+
+  // ───── AI drafting (declared before the :id routes) ─────
+
+  /** Draft a whole sequence (name, description, timed steps) from a plain-language goal. */
+  @Post('generate')
+  @Permissions(PERMISSIONS.CAMPAIGNS_CREATE)
+  @PlatformFeature('ai')
+  @AiCredits('sequence_generate')
+  @HttpCode(HttpStatus.OK)
+  generate(@CurrentUser('orgId') orgId: string, @Body() dto: GenerateSequenceDto) {
+    return this.generateSequence.generate(orgId, dto.prompt, dto.stepCount ?? 3);
+  }
+
+  /** Rewrite one step's message: shorter, friendlier or more formal. */
+  @Post('rewrite-step')
+  @Permissions(PERMISSIONS.CAMPAIGNS_CREATE)
+  @PlatformFeature('ai')
+  @AiCredits('sequence_rewrite')
+  @HttpCode(HttpStatus.OK)
+  rewriteStep(@CurrentUser('orgId') orgId: string, @Body() dto: RewriteSequenceStepDto) {
+    return this.generateSequence.rewriteStep(orgId, dto.message, dto.style, dto.goal);
+  }
 
   // ───── Templates ─────
 
@@ -167,7 +231,8 @@ export class SequencesController {
   ) {
     const seq = await this.repo.findByIdAndOrg(id, orgId);
     if (!seq) throw new NotFoundException('Sequence not found');
-    if (seq.status !== 'DRAFT') throw new BadRequestException('Only DRAFT sequences can be edited');
+    // Paused sequences can fix settings and message text too; adding/removing messages stays draft-only
+    if (seq.status !== 'DRAFT' && seq.status !== 'PAUSED') throw new BadRequestException('Only draft or paused sequences can be edited');
 
     // Simple field update on parent entity
     if (dto.name || dto.description !== undefined || dto.exitOnReply !== undefined) {
@@ -226,7 +291,8 @@ export class SequencesController {
   ) {
     const seq = await this.repo.findByIdAndOrg(id, orgId);
     if (!seq) throw new NotFoundException('Sequence not found');
-    if (seq.status !== 'DRAFT') throw new BadRequestException('Only DRAFT sequences can be edited');
+    // Paused sequences can fix settings and message text too; adding/removing messages stays draft-only
+    if (seq.status !== 'DRAFT' && seq.status !== 'PAUSED') throw new BadRequestException('Only draft or paused sequences can be edited');
 
     await this.repo.updateStep(stepId, orgId, dto as any);
     return this.repo.findByIdAndOrg(id, orgId);

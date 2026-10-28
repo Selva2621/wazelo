@@ -28,6 +28,7 @@ import { GetBotInsightsUseCase } from './application/use-cases/get-bot-insights.
     // Health strip + suspicious messages on the Chatbot page
     GetBotInsightsUseCase,
   ],
-  exports: [ChatbotRepository, ExecuteChatbotFlowUseCase],
+  // BotBehaviorService: the message pipeline checks "a person is handling this chat" before any auto-reply
+  exports: [ChatbotRepository, ExecuteChatbotFlowUseCase, BotBehaviorService],
 })
 export class ChatbotModule {}

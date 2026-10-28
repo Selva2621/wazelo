@@ -5,6 +5,7 @@ import { MessagesModule } from '@/modules/messages/messages.module';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { AiModule } from '@/modules/ai/ai.module';
 import { SequencesModule } from '@/modules/sequences/sequences.module';
+import { ContactsModule } from '@/modules/contacts/contacts.module';
 
 // Repository
 import { AutomationRepository } from './infrastructure/repositories/automation.repository';
@@ -33,7 +34,8 @@ import { RunNoReplyCheckUseCase, ScheduleNoReplyChecksUseCase } from './applicat
 import { AutomationController } from './interfaces/controllers/automation.controller';
 
 @Module({
-  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule, SequencesModule],
+  // ContactsModule: assign / tag / lead-status actions reuse the contact use-cases
+  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule, SequencesModule, ContactsModule],
   controllers: [AutomationController],
   providers: [
     // Repository

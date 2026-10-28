@@ -5,6 +5,7 @@ import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gatewa
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
 import { ScheduleNoReplyChecksUseCase } from '@/modules/automation/application/use-cases/no-reply.use-cases';
 import { EVENT_NAMES } from '@/common/constants';
+import { ChatbotRepository } from '@/modules/chatbot/infrastructure/repositories/chatbot.repository';
 import {
   ContactCreatedEvent,
   ContactAutoCreatedEvent,
@@ -32,6 +33,7 @@ export class AutomationEventsHandler {
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
     private readonly wsGateway: AppWebSocketGateway,
     private readonly scheduleNoReplyChecks: ScheduleNoReplyChecksUseCase,
+    private readonly chatbotRepo: ChatbotRepository,
   ) {}
 
   // ─── Trigger Evaluation Handlers ──────────────────
@@ -87,6 +89,9 @@ export class AutomationEventsHandler {
           source: 'WHATSAPP',
           ownerId: payload.ownerId,
           auto: true,
+          // One welcome only: the chatbot greets people who write first, so the
+          // rule's "send message" steps skip (tags, assignment etc. still run)
+          welcomeByChatbot: await this.chatbotRepo.hasGreetingFlow(payload.orgId).catch(() => false),
         },
         context: {
           contact: {

@@ -31,6 +31,7 @@ import {
 import { useSendCsatSurvey } from "@/hooks/use-csat";
 import { AiReplySuggestions } from "@/components/chat/ai-reply-suggestions";
 import { ConversationSummaryPanel } from "@/components/chat/conversation-summary-panel";
+import { BotStatusChip } from "@/components/inbox/bot-status-chip";
 import { AiInsightPanel } from "@/components/chat/ai-insight-panel";
 import { useContactByPhone, useChangeLeadStatus } from "@/hooks/use-contacts";
 import { useUsers } from "@/hooks/use-users";
@@ -638,6 +639,14 @@ export function InboxView({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+                {/* Chatbot / automations on or paused in this chat */}
+                {selectedId && (
+                  <BotStatusChip
+                    key={selectedId}
+                    conversationId={selectedId}
+                    lastActivity={selectedRawConv?.lastMessageAt ?? undefined}
+                  />
+                )}
                 {/* Close / Reopen */}
                 {selectedRawConv?.status === "OPEN" ? (
                   <IconButton size="sm"

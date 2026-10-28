@@ -58,6 +58,8 @@ export class WidgetPublicController {
       avatarUrl: config.avatarUrl,
       whatsappNumber: config.whatsappNumber,
       preChatFormEnabled: config.preChatFormEnabled,
+      // The widget shows "typing…" while the AI assistant answers (instructions stay private)
+      aiAssistantEnabled: !!config.aiAssistantEnabled,
     });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Send, CheckCheck, Eye, AlertTriangle } from "lucide-react";
+import { Send, CheckCheck, Eye, AlertTriangle, MessageCircleReply } from "lucide-react";
 
 interface AnalyticsCardsProps {
   totalRecipients: number;
@@ -8,6 +8,8 @@ interface AnalyticsCardsProps {
   deliveredCount: number;
   readCount: number;
   failedCount: number;
+  /** Recipients who wrote back within a week */
+  repliedCount?: number;
 }
 
 export function CampaignAnalyticsCards({
@@ -16,6 +18,7 @@ export function CampaignAnalyticsCards({
   deliveredCount: deliveredReceipts,
   readCount,
   failedCount,
+  repliedCount = 0,
 }: AnalyticsCardsProps) {
   // A read message was delivered even when WhatsApp skipped the delivered receipt
   const deliveredCount = Math.max(deliveredReceipts, readCount);
@@ -52,6 +55,14 @@ export function CampaignAnalyticsCards({
       rateColor: "text-primary",
     },
     {
+      label: "Replied",
+      value: repliedCount.toLocaleString(),
+      rate: `${deliveredCount > 0 ? ((repliedCount / deliveredCount) * 100).toFixed(1) : "0.0"}%`,
+      icon: MessageCircleReply,
+      accent: "border-l-success",
+      rateColor: "text-success",
+    },
+    {
       label: "Failed",
       value: failedCount.toLocaleString(),
       rate: `${failRate}%`,
@@ -62,7 +73,7 @@ export function CampaignAnalyticsCards({
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2">
+    <div className="grid grid-cols-5 gap-3 max-lg:grid-cols-2">
       {cards.map((card) => (
         <div
           key={card.label}

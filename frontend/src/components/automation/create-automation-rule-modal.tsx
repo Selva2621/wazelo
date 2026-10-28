@@ -55,6 +55,8 @@ const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
   { value: "ADD_TAG",        label: "Add Tag" },
   { value: "UPDATE_STATUS",  label: "Update Lead Status" },
   { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence" },
+  { value: "STOP_SEQUENCE", label: "Stop Sequence" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign Chat to a Person" },
 ];
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
@@ -184,6 +186,37 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
         />
         <p className="text-caption text-on-surface-variant/50 mt-1">
           Someone already in this sequence keeps their place.
+        </p>
+      </div>
+    );
+  }
+
+  if (actionType === "STOP_SEQUENCE") {
+    return (
+      <div>
+        <Label>Sequence</Label>
+        <SequenceSelect
+          {...register(`actions.${idx}.actionConfig.sequenceId`)}
+          anyLabel="Every sequence they're in"
+          className={inputCls}
+        />
+        <p className="text-caption text-on-surface-variant mt-1">
+          They get no more messages from it. Messages already sent stay sent.
+        </p>
+      </div>
+    );
+  }
+
+  if (actionType === "ASSIGN_CONVERSATION") {
+    return (
+      <div>
+        <Label>Give the chat to <span className="text-error">*</span></Label>
+        <MemberSelect
+          {...register(`actions.${idx}.actionConfig.assignToUserId`)}
+          className={inputCls}
+        />
+        <p className="text-caption text-on-surface-variant mt-1">
+          The chatbot and automatic replies pause in that chat until it&apos;s unassigned.
         </p>
       </div>
     );

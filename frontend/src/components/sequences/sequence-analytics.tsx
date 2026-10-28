@@ -2,14 +2,16 @@
 
 import { Users, CheckCircle2, LogOut, MessageSquare, Clock, Activity } from "lucide-react";
 import { useSequenceAnalytics, useSequenceRecipients } from "@/hooks/use-sequences";
-import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { SequenceRecipient, SequenceRecipientStatus } from "@/lib/types/sequences";
 
 interface SequenceAnalyticsProps {
   sequenceId: string;
-  onClose: () => void;
+  onClose?: () => void;
+  /** Which parts to render (default: all). The details page places the stats and the rest separately. */
+  show?: { stats?: boolean; insights?: boolean; recipients?: boolean };
 }
 
 const RECIPIENT_STATUS_VARIANTS: Record<SequenceRecipientStatus, "success" | "info" | "warning" | "error"> = {
@@ -63,89 +65,119 @@ const recipientColumns: DataTableColumn<SequenceRecipient>[] = [
   },
 ];
 
-export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProps) {
+export function SequenceAnalytics({ sequenceId, show }: SequenceAnalyticsProps) {
+  const showStats = show?.stats ?? true;
+  const showInsights = show?.insights ?? true;
+  const showRecipients = show?.recipients ?? true;
   const { data, isLoading } = useSequenceAnalytics(sequenceId);
   const { data: recipientsData, isLoading: recipientsLoading } = useSequenceRecipients(sequenceId);
 
-  if (isLoading) return <div className="flex justify-center py-8"><Spinner size="lg" /></div>;
-  if (!data) return <p className="text-label text-on-surface-variant/50 py-4">No analytics data available.</p>;
+  if (isLoading) {
+    if (!showStats) return null;
+    // Skeleton tiles in the same grid, so the layout doesn't jump when data arrives
+    return (
+      <div aria-busy="true" aria-label="Loading analytics" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className={cn(CARD, "space-y-3 p-4")}>
+            <div className="h-3 w-20 animate-pulse rounded bg-surface-container" />
+            <div className="h-6 w-12 animate-pulse rounded bg-surface-container" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (!data) {
+    return <p className="py-8 text-center text-body text-on-surface-variant">No analytics yet for this sequence.</p>;
+  }
 
+  const firstReached = data.stepFunnel[0]?.reached ?? 0;
   const maxReached = Math.max(...data.stepFunnel.map((s) => s.reached), 1);
+  const avgCompletion =
+    data.avgCompletionHours === null
+      ? null
+      : data.avgCompletionHours < 24
+        ? `${data.avgCompletionHours}h`
+        : `${Math.round((data.avgCompletionHours / 24) * 10) / 10} days`;
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={Users} label="Total Recipients" value={data.totalRecipients} color="text-primary" />
+      {/* Summary: every headline number in one row of tiles */}
+      {showStats && (
+      <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard icon={Users} label="Recipients" value={data.totalRecipients} color="text-primary" />
         <StatCard icon={Activity} label="Active" value={data.activeCount} color="text-success" />
         <StatCard icon={CheckCircle2} label="Completed" value={data.completedCount} color="text-info" />
         <StatCard icon={LogOut} label="Exited" value={data.exitedCount} color="text-warning" />
+        <StatCard icon={MessageSquare} label="Reply rate" value={`${data.replyRate}%`} color="text-info" />
+        <StatCard icon={Clock} label="Avg. time to finish" value={avgCompletion ?? "—"} color="text-on-surface-variant" />
       </div>
+      )}
 
-      {/* Reply Rate + Avg Completion Time */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface-container border border-outline-variant/10">
-          <MessageSquare className="h-4 w-4 text-info" />
-          <span className="text-label text-on-surface-variant">Reply rate:</span>
-          <span className="text-body font-medium text-on-surface">{data.replyRate}%</span>
-        </div>
-        {data.avgCompletionHours !== null && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface-container border border-outline-variant/10">
-            <Clock className="h-4 w-4 text-on-surface-variant/50" />
-            <span className="text-label text-on-surface-variant">Avg. completion time:</span>
-            <span className="text-body font-medium text-on-surface">
-              {data.avgCompletionHours < 24
-                ? `${data.avgCompletionHours}h`
-                : `${Math.round((data.avgCompletionHours / 24) * 10) / 10} days`}
-            </span>
-          </div>
+      {showInsights && (
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        {/* Message funnel: how many contacts each message reached */}
+        {data.stepFunnel.length > 0 && (
+          <section aria-labelledby="funnel-title" className={cn(CARD, "p-5")}>
+            <h2 id="funnel-title" className="mb-4 text-title-sm font-semibold text-on-surface">
+              Message funnel
+            </h2>
+            <ol className="space-y-3">
+              {data.stepFunnel.map((step) => {
+                const label = step.name || `Message ${step.stepOrder + 1}`;
+                const pct = firstReached > 0 ? Math.round((step.reached / firstReached) * 100) : 0;
+                return (
+                  <li key={step.stepOrder} className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-3 text-label">
+                      <span className="min-w-0 truncate text-on-surface">
+                        <span className="mr-1.5 font-medium text-on-surface-variant tabular-nums">{step.stepOrder + 1}.</span>
+                        {label}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        <span className="font-semibold text-on-surface">{step.reached}</span>
+                        {step.stepOrder > 0 && <span className="ml-1.5 text-on-surface-variant">{pct}%</span>}
+                      </span>
+                    </div>
+                    {/* The bar is decorative; the numbers above carry the meaning */}
+                    <div aria-hidden className="h-2 overflow-hidden rounded-full bg-surface-container">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${(step.reached / maxReached) * 100}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
         )}
+
+        {/* Why contacts left the sequence */}
+        <section aria-labelledby="exits-title" className={cn(CARD, "p-5")}>
+          <h2 id="exits-title" className="mb-3 text-title-sm font-semibold text-on-surface">
+            Exit reasons
+          </h2>
+          {data.exitReasons.length > 0 ? (
+            <ul className="divide-y divide-outline-variant">
+              {data.exitReasons.map((er) => (
+                <li key={er.reason} className="flex items-center justify-between gap-3 py-2.5 text-body">
+                  <span className="text-on-surface">{sentenceCase(er.reason)}</span>
+                  <span className="font-semibold tabular-nums text-on-surface">{er.count}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body text-on-surface-variant">No one has left this sequence yet.</p>
+          )}
+        </section>
       </div>
-
-      {/* Step Funnel */}
-      {data.stepFunnel.length > 0 && (
-        <div>
-          <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Step Funnel</h3>
-          <div className="space-y-2">
-            {data.stepFunnel.map((step) => (
-              <div key={step.stepOrder} className="space-y-1">
-                <div className="flex items-center justify-between text-label">
-                  <span className="text-on-surface-variant">
-                    <span className="font-medium text-on-surface/70 mr-1.5">Step {step.stepOrder + 1}</span>
-                    {step.name || `Step ${step.stepOrder + 1}`}
-                  </span>
-                  <span className="text-on-surface font-medium">{step.reached}</span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-container overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${(step.reached / maxReached) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
-      {/* Exit Reasons */}
-      {data.exitReasons.length > 0 && (
-        <div>
-          <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Exit Reasons</h3>
-          <div className="space-y-1.5">
-            {data.exitReasons.map((er) => (
-              <div key={er.reason} className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10">
-                <span className="text-label text-on-surface-variant">{er.reason}</span>
-                <span className="text-body font-medium text-on-surface">{er.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recipients Table */}
-      <div>
-        <h3 className="text-label font-medium text-on-surface-variant/60 uppercase tracking-wide mb-3">Recipients</h3>
+      {/* Recipients */}
+      {showRecipients && (
+      <section aria-labelledby="recipients-title" className="space-y-3">
+        <h2 id="recipients-title" className="text-title-sm font-semibold text-on-surface">
+          Recipients
+        </h2>
         <DataTable
           label="Recipients"
           columns={recipientColumns}
@@ -154,16 +186,24 @@ export function SequenceAnalytics({ sequenceId, onClose }: SequenceAnalyticsProp
           rowLabel={(r) => r.contact.name || r.contact.phoneNumber}
           loading={recipientsLoading}
           skeletonRows={4}
-          wrapperClassName="rounded-xl border border-outline-variant/15 overflow-hidden"
           empty={{
             icon: <Users className="h-10 w-10" />,
             title: "No recipients enrolled yet",
             compact: true,
           }}
         />
-      </div>
+      </section>
+      )}
     </div>
   );
+}
+
+const CARD = "rounded-2xl border border-outline-variant bg-surface-container-lowest";
+
+/** "REPLIED" / "contact_replied" → "Replied" / "Contact replied" */
+function sentenceCase(value: string): string {
+  const s = value.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function StatCard({
@@ -178,12 +218,12 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/10 space-y-1">
+    <div className={cn(CARD, "space-y-1.5 p-4")}>
       <div className="flex items-center gap-1.5">
-        <Icon className={`h-3.5 w-3.5 ${color}`} />
-        <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">{label}</span>
+        <Icon aria-hidden className={cn("h-3.5 w-3.5", color)} />
+        <span className="text-label text-on-surface-variant">{label}</span>
       </div>
-      <p className="text-title font-semibold text-on-surface">{value}</p>
+      <p className="text-headline font-semibold tabular-nums text-on-surface">{value}</p>
     </div>
   );
 }

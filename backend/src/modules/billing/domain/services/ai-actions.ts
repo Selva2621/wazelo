@@ -22,6 +22,8 @@ export const AI_ACTIONS = {
   campaign_copy: { label: 'Campaign copy', defaultCost: 1 },
   automation_rule: { label: 'Automation rule from prompt', defaultCost: 1 },
   template_generate: { label: 'Message template draft', defaultCost: 1 },
+  sequence_generate: { label: 'Sequence draft from prompt', defaultCost: 2 },
+  sequence_rewrite: { label: 'Sequence message rewrite', defaultCost: 1 },
   kb_tags: { label: 'Article tag suggestions', defaultCost: 1 },
   org_memory: { label: 'Business memory rebuild', defaultCost: 0 },
   kb_build: { label: 'Learn from website', defaultCost: 10 },

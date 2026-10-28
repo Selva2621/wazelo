@@ -54,6 +54,8 @@ export interface Campaign {
   deliveredCount: number;
   failedCount: number;
   readCount: number;
+  /** Recipients who wrote back within a week of the campaign */
+  repliedCount?: number;
   createdById: string;
   idempotencyKey: string | null;
   metadata: Record<string, unknown> | null;

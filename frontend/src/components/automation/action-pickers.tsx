@@ -49,14 +49,19 @@ export function StageSelect(props: SelectProps) {
   );
 }
 
-/** Picks a running sequence — only those can take new contacts. */
-export function SequenceSelect(props: SelectProps) {
+/**
+ * Picks a running sequence — only those can take new contacts.
+ * `anyLabel`: the empty choice means "every sequence" (e.g. Stop sequence).
+ */
+export function SequenceSelect({ anyLabel, ...props }: SelectProps & { anyLabel?: string }) {
   const { data } = useSequences({ take: 100 });
   const running = (data?.data ?? []).filter((s) => s.status === "ACTIVE" || s.status === "PAUSED");
 
   return (
     <select {...props}>
-      <option value="">{running.length ? "Choose a sequence" : "No running sequences — start one first"}</option>
+      <option value="">
+        {anyLabel ?? (running.length ? "Choose a sequence" : "No running sequences — start one first")}
+      </option>
       {running.map((s) => (
         <option key={s.id} value={s.id}>
           {s.name}{s.status === "PAUSED" ? " (paused)" : ""}

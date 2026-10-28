@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { BotSettings } from '@prisma/client';
 import { EVENT_NAMES } from '@/common/constants';
@@ -86,14 +86,71 @@ export class BotBehaviorService {
     return this.repo.clearMisses(conversationId);
   }
 
+  /** For the inbox: are auto-replies paused in this chat, and until when (null = bots may answer). */
+  async chatState(conversationId: string, orgId: string, now = new Date()): Promise<{ pausedUntil: Date | null }> {
+    const state = await this.repo.conversationState(conversationId, orgId);
+    if (!state) throw new NotFoundException('Conversation not found');
+    const until = state.botPausedUntil;
+    return { pausedUntil: until && until > now ? until : null };
+  }
+
+  /** Inbox "Resume": a person hands the chat back to the bots before the pause ends. */
+  async resumeChat(conversationId: string, orgId: string) {
+    await this.chatState(conversationId, orgId);
+    await this.repo.resume(conversationId, orgId);
+    return { pausedUntil: null };
+  }
+
+  /** Inbox "Pause": a person takes the chat without replying yet. */
+  async pauseChat(conversationId: string, orgId: string) {
+    await this.chatState(conversationId, orgId);
+    await this.pauseFor(conversationId, orgId);
+    return this.chatState(conversationId, orgId);
+  }
+
+  /** A person is handling the chat: chatbot and automation replies stay quiet for `pauseHours`. */
+  async pauseFor(conversationId: string, orgId: string): Promise<void> {
+    const settings = await this.repo.settings(orgId);
+    await this.repo.pause(conversationId, orgId, new Date(Date.now() + settings.pauseHours * 3_600_000));
+  }
+
   /** Someone on the team replied in the chat: the bot leaves it to them. */
   @OnEvent(EVENT_NAMES.CONVERSATION_AGENT_REPLIED, { async: true })
   async onAgentReplied(payload: { orgId: string; conversationId: string }): Promise<void> {
     try {
-      const settings = await this.repo.settings(payload.orgId);
-      await this.repo.pause(payload.conversationId, payload.orgId, new Date(Date.now() + settings.pauseHours * 3_600_000));
+      await this.pauseFor(payload.conversationId, payload.orgId);
     } catch (err) {
       this.logger.warn(`Couldn't pause the bot in conversation ${payload.conversationId}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Assigned to a person: they own the chat, so bots step back. Unassigned:
+   * nobody owns it any more, so bots may answer again.
+   */
+  @OnEvent(EVENT_NAMES.CONVERSATION_ASSIGNED, { async: true })
+  async onAssigned(payload: { orgId: string; conversationId: string; assignedToId: string | null }): Promise<void> {
+    try {
+      if (payload.assignedToId) await this.pauseFor(payload.conversationId, payload.orgId);
+      else await this.repo.resume(payload.conversationId, payload.orgId);
+    } catch (err) {
+      this.logger.warn(`Couldn't update the bot in conversation ${payload.conversationId}: ${(err as Error).message}`);
+    }
+  }
+
+  /** A reply typed on the WhatsApp phone counts as a person taking the chat. */
+  @OnEvent(EVENT_NAMES.WHATSAPP_PHONE_REPLY, { async: true })
+  async onPhoneReply(payload: { orgId: string; sessionId: string; contactPhone: string }): Promise<void> {
+    try {
+      const settings = await this.repo.settings(payload.orgId);
+      await this.repo.pauseByPhone(
+        payload.orgId,
+        payload.sessionId,
+        payload.contactPhone,
+        new Date(Date.now() + settings.pauseHours * 3_600_000),
+      );
+    } catch (err) {
+      this.logger.warn(`Couldn't pause the bot after a phone reply: ${(err as Error).message}`);
     }
   }
 }

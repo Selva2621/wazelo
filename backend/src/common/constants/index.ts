@@ -295,6 +295,8 @@ export const EVENT_NAMES = {
   CHATBOT_SESSION_HANDED_OFF: 'chatbot.session_handed_off',
   // A person on the team sent a message in a conversation (the AI bot pauses there)
   CONVERSATION_AGENT_REPLIED: 'conversation.agent_replied',
+  // Someone typed a reply on the WhatsApp phone itself (not in the app): bots pause there too
+  WHATSAPP_PHONE_REPLY: 'whatsapp.phone_reply',
 
   // Developer API events
   DEVELOPER_MESSAGE_SENT: 'developer.message_sent',
@@ -392,6 +394,11 @@ export const SEND_SAFETY_CONFIG = {
     { maxAgeDays: 21, cold: 100, bulk: 300 },
     { maxAgeDays: Infinity, cold: 200, bulk: 500 },
   ],
+  /**
+   * Messages a contact can get per rolling 24h from campaigns, sequences and
+   * automations together (replies to their own messages don't count). Extra ones wait.
+   */
+  MAX_BULK_PER_CONTACT_PER_DAY: 2,
   /** Bulk messages only go out between these local hours (org time zone) */
   BULK_SEND_START_HOUR: 9,
   BULK_SEND_END_HOUR: 20,

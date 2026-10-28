@@ -86,7 +86,8 @@ export class SendWidgetMessageUseCase {
 
     if (done && affordable && !overLimit) {
       try {
-        const ragResult = await this.kbRagSearch.execute(dto.body, orgId);
+        // The owner's "Custom instructions" from the widget settings shape the answer
+        const ragResult = await this.kbRagSearch.execute(dto.body, orgId, config.aiSystemPrompt);
         const usage = { model: ragResult.usage?.model, tokens: ragResult.usage?.tokens };
         if (ragResult.answer) {
           await this.aiCredits.charge(orgId, 'widget_reply');

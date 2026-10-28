@@ -31,6 +31,8 @@ import { GenerateCampaignCopyUseCase } from './application/use-cases/generate-ca
 // Controller
 import { CampaignController } from './interfaces/controllers/campaign.controller';
 
+import { CampaignRepliesService } from './application/services/campaign-replies.service';
+
 @Module({
   imports: [
     AuditModule,
@@ -48,6 +50,8 @@ import { CampaignController } from './interfaces/controllers/campaign.controller
     // Domain services
     AudienceResolverService,
     CampaignStateMachineService,
+    // Marks campaign recipients who write back ("Replied")
+    CampaignRepliesService,
 
     // Use cases
     CreateCampaignUseCase,

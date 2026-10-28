@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Tabs } from "@/components/ui/tabs";
-import { Spinner } from "@/components/ui/spinner";
-import { Pagination } from "@/components/ui/pagination";
 import { SequenceTable } from "@/components/sequences/sequence-table";
 import { CreateSequenceModal } from "@/components/sequences/create-sequence-modal";
-import { SequenceAnalytics } from "@/components/sequences/sequence-analytics";
 import {
   useSequences,
   useCreateSequence,
@@ -23,11 +21,10 @@ import {
 import { useWhatsAppSession } from "@/hooks/use-whatsapp";
 import { usePageTitle } from "@/hooks/use-page-title";
 import type { SequenceStatus } from "@/lib/types/sequences";
-import { IconButton } from "@/components/ui/icon-button";
 import { LoadError } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { WhatsAppRequiredBanner } from "@/components/whatsapp/whatsapp-required-banner";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
-import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 
 const STATUS_TABS = [
   { id: "", label: "All" },
@@ -43,7 +40,7 @@ export default function SequencesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
-  const [analyticsId, setAnalyticsId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   const take = 20;
 
   const { data: session } = useWhatsAppSession();
@@ -59,27 +56,9 @@ export default function SequencesPage() {
   const resumeSequence = useResumeSequence();
   const cancelSequence = useCancelSequence();
   const deleteSequence = useDeleteSequence();
-  useMobileTitle(analyticsId ? "Sequence analytics" : undefined);
-
-  // Analytics view
-  if (analyticsId) {
-    return (
-      <div className="space-y-4 lg:p-6 max-lg:px-4">
-        <div className="flex items-center gap-3 max-lg:gap-1">
-          <IconButton size="sm" onClick={() => setAnalyticsId(null)} aria-label="Back">
-            <ArrowLeft className="h-4 w-4 text-on-surface-variant" />
-          </IconButton>
-          <button type="button" onClick={() => setAnalyticsId(null)} className="lg:hidden min-h-11 text-body font-medium text-primary">
-            All sequences
-          </button>
-          <h1 className="text-headline font-semibold text-on-surface max-lg:hidden">
-            Sequence analytics
-          </h1>
-        </div>
-        <SequenceAnalytics sequenceId={analyticsId} onClose={() => setAnalyticsId(null)} />
-      </div>
-    );
-  }
+  const router = useRouter();
+  // Each sequence has its own details page (messages, settings, analytics, recipients)
+  const openSequence = (id: string) => router.push(`/sequences/${id}`);
 
   return (
     <div className="space-y-4 lg:p-6 max-lg:px-4 max-lg:pt-2">
@@ -112,36 +91,39 @@ export default function SequencesPage() {
       </FilterBar>
 
       {/* Content */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Spinner size="lg" className="text-primary" />
-        </div>
-      ) : isError ? (
+      {/* Loading skeleton, empty state and pager all come from the shared table */}
+      {isError ? (
         <LoadError what="sequences" onRetry={() => refetch()} />
       ) : (
-        <>
-          <SequenceTable
-            sequences={data?.data ?? []}
-            onStart={(id) => startSequence.mutate(id)}
-            onPause={(id) => pauseSequence.mutate(id)}
-            onResume={(id) => resumeSequence.mutate(id)}
-            onCancel={(id) => cancelSequence.mutate(id)}
-            onDelete={(id) => deleteSequence.mutate(id)}
-            onCreateClick={() => setShowCreate(true)}
-            onAnalytics={(id) => setAnalyticsId(id)}
-          />
-
-          {(data?.total ?? 0) > take && (
-            // Pagination is 1-based; this page's state is 0-based for `skip`
-            <Pagination
-              total={data?.total ?? 0}
-              totalPages={Math.ceil((data?.total ?? 0) / take)}
-              page={page + 1}
-              onPageChange={(p) => setPage(p - 1)}
-            />
-          )}
-        </>
+        <SequenceTable
+          sequences={data?.data ?? []}
+          isLoading={isLoading}
+          pagination={{ page, pageSize: take, total: data?.total ?? 0, onPageChange: setPage }}
+          onStart={(id) => startSequence.mutate(id)}
+          onPause={(id) => pauseSequence.mutate(id)}
+          onResume={(id) => resumeSequence.mutate(id)}
+          onCancel={(id) => cancelSequence.mutate(id)}
+          // Deleting can't be undone, so it asks first
+          onDelete={(id) => setPendingDelete(data?.data.find((s) => s.id === id) ?? { id, name: "this sequence" })}
+          onCreateClick={() => setShowCreate(true)}
+          onAnalytics={openSequence}
+          onOpen={openSequence}
+        />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete sequence?"
+        message={`"${pendingDelete?.name ?? ""}" and its message history will be removed. Contacts in it stop getting its messages. This can't be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleteSequence.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          deleteSequence.mutate(pendingDelete.id, { onSettled: () => setPendingDelete(null) });
+        }}
+      />
 
       {/* Create modal */}
       <CreateSequenceModal

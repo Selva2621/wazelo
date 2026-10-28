@@ -9,6 +9,7 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import { pauseCampaignForKillSwitch } from './kill-switch-pause';
+import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
 import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
@@ -184,22 +185,8 @@ export class CampaignBatchWorker implements OnModuleInit {
       return;
     }
 
-    // Interpolate template variables in message body
-    const resolvedBody = campaign.messageBody
-      ? campaign.messageBody.replace(/\{\{([\w.]+)\}\}/g, (_: string, key: string) => {
-          const vars: Record<string, string> = {
-            name: contact.name ?? '',
-            phone: contact.phoneNumber,
-            email: contact.email ?? '',
-            leadStatus: contact.leadStatus ?? '',
-            'contact.name': contact.name ?? '',
-            'contact.phone': contact.phoneNumber,
-            'contact.email': contact.email ?? '',
-            'contact.leadStatus': contact.leadStatus ?? '',
-          };
-          return vars[key] ?? `{{${key}}}`;
-        })
-      : null;
+    // Fill contact details, the same way as sequences and automations (no saved name → "there")
+    const resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
 
     // Create new message record
     const message = await this.messageRepo.create({
@@ -209,7 +196,7 @@ export class CampaignBatchWorker implements OnModuleInit {
       direction: MessageDirection.OUTBOUND,
       type: campaign.messageType as MessageType,
       contactPhone: recipient.contactPhone,
-      body: resolvedBody,
+      body: resolvedBody ?? undefined,
       mediaUrl: campaign.mediaUrl || null,
       mediaMimeType: campaign.mediaMimeType || null,
       idempotencyKey,
@@ -250,10 +237,10 @@ export class CampaignBatchWorker implements OnModuleInit {
       },
     );
 
-    // Update conversation last message
+    // Update conversation last message (the text this contact got, not the raw template)
     await this.conversationRepo.updateLastMessage(
       conversation.id,
-      campaign.messageBody || null,
+      resolvedBody,
       false,
     );
   }

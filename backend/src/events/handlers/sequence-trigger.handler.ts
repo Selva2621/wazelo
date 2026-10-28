@@ -4,6 +4,7 @@ import { ContactSource, SequenceTriggerType } from '@prisma/client';
 import { EVENT_NAMES } from '@/common/constants';
 import { SequenceRepository } from '@/modules/sequences/infrastructure/repositories/sequence.repository';
 import { EnrollContactUseCase } from '@/modules/sequences/application/use-cases/enroll-contact.use-case';
+import { ChatbotRepository } from '@/modules/chatbot/infrastructure/repositories/chatbot.repository';
 import type {
   ContactAutoCreatedEvent,
   ContactCreatedEvent,
@@ -22,6 +23,7 @@ export class SequenceTriggerHandler {
   constructor(
     private readonly sequenceRepo: SequenceRepository,
     private readonly enrollContact: EnrollContactUseCase,
+    private readonly chatbotRepo: ChatbotRepository,
   ) {}
 
   @OnEvent(EVENT_NAMES.DEAL_STAGE_CHANGED)
@@ -45,9 +47,17 @@ export class SequenceTriggerHandler {
     await this.enrollMatching(payload.orgId, payload.contactId, SequenceTriggerType.CONTACT_CREATED, () => true);
   }
 
-  /** A stranger messaged us first and became a contact */
+  /**
+   * A stranger messaged us first and became a contact. One welcome only: when a
+   * chatbot greets new chats, it answers them, so "contact created" sequences skip them
+   * (they still run for contacts added or imported by the team).
+   */
   @OnEvent(EVENT_NAMES.CONTACT_AUTO_CREATED)
   async onContactAutoCreated(payload: ContactAutoCreatedEvent) {
+    if (await this.chatbotRepo.hasGreetingFlow(payload.orgId).catch(() => false)) {
+      this.logger.debug(`Contact ${payload.contactId} wrote first and the chatbot greets them — no welcome sequence`);
+      return;
+    }
     await this.enrollMatching(payload.orgId, payload.contactId, SequenceTriggerType.CONTACT_CREATED, () => true);
   }
 

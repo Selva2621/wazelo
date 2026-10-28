@@ -7,22 +7,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
 
-/**
- * Fill {{name}} / {{phone}} / {{email}} (and contact.* forms) for one recipient.
- * A contact without a name gets "there" so "Hi {{name}}" still reads naturally.
- */
-export function fillContactPlaceholders(
-  body: string,
-  contact: { name: string | null; phoneNumber: string; email: string | null } | null,
-): string {
-  const firstName = contact?.name?.trim().split(/\s+/)[0];
-  const values: Record<string, string> = {
-    name: firstName || 'there',
-    phone: contact?.phoneNumber ?? '',
-    email: contact?.email ?? '',
-  };
-  return body.replace(/\{\{\s*(?:contact\.)?(name|phone|email)\s*\}\}/g, (_, key: string) => values[key]);
-}
+import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+
+// Same filling as campaigns and automations (one shared helper)
+export { fillContactPlaceholders };
 
 /**
  * Periodic worker that checks for sequence recipients whose next step is due,
@@ -153,10 +141,16 @@ export class SequenceStepWorker implements OnModuleInit {
     });
     const contact = await this.prisma.contact.findUnique({
       where: { id: recipient.contactId },
-      select: { name: true, phoneNumber: true, email: true },
+      select: { name: true, phoneNumber: true, email: true, leadStatus: true, deletedAt: true, mergedIntoId: true },
     });
     if (optedOut) {
       await this.sequenceRepo.exitRecipient(recipientId, 'Contact opted out');
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      return;
+    }
+    // Deleted (or merged into another contact) since they joined: stop here
+    if (!contact || contact.deletedAt || contact.mergedIntoId) {
+      await this.sequenceRepo.exitRecipient(recipientId, 'Contact deleted');
       await this.sequenceRepo.updateSequenceCounters(sequenceId);
       return;
     }

@@ -3,6 +3,8 @@ import { AutomationTriggerType } from '@prisma/client';
 import { ExecuteChatbotFlowUseCase } from '@/modules/chatbot/application/use-cases/execute-chatbot-flow.use-case';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { isOptOutReply } from '@/modules/messages/domain/services/send-safety.policy';
+import { BotBehaviorService } from '@/modules/chatbot/application/services/bot-behavior.service';
 
 export interface IncomingWhatsAppMessage {
   messageId: string;
@@ -33,12 +35,27 @@ export class MessagePipelineService {
     private readonly executeChatbotFlow: ExecuteChatbotFlowUseCase,
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
     private readonly orgStatus: OrgStatusService,
+    private readonly botBehavior: BotBehaviorService,
   ) {}
 
   async processIncoming(payload: IncomingWhatsAppMessage): Promise<void> {
     // Suspended org: the inbound message is already stored, but nothing replies to it
     if (await this.orgStatus.isSuspended(payload.orgId)) {
       this.logger.debug(`Org ${payload.orgId} is suspended — skipping chatbot/automation`);
+      return;
+    }
+
+    // "STOP" / "unsubscribe": the contact is opted out by the incoming worker. Answering
+    // it with a bot greeting or an automation would be exactly what they asked us not to do.
+    if (isOptOutReply(payload.body)) {
+      this.logger.debug(`Message ${payload.messageId} is an opt-out — no chatbot/automation reply`);
+      return;
+    }
+
+    // A person owns the chat (replied in the app or on the phone, or it's assigned):
+    // no chatbot flow and no automation reply until they hand it back or the pause ends
+    if (payload.conversationId && (await this.botBehavior.isPaused(payload.conversationId, payload.orgId))) {
+      this.logger.debug(`Conversation ${payload.conversationId} is with a person — no auto-reply`);
       return;
     }
 
@@ -96,6 +113,8 @@ export class MessagePipelineService {
           conversationId: payload.conversationId,
           // Keyword rules match on the text
           body: payload.body,
+          // A reply to the contact's own message: send it on the number they wrote to
+          inbound: true,
         },
         context: {
           message: {

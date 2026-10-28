@@ -40,6 +40,24 @@ export class BotBehaviorRepository {
     });
   }
 
+  /** Pause the chat with this contact on this number (phone numbers are stored with or without "+"). */
+  async pauseByPhone(orgId: string, sessionId: string, phone: string, until: Date): Promise<number> {
+    const digits = phone.replace(/^\+/, '');
+    const { count } = await this.prisma.conversation.updateMany({
+      where: { orgId, sessionId, contactPhone: { in: [digits, `+${digits}`] } },
+      data: { botPausedUntil: until, botMissStreak: 0 },
+    });
+    return count;
+  }
+
+  /** Bots may answer in the chat again. */
+  async resume(conversationId: string, orgId: string): Promise<void> {
+    await this.prisma.conversation.updateMany({
+      where: { id: conversationId, orgId },
+      data: { botPausedUntil: null, botMissStreak: 0 },
+    });
+  }
+
   /** One more unanswered question in a row; returns the new streak. */
   async addMiss(conversationId: string): Promise<number> {
     const row = await this.prisma.conversation.update({

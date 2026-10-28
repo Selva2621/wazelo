@@ -26,6 +26,7 @@ import { CampaignSchedulerWorker } from './campaign/campaign-scheduler.worker';
 // EPIC 7 — Scheduling & Automation workers
 import { AutomationEvaluatorWorker } from './automation/automation-evaluator.worker';
 import { NoReplyWorker } from './automation/no-reply.worker';
+import { AutomationActionWorker } from './automation/automation-action.worker';
 import { FollowUpWorker } from './automation/follow-up.worker';
 import { ScheduledMessageWorker } from './scheduler/scheduled-message.worker';
 // EPIC 9 — Billing & Subscription workers
@@ -131,6 +132,8 @@ import { DealsModule } from '@/modules/deals/deals.module';
     // EPIC 7 — Scheduling & Automation workers
     AutomationEvaluatorWorker,
     NoReplyWorker,
+    // Runs automation steps that have a delay ("wait 2 hours, then …")
+    AutomationActionWorker,
     FollowUpWorker,
     ScheduledMessageWorker,
     // EPIC 9 — Billing & Subscription workers

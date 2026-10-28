@@ -22,10 +22,11 @@ function setup(
   } = {},
 ) {
   const deps = {
-    prisma: { message: { findMany: jest.fn().mockResolvedValue([]) } },
+    prisma: { message: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(1) } },
     chatbotRepo: {
       findActiveSession: jest.fn().mockResolvedValue(null),
-      findActiveFlowByTrigger: jest.fn(async (_org: string, type: string) => (type === 'FIRST_MESSAGE' ? flow : null)),
+      findActiveFlowByTrigger: jest.fn().mockResolvedValue(null),
+      findFirstMessageFlow: jest.fn().mockResolvedValue(flow),
     },
     aiProvider: { complete: jest.fn().mockResolvedValue({ text: 'conversation-only reply' }) },
     outbound: { send: jest.fn().mockResolvedValue({ messageId: 'msg-1' }) },

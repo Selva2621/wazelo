@@ -33,6 +33,12 @@ interface SequenceTableProps {
   onDelete?: (id: string) => void;
   onCreateClick?: () => void;
   onAnalytics?: (id: string) => void;
+  /** Clicking a row (or Enter on it) opens the sequence's details page. */
+  onOpen?: (id: string) => void;
+  /** Skeleton rows while the list loads (instead of a page spinner). */
+  isLoading?: boolean;
+  /** Server-side pages, 0-based; the shared pager shows when there is more than one page. */
+  pagination?: { page: number; pageSize: number; total: number; onPageChange: (page: number) => void };
 }
 
 export function SequenceTable({
@@ -44,6 +50,9 @@ export function SequenceTable({
   onDelete,
   onCreateClick,
   onAnalytics,
+  isLoading,
+  pagination,
+  onOpen,
 }: SequenceTableProps) {
   const columns = useMemo<DataTableColumn<CampaignSequence>[]>(
     () => [
@@ -134,7 +143,8 @@ export function SequenceTable({
         header: "Actions",
         skeleton: "none",
         cell: (seq) => (
-          <div className="flex items-center gap-1">
+          // Action buttons act on their own; they don't also open the row
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             {seq.status === "DRAFT" && onStart && (
               <IconButton size="xs"
                 onClick={() => onStart(seq.id)}
@@ -201,6 +211,10 @@ export function SequenceTable({
       rows={sequences}
       rowKey={(seq) => seq.id}
       rowLabel={(seq) => seq.name}
+      loading={isLoading}
+      skeletonRows={6}
+      pagination={pagination}
+      onRowClick={onOpen ? (seq) => onOpen(seq.id) : undefined}
       empty={{
         icon: <Workflow className="h-12 w-12" />,
         title: "No sequences yet",

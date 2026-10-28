@@ -25,7 +25,9 @@ export type AutomationActionType =
   | "ASSIGN_CONTACT"
   | "ADD_TAG"
   | "UPDATE_STATUS"
-  | "ENROLL_IN_SEQUENCE";
+  | "ENROLL_IN_SEQUENCE"
+  | "STOP_SEQUENCE"
+  | "ASSIGN_CONVERSATION";
 
 export type AutomationRuleStatus = "ACTIVE" | "INACTIVE";
 

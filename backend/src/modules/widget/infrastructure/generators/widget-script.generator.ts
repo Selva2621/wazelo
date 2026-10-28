@@ -268,11 +268,33 @@ export function generateWidgetScript(orgSlug: string): string {
         if (msgs.length > 20) msgs = msgs.slice(-20);
         saveState({ msgs: msgs });
 
+        // "typing…" while the assistant may be answering
+        var typing = null;
+        if (cfg.aiAssistantEnabled) {
+          appendBubble(chatArea, '…', 'agent', color);
+          typing = chatArea.lastChild;
+        }
+        function stopTyping() {
+          if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          typing = null;
+        }
+
         sendMessage(cfg, text, s.name, s.phone,
-          function () {
-            // Success — optionally append an auto-reply in future
+          function (data) {
+            stopTyping();
+            // The AI assistant's answer, when it had one
+            var reply = data && data.agentReply && data.agentReply.body;
+            if (reply) {
+              appendBubble(chatArea, reply, 'agent', color);
+              var st = loadState();
+              var list = st.msgs || [];
+              list.push({ body: reply, sender: 'agent' });
+              if (list.length > 20) list = list.slice(-20);
+              saveState({ msgs: list });
+            }
           },
           function () {
+            stopTyping();
             appendBubble(chatArea, 'Failed to send. Please try again.', 'agent', color);
           }
         );

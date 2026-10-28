@@ -216,9 +216,9 @@ export default function CampaignDetailPage() {
             </div>
             <ConfirmDialog
               open={confirmRerun}
-              title="Run this campaign again?"
-              message="A new campaign with the same message and audience starts now. The audience is picked again, so contacts added since are included. This campaign's report stays as it is."
-              confirmLabel="Run again"
+              title="Send this campaign again now?"
+              message="WhatsApp messages go out right away to the same audience, including contacts added since. Contacts without a saved name are greeted as “there”. This campaign's report stays as it is."
+              confirmLabel="Send now"
               loading={rerunMut.isPending}
               onCancel={() => setConfirmRerun(false)}
               onConfirm={() =>
@@ -251,6 +251,7 @@ export default function CampaignDetailPage() {
           deliveredCount={campaign.deliveredCount}
           readCount={campaign.readCount}
           failedCount={campaign.failedCount}
+          repliedCount={campaign.repliedCount}
         />
 
         {/* Two-column layout */}

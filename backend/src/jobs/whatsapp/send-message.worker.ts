@@ -109,6 +109,11 @@ export class SendMessageWorker implements OnModuleInit {
       this.logger.warn(`Message ${messageId} not found, skipping job ${jobId}`);
       return;
     }
+    // A job must only ever send its own org's message
+    if (message.orgId !== orgId) {
+      this.logger.error(`Message ${messageId} belongs to another org, skipping job ${jobId}`);
+      return;
+    }
 
     // 2. Idempotency: skip if already sent or beyond QUEUED state
     if (

@@ -1065,19 +1065,12 @@ function WorkingHoursSection() {
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [workDays, setWorkDays] = useState([true, true, true, true, true, false, false]);
-  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
-  const [autoReplyMessage, setAutoReplyMessage] = useState(
-    "Thanks for reaching out! We're currently outside business hours. We'll get back to you as soon as we're open."
-  );
-
   useEffect(() => {
     if (data) {
       setEnabled(data.enabled ?? true);
       setStartHour(data.startHour ?? "09:00");
       setEndHour(data.endHour ?? "18:00");
       setWorkDays(data.workDays ?? [true, true, true, true, true, false, false]);
-      setAutoReplyEnabled(data.autoReplyEnabled ?? false);
-      setAutoReplyMessage(data.autoReplyMessage ?? "");
     }
   }, [data]);
 
@@ -1088,7 +1081,15 @@ function WorkingHoursSection() {
   };
 
   const handleSave = () => {
-    updateMutation.mutate({ enabled, startHour, endHour, workDays, autoReplyEnabled, autoReplyMessage });
+    // Keep whatever auto-reply values are stored; they're no longer edited here
+    updateMutation.mutate({
+      enabled,
+      startHour,
+      endHour,
+      workDays,
+      autoReplyEnabled: data?.autoReplyEnabled ?? false,
+      autoReplyMessage: data?.autoReplyMessage ?? "",
+    });
   };
 
   if (isLoading) return <SectionLoader />;
@@ -1101,7 +1102,7 @@ function WorkingHoursSection() {
           Business Hours
         </h3>
         <p className="text-body text-on-surface-variant mb-4">
-          Set your team&apos;s availability hours. Outside these hours, auto-reply can be sent to customers.
+          Set your team&apos;s availability hours.
         </p>
 
         <div className="space-y-4">
@@ -1167,41 +1168,15 @@ function WorkingHoursSection() {
         </div>
       </div>
 
-      {/* Auto-Reply */}
+      {/* The after-hours reply lives with the chatbot (one place, and it actually sends) */}
       <div className="border-t border-outline-variant/15 pt-6">
-        <h3 className="text-body-lg font-semibold text-on-surface mb-1">
-          Auto-Reply (Outside Hours)
-        </h3>
-        <p className="text-body text-on-surface-variant mb-4">
-          Automatically reply to customers when a message is received outside working hours.
+        <h3 className="text-body-lg font-semibold text-on-surface mb-1">Reply outside hours</h3>
+        <p className="text-body text-on-surface-variant">
+          The message customers get when nobody is available is set with the chatbot&apos;s opening hours.{" "}
+          <Link href="/chatbot/knowledge" className="font-medium text-primary hover:underline">
+            Set it in Chatbot → Handover &amp; hours
+          </Link>
         </p>
-
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoReplyEnabled}
-              onChange={(e) => setAutoReplyEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-outline-variant/30 accent-primary"
-            />
-            <span className="text-body text-on-surface">Enable auto-reply outside business hours</span>
-          </label>
-
-          {autoReplyEnabled && (
-            <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Auto-Reply Message
-              </label>
-              <textarea
-                value={autoReplyMessage}
-                onChange={(e) => setAutoReplyMessage(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                placeholder="Enter your auto-reply message..."
-              />
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Save */}

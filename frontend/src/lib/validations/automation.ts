@@ -24,6 +24,8 @@ const actionSchema = z.object({
     "ADD_TAG",
     "UPDATE_STATUS",
     "ENROLL_IN_SEQUENCE",
+    "STOP_SEQUENCE",
+    "ASSIGN_CONVERSATION",
   ]),
   actionConfig: z.record(z.string(), z.any()),
   orderIndex: z.number().int().min(0).optional(),

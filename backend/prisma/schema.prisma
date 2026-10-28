@@ -395,6 +395,10 @@ enum AutomationActionType {
   ADD_TAG
   UPDATE_STATUS
   ENROLL_IN_SEQUENCE
+  /// Take the contact out of one sequence (or all) they're in
+  STOP_SEQUENCE
+  /// Give the contact's chat to a person (bots pause there, like a manual assign)
+  ASSIGN_CONVERSATION
 }
 
 enum AutomationRuleStatus {
@@ -1365,6 +1369,8 @@ model Campaign {
   deliveredCount  Int                  @default(0) @map("delivered_count")
   failedCount     Int                  @default(0) @map("failed_count")
   readCount       Int                  @default(0) @map("read_count")
+  /// Recipients who wrote back within a week of getting the campaign
+  repliedCount    Int                  @default(0) @map("replied_count")
   createdById     String               @map("created_by_id") @db.Uuid
   idempotencyKey  String?              @unique @map("idempotency_key") @db.VarChar(255)
   metadata        Json?                @db.JsonB
@@ -1406,6 +1412,8 @@ model CampaignRecipient {
   status       CampaignRecipientStatus @default(PENDING)
   failedReason String?                 @map("failed_reason") @db.Text
   processedAt  DateTime?               @map("processed_at")
+  /// First message from the contact after this campaign reached them (within a week)
+  repliedAt    DateTime?               @map("replied_at")
   batchNumber  Int                     @map("batch_number")
   createdAt    DateTime                @default(now()) @map("created_at")
 
@@ -1419,6 +1427,8 @@ model CampaignRecipient {
   @@index([campaignId, batchNumber])
   @@index([messageId])
   @@index([orgId])
+  // "Did this person just answer one of our campaigns?" on every incoming message
+  @@index([orgId, contactPhone])
   @@map("campaign_recipients")
 }
 

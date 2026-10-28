@@ -58,6 +58,7 @@ import { TeamsModule } from '../teams/teams.module';
     ExportContactsUseCase,
     ImportContactsUseCase,
   ],
-  exports: [ContactRepository, AutoCreateContactUseCase],
+  // The contact use-cases are also run by automation actions (assign, tag, lead status)
+  exports: [ContactRepository, AutoCreateContactUseCase, AssignContactUseCase, AddTagUseCase, ChangeLeadStatusUseCase],
 })
 export class ContactsModule {}
