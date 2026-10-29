@@ -4,6 +4,7 @@
  */
 export const AI_ACTIONS = {
   smart_reply: { label: 'Smart reply suggestions', defaultCost: 1 },
+  read_chat: { label: 'Read a chat (mood, wants, tags)', defaultCost: 1 },
   summarize: { label: 'Conversation summary', defaultCost: 1 },
   sentiment: { label: 'Sentiment analysis', defaultCost: 1 },
   categorize: { label: 'Auto-categorize', defaultCost: 1 },

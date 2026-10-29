@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react";
-import { Paperclip, Smile, Send, X, FileText, Image, Film, Music, MousePointerClick } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useId, type KeyboardEvent } from "react";
+import { Paperclip, Smile, Send, X, FileText, Image, Film, Music, MousePointerClick, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CannedResponsePicker } from "./canned-response-picker";
+import { QuickReplyList, recordQuickReplyUse, useQuickReplyPicker } from "./canned-response-picker";
+import { QuickReplyManager } from "./quick-reply-manager";
+import type { CannedResponse } from "@/lib/types/canned-responses";
 import { InteractiveMessageBuilder } from "./interactive-message-builder";
 import { EmojiPicker } from "./emoji-picker";
 import type { InteractivePayload } from "@/lib/types/inbox";
@@ -71,8 +73,30 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   const [showInteractiveBuilder, setShowInteractiveBuilder] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [cannedFilter, setCannedFilter] = useState("");
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const quickListId = useId();
+  const quickPicker = useQuickReplyPicker(showCannedPicker, cannedFilter, quickListId);
+
+  const closeQuickPicker = () => {
+    setShowCannedPicker(false);
+    setCannedFilter("");
+  };
+
+  // "/shortcut" typed alone is replaced; picked from the ⚡ button, it's added to what's typed
+  const pickQuickReply = (r: CannedResponse) => {
+    setValue((current) => (!current.trim() || current.startsWith("/") ? r.content : `${current.trimEnd()} ${r.content}`));
+    recordQuickReplyUse(r);
+    closeQuickPicker();
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      handleInput();
+    });
+  };
 
   const closeEmojiPicker = useCallback(() => setShowEmojiPicker(false), []);
 
@@ -103,6 +127,8 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // The quick-reply list gets the keys first: Enter picks instead of sending "/shortcut"
+    if (quickPicker.handleKey(e, pickQuickReply, closeQuickPicker)) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -200,15 +226,18 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
 
       {/* Input row */}
       <div className="relative flex items-end gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2 transition-[border-color,box-shadow] duration-120 ease-standard focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
-        <CannedResponsePicker
-          open={showCannedPicker}
-          filter={cannedFilter}
-          onSelect={(content) => {
-            setValue(content);
-            setShowCannedPicker(false);
-          }}
-          onClose={() => setShowCannedPicker(false)}
-        />
+        {showCannedPicker && (
+          <QuickReplyList
+            listboxId={quickListId}
+            filter={cannedFilter}
+            picker={quickPicker}
+            onPick={pickQuickReply}
+            onManage={() => {
+              closeQuickPicker();
+              setQuickRepliesOpen(true);
+            }}
+          />
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -245,6 +274,23 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           title="Emoji" aria-label="Emoji">
           <Smile className="h-5 w-5" />
         </IconButton>
+        <IconButton size="sm"
+          type="button"
+          // Keep focus in the message box, so its blur doesn't close the list first
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            if (showCannedPicker) return closeQuickPicker();
+            setCannedFilter("");
+            setShowCannedPicker(true);
+            textareaRef.current?.focus();
+          }}
+          disabled={disabled || uploading}
+          aria-expanded={showCannedPicker}
+          aria-controls={showCannedPicker ? quickListId : undefined}
+          className={cn(showCannedPicker && "text-primary bg-primary/10")}
+          title="Quick replies (or type /)" aria-label="Quick replies">
+          <Zap className="h-5 w-5" />
+        </IconButton>
         {onSendInteractive && (
           <button
             type="button"
@@ -272,13 +318,20 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             if (v.startsWith("/")) {
               setShowCannedPicker(true);
               setCannedFilter(v.slice(1));
-            } else {
-              setShowCannedPicker(false);
+            } else if (showCannedPicker) {
+              closeQuickPicker();
             }
           }}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder={attachment ? "Add a caption..." : isEmail ? "Compose email..." : "Type a message..."}
+          onBlur={() => showCannedPicker && closeQuickPicker()}
+          role="combobox"
+          aria-label="Message"
+          aria-autocomplete="list"
+          aria-expanded={showCannedPicker}
+          aria-controls={showCannedPicker ? quickListId : undefined}
+          aria-activedescendant={quickPicker.activeId}
+          placeholder={attachment ? "Add a caption..." : isEmail ? "Compose email..." : "Type a message, or / for quick replies"}
           rows={1}
           disabled={disabled || uploading}
           className="flex-1 resize-none bg-transparent text-body-lg text-on-surface placeholder:text-placeholder outline-none min-h-[24px] max-h-[132px] py-1"
@@ -303,6 +356,8 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           )}
         </button>
       </div>
+
+      <QuickReplyManager open={quickRepliesOpen} onClose={() => setQuickRepliesOpen(false)} />
 
       {/* Character counter */}
       {maxTextLength && value.length > 0 && (

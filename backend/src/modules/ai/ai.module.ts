@@ -11,6 +11,7 @@ import { KbAnswerService } from './application/services/kb-answer.service';
 import { KbChunkRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
 import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
 import { GetSmartRepliesUseCase } from './application/use-cases/get-smart-replies.use-case';
+import { ReadChatUseCase } from './application/use-cases/read-chat.use-case';
 import { SummarizeConversationUseCase } from './application/use-cases/summarize-conversation.use-case';
 import { AnalyzeSentimentUseCase } from './application/use-cases/analyze-sentiment.use-case';
 import { AutoCategorizeUseCase } from './application/use-cases/auto-categorize.use-case';
@@ -46,6 +47,7 @@ import { AiController } from './interfaces/controllers/ai.controller';
     MessageEncryptionService,
     OrgContextService,
     GetSmartRepliesUseCase,
+    ReadChatUseCase,
     SummarizeConversationUseCase,
     AnalyzeSentimentUseCase,
     AutoCategorizeUseCase,

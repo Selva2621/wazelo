@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { aiApi } from "@/lib/api/ai";
 import type { RoutingSuggestion, AiInsightsResult, CampaignCopyResult, DealScoreResult } from "@/lib/api/ai";
+import type { SmartReplyOptions } from "@/lib/types/ai";
 
 /**
  * Conversation AI results cost credits per call, so they run only when asked
@@ -11,12 +12,40 @@ import type { RoutingSuggestion, AiInsightsResult, CampaignCopyResult, DealScore
  */
 const AI_RESULT_CACHE = { staleTime: Infinity, gcTime: 30 * 60_000, refetchOnWindowFocus: false } as const;
 
-export function useSmartReplies(conversationId: string | null, enabled = true) {
+const chatReadKey = (conversationId: string | null) => ["ai", "read-chat", conversationId] as const;
+
+/**
+ * The saved AI read of a chat (free, no AI call). Re-checked whenever the chat is
+ * opened, so "they've written since" shows up without spending anything.
+ */
+export function useChatRead(conversationId: string | null) {
   return useQuery({
-    queryKey: ["ai", "smart-replies", conversationId],
-    queryFn: () => aiApi.getSmartReplies(conversationId!),
-    enabled: !!conversationId && enabled,
-    ...AI_RESULT_CACHE,
+    queryKey: chatReadKey(conversationId),
+    queryFn: () => aiApi.peekChat(conversationId!),
+    enabled: !!conversationId,
+    staleTime: 10_000,
+    // A database look-up, not an AI call: notices new customer messages while the chat is open
+    refetchInterval: 30_000,
+  });
+}
+
+/** Reads the chat with the AI (1 credit; free when nothing new since the last read) */
+export function useReadChat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) => aiApi.readChat(conversationId),
+    onSuccess: (data, conversationId) => {
+      qc.setQueryData(chatReadKey(conversationId), data);
+      qc.invalidateQueries({ queryKey: ["ai-credits"] });
+    },
+  });
+}
+
+/** One credit-metered call per click; tone and goal change what comes back, so nothing is cached */
+export function useSuggestReplies() {
+  return useMutation({
+    mutationFn: ({ conversationId, ...options }: { conversationId: string } & SmartReplyOptions) =>
+      aiApi.getSmartReplies(conversationId, options),
   });
 }
 
@@ -45,12 +74,15 @@ export function useCategorization(conversationId: string | null, enabled = true)
   });
 }
 
-export function useApplyCategorization() {
+export function useSaveTagsToContact() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (conversationId: string) => aiApi.applyCategorization(conversationId),
+    mutationFn: ({ conversationId, ...body }: { conversationId: string } & Parameters<typeof aiApi.saveTagsToContact>[1]) =>
+      aiApi.saveTagsToContact(conversationId, body),
+    // Contact tags and the org's tag list all live under ["contacts"]
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
-    onError: (err: Error) => toast.error(err.message || "Failed to apply categorization"),
+    onError: (err: Error & { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message || "Couldn't save the tag"),
   });
 }
 

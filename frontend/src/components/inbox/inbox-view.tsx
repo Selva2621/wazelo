@@ -29,7 +29,6 @@ import {
   useAssignConversation,
 } from "@/hooks/use-conversations";
 import { useSendCsatSurvey } from "@/hooks/use-csat";
-import { AiReplySuggestions } from "@/components/chat/ai-reply-suggestions";
 import { ConversationSummaryPanel } from "@/components/chat/conversation-summary-panel";
 import { BotStatusChip } from "@/components/inbox/bot-status-chip";
 import { InboxChannelTabs } from "@/components/inbox/inbox-channel-tabs";
@@ -285,6 +284,11 @@ export function InboxView({
   const currentMessages = useMemo<Message[]>(
     () => (messagesQuery.data?.data ?? []).map(mapMessage).reverse(),
     [messagesQuery.data],
+  );
+  // Newest thing the customer wrote: where the free FAQ search starts
+  const lastCustomerMessage = useMemo(
+    () => [...currentMessages].reverse().find((m) => m.direction === "incoming" && m.content.trim())?.content ?? "",
+    [currentMessages],
   );
 
   const selectedConversation = conversations.find(
@@ -764,13 +768,11 @@ export function InboxView({
               <MessageThread key={selectedId} messages={currentMessages} />
             )}
 
-            {/* AI Insight Panel */}
-            <AiInsightPanel conversationId={selectedId} />
-
-            {/* AI Reply Suggestions */}
-            <AiReplySuggestions
+            {/* About this chat: AI read-out, suggested replies, answers from bot knowledge */}
+            <AiInsightPanel
               conversationId={selectedId}
-              onSelect={setAiSuggestionText}
+              onSelectReply={setAiSuggestionText}
+              lastCustomerMessage={lastCustomerMessage}
             />
 
             {/* Input — disabled when disconnected */}

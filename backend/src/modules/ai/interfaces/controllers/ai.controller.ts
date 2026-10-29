@@ -1,14 +1,21 @@
 import {
-  Controller, Get, Post, Param, Query,
+  Controller, Get, Post, Param, Query, Body,
   ParseUUIDPipe, HttpCode, HttpStatus, ValidationPipe,
 } from '@nestjs/common';
-import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsOptional, IsString, IsNotEmpty, MaxLength, MinLength,
+} from 'class-validator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
 import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
-import { GetSmartRepliesUseCase } from '../../application/use-cases/get-smart-replies.use-case';
+import {
+  GetSmartRepliesUseCase,
+  REPLY_TONES,
+  type ReplyTone,
+} from '../../application/use-cases/get-smart-replies.use-case';
+import { ReadChatUseCase } from '../../application/use-cases/read-chat.use-case';
 import { SummarizeConversationUseCase } from '../../application/use-cases/summarize-conversation.use-case';
 import { AnalyzeSentimentUseCase } from '../../application/use-cases/analyze-sentiment.use-case';
 import { AutoCategorizeUseCase } from '../../application/use-cases/auto-categorize.use-case';
@@ -25,12 +32,48 @@ class KbSearchQueryDto {
   q: string;
 }
 
-/** Every route is metered by @AiCredits: refused without the credits, charged on success. */
+class SmartRepliesQueryDto {
+  @IsOptional()
+  @IsIn(REPLY_TONES)
+  tone?: ReplyTone;
+
+  /** What the reply should do, e.g. "ask for their budget" */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  goal?: string;
+}
+
+class SaveTagsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  labels: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  language?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  intent?: string;
+
+  @IsOptional()
+  @IsIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+}
+
+/** AI routes are metered by @AiCredits: refused without the credits, charged on success. */
 @Controller('ai')
 @PlatformFeature('ai')
 export class AiController {
   constructor(
     private readonly getSmartReplies: GetSmartRepliesUseCase,
+    private readonly readChat: ReadChatUseCase,
     private readonly summarizeConversation: SummarizeConversationUseCase,
     private readonly analyzeSentiment: AnalyzeSentimentUseCase,
     private readonly autoCategorize: AutoCategorizeUseCase,
@@ -46,8 +89,31 @@ export class AiController {
   smartReplies(
     @CurrentUser() user: JwtPayload,
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Query(new ValidationPipe({ transform: true, whitelist: true })) dto: SmartRepliesQueryDto,
   ) {
-    return this.getSmartReplies.execute(conversationId, user.orgId);
+    return this.getSmartReplies.execute(conversationId, user.orgId, { tone: dto.tone, goal: dto.goal });
+  }
+
+  /** Free: the saved read of this chat and whether the customer has written since. No AI call. */
+  @Get('read-chat/:conversationId')
+  @Permissions(PERMISSIONS.MESSAGES_READ)
+  peekChat(
+    @CurrentUser() user: JwtPayload,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ) {
+    return this.readChat.peek(conversationId, user.orgId);
+  }
+
+  /** One AI call for mood, wants, next step, tags, priority. Free when the saved read is still current. */
+  @Post('read-chat/:conversationId')
+  @Permissions(PERMISSIONS.MESSAGES_READ)
+  @AiCredits('read_chat')
+  @HttpCode(HttpStatus.OK)
+  readChatNow(
+    @CurrentUser() user: JwtPayload,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+  ) {
+    return this.readChat.read(conversationId, user.orgId);
   }
 
   @Post('summarize/:conversationId')
@@ -81,15 +147,16 @@ export class AiController {
     return this.autoCategorize.execute(conversationId, user.orgId);
   }
 
+  /** Saves the tags shown in the inbox onto the contact. No AI call, so it's free. */
   @Post('categorize/:conversationId/apply')
   @Permissions(PERMISSIONS.CONTACTS_UPDATE)
-  @AiCredits('categorize')
   @HttpCode(HttpStatus.OK)
   applyCategorization(
     @CurrentUser() user: JwtPayload,
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Body(new ValidationPipe({ whitelist: true })) dto: SaveTagsDto,
   ) {
-    return this.autoCategorize.applyToConversation(conversationId, user.orgId);
+    return this.autoCategorize.saveToContact(conversationId, user.orgId, user.sub, dto);
   }
 
   @Get('kb-search')

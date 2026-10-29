@@ -51,9 +51,18 @@ export class CannedResponseRepository {
     });
   }
 
-  async incrementUsage(id: string) {
-    return this.prisma.cannedResponse.update({
-      where: { id },
+  /** A live reply in the org already using this shortcut (any letter case) */
+  async findByShortcut(orgId: string, shortcut: string) {
+    return this.prisma.cannedResponse.findFirst({
+      where: { orgId, deletedAt: null, shortcut: { equals: shortcut, mode: 'insensitive' } },
+      select: { id: true },
+    });
+  }
+
+  /** Scoped to the org: another org's reply id is ignored */
+  async incrementUsage(id: string, orgId: string) {
+    return this.prisma.cannedResponse.updateMany({
+      where: { id, orgId, deletedAt: null },
       data: { usageCount: { increment: 1 } },
     });
   }
