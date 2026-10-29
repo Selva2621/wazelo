@@ -7,6 +7,7 @@ import {
   UpdateWidgetConfigUseCase,
   StartWidgetSessionUseCase,
   SendWidgetMessageUseCase,
+  WidgetChatsUseCase,
 } from './application/use-cases';
 import { AuditModule } from '../audit/audit.module';
 import { AiModule } from '../ai/ai.module';
@@ -27,6 +28,8 @@ import { WidgetLeadsService } from './application/services/widget-leads.service'
     StartWidgetSessionUseCase,
     SendWidgetMessageUseCase,
     WidgetLeadsService,
+    // Inbox → Website: the team reads and answers website chats
+    WidgetChatsUseCase,
   ],
   exports: [WidgetRepository],
 })

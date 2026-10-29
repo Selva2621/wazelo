@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { MessageSquare, WifiOff, ArrowLeft, Trash2, XCircle, Archive, RotateCcw, Star, Handshake, ChevronLeft, Ellipsis } from "lucide-react";
 import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { ActionSheet } from "@/components/ios/action-sheet";
@@ -32,6 +32,7 @@ import { useSendCsatSurvey } from "@/hooks/use-csat";
 import { AiReplySuggestions } from "@/components/chat/ai-reply-suggestions";
 import { ConversationSummaryPanel } from "@/components/chat/conversation-summary-panel";
 import { BotStatusChip } from "@/components/inbox/bot-status-chip";
+import { InboxChannelTabs } from "@/components/inbox/inbox-channel-tabs";
 import { AiInsightPanel } from "@/components/chat/ai-insight-panel";
 import { useContactByPhone, useChangeLeadStatus } from "@/hooks/use-contacts";
 import { useUsers } from "@/hooks/use-users";
@@ -157,6 +158,10 @@ export interface InboxViewProps {
   onBack?: () => void;
   /** Auto-select conversation matching this phone number (from contacts page) */
   autoSelectPhone?: string | null;
+  /** Manager: show every team member's chats */
+  teamView?: boolean;
+  /** Shown under the channel tabs — the "Viewing: …" switcher for admins/managers */
+  scopeControl?: ReactNode;
 }
 
 // ─── Component ───────────────────────────────────────
@@ -167,6 +172,8 @@ export function InboxView({
   isAdminView = false,
   onBack,
   autoSelectPhone,
+  teamView = false,
+  scopeControl,
 }: InboxViewProps) {
   const userRole = useAuthStore((s) => s.user?.role);
   const contactPanelOpen = useUIStore((s) => s.contactPanelOpen);
@@ -202,12 +209,14 @@ export function InboxView({
     const params: Record<string, unknown> = {};
     if (targetUserId) {
       params.targetUserId = targetUserId;
+    } else if (teamView) {
+      params.teamView = true;
     }
     if (filter === "unread") {
       params.status = "OPEN";
     }
     return Object.keys(params).length > 0 ? params : undefined;
-  }, [targetUserId, filter]);
+  }, [targetUserId, teamView, filter]);
 
   // When auto-selecting by phone, also fetch that specific conversation directly
   const phoneFilterParams = useMemo(
@@ -498,6 +507,11 @@ export function InboxView({
             <span className="lg:hidden">All users</span>
           </button>
         )}
+        {/* WhatsApp | Website chats, then whose chats (admins/managers) */}
+        <div className="shrink-0 space-y-2.5 border-b border-outline-variant/15 px-4 py-2.5">
+          <InboxChannelTabs active="whatsapp" />
+          {scopeControl}
+        </div>
         <div className="flex-1 min-h-0">
           <ConversationList
             conversations={conversations}

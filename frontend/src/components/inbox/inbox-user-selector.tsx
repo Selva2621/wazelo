@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/layout/page-header";
+import { InboxChannelTabs } from "@/components/inbox/inbox-channel-tabs";
 import type { OrgUser } from "@/lib/api/users";
 import type { Team } from "@/lib/types/teams";
 
@@ -51,6 +52,8 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
         {/* Header */}
         <PageHeader title="Inbox" description={hint} className="max-lg:hidden" />
         <p className="text-body text-on-surface-variant lg:hidden">{hint}</p>
+        {/* WhatsApp (pick a person) | Website chats */}
+        <InboxChannelTabs active="whatsapp" />
 
         {/* View Toggle (Admin only — managers just see teams) */}
         {role === "ADMIN" && (

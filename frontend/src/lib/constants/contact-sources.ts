@@ -15,6 +15,7 @@ export const CONTACT_SOURCE_LABELS: Record<ContactSource, string> = {
   WHATSAPP_LEAD_AD: "WA Lead Ad",
   SHOPIFY: "Shopify",
   WEB_SCRAPE: "Lead Scraper",
+  WEBSITE: "Website chat",
 };
 
 export const CONTACT_SOURCES = Object.keys(CONTACT_SOURCE_LABELS) as ContactSource[];

@@ -723,11 +723,11 @@ function AiMemorySection() {
       </KnowledgeStep>
 
       <KnowledgeStep n={3} title="Website">
-        <WebsitesCard buildCost={buildCost} title="Your website" />
+        <WebsitesCard buildCost={buildCost} title="Your website" hideTitle />
       </KnowledgeStep>
 
       <KnowledgeStep n={4} title="Documents">
-        <FilesCard title="Files" />
+        <FilesCard title="Files" hideTitle />
         {/* The single document the old AI Memory page took: the team's AI uses it, customers' bots never do */}
         {data?.documentName && (
           <div className={cn(knowledgeCard, "flex items-center gap-3 px-5 py-3")}>
@@ -751,6 +751,7 @@ function AiMemorySection() {
       <KnowledgeStep n={6} title="Rules & tone">
         <InstructionsCard
           title="Rules & tone"
+          hideTitle
           description="How the AI should write and what it must or mustn't say — used by every AI feature."
         />
       </KnowledgeStep>

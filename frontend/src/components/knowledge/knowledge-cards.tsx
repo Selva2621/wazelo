@@ -139,7 +139,18 @@ function WebsiteRow({ source, buildCost }: { source: KbWebsiteSource; buildCost:
   );
 }
 
-export function WebsitesCard({ buildCost, title = "Website", className }: { buildCost: number; title?: string; className?: string }) {
+export function WebsitesCard({
+  buildCost,
+  title = "Website",
+  hideTitle = false,
+  className,
+}: {
+  buildCost: number;
+  title?: string;
+  /** The page already shows a section heading: keep this one for screen readers only */
+  hideTitle?: boolean;
+  className?: string;
+}) {
   const { data: sources, isLoading } = useKbWebsites();
   const add = useAddWebsite();
   const [url, setUrl] = useState("");
@@ -159,7 +170,7 @@ export function WebsitesCard({ buildCost, title = "Website", className }: { buil
   return (
     <section aria-labelledby="websites-heading" className={cn(knowledgeCard, "p-5 space-y-3", className)}>
       <div>
-        <h2 id="websites-heading" className={sectionTitle}>{title}</h2>
+        <h2 id="websites-heading" className={hideTitle ? "sr-only" : sectionTitle}>{title}</h2>
         <p className={hint}>The AI reads up to 30 pages: services, prices, FAQs, policies.</p>
       </div>
       <form onSubmit={submit} className="flex gap-2" noValidate>
@@ -188,7 +199,16 @@ export function WebsitesCard({ buildCost, title = "Website", className }: { buil
 
 /* ─── Files ─── */
 
-export function FilesCard({ title = "Files", className }: { title?: string; className?: string }) {
+export function FilesCard({
+  title = "Files",
+  hideTitle = false,
+  className,
+}: {
+  title?: string;
+  /** The page already shows a section heading: keep this one for screen readers only */
+  hideTitle?: boolean;
+  className?: string;
+}) {
   const { data: docs, isLoading } = useKbDocuments();
   const upload = useUploadDocument();
   const remove = useDeleteDocument();
@@ -211,7 +231,7 @@ export function FilesCard({ title = "Files", className }: { title?: string; clas
     <section aria-labelledby="files-heading" className={cn(knowledgeCard, "p-5 space-y-3", className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 id="files-heading" className={sectionTitle}>{title}</h2>
+          <h2 id="files-heading" className={hideTitle ? "sr-only" : sectionTitle}>{title}</h2>
           <p className={hint}>Price lists, menus, brochures — PDF, TXT, CSV or Markdown, up to 20 MB.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => inputRef.current?.click()} loading={upload.isPending}>
@@ -255,10 +275,13 @@ export function FilesCard({ title = "Files", className }: { title?: string; clas
 export function InstructionsCard({
   title = "Instructions",
   description = "How the bot should talk and what it should know that isn't on your website.",
+  hideTitle = false,
   className,
 }: {
   title?: string;
   description?: string;
+  /** The page already shows a section heading: keep this one for screen readers only */
+  hideTitle?: boolean;
   className?: string;
 }) {
   const { data: memory, isLoading } = useAiMemory();
@@ -270,7 +293,7 @@ export function InstructionsCard({
   return (
     <section aria-labelledby="instructions-heading" className={cn(knowledgeCard, "p-5 space-y-3", className)}>
       <div>
-        <h2 id="instructions-heading" className={sectionTitle}>{title}</h2>
+        <h2 id="instructions-heading" className={hideTitle ? "sr-only" : sectionTitle}>{title}</h2>
         <p className={hint}>{description}</p>
       </div>
       {/* The bot that answers customers reads this too, so it can repeat it */}

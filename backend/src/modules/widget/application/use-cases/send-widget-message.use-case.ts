@@ -75,8 +75,16 @@ export class SendWidgetMessageUseCase {
 
     // AI assistant: generate reply using org's KB and product data
     let agentReply: { messageId: string; body: string; createdAt: Date } | undefined;
+    // A person on the team is answering this chat (Inbox → Website): the AI stays quiet
+    // for the org's bot pause time after their last reply, like the WhatsApp bot does
+    const teamHandling =
+      config.aiAssistantEnabled &&
+      (await this.widgetRepository.teamRepliedSince(
+        session.id,
+        new Date(Date.now() - (await this.widgetRepository.botPauseHours(orgId)) * 3_600_000),
+      ));
     // Out of AI credits (or AI not on the plan), or over a reply limit: no auto-reply, a person answers
-    const done = config.aiAssistantEnabled
+    const done = config.aiAssistantEnabled && !teamHandling
       ? this.trail.start({ orgId, channel: 'WIDGET', widgetSessionId: session.id })
       : null;
     const affordable = !!done && (await this.aiCredits.canAfford(orgId, 'widget_reply'));
@@ -98,10 +106,11 @@ export class SendWidgetMessageUseCase {
             confidence: ragResult.confidence,
             ...usage,
           });
+          // "bot", not "agent": the team's own replies are told apart from the AI's
           const agentMsg = await this.widgetRepository.addMessage(
             session.id,
             orgId,
-            'agent',
+            'bot',
             ragResult.answer,
           );
           agentReply = {

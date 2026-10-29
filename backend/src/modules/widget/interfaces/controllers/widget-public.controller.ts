@@ -7,6 +7,7 @@ import {
   Res,
   Headers,
   Ip,
+  Query,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { Public } from '@/common/decorators/public.decorator';
@@ -94,6 +95,31 @@ export class WidgetPublicController {
     // The IP caps AI replies across visitor ids (see SendWidgetMessageUseCase)
     const result = await this.sendWidgetMessageUseCase.execute(orgSlug, dto, ip);
     return res.status(201).json(result);
+  }
+
+  /**
+   * New replies for this visitor (from the team or the AI), polled by the widget every
+   * few seconds while it's open. Only that visitor's own chat: the visitor id is a
+   * random id kept in their browser. `after` = the newest reply they already have.
+   */
+  @Get(':orgSlug/messages')
+  async getReplies(
+    @Param('orgSlug') orgSlug: string,
+    @Query('visitorId') visitorId: string,
+    @Query('after') after: string | undefined,
+    @Res() res: Response,
+  ) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    res.setHeader('Cache-Control', 'no-store');
+
+    if (!visitorId || visitorId.length > 64) return res.status(200).json({ messages: [] });
+    const orgId = await this.widgetRepository.findOrgIdBySlug(orgSlug);
+    const session = orgId ? await this.widgetRepository.findSessionByVisitor(orgId, visitorId) : null;
+    if (!session) return res.status(200).json({ messages: [] });
+
+    const since = after && !Number.isNaN(Date.parse(after)) ? new Date(after) : new Date(0);
+    const messages = await this.widgetRepository.findRepliesAfter(session.id, since);
+    return res.status(200).json({ messages });
   }
 
   /**

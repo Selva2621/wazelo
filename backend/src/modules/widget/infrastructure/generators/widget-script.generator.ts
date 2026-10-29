@@ -282,16 +282,19 @@ export function generateWidgetScript(orgSlug: string): string {
         sendMessage(cfg, text, s.name, s.phone,
           function (data) {
             stopTyping();
-            // The AI assistant's answer, when it had one
-            var reply = data && data.agentReply && data.agentReply.body;
-            if (reply) {
-              appendBubble(chatArea, reply, 'agent', color);
+            // From now on the widget checks for replies from the team
+            saveState({ sent: true });
+            // The AI assistant's answer, when it had one (skipped if the poll already showed it)
+            var ar = data && data.agentReply;
+            if (ar && ar.body && (loadState().seen || []).indexOf(ar.messageId) < 0) {
+              appendBubble(chatArea, ar.body, 'agent', color);
               var st = loadState();
               var list = st.msgs || [];
-              list.push({ body: reply, sender: 'agent' });
+              list.push({ body: ar.body, sender: 'agent' });
               if (list.length > 20) list = list.slice(-20);
               saveState({ msgs: list });
             }
+            if (ar && ar.messageId) rememberReply(ar.messageId, ar.createdAt);
           },
           function () {
             stopTyping();
@@ -315,6 +318,55 @@ export function generateWidgetScript(orgSlug: string): string {
 
     panel.appendChild(inputRow);
 
+    // ── Replies from the team (Inbox → Website) or the AI, while the chat is open ──
+    function rememberReply(id, createdAt) {
+      var st = loadState();
+      var seen = st.seen || [];
+      if (seen.indexOf(id) < 0) seen.push(id);
+      if (seen.length > 100) seen = seen.slice(-100);
+      var patch = { seen: seen };
+      if (createdAt && (!st.lastAt || createdAt > st.lastAt)) patch.lastAt = createdAt;
+      saveState(patch);
+    }
+
+    var polling = false;
+    function pollReplies() {
+      var st = loadState();
+      // Nothing to wait for until the visitor has written
+      if (!st.sent || polling) return;
+      polling = true;
+      var url = API_BASE + '/widgets/' + encodeURIComponent(SLUG) + '/messages?visitorId=' +
+        encodeURIComponent(getVisitorId()) + (st.lastAt ? '&after=' + encodeURIComponent(st.lastAt) : '');
+      fetch(url, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          var list = (data && data.messages) || [];
+          list.forEach(function (m) {
+            if ((loadState().seen || []).indexOf(m.id) < 0) {
+              appendBubble(chatArea, m.body, 'agent', color);
+              var s2 = loadState();
+              var msgs = s2.msgs || [];
+              msgs.push({ body: m.body, sender: 'agent' });
+              if (msgs.length > 20) msgs = msgs.slice(-20);
+              saveState({ msgs: msgs });
+            }
+            rememberReply(m.id, m.createdAt);
+          });
+        })
+        .catch(function () {})
+        .then(function () { polling = false; });
+    }
+
+    // Every 4 seconds while open; once right away when the visitor opens the chat
+    var pollTimer = null;
+    function startPolling() {
+      pollReplies();
+      if (!pollTimer) pollTimer = setInterval(pollReplies, 4000);
+    }
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
     // ── FAB button ────────────────────────────────────────────────────────
     var fab = document.createElement('button');
     fab.className = 'fab';
@@ -330,6 +382,7 @@ export function generateWidgetScript(orgSlug: string): string {
       panel.classList.toggle('open', isOpen);
       fab.innerHTML = isOpen ? iconClose : iconChat;
       fab.setAttribute('aria-label', isOpen ? 'Close chat' : 'Open chat');
+      if (isOpen) startPolling(); else stopPolling();
     };
 
     shadow.appendChild(panel);

@@ -73,7 +73,7 @@ export class WidgetLeadsService {
         orgId: event.orgId,
         phoneNumber: phone,
         name: event.visitorName?.trim() || undefined,
-        source: ContactSource.MANUAL,
+        source: ContactSource.WEBSITE,
         ownerId: owner.id,
         metadata: { from: 'website-chat' },
       },
@@ -90,7 +90,7 @@ export class WidgetLeadsService {
         orgId: event.orgId,
         phoneNumber: phone,
         ownerId: owner.id,
-        source: ContactSource.MANUAL,
+        source: ContactSource.WEBSITE,
         createdById: owner.id,
       } satisfies ContactCreatedEvent);
     }

@@ -37,7 +37,10 @@ describe('WidgetLeadsService', () => {
   it('turns a visitor with a phone into a tagged contact, runs "contact created", alerts the team', async () => {
     const { service, contacts, notifications, events } = setup();
     expect(await service.capture(msg)).toEqual({ contactId: 'ct1', created: true });
-    expect(contacts.upsertByPhone).toHaveBeenCalledWith(expect.objectContaining({ phoneNumber: '+919876543210', name: 'Ravi' }), 'admin1');
+    expect(contacts.upsertByPhone).toHaveBeenCalledWith(
+      expect.objectContaining({ phoneNumber: '+919876543210', name: 'Ravi', source: 'WEBSITE' }),
+      'admin1',
+    );
     expect(contacts.findOrCreateTag).toHaveBeenCalledWith('o1', 'website-chat');
     expect(events.emit).toHaveBeenCalledWith('contact.created', expect.objectContaining({ contactId: 'ct1' }));
     expect(notifications.dispatchToOrg).toHaveBeenCalledWith(

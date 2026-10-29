@@ -30,7 +30,8 @@ export type ContactSource =
   | "INSTAGRAM_LEAD_AD"
   | "WHATSAPP_LEAD_AD"
   | "SHOPIFY"
-  | "WEB_SCRAPE";
+  | "WEB_SCRAPE"
+  | "WEBSITE";
 
 // ─── Lead-source groups (GET /contacts/groups) ───
 

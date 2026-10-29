@@ -98,6 +98,8 @@ enum ContactSource {
   SHOPIFY
   // Lead Scraper
   WEB_SCRAPE
+  // Website chat widget visitor who left a phone number
+  WEBSITE
 }
 
 // ─────────────────────────────────────────────

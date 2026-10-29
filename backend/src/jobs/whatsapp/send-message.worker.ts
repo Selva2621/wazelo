@@ -21,6 +21,7 @@ import {
 } from '@/common/constants';
 import { TEST_RECIPIENT_BLOCKED_ERROR, isTestModeOn } from '@/common/utils/test-recipient-guard.util';
 import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
+import { maskPhone, sentBy } from './send-log';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
 const KILL_SWITCH_DEFER_SECONDS = 300;
@@ -362,7 +363,11 @@ export class SendMessageWorker implements OnModuleInit {
         );
       }
 
-      this.logger.log(`Message ${messageId} sent successfully (waId=${result.whatsappMessageId})`);
+      // Which feature sent it, so "why did this go out?" has an answer in the logs
+      this.logger.log(
+        `Message ${messageId} sent by ${sentBy(message.metadata)} to ${maskPhone(message.contactPhone)} ` +
+          `(org=${orgId}, waId=${result.whatsappMessageId})`,
+      );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to send message ${messageId}: ${reason}`);
