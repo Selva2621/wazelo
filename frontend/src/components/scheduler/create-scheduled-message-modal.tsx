@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateScheduledMessage } from "@/hooks/use-scheduler";
 import { ProductSelectField } from "@/components/ui/product-select-field";
+import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
 import {
   createScheduledMessageSchema,
   type CreateScheduledMessageFormData,
@@ -43,6 +44,7 @@ export function CreateScheduledMessageModal({
     register,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<CreateScheduledMessageFormData>({
@@ -54,6 +56,15 @@ export function CreateScheduledMessageModal({
   });
 
   const messageType = watch("messageType") as MessageType;
+  const mediaUrl = watch("mediaUrl");
+
+  // A file picked for one type doesn't fit another
+  const typeField = register("messageType");
+  const onTypeChange: typeof typeField.onChange = (e) => {
+    setValue("mediaUrl", "");
+    setValue("mediaMimeType", "");
+    return typeField.onChange(e);
+  };
 
   function onSubmit(data: CreateScheduledMessageFormData) {
     createMessage.mutate({ ...data, productId: productId || undefined }, {
@@ -131,7 +142,8 @@ export function CreateScheduledMessageModal({
             <Label htmlFor="messageType">Message Type</Label>
             <select
               id="messageType"
-              {...register("messageType")}
+              {...typeField}
+              onChange={onTypeChange}
               className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {MESSAGE_TYPES.map((t) => (
@@ -161,28 +173,21 @@ export function CreateScheduledMessageModal({
             </div>
           )}
 
-          {/* Media URL (for non-TEXT) */}
+          {/* Media (for non-TEXT): the file's type comes from the upload */}
           {messageType !== "TEXT" && (
-            <>
-              <div>
-                <Label htmlFor="mediaUrl">Media URL</Label>
-                <Input
-                  id="mediaUrl"
-                  placeholder="https://example.com/file.png"
-                  error={errors.mediaUrl?.message}
-                  {...register("mediaUrl")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="mediaMimeType">MIME Type</Label>
-                <Input
-                  id="mediaMimeType"
-                  placeholder="image/png"
-                  error={errors.mediaMimeType?.message}
-                  {...register("mediaMimeType")}
-                />
-              </div>
-            </>
+            <div>
+              <Label htmlFor="mediaUrl">Media</Label>
+              <MediaPicker
+                id="mediaUrl"
+                kind={mediaKindFor(messageType)}
+                value={mediaUrl ?? ""}
+                error={errors.mediaUrl?.message}
+                onChange={(url, media) => {
+                  setValue("mediaUrl", url, { shouldValidate: true });
+                  setValue("mediaMimeType", media?.mimeType ?? "");
+                }}
+              />
+            </div>
           )}
 
           {/* Scheduled At */}

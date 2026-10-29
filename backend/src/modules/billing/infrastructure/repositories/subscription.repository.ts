@@ -79,6 +79,11 @@ export class SubscriptionRepository {
     });
   }
 
+  /** The org's newest subscription in any status. */
+  async findLatestByOrg(orgId: string): Promise<Subscription | null> {
+    return this.prisma.subscription.findFirst({ where: { orgId }, orderBy: { createdAt: 'desc' } });
+  }
+
   async findByOrgWithPlan(orgId: string): Promise<(Subscription & { plan: any }) | null> {
     return this.prisma.subscription.findFirst({
       where: {

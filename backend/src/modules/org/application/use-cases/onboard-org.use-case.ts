@@ -71,7 +71,7 @@ export class OnboardOrgUseCase {
 
     // Trials are only for brand-new signups — never hand one to an existing org
     if (mode === 'signup') {
-      await this.assignTrial(orgId, org.trialUsedAt);
+      await this.assignTrial(orgId, org.trialUsedAt, org.orgType);
     }
 
     await this.rbacService.seedDefaultPermissionsForOrg(orgId);
@@ -94,10 +94,12 @@ export class OnboardOrgUseCase {
     this.logger.log(`Onboarding (${mode}) complete for org ${orgId}`);
   }
 
-  private async assignTrial(orgId: string, trialUsedAt: Date | null): Promise<void> {
+  private async assignTrial(orgId: string, trialUsedAt: Date | null, orgType: OrgType): Promise<void> {
     if (trialUsedAt || (await this.onboardingRepository.hasAnySubscription(orgId))) return;
 
-    const plan = await this.onboardingRepository.findDefaultTrialPlan();
+    // Freelancer or team trial. Most orgs pick their type after signup; that switch
+    // moves the trial over (billing AlignTrialPlanUseCase).
+    const plan = await this.onboardingRepository.findDefaultTrialPlan(orgType);
     if (!plan || plan.trialDays <= 0) {
       this.logger.warn(`No default trial plan configured — org ${orgId} starts without a trial`);
       return;
@@ -117,6 +119,8 @@ export class OnboardOrgUseCase {
         [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
         [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
         [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
+        [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
+        [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
       } as Record<UsageMetricType, number>,
     });
     this.logger.log(`Assigned ${plan.trialDays}-day trial to org ${orgId}`);

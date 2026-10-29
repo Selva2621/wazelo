@@ -29,6 +29,7 @@ import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
 import {
   CONTACT_SOURCES,
   CONTACT_SOURCE_LABELS,
@@ -311,7 +312,13 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setValue("messageType", value, { shouldValidate: true })}
+                      onClick={() => {
+                        if (value === messageType) return;
+                        setValue("messageType", value, { shouldValidate: true });
+                        // A file picked for one type doesn't fit another
+                        setValue("mediaUrl", "");
+                        setValue("mediaMimeType", "");
+                      }}
                       className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors border ${
                         messageType === value
                           ? "bg-primary/15 text-primary border-primary/30"
@@ -484,12 +491,16 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
               {messageType !== "TEXT" && (
                 <div>
-                  <Label htmlFor="mediaUrl">Media URL *</Label>
-                  <Input
+                  <Label htmlFor="mediaUrl">Media *</Label>
+                  <MediaPicker
                     id="mediaUrl"
-                    placeholder="https://example.com/image.jpg"
+                    kind={mediaKindFor(messageType)}
+                    value={mediaUrl ?? ""}
                     error={errors.mediaUrl?.message}
-                    {...register("mediaUrl")}
+                    onChange={(url, media) => {
+                      setValue("mediaUrl", url, { shouldValidate: true });
+                      setValue("mediaMimeType", media?.mimeType ?? "");
+                    }}
                   />
                 </div>
               )}

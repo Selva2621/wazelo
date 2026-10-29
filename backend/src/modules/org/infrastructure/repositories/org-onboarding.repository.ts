@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { Plan, Prisma, SlaMetricType, UsageMetricType, UserRole } from '@prisma/client';
+import { OrgType, Plan, Prisma, SlaMetricType, UsageMetricType, UserRole } from '@prisma/client';
 import { DefaultPipelineStage } from '@/shared/constants/org-defaults';
+import { trialPlanSlugFor } from '@/shared/constants/trial-plans';
 import { SystemTemplate } from '@/shared/constants/system-templates';
 
 /**
@@ -40,10 +41,17 @@ export class OrgOnboardingRepository {
     return count > 0;
   }
 
-  async findDefaultTrialPlan(): Promise<Plan | null> {
-    return this.prisma.plan.findFirst({
-      where: { isDefault: true, isActive: true, deletedAt: null },
+  /** The trial plan for this org type (freelancer or team); the default plan if it's missing. */
+  async findDefaultTrialPlan(orgType?: OrgType | null): Promise<Plan | null> {
+    const forType = await this.prisma.plan.findFirst({
+      where: { slug: trialPlanSlugFor(orgType), isActive: true, deletedAt: null },
     });
+    return (
+      forType ??
+      this.prisma.plan.findFirst({
+        where: { isDefault: true, isActive: true, deletedAt: null },
+      })
+    );
   }
 
   async createTrialSubscription(input: {

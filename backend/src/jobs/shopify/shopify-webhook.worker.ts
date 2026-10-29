@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { ProcessShopifyWebhookUseCase, ShopifyWebhookJob } from '@/modules/shopify/application/use-cases/process-shopify-webhook.use-case';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { QUEUE_NAMES } from '@/common/constants';
 
 /** While the Shopify kill switch is on, events are re-queued this often… */
@@ -19,6 +20,7 @@ export class ShopifyWebhookWorker implements OnModuleInit {
     private readonly queueService: QueueService,
     private readonly processUseCase: ProcessShopifyWebhookUseCase,
     private readonly killSwitches: KillSwitchService,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -38,6 +40,12 @@ export class ShopifyWebhookWorker implements OnModuleInit {
 
     if (await this.killSwitches.isDisabled('shopify')) {
       await this.deferWhileDisabled(data, jobId);
+      return;
+    }
+
+    // A store connected before a downgrade stops triggering anything
+    if (!(await this.usageTracking.isFeatureEnabled(data.orgId, 'shopify'))) {
+      this.logger.log(`Shopify not in plan for org=${data.orgId} — skipping event=${data.event} job=${jobId}`);
       return;
     }
 

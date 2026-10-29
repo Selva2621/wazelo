@@ -56,6 +56,8 @@ import { DealsModule } from '@/modules/deals/deals.module';
 import { AiModule } from '@/modules/ai/ai.module';
 // Org AI Memory events
 import { OrgMemoryEventsHandler } from './handlers/org-memory-events.handler';
+// Free trial follows the org type (freelancer / team)
+import { TrialPlanEventsHandler } from './handlers/trial-plan-events.handler';
 import { OrgModule } from '@/modules/org/org.module';
 // AI credits for purchase intent detection
 import { BillingModule } from '@/modules/billing/billing.module';
@@ -124,6 +126,7 @@ import { BillingModule } from '@/modules/billing/billing.module';
     PurchaseIntentHandler,
     // Org AI Memory rebuild events
     OrgMemoryEventsHandler,
+    TrialPlanEventsHandler,
   ],
 })
 export class EventsModule {}

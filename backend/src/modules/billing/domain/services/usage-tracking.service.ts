@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UsageMetricType } from '@prisma/client';
+import { SubscriptionStatus, UsageMetricType } from '@prisma/client';
 import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { EVENT_NAMES } from '@/common/constants';
@@ -189,6 +189,18 @@ export class UsageTrackingService {
       this.eventEmitter.emit(EVENT_NAMES.USAGE_LIMIT_REACHED, { orgId, metricType, currentValue: current, limitValue });
     }
     return taken;
+  }
+
+  /**
+   * The org's plan has ended (trial or paid, after grace) and it hasn't paid since.
+   * Orgs that never had a subscription are not "ended".
+   */
+  async hasEndedSubscription(orgId: string): Promise<boolean> {
+    if (await this.subscriptionRepo.findByOrgWithPlan(orgId)) return false;
+    const latest = await this.subscriptionRepo.findLatestByOrg(orgId);
+    if (!latest) return false;
+    if (latest.status === SubscriptionStatus.EXPIRED) return true;
+    return latest.status === SubscriptionStatus.CANCELLED && latest.currentPeriodEnd <= new Date();
   }
 
   /**

@@ -42,7 +42,7 @@ export const createCampaignSchema = z
       if (data.messageType !== "TEXT") return !!data.mediaUrl;
       return true;
     },
-    { message: "Media URL is required for media messages", path: ["mediaUrl"] },
+    { message: "Upload a file or paste a URL", path: ["mediaUrl"] },
   );
 
 export const updateCampaignSchema = z.object({

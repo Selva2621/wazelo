@@ -45,12 +45,14 @@ import { ApplyRenewalCreditUseCase } from './application/use-cases/apply-renewal
 import { CreateCheckoutOrderUseCase, ResolveCheckoutOrderUseCase } from './application/use-cases/checkout-order.use-cases';
 import { ActivateTrialPaymentUseCase } from './application/use-cases/activate-trial-payment.use-case';
 import { ValidateCouponUseCase } from './application/use-cases/validate-coupon.use-case';
+import { AlignTrialPlanUseCase } from './application/use-cases/align-trial-plan.use-case';
 import { CouponCheckoutService } from './application/services/coupon-checkout.service';
 
 // Guards
 import { UsageLimitGuard } from './interfaces/guards/usage-limit.guard';
 import { FeatureFlagGuard } from './interfaces/guards/feature-flag.guard';
 import { PlatformFeatureGuard } from './interfaces/guards/platform-feature.guard';
+import { ApiCallLimitGuard } from './interfaces/guards/api-call-limit.guard';
 
 // Controllers
 import { BillingController } from './interfaces/controllers/billing.controller';
@@ -108,11 +110,13 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     ResolveCheckoutOrderUseCase,
     ActivateTrialPaymentUseCase,
     ValidateCouponUseCase,
+    AlignTrialPlanUseCase,
 
     // Guards
     UsageLimitGuard,
     FeatureFlagGuard,
     PlatformFeatureGuard,
+    ApiCallLimitGuard,
   ],
   exports: [
     // Export for use in other modules (guards, workers)
@@ -136,8 +140,11 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     UsageLimitGuard,
     FeatureFlagGuard,
     PlatformFeatureGuard,
+    ApiCallLimitGuard,
     StripePaymentService,
     RazorpayPaymentService,
+    // Moves a running trial to the freelancer/team trial (events: org type changed)
+    AlignTrialPlanUseCase,
     // Plan management — used by super-admin module
     ListPlansUseCase,
     CreatePlanUseCase,

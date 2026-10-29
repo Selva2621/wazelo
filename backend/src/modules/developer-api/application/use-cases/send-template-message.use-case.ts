@@ -119,7 +119,7 @@ export class DevSendTemplateMessageUseCase {
       body: renderedBody,
     });
 
-    await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    // Counted toward the plan by the send worker once it actually goes out
 
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {
       messageId: message.id,

@@ -131,8 +131,7 @@ export class DevSendMessageUseCase {
       interactive: dto.interactive,
     });
 
-    // 9. Increment usage
-    await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    // 9. Counted toward the plan by the send worker once it actually goes out
 
     // 10. Emit event
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {

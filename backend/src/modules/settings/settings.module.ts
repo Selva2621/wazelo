@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '@/modules/audit/audit.module';
 import { QueueModule } from '@/infrastructure/queue/queue.module';
+import { BillingModule } from '@/modules/billing/billing.module';
 
 // Domain services
 import { EncryptionService } from './domain/services/encryption.service';
@@ -20,7 +21,7 @@ import { ManageWebhooksUseCase } from './application/use-cases/manage-webhooks.u
 import { SettingsController } from './interfaces/controllers/settings.controller';
 
 @Module({
-  imports: [AuditModule, QueueModule],
+  imports: [AuditModule, QueueModule, BillingModule],
   controllers: [SettingsController],
   providers: [
     // Domain services

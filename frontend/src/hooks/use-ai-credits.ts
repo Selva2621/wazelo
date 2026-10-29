@@ -10,6 +10,8 @@ export const aiCreditKeys = {
   history: (page: number) => ["ai-credits", "history", page] as const,
 };
 
+export const AI_CREDIT_HISTORY_PAGE_SIZE = 20;
+
 /** Balance, packs and costs. Refreshed every minute so the header pill follows AI usage. */
 export function useAiCredits(options?: { enabled?: boolean }) {
   return useQuery({
@@ -22,10 +24,11 @@ export function useAiCredits(options?: { enabled?: boolean }) {
   });
 }
 
+/** One page of credit activity, newest first. */
 export function useAiCreditHistory(page: number) {
   return useQuery({
     queryKey: aiCreditKeys.history(page),
-    queryFn: () => aiCreditsApi.history(page),
+    queryFn: () => aiCreditsApi.history(page, AI_CREDIT_HISTORY_PAGE_SIZE),
     placeholderData: (prev) => prev,
   });
 }

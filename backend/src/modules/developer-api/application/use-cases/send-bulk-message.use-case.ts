@@ -29,7 +29,9 @@ export class DevSendBulkMessageUseCase {
 
     // 1. Check usage limits for bulk count
     const usageCheck = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
-    if (!usageCheck.allowed) {
+    const overLimit =
+      usageCheck.limitValue > 0 && usageCheck.currentValue + recipientCount > usageCheck.limitValue;
+    if (!usageCheck.allowed || overLimit) {
       throw new BadRequestException({
         error: 'USAGE_LIMIT_EXCEEDED',
         message: 'Message limit reached for your current plan. Please upgrade.',
@@ -109,10 +111,7 @@ export class DevSendBulkMessageUseCase {
       results.push({ to, messageId: message.id, status: 'QUEUED' });
     }
 
-    // 4. Increment usage for all messages
-    for (let i = 0; i < recipientCount; i++) {
-      await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
-    }
+    // 4. Each message is counted toward the plan by the send worker once it goes out
 
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {
       orgId,

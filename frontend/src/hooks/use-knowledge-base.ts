@@ -40,8 +40,8 @@ export function useDismissUnanswered() {
 
 const faqsKey = ["kb", "faqs"] as const;
 
-export function useKbFaqs() {
-  return useQuery({ queryKey: faqsKey, queryFn: listFaqs });
+export function useKbFaqs({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: faqsKey, queryFn: listFaqs, enabled });
 }
 
 /** AI suggestions only; nothing is saved until published. */
@@ -60,10 +60,11 @@ export function usePublishFaqs() {
 const websitesKey = ["kb", "sources"] as const;
 
 /** Websites the bot learns from; polled every 3s while one is being read. */
-export function useKbWebsites() {
+export function useKbWebsites({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: websitesKey,
     queryFn: listWebsiteSources,
+    enabled,
     refetchInterval: (query) =>
       query.state.data?.some((s) => s.status === "QUEUED" || s.status === "CRAWLING") ? 3000 : false,
   });
@@ -146,10 +147,11 @@ export function useDeleteArticle() {
 }
 
 // Documents
-export function useKbDocuments(flowId?: string) {
+export function useKbDocuments(flowId?: string, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["kb", "documents", flowId],
     queryFn: () => listDocuments(flowId),
+    enabled,
   });
 }
 

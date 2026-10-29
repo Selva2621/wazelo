@@ -10,8 +10,12 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  SetMetadata,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { UsageMetricType } from '@prisma/client';
+import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { Request } from 'express';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -59,6 +63,9 @@ export class MessagesController {
   @Post('messages')
   @Permissions(PERMISSIONS.MESSAGES_SEND)
   @Throttle({ default: { ttl: 60000, limit: 60 } })
+  // Fail fast in the inbox; the send worker is what enforces the limit for every channel
+  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.MESSAGES_SENT)
+  @UseGuards(UsageLimitGuard)
   @HttpCode(HttpStatus.CREATED)
   async sendMessage(
     @CurrentUser() user: JwtPayload,

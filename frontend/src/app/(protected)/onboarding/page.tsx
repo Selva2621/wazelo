@@ -11,7 +11,7 @@ import { usePlans, useSubscribeToPlan, useCreateOrder, useVerifyPayment, useSubs
 import { useAuthStore } from "@/stores/auth-store";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
-import type { Plan, BillingCycle, SubscriptionPlanSummary } from "@/lib/types/billing";
+import { isTrialPlan, type Plan, type BillingCycle, type SubscriptionPlanSummary } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
@@ -292,7 +292,7 @@ function ChoosePlanStep({
   // Free trial is only auto-assigned on signup. Freelancers see Solo plans,
   // everyone else the team plans — same rule as Settings › Billing.
   const filtered = plans
-    .filter((p) => p.billingCycle === cycle && p.isActive && p.slug !== "free-trial")
+    .filter((p) => p.billingCycle === cycle && p.isActive && !isTrialPlan(p))
     .filter((p) => (isFreelancer ? p.slug.startsWith("solo-") : !p.slug.startsWith("solo-")))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 

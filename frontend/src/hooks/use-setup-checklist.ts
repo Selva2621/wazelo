@@ -9,6 +9,8 @@ import { useTemplates } from "@/hooks/use-templates";
 import { useContacts } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { useSubscription } from "@/hooks/use-billing";
+import { useKbDocuments, useKbFaqs, useKbWebsites } from "@/hooks/use-knowledge-base";
 
 export interface ChecklistItem {
   id: string;
@@ -41,6 +43,14 @@ export function useSetupChecklist() {
   const { data: contactsData } = useContacts();
   const { data: products } = useProducts();
 
+  // Bot knowledge: admins only (editing needs settings rights) and only on plans with AI
+  const { data: sub } = useSubscription();
+  const aiEnabled = sub?.subscription?.plan?.aiEnabled ?? true;
+  const canTeachBot = role === "ADMIN" && aiEnabled;
+  const { data: kbWebsites } = useKbWebsites({ enabled: canTeachBot });
+  const { data: kbDocuments } = useKbDocuments(undefined, { enabled: canTeachBot });
+  const { data: kbFaqs } = useKbFaqs({ enabled: canTeachBot });
+
   const items: ChecklistItem[] = useMemo(() => {
     const hasWhatsApp =
       !!whatsappSession && whatsappSession.status === "CONNECTED";
@@ -52,6 +62,12 @@ export function useSetupChecklist() {
     const hasContact = contactCount > 0;
 
     const hasProduct = Array.isArray(products) && products.length > 0;
+
+    // Only knowledge the bot can use: read websites, processed files, published FAQs
+    const hasKnowledge =
+      (kbWebsites ?? []).some((s) => s.status === "READY" && s.pages > 0) ||
+      (kbDocuments ?? []).some((d) => d.status === "READY") ||
+      (kbFaqs ?? []).some((f) => f.isPublished);
 
     // Only show steps the user can act on: products are admin-only and not
     // part of the freelancer flow, templates need admin or manager
@@ -81,6 +97,13 @@ export function useSetupChecklist() {
         href: "/settings/templates",
         done: hasTemplate,
       },
+      canTeachBot && {
+        id: "knowledge",
+        label: "Teach your bot",
+        description: "Add your website, files or FAQs so the bot can answer questions.",
+        href: "/chatbot/knowledge",
+        done: hasKnowledge,
+      },
       isFreelancer
         ? {
             id: "contacts",
@@ -98,7 +121,7 @@ export function useSetupChecklist() {
           },
     ];
     return all.filter((i): i is ChecklistItem => Boolean(i));
-  }, [whatsappSession, templates, contactsData, products, role, isFreelancer]);
+  }, [whatsappSession, templates, contactsData, products, role, isFreelancer, canTeachBot, kbWebsites, kbDocuments, kbFaqs]);
 
   const allDone = items.every((i) => i.done);
   const doneCount = items.filter((i) => i.done).length;

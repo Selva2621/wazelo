@@ -12,6 +12,7 @@ import { AccountSafetyService } from '@/modules/messages/domain/services/account
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   QUEUE_NAMES,
@@ -20,7 +21,7 @@ import {
   SEND_SAFETY_CONFIG,
 } from '@/common/constants';
 import { TEST_RECIPIENT_BLOCKED_ERROR, isTestModeOn } from '@/common/utils/test-recipient-guard.util';
-import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
+import { AuditAction, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
 import { maskPhone, sentBy } from './send-log';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
@@ -88,6 +89,7 @@ export class SendMessageWorker implements OnModuleInit {
     private readonly eventEmitter: EventEmitter2,
     private readonly orgStatus: OrgStatusService,
     private readonly killSwitches: KillSwitchService,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -151,6 +153,38 @@ export class SendMessageWorker implements OnModuleInit {
         KILL_SWITCH_DEFER_SECONDS,
       );
       this.logger.warn(`Campaigns switched off platform-wide — deferred campaign message ${messageId} by ${KILL_SWITCH_DEFER_SECONDS}s`);
+      return;
+    }
+
+    // Plan's monthly message limit, and no sending once the plan (or trial) has ended.
+    // Every channel (inbox, campaigns, automation, chatbot, API) sends through here,
+    // so this is the one place it is enforced. Orgs that never had a plan are left alone.
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    const blockReason = usage.allowed
+      ? null
+      : usage.limitValue > 0
+        ? `Monthly message limit reached (${usage.currentValue}/${usage.limitValue}). Upgrade your plan to send more.`
+        : (await this.usageTracking.hasEndedSubscription(orgId))
+          ? 'Your plan has ended. Choose a plan in Billing to keep sending.'
+          : null;
+    if (blockReason) {
+      const reason = blockReason;
+      await this.messageRepo.markFailed(messageId, reason);
+      await this.messageEventRepo.record({
+        messageId,
+        orgId,
+        status: MessageStatus.FAILED,
+        error: reason,
+        metadata: { jobId, usageLimit: true },
+      });
+      this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_FAILED, {
+        messageId,
+        sessionId,
+        orgId,
+        reason,
+        retryCount: message.retryCount,
+      });
+      this.logger.warn(`Message ${messageId} not sent for org ${orgId}: ${reason}`);
       return;
     }
 
@@ -345,6 +379,14 @@ export class SendMessageWorker implements OnModuleInit {
         contactPhone: message.contactPhone,
         whatsappMessageId: result.whatsappMessageId,
       });
+
+      // Count it against the plan. The message is already out, so a counting
+      // error must not reach the catch below and trigger a resend.
+      try {
+        await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
+      } catch (err) {
+        this.logger.error(`Could not count message ${messageId} toward usage: ${(err as Error).message}`);
+      }
 
       // Enqueue SLA evaluation for outbound reply
       if (message.conversationId) {

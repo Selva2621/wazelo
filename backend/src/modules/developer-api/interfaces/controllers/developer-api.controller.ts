@@ -25,6 +25,7 @@ import { ApiKeyResourceScope } from '@/modules/api-keys/interfaces/guards/api-ke
 import { ApiRequestLogInterceptor } from '../interceptors/api-request-log.interceptor';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces/guards/feature-flag.guard';
+import { ApiCallLimitGuard } from '@/modules/billing/interfaces/guards/api-call-limit.guard';
 import { UsageMetricType } from '@prisma/client';
 import { DeveloperApiRepository } from '../../infrastructure/repositories/developer-api.repository';
 import { DevSendMessageUseCase } from '../../application/use-cases/send-message.use-case';
@@ -61,7 +62,8 @@ function withIdempotencyKey<T extends { idempotencyKey?: string }>(dto: T, heade
  */
 @Controller('developer')
 @Public() // Skip JWT auth
-@UseGuards(ApiKeyGuard, FeatureFlagGuard) // API key auth + feature flag check
+// API key auth → plan includes API → count the call against the monthly limit
+@UseGuards(ApiKeyGuard, FeatureFlagGuard, ApiCallLimitGuard)
 @SetMetadata(FEATURE_FLAG_KEY, 'api')
 @UseInterceptors(ApiRequestLogInterceptor)
 export class DeveloperApiController {

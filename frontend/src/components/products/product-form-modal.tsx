@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Package, Image as ImageIcon } from "lucide-react";
+import { X, Package } from "lucide-react";
+import { MediaPicker } from "@/components/ui/media-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,37 +225,13 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
             </div>
           </div>
 
-          {/* Image URL */}
+          {/* Image */}
           <div>
             <Label htmlFor="pf-img">
-              Image URL{" "}
+              Image{" "}
               <span className="font-normal text-on-surface-variant/50">(optional)</span>
             </Label>
-            <div className="flex gap-3 items-start mt-1">
-              <div className="flex-1">
-                <input
-                  id="pf-img"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.png"
-                  className={inputCls}
-                />
-              </div>
-              {/* Preview */}
-              <div className="h-10 w-10 rounded-lg border border-outline-variant/15 bg-surface-container flex items-center justify-center shrink-0 overflow-hidden">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt="preview"
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : (
-                  <ImageIcon className="h-4 w-4 text-on-surface-variant/30" />
-                )}
-              </div>
-            </div>
+            <MediaPicker id="pf-img" kind="image" value={imageUrl} onChange={(url) => setImageUrl(url)} />
           </div>
 
           {/* Error */}

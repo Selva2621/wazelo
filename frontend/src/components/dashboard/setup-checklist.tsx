@@ -17,6 +17,7 @@ const STEP_ACTION: Record<string, string> = {
   whatsapp: "Connect",
   products: "Add",
   template: "Create",
+  knowledge: "Add",
   contacts: "Find leads",
 };
 
