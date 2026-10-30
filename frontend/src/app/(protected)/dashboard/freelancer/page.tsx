@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { SplitText } from "@/components/ui/split-text";
 
 // Bento layout from the Stitch "Wazelo - Bento Grid Layout" screen, built on the shared
@@ -54,6 +55,7 @@ function CardHeader({ id, icon, title, aside }: { id: string; icon?: React.React
 
 function Kpi({
   label,
+  short,
   value,
   caption,
   icon,
@@ -61,6 +63,8 @@ function Kpi({
   href,
 }: {
   label: string;
+  /** One-word label for the phone strip, where four tiles share one row */
+  short: string;
   value: string | number;
   caption: string;
   icon: React.ReactNode;
@@ -69,13 +73,24 @@ function Kpi({
   href: string;
 }) {
   return (
-    // Phones: two tiles per row, icon above the numbers
-    <Link href={href} className={cn(CARD, "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-outline max-sm:flex-col max-sm:items-start max-sm:gap-3 max-lg:active:scale-[0.98]")}>
-      {/* Desktop: numbers only; the coloured icon tile stays on phones, where tiles scan by colour */}
-      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl max-sm:size-10 max-sm:rounded-xl lg:hidden", tone)}>{icon}</span>
-      <span className="min-w-0 max-sm:w-full">
+    // Phones: four small tiles in one row (number over a one-word label)
+    <Link
+      href={href}
+      title={`${label}: ${value} (${caption})`}
+      className={cn(
+        CARD,
+        "group flex min-w-0 items-center gap-4 p-4 transition-colors hover:border-outline max-lg:active:scale-[0.98]",
+        "max-sm:flex-col max-sm:justify-center max-sm:gap-0.5 max-sm:rounded-xl max-sm:px-1 max-sm:py-3",
+      )}
+    >
+      {/* Phones */}
+      <span className="text-title font-semibold tabular-nums text-on-surface sm:hidden">{value}</span>
+      <span className="w-full truncate text-center text-caption text-on-surface-variant sm:hidden">{short}</span>
+      {/* Tablets keep the coloured icon tile; desktop shows numbers only */}
+      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl max-sm:hidden lg:hidden", tone)}>{icon}</span>
+      <span className="min-w-0 max-sm:hidden">
         <span className="block truncate text-label text-on-surface-variant">{label}</span>
-        <span className="flex items-baseline gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-0">
+        <span className="flex items-baseline gap-2">
           <span className="text-headline font-semibold tabular-nums text-on-surface">{value}</span>
           <span className="truncate text-caption text-on-surface-variant">{caption}</span>
         </span>
@@ -134,6 +149,13 @@ function ThisWeek() {
   const totals = data?.totals;
   const peak = Math.max(1, ...series.map((d) => d.total));
   const todayKey = new Date().toDateString();
+  // Always seven bars ending today; the API leaves out days with no messages
+  const byDay = new Map(series.map((d) => [new Date(d.date).toDateString(), d.total]));
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return { date: date.toISOString(), total: byDay.get(date.toDateString()) ?? 0 };
+  });
   const sent = totals?.outbound ?? 0;
   const replies = totals?.inbound ?? 0;
   const responseRate = sent > 0 ? Math.round((replies / sent) * 1000) / 10 : null;
@@ -163,8 +185,8 @@ function ThisWeek() {
           <div className="mt-4 flex-1">
             <p className="mb-2 text-caption text-on-surface-variant">Messages per day</p>
             <div className="flex h-20 items-end gap-2" role="img" aria-label="Messages per day this week">
-              {(series.length ? series : Array.from({ length: 7 }, (_, i) => ({ date: String(i), total: 0 }))).map((d, i) => {
-                const isToday = series.length > 0 && new Date(d.date).toDateString() === todayKey;
+              {days.map((d, i) => {
+                const isToday = new Date(d.date).toDateString() === todayKey;
                 return (
                   <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                     <div
@@ -173,7 +195,7 @@ function ThisWeek() {
                       title={`${d.total} messages`}
                     />
                     <span className={cn("text-caption", isToday ? "font-semibold text-primary" : "text-on-surface-variant")}>
-                      {series.length ? WEEKDAY.format(new Date(d.date)) : ""}
+                      {WEEKDAY.format(new Date(d.date))}
                     </span>
                   </div>
                 );
@@ -238,14 +260,16 @@ export default function FreelancerDashboard() {
   const unreadChats = (openConversations?.data ?? []).filter((c) => c.unreadCount > 0).length;
 
   const firstName = user?.firstName ?? "there";
+  // Phones: the greeting is the large title (one heading), with a Today | Apps switch under it
+  useMobileTitle(`Hey, ${firstName}`);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 pb-10 pt-4 lg:px-6">
       {/* Phones/tablets: Add Lead is the nav bar's + button */}
       <MobilePageActions primary={{ label: "Add lead", onClick: () => router.push("/contacts?action=new") }} />
 
-      {/* Greeting */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Greeting (desktop; phones show it as the nav bar's large title) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 max-lg:hidden">
         <h1 className="text-headline font-semibold text-on-surface max-lg:text-title">
           <SplitText text={`Hey, ${firstName}`} />
         </h1>
@@ -258,9 +282,11 @@ export default function FreelancerDashboard() {
         </Link>
       </div>
 
-      {/* Row 1: everyday shortcuts */}
-      <QuickActions />
+      {/* Row 1: everyday shortcuts (desktop); phones open every page from the tab bar's + */}
+      <QuickActions className="max-lg:hidden" />
 
+      {/* Today's work (phones: numbers first, via order) */}
+      <div className="space-y-5 max-lg:flex max-lg:flex-col max-lg:gap-5 max-lg:space-y-0">
       {/* Row 2: today's work + every setup step, one by one */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <section className={cn(CARD, "flex flex-col p-5")} aria-labelledby="needs-you-title">
@@ -384,9 +410,10 @@ export default function FreelancerDashboard() {
       </div>
 
       {/* Row 3: KPI tiles, the busier two wider */}
-      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr] max-sm:grid-cols-2">
+      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr] max-sm:grid-cols-4 max-sm:gap-2 max-lg:-order-1">
         <Kpi
           label="Total Leads"
+          short="Leads"
           value={totalLeads}
           caption="in your pipeline"
           icon={<Users className="h-5 w-5" />}
@@ -395,6 +422,7 @@ export default function FreelancerDashboard() {
         />
         <Kpi
           label="Open Conversations"
+          short="Chats"
           value={openConversations ? openConversations.total : "…"}
           caption={unreadChats ? `${unreadChats} unread` : "all read"}
           icon={<MessageSquare className="h-5 w-5" />}
@@ -403,6 +431,7 @@ export default function FreelancerDashboard() {
         />
         <Kpi
           label="Interested"
+          short="Interested"
           value={interestedCount}
           caption={interestedCount ? "ready for a proposal" : "none yet"}
           icon={<Star className="h-5 w-5" />}
@@ -411,6 +440,7 @@ export default function FreelancerDashboard() {
         />
         <Kpi
           label="Clients Won"
+          short="Won"
           value={wonCount}
           caption={`${conversionRate}% of leads`}
           icon={<BadgeCheck className="h-5 w-5" />}
@@ -452,6 +482,7 @@ export default function FreelancerDashboard() {
             Conversion rate <span className="font-semibold tabular-nums text-on-surface">{conversionRate}%</span>
           </p>
         </section>
+      </div>
       </div>
     </div>
   );

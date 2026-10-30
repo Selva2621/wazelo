@@ -114,6 +114,8 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   const [connectOpen, setConnectOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [turnedOn, setTurnedOn] = useState(false);
+  // Phones: a finished checklist folds to its title row; the steps open on request
+  const [stepsOpen, setStepsOpen] = useState(false);
 
   const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
   const assistantDone = assistant.done || turnedOn;
@@ -122,6 +124,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   const doneCount = items.filter((i) => i.done).length + (assistant.applicable && assistantDone ? 1 : 0);
   const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
   const everythingDone = doneCount === total;
+  const folded = everythingDone && !stepsOpen;
 
   // The first unfinished step is the one to do now
   const order = [...items.map((i) => ({ id: i.id, done: i.done })), ...(assistant.applicable ? [{ id: "assistant", done: assistantDone }] : [])];
@@ -157,7 +160,12 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
         aria-labelledby="setup-title"
         className={cn("rounded-3xl border border-outline-variant bg-surface-container-lowest p-5", className)}
       >
-        <div className="mb-4 flex items-center justify-between gap-3 border-b border-outline-variant/40 pb-3">
+        <div
+          className={cn(
+            "mb-4 flex items-center justify-between gap-3 border-b border-outline-variant/40 pb-3",
+            folded && "max-lg:mb-0 max-lg:border-b-0 max-lg:pb-0",
+          )}
+        >
           <div className="min-w-0">
             <h2 id="setup-title" className="text-title-sm font-semibold text-on-surface">
               {everythingDone ? "You're all set" : "Get set up"}
@@ -166,13 +174,24 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
               {doneCount} of {total} done
             </p>
           </div>
-          <div className="relative grid shrink-0 place-items-center">
+          {everythingDone && (
+            <button
+              type="button"
+              onClick={() => setStepsOpen((open) => !open)}
+              aria-expanded={stepsOpen}
+              aria-controls="setup-steps"
+              className="ml-auto min-h-11 px-2 text-label font-semibold text-primary lg:hidden"
+            >
+              {stepsOpen ? "Hide steps" : "Show steps"}
+            </button>
+          )}
+          <div className={cn("relative grid shrink-0 place-items-center", folded && "max-lg:hidden")}>
             <ProgressRing pct={pct} />
             <span className="absolute text-caption font-semibold tabular-nums text-on-surface">{pct}%</span>
           </div>
         </div>
 
-        <ol>
+        <ol id="setup-steps" className={cn(folded && "max-lg:hidden")}>
           {items.map((item, i) => (
             <Step
               key={item.id}

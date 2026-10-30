@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useId, type KeyboardEvent } from "react";
-import { Paperclip, Smile, Send, X, FileText, Image, Film, Music, MousePointerClick, Zap } from "lucide-react";
+import { Paperclip, Smile, Send, X, FileText, Image, Film, Music, MousePointerClick, Zap, Plus } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 import { QuickReplyList, recordQuickReplyUse, useQuickReplyPicker } from "./canned-response-picker";
 import { QuickReplyManager } from "./quick-reply-manager";
@@ -78,6 +79,10 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   const fileInputRef = useRef<HTMLInputElement>(null);
   const quickListId = useId();
   const quickPicker = useQuickReplyPicker(showCannedPicker, cannedFilter, quickListId);
+  // Phones only: the "+" menu holding quick replies and the interactive message builder
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuId = useId();
+  const isMobile = useIsMobile();
 
   const closeQuickPicker = () => {
     setShowCannedPicker(false);
@@ -167,7 +172,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   const isEmail = channelType === "EMAIL";
 
   return (
-    <div className="shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-3">
+    <div className="shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-3 max-lg:px-2 max-lg:py-1.5">
       {/* Interactive message builder */}
       {showInteractiveBuilder && onSendInteractive && (
         <InteractiveMessageBuilder
@@ -224,8 +229,68 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
         </div>
       )}
 
-      {/* Input row */}
-      <div className="relative flex items-end gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2 transition-[border-color,box-shadow] duration-120 ease-standard focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+      {/* Input row. Desktop: one bordered box. Phones: [+] (pill: emoji · text · attach) (send) */}
+      <div className="relative flex items-end gap-2 transition-[border-color,box-shadow] duration-120 ease-standard max-lg:gap-1.5 lg:rounded-xl lg:border lg:border-outline-variant lg:bg-surface-container-low lg:px-3 lg:py-2 lg:focus-within:border-primary lg:focus-within:ring-2 lg:focus-within:ring-primary/30">
+        {/* Phones: quick replies + interactive message live behind one "+" */}
+        <IconButton
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setMoreOpen((o) => !o)}
+          disabled={disabled || uploading}
+          aria-expanded={moreOpen}
+          aria-haspopup="menu"
+          aria-controls={moreOpen ? moreMenuId : undefined}
+          className={cn("h-11 w-11 rounded-full lg:hidden", (moreOpen || showCannedPicker || showInteractiveBuilder) && "text-primary bg-primary/10")}
+          title="More"
+          aria-label="More actions"
+        >
+          <Plus className={cn("h-6 w-6 transition-transform duration-120 ease-standard motion-reduce:transition-none", moreOpen && "rotate-45")} aria-hidden />
+        </IconButton>
+        {moreOpen && (
+          <>
+            <div aria-hidden className="fixed inset-0 z-40 lg:hidden" onClick={() => setMoreOpen(false)} />
+            <div
+              id={moreMenuId}
+              role="menu"
+              aria-label="More actions"
+              onKeyDown={(e) => e.key === "Escape" && setMoreOpen(false)}
+              className="absolute bottom-full left-0 z-50 mb-2 min-w-[220px] overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest py-1 shadow-popover lg:hidden"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setMoreOpen(false);
+                  if (showCannedPicker) return closeQuickPicker();
+                  setCannedFilter("");
+                  setShowCannedPicker(true);
+                  textareaRef.current?.focus();
+                }}
+                className="flex min-h-11 w-full items-center gap-3 px-4 text-left text-body-lg text-on-surface active:bg-surface-container"
+              >
+                <Zap className="h-5 w-5 text-on-surface-variant" aria-hidden />
+                Quick replies
+              </button>
+              {onSendInteractive && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setShowInteractiveBuilder(!showInteractiveBuilder);
+                  }}
+                  className="flex min-h-11 w-full items-center gap-3 px-4 text-left text-body-lg text-on-surface active:bg-surface-container"
+                >
+                  <MousePointerClick className="h-5 w-5 text-on-surface-variant" aria-hidden />
+                  Interactive message
+                </button>
+              )}
+            </div>
+          </>
+        )}
+        {/* Desktop: its children sit straight in the row (display: contents). Phones: the rounded pill */}
+        <div className="lg:contents max-lg:flex max-lg:min-h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:items-end max-lg:rounded-[22px] max-lg:border max-lg:border-outline-variant max-lg:bg-surface-container-low max-lg:transition-[border-color,box-shadow] max-lg:duration-120 max-lg:focus-within:border-primary max-lg:focus-within:ring-2 max-lg:focus-within:ring-primary/30">
         {showCannedPicker && (
           <QuickReplyList
             listboxId={quickListId}
@@ -251,12 +316,13 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           disabled={disabled || uploading}
           className={cn(
             "shrink-0 p-1.5 text-on-surface-variant hover:text-on-surface transition-colors rounded-lg",
+            "max-lg:order-3 max-lg:flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center max-lg:rounded-full max-lg:p-0",
             attachment && "text-primary-container",
           )}
           title="Attach file"
           aria-label="Attach file"
         >
-          <Paperclip className="h-5 w-5" />
+          <Paperclip className="h-5 w-5" aria-hidden />
         </button>
         {showEmojiPicker && (
           <EmojiPicker
@@ -270,9 +336,9 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           onClick={() => setShowEmojiPicker((o) => !o)}
           disabled={disabled || uploading}
           aria-expanded={showEmojiPicker}
-          className={cn(showEmojiPicker && "text-primary bg-primary/10")}
+          className={cn("max-lg:order-1 max-lg:h-11 max-lg:w-11 max-lg:rounded-full", showEmojiPicker && "text-primary bg-primary/10")}
           title="Emoji" aria-label="Emoji">
-          <Smile className="h-5 w-5" />
+          <Smile className="h-5 w-5" aria-hidden />
         </IconButton>
         <IconButton size="sm"
           type="button"
@@ -287,9 +353,9 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           disabled={disabled || uploading}
           aria-expanded={showCannedPicker}
           aria-controls={showCannedPicker ? quickListId : undefined}
-          className={cn(showCannedPicker && "text-primary bg-primary/10")}
+          className={cn("max-lg:hidden", showCannedPicker && "text-primary bg-primary/10")}
           title="Quick replies (or type /)" aria-label="Quick replies">
-          <Zap className="h-5 w-5" />
+          <Zap className="h-5 w-5" aria-hidden />
         </IconButton>
         {onSendInteractive && (
           <button
@@ -297,7 +363,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             onClick={() => setShowInteractiveBuilder(!showInteractiveBuilder)}
             disabled={disabled || uploading}
             className={cn(
-              "shrink-0 p-1.5 transition-colors rounded-lg",
+              "shrink-0 p-1.5 transition-colors rounded-lg max-lg:hidden",
               showInteractiveBuilder
                 ? "text-primary-container bg-primary/10"
                 : "text-on-surface-variant hover:text-on-surface",
@@ -306,7 +372,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             aria-label="Interactive message"
             aria-pressed={showInteractiveBuilder}
           >
-            <MousePointerClick className="h-5 w-5" />
+            <MousePointerClick className="h-5 w-5" aria-hidden />
           </button>
         )}
         <textarea
@@ -331,17 +397,20 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           aria-expanded={showCannedPicker}
           aria-controls={showCannedPicker ? quickListId : undefined}
           aria-activedescendant={quickPicker.activeId}
-          placeholder={attachment ? "Add a caption..." : isEmail ? "Compose email..." : "Type a message, or / for quick replies"}
+          placeholder={attachment ? "Add a caption..." : isEmail ? "Compose email..." : isMobile ? "Message" : "Type a message, or / for quick replies"}
           rows={1}
           disabled={disabled || uploading}
-          className="flex-1 resize-none bg-transparent text-body-lg text-on-surface placeholder:text-placeholder outline-none min-h-[24px] max-h-[132px] py-1"
+          className="flex-1 resize-none bg-transparent text-body-lg text-on-surface placeholder:text-placeholder outline-none min-h-[24px] max-h-[132px] py-1 max-lg:order-2 max-lg:min-w-0 max-lg:py-2.5"
         />
+        </div>
         <button
           type="button"
           onClick={handleSend}
           disabled={!canSend}
           className={cn(
             "shrink-0 p-2 rounded-lg transition-colors duration-120 ease-standard",
+            // Phones: always a round filled send button, dimmed until there's something to send
+            "max-lg:flex max-lg:h-11 max-lg:w-11 max-lg:items-center max-lg:justify-center max-lg:rounded-full max-lg:bg-primary max-lg:p-0 max-lg:text-on-primary",
             canSend
               ? "bg-primary text-on-primary hover:bg-primary-container"
               : "text-on-surface-variant opacity-50 cursor-not-allowed",
@@ -350,9 +419,9 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
           aria-label="Send message"
         >
           {uploading ? (
-            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin max-lg:h-5 max-lg:w-5" />
           ) : (
-            <Send className="h-4 w-4" />
+            <Send className="h-4 w-4 max-lg:h-5 max-lg:w-5" aria-hidden />
           )}
         </button>
       </div>

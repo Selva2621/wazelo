@@ -105,7 +105,7 @@ export function SendMessageModal({
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-end max-lg:[&>button]:flex-1">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>

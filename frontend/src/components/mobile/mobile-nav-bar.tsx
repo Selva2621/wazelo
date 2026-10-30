@@ -2,15 +2,40 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Search } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Bell, ChevronLeft, Search } from "lucide-react";
+import { useUnreadCount } from "@/hooks/use-notifications";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
+import { usePlatform } from "@/lib/platform";
 import { hasLargeTitle, isTabRoot, parentRoute, routeTitle } from "@/lib/mobile-routes";
 import { useMobileStore } from "@/stores/mobile-store";
 import { useUIStore } from "@/stores/ui-store";
 import { CommandPalette } from "@/components/layout/command-palette";
 
 const COLLAPSE_AT = 36;
+
+/** Notifications, with the unread count, in the top bar of the main screens */
+function AlertsBell({ count, className, iconClassName }: { count: number; className: string; iconClassName: string }) {
+  return (
+    <Link
+      href="/notifications"
+      onClick={() => haptic()}
+      className={cn("relative", className)}
+      aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
+    >
+      <Bell className={iconClassName} strokeWidth={2} aria-hidden />
+      {count > 0 && (
+        <span
+          aria-hidden
+          className="absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-error px-1 text-[10.5px] font-semibold leading-none tabular-nums text-on-error ring-2 ring-surface"
+        >
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function shortLabel(label: string) {
   return label.length > 12 ? "Back" : label;
@@ -34,11 +59,16 @@ export function MobileNavBar() {
   const setActionsSlot = useMobileStore((s) => s.setActionsSlot);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { data: unread } = useUnreadCount();
+  const alertCount = unread?.unreadCount ?? 0;
 
   // /settings?tab=x is a section screen of the Settings list (same pathname)
   const searchParams = useSearchParams();
   const settingsSection = pathname === "/settings" && searchParams.has("tab");
-  const large = hasLargeTitle(pathname) && !settingsSection;
+  const platform = usePlatform();
+  const android = platform === "android";
+  // Material top app bars keep the title in the bar; only iOS has the large title
+  const large = !android && hasLargeTitle(pathname) && !settingsSection;
   const root = isTabRoot(pathname);
 
   // Session history for Back
@@ -94,6 +124,51 @@ export function MobileNavBar() {
 
   const showCompactTitle = !large || scrolled;
 
+  if (android) {
+    // Material 3 small top app bar: ← and a left-aligned title; turns tonal once content scrolls under
+    return (
+      <>
+        <div className="ios-nav-bar m3-top-app-bar sticky top-0 z-20 lg:hidden" data-scrolled={scrolled}>
+          <div className="flex h-[var(--mobile-nav-h)] items-center gap-1 px-1">
+            {!root && (
+              <button
+                type="button"
+                onClick={goBack}
+                className="m3-icon-button text-on-surface"
+                aria-label={`Back to ${backLabel}`}
+              >
+                <ArrowLeft className="h-6 w-6" strokeWidth={2} aria-hidden />
+              </button>
+            )}
+            <h1
+              className={cn(
+                "min-w-0 flex-1 truncate text-[22px] font-normal leading-7 text-on-surface",
+                root ? "pl-3" : "pl-1",
+              )}
+            >
+              {title}
+            </h1>
+            <div className="flex shrink-0 items-center">
+              <div ref={setActionsSlot} className="flex items-center empty:hidden" />
+              {root && <AlertsBell count={alertCount} className="m3-icon-button text-on-surface-variant" iconClassName="h-6 w-6" />}
+              {root && (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  className="m3-icon-button text-on-surface-variant"
+                  aria-label="Search"
+                >
+                  <Search className="h-6 w-6" strokeWidth={2} aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="ios-nav-bar sticky top-0 z-20 lg:hidden" data-scrolled={scrolled}>
@@ -133,6 +208,13 @@ export function MobileNavBar() {
           {/* Right: page actions + search on top-level pages */}
           <div className="flex min-w-0 items-center justify-end gap-0.5">
             <div ref={setActionsSlot} className="flex items-center gap-0.5 empty:hidden" />
+            {root && (
+              <AlertsBell
+                count={alertCount}
+                className="grid size-11 place-items-center rounded-full text-primary active:opacity-50"
+                iconClassName="h-[22px] w-[22px]"
+              />
+            )}
             {root && (
               <button
                 type="button"

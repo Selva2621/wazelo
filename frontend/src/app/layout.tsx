@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { OfflineBanner } from "@/components/pwa/offline-banner";
 import { splashScreens } from "@/lib/pwa/splash-screens";
+import { PLATFORM_SCRIPT } from "@/lib/platform";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -56,6 +57,8 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="daylight" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
+        {/* Phone look (iOS / Android) before first paint; see lib/platform.ts */}
+        <script dangerouslySetInnerHTML={{ __html: PLATFORM_SCRIPT }} />
         <QueryProvider>
           <ThemeProvider>
             {children}

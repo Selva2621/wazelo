@@ -1,7 +1,9 @@
 "use client";
 
 import { BellRing, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useBrowserPush } from "@/hooks/use-browser-push";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -10,9 +12,15 @@ import { IconButton } from "@/components/ui/icon-button";
  * stored for this device, so the banner never comes back here; the settings
  * page can still turn push on later.
  */
+// On phones the banner only shows where it fits the context; desktop shows it everywhere
+const MOBILE_BANNER_PATHS = new Set(["/dashboard", "/dashboard/freelancer", "/notifications"]);
+
 export function PushPromptBanner() {
   const { shouldPrompt, enable, dismiss, isPending } = useBrowserPush();
+  const pathname = usePathname();
+  const isMobile = useIsMobile();
   if (!shouldPrompt) return null;
+  if (isMobile && !MOBILE_BANNER_PATHS.has(pathname.replace(/\/+$/, "") || "/")) return null;
 
   return (
     <div className="px-4 pt-3 max-lg:pt-1 max-lg:pb-2" role="region" aria-label="Turn on notifications">

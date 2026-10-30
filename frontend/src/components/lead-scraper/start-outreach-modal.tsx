@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useStartOutreach } from "@/hooks/use-sequences";
 import { useSendHealth } from "@/hooks/use-whatsapp";
 import { getOutreachSteps, hasOutreachBlanks } from "@/lib/constants/outreach";
@@ -146,7 +146,7 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
         </label>
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15">
+      <ModalFooter className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15 max-lg:px-4 max-lg:[&>button]:flex-1">
         <Button variant="ghost" onClick={onClose} disabled={startOutreach.isPending}>
           Cancel
         </Button>
@@ -154,7 +154,7 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
           <Rocket className="h-4 w-4" />
           Start outreach
         </Button>
-      </div>
+      </ModalFooter>
     </>
   );
 }

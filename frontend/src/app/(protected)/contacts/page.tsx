@@ -129,7 +129,13 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100dvh-var(--header-height))]">
+    // Phones, list view: the page itself scrolls (no inner scroll box); the board keeps its bounded height
+    <div
+      className={cn(
+        "relative flex flex-col h-[calc(100dvh-var(--header-height))]",
+        view === "list" && "max-lg:h-auto",
+      )}
+    >
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4 max-lg:pt-1 max-lg:space-y-3">
         {/* Phones/tablets: title is in the nav bar, buttons in its + and … menus */}
@@ -230,7 +236,7 @@ export default function ContactsPage() {
         <ContactKanbanBoard />
       ) : (
         // Desktop: room around the table card
-        <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4 max-lg:flex-none max-lg:overflow-visible">
           {isError ? (
             <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
           ) : (

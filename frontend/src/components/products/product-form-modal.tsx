@@ -242,7 +242,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 justify-end pt-1">
+          <div className="flex gap-2 justify-end pt-1 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>

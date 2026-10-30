@@ -143,7 +143,8 @@ export default function AutomationPage() {
   }));
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    // Phones: the page itself scrolls instead of an inner scroll box
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Upgrade banner */}
       {!automationEnabled && (
         <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
@@ -198,7 +199,7 @@ export default function AutomationPage() {
 
       {/* Content */}
       {/* Desktop: room around the table card (like Contacts) */}
-      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4 max-lg:flex-none max-lg:overflow-visible">
         {activeTab === "rules" && automationEnabled && (
           <RecipeCards
             className="px-6 pt-4 lg:px-0 lg:pt-0 lg:pb-4"

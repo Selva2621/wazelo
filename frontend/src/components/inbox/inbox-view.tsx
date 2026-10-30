@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { MessageSquare, WifiOff, ArrowLeft, Trash2, XCircle, Archive, RotateCcw, Star, Handshake, ChevronLeft, Ellipsis } from "lucide-react";
+import { MessageSquare, WifiOff, ArrowLeft, Trash2, XCircle, Archive, RotateCcw, Star, Handshake, ChevronLeft, Ellipsis, EllipsisVertical } from "lucide-react";
 import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { ActionSheet } from "@/components/ios/action-sheet";
 import { MOBILE_BACK_EVENT } from "@/components/mobile/edge-swipe-back";
 import { haptic } from "@/lib/haptics";
+import { usePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
 import { useInboxStore } from "@/stores/inbox-store";
@@ -245,6 +246,7 @@ export function InboxView({
   // Mobile: an open chat is a full-screen pushed screen (tab bar hidden, own iOS header)
   const inMobileThread = !isDesktop && !!selectedId;
   const [threadMenuOpen, setThreadMenuOpen] = useState(false);
+  const android = usePlatform() === "android";
   useHideTabBar(inMobileThread);
   useMobileTitle(isAdminView && targetUserName ? `${targetUserName.trim()}'s Inbox` : null);
   const viewport = useVisualViewport();
@@ -575,7 +577,7 @@ export function InboxView({
         {selectedConversation ? (
           <>
             {/* Chat header (mobile): ‹ Inbox · contact · … */}
-            <div className="ios-nav-bar shrink-0 lg:hidden max-lg:-order-1" data-scrolled="true">
+            <div className="ios-nav-bar m3-top-app-bar shrink-0 lg:hidden max-lg:-order-1" data-scrolled="true">
               <div className="flex h-[52px] items-center gap-1 px-1">
                 <button
                   type="button"
@@ -583,16 +585,29 @@ export function InboxView({
                     haptic();
                     setSelectedId(null);
                   }}
-                  className="flex h-11 shrink-0 items-center pr-1 text-primary active:opacity-50"
+                  className={
+                    android
+                      ? "m3-icon-button text-on-surface"
+                      : "flex h-11 shrink-0 items-center pr-1 text-primary active:opacity-50"
+                  }
                   aria-label="Back to conversations"
                 >
-                  <ChevronLeft className="h-7 w-7" strokeWidth={2.2} aria-hidden />
-                  <span className="-ml-0.5 text-[17px]">Inbox</span>
+                  {android ? (
+                    <ArrowLeft className="h-6 w-6" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <>
+                      <ChevronLeft className="h-7 w-7" strokeWidth={2.2} aria-hidden />
+                      <span className="-ml-0.5 text-[17px]">Inbox</span>
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setMobileContactOpen(true)}
-                  className="flex min-w-0 flex-1 items-center justify-center gap-2 active:opacity-60"
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2",
+                    android ? "justify-start rounded-full py-1 pr-2" : "justify-center active:opacity-60",
+                  )}
                   aria-label="Contact info"
                 >
                   <Avatar name={selectedConversation.contactName} size="sm" />
@@ -613,10 +628,18 @@ export function InboxView({
                     haptic();
                     setThreadMenuOpen(true);
                   }}
-                  className="grid size-11 shrink-0 place-items-center text-primary active:opacity-50"
+                  className={
+                    android
+                      ? "m3-icon-button text-on-surface-variant"
+                      : "grid size-11 shrink-0 place-items-center text-primary active:opacity-50"
+                  }
                   aria-label="Conversation actions"
                 >
-                  <Ellipsis className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                  {android ? (
+                    <EllipsisVertical className="h-6 w-6" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <Ellipsis className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                  )}
                 </button>
               </div>
             </div>

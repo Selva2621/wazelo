@@ -42,7 +42,7 @@ import type {
   StepCondition,
 } from "@/lib/types/sequences";
 import { IconButton } from "@/components/ui/icon-button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
 
 interface CreateSequenceModalProps {
@@ -561,7 +561,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
         </div>
 
         <div className="flex flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin] max-lg:min-w-0 max-lg:overflow-x-hidden max-lg:px-4">
           {/* How to start: blank (default), a template, or an AI draft */}
           <div className="space-y-3">
             <div
@@ -588,7 +588,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                     onClick={() => chooseSource(o.value)}
                     disabled={submitting}
                     className={cn(
-                      "flex h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-label font-medium transition-colors",
+                      "flex h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-label font-medium transition-colors max-lg:min-w-0 max-lg:gap-1 max-lg:px-1",
                       "outline-none focus-visible:ring-2 focus-visible:ring-focus",
                       active
                         ? "bg-surface-container-lowest text-on-surface shadow-sm"
@@ -1048,9 +1048,9 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15">
+        <ModalFooter className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15 max-lg:flex-wrap max-lg:px-4 max-lg:[&>button]:flex-1">
           {blockedReason && (
-            <p role="status" className="mr-auto text-label text-warning">
+            <p role="status" className="mr-auto text-label text-warning max-lg:basis-full">
               {blockedReason}
             </p>
           )}
@@ -1060,7 +1060,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
           <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
             {submitting ? "Creating…" : joinMode === "AUTO" ? "Create & turn on" : "Create sequence"}
           </Button>
-        </div>
+        </ModalFooter>
       </>
   );
 }

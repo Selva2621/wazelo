@@ -6,22 +6,25 @@ import { allNavItems } from "@/components/layout/nav-config";
  * a large title (top-level lists) vs a compact one (detail screens).
  */
 
-export type MobileTabId = "inbox" | "contacts" | "dashboard" | "alerts" | "more";
+export type MobileTabId = "home" | "inbox" | "contacts" | "more";
 
 const TAB_PREFIXES: [MobileTabId, string[]][] = [
+  ["home", ["/dashboard"]],
   ["inbox", ["/inbox"]],
   ["contacts", ["/contacts"]],
-  ["dashboard", ["/dashboard"]],
-  ["alerts", ["/notifications"]],
 ];
 
-const TAB_ROOTS = ["/inbox", "/contacts", "/dashboard", "/dashboard/freelancer", "/notifications", "/more"];
+/** Pages opened from the top bar (bell), not from a tab: no tab is highlighted there */
+const OFF_TAB = ["/notifications"];
+
+const TAB_ROOTS = ["/inbox", "/contacts", "/dashboard", "/dashboard/freelancer", "/more"];
 
 function under(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(prefix + "/");
 }
 
-export function tabForPath(pathname: string): MobileTabId {
+export function tabForPath(pathname: string): MobileTabId | null {
+  if (OFF_TAB.some((p) => under(pathname, p))) return null;
   for (const [tab, prefixes] of TAB_PREFIXES) {
     if (prefixes.some((p) => under(pathname, p))) return tab;
   }
@@ -82,6 +85,8 @@ export function hasLargeTitle(pathname: string) {
 /** Where "Back" goes when the page was opened directly (no in-app history). */
 export function parentRoute(pathname: string): { href: string; label: string } {
   if (isTabRoot(pathname)) return { href: pathname, label: routeTitle(pathname) };
+  // Opened from the bell in the top bar; Home is the natural way back
+  if (pathname === "/notifications") return { href: "/dashboard", label: "Home" };
   // Pages listed on the More screen go back to it
   if (allNavItems.some((i) => i.href === pathname)) return { href: "/more", label: "More" };
   // Otherwise walk up to the nearest page we know

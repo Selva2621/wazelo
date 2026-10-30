@@ -209,7 +209,7 @@ export function CreateScheduledMessageModal({
           />
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>

@@ -123,6 +123,10 @@ export function Modal({
               className={cn(
                 "relative w-full overflow-y-auto overscroll-contain bg-surface-container-lowest shadow-modal",
                 className,
+                // Never wider than the phone: content scrolls up and down only
+                "min-w-0 overflow-x-hidden",
+                // A ModalFooter carries its own safe-area padding
+                "[&:has([data-sheet-footer])>[data-sheet-spacer]]:hidden",
                 "ios-modal-sheet",
               )}
               {...(reduceMotion ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } } : sheetMotion)}
@@ -130,7 +134,7 @@ export function Modal({
             >
               <SheetGrabber onPointerDown={drag.start} />
               {children()}
-              <div aria-hidden className="h-[var(--safe-bottom)]" />
+              <div aria-hidden data-sheet-spacer className="h-[var(--safe-bottom)]" />
             </motion.div>
           </div>
         )}
@@ -176,6 +180,25 @@ export function Modal({
         </div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * Action row at the end of a Modal. Desktop: renders exactly with the given classes.
+ * Phones: sticks to the bottom of the sheet, clears the home indicator, and the caller's
+ * buttons can use `max-lg:flex-1` to fill the width.
+ */
+export function ModalFooter({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <div
+      data-sheet-footer
+      className={cn(
+        className,
+        "max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:bg-surface-container-lowest max-lg:pb-[max(12px,var(--safe-bottom))]",
+      )}
+    >
+      {children}
+    </div>
   );
 }
 

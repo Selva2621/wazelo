@@ -75,7 +75,7 @@ export function ListRow({
         {detail !== undefined && (
           <span className="ml-2 flex shrink-0 items-center text-[15px] text-on-surface-variant">{detail}</span>
         )}
-        {showChevron && <ChevronRight className="ml-1 h-[18px] w-[18px] shrink-0 text-outline" aria-hidden />}
+        {showChevron && <ChevronRight className="ios-row-chevron ml-1 h-[18px] w-[18px] shrink-0 text-outline" aria-hidden />}
       </span>
     </>
   );

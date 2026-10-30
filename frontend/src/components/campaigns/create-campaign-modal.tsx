@@ -27,7 +27,7 @@ import type { MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
 import {
@@ -80,7 +80,7 @@ function FilterSelect({
   className?: string;
 }) {
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative max-lg:max-w-full ${className}`}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -255,7 +255,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
       <>
 
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/10 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/10 shrink-0 max-lg:px-4 max-lg:pt-5 max-lg:pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
               <Megaphone className="h-4 w-4 text-primary" />
@@ -269,10 +269,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         </div>
 
         {/* ── Body ────────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 min-h-0">
+        {/* Phones: one column that scrolls up and down; desktop: side-by-side panels */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 min-h-0 max-lg:block max-lg:min-w-0 max-lg:overflow-y-auto max-lg:overflow-x-hidden max-lg:overscroll-contain">
 
           {/* LEFT PANEL — Campaign details + Message content */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 border-r border-outline-variant/10">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 border-r border-outline-variant/10 max-lg:min-w-0 max-lg:overflow-visible max-lg:border-r-0 max-lg:px-4 max-lg:pb-3">
 
             <CampaignCapacityNotice />
 
@@ -508,7 +509,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           </div>
 
           {/* MIDDLE PANEL — Audience, Session, Product, Scheduling */}
-          <div className="w-[380px] shrink-0 overflow-y-auto px-6 py-5 space-y-6 xl:border-r xl:border-outline-variant/10">
+          <div className="w-[380px] shrink-0 overflow-y-auto px-6 py-5 space-y-6 xl:border-r xl:border-outline-variant/10 max-lg:w-full max-lg:min-w-0 max-lg:overflow-visible max-lg:px-4 max-lg:pt-3 max-lg:border-t max-lg:border-outline-variant/10">
 
             {/* Audience */}
             <div>
@@ -526,7 +527,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     key={opt.value}
                     type="button"
                     onClick={() => setValue("audienceType", opt.value, { shouldValidate: true })}
-                    className={`p-2.5 rounded-xl text-left transition-colors border ${
+                    className={`p-2.5 rounded-xl text-left transition-colors border max-lg:min-w-0 ${
                       audienceType === opt.value
                         ? "border-primary/50 bg-primary/5"
                         : "border-outline-variant/15 bg-surface-container-low hover:bg-surface-container"
@@ -785,7 +786,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             {/* Scheduling */}
             <div>
               <SectionHeading icon={<Clock className="h-3.5 w-3.5" />} label="Scheduling" />
-              <div className="flex gap-2 mb-3">
+              <div className="flex gap-2 mb-3 max-lg:gap-1.5">
                 {([
                   { value: "immediate", label: "Send now" },
                   { value: "scheduled", label: "Schedule" },
@@ -795,7 +796,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     key={opt.value}
                     type="button"
                     onClick={() => setScheduleMode(opt.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-label font-medium transition-colors border ${
+                    className={`flex-1 px-3 py-2 rounded-lg text-label font-medium transition-colors border max-lg:min-w-0 max-lg:px-1.5 max-lg:min-h-11 ${
                       scheduleMode === opt.value
                         ? "border-primary/50 bg-primary/10 text-primary"
                         : "border-outline-variant/15 text-on-surface-variant hover:bg-surface-container"
@@ -838,14 +839,14 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         </form>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant/10 bg-surface-container-lowest">
+        <ModalFooter className="shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant/10 bg-surface-container-lowest max-lg:flex-wrap max-lg:px-4 max-lg:pt-3">
           {createCampaign.isError && (
-            <p className="text-label text-error flex-1">
+            <p className="text-label text-error flex-1 max-lg:basis-full">
               {(createCampaign.error as Error)?.message || "Failed to create campaign"}
             </p>
           )}
-          <div className="flex gap-2 ml-auto">
-            <Button type="button" variant="secondary" onClick={onClose}>
+          <div className="flex gap-2 ml-auto max-lg:ml-0 max-lg:w-full">
+            <Button type="button" variant="secondary" onClick={onClose} className="max-lg:flex-1">
               Cancel
             </Button>
             <Button
@@ -853,11 +854,12 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               form="campaign-form"
               loading={createCampaign.isPending || previewAudience.isPending}
               onClick={handleSubmit(onSubmit)}
+              className="max-lg:flex-1"
             >
               {scheduleMode === "immediate" ? "Create & send" : scheduleMode === "scheduled" ? "Schedule campaign" : "Save draft"}
             </Button>
           </div>
-        </div>
+        </ModalFooter>
       </>
       )}
     </Modal>

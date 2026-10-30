@@ -16,6 +16,7 @@ import { useOrgSettings } from "@/hooks/use-settings";
 import { formatAmount } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { ActionSheetAction } from "@/components/ios/action-sheet";
+import { SwipeColumnChips, useSwipeColumns } from "@/components/ui/swipe-columns";
 
 interface PipelineBoardProps {
   pipeline: Pipeline;
@@ -30,6 +31,7 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
+  const { scrollerRef, onScroll: onBoardScroll, scrollTo: showColumn, active: activeColumn } = useSwipeColumns(pipeline.stages.length);
 
   // Group deals by stage
   const dealsByStage = useMemo(() => {
@@ -119,10 +121,28 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
         </div>
       )}
 
+      {/* Mobile: every stage as a chip; tap one to jump to its column */}
+      <SwipeColumnChips
+        label="Stages"
+        active={activeColumn}
+        onSelect={showColumn}
+        className="shrink-0"
+        chips={pipeline.stages.map((stage) => ({
+          id: stage.id,
+          label: stage.name,
+          count: dealsByStage.get(stage.id)?.length ?? 0,
+          color: stage.color || "#6b7280",
+        }))}
+      />
+
       {/* Kanban board */}
       {/* Mobile: one column per screen, swipe sideways with snap */}
-      <div className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4">
-        <div className="flex gap-4 p-6 min-h-0 h-full max-lg:gap-3 max-lg:px-4 max-lg:py-3 max-lg:w-max">
+      <div
+        ref={scrollerRef}
+        onScroll={onBoardScroll}
+        className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4 max-lg:overflow-y-hidden max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex gap-4 p-6 min-h-0 h-full max-lg:gap-3 max-lg:px-4 max-lg:pt-1 max-lg:pb-3 max-lg:w-max max-lg:items-start">
           {pipeline.stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];
             const stageAnalytics = analytics?.byStage.find((s) => s.stageId === stage.id);
@@ -130,7 +150,10 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
             return (
               <div
                 key={stage.id}
-                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10 max-lg:w-[calc(100vw-48px)] max-lg:snap-start"
+                id={`swipe-col-${stage.id}`}
+                data-swipe-column
+                // Phones: full width, as tall as its deals (scrolls inside past the screen)
+                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10 max-lg:w-[calc(100vw-32px)] max-lg:max-h-full max-lg:snap-start max-lg:snap-always"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage)}
               >
@@ -154,8 +177,9 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
                 {/* Stage deals */}
                 <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                   {stageDeals.length === 0 ? (
-                    <div className="text-center py-6 text-label text-on-surface-variant/40">
-                      Drop deals here
+                    <div className="text-center py-6 text-label text-on-surface-variant/40 max-lg:py-5 max-lg:text-on-surface-variant">
+                      <span className="max-lg:hidden">Drop deals here</span>
+                      <span className="lg:hidden">No deals in this stage</span>
                     </div>
                   ) : (
                     stageDeals.map((deal) => (

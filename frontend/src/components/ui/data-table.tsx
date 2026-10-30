@@ -110,6 +110,8 @@ export interface DataTableProps<T> {
 
   /** Custom phone list (below 1024px) instead of the automatic cards. */
   renderMobileRow?: (row: T) => ReactNode;
+  /** Classes for the phone list (<ul>), e.g. edge-to-edge rows instead of the inset group. */
+  mobileListClassName?: string;
 }
 
 const checkboxClass = "size-4 cursor-pointer rounded border-outline-variant accent-primary align-middle";
@@ -167,6 +169,7 @@ export function DataTable<T>({
   className,
   wrapperClassName,
   renderMobileRow,
+  mobileListClassName,
   renderExpandedRow,
   isRowExpanded,
 }: DataTableProps<T>) {
@@ -239,11 +242,46 @@ export function DataTable<T>({
     // data-table-card: white card on desktop (globals.css); flattens itself inside another card
     // Sticky tables: the card hugs its rows and only scrolls inside when they outgrow the space
     <div className={cn("data-table-card flex flex-col", stickyHeader && "max-h-full", wrapperClassName)}>
-      {renderMobileRow && !loading && (
-        <ul className="mx-4 mb-4 mt-1 divide-y divide-outline-variant/40 overflow-hidden rounded-xl bg-surface-container-lowest lg:hidden">
-          {rows.map((row, i) => (
-            <li key={keys[i]}>{renderMobileRow(row)}</li>
-          ))}
+      {renderMobileRow && (
+        <ul
+          aria-label={label}
+          aria-busy={loading || undefined}
+          className={cn(
+            "mx-4 mb-4 mt-1 divide-y divide-outline-variant/40 overflow-hidden rounded-xl bg-surface-container-lowest lg:hidden",
+            mobileListClassName,
+          )}
+        >
+          {loading
+            ? // Placeholder rows, so phones don't show a blank page while loading
+              Array.from({ length: Math.min(skeletonRows, 8) }).map((_, i) => (
+                <li key={`skeleton-${i}`} aria-hidden className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="size-10 shrink-0 animate-pulse rounded-full bg-surface-container" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-3.5 w-32 animate-pulse rounded bg-surface-container" />
+                    <div className="h-3 w-24 animate-pulse rounded bg-surface-container" />
+                  </div>
+                </li>
+              ))
+            : rows.map((row, i) => {
+                const key = keys[i];
+                if (!selection) return <li key={key}>{renderMobileRow(row)}</li>;
+                const selected = selection.selected.has(key);
+                // Selectable lists: a compact checkbox (44px tap area) leading the row
+                return (
+                  <li key={key} className={cn("flex items-stretch", selected && "bg-primary/5")}>
+                    <label className="flex w-11 shrink-0 cursor-pointer items-center justify-center pl-2">
+                      <input
+                        type="checkbox"
+                        className={checkboxClass}
+                        checked={selected}
+                        onChange={() => toggleOne(key)}
+                        aria-label={`Select ${rowLabel ? rowLabel(row) : "row"}`}
+                      />
+                    </label>
+                    <div className="min-w-0 flex-1">{renderMobileRow(row)}</div>
+                  </li>
+                );
+              })}
         </ul>
       )}
 

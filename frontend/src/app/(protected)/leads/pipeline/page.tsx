@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Briefcase } from "lucide-react";
@@ -16,6 +16,7 @@ import { contactsApi } from "@/lib/api/contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import { CONTACT_SOURCE_LABELS, SCRAPE_SOURCE_LABELS } from "@/lib/constants/contact-sources";
 import type { LeadStatus, Contact, ContactSource, ContactListResponse, ListContactsParams } from "@/lib/types/contacts";
+import { SwipeColumnChips, useSwipeColumns } from "@/components/ui/swipe-columns";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ function PipelineColumn({
   onOpen,
   onConvert,
   convertingId,
+  onTotal,
 }: {
   status: LeadStatus;
   label: string;
@@ -173,6 +175,8 @@ function PipelineColumn({
   onOpen: (id: string) => void;
   onConvert?: (contact: Contact) => void;
   convertingId: string | null;
+  /** Reports the column's lead count (for the phone stage chips) */
+  onTotal: (status: LeadStatus, total: number | null) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [limit, setLimit] = useState(PAGE);
@@ -180,11 +184,18 @@ function PipelineColumn({
   const contacts = data?.contacts ?? [];
   const total = data?.total ?? 0;
   const headingId = `col-${status}`;
+  const shownTotal = isLoading ? null : total;
+  useEffect(() => {
+    onTotal(status, shownTotal);
+  }, [onTotal, status, shownTotal]);
 
   return (
     <section
       aria-labelledby={headingId}
-      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors max-lg:w-[calc(100vw-48px)] max-lg:snap-start ${
+      id={`swipe-col-${status}`}
+      data-swipe-column
+      // Phones: full width, as tall as its leads (scrolls inside past the screen)
+      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors max-lg:w-[calc(100vw-32px)] max-lg:max-h-full max-lg:snap-start max-lg:snap-always ${
         isDragOver ? "border-primary/40 bg-primary/5" : "border-outline-variant/10 bg-surface-container/40"
       }`}
       onDragOver={(e) => {
@@ -222,7 +233,7 @@ function PipelineColumn({
             Couldn&apos;t load these leads.
           </p>
         ) : contacts.length === 0 ? (
-          <p className="py-8 text-center text-label text-on-surface-variant">No leads</p>
+          <p className="py-8 text-center text-label text-on-surface-variant max-lg:py-5">No leads</p>
         ) : (
           <>
             <ul className="space-y-2">
@@ -312,6 +323,13 @@ export default function LeadPipelinePage() {
   const sourceOptions = (groups?.sources ?? []).filter((g) => g.count > 0);
   const moved = moveLead.isSuccess ? moveLead.variables : undefined;
 
+  // Phones: chips name every column with its count; swiping keeps them in step
+  const { scrollerRef, onScroll: onBoardScroll, scrollTo: showColumn, active: activeColumn } = useSwipeColumns(COLUMNS.length);
+  const [totals, setTotals] = useState<Partial<Record<LeadStatus, number | null>>>({});
+  const reportTotal = useCallback((status: LeadStatus, total: number | null) => {
+    setTotals((prev) => (prev[status] === total ? prev : { ...prev, [status]: total }));
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       {/* The iOS nav bar shows the title on mobile */}
@@ -341,10 +359,27 @@ export default function LeadPipelinePage() {
         </span>
       </FilterBar>
 
+      <SwipeColumnChips
+        label="Lead statuses"
+        active={activeColumn}
+        onSelect={showColumn}
+        className="shrink-0"
+        chips={COLUMNS.map((col) => ({
+          id: col.status,
+          label: col.label,
+          count: totals[col.status],
+          color: col.color,
+        }))}
+      />
+
       {/* Kanban board */}
       {/* Mobile: one column per screen, swipe sideways with snap */}
-      <div className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4">
-        <div className="flex h-full min-h-0 gap-4 p-6 max-lg:w-max max-lg:gap-3 max-lg:px-4 max-lg:py-3">
+      <div
+        ref={scrollerRef}
+        onScroll={onBoardScroll}
+        className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4 max-lg:overflow-y-hidden max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex h-full min-h-0 gap-4 p-6 max-lg:w-max max-lg:items-start max-lg:gap-3 max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
           {COLUMNS.map((col) => (
             <PipelineColumn
               // A new source filter starts each column from its first page
@@ -358,6 +393,7 @@ export default function LeadPipelinePage() {
               onOpen={openContactDetail}
               onConvert={convertPipeline ? handleConvert : undefined}
               convertingId={convertingId}
+              onTotal={reportTotal}
             />
           ))}
         </div>

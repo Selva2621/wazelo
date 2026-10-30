@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { usePlatform } from "@/lib/platform";
 import { isTabRoot, parentRoute } from "@/lib/mobile-routes";
 import { useMobileStore } from "@/stores/mobile-store";
 import { usePwaStore } from "@/stores/pwa-store";
@@ -22,7 +23,10 @@ export const MOBILE_BACK_EVENT = "mobile:back";
 export function EdgeSwipeBack() {
   const router = useRouter();
   const pathname = usePathname();
-  const standalone = usePwaStore((s) => s.standalone);
+  const installed = usePwaStore((s) => s.standalone);
+  // Android has its own system back gesture; this one is iOS only
+  const platform = usePlatform();
+  const standalone = installed && platform === "ios";
   const history = useMobileStore((s) => s.history);
   const [dx, setDx] = useState(0);
   const start = useRef<{ x: number; y: number } | null>(null);

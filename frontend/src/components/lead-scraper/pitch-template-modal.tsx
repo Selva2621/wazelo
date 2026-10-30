@@ -10,7 +10,7 @@ import type { MessageTemplate } from "@/lib/types/templates";
 import type { ScrapeResult } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -253,7 +253,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
 
         {/* Footer */}
         {!done && (
-          <div className="shrink-0 flex items-center justify-end gap-3 px-5 py-4 border-t border-outline-variant/20">
+          <ModalFooter className="shrink-0 flex items-center justify-end gap-3 px-5 py-4 border-t border-outline-variant/20 max-lg:px-4 max-lg:[&>button]:flex-1">
             <button
               onClick={handleClose}
               disabled={sending}
@@ -269,7 +269,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Send to {selectedResults.length} Contact{selectedResults.length !== 1 ? "s" : ""}
             </Button>
-          </div>
+          </ModalFooter>
         )}
       </>
       )}

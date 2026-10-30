@@ -670,7 +670,7 @@ export function CreateAutomationRuleModal({
             <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Advanced Settings
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
               <div>
                 <Label htmlFor="priority">Priority</Label>
                 <Input
@@ -709,7 +709,7 @@ export function CreateAutomationRuleModal({
           />
 
           {/* Submit */}
-          <div className="flex justify-end gap-2 pt-2 pb-2">
+          <div className="flex justify-end gap-2 pt-2 pb-2 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>

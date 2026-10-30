@@ -278,8 +278,8 @@ export function AiInsightPanel({
       aria-labelledby={titleId}
       className="shrink-0 border-t border-outline-variant/15 bg-surface-container/30"
     >
-      {/* Header: open/close + read state */}
-      <div className="flex items-center gap-2 px-4 py-1.5">
+      {/* Header: open/close + read state (phones use the chip in the helper row instead) */}
+      <div className="flex items-center gap-2 px-4 py-1.5 max-lg:hidden">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -324,7 +324,7 @@ export function AiInsightPanel({
         )}
       </div>
 
-      <div id={bodyId} hidden={!expanded} className="px-4 pb-1">
+      <div id={bodyId} hidden={!expanded} className="px-4 pb-1 max-lg:pt-2">
         {saved.isLoading ? (
           <p
             className="pb-2 text-caption text-on-surface-variant"
@@ -497,11 +497,53 @@ export function AiInsightPanel({
         )}
       </div>
 
-      {/* AI helpers: always visible, even when the panel is closed */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/10 px-4 py-2">
+      {/* AI helpers: always visible, even when the panel is closed. Phones: one line of
+          chips that scrolls sideways, led by the "About this chat" toggle */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/10 px-4 py-2 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:overscroll-x-contain max-lg:px-2 max-lg:py-1 max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          className={cn(
+            "flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-body font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden",
+            expanded
+              ? "border-primary/30 bg-primary/10 text-on-surface"
+              : "border-outline-variant text-on-surface",
+          )}
+        >
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+          About this chat
+          {r?.mood === "URGENT" ? (
+            <Badge variant="error" dot>
+              Urgent
+            </Badge>
+          ) : (
+            !expanded &&
+            mood && (
+              <span className={cn("font-normal", mood.color)}>
+                · {mood.label}
+              </span>
+            )
+          )}
+          {expanded && ready && !stale && (
+            <>
+              <Check className="h-3.5 w-3.5 text-success" aria-hidden />
+              <span className="sr-only">Up to date</span>
+            </>
+          )}
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-on-surface-variant transition-transform motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+            aria-hidden
+          />
+        </button>
         <Button
           size="sm"
           variant={repliesOpen ? "primary" : "secondary"}
+          className="max-lg:h-11 max-lg:shrink-0 max-lg:rounded-full"
           loading={writing}
           aria-expanded={repliesOpen}
           aria-controls={replyRegionId}
@@ -522,6 +564,7 @@ export function AiInsightPanel({
         <Button
           size="sm"
           variant={faqOpen ? "primary" : "secondary"}
+          className="max-lg:h-11 max-lg:shrink-0 max-lg:rounded-full"
           aria-expanded={faqOpen}
           aria-controls={faqOpen ? faqInputId : undefined}
           onClick={() => setFaqFor(faqOpen ? null : chatId)}

@@ -2,6 +2,7 @@
 
 import { Users, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -140,6 +141,44 @@ const columns: DataTableColumn<Contact>[] = [
   },
 ];
 
+/**
+ * Phone row (below 1024px): avatar | name + number | status and score. Tapping the row
+ * opens the same quick view as a table row; the trailing icon opens the full profile,
+ * like the desktop Profile column.
+ */
+function ContactMobileRow({ contact: c, onOpen }: { contact: Contact; onOpen: () => void }) {
+  const secondary = c.name ? c.phoneNumber : c.email || SOURCE_LABELS[c.source] || c.source;
+  return (
+    <div className="flex items-center">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${displayName(c)}`}
+        className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pl-2 pr-2 text-left outline-none transition-colors active:bg-surface-container focus-visible:bg-surface-container-low"
+      >
+        <Avatar name={displayName(c)} src={c.avatarUrl} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[16px] font-semibold leading-[22px] text-on-surface">{displayName(c)}</p>
+          {secondary && (
+            <p className="truncate text-[14px] leading-5 text-on-surface-variant">{secondary}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <LeadStatusBadge status={c.leadStatus} />
+          <LeadScoreBadge score={c.leadScore} />
+        </div>
+      </button>
+      <Link
+        href={`/contacts/${c.id}`}
+        className="flex size-11 shrink-0 items-center justify-center text-on-surface-variant/70 outline-none active:text-primary focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+        aria-label={`View ${displayName(c)} profile`}
+      >
+        <ExternalLink className="h-4 w-4" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
 export function ContactsTable({
   contacts,
   total,
@@ -176,6 +215,9 @@ export function ContactsTable({
         actionLabel: "New contact",
         onAction: onCreateClick,
       }}
+      // Phones: edge-to-edge native list rows; room at the end for the floating bulk bar
+      mobileListClassName={cn("mx-0 mt-1 rounded-none", anySelected && "mb-28")}
+      renderMobileRow={(c) => <ContactMobileRow contact={c} onOpen={() => onRowClick(c.id)} />}
     />
   );
 }

@@ -15,6 +15,7 @@ import { MobileTabBar } from "@/components/mobile/mobile-tab-bar";
 import { MobileTableLabels } from "@/components/mobile/mobile-table-labels";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { EdgeSwipeBack } from "@/components/mobile/edge-swipe-back";
+import { TouchRipple } from "@/components/mobile/touch-ripple";
 
 interface AppShellProps {
   children: ReactNode;
@@ -115,6 +116,7 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
       {isMobile && <MobileTableLabels />}
       {isMobile && <PullToRefresh />}
       {isMobile && <EdgeSwipeBack />}
+      {isMobile && <TouchRipple />}
     </div>
   );
 }

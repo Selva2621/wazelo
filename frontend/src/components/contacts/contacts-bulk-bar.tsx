@@ -71,8 +71,9 @@ export function ContactsBulkBar({ selectedIds, onClear }: ContactsBulkBarProps) 
             ref={barRef}
             role="toolbar"
             aria-label="Bulk actions"
-            // Sits above the pagination row
-            className="absolute bottom-20 left-1/2 z-30 w-max max-w-[calc(100%-2rem)]"
+            // Sits above the pagination row. Phones scroll the whole page, so there it floats
+            // over the viewport just above the tab bar.
+            className="absolute bottom-20 left-1/2 z-30 w-max max-w-[calc(100%-2rem)] max-lg:fixed max-lg:bottom-[calc(var(--mobile-tabbar-h,62px)+var(--safe-bottom,0px)+12px)]"
             initial={reduceMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, x: "-50%", y: 16 }}
             animate={{ opacity: 1, x: "-50%", y: 0, transition: springs.gentle }}
             exit={{ opacity: 0, x: "-50%", y: reduceMotion ? 0 : 16 }}

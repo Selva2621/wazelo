@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { useImportContacts } from "@/hooks/use-contacts";
 import { IconButton } from "@/components/ui/icon-button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 
 interface ImportContactsModalProps {
   open: boolean;
@@ -253,7 +253,7 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15">
+        <ModalFooter className="flex items-center justify-end gap-2 px-6 py-4 border-t border-outline-variant/15 max-lg:px-4 max-lg:[&>button]:flex-1">
           <Button variant="ghost" onClick={handleClose}>
             {importMutation.isSuccess ? "Close" : "Cancel"}
           </Button>
@@ -267,7 +267,7 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
               Import {preview.length > 1 ? `${preview.length - 1} contacts` : ""}
             </Button>
           )}
-        </div>
+        </ModalFooter>
       </>
       )}
     </Modal>
