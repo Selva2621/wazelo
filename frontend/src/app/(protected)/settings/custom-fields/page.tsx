@@ -113,11 +113,13 @@ export default function CustomFieldsPage() {
 
       {/* Entity filter chips */}
       <FilterBar className="mobile-scroll-x">
-        <Tabs
-          tabs={ENTITIES.map((e) => ({ id: e, label: `${e.charAt(0).toUpperCase() + e.slice(1)}s` }))}
-          activeTab={entityFilter}
-          onTabChange={setEntityFilter}
-        />
+        <div data-tour="custom-field-tabs">
+          <Tabs
+            tabs={ENTITIES.map((e) => ({ id: e, label: `${e.charAt(0).toUpperCase() + e.slice(1)}s` }))}
+            activeTab={entityFilter}
+            onTabChange={setEntityFilter}
+          />
+        </div>
       </FilterBar>
 
       <DataTable

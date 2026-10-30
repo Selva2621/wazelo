@@ -103,7 +103,7 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="mb-3 flex items-center gap-3 px-4 lg:px-0">
+      <div data-tour="notif-segments" className="mb-3 flex items-center gap-3 px-4 lg:px-0">
         <SegmentedControl
           label="Show"
           value={filter}
@@ -131,7 +131,7 @@ export default function NotificationsPage() {
           <p className="mt-1 text-[15px] text-on-surface-variant">We&apos;ll let you know when something happens.</p>
         </div>
       ) : (
-        <ul className="ios-group-body mx-4 lg:mx-0">
+        <ul data-tour="notif-list" className="ios-group-body mx-4 lg:mx-0">
           {notifications.map((n) => {
             const Icon = TYPE_ICONS[n.type] ?? Info;
             const actions = [

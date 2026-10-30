@@ -413,7 +413,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Form */}
-        <fieldset disabled={locked} className="min-w-0 space-y-5 rounded-xl border border-outline-variant bg-surface-container-low p-5 max-lg:p-4">
+        <fieldset data-tour="proposal-form" disabled={locked} className="min-w-0 space-y-5 rounded-xl border border-outline-variant bg-surface-container-low p-5 max-lg:p-4">
           <legend className="sr-only">Proposal details</legend>
           <p className="text-label text-on-surface-variant">
             For <span className="font-medium text-on-surface">{proposal.contact.name || proposal.contact.phoneNumber}</span>
@@ -451,7 +451,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
           </div>
 
           {/* Items */}
-          <div className="space-y-2">
+          <div data-tour="proposal-items" className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p id="items-label" className={labelCls}>Items</p>
               {missingPrices && <p className="text-label text-warning">Some items have no price</p>}
@@ -553,7 +553,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
         </fieldset>
 
         {/* Live preview */}
-        <section aria-label="Preview" className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1rem)]">
+        <section aria-label="Preview" data-tour="proposal-preview" className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1rem)]">
           <p className="mb-2 text-label text-on-surface-variant">What {proposal.contact.name?.split(" ")[0] || "your client"} sees</p>
           <div className="max-h-[calc(100dvh-var(--header-height)-6rem)] overflow-y-auto rounded-xl border border-outline-variant shadow-sm">
             <ProposalDocument data={preview} headingLevel="h2" className="p-6 sm:p-8" />

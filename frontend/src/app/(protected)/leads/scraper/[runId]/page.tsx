@@ -922,7 +922,7 @@ export default function ScrapeRunResultsPage() {
           actions={<StatusBadge status={run.status} />}
         />
 
-        <div className="flex items-baseline gap-6 text-body text-on-surface-variant max-lg:justify-between max-lg:gap-3">
+        <div data-tour="run-counts" className="flex items-baseline gap-6 text-body text-on-surface-variant max-lg:justify-between max-lg:gap-3">
           <span>
             <span className="font-semibold tabular-nums text-on-surface">{run.resultCount}</span> found
           </span>
@@ -1008,7 +1008,7 @@ export default function ScrapeRunResultsPage() {
                   </span>
                 </label>
 
-                <div className="flex items-center gap-2 flex-wrap max-lg:hidden">
+                <div data-tour="run-toolbar" className="flex items-center gap-2 flex-wrap max-lg:hidden">
                   {(waChecking || waCheckTargets.length > 0) && (
                     <Button
                       variant="secondary"

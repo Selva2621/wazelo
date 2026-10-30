@@ -24,6 +24,7 @@ import {
   LifeBuoy,
   Globe,
   ScanSearch,
+  Compass,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuthStore } from "@/stores/auth-store";
@@ -150,6 +151,7 @@ const navGroups: NavGroup[] = [
     label: "Support",
     items: [
       { href: "/support", icon: <LifeBuoy className="h-5 w-5" />, label: "Support" },
+      { href: "/tours", icon: <Compass className="h-5 w-5" />, label: "Product tours" },
     ],
   },
 ];

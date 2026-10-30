@@ -66,13 +66,15 @@ export function BillingWorkspace({ route }: { route: "billing" | "ai-credits" })
         </div>
 
         {isAdmin && (
-          <Tabs
-            tabs={TABS}
-            activeTab={active}
-            onTabChange={(id) => goTo(id as BillingTab)}
-            idBase="billing"
-            label="Billing sections"
-          />
+          <div data-tour="billing-tabs">
+            <Tabs
+              tabs={TABS}
+              activeTab={active}
+              onTabChange={(id) => goTo(id as BillingTab)}
+              idBase="billing"
+              label="Billing sections"
+            />
+          </div>
         )}
 
         <div {...(isAdmin ? tabPanelProps("billing", active) : {})} className="rise-in outline-none" key={active}>

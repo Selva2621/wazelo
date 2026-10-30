@@ -116,7 +116,7 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
 
       {/* Summary bar: quiet numbers, primary action on the right */}
       {analytics && (
-        <div className="shrink-0 flex items-center gap-6 px-6 py-2.5 max-lg:flex-wrap max-lg:gap-x-4 max-lg:gap-y-1 max-lg:px-4 max-lg:py-2 border-b border-outline-variant">
+        <div data-tour="deals-summary" className="shrink-0 flex items-center gap-6 px-6 py-2.5 max-lg:flex-wrap max-lg:gap-x-4 max-lg:gap-y-1 max-lg:px-4 max-lg:py-2 border-b border-outline-variant">
           <div className="flex items-baseline gap-1.5 text-body">
             <span className="text-on-surface-variant">Deals</span>
             <span className="font-semibold tabular-nums text-on-surface">{analytics.totalDeals}</span>
@@ -208,7 +208,7 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
       )}
 
       {/* Kanban board (desktop; phones use the list above) */}
-      <div className="flex-1 overflow-x-auto max-lg:hidden">
+      <div data-tour="deals-board" className="flex-1 overflow-x-auto max-lg:hidden">
         <div className="flex gap-4 p-6 min-h-0 h-full">
           {pipeline.stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];

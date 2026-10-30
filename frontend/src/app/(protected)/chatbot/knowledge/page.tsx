@@ -183,12 +183,12 @@ export default function ChatbotKnowledgePage() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="min-w-0 space-y-5">
-            <WebsitesCard buildCost={buildCost} />
-            <UnansweredCard className={card} />
-            <FaqsCard suggestCost={faqCost} className={card} />
-            <FilesCard />
-            <InstructionsCard />
-            <HandoverCard className={card} />
+            <div data-tour="kb-websites"><WebsitesCard buildCost={buildCost} /></div>
+            <div data-tour="kb-unanswered"><UnansweredCard className={card} /></div>
+            <div data-tour="kb-faqs"><FaqsCard suggestCost={faqCost} className={card} /></div>
+            <div data-tour="kb-files"><FilesCard /></div>
+            <div data-tour="kb-instructions"><InstructionsCard /></div>
+            <div data-tour="kb-handover"><HandoverCard className={card} /></div>
           </div>
           <TestChat askCost={askCost} />
         </div>

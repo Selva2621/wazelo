@@ -123,7 +123,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   }
 
   return (
-    <>
+    <div data-tour="wa-panel">
       {error && (
         <Alert variant="error" className="mb-6">
           {error}
@@ -143,6 +143,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
             Link your WhatsApp with a QR code or your phone number.
           </p>
           <Button
+            data-tour="wa-connect"
             onClick={handleConnect}
             loading={initiateSession.isPending}
           >
@@ -155,12 +156,13 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       {/* ─── Linking: QR or Phone Number ─── */}
       {showLinking && (
         <div className="flex flex-col items-center py-4">
-          <Tabs
-            tabs={LINK_TABS}
-            activeTab={method}
-            onTabChange={handleMethodChange}
-            className="mb-6"
-          />
+          <div data-tour="wa-methods" className="mb-6">
+            <Tabs
+              tabs={LINK_TABS}
+              activeTab={method}
+              onTabChange={handleMethodChange}
+            />
+          </div>
 
           {method === "phone" ? (
             <PairingCodeForm
@@ -366,7 +368,7 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }
 

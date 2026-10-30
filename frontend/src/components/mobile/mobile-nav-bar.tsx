@@ -13,6 +13,7 @@ import { hasLargeTitle, isTabRoot, parentRoute, routeTitle } from "@/lib/mobile-
 import { useMobileStore } from "@/stores/mobile-store";
 import { useUIStore } from "@/stores/ui-store";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { MobileTourButton } from "@/components/tour/tour-help-button";
 
 const COLLAPSE_AT = 36;
 
@@ -21,6 +22,7 @@ function AlertsBell({ count, className, iconClassName }: { count: number; classN
   return (
     <Link
       href="/notifications"
+      data-tour="m-bell"
       onClick={() => haptic()}
       className={cn("relative", className)}
       aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
@@ -153,11 +155,13 @@ export function MobileNavBar() {
               {title}
             </h1>
             <div className="flex shrink-0 items-center">
+              <MobileTourButton android />
               <div ref={setActionsSlot} className="flex items-center empty:hidden" />
               {root && <AlertsBell count={alertCount} className="m3-icon-button text-on-surface-variant" iconClassName="h-6 w-6" />}
               {root && (
                 <button
                   type="button"
+                  data-tour="m-search"
                   onClick={() => setSearchOpen(true)}
                   className="m3-icon-button text-on-surface-variant"
                   aria-label="Search"
@@ -211,6 +215,7 @@ export function MobileNavBar() {
 
           {/* Right: page actions + search on top-level pages */}
           <div className="flex min-w-0 items-center justify-end gap-0.5">
+            <MobileTourButton android={false} />
             <div ref={setActionsSlot} className="flex items-center gap-0.5 empty:hidden" />
             {root && (
               <AlertsBell
@@ -222,6 +227,7 @@ export function MobileNavBar() {
             {root && (
               <button
                 type="button"
+                data-tour="m-search"
                 onClick={() => setSearchOpen(true)}
                 className="grid size-11 place-items-center rounded-full text-primary active:opacity-50"
                 aria-label="Search"

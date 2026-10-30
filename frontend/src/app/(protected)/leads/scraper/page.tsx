@@ -532,7 +532,7 @@ export default function LeadScraperPage() {
       <PageHeader className="max-lg:hidden" title="Lead scraper" description="Search a source, review, then import" />
 
       {/* Scraper catalog */}
-      <div>
+      <div data-tour="scraper-sources">
         <h2 className="text-title-sm font-semibold text-on-surface mb-3">Pick a scraper</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {SCRAPERS.map((s) => (
@@ -562,7 +562,7 @@ export default function LeadScraperPage() {
 
       {/* Config form */}
       {selectedScraper && !isMobile && (
-        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4 max-lg:p-4">
+        <div data-tour="scraper-form" className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4 max-lg:p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-body-lg font-semibold text-on-surface">Configure {selectedScraper.title} Search</h2>
             <button aria-label="Close" onClick={() => setSelected(null)} className="text-on-surface-variant hover:text-on-surface">
@@ -774,7 +774,7 @@ export default function LeadScraperPage() {
       {/* Run history */}
       <div className="space-y-4">
         {/* Section header + filters */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div data-tour="scraper-runs" className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-baseline gap-2">
             <h2 className="text-title-sm font-semibold text-on-surface">Recent runs</h2>
             {total > 0 && (

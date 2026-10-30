@@ -172,7 +172,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
   const isEmail = channelType === "EMAIL";
 
   return (
-    <div className="shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-3 max-lg:px-2 max-lg:py-1.5">
+    <div data-tour="chat-composer" className="shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-3 max-lg:px-2 max-lg:py-1.5">
       {/* Interactive message builder */}
       {showInteractiveBuilder && onSendInteractive && (
         <InteractiveMessageBuilder
@@ -234,6 +234,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
         {/* Phones: quick replies + interactive message live behind one "+" */}
         <IconButton
           type="button"
+          data-tour="chat-more"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setMoreOpen((o) => !o)}
           disabled={disabled || uploading}
@@ -342,6 +343,7 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
         </IconButton>
         <IconButton size="sm"
           type="button"
+          data-tour="chat-quick-replies"
           // Keep focus in the message box, so its blur doesn't close the list first
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {

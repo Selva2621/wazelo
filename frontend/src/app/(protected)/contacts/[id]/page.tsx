@@ -201,7 +201,7 @@ export default function ContactDetailPage() {
       </button>
 
       {/* Profile Card */}
-      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
+      <div data-tour="contact-profile" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
         {/* Header row */}
         <div className="flex items-start gap-5 max-lg:flex-wrap max-lg:gap-3">
           <Avatar
@@ -267,7 +267,7 @@ export default function ContactDetailPage() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0 max-lg:w-full">
+          <div data-tour="contact-actions" className="flex items-center gap-2 shrink-0 max-lg:w-full">
             <LeadScoreBadge score={contact.leadScore} size="md" />
             {!editing && (
               <IconButton size="sm"
@@ -306,7 +306,7 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Lead status row */}
-        <div className="space-y-1.5">
+        <div data-tour="contact-status" className="space-y-1.5">
           <p className="text-label text-on-surface-variant">Lead status</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             {LEAD_STATUSES.map((s) => (
@@ -325,14 +325,14 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Tags */}
-        <div>
+        <div data-tour="contact-tags">
           <ContactTags contactId={contact.id} tags={contact.contactTags} />
         </div>
       </div>
 
       {/* Tabs content */}
       <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-        <div className="px-6 pt-4 border-b border-outline-variant max-lg:px-3 max-lg:pt-2">
+        <div data-tour="contact-tabs" className="px-6 pt-4 border-b border-outline-variant max-lg:px-3 max-lg:pt-2">
           <Tabs tabs={pageTabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 

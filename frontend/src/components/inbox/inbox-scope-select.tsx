@@ -70,7 +70,7 @@ export function InboxScopeSelect({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div data-tour="inbox-scope" className="flex items-center gap-2">
       <label htmlFor={id} className="shrink-0 text-label text-on-surface-variant">
         Viewing
       </label>

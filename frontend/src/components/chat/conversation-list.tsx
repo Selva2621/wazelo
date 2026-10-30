@@ -82,6 +82,7 @@ export function ConversationList({
       {/* No "Inbox" heading: the header bar (desktop) and nav bar (mobile) already say it */}
       <div className="shrink-0 px-4 pt-4 pb-2 space-y-3 max-lg:pt-1">
         <SearchInput
+          data-tour="chat-search"
           placeholder="Search conversations..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -115,11 +116,14 @@ export function ConversationList({
           </div>
         )}
 
-        <Tabs
-          tabs={filterTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        {/* Plain block wrapper only so the product tour can point at the tabs (Tabs takes no extra props) */}
+        <div data-tour="chat-filters">
+          <Tabs
+            tabs={filterTabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        </div>
       </div>
 
       {/* List */}

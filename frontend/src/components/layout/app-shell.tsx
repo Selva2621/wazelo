@@ -16,6 +16,7 @@ import { MobileTableLabels } from "@/components/mobile/mobile-table-labels";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { EdgeSwipeBack } from "@/components/mobile/edge-swipe-back";
 import { TouchRipple } from "@/components/mobile/touch-ripple";
+import { TourProvider } from "@/components/tour/tour-provider";
 
 interface AppShellProps {
   children: ReactNode;
@@ -117,6 +118,10 @@ export function AppShell({ children, fullHeight }: AppShellProps) {
       {isMobile && <PullToRefresh />}
       {isMobile && <EdgeSwipeBack />}
       {isMobile && <TouchRipple />}
+      {/* Product tours (reads search params) */}
+      <Suspense fallback={null}>
+        <TourProvider />
+      </Suspense>
     </div>
   );
 }

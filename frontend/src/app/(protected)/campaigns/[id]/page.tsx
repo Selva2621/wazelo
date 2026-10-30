@@ -168,7 +168,7 @@ export default function CampaignDetailPage() {
             </div>
 
             {/* Action Buttons (full-width row on mobile) */}
-            <div className="flex gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
+            <div data-tour="campaign-actions" className="flex gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
               {isDraft && (
                 <Button
                   onClick={() => executeMut.mutate(campaignId)}
@@ -245,19 +245,21 @@ export default function CampaignDetailPage() {
         )}
 
         {/* Analytics Cards */}
-        <CampaignAnalyticsCards
-          totalRecipients={campaign.totalRecipients}
-          sentCount={campaign.sentCount}
-          deliveredCount={campaign.deliveredCount}
-          readCount={campaign.readCount}
-          failedCount={campaign.failedCount}
-          repliedCount={campaign.repliedCount}
-        />
+        <div data-tour="campaign-analytics">
+          <CampaignAnalyticsCards
+            totalRecipients={campaign.totalRecipients}
+            sentCount={campaign.sentCount}
+            deliveredCount={campaign.deliveredCount}
+            readCount={campaign.readCount}
+            failedCount={campaign.failedCount}
+            repliedCount={campaign.repliedCount}
+          />
+        </div>
 
         {/* Two-column layout */}
         <div className="grid grid-cols-[1fr_1.5fr] gap-6 max-lg:grid-cols-1 max-lg:gap-4">
           {/* Left: Campaign Info */}
-          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
+          <div data-tour="campaign-details" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
             <h2 className="text-title-sm font-semibold text-on-surface">
               Details
             </h2>
@@ -306,7 +308,7 @@ export default function CampaignDetailPage() {
           </div>
 
           {/* Right: Recipients Table */}
-          <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 max-lg:min-w-0 max-lg:p-4">
+          <div data-tour="campaign-recipients" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 max-lg:min-w-0 max-lg:p-4">
             <div className="flex items-baseline gap-2 mb-3">
               <h2 className="text-title-sm font-semibold text-on-surface">
                 Recipients

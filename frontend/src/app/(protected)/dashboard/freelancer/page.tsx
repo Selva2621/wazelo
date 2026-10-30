@@ -161,7 +161,7 @@ function ThisWeek() {
   const responseRate = sent > 0 ? Math.round((replies / sent) * 1000) / 10 : null;
 
   return (
-    <section className={cn(CARD, "flex flex-col p-5")} aria-labelledby="week-title">
+    <section data-tour="fl-week" className={cn(CARD, "flex flex-col p-5")} aria-labelledby="week-title">
       <CardHeader id="week-title" icon={<BarChart3 className="h-4 w-4 text-primary" />} title="This week's activity" />
       {isError ? (
         <p className="text-body text-on-surface-variant">Activity isn&apos;t available right now.</p>
@@ -289,7 +289,7 @@ export default function FreelancerDashboard() {
       <div className="space-y-5 max-lg:flex max-lg:flex-col max-lg:gap-5 max-lg:space-y-0">
       {/* Row 2: today's work + every setup step, one by one */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <section className={cn(CARD, "flex flex-col p-5")} aria-labelledby="needs-you-title">
+        <section data-tour="needs-you" className={cn(CARD, "flex flex-col p-5")} aria-labelledby="needs-you-title">
           <CardHeader
             id="needs-you-title"
             title={
@@ -410,7 +410,7 @@ export default function FreelancerDashboard() {
       </div>
 
       {/* Row 3: KPI tiles, the busier two wider */}
-      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr] max-sm:grid-cols-4 max-sm:gap-2 max-lg:-order-1">
+      <div data-tour="fl-kpis" className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_2fr_1.5fr_1.5fr] max-sm:grid-cols-4 max-sm:gap-2 max-lg:-order-1">
         <Kpi
           label="Total Leads"
           short="Leads"
@@ -452,7 +452,7 @@ export default function FreelancerDashboard() {
       {/* Row 4: activity + pipeline */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <ThisWeek />
-        <section className={cn(CARD, "flex flex-col p-5")} aria-labelledby="pipeline-title">
+        <section data-tour="fl-pipeline" className={cn(CARD, "flex flex-col p-5")} aria-labelledby="pipeline-title">
           <CardHeader
             id="pipeline-title"
             title="Client pipeline"

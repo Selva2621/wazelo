@@ -279,7 +279,7 @@ export function AiInsightPanel({
       className="shrink-0 border-t border-outline-variant/15 bg-surface-container/30"
     >
       {/* Header: open/close + read state (phones use the chip in the helper row instead) */}
-      <div className="flex items-center gap-2 px-4 py-1.5 max-lg:hidden">
+      <div data-tour="chat-ai" className="flex items-center gap-2 px-4 py-1.5 max-lg:hidden">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -502,6 +502,7 @@ export function AiInsightPanel({
       <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/10 px-4 py-2 max-lg:flex-nowrap max-lg:overflow-x-auto max-lg:overscroll-x-contain max-lg:px-2 max-lg:py-1 max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden">
         <button
           type="button"
+          data-tour="chat-ai"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-controls={bodyId}

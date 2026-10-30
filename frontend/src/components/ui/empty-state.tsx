@@ -46,6 +46,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
+      data-tour="empty-state"
       className={cn(
         "flex flex-col items-center justify-center text-center px-6 py-16",
         className,

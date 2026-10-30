@@ -19,7 +19,7 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, count, description, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-3", className)}>
+    <div data-tour="page-header" className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-3", className)}>
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
           <h1 className="truncate text-headline font-semibold text-on-surface">
@@ -31,7 +31,11 @@ export function PageHeader({ title, count, description, actions, className }: Pa
         </div>
         {description && <p className="rise-in mt-0.5 text-body text-on-surface-variant">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div data-tour="page-actions" className="flex shrink-0 flex-wrap items-center gap-2">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

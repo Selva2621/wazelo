@@ -40,6 +40,7 @@ export function MobilePageActions({ primary, more, moreTitle }: MobilePageAction
           : "grid size-11 place-items-center rounded-full text-primary active:opacity-50"
       }
       aria-label="More actions"
+      data-tour="m-more"
     >
       {android ? (
         <EllipsisVertical className="h-6 w-6" strokeWidth={2} aria-hidden />
@@ -62,6 +63,7 @@ export function MobilePageActions({ primary, more, moreTitle }: MobilePageAction
           : "grid size-11 place-items-center rounded-full text-primary active:opacity-50"
       }
       aria-label={primary.label}
+      data-tour="m-primary"
     >
       {primary.icon ?? <Plus className={android ? "h-6 w-6" : "h-[26px] w-[26px]"} strokeWidth={2.2} aria-hidden />}
     </button>

@@ -263,7 +263,7 @@ export default function SettingsPage() {
     <div className="flex-1 p-6 space-y-6">
       {/* Mobile: iOS Settings-style section list */}
       {!tabParam && (
-        <div className="lg:hidden -mx-4 -mt-2">
+        <div data-tour="settings-list" className="lg:hidden -mx-4 -mt-2">
           {TAB_GROUPS.map((group) => (
             <GroupedSection key={group.label} header={group.label}>
               {group.tabs.map((tab) => (
@@ -285,7 +285,7 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
         <div className="md:w-56 shrink-0 max-lg:hidden">
-          <nav className="space-y-4">
+          <nav data-tour="settings-nav" className="space-y-4">
             {TAB_GROUPS.map((group) => (
               <div key={group.label}>
                 <p className="px-3 mb-1 text-caption font-medium text-on-surface-variant">

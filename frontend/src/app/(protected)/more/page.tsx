@@ -167,41 +167,49 @@ export default function MorePage() {
 
   return (
     <div className="ios-page pb-6">
+      {/* Plain block wrappers below exist only as product-tour anchors (GroupedSection takes no
+          extra props); the sections' vertical margins collapse through them, so spacing is unchanged */}
       {/* Profile card */}
-      <GroupedSection>
-        <ListRow
-          href="/settings/profile"
-          className="ios-row-profile"
-          icon={<Avatar name={userName} size="md" />}
-          iconClassName="bg-transparent"
-          title={<span className="text-[19px] font-semibold">{userName}</span>}
-          subtitle={[user?.email, role, plan].filter(Boolean).join(" · ")}
-        />
-      </GroupedSection>
+      <div data-tour="more-profile">
+        <GroupedSection>
+          <ListRow
+            href="/settings/profile"
+            className="ios-row-profile"
+            icon={<Avatar name={userName} size="md" />}
+            iconClassName="bg-transparent"
+            title={<span className="text-[19px] font-semibold">{userName}</span>}
+            subtitle={[user?.email, role, plan].filter(Boolean).join(" · ")}
+          />
+        </GroupedSection>
+      </div>
 
-      {sections.map((section) => {
-        const items = section.items.filter((i) => !ON_TAB_BAR.includes(i.href));
-        if (items.length === 0) return null;
-        return (
-          <GroupedSection key={section.label} header={section.label}>
-            {items.map((item) => (
-              <ListRow
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                iconClassName={SECTION_TILE[section.label] ?? "bg-chart-6"}
-                title={item.label}
-              />
-            ))}
-          </GroupedSection>
-        );
-      })}
+      <div data-tour="more-sections">
+        {sections.map((section) => {
+          const items = section.items.filter((i) => !ON_TAB_BAR.includes(i.href));
+          if (items.length === 0) return null;
+          return (
+            <GroupedSection key={section.label} header={section.label}>
+              {items.map((item) => (
+                <ListRow
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  iconClassName={SECTION_TILE[section.label] ?? "bg-chart-6"}
+                  title={item.label}
+                />
+              ))}
+            </GroupedSection>
+          );
+        })}
+      </div>
 
-      <GroupedSection header="This device">
-        <PushRow />
-        <AppearanceRow />
-        <InstallRow />
-      </GroupedSection>
+      <div data-tour="more-device">
+        <GroupedSection header="This device">
+          <PushRow />
+          <AppearanceRow />
+          <InstallRow />
+        </GroupedSection>
+      </div>
 
       <GroupedSection>
         <ListRow

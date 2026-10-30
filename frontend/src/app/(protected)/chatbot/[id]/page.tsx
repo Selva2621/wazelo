@@ -274,7 +274,7 @@ function LeftPanel({
   const terms = useProductTerms();
 
   return (
-    <div className={`w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${mobileOpen ? `${MOBILE_SHEET} max-lg:max-h-[75dvh]` : "max-lg:hidden"}`}>
+    <div data-tour="builder-left" className={`w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${mobileOpen ? `${MOBILE_SHEET} max-lg:max-h-[75dvh]` : "max-lg:hidden"}`}>
       {/* Mobile sheet header */}
       <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between border-b border-outline-variant bg-surface-container-low px-4 py-1">
         <span className="text-body font-semibold text-on-surface">Flow settings</span>
@@ -1260,7 +1260,7 @@ function ChatbotEditorInner() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 max-lg:hidden">
+        <div data-tour="builder-toolbar" className="flex items-center gap-2 max-lg:hidden">
           {!aiEnabled && rfNodes.length > 1 && (
             <IconButton size="sm"
               onClick={handleAutoLayout}
@@ -1327,6 +1327,7 @@ function ChatbotEditorInner() {
         {/* Canvas */}
         <div
           ref={reactFlowWrapper}
+          data-tour="builder-canvas"
           className="flex-1 min-w-0 bg-surface-container-lowest"
           onDrop={onDrop}
           onDragOver={(e) => e.preventDefault()}
@@ -1411,7 +1412,7 @@ function ChatbotEditorInner() {
 
           {/* Mobile: floating bar to open the node palette / flow settings */}
           {!selectedRfNode && !showTestPanel && !showMobileSettings && (
-            <div className="lg:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full border border-outline-variant bg-surface-container-lowest p-1 shadow-lg">
+            <div data-tour="builder-mobile-pill" className="lg:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full border border-outline-variant bg-surface-container-lowest p-1 shadow-lg">
               {!aiEnabled && (
                 <button
                   type="button"

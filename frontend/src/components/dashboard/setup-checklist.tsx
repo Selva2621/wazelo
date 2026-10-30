@@ -170,6 +170,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
     <>
       <section
         aria-labelledby="setup-title"
+        data-tour="setup-checklist"
         className={cn("rounded-3xl border border-outline-variant bg-surface-container-lowest p-5", className)}
       >
         <div

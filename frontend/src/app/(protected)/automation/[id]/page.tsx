@@ -108,10 +108,10 @@ function formatDate(d: string) {
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
-function Section({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({ title, children, defaultOpen = true, tour }: { title: string; children: React.ReactNode; defaultOpen?: boolean; tour?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
+    <div data-tour={tour} className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -797,6 +797,7 @@ export default function AutomationRuleEditorPage() {
             </span>
           )}
           <Button
+            data-tour="rule-save"
             size="sm"
             onClick={handleSave}
             loading={updateRule.isPending}
@@ -874,7 +875,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Trigger */}
-            <Section title="Trigger — When this happens…">
+            <Section tour="rule-trigger" title="Trigger — When this happens…">
               <div className="space-y-3">
                 <div>
                   <Label>Event Type</Label>
@@ -911,7 +912,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Conditions */}
-            <Section title="Conditions — Only if…" defaultOpen={conditions.length > 0}>
+            <Section tour="rule-conditions" title="Conditions — Only if…" defaultOpen={conditions.length > 0}>
               <ConditionBuilder
                 conditions={conditions}
                 onChange={(rows) => {
@@ -922,7 +923,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Actions */}
-            <Section title={`Actions — Then do… (${actions.length})`}>
+            <Section tour="rule-actions" title={`Actions — Then do… (${actions.length})`}>
               <div className="space-y-2">
                 {actions.map((action, i) => (
                   <ActionRowEditor
@@ -948,7 +949,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Advanced Settings */}
-            <Section title="Advanced Settings" defaultOpen={false}>
+            <Section tour="rule-advanced" title="Advanced Settings" defaultOpen={false}>
               <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
                 <div>
                   <Label>Priority</Label>

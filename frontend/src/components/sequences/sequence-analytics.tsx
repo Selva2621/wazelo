@@ -76,7 +76,7 @@ export function SequenceAnalytics({ sequenceId, show }: SequenceAnalyticsProps) 
     if (!showStats) return null;
     // Skeleton tiles in the same grid, so the layout doesn't jump when data arrives
     return (
-      <div aria-busy="true" aria-label="Loading analytics" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div data-tour="sequence-stats" aria-busy="true" aria-label="Loading analytics" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className={cn(CARD, "space-y-3 p-4")}>
             <div className="h-3 w-20 animate-pulse rounded bg-surface-container" />
@@ -100,10 +100,10 @@ export function SequenceAnalytics({ sequenceId, show }: SequenceAnalyticsProps) 
         : `${Math.round((data.avgCompletionHours / 24) * 10) / 10} days`;
 
   return (
-    <div className="space-y-6">
+    <div data-tour={showStats ? undefined : "sequence-analytics"} className="space-y-6">
       {/* Summary: every headline number in one row of tiles */}
       {showStats && (
-      <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div data-tour="sequence-stats" className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard icon={Users} label="Recipients" value={data.totalRecipients} color="text-primary" />
         <StatCard icon={Activity} label="Active" value={data.activeCount} color="text-success" />
         <StatCard icon={CheckCircle2} label="Completed" value={data.completedCount} color="text-info" />

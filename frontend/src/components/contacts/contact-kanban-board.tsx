@@ -174,7 +174,7 @@ export function ContactKanbanBoard() {
   };
 
   return (
-    <div className="flex-1 overflow-x-auto">
+    <div data-tour="contacts-board" className="flex-1 overflow-x-auto">
       <div className="flex gap-4 p-6 min-h-0 h-full">
         {COLUMNS.map((col) => (
           <KanbanColumn

@@ -169,7 +169,7 @@ export default function ContactsPage() {
                 placeholder="Search contacts"
                 className="w-64"
               />
-              <div className="flex items-center">
+              <div data-tour="contacts-tools" className="flex items-center">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -188,7 +188,7 @@ export default function ContactsPage() {
                 </Button>
               </div>
               {/* View toggle */}
-              <div role="group" aria-label="View" className="flex items-center gap-0.5 rounded-lg border border-outline-variant p-0.5">
+              <div role="group" aria-label="View" data-tour="contacts-view-toggle" className="flex items-center gap-0.5 rounded-lg border border-outline-variant p-0.5">
                 {(
                   [
                     { id: "list", label: "List view", Icon: LayoutList },
@@ -213,7 +213,7 @@ export default function ContactsPage() {
                   </button>
                 ))}
               </div>
-              <Button onClick={() => setShowCreate(true)}>
+              <Button data-tour="contacts-new" onClick={() => setShowCreate(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 New contact
               </Button>

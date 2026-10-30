@@ -80,14 +80,16 @@ export default function SequencesPage() {
       <WhatsAppRequiredBanner action="send sequences" />
 
       <FilterBar className="mobile-scroll-x">
-        <Tabs
-          tabs={STATUS_TABS}
-          activeTab={statusFilter}
-          onTabChange={(val) => {
-            setStatusFilter(val);
-            setPage(0);
-          }}
-        />
+        <div data-tour="sequence-tabs">
+          <Tabs
+            tabs={STATUS_TABS}
+            activeTab={statusFilter}
+            onTabChange={(val) => {
+              setStatusFilter(val);
+              setPage(0);
+            }}
+          />
+        </div>
       </FilterBar>
 
       {/* Content */}

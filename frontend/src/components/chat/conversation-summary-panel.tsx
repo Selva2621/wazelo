@@ -35,6 +35,7 @@ export function ConversationSummaryPanel({ conversationId }: ConversationSummary
   if (!showPanel) {
     return (
       <Button
+        data-tour="chat-summarize"
         variant="ghost"
         size="sm"
         onClick={handleSummarize}

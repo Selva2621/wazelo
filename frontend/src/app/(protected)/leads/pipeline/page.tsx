@@ -514,7 +514,7 @@ export default function LeadPipelinePage() {
       </StagePanel>
 
       {/* Kanban board (desktop; phones use the list above) */}
-      <div className="flex-1 overflow-x-auto max-lg:hidden">
+      <div data-tour="pipeline-board" className="flex-1 overflow-x-auto max-lg:hidden">
         <div className="flex h-full min-h-0 gap-4 p-6">
           {COLUMNS.map((col) => (
             <PipelineColumn

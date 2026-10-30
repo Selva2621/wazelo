@@ -663,7 +663,7 @@ export default function ChatWidgetSettingsPage() {
     return (
       <div className={cn("space-y-4 px-4 pt-2", showSaveBar ? "pb-28" : "pb-6")}>
         {/* Live preview: follows the form as you type */}
-        <section aria-label="Widget preview" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3">
+        <section data-tour="widget-phone-preview" aria-label="Widget preview" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
               <span className={cn("size-2 rounded-full", form.enabled ? "bg-success" : "bg-outline")} aria-hidden />
@@ -718,7 +718,9 @@ export default function ChatWidgetSettingsPage() {
         </section>
 
         {/* Sections */}
-        <SegmentedControl label="Widget settings" value={tab} onChange={setTab} options={PHONE_TABS} />
+        <div data-tour="widget-segments">
+          <SegmentedControl label="Widget settings" value={tab} onChange={setTab} options={PHONE_TABS} />
+        </div>
 
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           {tab === "look" && (
@@ -833,7 +835,7 @@ export default function ChatWidgetSettingsPage() {
       <div className="flex-1 min-w-0 max-w-2xl space-y-4 max-lg:max-w-none">
 
         {/* Enable */}
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+        <div data-tour="widget-enable" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-body-lg font-medium text-on-surface">Enable widget</p>
@@ -844,7 +846,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* Appearance */}
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
+        <div data-tour="widget-appearance" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
           <h2 className="text-body font-semibold text-on-surface">Appearance</h2>
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
@@ -860,7 +862,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* Pre-chat form */}
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+        <div data-tour="widget-prechat" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-body-lg font-medium text-on-surface">Pre-chat form</p>
@@ -871,7 +873,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* AI Assistant */}
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
+        <div data-tour="widget-ai" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-body-lg font-medium text-on-surface">AI assistant</p>
@@ -897,7 +899,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
 
         {/* Embed Code */}
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2">
+        <div data-tour="widget-embed" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Code className="h-4 w-4 text-on-surface-variant" aria-hidden />
             <h2 className="text-body font-semibold text-on-surface">Embed code</h2>
@@ -907,7 +909,7 @@ export default function ChatWidgetSettingsPage() {
       </div>
 
       {/* ── Right: Live Preview ──────────────────────────────────────────── */}
-      <div className="w-[380px] flex-shrink-0 sticky top-6 max-lg:static max-lg:w-full">
+      <div data-tour="widget-preview" className="w-[380px] flex-shrink-0 sticky top-6 max-lg:static max-lg:w-full">
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
           {/* Panel header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant">

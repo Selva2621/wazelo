@@ -66,6 +66,7 @@ export function MobileTabBar() {
       <li key={tab.id} className="flex-1">
         <Link
           href={tab.href}
+          data-tour={`tab-${tab.id}`}
           aria-current={isActive ? "page" : undefined}
           onClick={(e) => {
             haptic();

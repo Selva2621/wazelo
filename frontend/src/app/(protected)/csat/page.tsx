@@ -120,7 +120,7 @@ export default function CsatPage() {
           }
         />
         {/* Phones/tablets: title is in the nav bar; filters stack full width */}
-        <div className="flex flex-col items-stretch gap-2 lg:hidden">
+        <div data-tour="csat-filters" className="flex flex-col items-stretch gap-2 lg:hidden">
           <PeriodSelector value={period} onChange={setPeriod} />
           <ProductFilterSelect value={productFilter} onChange={setProductFilter} />
         </div>
@@ -145,7 +145,7 @@ export default function CsatPage() {
         {stats && !isEmpty && (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div data-tour="csat-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 max-lg:border-l-warning">
                 <div className="flex items-center gap-2 mb-2 lg:mb-1">
                   <Star className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
@@ -233,7 +233,7 @@ export default function CsatPage() {
               </div>
 
               {/* Agent Breakdown */}
-              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5">
+              <div data-tour="csat-agents" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5">
                 <h2 className="text-title-sm font-semibold text-on-surface mb-4">
                   By agent
                 </h2>

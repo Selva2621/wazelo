@@ -2158,6 +2158,27 @@ model NotificationDevice {
   @@map("notification_devices")
 }
 
+/// Product tours a user finished or skipped, per device (same device id as
+/// NotificationDevice: a random id the browser keeps). A new device shows tours again.
+model TourProgress {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  deviceId  String   @map("device_id") @db.VarChar(64)
+  /// e.g. "welcome", "inbox", "campaigns"
+  tourId    String   @map("tour_id") @db.VarChar(64)
+  /// Tour content version: raising it in the app shows the tour again
+  version   Int      @default(1)
+  /// completed | skipped
+  status    String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, deviceId, tourId], name: "unique_user_device_tour")
+  @@index([userId, deviceId])
+  @@map("tour_progress")
+}
+
 // ─────────────────────────────────────────────
 // EPIC 12 — Settings & Configuration (System Control Layer)
 // ─────────────────────────────────────────────

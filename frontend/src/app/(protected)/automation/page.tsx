@@ -179,11 +179,13 @@ export default function AutomationPage() {
 
         {/* One row: Rules | Logs, then the rule status filter */}
         <FilterBar className="mobile-scroll-x">
-          <Tabs
-            tabs={MAIN_TABS}
-            activeTab={activeTab}
-            onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
-          />
+          <div data-tour="automation-tabs">
+            <Tabs
+              tabs={MAIN_TABS}
+              activeTab={activeTab}
+              onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
+            />
+          </div>
           {activeTab === "rules" && (
             <>
               <FilterBarDivider />

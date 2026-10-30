@@ -472,7 +472,7 @@ export function InboxView({
   if (!skipSessionCheck && !hasActiveChannels && (hasNoSession || isConnecting)) {
     return (
       <div className="flex h-[calc(100dvh-var(--header-height))]">
-        <div className="flex-1 flex items-center justify-center">
+        <div data-tour="inbox-connect" className="flex-1 flex items-center justify-center">
           <EmptyState
             icon={<MessageSquare className="h-16 w-16" />}
             title={isConnecting ? "Connecting to WhatsApp..." : "Connect WhatsApp to start messaging"}
@@ -497,6 +497,7 @@ export function InboxView({
     <div className="flex h-[calc(100dvh-var(--header-height))]">
       {/* Left panel — Conversation list (full width on mobile until a chat is opened) */}
       <div
+        data-tour="chat-list"
         className={cn(
           "w-full lg:w-[320px] shrink-0 lg:border-r border-outline-variant/15 flex-col",
           selectedId ? "hidden lg:flex" : "flex",
@@ -679,7 +680,7 @@ export function InboxView({
                   </div>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+              <div data-tour="chat-header-actions" className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
                 {/* Chatbot / automations on or paused in this chat */}
                 {selectedId && (
                   <BotStatusChip
@@ -840,7 +841,7 @@ export function InboxView({
 
       {/* Right panel — Contact details (desktop). CSS-gated so it doesn't flash in after hydration */}
       {contactPanelOpen && selectedConversation && selectedId && (
-        <div className="hidden lg:block w-[300px] shrink-0 border-l border-outline-variant/15">
+        <div data-tour="chat-contact-panel" className="hidden lg:block w-[300px] shrink-0 border-l border-outline-variant/15">
           {renderContactPanel(toggleContactPanel)}
         </div>
       )}

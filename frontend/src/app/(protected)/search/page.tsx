@@ -229,6 +229,7 @@ export default function SearchPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
           <input
             autoFocus
+            data-tour="search-input"
             type="text"
             aria-label="Search"
             value={input}

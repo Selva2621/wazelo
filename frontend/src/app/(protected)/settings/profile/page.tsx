@@ -94,7 +94,7 @@ export default function ProfilePage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
         {/* Profile Info */}
-        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
+        <div data-tour="profile-details" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-4 mb-2">
             <Avatar
               name={`${user.firstName} ${user.lastName}`}
@@ -178,7 +178,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Change Password */}
-        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
+        <div data-tour="profile-password" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-body-lg font-semibold text-on-surface">
               Change password

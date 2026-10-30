@@ -80,7 +80,8 @@ function AiCreditsWidget() {
   return (
     <Link
       href="/settings/ai-credits"
-      aria-label={`AI credits: ${available === null ? "unlimited" : `${available.toLocaleString("en-IN")} left`}`}
+      data-tour="ai-credits-widget"
+      aria-label={`AI credits:${available === null ? "unlimited" : `${available.toLocaleString("en-IN")} left`}`}
       className="side-label mx-3 mb-3 block rounded-2xl border border-[var(--side-line)] bg-[var(--side-card)] p-3.5 outline-none transition-colors duration-200 hover:bg-[var(--side-hover)] focus-visible:ring-2 focus-visible:ring-focus"
     >
       <span className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--side-faint)]">

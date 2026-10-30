@@ -247,6 +247,17 @@ const ICONS: Record<string, IconDef> = {
       </>
     ),
   },
+  "/tours": {
+    from: "#fbbf24",
+    to: "#d97706",
+    glyph: (
+      <>
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="m15.8 8.2-2.4 5.2-5.2 2.4 2.4-5.2z" {...SHADE} />
+        <circle cx="12" cy="12" r="1.3" />
+      </>
+    ),
+  },
   "/admin/users": { from: "#60a5fa", to: "#1d4ed8", glyph: person },
   "/admin/teams": { from: "#818cf8", to: "#6d28d9", glyph: group },
   "/team": { from: "#818cf8", to: "#6d28d9", glyph: group },

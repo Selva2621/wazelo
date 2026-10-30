@@ -71,7 +71,7 @@ export default function GdprPage() {
 
       {/* Info cards (desktop: numbers only; phones keep the coloured icons in one grouped list) */}
       {/* Phones: one grouped list, label left and count right */}
-      <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-outline-variant/15 max-sm:[&>div]:flex max-sm:[&>div]:items-center max-sm:[&>div]:justify-between max-sm:[&>div]:rounded-none max-sm:[&>div]:border-x-0 max-sm:[&>div]:border-t-0 max-sm:[&>div]:py-3 max-sm:[&>div:last-child]:border-b-0 max-sm:[&>div>div]:mb-0 max-sm:[&>div>p]:text-title">
+      <div data-tour="gdpr-counts" className="grid grid-cols-3 gap-4 max-sm:grid-cols-1 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-outline-variant/15 max-sm:[&>div]:flex max-sm:[&>div]:items-center max-sm:[&>div]:justify-between max-sm:[&>div]:rounded-none max-sm:[&>div]:border-x-0 max-sm:[&>div]:border-t-0 max-sm:[&>div]:py-3 max-sm:[&>div:last-child]:border-b-0 max-sm:[&>div>div]:mb-0 max-sm:[&>div>p]:text-title">
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center gap-2 mb-1">
             <Download className="h-4 w-4 text-info lg:hidden" />

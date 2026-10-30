@@ -241,7 +241,7 @@ export function DataTable<T>({
   return (
     // data-table-card: white card on desktop (globals.css); flattens itself inside another card
     // Sticky tables: the card hugs its rows and only scrolls inside when they outgrow the space
-    <div className={cn("data-table-card flex flex-col", stickyHeader && "max-h-full", wrapperClassName)}>
+    <div data-tour="data-table" className={cn("data-table-card flex flex-col", stickyHeader && "max-h-full", wrapperClassName)}>
       {renderMobileRow && (
         <ul
           aria-label={label}

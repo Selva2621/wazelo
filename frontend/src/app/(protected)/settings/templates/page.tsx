@@ -839,15 +839,17 @@ export default function TemplatesPage() {
             className="w-full lg:hidden"
           />
           <FilterBar className="mobile-scroll-x">
-            <Tabs
-              tabs={CATEGORIES.map((cat) => ({
-                id: cat,
-                label: cat === "" ? "All" : categoryLabel(cat),
-                count: cat === "" ? templates.length : templates.filter((t) => t.category === cat).length,
-              })).filter((tab) => tab.id === "" || tab.count > 0)}
-              activeTab={categoryFilter}
-              onTabChange={setCategoryFilter}
-            />
+            <div data-tour="templates-tabs">
+              <Tabs
+                tabs={CATEGORIES.map((cat) => ({
+                  id: cat,
+                  label: cat === "" ? "All" : categoryLabel(cat),
+                  count: cat === "" ? templates.length : templates.filter((t) => t.category === cat).length,
+                })).filter((tab) => tab.id === "" || tab.count > 0)}
+                activeTab={categoryFilter}
+                onTabChange={setCategoryFilter}
+              />
+            </div>
           </FilterBar>
         </>
       )}

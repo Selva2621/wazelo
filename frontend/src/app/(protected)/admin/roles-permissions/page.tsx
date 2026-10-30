@@ -193,6 +193,7 @@ export default function RolesPermissionsPage() {
       {saveError && <Alert variant="error">{saveError}</Alert>}
 
       {/* Permission Matrix */}
+      <div data-tour="permissions-matrix">
       <Card className="!p-0 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -251,6 +252,7 @@ export default function RolesPermissionsPage() {
           </span>
         </div>
       </Card>
+      </div>
 
       {/* Phones/tablets: Reset / Save float above the tab bar while there are changes */}
       {hasChanges && (
@@ -258,7 +260,7 @@ export default function RolesPermissionsPage() {
       )}
       {hasChanges && (
         <div className="lg:hidden fixed inset-x-0 z-30 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] px-4 pb-3 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))]">
-          <div className="ios-floating-card flex items-center gap-2 !p-2">
+          <div data-tour="permissions-save" className="ios-floating-card flex items-center gap-2 !p-2">
             <Button variant="ghost" onClick={resetChanges} className="h-11 flex-1">
               <RotateCcw className="h-4 w-4" />
               Reset

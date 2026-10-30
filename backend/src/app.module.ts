@@ -30,6 +30,7 @@ import { StorageModule } from './infrastructure/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrgModule } from './modules/org/org.module';
 import { UsersModule } from './modules/users/users.module';
+import { ToursModule } from './modules/tours/tours.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
@@ -124,6 +125,7 @@ import { EventsModule } from './events/events.module';
     AuthModule,
     OrgModule,
     UsersModule,
+    ToursModule,
     WhatsAppModule,
     MessagesModule,
     ContactsModule,

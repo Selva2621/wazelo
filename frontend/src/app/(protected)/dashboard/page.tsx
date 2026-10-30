@@ -113,14 +113,14 @@ function TeamDashboard() {
         <>
           <AnalyticsKpiCards data={data} isManager={isManager} />
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div data-tour="dash-charts" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <MessageVolumeChart series={data.messageVolume.series} period={period} />
             <ResponseTimeChart series={data.responseTime.series} period={period} />
           </div>
 
           {isManager && (
             <>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div data-tour="dash-manager" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {data.conversionFunnel && <ConversionFunnel data={data.conversionFunnel} />}
                 {data.peakHours && <PeakHoursChart data={data.peakHours} />}
               </div>

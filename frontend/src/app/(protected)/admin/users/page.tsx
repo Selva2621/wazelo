@@ -453,7 +453,7 @@ export default function AdminUsersPage() {
 
       {/* Pending invitations */}
       {pendingInvites.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+        <div data-tour="admin-invites" className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
           <div className="flex items-baseline gap-2 border-b border-outline-variant px-4 py-2.5">
             <h2 className="text-body font-semibold text-on-surface">Pending invitations</h2>
             <span className="text-label tabular-nums text-on-surface-variant">{pendingInvites.length}</span>

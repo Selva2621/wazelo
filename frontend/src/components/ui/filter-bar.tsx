@@ -4,7 +4,11 @@ import type { ReactNode, SelectHTMLAttributes } from "react";
 
 /** All of a list's filters on one row (tabs, chips, selects), wrapping only when it must. */
 export function FilterBar({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex flex-wrap items-center gap-2", className)}>{children}</div>;
+  return (
+    <div data-tour="filter-bar" className={cn("flex flex-wrap items-center gap-2", className)}>
+      {children}
+    </div>
+  );
 }
 
 /** Thin separator between filter groups. Hidden on phones, where the bar scrolls instead. */

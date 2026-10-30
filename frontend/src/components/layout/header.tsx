@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { TourHelpButton } from "@/components/tour/tour-help-button";
 import { User, LogOut, Sparkles, CreditCard, Search, Menu } from "lucide-react";
 import { statusChipSegment, statusChipTone, type StatusChipTone } from "@/components/ui/status-chip";
 import { useAiCredits } from "@/hooks/use-ai-credits";
@@ -128,6 +129,7 @@ export function Header({ scrolled = false, offsetClassName, pageHasHeading = fal
         {/* Search (left-aligned): opens the command palette */}
         <button
           type="button"
+          data-tour="search"
           onClick={() => setSearchOpen(true)}
           className={cn(
             "hidden h-10 w-full max-w-sm shrink items-center gap-2.5 rounded-full border border-outline-variant bg-surface-container-low px-4 text-body text-placeholder md:flex",
@@ -163,7 +165,10 @@ export function Header({ scrolled = false, offsetClassName, pageHasHeading = fal
         {/* Right actions */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* One quiet status chip: AI credits + WhatsApp health (hidden when both are absent) */}
-          <div className="hidden h-10 items-center gap-0.5 rounded-full border border-outline-variant bg-surface-container-low p-1 empty:hidden sm:flex">
+          <div
+            data-tour="status-chip"
+            className="hidden h-10 items-center gap-0.5 rounded-full border border-outline-variant bg-surface-container-low p-1 empty:hidden sm:flex"
+          >
             {aiPill && (
               <Link
                 href="/settings/ai-credits"
@@ -183,12 +188,20 @@ export function Header({ scrolled = false, offsetClassName, pageHasHeading = fal
 
           <ThemeCycleButton />
 
-          <NotificationCenter />
+          {/* Replays this screen's tour */}
+          <Suspense fallback={null}>
+            <TourHelpButton />
+          </Suspense>
+
+          <span data-tour="notifications" className="inline-flex">
+            <NotificationCenter />
+          </span>
 
           {/* Account menu */}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
+              data-tour="account-menu"
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label="Account menu"
               aria-haspopup="menu"

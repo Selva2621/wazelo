@@ -125,7 +125,7 @@ export default function SequenceDetailsPage() {
             </div>
             {seq.description && <p className="mt-1 text-body text-on-surface-variant">{seq.description}</p>}
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div data-tour="sequence-actions" className="flex shrink-0 flex-wrap items-center gap-2">
             {/* Drafts and paused sequences edit in place; an active one pauses first */}
             {!editing && (seq.status === "DRAFT" || seq.status === "PAUSED") && (
               <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
