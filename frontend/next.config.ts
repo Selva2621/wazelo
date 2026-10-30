@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // Dev-only badge; bottom-left sat on top of the floating sidebar's account avatar.
   devIndicators: { position: "bottom-right" },
+  experimental: {
+    // Turbopack's dev disk cache (on by default since 16.1) restored stale CSS on this
+    // Windows setup: globals.css edits made while the server was down never showed, and
+    // some live edits were missed. Without it, `next dev` always compiles from the files.
+    turbopackFileSystemCacheForDev: false,
+  },
   // Same-origin API: with BACKEND_URL set (and NEXT_PUBLIC_API_URL=/api/v1), the browser
   // calls the API on the frontend's own domain, so the httpOnly refresh cookie is
   // first-party. Cross-site (e.g. app on vercel.app, API on another domain), browsers

@@ -20,7 +20,9 @@ import type { ScrapeSource, ScrapeRunStatus, ScrapeRun, LeadFilters } from "@/li
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { ScrapeFilters, countActiveFilters, DEFAULT_LEAD_FILTERS } from "@/components/lead-scraper/scrape-filters";
-import { SuggestInput, SuggestMulti, type RecentSearch } from "@/components/lead-scraper/business-type-input";
+import { SuggestInput, SuggestMulti, SuggestionChips, type RecentSearch } from "@/components/lead-scraper/business-type-input";
+import { Modal, ModalFooter } from "@/components/ui/modal";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
@@ -229,13 +231,14 @@ function RunActions({
           <button
             onClick={onToggleNote}
             title="Add / edit note"
-            className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors ${hasNote ? "text-primary" : "text-on-surface-variant"}`}
+            aria-label="Add / edit note"
+            className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors max-lg:p-3 ${hasNote ? "text-primary" : "text-on-surface-variant"}`}
           >
             <StickyNote className="w-3.5 h-3.5" />
           </button>
 
           {/* Duplicate / use as template */}
-          <IconButton size="xs"
+          <IconButton size="xs" className="max-lg:size-10"
             onClick={() => onDuplicate(run)}
             title="Duplicate — copy settings to form" aria-label="Duplicate — copy settings to form">
             <Copy className="w-3.5 h-3.5" />
@@ -246,7 +249,8 @@ function RunActions({
             onClick={() => reRunMutation.mutate(run.id)}
             disabled={reRunMutation.isPending || isActive}
             title="Re-run same search"
-            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Re-run same search"
+            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors max-lg:p-3 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {reRunMutation.isPending ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -257,7 +261,7 @@ function RunActions({
 
           {/* Cancel */}
           {isActive && (
-            <IconButton size="xs" variant="danger"
+            <IconButton size="xs" className="max-lg:size-10" variant="danger"
               onClick={() => cancelMutation.mutate(run.id)}
               disabled={cancelMutation.isPending}
               title="Cancel run" aria-label="Cancel run">
@@ -284,7 +288,7 @@ function RunActions({
                 </button>
               </div>
             ) : (
-              <IconButton size="xs" variant="danger"
+              <IconButton size="xs" className="max-lg:size-10" variant="danger"
                 onClick={() => setConfirmDelete(true)}
                 title="Delete run" aria-label="Delete run">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -470,6 +474,58 @@ export default function LeadScraperPage() {
 
   const activeFilterCount = [filterSource !== "", filterStatus !== ""].filter(Boolean).length;
 
+  // Phones: the picked scraper's form opens as a sheet over the catalog (desktop: inline below it)
+  const isMobile = useIsMobile();
+
+  const keywordInput = selectedScraper && (isMaps ? (
+    <SuggestMulti
+      large
+      groups={KEYWORD_SUGGESTIONS.GOOGLE_MAPS}
+      aliases={KEYWORD_ALIASES.GOOGLE_MAPS}
+      recent={recentSearches}
+      onPickRecent={pickRecent}
+      suggested={suggested}
+      value={mapsTypes}
+      onChange={(types) => setKeywords(types?.join(", ") ?? "")}
+      text={pendingType}
+      onTextChange={setPendingType}
+      onEnter={handleRun}
+      placeholder="Type or pick — e.g. Gym, parlour"
+    />
+  ) : (
+    <SuggestInput
+      groups={KEYWORD_SUGGESTIONS[selectedScraper.source]}
+      aliases={KEYWORD_ALIASES[selectedScraper.source]}
+      recent={recentSearches}
+      onPickRecent={pickRecent}
+      suggested={suggested}
+      value={keywords}
+      onChange={setKeywords}
+      onEnter={handleRun}
+      placeholder={`Type or pick — e.g. ${selectedScraper.keywordsPlaceholder}`}
+    />
+  ));
+
+  // A suggestion chip adds a type (Maps) or fills the single keyword field, like the dropdown
+  const pickChip = (item: string) => {
+    if (!isMaps) return setKeywords(item);
+    if (!mapsTypes.some((t) => t.toLowerCase() === item.toLowerCase())) setKeywords([...mapsTypes, item].join(", "));
+  };
+
+  const mapsTipLine = mapsTip && !tipApplied && (
+    <p className="flex items-center gap-1.5 text-caption text-on-surface-variant mt-1.5">
+      <Sparkles className="w-3 h-3 text-primary shrink-0" />
+      Tip: {mapsTip.text}
+      <button
+        type="button"
+        onClick={() => setLeadFilters((f) => ({ ...f, ...mapsTip.filters }))}
+        className="font-medium text-primary hover:underline max-lg:min-h-11 max-lg:px-1"
+      >
+        Apply
+      </button>
+    </p>
+  );
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 max-lg:space-y-6">
       {/* Header (the iOS nav bar shows the title on mobile) */}
@@ -505,7 +561,7 @@ export default function LeadScraperPage() {
       </div>
 
       {/* Config form */}
-      {selectedScraper && (
+      {selectedScraper && !isMobile && (
         <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-6 space-y-4 max-lg:p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-body-lg font-semibold text-on-surface">Configure {selectedScraper.title} Search</h2>
@@ -519,52 +575,13 @@ export default function LeadScraperPage() {
               <label className="text-label font-medium text-on-surface-variant block mb-1">
                 {isMaps ? "Business types" : selectedScraper.keywordsLabel} <span className="text-error">*</span>
               </label>
-              {isMaps ? (
-                <SuggestMulti
-                  large
-                  groups={KEYWORD_SUGGESTIONS.GOOGLE_MAPS}
-                  aliases={KEYWORD_ALIASES.GOOGLE_MAPS}
-                  recent={recentSearches}
-                  onPickRecent={pickRecent}
-                  suggested={suggested}
-                  value={mapsTypes}
-                  onChange={(types) => setKeywords(types?.join(", ") ?? "")}
-                  text={pendingType}
-                  onTextChange={setPendingType}
-                  onEnter={handleRun}
-                  placeholder="Type or pick — e.g. Gym, parlour"
-                />
-              ) : (
-                <SuggestInput
-                  groups={KEYWORD_SUGGESTIONS[selectedScraper.source]}
-                  aliases={KEYWORD_ALIASES[selectedScraper.source]}
-                  recent={recentSearches}
-                  onPickRecent={pickRecent}
-                  suggested={suggested}
-                  value={keywords}
-                  onChange={setKeywords}
-                  onEnter={handleRun}
-                  placeholder={`Type or pick — e.g. ${selectedScraper.keywordsPlaceholder}`}
-                />
-              )}
+              {keywordInput}
               {isMaps && mapsTypes.length > 1 && (
                 <p className="text-caption text-on-surface-variant/70 mt-1">
                   {mapsTypes.length} searches in one run — duplicates removed, Max Results shared between them.
                 </p>
               )}
-              {mapsTip && !tipApplied && (
-                <p className="flex items-center gap-1.5 text-caption text-on-surface-variant mt-1.5">
-                  <Sparkles className="w-3 h-3 text-primary shrink-0" />
-                  Tip: {mapsTip.text}
-                  <button
-                    type="button"
-                    onClick={() => setLeadFilters((f) => ({ ...f, ...mapsTip.filters }))}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    Apply
-                  </button>
-                </p>
-              )}
+              {mapsTipLine}
             </div>
             {selectedScraper.locationPlaceholder && (
               <div>
@@ -636,6 +653,122 @@ export default function LeadScraperPage() {
             Run Scraper
           </Button>
         </div>
+      )}
+
+      {/* Phones: same form in a sheet, sized to one screen, Run pinned to the bottom */}
+      {isMobile && (
+        <Modal open={!!selectedScraper} onClose={() => setSelected(null)} aria-labelledby="scrape-form-title">
+          {() => selectedScraper && (
+            <>
+              <div className="flex items-center gap-2 pl-4 pr-2 pt-4">
+                <span className="text-primary [&_svg]:size-5">{selectedScraper.icon}</span>
+                <h2 id="scrape-form-title" className="min-w-0 flex-1 truncate text-title-sm font-semibold text-on-surface">
+                  {selectedScraper.title}
+                </h2>
+                <IconButton aria-label="Close" onClick={() => setSelected(null)} className="size-11 rounded-full">
+                  <X className="w-5 h-5" />
+                </IconButton>
+              </div>
+
+              <div className="space-y-4 px-4 pb-4">
+                <div>
+                  <p className="text-label font-medium text-on-surface-variant mb-1">
+                    {isMaps ? "Business types" : selectedScraper.keywordsLabel} <span className="text-error">*</span>
+                  </p>
+                  {keywordInput}
+                  <SuggestionChips
+                    label="Suggestions"
+                    groups={KEYWORD_SUGGESTIONS[selectedScraper.source]}
+                    recent={recentSearches}
+                    onPickRecent={pickRecent}
+                    suggested={suggested}
+                    exclude={isMaps ? mapsTypes : [keywords]}
+                    onPick={pickChip}
+                  />
+                  {isMaps && mapsTypes.length > 1 && (
+                    <p className="text-caption text-on-surface-variant mt-1">
+                      {mapsTypes.length} searches in one run, results shared
+                    </p>
+                  )}
+                  {mapsTipLine}
+                </div>
+
+                {(selectedScraper.locationPlaceholder || isMaps) && (
+                  <div>
+                    <div className={`grid gap-3 ${selectedScraper.locationPlaceholder && isMaps ? "grid-cols-2" : "grid-cols-1"}`}>
+                      {selectedScraper.locationPlaceholder && (
+                        <div className="min-w-0">
+                          <label htmlFor="scrape-location-mobile" className="text-label font-medium text-on-surface-variant block mb-1 truncate">
+                            {selectedScraper.locationLabel ?? "Location"}
+                          </label>
+                          <input
+                            id="scrape-location-mobile"
+                            type="text"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleRun()}
+                            placeholder={selectedScraper.locationPlaceholder}
+                            enterKeyHint="go"
+                            className="h-11 w-full rounded-xl border border-outline-variant bg-surface-container px-3 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      )}
+                      {isMaps && (
+                        <div className="min-w-0">
+                          <label htmlFor="scrape-country-mobile" className="text-label font-medium text-on-surface-variant block mb-1">
+                            Country
+                          </label>
+                          <CountrySelect
+                            id="scrape-country-mobile"
+                            value={scrapeCountry}
+                            onChange={setPickedCountry}
+                            showDialCode
+                            className="h-11 w-full rounded-xl border-outline-variant bg-surface-container"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {isMaps && (
+                      <p className="mt-1 text-caption text-on-surface-variant">
+                        Numbers without a code get +{getCountry(scrapeCountry).dialCode}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-baseline justify-between">
+                    <label htmlFor="scrape-max-mobile" className="text-label font-medium text-on-surface-variant">
+                      Max results
+                    </label>
+                    <span className="text-body font-semibold tabular-nums text-on-surface">{maxResults}</span>
+                  </div>
+                  <input
+                    id="scrape-max-mobile"
+                    type="range" min={5} max={100} step={5} value={maxResults}
+                    onChange={(e) => setMaxResults(Number(e.target.value))}
+                    className="h-11 w-full accent-primary"
+                  />
+                </div>
+
+                <ScrapeFilters
+                  key={selectedScraper.source}
+                  source={selectedScraper.source}
+                  value={leadFilters}
+                  onChange={setLeadFilters}
+                  hasLocation={location.trim() !== ""}
+                />
+              </div>
+
+              <ModalFooter className="border-t border-outline-variant/40 px-4 pt-3">
+                <Button size="lg" onClick={handleRun} disabled={!searchKeywords || trigger.isPending} className="w-full">
+                  {trigger.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                  Run scraper
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </Modal>
       )}
 
       {/* Run history */}

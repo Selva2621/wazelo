@@ -1,9 +1,20 @@
 "use client";
 
+import { useProductTerms } from "@/lib/product-terms";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Check, Code, Copy, Smartphone, RefreshCw } from "lucide-react";
+import {
+  Check,
+  Code,
+  Copy,
+  MessageSquare,
+  Smartphone,
+  RefreshCw,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ios/bottom-sheet";
+import { SegmentedControl } from "@/components/ios/segmented-control";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWidgetConfig, useUpdateWidgetConfig } from "@/hooks/use-widget";
 import { uploadApi } from "@/lib/api/messages";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -15,6 +26,17 @@ const POSITIONS = [
   { value: "bottom-left", label: "Bottom Left" },
   { value: "bottom-center", label: "Bottom Center" },
 ];
+
+// Phone layout: one tab of fields under the live preview
+type PhoneTab = "look" | "messages" | "visitors" | "install";
+const PHONE_TABS: { value: PhoneTab; label: string }[] = [
+  { value: "look", label: "Look" },
+  { value: "messages", label: "Chat" },
+  { value: "visitors", label: "Visitors" },
+  { value: "install", label: "Install" },
+];
+/** Quick picks for the widget colour; any hex still works in the field below */
+const COLOR_PRESETS = ["#6366f1", "#2563eb", "#0891b2", "#059669", "#d97706", "#dc2626", "#db2777", "#111827"];
 
 function SkeletonBox({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-xl bg-surface-container-highest", className)} />;
@@ -390,6 +412,7 @@ const FREELANCER_WIDGET_DEFAULTS = {
 
 export default function ChatWidgetSettingsPage() {
   usePageTitle("Chat Widget");
+  const terms = useProductTerms();
 
   const { data: config, isLoading } = useWidgetConfig();
   const updateConfig = useUpdateWidgetConfig();
@@ -408,7 +431,14 @@ export default function ChatWidgetSettingsPage() {
     aiAssistantEnabled: false,
     aiSystemPrompt: "",
   });
+  // Last saved values: phones show a Save bar only while the form differs from these
+  const [savedForm, setSavedForm] = useState(form);
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(savedForm), [form, savedForm]);
   const [copied, setCopied] = useState(false);
+  // Phones: live preview on top, one tab of fields at a time
+  const isPhone = useMediaQuery("(max-width: 1023px)");
+  const [tab, setTab] = useState<PhoneTab>("look");
+  const [sheet, setSheet] = useState<"preview" | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -434,7 +464,7 @@ export default function ChatWidgetSettingsPage() {
     if (config) {
       const neverSaved = !("id" in config);
       const starter = neverSaved && isFreelancer ? FREELANCER_WIDGET_DEFAULTS : null;
-      setForm({
+      const next = {
         enabled: config.enabled,
         position: config.position || "bottom-right",
         primaryColor: config.primaryColor || "#6366f1",
@@ -446,7 +476,9 @@ export default function ChatWidgetSettingsPage() {
         preChatFormEnabled: starter?.preChatFormEnabled ?? config.preChatFormEnabled ?? false,
         aiAssistantEnabled: config.aiAssistantEnabled ?? false,
         aiSystemPrompt: config.aiSystemPrompt || starter?.aiSystemPrompt || "",
-      });
+      };
+      setForm(next);
+      setSavedForm(next);
     }
   }, [config, isFreelancer, orgSettings?.name]);
 
@@ -468,6 +500,132 @@ export default function ChatWidgetSettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ── Field blocks, shared by the desktop form and the phone section sheets ──
+  const companyField = (
+    <div>
+      <label htmlFor="widget-company" className="text-label font-medium text-on-surface-variant">Company name</label>
+      <input id="widget-company" value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
+    </div>
+  );
+  const positionField = (
+    <div>
+      <label htmlFor="widget-position" className="text-label font-medium text-on-surface-variant">Position</label>
+      <select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
+        {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+      </select>
+    </div>
+  );
+  const colorField = (
+    <div>
+      <label htmlFor="widget-color" className="text-label font-medium text-on-surface-variant">Primary color</label>
+      <div className="flex items-center gap-2 mt-1">
+        <input type="color" aria-label="Pick primary color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant cursor-pointer p-0.5 max-lg:h-11 max-lg:w-11" />
+        <input id="widget-color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
+      </div>
+    </div>
+  );
+  const whatsappField = (
+    <div>
+      <label htmlFor="widget-whatsapp" className="text-label font-medium text-on-surface-variant">WhatsApp number</label>
+      <input id="widget-whatsapp" value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
+    </div>
+  );
+  const welcomeField = (
+    <div>
+      <label htmlFor="widget-welcome" className="text-label font-medium text-on-surface-variant">Welcome message</label>
+      <textarea id="widget-welcome" value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
+    </div>
+  );
+  const placeholderField = (
+    <div>
+      <label htmlFor="widget-placeholder" className="text-label font-medium text-on-surface-variant">Input placeholder</label>
+      <input id="widget-placeholder" value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
+    </div>
+  );
+  const avatarField = (
+    <div>
+      <label htmlFor="widget-avatar" className="text-label font-medium text-on-surface-variant">Avatar / logo</label>
+      <div className="flex items-center gap-2 mt-1">
+        {/* Preview */}
+        {form.avatarUrl ? (
+          <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant flex-shrink-0" />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/60 border border-outline-variant">
+            Logo
+          </div>
+        )}
+        {/* URL input */}
+        <input
+          id="widget-avatar"
+          value={form.avatarUrl}
+          onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
+          placeholder="https://example.com/logo.png"
+          className={cn(inputCls, "mt-0 flex-1 max-lg:min-w-0")}
+        />
+        {/* Upload button */}
+        <Button variant="secondary"
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={avatarUploading}
+          className="flex-shrink-0"
+        >
+          {avatarUploading ? "Uploading..." : "Upload"}
+        </Button>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarUpload}
+        />
+      </div>
+    </div>
+  );
+  const aiPromptField = (
+    <div>
+      <label htmlFor="widget-ai-prompt" className="text-label font-medium text-on-surface-variant">
+        Custom instructions (optional)
+      </label>
+      <textarea
+        id="widget-ai-prompt"
+        value={form.aiSystemPrompt}
+        onChange={(e) => setForm((f) => ({ ...f, aiSystemPrompt: e.target.value }))}
+        rows={4}
+        maxLength={2000}
+        placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our ${terms.plural}. If unsure, ask the visitor to leave their contact details.`}
+        className={cn(inputCls, "resize-none mt-1")}
+      />
+      <p className="text-caption text-on-surface-variant/60 mt-1 text-right tabular-nums">
+        {(form.aiSystemPrompt ?? "").length}/2000
+      </p>
+    </div>
+  );
+  const embedCodeBlock = (
+    <>
+      <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
+      <div className="relative">
+        <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10 max-lg:pr-14 max-lg:whitespace-pre-wrap max-lg:break-all">
+          <code>{embedCode}</code>
+        </pre>
+        <button type="button" onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:grid max-lg:size-11 max-lg:place-items-center max-lg:p-0 max-lg:top-1 max-lg:right-1" title={copied ? "Copied" : "Copy embed code"} aria-label={copied ? "Copied" : "Copy embed code"}>
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-on-surface-variant" />}
+        </button>
+      </div>
+    </>
+  );
+  const saveStatus = (
+    <>
+      {updateConfig.isSuccess && (
+        <span className="text-body text-success flex items-center gap-1">
+          <Check className="h-3.5 w-3.5" /> Saved
+        </span>
+      )}
+      {updateConfig.isError && (
+        <span className="text-body text-error">Failed to save. Try again.</span>
+      )}
+    </>
+  );
+
   if (isLoading) {
     return (
       <div className="flex gap-6 h-full lg:p-6">
@@ -480,6 +638,187 @@ export default function ChatWidgetSettingsPage() {
         <div className="w-[360px] flex-shrink-0 max-lg:hidden">
           <SkeletonBox className="h-[540px] rounded-2xl" />
         </div>
+      </div>
+    );
+  }
+
+  // ── Phone: live preview on top, tabs below, fields inline; Save bar only when changed ──
+  if (isPhone) {
+    const initial = (form.companyName || "?").trim().charAt(0).toUpperCase();
+    const launcherSide =
+      form.position === "bottom-left" ? "justify-start" : form.position === "bottom-center" ? "justify-center" : "justify-end";
+    const neverSaved = !!config && !("id" in config);
+    const showSaveBar = dirty || neverSaved || updateConfig.isPending;
+
+    const switchRow = (label: string, hint: string, on: boolean, toggle: () => void) => (
+      <label className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
+        <span className="min-w-0 flex-1">
+          <span className="block text-body-lg text-on-surface">{label}</span>
+          <span className="block text-label text-on-surface-variant">{hint}</span>
+        </span>
+        <Toggle label={label} enabled={on} onChange={toggle} />
+      </label>
+    );
+
+    return (
+      <div className={cn("space-y-4 px-4 pt-2", showSaveBar ? "pb-28" : "pb-6")}>
+        {/* Live preview: follows the form as you type */}
+        <section aria-label="Widget preview" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
+              <span className={cn("size-2 rounded-full", form.enabled ? "bg-success" : "bg-outline")} aria-hidden />
+              {form.enabled ? "Live on your website" : "Off on your website"}
+            </span>
+            <Toggle
+              label="Show widget on your website"
+              enabled={form.enabled}
+              onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))}
+            />
+          </div>
+
+          <div className="rounded-xl bg-surface-container p-3" aria-hidden>
+            <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 text-white" style={{ backgroundColor: form.primaryColor }}>
+                {form.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.avatarUrl} alt="" className="size-8 rounded-full border border-white/40 object-cover" />
+                ) : (
+                  <span className="grid size-8 place-items-center rounded-full bg-white/25 text-body font-semibold">{initial}</span>
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-body font-semibold">{form.companyName || "Your company"}</span>
+                  <span className="block text-caption opacity-80">Online</span>
+                </span>
+              </div>
+              <div className="space-y-2 px-3 py-3">
+                <p className="max-w-[85%] rounded-2xl rounded-tl-md bg-surface-container px-3 py-2 text-body text-on-surface">
+                  {form.welcomeMessage || "Hi! How can we help you?"}
+                </p>
+                <div className="flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1.5">
+                  <span className="flex-1 truncate text-label text-on-surface-variant">{form.placeholder || "Type a message..."}</span>
+                  <span className="size-5 rounded-full" style={{ backgroundColor: form.primaryColor }} />
+                </div>
+              </div>
+            </div>
+            <div className={cn("mt-2 flex", launcherSide)}>
+              <span className="grid size-10 place-items-center rounded-full text-white shadow-md" style={{ backgroundColor: form.primaryColor }}>
+                <MessageSquare className="h-5 w-5" />
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSheet("preview")}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl text-label font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Smartphone className="h-4 w-4" aria-hidden />
+            Try it as a visitor
+          </button>
+        </section>
+
+        {/* Sections */}
+        <SegmentedControl label="Widget settings" value={tab} onChange={setTab} options={PHONE_TABS} />
+
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          {tab === "look" && (
+            <div className="space-y-4">
+              {companyField}
+              {avatarField}
+              <div>
+                <p className="text-label font-medium text-on-surface-variant">Colour</p>
+                <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Colour presets">
+                  {COLOR_PRESETS.map((c) => {
+                    const on = form.primaryColor.toLowerCase() === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        aria-label={c}
+                        onClick={() => setForm((f) => ({ ...f, primaryColor: c }))}
+                        className={cn(
+                          "grid size-10 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          on && "ring-2 ring-on-surface ring-offset-2 ring-offset-surface-container-lowest",
+                        )}
+                        style={{ backgroundColor: c }}
+                      >
+                        {on && <Check className="h-4 w-4 text-white" aria-hidden />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3">{colorField}</div>
+              </div>
+              <div>
+                <p className="mb-2 text-label font-medium text-on-surface-variant">Button position</p>
+                <SegmentedControl
+                  label="Button position"
+                  value={form.position}
+                  onChange={(v) => setForm((f) => ({ ...f, position: v }))}
+                  options={POSITIONS.map((p) => ({ value: p.value, label: p.label.replace("Bottom ", "") }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {tab === "messages" && (
+            <div className="space-y-4">
+              {welcomeField}
+              {placeholderField}
+              {whatsappField}
+            </div>
+          )}
+
+          {tab === "visitors" && (
+            <div className="divide-y divide-outline-variant/60">
+              {switchRow("Pre-chat form", "Ask name and phone first", form.preChatFormEnabled, () =>
+                setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled })),
+              )}
+              {switchRow("AI assistant", "Replies from your Knowledge Base", form.aiAssistantEnabled, () =>
+                setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled })),
+              )}
+              {form.aiAssistantEnabled && <div className="pt-3">{aiPromptField}</div>}
+            </div>
+          )}
+
+          {tab === "install" && <div className="space-y-2">{embedCodeBlock}</div>}
+        </div>
+
+        {/* One save: appears only when something changed */}
+        {showSaveBar && (
+          <div className="fixed inset-x-0 z-20 px-3 pb-3 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] lg:hidden">
+            <div className="mx-auto flex max-w-2xl items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 shadow-lg">
+              <span className="min-w-0 flex-1 truncate text-body text-on-surface" aria-live="polite">
+                {updateConfig.isPending ? "Saving…" : updateConfig.isError ? "Couldn't save. Try again." : "Unsaved changes"}
+              </span>
+              {dirty && !updateConfig.isPending && (
+                <button
+                  type="button"
+                  onClick={() => setForm(savedForm)}
+                  className="min-h-11 px-2 text-body font-medium text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-lg"
+                >
+                  Discard
+                </button>
+              )}
+              <Button onClick={handleSave} disabled={updateConfig.isPending} className="min-h-11">
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <BottomSheet open={sheet === "preview"} onClose={() => setSheet(null)} title="Try it as a visitor" maxHeight={0.92}>
+          <div className="px-4 pt-1">
+            <div className="h-[70dvh] overflow-hidden rounded-2xl border border-outline-variant">
+              <WidgetPreview form={form} />
+            </div>
+            <p className="mt-2 text-caption text-on-surface-variant">
+              Tap the chat button to try it{form.aiAssistantEnabled ? " · AI on" : ""}
+            </p>
+          </div>
+        </BottomSheet>
       </div>
     );
   }
@@ -509,74 +848,15 @@ export default function ChatWidgetSettingsPage() {
           <h2 className="text-body font-semibold text-on-surface">Appearance</h2>
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-            <div>
-              <label htmlFor="widget-company" className="text-label font-medium text-on-surface-variant">Company name</label>
-              <input id="widget-company" value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
-            </div>
-            <div>
-              <label htmlFor="widget-position" className="text-label font-medium text-on-surface-variant">Position</label>
-              <select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
-                {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="widget-color" className="text-label font-medium text-on-surface-variant">Primary color</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input type="color" aria-label="Pick primary color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant cursor-pointer p-0.5" />
-                <input id="widget-color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="widget-whatsapp" className="text-label font-medium text-on-surface-variant">WhatsApp number</label>
-              <input id="widget-whatsapp" value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
-            </div>
+            {companyField}
+            {positionField}
+            {colorField}
+            {whatsappField}
           </div>
 
-          <div>
-            <label htmlFor="widget-welcome" className="text-label font-medium text-on-surface-variant">Welcome message</label>
-            <textarea id="widget-welcome" value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
-          </div>
-          <div>
-            <label htmlFor="widget-placeholder" className="text-label font-medium text-on-surface-variant">Input placeholder</label>
-            <input id="widget-placeholder" value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
-          </div>
-          <div>
-            <label htmlFor="widget-avatar" className="text-label font-medium text-on-surface-variant">Avatar / logo</label>
-            <div className="flex items-center gap-2 mt-1">
-              {/* Preview */}
-              {form.avatarUrl ? (
-                <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant flex-shrink-0" />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/60 border border-outline-variant">
-                  Logo
-                </div>
-              )}
-              {/* URL input */}
-              <input
-                id="widget-avatar"
-                value={form.avatarUrl}
-                onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
-                placeholder="https://example.com/logo.png"
-                className={cn(inputCls, "mt-0 flex-1")}
-              />
-              {/* Upload button */}
-              <Button variant="secondary"
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="flex-shrink-0"
-              >
-                {avatarUploading ? "Uploading..." : "Upload"}
-              </Button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-            </div>
-          </div>
+          {welcomeField}
+          {placeholderField}
+          {avatarField}
         </div>
 
         {/* Pre-chat form */}
@@ -596,7 +876,7 @@ export default function ChatWidgetSettingsPage() {
             <div>
               <p className="text-body-lg font-medium text-on-surface">AI assistant</p>
               <p className="text-label text-on-surface-variant">
-                Auto-reply using your org&apos;s Knowledge Base &amp; product data
+                Auto-reply using your org&apos;s Knowledge Base &amp; {terms.singular} data
               </p>
             </div>
             <Toggle
@@ -605,25 +885,7 @@ export default function ChatWidgetSettingsPage() {
               onChange={() => setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled }))}
             />
           </div>
-          {form.aiAssistantEnabled && (
-            <div>
-              <label htmlFor="widget-ai-prompt" className="text-label font-medium text-on-surface-variant">
-                Custom instructions (optional)
-              </label>
-              <textarea
-                id="widget-ai-prompt"
-                value={form.aiSystemPrompt}
-                onChange={(e) => setForm((f) => ({ ...f, aiSystemPrompt: e.target.value }))}
-                rows={4}
-                maxLength={2000}
-                placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our products. If unsure, ask the visitor to leave their contact details.`}
-                className={cn(inputCls, "resize-none mt-1")}
-              />
-              <p className="text-caption text-on-surface-variant/60 mt-1 text-right tabular-nums">
-                {(form.aiSystemPrompt ?? "").length}/2000
-              </p>
-            </div>
-          )}
+          {form.aiAssistantEnabled && aiPromptField}
         </div>
 
         {/* Save */}
@@ -631,14 +893,7 @@ export default function ChatWidgetSettingsPage() {
           <Button onClick={handleSave} disabled={updateConfig.isPending}>
             {updateConfig.isPending ? "Saving..." : "Save changes"}
           </Button>
-          {updateConfig.isSuccess && (
-            <span className="text-body text-success flex items-center gap-1">
-              <Check className="h-3.5 w-3.5" /> Saved
-            </span>
-          )}
-          {updateConfig.isError && (
-            <span className="text-body text-error">Failed to save. Try again.</span>
-          )}
+          {saveStatus}
         </div>
 
         {/* Embed Code */}
@@ -647,15 +902,7 @@ export default function ChatWidgetSettingsPage() {
             <Code className="h-4 w-4 text-on-surface-variant" aria-hidden />
             <h2 className="text-body font-semibold text-on-surface">Embed code</h2>
           </div>
-          <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
-          <div className="relative">
-            <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10 max-lg:whitespace-pre-wrap max-lg:break-all">
-              <code>{embedCode}</code>
-            </pre>
-            <button type="button" onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus" title={copied ? "Copied" : "Copy embed code"} aria-label={copied ? "Copied" : "Copy embed code"}>
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-on-surface-variant" />}
-            </button>
-          </div>
+          {embedCodeBlock}
         </div>
       </div>
 

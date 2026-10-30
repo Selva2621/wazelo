@@ -181,6 +181,48 @@ function SuggestionList({ id, sections, cursor, onHover, footer }: {
   );
 }
 
+const MAX_CHIPS = 12;
+
+/**
+ * Phones: the same picks as the dropdown, as one sideways-scrolling row of chips —
+ * recent searches first, then picks for you, then the first suggestions.
+ */
+export function SuggestionChips({ groups, recent, onPickRecent, suggested, exclude = [], onPick, label = "Suggestions" }: SuggestProps & {
+  exclude?: string[];
+  onPick: (v: string) => void;
+  /** Accessible name for the row */
+  label?: string;
+}) {
+  const skip = new Set(exclude.map((e) => e.toLowerCase()));
+  const recentHits = onPickRecent ? (recent ?? []).slice(0, 3) : [];
+  const picks: string[] = [];
+  for (const item of [...(suggested ?? []), ...groups.flatMap((g) => g.items)]) {
+    if (picks.length >= MAX_CHIPS - recentHits.length) break;
+    if (!skip.has(item.toLowerCase()) && !picks.includes(item)) picks.push(item);
+  }
+  if (!recentHits.length && !picks.length) return null;
+
+  const chip =
+    "inline-flex h-9 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label text-on-surface active:bg-surface-container";
+
+  return (
+    <div role="group" aria-label={label} className="mobile-scroll-x -mx-4 flex gap-2 px-4 pt-2">
+      {recentHits.map((r) => (
+        <button key={`recent:${r.keywords}|${r.location ?? ""}`} type="button" onClick={() => onPickRecent?.(r)} className={chip}>
+          <History className="w-3.5 h-3.5 text-on-surface-variant" aria-hidden />
+          {r.location ? `${r.keywords} · ${r.location}` : r.keywords}
+        </button>
+      ))}
+      {picks.map((item) => (
+        <button key={item} type="button" onClick={() => onPick(item)} className={chip}>
+          {suggested?.includes(item) && <Sparkles className="w-3.5 h-3.5 text-primary" aria-hidden />}
+          {item}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const fieldClass =
   "w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary";
 
@@ -293,7 +335,7 @@ export function SuggestMulti({
         {selected.map((t) => (
           <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-caption px-2 py-0.5">
             {t}
-            <button type="button" aria-label={`Remove ${t}`} onClick={() => remove(t)} className="hover:text-error">
+            <button type="button" aria-label={`Remove ${t}`} onClick={() => remove(t)} className="hover:text-error max-lg:-m-1.5 max-lg:p-1.5">
               <X className="w-3 h-3" />
             </button>
           </span>

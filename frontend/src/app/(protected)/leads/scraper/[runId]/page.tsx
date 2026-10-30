@@ -6,8 +6,10 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2,
   Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, Rocket,
+  Filter, X, Rocket, Globe, ChevronRight,
 } from "lucide-react";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { BottomSheet } from "@/components/ios/bottom-sheet";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -187,7 +189,7 @@ function FilterBar({
           onChange={(e) => onChange({ search: e.target.value })}
           placeholder="Search name, company, category, skills"
           aria-label="Search results"
-          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 text-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 max-lg:h-10 max-lg:rounded-xltext-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
 
         {/* Showing count */}
@@ -594,6 +596,103 @@ function resultColumns(waStatusMap: Record<string, CheckWhatsAppResult>): DataTa
   ];
 }
 
+// ─── Phone list ───────────────────────────────────────────────────────────────
+
+function WaDot({ status }: { status: CheckWhatsAppResult | undefined }) {
+  if (!status) return null;
+  const [label, color] =
+    status.exists === true ? ["WA active", "bg-success"] : status.exists === false ? ["Not on WA", "bg-error"] : ["WA unknown", "bg-outline"];
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      <span aria-hidden className={`size-1.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  );
+}
+
+/** Compact phone row: name, rating/category, phone + WhatsApp, website mark. Tap opens the details sheet. */
+function ResultMobileRow({ result, wa, onOpen }: {
+  result: ScrapeResult;
+  wa: CheckWhatsAppResult | undefined;
+  onOpen: () => void;
+}) {
+  const kind = result.category ?? result.jobTitle;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${result.name ?? "Lead"} details`}
+      className="flex min-h-14 w-full items-center gap-2 py-2.5 pl-1 pr-3 text-left active:bg-surface-container"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-body font-medium text-on-surface">{result.name ?? "—"}</span>
+          {result.score != null && <ScoreBadge score={result.score} />}
+        </span>
+        {(result.rating || kind) && (
+          <span className="mt-0.5 flex items-center gap-1.5 text-caption text-on-surface-variant">
+            {result.rating ? (
+              <span className="inline-flex shrink-0 items-center gap-0.5">
+                <Star className="w-3 h-3 fill-warning text-warning" aria-hidden />
+                <span className="font-medium text-on-surface">{result.rating.toFixed(1)}</span>
+                {result.reviewCount ? <span>({result.reviewCount})</span> : null}
+              </span>
+            ) : null}
+            {kind && <span className="truncate">{kind}</span>}
+          </span>
+        )}
+        <span className="mt-0.5 flex items-center gap-2 overflow-hidden whitespace-nowrap text-caption text-on-surface-variant">
+          {result.phone ? (
+            <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
+              <Phone className="w-3 h-3" aria-hidden />
+              {result.phone}
+            </span>
+          ) : (
+            <span className="shrink-0">No phone</span>
+          )}
+          <WaDot status={wa} />
+          {result.website && (
+            <span className="inline-flex shrink-0 items-center gap-0.5">
+              <Globe className="w-3 h-3" aria-hidden />
+              <span className="sr-only">Has website</span>
+            </span>
+          )}
+          {result.imported ? (
+            <span className="shrink-0 text-success">Imported</span>
+          ) : result.existingContactId ? (
+            <span className="shrink-0 text-warning">In contacts</span>
+          ) : null}
+        </span>
+      </span>
+      <ChevronRight className="w-4 h-4 shrink-0 text-on-surface-variant/60" aria-hidden />
+    </button>
+  );
+}
+
+/** Every column of the desktop table, stacked, for one result (phones) */
+function ResultDetails({ result, columns, isSelected, onToggle }: {
+  result: ScrapeResult;
+  columns: DataTableColumn<ScrapeResult>[];
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="px-4">
+      <dl className="divide-y divide-outline-variant/40">
+        {columns.map((col) => (
+          <div key={col.id} className="flex gap-3 py-3">
+            <dt className="w-20 shrink-0 text-label text-on-surface-variant">{col.header}</dt>
+            <dd className="min-w-0 flex-1 [overflow-wrap:anywhere] [&_*]:max-w-none">{col.cell(result, 0)}</dd>
+          </div>
+        ))}
+      </dl>
+      <Button variant={isSelected ? "secondary" : "primary"} size="lg" onClick={onToggle} className="mt-3 w-full">
+        {isSelected ? "Deselect" : "Select"}
+      </Button>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ScrapeRunResultsPage() {
@@ -603,6 +702,9 @@ export default function ScrapeRunResultsPage() {
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
+  // Phones: the result whose details sheet is open
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Results page (1-based); any filter change goes back to the first page
   const [page, setPage] = useState(1);
@@ -792,6 +894,10 @@ export default function ScrapeRunResultsPage() {
   const phoneCount = results.filter((r) => r.phone).length;
   const checkedCount = results.filter((r) => r.phone && r.waCheckedAt).length;
 
+  const columns = resultColumns(waStatusMap);
+  const detail = detailId ? results.find((r) => r.id === detailId) : undefined;
+  const exportLabel = `Export ${filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}`;
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5 max-lg:space-y-4">
       {/* Back nav (the iOS nav bar has Back on mobile) */}
@@ -853,6 +959,26 @@ export default function ScrapeRunResultsPage() {
             </div>
           ) : (
             <>
+              {/* Phones: the toolbar buttons live in the top bar's ⋮ menu */}
+              <MobilePageActions
+                moreTitle="Results"
+                more={[
+                  (waChecking || waCheckTargets.length > 0) && {
+                    label: waChecking
+                      ? `Stop WhatsApp check (${checkedCount}/${phoneCount})`
+                      : `Check WhatsApp (${waCheckTargets.length})`,
+                    onSelect: () => (waChecking ? stopChecking() : checkPhones(waCheckTargets)),
+                  },
+                  run.importedCount > 0 && { label: "Message leads", onSelect: () => setMessageChoiceOpen(true) },
+                  { label: exportLabel, onSelect: exportCsv },
+                  unimportedSelectedIds.length > 0 && {
+                    label: `Import ${unimportedSelectedIds.length}`,
+                    onSelect: handleImport,
+                    disabled: importMutation.isPending,
+                  },
+                ]}
+              />
+
               {/* Filter bar */}
               <FilterBar
                 filters={filters}
@@ -882,7 +1008,7 @@ export default function ScrapeRunResultsPage() {
                   </span>
                 </label>
 
-                <div className="flex items-center gap-2 flex-wrap max-lg:w-full max-lg:[&>*]:flex-1">
+                <div className="flex items-center gap-2 flex-wrap max-lg:hidden">
                   {(waChecking || waCheckTargets.length > 0) && (
                     <Button
                       variant="secondary"
@@ -908,7 +1034,7 @@ export default function ScrapeRunResultsPage() {
                    
                   >
                     <Download className="w-4 h-4" />
-                    Export {filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}
+                    {exportLabel}
                   </Button>
 
                   {unimportedSelectedIds.length > 0 && (
@@ -925,10 +1051,19 @@ export default function ScrapeRunResultsPage() {
               </div>
 
               {/* Header checkbox and row clicks cover every filtered result, not just this page */}
-              <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:-mx-3 max-lg:border-0 max-lg:rounded-none">
+              <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:border-0 max-lg:rounded-none">
                 <DataTable
                   label="Scrape results"
-                  columns={resultColumns(waStatusMap)}
+                  columns={columns}
+                  // Phones: compact rows; the checkbox selects, a tap opens the details sheet
+                  renderMobileRow={(r) => (
+                    <ResultMobileRow
+                      result={r}
+                      wa={r.phone ? waStatusMap[r.phone] : undefined}
+                      onOpen={() => { setDetailId(r.id); setDetailOpen(true); }}
+                    />
+                  )}
+                  mobileListClassName="mx-0 mt-0 mb-3"
                   rows={pagedResults}
                   rowKey={(r) => r.id}
                   rowLabel={(r) => r.name ?? "lead"}
@@ -960,6 +1095,43 @@ export default function ScrapeRunResultsPage() {
                   }}
                 />
               </div>
+
+              {/* Phones: bulk actions for the selection, pinned above the tab bar */}
+              {selected.size > 0 && (
+                <>
+                  <div className="lg:hidden h-16" aria-hidden />
+                  <div className="lg:hidden fixed inset-x-0 z-30 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] px-4 pb-3 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))]">
+                    <div className="ios-floating-card flex items-center gap-2 !p-2">
+                      <span className="min-w-0 flex-1 truncate pl-2 text-body font-medium tabular-nums text-on-surface">
+                        {selected.size} selected
+                      </span>
+                      {run.importedCount > 0 && (
+                        <Button variant="secondary" onClick={() => setMessageChoiceOpen(true)} className="h-11 shrink-0">
+                          <Send className="w-4 h-4" />
+                          Message
+                        </Button>
+                      )}
+                      {unimportedSelectedIds.length > 0 && (
+                        <Button onClick={handleImport} disabled={importMutation.isPending} className="h-11 shrink-0">
+                          {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+                          Import {unimportedSelectedIds.length}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <BottomSheet open={detailOpen && !!detail} onClose={() => setDetailOpen(false)} title={detail?.name ?? "Lead"}>
+                {detail && (
+                  <ResultDetails
+                    result={detail}
+                    columns={columns}
+                    isSelected={selected.has(detail.id)}
+                    onToggle={() => toggleOne(detail.id)}
+                  />
+                )}
+              </BottomSheet>
             </>
           )}
         </>

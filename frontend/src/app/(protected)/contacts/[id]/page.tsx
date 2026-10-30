@@ -59,6 +59,7 @@ import type { LeadStatus } from "@/lib/types/contacts";
 import { IconButton } from "@/components/ui/icon-button";
 import { formatAmount } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useProductTerms } from "@/lib/product-terms";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -94,6 +95,8 @@ export default function ContactDetailPage() {
   const contactId = params.id as string;
   const router = useRouter();
   const userRole = useAuthStore((s) => s.user?.role);
+  const terms = useProductTerms();
+  const pageTabs = PAGE_TABS.map((t) => (t.id === "products" ? { ...t, label: terms.Plural } : t));
 
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssign, setShowAssign] = useState(false);
@@ -330,7 +333,7 @@ export default function ContactDetailPage() {
       {/* Tabs content */}
       <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
         <div className="px-6 pt-4 border-b border-outline-variant max-lg:px-3 max-lg:pt-2">
-          <Tabs tabs={PAGE_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+          <Tabs tabs={pageTabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
         <div className="p-6">
@@ -609,6 +612,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
   const { data: allProducts, isLoading: loadingAll } = useProducts();
   const assignProduct = useAssignProduct();
   const unassignProduct = useUnassignProduct();
+  const terms = useProductTerms();
 
   if (loadingContact || loadingAll) return <div className="flex justify-center py-8"><Spinner /></div>;
 
@@ -619,7 +623,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-body-lg font-semibold text-on-surface">
-          Products <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
+          {terms.Plural} <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
         </h3>
         {available.length > 0 && (
           <select
@@ -630,10 +634,10 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
               }
             }}
             defaultValue=""
-            aria-label="Assign product"
+            aria-label={`Assign ${terms.singular}`}
             className="h-8 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-label text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <option value="" disabled>+ Assign product</option>
+            <option value="" disabled>+ Assign {terms.singular}</option>
             {available.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -668,9 +672,9 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
       ) : (
         <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Package className="h-8 w-8 text-on-surface-variant/30" />
-          <p className="text-body text-on-surface-variant/50">No products assigned yet</p>
+          <p className="text-body text-on-surface-variant/50">No {terms.plural} assigned yet</p>
           {available.length > 0 && (
-            <p className="text-label text-on-surface-variant/40">Use the dropdown above to assign a product</p>
+            <p className="text-label text-on-surface-variant/40">Use the dropdown above to assign a {terms.singular}</p>
           )}
         </div>
       )}

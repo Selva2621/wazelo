@@ -25,7 +25,7 @@ export default function DealsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
+      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center max-lg:h-[calc(100dvh-var(--header-height))]">
         <Spinner size="lg" className="text-primary" />
       </div>
     );
@@ -33,7 +33,7 @@ export default function DealsPage() {
 
   if (!pipelines || pipelines.length === 0) {
     return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
+      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center max-lg:h-[calc(100dvh-var(--header-height))]">
         <EmptyState
           icon={<Kanban className="h-16 w-16" />}
           title="No pipelines yet"
@@ -53,7 +53,8 @@ export default function DealsPage() {
         label="Pipeline"
         value={activePipeline?.id || ""}
         onChange={(e) => setSelectedPipelineId(e.target.value)}
-        className="font-medium text-on-surface"
+        className="font-medium text-on-surface max-lg:max-w-full"
+        wrapperClassName="max-lg:max-w-full"
       >
         {pipelines.map((p) => (
           <option key={p.id} value={p.id}>{p.name}</option>
@@ -62,7 +63,7 @@ export default function DealsPage() {
     ) : null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-[calc(100dvh-var(--header-height))] max-lg:min-w-0 max-lg:overflow-hidden">
       {/* Header */}
       {/* On mobile only the pipeline picker stays (title and buttons live in the nav bar) */}
       <div className={`shrink-0 px-6 pt-5 pb-3 max-lg:px-4 max-lg:pt-1 max-lg:pb-2 ${pipelines.length > 1 ? "" : "max-lg:hidden"}`}>

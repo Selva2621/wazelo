@@ -55,6 +55,7 @@ function Step({
   detail,
   action,
   last,
+  optional,
 }: {
   index: number;
   state: StepState;
@@ -62,6 +63,8 @@ function Step({
   detail: React.ReactNode;
   action?: React.ReactNode;
   last?: boolean;
+  /** Shows an "Optional" tag next to the title */
+  optional?: boolean;
 }) {
   return (
     <li className="relative flex gap-3 pb-4 last:pb-0">
@@ -88,6 +91,11 @@ function Step({
         <div className="min-w-0 flex-1">
           <p className={cn("text-body font-semibold", state === "todo" ? "text-on-surface-variant" : "text-on-surface")}>
             {title}
+            {optional && (
+              <span className="ml-2 rounded-full bg-surface-container px-2 py-0.5 align-middle text-caption font-medium text-on-surface-variant">
+                Optional
+              </span>
+            )}
           </p>
           <div className="text-label text-on-surface-variant">{detail}</div>
         </div>
@@ -120,14 +128,18 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
   const assistantDone = assistant.done || turnedOn;
 
-  const total = items.length + (assistant.applicable ? 1 : 0);
-  const doneCount = items.filter((i) => i.done).length + (assistant.applicable && assistantDone ? 1 : 0);
+  // Required steps drive progress; optional ones (e.g. services) come last and never block "all set"
+  const required = items.filter((i) => !i.optional);
+  const optionals = items.filter((i) => i.optional);
+
+  const total = required.length + (assistant.applicable ? 1 : 0);
+  const doneCount = required.filter((i) => i.done).length + (assistant.applicable && assistantDone ? 1 : 0);
   const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
   const everythingDone = doneCount === total;
   const folded = everythingDone && !stepsOpen;
 
-  // The first unfinished step is the one to do now
-  const order = [...items.map((i) => ({ id: i.id, done: i.done })), ...(assistant.applicable ? [{ id: "assistant", done: assistantDone }] : [])];
+  // The first unfinished required step is the one to do now
+  const order = [...required.map((i) => ({ id: i.id, done: i.done })), ...(assistant.applicable ? [{ id: "assistant", done: assistantDone }] : [])];
   const currentId = order.find((s) => !s.done)?.id;
   const stateOf = (id: string, done: boolean): StepState => (done ? "done" : id === currentId ? "current" : "todo");
 
@@ -192,7 +204,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
         </div>
 
         <ol id="setup-steps" className={cn(folded && "max-lg:hidden")}>
-          {items.map((item, i) => (
+          {required.map((item, i) => (
             <Step
               key={item.id}
               index={i + 1}
@@ -200,13 +212,13 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
               title={item.label}
               detail={basicDetail(item)}
               action={basicAction(item)}
-              last={!assistant.applicable && i === items.length - 1}
+              last={!assistant.applicable && optionals.length === 0 && i === required.length - 1}
             />
           ))}
 
           {assistant.applicable && (
             <Step
-              index={items.length + 1}
+              index={required.length + 1}
               state={stateOf("assistant", assistantDone)}
               title="Turn on your assistant"
               detail={
@@ -247,9 +259,23 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                   </Button>
                 ) : null
               }
-              last
+              last={optionals.length === 0}
             />
           )}
+
+          {/* Optional extras: after the required steps, never the "current" one */}
+          {optionals.map((item, i) => (
+            <Step
+              key={item.id}
+              index={required.length + (assistant.applicable ? 1 : 0) + i + 1}
+              state={item.done ? "done" : "todo"}
+              title={item.label}
+              optional
+              detail={basicDetail(item)}
+              action={basicAction(item)}
+              last={i === optionals.length - 1}
+            />
+          ))}
         </ol>
 
         {assistant.applicable && assistantDone && (

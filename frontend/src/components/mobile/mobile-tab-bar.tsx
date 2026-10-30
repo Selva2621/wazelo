@@ -81,8 +81,8 @@ export function MobileTabBar() {
           className={cn(
             android
               ? // Material 3 navigation bar item: pill indicator behind the icon, label below
-                "m3-nav-item flex h-[var(--mobile-tabbar-h)] flex-col items-center justify-center gap-1 select-none"
-              : "flex h-[var(--mobile-tabbar-h)] flex-col items-center justify-center gap-1 select-none transition-[color,transform] duration-120 ease-standard active:scale-[0.92]",
+                "m3-nav-item flex h-[var(--tabbar-item-h)] flex-col items-center justify-center gap-1 select-none"
+              : "flex h-[var(--tabbar-item-h)] flex-col items-center justify-center gap-1 select-none transition-[color,transform] duration-120 ease-standard active:scale-[0.92]",
             android
               ? isActive
                 ? "text-on-surface"
@@ -125,20 +125,29 @@ export function MobileTabBar() {
 
           {/* Centre: all apps */}
           <li className="flex flex-1 justify-center">
+            {/* Raised circle with its label under it, like the other tabs; one tap target */}
             <button
               type="button"
               onClick={() => {
                 haptic();
                 setAppsOpenOn(appsOpen ? null : pathname);
               }}
-              aria-label="Apps"
               aria-haspopup="dialog"
               aria-expanded={appsOpen}
-              data-open={appsOpen}
-              className={cn("tab-fab", android && "tab-fab-android")}
+              className="tab-fab-button flex h-[var(--tabbar-item-h)] flex-col items-center justify-between select-none"
             >
-              <span className="tab-fab-halo" aria-hidden />
-              <Plus className="tab-fab-icon" strokeWidth={2.4} aria-hidden />
+              <span data-open={appsOpen} className={cn("tab-fab", android && "tab-fab-android")}>
+                <span className="tab-fab-halo" aria-hidden />
+                <Plus className="tab-fab-icon" strokeWidth={2.4} aria-hidden />
+              </span>
+              <span
+                className={cn(
+                  "font-semibold text-primary",
+                  android ? "pb-4 text-[13px] leading-4 tracking-[0.02em]" : "pb-[9px] text-[12px] leading-none tracking-[0.01em]",
+                )}
+              >
+                Apps
+              </span>
             </button>
           </li>
 

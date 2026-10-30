@@ -9,6 +9,7 @@ import { Drawer } from "@/components/ui/modal";
 import { useUpdateDeal, useDeleteDeal, useMoveDeal } from "@/hooks/use-deals";
 import type { Deal, PipelineStage } from "@/lib/types/deals";
 import { DealProposals } from "@/components/proposals/deal-proposals";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface DealDetailDrawerProps {
   deal: Deal;
@@ -29,6 +30,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
   const deleteDeal = useDeleteDeal();
   // Phones can't drag cards between columns, so the drawer offers "Move to" there
   const moveDeal = useMoveDeal();
+  const terms = useProductTerms();
 
   const hasChanges =
     title !== deal.title ||
@@ -73,7 +75,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 max-lg:min-h-0 max-lg:min-w-0 max-lg:overflow-x-hidden max-lg:overscroll-contain">
           {/* Contact info */}
           <div className="rounded-xl bg-surface-container/50 p-3.5 space-y-1">
             <p className="text-label font-medium text-on-surface-variant">Contact</p>
@@ -89,7 +91,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
           {/* Product */}
           {deal.product && (
             <div className="rounded-xl bg-surface-container/50 p-3.5 space-y-1">
-              <p className="text-label font-medium text-on-surface-variant">Product</p>
+              <p className="text-label font-medium text-on-surface-variant">{terms.Singular}</p>
               <Badge variant="info">{deal.product.name}</Badge>
             </div>
           )}

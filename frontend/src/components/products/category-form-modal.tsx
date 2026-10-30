@@ -9,6 +9,7 @@ import { useCreateProductCategory, useUpdateProductCategory, useProductCategorie
 import type { ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface CategoryFormModalProps {
   open: boolean;
@@ -31,6 +32,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
   const createCategory = useCreateProductCategory();
   const updateCategory = useUpdateProductCategory();
   const { data: allCategories } = useProductCategories();
+  const terms = useProductTerms();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -107,7 +109,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               {isEditing ? "Edit Category" : "New Category"}
             </h2>
             <p className="text-caption text-on-surface-variant/60">
-              {isEditing ? "Update category details" : "Organise products into categories"}
+              {isEditing ? "Update category details" : `Organise ${terms.plural} into categories`}
             </p>
           </div>
           <IconButton size="sm"
@@ -128,7 +130,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               id="cf-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Electronics"
+              placeholder={terms.isService ? "e.g. Design" : "e.g. Electronics"}
               autoFocus
             />
           </div>
@@ -143,7 +145,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               id="cf-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What kind of products belong here?"
+              placeholder={`What kind of ${terms.plural} belong here?`}
               rows={2}
               className={`mt-1 ${inputCls} resize-none`}
             />
@@ -229,7 +231,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               <div>
                 <p className="text-body font-medium text-on-surface">Active</p>
                 <p className="text-caption text-on-surface-variant/60">
-                  Inactive categories are hidden from product forms
+                  Inactive categories are hidden from {terms.singular} forms
                 </p>
               </div>
               <button role="switch" aria-checked={isActive} aria-label="Active"

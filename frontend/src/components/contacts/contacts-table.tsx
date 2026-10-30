@@ -10,6 +10,7 @@ import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadScoreBadge } from "./lead-score-badge";
 import type { Contact } from "@/lib/types/contacts";
 import { CONTACT_SOURCE_LABELS as SOURCE_LABELS } from "@/lib/constants/contact-sources";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -193,11 +194,12 @@ export function ContactsTable({
 }: ContactsTableProps) {
   const selection = selectedIds && onSelectionChange ? { selected: selectedIds, onChange: onSelectionChange } : undefined;
   const anySelected = !!selectedIds && contacts.some((c) => selectedIds.has(c.id));
+  const terms = useProductTerms();
 
   return (
     <DataTable
       label="Contacts"
-      columns={columns}
+      columns={terms.isService ? columns.map((col) => (col.id === "products" ? { ...col, header: terms.Plural } : col)) : columns}
       rows={contacts}
       rowKey={(c) => c.id}
       rowLabel={displayName}

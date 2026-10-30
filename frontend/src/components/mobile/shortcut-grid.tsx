@@ -31,14 +31,7 @@ export function ShortcutGrid({
   const inboxUnread = useInboxUnreadCount();
 
   const shortcuts: Shortcut[] = sections.flatMap((section) =>
-    section.items
-      .filter((item) => !SKIP.includes(item.href))
-      .flatMap((item): Shortcut[] =>
-        item.href === "/campaigns"
-          ? // Keeps the dashboard's existing "New campaign" shortcut
-            [item, { href: "/campaigns?action=new", label: "New campaign", icon: item.icon }]
-          : [item],
-      ),
+    section.items.filter((item) => !SKIP.includes(item.href)),
   );
 
   if (shortcuts.length === 0) return null;

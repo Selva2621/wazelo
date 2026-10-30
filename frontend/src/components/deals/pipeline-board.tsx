@@ -15,8 +15,10 @@ import type { Pipeline, Deal, PipelineStage } from "@/lib/types/deals";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { formatAmount } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
-import type { ActionSheetAction } from "@/components/ios/action-sheet";
-import { SwipeColumnChips, useSwipeColumns } from "@/components/ui/swipe-columns";
+import { ActionSheet, type ActionSheetAction } from "@/components/ios/action-sheet";
+import { Avatar } from "@/components/ui/avatar";
+import { StageChip, StageNote, StagePanel, StageRow, StageTabs } from "@/components/ui/swipe-columns";
+import { formatFollowUp } from "./contact-deal-card";
 
 interface PipelineBoardProps {
   pipeline: Pipeline;
@@ -31,7 +33,9 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
-  const { scrollerRef, onScroll: onBoardScroll, scrollTo: showColumn, active: activeColumn } = useSwipeColumns(pipeline.stages.length);
+  // Phones: one stage at a time, and a row's ⋮ menu instead of dragging
+  const [phoneStageId, setPhoneStageId] = useState<string | null>(null);
+  const [menuDeal, setMenuDeal] = useState<Deal | null>(null);
 
   // Group deals by stage
   const dealsByStage = useMemo(() => {
@@ -56,6 +60,12 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+  };
+
+  // Same move the drop below makes; the server sets WON/LOST/OPEN from the stage's flags
+  const moveToStage = (deal: Deal, stage: PipelineStage) => {
+    if (deal.stageId === stage.id) return;
+    moveDeal.mutate({ pipelineId: pipeline.id, dealId: deal.id, stageId: stage.id });
   };
 
   const handleDrop = (e: React.DragEvent, stage: PipelineStage) => {
@@ -89,8 +99,19 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
     );
   }
 
+  const phoneStage = pipeline.stages.find((s) => s.id === phoneStageId) ?? pipeline.stages[0];
+  const phoneDeals = phoneStage ? dealsByStage.get(phoneStage.id) ?? [] : [];
+  const menuActions: ActionSheetAction[] = menuDeal
+    ? [
+        { label: "Open details", onSelect: () => setSelectedDealId(menuDeal.id) },
+        ...pipeline.stages
+          .filter((stage) => stage.id !== menuDeal.stageId)
+          .map((stage) => ({ label: `Move to ${stage.name}`, onSelect: () => moveToStage(menuDeal, stage) })),
+      ]
+    : [];
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-lg:min-w-0">
       <MobilePageActions primary={{ label: "Add deal", onClick: () => setShowCreateModal(true) }} more={mobileMore} />
 
       {/* Summary bar: quiet numbers, primary action on the right */}
@@ -121,28 +142,74 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
         </div>
       )}
 
-      {/* Mobile: every stage as a chip; tap one to jump to its column */}
-      <SwipeColumnChips
-        label="Stages"
-        active={activeColumn}
-        onSelect={showColumn}
-        className="shrink-0"
-        chips={pipeline.stages.map((stage) => ({
-          id: stage.id,
-          label: stage.name,
-          count: dealsByStage.get(stage.id)?.length ?? 0,
-          color: stage.color || "#6b7280",
-        }))}
-      />
+      {/* Phones: stage tabs (fixed) above the stage's list (the only part that scrolls) */}
+      {phoneStage && (
+        <>
+          <StageTabs
+            idBase="deal-stage"
+            label="Stages"
+            value={phoneStage.id}
+            onChange={setPhoneStageId}
+            className="shrink-0"
+            tabs={pipeline.stages.map((stage) => ({
+              id: stage.id,
+              label: stage.name,
+              count: dealsByStage.get(stage.id)?.length ?? 0,
+              color: stage.color || "#6b7280",
+            }))}
+          />
+          <StagePanel idBase="deal-stage" tabId={phoneStage.id}>
+            {phoneDeals.length === 0 ? (
+              <StageNote>No deals in this stage</StageNote>
+            ) : (
+              <ul className="bg-surface-container-lowest">
+                {phoneDeals.map((deal) => {
+                  const contactName = deal.contact.name || deal.contact.phoneNumber;
+                  const followUp =
+                    deal.status === "OPEN" && deal.nextFollowUpAt ? formatFollowUp(deal.nextFollowUpAt) : null;
+                  return (
+                    <StageRow
+                      key={deal.id}
+                      leading={<Avatar name={contactName} size="md" />}
+                      title={deal.title}
+                      trailing={deal.value !== null ? formatAmount(Number(deal.value), deal.currency) : undefined}
+                      subtitle={contactName}
+                      meta={
+                        (followUp || deal.expectedClose || deal.assignedTo) && (
+                          <>
+                            {followUp && (
+                              <StageChip className={followUp.overdue ? "bg-error/10 text-error" : undefined}>
+                                {followUp.text}
+                              </StageChip>
+                            )}
+                            {deal.expectedClose && (
+                              <StageChip>
+                                Close{" "}
+                                {new Date(deal.expectedClose).toLocaleDateString("en-IN", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </StageChip>
+                            )}
+                            {deal.assignedTo && <StageChip>{deal.assignedTo.firstName}</StageChip>}
+                          </>
+                        )
+                      }
+                      onOpen={() => setSelectedDealId(deal.id)}
+                      onMenu={() => setMenuDeal(deal)}
+                      menuLabel={`Actions for ${deal.title}`}
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </StagePanel>
+        </>
+      )}
 
-      {/* Kanban board */}
-      {/* Mobile: one column per screen, swipe sideways with snap */}
-      <div
-        ref={scrollerRef}
-        onScroll={onBoardScroll}
-        className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4 max-lg:overflow-y-hidden max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden"
-      >
-        <div className="flex gap-4 p-6 min-h-0 h-full max-lg:gap-3 max-lg:px-4 max-lg:pt-1 max-lg:pb-3 max-lg:w-max max-lg:items-start">
+      {/* Kanban board (desktop; phones use the list above) */}
+      <div className="flex-1 overflow-x-auto max-lg:hidden">
+        <div className="flex gap-4 p-6 min-h-0 h-full">
           {pipeline.stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];
             const stageAnalytics = analytics?.byStage.find((s) => s.stageId === stage.id);
@@ -150,10 +217,7 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
             return (
               <div
                 key={stage.id}
-                id={`swipe-col-${stage.id}`}
-                data-swipe-column
-                // Phones: full width, as tall as its deals (scrolls inside past the screen)
-                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10 max-lg:w-[calc(100vw-32px)] max-lg:max-h-full max-lg:snap-start max-lg:snap-always"
+                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage)}
               >
@@ -177,9 +241,8 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
                 {/* Stage deals */}
                 <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                   {stageDeals.length === 0 ? (
-                    <div className="text-center py-6 text-label text-on-surface-variant/40 max-lg:py-5 max-lg:text-on-surface-variant">
-                      <span className="max-lg:hidden">Drop deals here</span>
-                      <span className="lg:hidden">No deals in this stage</span>
+                    <div className="text-center py-6 text-label text-on-surface-variant/40">
+                      <span>Drop deals here</span>
                     </div>
                   ) : (
                     stageDeals.map((deal) => (
@@ -202,6 +265,13 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
           })}
         </div>
       </div>
+
+      <ActionSheet
+        open={!!menuDeal}
+        onClose={() => setMenuDeal(null)}
+        title={menuDeal?.title}
+        actions={menuActions}
+      />
 
       <CreateDealModal
         open={showCreateModal}

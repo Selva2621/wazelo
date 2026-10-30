@@ -11,6 +11,7 @@ import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface ProductFormModalProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
   const { data: orgSettings } = useOrgSettings();
   const orgCurrency = orgSettings?.currency ?? "INR";
   const currencies = [...new Set([orgCurrency, ...CURRENCIES])];
+  const terms = useProductTerms();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -66,8 +68,8 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) { setError("Product name is required."); return; }
-    if (name.trim().length > 255) { setError("Product name must be 255 characters or less."); return; }
+    if (!name.trim()) { setError(`${terms.Singular} name is required.`); return; }
+    if (name.trim().length > 255) { setError(`${terms.Singular} name must be 255 characters or less.`); return; }
     if (description.trim().length > 2000) { setError("Description must be 2000 characters or less."); return; }
     if (sku.trim().length > 100) { setError("SKU must be 100 characters or less."); return; }
     if (price) {
@@ -115,10 +117,10 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-body-lg font-semibold text-on-surface">
-              {isEditing ? "Edit Product" : "New Product"}
+              {isEditing ? `Edit ${terms.singular}` : `New ${terms.singular}`}
             </h2>
             <p className="text-caption text-on-surface-variant/60">
-              {isEditing ? "Update product details" : "Add a product to your catalog"}
+              {isEditing ? `Update ${terms.singular} details` : `Add a ${terms.singular} to your catalog`}
             </p>
           </div>
           <IconButton size="sm"
@@ -134,13 +136,13 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           {/* Name */}
           <div>
             <Label htmlFor="pf-name">
-              Product Name <span className="text-error">*</span>
+              {terms.Singular} name <span className="text-error">*</span>
             </Label>
             <Input
               id="pf-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. WhatsApp Business Plan"
+              placeholder={terms.isService ? "e.g. Website redesign" : "e.g. WhatsApp Business Plan"}
               autoFocus
             />
           </div>
@@ -155,7 +157,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
               id="pf-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Briefly describe what this product offers"
+              placeholder={`Briefly describe what this ${terms.singular} offers`}
               rows={3}
               className={`mt-1 ${inputCls} resize-none`}
             />
@@ -247,7 +249,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
               Cancel
             </Button>
             <Button type="submit" loading={isPending} disabled={!name.trim()}>
-              {isEditing ? "Save Changes" : "Create Product"}
+              {isEditing ? "Save changes" : `Create ${terms.singular}`}
             </Button>
           </div>
         </form>

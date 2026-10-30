@@ -8,6 +8,7 @@ import { useUnreadCount } from "@/hooks/use-notifications";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import { usePlatform } from "@/lib/platform";
+import { useProductTerms } from "@/lib/product-terms";
 import { hasLargeTitle, isTabRoot, parentRoute, routeTitle } from "@/lib/mobile-routes";
 import { useMobileStore } from "@/stores/mobile-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -61,6 +62,9 @@ export function MobileNavBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: unread } = useUnreadCount();
   const alertCount = unread?.unreadCount ?? 0;
+  // Freelancers call the catalogue "Services"; the shared route titles say "Products"
+  const terms = useProductTerms();
+  const navTitle = (path: string) => (path === "/settings/products" ? terms.Plural : routeTitle(path));
 
   // /settings?tab=x is a section screen of the Settings list (same pathname)
   const searchParams = useSearchParams();
@@ -88,7 +92,7 @@ export function MobileNavBar() {
       ? titleOverride.title
       : titlePath === pathname && pageTitle
         ? pageTitle
-        : routeTitle(pathname);
+        : navTitle(pathname);
 
   // Large title collapses once it scrolls under the bar
   useEffect(() => {
@@ -113,7 +117,7 @@ export function MobileNavBar() {
 
   const previous = history.length > 1 ? history[history.length - 2] : null;
   const parent = parentRoute(pathname);
-  const backLabel = settingsSection ? "Settings" : shortLabel(previous ? routeTitle(previous) : parent.label);
+  const backLabel = settingsSection ? "Settings" : shortLabel(previous ? navTitle(previous) : parent.label);
 
   const goBack = () => {
     haptic();

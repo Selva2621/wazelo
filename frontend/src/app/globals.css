@@ -943,7 +943,9 @@ body {
   :root {
     --mobile-nav-h: 44px;
     --mobile-large-title-h: 0px;
-    --mobile-tabbar-h: 62px;
+    /* Tab bar's own height (fixed), and the space pages leave for it (0 while a screen hides it) */
+    --tabbar-item-h: 62px;
+    --mobile-tabbar-h: var(--tabbar-item-h);
     --header-height: calc(
       var(--mobile-nav-h) + var(--safe-top) + var(--mobile-large-title-h) + var(--mobile-tabbar-h) + var(--safe-bottom)
     );
@@ -1191,7 +1193,8 @@ body {
   transition: transform 260ms var(--ease-standard);
 }
 .ios-tab-bar[data-hidden="true"] {
-  transform: translateY(100%);
+  /* Extra 24px: the raised centre button sits above the bar's top edge */
+  transform: translateY(calc(100% + 24px));
 }
 
 /* Inset grouped lists (Settings.app) */
@@ -1380,8 +1383,8 @@ html:not([data-theme="daylight"]) .ios-segmented-thumb {
     --m3-indicator: color-mix(in srgb, var(--primary) 16%, transparent);
     --m3-state-press: color-mix(in srgb, var(--on-surface) 10%, transparent);
   }
-  html[data-platform="android"]:not([data-tabbar-hidden]) {
-    --mobile-tabbar-h: 84px;
+  html[data-platform="android"] {
+    --tabbar-item-h: 84px;
   }
 
   /* Top app bar: flat, no blur or hairline; tonal surface once content scrolls under */
@@ -1609,10 +1612,13 @@ html:not([data-theme="daylight"]) .ios-segmented-thumb {
     /* backwards: once it has landed, :active can still press it down */
     animation: tab-fab-in 520ms var(--ease-emphasized) backwards;
   }
-  .tab-fab:active {
+  .tab-fab-button:active .tab-fab {
     transform: scale(0.9);
   }
-  .tab-fab:focus-visible {
+  .tab-fab-button:focus-visible {
+    outline: none;
+  }
+  .tab-fab-button:focus-visible .tab-fab {
     outline: 2px solid var(--primary);
     outline-offset: 3px;
   }
@@ -1671,5 +1677,25 @@ html:not([data-theme="daylight"]) .ios-segmented-thumb {
   .tab-fab-icon {
     animation: none;
     transition: none;
+  }
+}
+
+/* ─── Glass theme on phones: bars and sheets need a solid, frosted fill ───
+   Glass surfaces are mostly transparent (7% white etc.). The Android look drops blur and
+   uses those surfaces, so bars and sheets became see-through over content. */
+@media (max-width: 1023.98px) {
+  html[data-theme="ember-glass"] {
+    --ios-bar-bg: rgb(16 18 26 / 0.9);
+  }
+  html[data-theme="ember-glass"] :is(.ios-tab-bar, .ios-nav-bar[data-scrolled="true"]) {
+    background-color: var(--ios-bar-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  html[data-theme="ember-glass"] .ios-tab-bar {
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+  }
+  html[data-theme="ember-glass"][data-platform] :is(.ios-sheet, .ios-action-sheet) {
+    background-color: rgb(22 25 36 / 0.97);
   }
 }

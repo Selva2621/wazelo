@@ -33,10 +33,10 @@ function Check({ checked, onChange, label, hint }: {
   checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 text-label text-on-surface cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-primary w-4 h-4" />
+    <label className="flex items-center gap-2 text-label text-on-surface cursor-pointer max-lg:min-h-11">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-primary w-4 h-4 shrink-0" />
       {label}
-      {hint && <span className="text-caption text-on-surface-variant">{hint}</span>}
+      {hint && <span className="text-caption text-on-surface-variant max-lg:hidden">{hint}</span>}
     </label>
   );
 }
@@ -129,7 +129,7 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 max-lg:flex-col max-lg:gap-0">
         <Check label="New leads only" hint="skip ones found in earlier runs" checked={!!value.newOnly} onChange={(v) => set({ newOnly: flag(v) })} />
         <Check label="Skip numbers already in contacts" checked={!!value.skipExistingContacts} onChange={(v) => set({ skipExistingContacts: flag(v) })} />
       </div>
@@ -138,7 +138,7 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex items-center gap-1.5 text-label font-medium text-on-surface-variant hover:text-on-surface"
+        className="flex items-center gap-1.5 text-label font-medium text-on-surface-variant hover:text-on-surface max-lg:min-h-11"
       >
         <ChevronRight className={`w-4 h-4 transition-transform ${open ? "rotate-90" : ""}`} />
         More filters
@@ -148,7 +148,7 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
       </button>
 
       {open && (
-        <div className="rounded-xl border border-outline-variant bg-surface-container/40 p-4 space-y-5">
+        <div className="rounded-xl border border-outline-variant bg-surface-container/40 p-4 space-y-5 max-lg:border-0 max-lg:bg-transparent max-lg:p-0">
           {isMaps ? (
             <>
               <Section title="Location">

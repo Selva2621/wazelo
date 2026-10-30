@@ -68,6 +68,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useProductTerms } from "@/lib/product-terms";
 
 // ─── Node type metadata ───────────────────────────────────────────────────────
 
@@ -270,6 +271,7 @@ function LeftPanel({
   const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
   const { data: availableProducts } = useProducts();
+  const terms = useProductTerms();
 
   return (
     <div className={`w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${mobileOpen ? `${MOBILE_SHEET} max-lg:max-h-[75dvh]` : "max-lg:hidden"}`}>
@@ -334,8 +336,8 @@ function LeftPanel({
         {/* Product scope */}
         {aiEnabled && availableProducts && availableProducts.filter((p) => p.status === "ACTIVE").length > 0 && (
           <section className="border-t border-outline-variant pt-3 space-y-2">
-            <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Product Scope</p>
-            <p className="text-caption text-on-surface-variant">Leave empty for all products</p>
+            <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">{terms.Singular} scope</p>
+            <p className="text-caption text-on-surface-variant">Leave empty for all {terms.plural}</p>
             {availableProducts.filter((p) => p.status === "ACTIVE").map((p) => (
               <label key={p.id} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -359,9 +361,9 @@ function LeftPanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-primary" />
-                <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Product Docs</p>
+                <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">{terms.Singular} docs</p>
               </div>
-              <button role="switch" aria-checked={useKnowledgeBase} aria-label="Use product docs"
+              <button role="switch" aria-checked={useKnowledgeBase} aria-label={`Use ${terms.singular} docs`}
                 onClick={() => setUseKnowledgeBase(!useKnowledgeBase)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${useKnowledgeBase ? "bg-primary" : "bg-surface-container-highest"}`}
               >

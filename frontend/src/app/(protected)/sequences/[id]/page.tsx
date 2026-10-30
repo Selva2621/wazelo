@@ -22,6 +22,7 @@ import { usePipelines } from "@/hooks/use-deals";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import type { CampaignSequence, SequenceStatus } from "@/lib/types/sequences";
+import { useProductTerms, type ProductTerms } from "@/lib/product-terms";
 
 const STATUS: Record<SequenceStatus, { label: string; variant: "muted" | "success" | "warning" | "info" | "error" }> = {
   DRAFT: { label: "Draft", variant: "muted" },
@@ -64,6 +65,7 @@ function Detail({ term, children }: { term: string; children: React.ReactNode })
 export default function SequenceDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const terms = useProductTerms();
   const { data: seq, isLoading, isError, refetch } = useSequence(id);
   const { data: pipelines } = usePipelines();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -234,7 +236,7 @@ export default function SequenceDetailsPage() {
                 {status.label}
               </Badge>
             </Detail>
-            <Detail term="Who gets it">{audienceLabel(seq, pipelines)}</Detail>
+            <Detail term="Who gets it">{audienceLabel(seq, pipelines, terms)}</Detail>
             <Detail term="Stops on reply">{seq.exitOnReply ? "Yes" : "No"}</Detail>
             <Detail term="Created by">
               {seq.createdBy ? `${seq.createdBy.firstName} ${seq.createdBy.lastName}`.trim() : "—"}
@@ -269,6 +271,7 @@ export default function SequenceDetailsPage() {
 function audienceLabel(
   seq: CampaignSequence,
   pipelines: { stages: { id: string; name: string }[] }[] | undefined,
+  terms: ProductTerms,
 ): string {
   if (seq.triggerType === "DEAL_STAGE_CHANGED") {
     const stage = pipelines?.flatMap((p) => p.stages).find((s) => s.id === seq.triggerConfig?.stageId);
@@ -281,6 +284,6 @@ function audienceLabel(
   if (seq.triggerType === "CONTACT_CREATED") return "Each new contact";
   const filters = seq.audienceFilters ?? {};
   if ("scrapeRunId" in filters) return "Leads from a lead scrape";
-  if ("productIds" in filters) return "Contacts with selected products";
+  if ("productIds" in filters) return `Contacts with selected ${terms.plural}`;
   return seq.audienceType === "ALL" ? "All contacts" : "A filtered audience";
 }

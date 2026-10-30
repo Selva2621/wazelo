@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateCampaign, useExecuteCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
 import { ProductSelectField } from "@/components/ui/product-select-field";
+import { useProductTerms } from "@/lib/product-terms";
 import {
   createCampaignSchema,
   type CreateCampaignFormData,
@@ -130,6 +131,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const { data: orgTags } = useOrgTags();
   const { data: products } = useProducts();
+  const terms = useProductTerms();
   const { data: scrapeRunsData } = useScrapeRuns({ take: 50 });
 
   const {
@@ -612,7 +614,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   {/* Products */}
                   {products && products.length > 0 && (
                     <div>
-                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Products</p>
+                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">{terms.Plural}</p>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <FilterSelect
                           value=""
@@ -624,7 +626,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                             }
                           }}
                         >
-                          <option value="">+ Add product</option>
+                          <option value="">+ Add {terms.singular}</option>
                           {(products ?? []).filter((p) => p.status === "ACTIVE" && !(audienceFilters?.productIds ?? []).includes(p.id)).map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
@@ -779,7 +781,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
             {/* Product (optional) */}
             <div>
-              <SectionHeading icon={<Package className="h-3.5 w-3.5" />} label="Product (Optional)" />
+              <SectionHeading icon={<Package className="h-3.5 w-3.5" />} label={`${terms.Singular} (optional)`} />
               <ProductSelectField value={productId} onChange={setProductId} onBeforeRedirect={onClose} />
             </div>
 

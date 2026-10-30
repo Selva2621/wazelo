@@ -29,6 +29,7 @@ import type { ReactNode } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { getProductTerms } from "@/lib/product-terms";
 
 /**
  * The app's navigation, shared by the desktop sidebar and the mobile "More" screen,
@@ -195,10 +196,13 @@ export function useNavSections(): { sections: NavSectionDef[]; isFreelancer: boo
     if (isFreelancer && group.hideForFreelancer) continue;
     if (group.roles && !group.roles.includes(role)) continue;
 
-    // Freelancers get their own dashboard view
+    // Freelancers get their own dashboard view, and sell services rather than products
     const items = group.items
       .map((item) =>
         isFreelancer && item.href === "/dashboard" ? { ...item, href: "/dashboard/freelancer" } : item,
+      )
+      .map((item) =>
+        isFreelancer && item.href === "/settings/products" ? { ...item, label: getProductTerms(true).Plural } : item,
       )
       .filter((item) => !item.freelancerOnly || isFreelancer)
       .filter((item) => !item.roles || item.roles.includes(role))

@@ -25,6 +25,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryFlag } from "@/lib/constants/countries";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface CreateContactModalProps {
   open: boolean;
@@ -128,6 +129,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
   const { data: members } = useOrgMembers();
   const { data: orgTags } = useOrgTags();
   const { data: products, isLoading: productsLoading } = useProducts();
+  const terms = useProductTerms();
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -303,9 +305,9 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-3.5 flex items-start gap-3">
               <Package className="h-4 w-4 text-on-surface-variant shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-body font-medium text-on-surface">No products yet</p>
+                <p className="text-body font-medium text-on-surface">No {terms.plural} yet</p>
                 <p className="text-caption text-on-surface-variant/60 mt-0.5">
-                  Create at least one product to assign it to contacts.
+                  Create at least one {terms.singular} to assign it to contacts.
                 </p>
                 <button
                   type="button"
@@ -315,14 +317,14 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
                   }}
                   className="mt-2 inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
                 >
-                  Go to Products
+                  Go to {terms.Plural}
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
             </div>
           ) : (
             <MultiSelect
-              label="Products"
+              label={terms.Plural}
               icon={Package}
               items={productItems}
               selected={selectedProductIds}

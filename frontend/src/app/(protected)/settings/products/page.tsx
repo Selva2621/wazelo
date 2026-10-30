@@ -31,6 +31,7 @@ import { CategoryFormModal } from "@/components/products/category-form-modal";
 import type { Product, ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useProductTerms } from "@/lib/product-terms";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,8 @@ function formatPrice(price: string | null, currency: string | null) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
-  usePageTitle("Products");
+  const terms = useProductTerms();
+  usePageTitle(terms.Plural);
 
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories, isLoading: catsLoading } = useProductCategories();
@@ -110,7 +112,7 @@ export default function ProductsPage() {
   const columns: DataTableColumn<Product>[] = [
     {
       id: "product",
-      header: "Product",
+      header: terms.Singular,
       skeleton: "avatar",
       cell: (product) => (
         <div className="flex items-center gap-2.5">
@@ -203,12 +205,12 @@ export default function ProductsPage() {
           <IconButton size="xs"
             onClick={() => openEdit(product)}
             className="hover:text-primary hover:bg-primary/10"
-            title="Edit product" aria-label="Edit product">
+            title={`Edit ${terms.singular}`} aria-label={`Edit ${terms.singular}`}>
             <Pencil className="h-3.5 w-3.5" />
           </IconButton>
           <IconButton size="xs" variant="danger"
             onClick={() => setDeleteTarget(product)}
-            title="Delete product" aria-label="Delete product">
+            title={`Delete ${terms.singular}`} aria-label={`Delete ${terms.singular}`}>
             <Trash2 className="h-3.5 w-3.5" />
           </IconButton>
         </div>
@@ -227,7 +229,7 @@ export default function ProductsPage() {
     // Desktop: room around the page, like the other list pages
     <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions
-        primary={{ label: "New Product", onClick: openCreate }}
+        primary={{ label: `New ${terms.singular}`, onClick: openCreate }}
         more={[
           { label: "New Category", onSelect: () => { setEditCategory(undefined); setCategoryModalOpen(true); } },
           activeCategory && { label: `Edit "${activeCategory.name}"`, onSelect: () => { setEditCategory(activeCategory); setCategoryModalOpen(true); } },
@@ -236,17 +238,17 @@ export default function ProductsPage() {
       />
       {/* Header */}
       <PageHeader
-        title="Products"
+        title={terms.Plural}
         count={products?.length}
         className="max-lg:hidden"
         actions={
           <>
             {(products ?? []).length > 0 && (
               <SearchInput
-                aria-label="Search products"
+                aria-label={`Search ${terms.plural}`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products"
+                placeholder={`Search ${terms.plural}`}
                 className="w-64"
               />
             )}
@@ -254,7 +256,7 @@ export default function ProductsPage() {
               <Tag className="h-4 w-4 mr-1" /> New category
             </Button>
             <Button onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-1" /> New product
+              <Plus className="h-4 w-4 mr-1" /> New {terms.singular}
             </Button>
           </>
         }
@@ -263,10 +265,10 @@ export default function ProductsPage() {
       {/* Search on phones (desktop: in the header) */}
       {(products ?? []).length > 0 && (
         <SearchInput
-          aria-label="Search products"
+          aria-label={`Search ${terms.plural}`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search products"
+          placeholder={`Search ${terms.plural}`}
           className="w-full lg:hidden"
         />
       )}
@@ -313,7 +315,7 @@ export default function ProductsPage() {
       {/* Table */}
       {filtered.length > 0 ? (
         <DataTable
-          label="Products"
+          label={terms.Plural}
           columns={columns}
           rows={filtered}
           rowKey={(product) => product.id}
@@ -321,14 +323,14 @@ export default function ProductsPage() {
         />
       ) : (products ?? []).length > 0 ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">
-          No products match your filters
+          No {terms.plural} match your filters
         </p>
       ) : (
         <EmptyState
           icon={<Package className="h-8 w-8" />}
-          title="No products yet"
-          description="Create products to assign to contacts, deals, chatbot flows, and sequences"
-          actionLabel="New product"
+          title={`No ${terms.plural} yet`}
+          description={`Create ${terms.plural} to assign to contacts, deals, chatbot flows, and sequences`}
+          actionLabel={`New ${terms.singular}`}
           onAction={openCreate}
         />
       )}
@@ -350,7 +352,7 @@ export default function ProductsPage() {
       {/* Delete product */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete product"
+        title={`Delete ${terms.singular}`}
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This will remove it from all contacts and deals.`}
         confirmLabel="Delete"
         variant="danger"
@@ -365,7 +367,7 @@ export default function ProductsPage() {
       <ConfirmDialog
         open={!!deleteCatTarget}
         title="Delete category"
-        message={`Delete "${deleteCatTarget?.name}"? Products in this category will become uncategorized.`}
+        message={`Delete "${deleteCatTarget?.name}"? ${terms.Plural} in this category will become uncategorized.`}
         confirmLabel="Delete"
         variant="danger"
         loading={deleteCategory.isPending}

@@ -16,7 +16,8 @@ import { contactsApi } from "@/lib/api/contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import { CONTACT_SOURCE_LABELS, SCRAPE_SOURCE_LABELS } from "@/lib/constants/contact-sources";
 import type { LeadStatus, Contact, ContactSource, ContactListResponse, ListContactsParams } from "@/lib/types/contacts";
-import { SwipeColumnChips, useSwipeColumns } from "@/components/ui/swipe-columns";
+import { ActionSheet, type ActionSheetAction } from "@/components/ios/action-sheet";
+import { StageChip, StageNote, StagePanel, StageRow, StageTabs } from "@/components/ui/swipe-columns";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 
@@ -35,6 +36,24 @@ const PAGE = 50;
 function errorText(err: unknown, fallback: string) {
   const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
   return (Array.isArray(msg) ? msg[0] : msg) || fallback;
+}
+
+function sourceLabelOf(contact: Contact) {
+  const meta = contact.metadata as Record<string, unknown> | null;
+  const scrapeSource = meta?.scrapeSource as keyof typeof SCRAPE_SOURCE_LABELS | undefined;
+  return scrapeSource && SCRAPE_SOURCE_LABELS[scrapeSource]
+    ? SCRAPE_SOURCE_LABELS[scrapeSource]
+    : CONTACT_SOURCE_LABELS[contact.source];
+}
+
+function ratingOf(contact: Contact) {
+  const meta = contact.metadata as Record<string, unknown> | null;
+  return meta?.rating as number | undefined;
+}
+
+/** Converted and closed leads are done: no new deal from them */
+function canConvertLead(contact: Contact) {
+  return contact.leadStatus !== "CONVERTED" && contact.leadStatus !== "CLOSED";
 }
 
 // ─── Moving a lead (instant, undone if the server refuses) ───────────────────
@@ -95,16 +114,10 @@ function PipelineCard({
   onConvert?: (contact: Contact) => void;
   converting: boolean;
 }) {
-  const meta = contact.metadata as Record<string, unknown> | null;
-  const scrapeSource = meta?.scrapeSource as keyof typeof SCRAPE_SOURCE_LABELS | undefined;
-  const rating = meta?.rating as number | undefined;
+  const rating = ratingOf(contact);
   const name = contact.name || "Unknown";
-  const sourceLabel =
-    scrapeSource && SCRAPE_SOURCE_LABELS[scrapeSource]
-      ? SCRAPE_SOURCE_LABELS[scrapeSource]
-      : CONTACT_SOURCE_LABELS[contact.source];
-  // Converted and closed leads are done: no new deal from them
-  const canConvert = !!onConvert && contact.leadStatus !== "CONVERTED" && contact.leadStatus !== "CLOSED";
+  const sourceLabel = sourceLabelOf(contact);
+  const canConvert = !!onConvert && canConvertLead(contact);
 
   return (
     <li
@@ -152,7 +165,7 @@ function PipelineCard({
   );
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
+// ─── Kanban Column (desktop) ──────────────────────────────────────────────────
 
 function PipelineColumn({
   status,
@@ -165,6 +178,8 @@ function PipelineColumn({
   onConvert,
   convertingId,
   onTotal,
+  limit,
+  onShowMore,
 }: {
   status: LeadStatus;
   label: string;
@@ -175,11 +190,13 @@ function PipelineColumn({
   onOpen: (id: string) => void;
   onConvert?: (contact: Contact) => void;
   convertingId: string | null;
-  /** Reports the column's lead count (for the phone stage chips) */
+  /** Reports the column's lead count (for the phone stage tabs) */
   onTotal: (status: LeadStatus, total: number | null) => void;
+  /** Leads loaded (grows with "Show more"); the phone list shares it */
+  limit: number;
+  onShowMore: (status: LeadStatus) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [limit, setLimit] = useState(PAGE);
   const { data, isLoading, isError, isFetching } = useContacts({ ...baseFilter, leadStatus: status, take: limit });
   const contacts = data?.contacts ?? [];
   const total = data?.total ?? 0;
@@ -192,10 +209,7 @@ function PipelineColumn({
   return (
     <section
       aria-labelledby={headingId}
-      id={`swipe-col-${status}`}
-      data-swipe-column
-      // Phones: full width, as tall as its leads (scrolls inside past the screen)
-      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors max-lg:w-[calc(100vw-32px)] max-lg:max-h-full max-lg:snap-start max-lg:snap-always ${
+      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors ${
         isDragOver ? "border-primary/40 bg-primary/5" : "border-outline-variant/10 bg-surface-container/40"
       }`}
       onDragOver={(e) => {
@@ -233,7 +247,7 @@ function PipelineColumn({
             Couldn&apos;t load these leads.
           </p>
         ) : contacts.length === 0 ? (
-          <p className="py-8 text-center text-label text-on-surface-variant max-lg:py-5">No leads</p>
+          <p className="py-8 text-center text-label text-on-surface-variant">No leads</p>
         ) : (
           <>
             <ul className="space-y-2">
@@ -252,7 +266,7 @@ function PipelineColumn({
               <button
                 type="button"
                 disabled={isFetching}
-                onClick={() => setLimit((n) => n + PAGE)}
+                onClick={() => onShowMore(status)}
                 className="mt-2 w-full rounded-lg py-2 text-label font-medium text-primary hover:bg-primary/5 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 {isFetching ? "Loading…" : `Show more (${total - contacts.length} left)`}
@@ -262,6 +276,94 @@ function PipelineColumn({
         )}
       </div>
     </section>
+  );
+}
+
+// ─── Phone list (one status at a time) ───────────────────────────────────────
+
+function PhoneLeadList({
+  status,
+  baseFilter,
+  limit,
+  onShowMore,
+  onOpen,
+  onMenu,
+  convertingId,
+}: {
+  status: LeadStatus;
+  baseFilter: ListContactsParams;
+  limit: number;
+  onShowMore: (status: LeadStatus) => void;
+  onOpen: (id: string) => void;
+  onMenu: (contact: Contact) => void;
+  convertingId: string | null;
+}) {
+  // Same query as the desktop column, so it is shared, not fetched twice
+  const { data, isLoading, isError, isFetching } = useContacts({ ...baseFilter, leadStatus: status, take: limit });
+  const contacts = data?.contacts ?? [];
+  const total = data?.total ?? 0;
+
+  if (isLoading) {
+    return (
+      <StageNote role="status">
+        <Spinner size="sm" className="text-on-surface-variant/40" />
+        <span className="sr-only">Loading leads</span>
+      </StageNote>
+    );
+  }
+  if (isError) {
+    return (
+      <StageNote role="alert">
+        <span className="text-error">Couldn&apos;t load these leads.</span>
+      </StageNote>
+    );
+  }
+  if (contacts.length === 0) return <StageNote>No {LABEL[status].toLowerCase()} leads</StageNote>;
+
+  return (
+    <>
+      <ul className="bg-surface-container-lowest">
+        {contacts.map((c) => {
+          const sourceLabel = sourceLabelOf(c);
+          const rating = ratingOf(c);
+          const display = c.name || c.phoneNumber;
+          return (
+            <StageRow
+              key={c.id}
+              leading={<Avatar name={display} src={c.avatarUrl} size="md" />}
+              title={c.name || "Unknown"}
+              subtitle={c.phoneNumber}
+              meta={
+                (sourceLabel || rating != null || convertingId === c.id) && (
+                  <>
+                    {sourceLabel && <StageChip>{sourceLabel}</StageChip>}
+                    {rating != null && (
+                      <span className="text-caption text-on-surface-variant">Rating {rating.toFixed(1)}</span>
+                    )}
+                    {convertingId === c.id && <span className="text-caption text-primary">Converting…</span>}
+                  </>
+                )
+              }
+              onOpen={() => onOpen(c.id)}
+              onMenu={() => onMenu(c)}
+              menuLabel={`Actions for ${display}`}
+            />
+          );
+        })}
+      </ul>
+      {contacts.length < total && (
+        <div className="p-4">
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => onShowMore(status)}
+            className="h-11 w-full rounded-lg text-label font-medium text-primary active:bg-primary/5 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            {isFetching ? "Loading…" : `Show more (${total - contacts.length} left)`}
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -323,15 +425,35 @@ export default function LeadPipelinePage() {
   const sourceOptions = (groups?.sources ?? []).filter((g) => g.count > 0);
   const moved = moveLead.isSuccess ? moveLead.variables : undefined;
 
-  // Phones: chips name every column with its count; swiping keeps them in step
-  const { scrollerRef, onScroll: onBoardScroll, scrollTo: showColumn, active: activeColumn } = useSwipeColumns(COLUMNS.length);
+  // Leads loaded per status ("Show more" adds a page); a new source filter starts over
+  const [limits, setLimits] = useState<Partial<Record<LeadStatus, number>>>({});
+  const showMore = useCallback((status: LeadStatus) => {
+    setLimits((prev) => ({ ...prev, [status]: (prev[status] ?? PAGE) + PAGE }));
+  }, []);
+
+  // Phones: one status at a time, picked from tabs that show every status's count
+  const [phoneStatus, setPhoneStatus] = useState<LeadStatus>("NEW");
   const [totals, setTotals] = useState<Partial<Record<LeadStatus, number | null>>>({});
   const reportTotal = useCallback((status: LeadStatus, total: number | null) => {
     setTotals((prev) => (prev[status] === total ? prev : { ...prev, [status]: total }));
   }, []);
 
+  // Phones: a row's ⋮ menu replaces dragging and the card's buttons
+  const [menuFor, setMenuFor] = useState<Contact | null>(null);
+  const menuActions: ActionSheetAction[] = menuFor
+    ? [
+        ...(convertPipeline && canConvertLead(menuFor)
+          ? [{ label: "Convert to deal", disabled: !!convertingId, onSelect: () => handleConvert(menuFor) }]
+          : []),
+        ...COLUMNS.filter((c) => c.status !== menuFor.leadStatus).map((c) => ({
+          label: `Move to ${c.label}`,
+          onSelect: () => move(menuFor, c.status),
+        })),
+      ]
+    : [];
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col max-lg:h-[calc(100dvh-var(--header-height))] max-lg:min-w-0 max-lg:overflow-hidden">
       {/* The iOS nav bar shows the title on mobile */}
       <PageHeader
         className="shrink-0 px-6 pt-5 pb-1 max-lg:hidden"
@@ -339,12 +461,17 @@ export default function LeadPipelinePage() {
         description="Drag a card to change its status, or open it to change it there"
       />
 
-      <FilterBar className="shrink-0 px-6 pt-2 max-lg:px-4">
+      <FilterBar className="shrink-0 px-6 pt-2 max-lg:px-4 max-lg:pb-1">
         <FilterSelect
           label="Lead source"
           active={!!source}
           value={source}
-          onChange={(e) => setSource(e.target.value as ContactSource | "")}
+          onChange={(e) => {
+            setSource(e.target.value as ContactSource | "");
+            setLimits({});
+          }}
+          className="max-lg:max-w-full"
+          wrapperClassName="max-lg:max-w-full"
         >
           <option value="">All sources</option>
           {sourceOptions.map((g) => (
@@ -359,30 +486,39 @@ export default function LeadPipelinePage() {
         </span>
       </FilterBar>
 
-      <SwipeColumnChips
+      {/* Phones: status tabs (fixed) above the list (the only part that scrolls) */}
+      <StageTabs
+        idBase="lead-status"
         label="Lead statuses"
-        active={activeColumn}
-        onSelect={showColumn}
+        value={phoneStatus}
+        onChange={(id) => setPhoneStatus(id as LeadStatus)}
         className="shrink-0"
-        chips={COLUMNS.map((col) => ({
+        tabs={COLUMNS.map((col) => ({
           id: col.status,
           label: col.label,
           count: totals[col.status],
           color: col.color,
         }))}
       />
+      <StagePanel idBase="lead-status" tabId={phoneStatus}>
+        <PhoneLeadList
+          key={`${phoneStatus}-${source}`}
+          status={phoneStatus}
+          baseFilter={baseFilter}
+          limit={limits[phoneStatus] ?? PAGE}
+          onShowMore={showMore}
+          onOpen={openContactDetail}
+          onMenu={setMenuFor}
+          convertingId={convertingId}
+        />
+      </StagePanel>
 
-      {/* Kanban board */}
-      {/* Mobile: one column per screen, swipe sideways with snap */}
-      <div
-        ref={scrollerRef}
-        onScroll={onBoardScroll}
-        className="flex-1 overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-4 max-lg:overflow-y-hidden max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden"
-      >
-        <div className="flex h-full min-h-0 gap-4 p-6 max-lg:w-max max-lg:items-start max-lg:gap-3 max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
+      {/* Kanban board (desktop; phones use the list above) */}
+      <div className="flex-1 overflow-x-auto max-lg:hidden">
+        <div className="flex h-full min-h-0 gap-4 p-6">
           {COLUMNS.map((col) => (
             <PipelineColumn
-              // A new source filter starts each column from its first page
+              // A new source filter starts each column afresh
               key={`${col.status}-${source}`}
               status={col.status}
               label={col.label}
@@ -394,10 +530,19 @@ export default function LeadPipelinePage() {
               onConvert={convertPipeline ? handleConvert : undefined}
               convertingId={convertingId}
               onTotal={reportTotal}
+              limit={limits[col.status] ?? PAGE}
+              onShowMore={showMore}
             />
           ))}
         </div>
       </div>
+
+      <ActionSheet
+        open={!!menuFor}
+        onClose={() => setMenuFor(null)}
+        title={menuFor ? menuFor.name || menuFor.phoneNumber : undefined}
+        actions={menuActions}
+      />
 
       <ContactDetailDrawer contactId={selectedContactId} open={detailDrawerOpen} onClose={closeContactDetail} />
     </div>

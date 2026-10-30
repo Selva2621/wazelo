@@ -49,6 +49,7 @@ import { SendMessageModal } from "./send-message-modal";
 import { IconButton } from "@/components/ui/icon-button";
 import { Drawer } from "@/components/ui/modal";
 import { CONTACT_SOURCE_LABELS } from "@/lib/constants/contact-sources";
+import { useProductTerms } from "@/lib/product-terms";
 
 const DEAL_STATUS_LABELS: Record<string, string> = { OPEN: "Open", WON: "Won", LOST: "Lost" };
 
@@ -90,6 +91,7 @@ export function ContactDetailDrawer({
 
   const router = useRouter();
   const userRole = useAuthStore((s) => s.user?.role);
+  const terms = useProductTerms();
 
   const { data: contact, isLoading } = useContact(contactId);
   const changeStatus = useChangeLeadStatus();
@@ -155,7 +157,7 @@ export function ContactDetailDrawer({
         {() => (
         <>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10 max-lg:shrink-0">
           <h2 className="text-body-lg font-semibold text-on-surface">
             Contact Details
           </h2>
@@ -238,7 +240,8 @@ export function ContactDetailDrawer({
         </div>
 
         {/* Content */}
-        <div className="h-[calc(100%-57px)] overflow-y-auto">
+        {/* Phones: fills the sheet under its grabber and header, never wider than the screen */}
+        <div className="h-[calc(100%-57px)] overflow-y-auto max-lg:h-auto max-lg:min-h-0 max-lg:min-w-0 max-lg:flex-1 max-lg:overflow-x-hidden max-lg:overscroll-contain">
           {isLoading && (
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
@@ -413,7 +416,7 @@ export function ContactDetailDrawer({
               <div className="border-t border-outline-variant/10">
                 <div className="px-5 pt-3">
                   <Tabs
-                    tabs={drawerTabs}
+                    tabs={drawerTabs.map((t) => (t.id === "products" ? { ...t, label: terms.Plural } : t))}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                   />
@@ -625,6 +628,7 @@ function ContactProductsTab({ contactId }: { contactId: string }) {
   const { data: allProducts, isLoading: loadingAll } = useProducts();
   const assignProduct = useAssignProduct();
   const unassignProduct = useUnassignProduct();
+  const terms = useProductTerms();
 
   if (loadingContact || loadingAll) return <Spinner size="sm" />;
 
@@ -634,7 +638,7 @@ function ContactProductsTab({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-3">
       <span className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
-        Assigned Products ({contactProducts?.length || 0})
+        Assigned {terms.plural} ({contactProducts?.length || 0})
       </span>
 
       {contactProducts && contactProducts.length > 0 ? (
@@ -650,7 +654,7 @@ function ContactProductsTab({ contactId }: { contactId: string }) {
           </div>
         ))
       ) : (
-        <p className="text-label text-on-surface-variant/50">No products assigned.</p>
+        <p className="text-label text-on-surface-variant/50">No {terms.plural} assigned.</p>
       )}
 
       <div className="pt-2">
@@ -659,7 +663,7 @@ function ContactProductsTab({ contactId }: { contactId: string }) {
           onChange={(productId) => {
             if (productId) assignProduct.mutate({ contactId, productId });
           }}
-          label="Add Product"
+          label={`Add ${terms.singular}`}
           optional={false}
           activeOnly
         />

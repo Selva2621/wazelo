@@ -118,16 +118,6 @@ const ICONS: Record<string, IconDef> = {
       </>
     ),
   },
-  "/campaigns?action=new": {
-    from: "#fb7185",
-    to: "#e11d48",
-    glyph: (
-      <>
-        <path d="M21.3 2.7 3 10.1c-.8.3-.8 1.5.1 1.7l6.4 1.7 1.7 6.4c.2.9 1.4.9 1.7.1z" />
-        <path d="M9.5 13.5 21.3 2.7l-8.6 13.5z" {...SHADE} />
-      </>
-    ),
-  },
   "/sequences": {
     from: "#38bdf8",
     to: "#0284c7",

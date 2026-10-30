@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { Package, ArrowRight } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface ProductSelectFieldProps {
   /** Current selected product id ("" = none) */
   value: string;
   onChange: (id: string) => void;
-  /** Label shown above the select. Defaults to "Product" */
+  /** Label shown above the select. Defaults to "Product" ("Service" for freelancers) */
   label?: string;
   /** Show "(optional)" hint next to label. Defaults to true */
   optional?: boolean;
@@ -28,7 +29,7 @@ interface ProductSelectFieldProps {
 export function ProductSelectField({
   value,
   onChange,
-  label = "Product",
+  label,
   optional = true,
   className,
   onBeforeRedirect,
@@ -36,6 +37,7 @@ export function ProductSelectField({
 }: ProductSelectFieldProps) {
   const router = useRouter();
   const { data: products, isLoading } = useProducts();
+  const terms = useProductTerms();
 
   const filtered = (products ?? []).filter(
     (p) => !activeOnly || p.status === "ACTIVE",
@@ -49,7 +51,7 @@ export function ProductSelectField({
   return (
     <div className={className}>
       <p className="text-label font-medium text-on-surface-variant mb-1">
-        {label}
+        {label ?? terms.Singular}
         {optional && (
           <span className="ml-1 font-normal text-on-surface-variant/50">
             (optional)
@@ -59,7 +61,7 @@ export function ProductSelectField({
 
       {isLoading && (
         <div className={`${selectCls} text-on-surface-variant/40 animate-pulse`}>
-          Loading products…
+          Loading {terms.plural}…
         </div>
       )}
 
@@ -69,7 +71,7 @@ export function ProductSelectField({
           onChange={(e) => onChange(e.target.value)}
           className={selectCls}
         >
-          <option value="">No product</option>
+          <option value="">No {terms.singular}</option>
           {filtered.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -83,10 +85,10 @@ export function ProductSelectField({
           <Package className="h-4 w-4 text-on-surface-variant shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-on-surface">
-              No products yet
+              No {terms.plural} yet
             </p>
             <p className="text-caption text-on-surface-variant/60 mt-0.5">
-              Create at least one product to link it here.
+              Create at least one {terms.singular} to link it here.
             </p>
             <button
               type="button"
@@ -96,7 +98,7 @@ export function ProductSelectField({
               }}
               className="mt-2 inline-flex items-center gap-1 text-label font-medium text-primary hover:underline"
             >
-              Go to Products
+              Go to {terms.Plural}
               <ArrowRight className="h-3 w-3" />
             </button>
           </div>

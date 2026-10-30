@@ -62,7 +62,7 @@ export function AppShellSkeleton() {
             </div>
           ))}
         </div>
-        <div className="ios-tab-bar fixed inset-x-0 bottom-0 flex h-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] justify-around pt-2">
+        <div className="ios-tab-bar fixed inset-x-0 bottom-0 flex h-[calc(var(--tabbar-item-h)+var(--safe-bottom))] justify-around pt-2">
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="size-6 rounded-md bg-on-surface/6" />
           ))}

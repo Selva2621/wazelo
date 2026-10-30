@@ -136,6 +136,7 @@ import {
 import type { SlaPolicy } from "@/lib/types/sla";
 import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { useProductTerms } from "@/lib/product-terms";
 
 type SettingsTab =
   | "organization"
@@ -349,6 +350,7 @@ export default function SettingsPage() {
 
 function OrganizationSection() {
   const { data, isLoading } = useOrgSettings();
+  const terms = useProductTerms();
   const updateMutation = useUpdateOrgSettings();
 
   const [name, setName] = useState("");
@@ -476,7 +478,7 @@ function OrganizationSection() {
                 </option>
               ))}
             </select>
-            <p className="text-caption text-on-surface-variant">Default for deals and products</p>
+            <p className="text-caption text-on-surface-variant">Default for deals and {terms.plural}</p>
           </div>
         </div>
 
@@ -673,6 +675,7 @@ function AiMemorySection() {
   const buildCost = costOf(creditsData?.costs, "kb_build", 10);
   const faqCost = costOf(creditsData?.costs, "faq_generate", 3);
   const productCount = Array.isArray(products) ? products.length : 0;
+  const terms = useProductTerms();
 
   if (isLoading) return <SectionLoader />;
 
@@ -708,7 +711,7 @@ function AiMemorySection() {
 
       <KnowledgeStep
         n={2}
-        title="Products & services"
+        title={terms.isService ? terms.Plural : "Products & services"}
         action={
           <Link href="/settings/products" className="text-label font-medium text-primary hover:underline">
             Manage
@@ -717,8 +720,8 @@ function AiMemorySection() {
       >
         <p className="text-label text-on-surface-variant">
           {productCount > 0
-            ? `${productCount} product${productCount === 1 ? "" : "s"} — names, prices and descriptions are used.`
-            : "No products yet. Add your services and prices so the AI can quote them."}
+            ? `${productCount} ${productCount === 1 ? terms.singular : terms.plural} — names, prices and descriptions are used.`
+            : `No ${terms.plural} yet. Add your services and prices so the AI can quote them.`}
         </p>
       </KnowledgeStep>
 

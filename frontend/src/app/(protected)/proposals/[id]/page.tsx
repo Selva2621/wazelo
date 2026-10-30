@@ -16,6 +16,7 @@ import {
   useUpdateProposal,
 } from "@/hooks/use-proposals";
 import { useProducts } from "@/hooks/use-products";
+import { useProductTerms } from "@/lib/product-terms";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useAiCredits } from "@/hooks/use-ai-credits";
 import { proposalsApi, type Proposal, type ProposalEdits, type ProposalItem } from "@/lib/api/proposals";
@@ -136,6 +137,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
   const share = useShareProposal();
   const remove = useDeleteProposal();
   const { data: products } = useProducts();
+  const terms = useProductTerms();
   const { data: org } = useOrgSettings();
   const { data: credits } = useAiCredits();
   const draftCost = credits?.costs?.find((c) => c.action === "proposal_draft")?.cost ?? 2;
@@ -502,7 +504,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
               </Button>
               {!!products?.length && (
                 <select
-                  aria-label="Add from your products"
+                  aria-label={`Add from your ${terms.plural}`}
                   value=""
                   onChange={(e) => {
                     const p = products.find((x) => x.id === e.target.value);
@@ -510,7 +512,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
                   }}
                   className="rounded-lg border border-outline-variant bg-surface px-2 py-1.5 text-label text-on-surface outline-none focus:border-primary"
                 >
-                  <option value="">Add from products…</option>
+                  <option value="">Add from {terms.plural}…</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}{p.price ? ` · ${money(Number(p.price), p.currency || proposal.currency)}` : ""}

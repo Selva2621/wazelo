@@ -11,9 +11,12 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState, LoadError } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { BottomSheet } from "@/components/ios/bottom-sheet";
+import { GroupedSection, ListRow } from "@/components/ios/grouped-list";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
   useTemplates,
   useCreateTemplate,
@@ -24,16 +27,12 @@ import {
 } from "@/hooks/use-templates";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useProducts } from "@/hooks/use-products";
+import { useProductTerms } from "@/lib/product-terms";
 import { listFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
-import type { MessageTemplate } from "@/lib/types/templates";
+import { TEMPLATE_STATUS_LABELS, type MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { PageHeader } from "@/components/layout/page-header";
-
-// The inline form sits at the top of the page; on phones bring it into view
-function scrollTopOnMobile() {
-  if (window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0, behavior: "smooth" });
-}
 
 const CATEGORIES = ["", "MARKETING", "UTILITY", "AUTHENTICATION", "SHOPIFY"] as const;
 
@@ -120,6 +119,11 @@ export default function TemplatesPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiCategory, setAiCategory] = useState("");
   const [aiLanguage, setAiLanguage] = useState("en");
+  // Phones: the template tapped in the list, shown in a full-height detail sheet
+  const [detail, setDetail] = useState<MessageTemplate | null>(null);
+  const isMobile = useIsMobile();
+  // Stable: BottomSheet re-runs its focus effect whenever onClose changes
+  const closeDetail = useCallback(() => setDetail(null), []);
 
   const allFields = useMemo(() => {
     const custom: { fieldName: string; fieldLabel: string }[] = (customFields ?? []).map((f: CustomFieldDefinition) => ({
@@ -129,6 +133,7 @@ export default function TemplatesPage() {
     return [...SYSTEM_FIELDS, ...custom];
   }, [customFields]);
 
+  const terms = useProductTerms();
   const productMap = useMemo(() => {
     const map: Record<string, string> = {};
     (products ?? []).forEach((p) => { map[p.id] = p.name; });
@@ -251,7 +256,6 @@ export default function TemplatesPage() {
     setLanguage(tpl.language);
     setProductId(getProductId(tpl) ?? "");
     setShowForm(true);
-    scrollTopOnMobile();
   };
 
   const columns: DataTableColumn<MessageTemplate>[] = [
@@ -287,7 +291,7 @@ export default function TemplatesPage() {
     },
     {
       id: "product",
-      header: "Product",
+      header: terms.Singular,
       skeleton: "badge",
       cell: (tpl) => {
         const linkedProductId = getProductId(tpl);
@@ -389,11 +393,106 @@ export default function TemplatesPage() {
     return <LoadError what="templates" onRetry={() => refetch()} className="m-6" />;
   }
 
+  // Form pieces shared by the desktop inline form and the phone sheet (only one renders)
+  const nameInput = (
+    <input
+      aria-label="Template name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      placeholder="Template name * (e.g. welcome_offer)"
+      autoFocus={!isMobile}
+      className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+    />
+  );
+
+  const categoryLanguageFields = (
+    <div className="grid grid-cols-2 gap-3">
+      <select
+        aria-label="Category"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>{c ? categoryLabel(c) : "No category"}</option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Language"
+        value={language}
+        onChange={(e) => setLanguage(e.target.value)}
+        className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+      >
+        {LANGUAGES.map((l) => (
+          <option key={l.value} value={l.value}>{l.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // Body textarea with drag-drop
+  const bodyField = (
+    <div>
+      <label htmlFor="template-body" className="block text-caption font-medium text-on-surface-variant mb-1.5">
+        Message body *
+        <span className="ml-2 font-normal opacity-60 max-lg:hidden">— drag fields from the right panel to insert</span>
+        <span className="ml-2 font-normal opacity-60 lg:hidden">— tap a field below to insert</span>
+      </label>
+      <textarea
+        id="template-body"
+        ref={textareaRef}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Hello {{name}}, your order is ready!"
+        rows={7}
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const variable = e.dataTransfer.getData("text/plain");
+          if (variable) insertAtCursor(variable);
+        }}
+        className={`w-full rounded-lg border px-3 py-2.5 text-body text-on-surface focus:outline-none focus:ring-1 resize-none transition-colors ${
+          isDragOver
+            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+            : "border-outline-variant/20 bg-surface focus:border-primary focus:ring-primary/30"
+        }`}
+      />
+      <div className="flex items-center justify-between gap-2 mt-1">
+        {isFreelancer && body.trim() ? (
+          <button
+            type="button"
+            onClick={handleRewrite}
+            disabled={rewriteTemplate.isPending}
+            title={service ? `Rewrite for: ${service} (uses AI credits)` : "Add what you do in Settings first"}
+            className="inline-flex items-center gap-1 rounded text-label font-medium text-primary hover:underline disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-11"
+          >
+            {rewriteTemplate.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {rewriteTemplate.isPending ? "Rewriting…" : "Rewrite for my service"}
+          </button>
+        ) : (
+          <span />
+        )}
+        <p className="text-caption text-on-surface-variant/50 tabular-nums">
+          {body.length} / 4,096
+        </p>
+      </div>
+    </div>
+  );
+
+  const errorBox = formError ? (
+    <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
+      {formError}
+    </p>
+  ) : null;
+
   return (
     // Desktop: room around the page, like the other list pages
     <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions
-        primary={{ label: "New template", onClick: () => { resetForm(); setShowForm(true); scrollTopOnMobile(); } }}
+        primary={{ label: "New template", onClick: () => { resetForm(); setShowForm(true); } }}
         more={[{ label: "Generate with AI", onSelect: () => setShowAiModal(true) }]}
       />
       {/* Header */}
@@ -423,7 +522,7 @@ export default function TemplatesPage() {
       />
 
       {/* Create/Edit Form — 2 column layout */}
-      {showForm && (
+      {showForm && !isMobile && (
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
           <div className="px-5 py-4 border-b border-outline-variant">
             <h2 className="text-body-lg font-semibold text-on-surface">
@@ -434,93 +533,13 @@ export default function TemplatesPage() {
           <div className="grid grid-cols-[1fr_280px] divide-x divide-outline-variant max-lg:grid-cols-1 max-lg:divide-x-0 max-lg:divide-y">
             {/* Left: Template fields */}
             <div className="p-5 space-y-3">
-              <input
-                aria-label="Template name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Template name * (e.g. welcome_offer)"
-                autoFocus
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-              />
+              {nameInput}
 
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  aria-label="Category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c ? categoryLabel(c) : "No category"}</option>
-                  ))}
-                </select>
+              {categoryLanguageFields}
 
-                <select
-                  aria-label="Language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.value} value={l.value}>{l.label}</option>
-                  ))}
-                </select>
-              </div>
+              {bodyField}
 
-              {/* Body textarea with drag-drop */}
-              <div>
-                <label htmlFor="template-body" className="block text-caption font-medium text-on-surface-variant mb-1.5">
-                  Message body *
-                  <span className="ml-2 font-normal opacity-60 max-lg:hidden">— drag fields from the right panel to insert</span>
-                  <span className="ml-2 font-normal opacity-60 lg:hidden">— tap a field below to insert</span>
-                </label>
-                <textarea
-                  id="template-body"
-                  ref={textareaRef}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="Hello {{name}}, your order is ready!"
-                  rows={7}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(false);
-                    const variable = e.dataTransfer.getData("text/plain");
-                    if (variable) insertAtCursor(variable);
-                  }}
-                  className={`w-full rounded-lg border px-3 py-2.5 text-body text-on-surface focus:outline-none focus:ring-1 resize-none transition-colors ${
-                    isDragOver
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                      : "border-outline-variant/20 bg-surface focus:border-primary focus:ring-primary/30"
-                  }`}
-                />
-                <div className="flex items-center justify-between gap-2 mt-1">
-                  {isFreelancer && body.trim() ? (
-                    <button
-                      type="button"
-                      onClick={handleRewrite}
-                      disabled={rewriteTemplate.isPending}
-                      title={service ? `Rewrite for: ${service} (uses AI credits)` : "Add what you do in Settings first"}
-                      className="inline-flex items-center gap-1 rounded text-label font-medium text-primary hover:underline disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-11"
-                    >
-                      {rewriteTemplate.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      {rewriteTemplate.isPending ? "Rewriting…" : "Rewrite for my service"}
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                  <p className="text-caption text-on-surface-variant/50 tabular-nums">
-                    {body.length} / 4,096
-                  </p>
-                </div>
-              </div>
-
-              {formError && (
-                <p className="text-label text-error bg-error/8 border border-error/15 px-3 py-2 rounded-lg">
-                  {formError}
-                </p>
-              )}
+              {errorBox}
 
               <div className="flex gap-2 justify-end pt-1">
                 <Button variant="ghost" size="sm" onClick={resetForm}>
@@ -585,11 +604,11 @@ export default function TemplatesPage() {
                   <div className="flex items-center gap-1.5 mb-3">
                     <Package className="h-3.5 w-3.5 text-on-surface-variant" aria-hidden />
                     <p className="text-caption font-semibold text-on-surface">
-                      Link to product
+                      Link to {terms.singular}
                     </p>
                   </div>
                   <p className="text-caption text-on-surface-variant/60 mb-2">
-                    Group this template under a product
+                    Group this template under a {terms.singular}
                   </p>
                   <div className="space-y-1">
                     {/* No product option */}
@@ -604,7 +623,7 @@ export default function TemplatesPage() {
                       }`}
                     >
                       <span className="text-caption opacity-60">—</span>
-                      No product
+                      No {terms.singular}
                     </button>
                     {products
                       .filter((p) => p.status === "ACTIVE")
@@ -631,6 +650,183 @@ export default function TemplatesPage() {
           </div>
         </div>
       )}
+
+      {/* Phones: create/edit as a full-height sheet: form first, fields as a sideways row, sticky actions */}
+      {isMobile && (
+        <Modal
+          open={showForm}
+          onClose={resetForm}
+          dismissible={!(createTemplate.isPending || updateTemplate.isPending)}
+          aria-labelledby="template-form-title"
+          className="flex h-[calc(100dvh-var(--safe-top)-12px)] flex-col"
+        >
+          {() => (
+            <>
+              <div className="flex items-center justify-between gap-2 px-4 pt-5 pb-2">
+                <h2 id="template-form-title" className="text-body-lg font-semibold text-on-surface">
+                  {editId ? "Edit template" : "New template"}
+                </h2>
+                {!editId && (
+                  <Button variant="secondary" size="sm" onClick={() => setShowAiModal(true)} className="min-h-11">
+                    <Sparkles className="h-4 w-4 mr-1" aria-hidden /> Generate with AI
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-3 px-4 pb-4">
+                {nameInput}
+                {categoryLanguageFields}
+                {bodyField}
+
+                {/* Contact fields: tap to insert at the cursor */}
+                <div>
+                  <p className="mb-1.5 text-caption font-medium text-on-surface-variant">Contact fields</p>
+                  <div className="mobile-scroll-x -mx-4 flex gap-1.5 px-4">
+                    {allFields.map((field) => {
+                      const variable = `{{${field.fieldName}}}`;
+                      return (
+                        <button
+                          key={field.fieldName}
+                          type="button"
+                          onClick={() => insertAtCursor(variable)}
+                          aria-label={`Insert ${field.fieldLabel}`}
+                          className="inline-flex min-h-11 items-center rounded-full border border-outline-variant bg-surface px-3 text-label font-medium text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus active:bg-primary/5 active:text-primary"
+                        >
+                          {field.fieldLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Product link: same values as the desktop picker */}
+                {products && products.length > 0 && (
+                  <div>
+                    <label htmlFor="template-product" className="mb-1.5 block text-caption font-medium text-on-surface-variant">
+                      Link to {terms.singular}
+                    </label>
+                    <select
+                      id="template-product"
+                      value={productId}
+                      onChange={(e) => setProductId(e.target.value)}
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2.5 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    >
+                      <option value="">No {terms.singular}</option>
+                      {products
+                        .filter((p) => p.status === "ACTIVE" || p.id === productId)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {errorBox}
+              </div>
+
+              <ModalFooter className="flex gap-2 border-t border-outline-variant px-4 pt-3">
+                <Button variant="ghost" size="lg" onClick={resetForm} className="flex-1">
+                  Cancel
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={handleSave}
+                  disabled={createTemplate.isPending || updateTemplate.isPending}
+                  loading={createTemplate.isPending || updateTemplate.isPending}
+                  className="flex-1"
+                >
+                  {editId ? "Save changes" : "Create template"}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </Modal>
+      )}
+
+      {/* Phones: everything about one template, opened from its row */}
+      <BottomSheet
+        open={isMobile && !!detail}
+        onClose={closeDetail}
+        title={detail?.name ?? "Template"}
+        maxHeight={0.95}
+        className="h-[95dvh]"
+      >
+        {detail && (
+          <div className="flex min-h-full flex-col">
+            <div className="flex-1 space-y-4 px-4 pt-2 pb-4">
+              {/* The message as the customer sees it */}
+              <div className="rounded-xl bg-surface-container p-3">
+                <div className="ml-auto w-fit max-w-[90%] rounded-2xl rounded-tr-sm bg-bubble-out px-3 py-2 text-body text-on-bubble-out whitespace-pre-wrap break-words">
+                  {extractBody(detail) || "—"}
+                </div>
+              </div>
+
+              <GroupedSection className="!mx-0 !mb-0">
+                <ListRow
+                  title="Category"
+                  detail={
+                    isShopifyTemplate(detail)
+                      ? (getShopifyType(detail) ? SHOPIFY_TEMPLATE_TYPES[getShopifyType(detail)!] ?? "Shopify" : "Shopify")
+                      : detail.category ? categoryLabel(detail.category) : "—"
+                  }
+                />
+                <ListRow
+                  title="Language"
+                  detail={LANGUAGES.find((l) => l.value === detail.language)?.label ?? detail.language.toUpperCase()}
+                />
+                <ListRow
+                  title={terms.Singular}
+                  detail={(() => {
+                    const id = getProductId(detail);
+                    return (id && productMap[id]) || "—";
+                  })()}
+                />
+                <ListRow title="Status" detail={TEMPLATE_STATUS_LABELS[detail.status] ?? detail.status} />
+                <ListRow
+                  title="Created"
+                  detail={new Date(detail.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                />
+              </GroupedSection>
+            </div>
+
+            <div className="sticky bottom-0 flex gap-2 border-t border-outline-variant bg-surface px-4 pt-3 pb-1 [html[data-platform=android]_&]:bg-surface-container-low">
+              {isShopifyTemplate(detail) ? (
+                <p className="flex min-h-11 flex-1 items-center gap-1.5 text-label text-on-surface-variant">
+                  <Lock className="h-3.5 w-3.5" aria-hidden /> System template — cannot be deleted
+                </p>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="flex-1 text-error"
+                  onClick={() => {
+                    const tpl = detail;
+                    setDetail(null);
+                    setDeleteTarget(tpl);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" aria-hidden /> Delete
+                </Button>
+              )}
+              <Button
+                size="lg"
+                className="flex-1"
+                onClick={() => {
+                  const tpl = detail;
+                  setDetail(null);
+                  startEdit(tpl);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-1" aria-hidden /> Edit
+              </Button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
 
       {/* Category chips (only categories in use) + search on phones (desktop: in the header) */}
       {templates && templates.length > 0 && (
@@ -664,6 +860,27 @@ export default function TemplatesPage() {
           rows={filtered}
           rowKey={(tpl) => tpl.id}
           rowLabel={(tpl) => tpl.name}
+          // Phones: one compact row per template; tap for the full detail sheet
+          mobileListClassName="mx-0 mt-0 mb-0"
+          renderMobileRow={(tpl) => (
+            <button
+              type="button"
+              onClick={() => setDetail(tpl)}
+              className="flex min-h-11 w-full flex-col gap-0.5 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus active:bg-surface-container"
+            >
+              <span className="flex w-full items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-body font-semibold text-on-surface">{tpl.name}</span>
+                {isShopifyTemplate(tpl) ? (
+                  <Badge variant="success">Shopify</Badge>
+                ) : tpl.category ? (
+                  <Badge variant="muted">{categoryLabel(tpl.category)}</Badge>
+                ) : null}
+              </span>
+              <span className="block w-full truncate text-label text-on-surface-variant">
+                {extractBody(tpl) || "—"}
+              </span>
+            </button>
+          )}
         />
       ) : templates && templates.length > 0 && search ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">

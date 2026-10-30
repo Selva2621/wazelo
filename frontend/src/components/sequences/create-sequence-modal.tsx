@@ -44,6 +44,7 @@ import type {
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface CreateSequenceModalProps {
   /** Defaults to true so callers that mount the modal conditionally keep working. */
@@ -404,6 +405,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
   );
 
   const { data: products } = useProducts();
+  const terms = useProductTerms();
   const { data: orgSettings } = useOrgSettings();
   // Login already returns orgType, so the right preset set shows before settings load
   const user = useAuthStore((s) => s.user);
@@ -797,7 +799,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
               {(
                 [
                   { value: "ALL", label: "All contacts" },
-                  { value: "FILTERED", label: "By product" },
+                  { value: "FILTERED", label: `By ${terms.singular}` },
                   { value: "SCRAPED", label: "Scraped leads" },
                 ] as const
               ).map((o) => (
@@ -860,7 +862,9 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
 
             {audienceType === "FILTERED" && products && products.length > 0 && (
               <fieldset className="space-y-1.5 pl-2 border-l-2 border-primary/30">
-                <legend className="text-caption text-on-surface-variant">Contacts who own any of these products</legend>
+                <legend className="text-caption text-on-surface-variant">
+                  {terms.isService ? "Contacts linked to any of these services" : "Contacts who own any of these products"}
+                </legend>
                 {products.filter((p) => p.status === "ACTIVE").map((p) => (
                   <label key={p.id} className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -879,14 +883,14 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                   </label>
                 ))}
                 {selectedProductIds.length === 0 && (
-                  <p className="text-caption text-warning">Select at least one product</p>
+                  <p className="text-caption text-warning">Select at least one {terms.singular}</p>
                 )}
               </fieldset>
             )}
 
             {audienceType === "FILTERED" && (!products || products.length === 0) && (
               <p className="text-caption text-on-surface-variant pl-2">
-                No products created yet. Go to Settings → Products to create one.
+                No {terms.plural} created yet. Go to Settings → {terms.Plural} to create one.
               </p>
             )}
           </div>
@@ -981,20 +985,20 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                           If the contact replies with a keyword
                         </p>
                         {step.conditions.map((cond, ci) => (
-                          <div key={ci} className="flex items-center gap-2">
+                          <div key={ci} className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
                             <input
                               value={cond.keyword}
                               onChange={(e) => updateCondition(index, ci, "keyword", e.target.value)}
                               placeholder="keyword"
                               aria-label={`Message ${index + 1}, condition ${ci + 1} keyword`}
-                              className={cn(FIELD_SMALL, "flex-1")}
+                              className={cn(FIELD_SMALL, "min-w-0 flex-1 max-sm:basis-full")}
                             />
-                            <span className="text-caption text-on-surface-variant">→ go to</span>
+                            <span className="shrink-0 whitespace-nowrap text-caption text-on-surface-variant">→ go to</span>
                             <select
                               aria-label={`Message ${index + 1}, condition ${ci + 1}: go to`}
                               value={cond.goToStepOrder}
                               onChange={(e) => updateCondition(index, ci, "goToStepOrder", parseInt(e.target.value))}
-                              className={FIELD_SMALL}
+                              className={cn(FIELD_SMALL, "min-w-0 max-sm:flex-1")}
                             >
                               {steps.map((_, si) => (
                                 <option key={si} value={si}>Message {si + 1}</option>

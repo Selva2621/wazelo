@@ -20,6 +20,8 @@ export interface ChecklistItem {
   /** Handled in place instead of navigating to href. */
   action?: "connect-whatsapp";
   done: boolean;
+  /** Nice to have: listed last, marked "Optional", never holds back "You're all set". */
+  optional?: boolean;
 }
 
 const DISMISSED_KEY = (orgId: string) => `setup_checklist_dismissed_${orgId}`;
@@ -69,9 +71,9 @@ export function useSetupChecklist() {
       (kbDocuments ?? []).some((d) => d.status === "READY") ||
       (kbFaqs ?? []).some((f) => f.isPublished);
 
-    // Only show steps the user can act on: products are admin-only and not
-    // part of the freelancer flow, templates need admin or manager
-    const canManageProducts = role === "ADMIN" && !isFreelancer;
+    // Only show steps the user can act on: products (services, for freelancers) are
+    // admin-only, templates need admin or manager
+    const canManageProducts = role === "ADMIN";
     const canManageTemplates = role === "ADMIN" || role === "MANAGER";
 
     const all: (ChecklistItem | false)[] = [
@@ -85,10 +87,13 @@ export function useSetupChecklist() {
       },
       canManageProducts && {
         id: "products",
-        label: "Add your products",
-        description: "Define products or services to use in campaigns and contacts.",
+        label: isFreelancer ? "Add your services" : "Add your products",
+        description: isFreelancer
+          ? "Define the services you offer to use in campaigns and contacts."
+          : "Define products or services to use in campaigns and contacts.",
         href: "/settings/products",
         done: hasProduct,
+        optional: true,
       },
       canManageTemplates && {
         id: "template",
@@ -123,8 +128,10 @@ export function useSetupChecklist() {
     return all.filter((i): i is ChecklistItem => Boolean(i));
   }, [whatsappSession, templates, contactsData, products, role, isFreelancer, canTeachBot, kbWebsites, kbDocuments, kbFaqs]);
 
-  const allDone = items.every((i) => i.done);
-  const doneCount = items.filter((i) => i.done).length;
+  // Progress counts the required steps only
+  const required = items.filter((i) => !i.optional);
+  const allDone = required.every((i) => i.done);
+  const doneCount = required.filter((i) => i.done).length;
 
   function dismiss() {
     if (!orgId) return;
@@ -134,5 +141,5 @@ export function useSetupChecklist() {
 
   const visible = !dismissed && !allDone;
 
-  return { items, doneCount, total: items.length, allDone, visible, dismissed, dismiss };
+  return { items, doneCount, total: required.length, allDone, visible, dismissed, dismiss };
 }

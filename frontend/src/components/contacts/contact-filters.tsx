@@ -8,6 +8,7 @@ import { useOrgMembers, useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStatus } from "@/lib/types/contacts";
+import { useProductTerms } from "@/lib/product-terms";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -17,7 +18,7 @@ const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
 ];
 
-function RemovableChip({ label, onRemove, kind }: { label: string; onRemove: () => void; kind: "tag" | "product" }) {
+function RemovableChip({ label, onRemove, kind }: { label: string; onRemove: () => void; kind: string }) {
   return (
     <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 pl-2.5 pr-1 text-label text-primary">
       {label}
@@ -56,6 +57,7 @@ export function ContactFilters({ showStatus = true }: { showStatus?: boolean }) 
   const { data: members } = useOrgMembers();
   const { data: orgTags } = useOrgTags();
   const { data: products } = useProducts();
+  const terms = useProductTerms();
 
   const hasFilters = filterStatus || filterOwnerId || filterSource || filterTagIds.length > 0 || filterProductIds.length > 0;
 
@@ -123,7 +125,7 @@ export function ContactFilters({ showStatus = true }: { showStatus?: boolean }) 
 
       {products && products.length > 0 && (
         <FilterSelect
-          label="Add product filter"
+          label={`Add ${terms.singular} filter`}
           value=""
           onChange={(e) => {
             if (e.target.value && !filterProductIds.includes(e.target.value)) {
@@ -131,7 +133,7 @@ export function ContactFilters({ showStatus = true }: { showStatus?: boolean }) 
             }
           }}
         >
-          <option value="">Product</option>
+          <option value="">{terms.Singular}</option>
           {products
             .filter((p) => p.status === "ACTIVE" && !filterProductIds.includes(p.id))
             .map((p) => (
@@ -143,7 +145,7 @@ export function ContactFilters({ showStatus = true }: { showStatus?: boolean }) 
       {filterProductIds.map((productId) => (
         <RemovableChip
           key={productId}
-          kind="product"
+          kind={terms.singular}
           label={products?.find((p) => p.id === productId)?.name ?? productId}
           onRemove={() => setFilterProductIds(filterProductIds.filter((id) => id !== productId))}
         />
