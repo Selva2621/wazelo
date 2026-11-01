@@ -758,7 +758,7 @@ export function AiInsightPanel({
               </p>
             ) : publishedFaqs.length === 0 ? (
               <p className="text-caption text-on-surface-variant">
-                You have no FAQs yet. Add them on the Bot knowledge page and
+                You have no FAQs yet. Add them on the AI assistant page and
                 they&apos;ll show up here.
               </p>
             ) : faqMatches.length === 0 ? (

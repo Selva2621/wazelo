@@ -44,7 +44,6 @@ const EXTRA_TITLES: [RegExp, string][] = [
   [/^\/contacts\/[^/]+$/, "Contact"],
   [/^\/campaigns\/[^/]+$/, "Campaign"],
   [/^\/automation\/[^/]+$/, "Automation"],
-  [/^\/chatbot\/knowledge$/, "Bot knowledge"],
   [/^\/chatbot\/[^/]+$/, "Flow"],
   [/^\/proposals\/[^/]+$/, "Proposal"],
   [/^\/leads\/scraper\/[^/]+$/, "Scrape results"],

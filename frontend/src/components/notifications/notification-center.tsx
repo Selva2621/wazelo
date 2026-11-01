@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Bell,
   X,
@@ -164,6 +165,11 @@ export function NotificationCenter() {
         )}
       </button>
 
+      {/* Rendered on <body>: the header's backdrop-blur would otherwise become the containing
+          block for these fixed layers and squeeze them into the 72px header strip */}
+      {typeof document !== "undefined" &&
+        createPortal(
+      <>
       {/* Backdrop */}
       {/* Fades with the panel's slide instead of popping */}
       <div
@@ -253,6 +259,9 @@ export function NotificationCenter() {
         </div>
       </div>
       </div>
+      </>,
+          document.body,
+        )}
     </>
   );
 }

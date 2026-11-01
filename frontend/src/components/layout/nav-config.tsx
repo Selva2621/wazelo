@@ -60,7 +60,7 @@ export interface NavItemDef {
   /** Roles that can see this item. Undefined = all roles. */
   roles?: Role[];
   /** Plan feature flag required to see this item. */
-  feature?: "campaigns" | "automation";
+  feature?: "campaigns" | "automation" | "ai";
   /** If true, only FREELANCER orgs see this item. */
   freelancerOnly?: boolean;
 }
@@ -123,6 +123,8 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/automation", icon: <Zap className="h-5 w-5" />, label: "Automation", feature: "automation" },
       { href: "/chatbot", icon: <Bot className="h-5 w-5" />, label: "Chatbot" },
+      // What the AI knows and how it talks: WhatsApp and the website chat share it
+      { href: "/ai-assistant", icon: <Sparkles className="h-5 w-5" />, label: "AI assistant", feature: "ai" },
       { href: "/settings/chat-widget", icon: <Globe className="h-5 w-5" />, label: "Chat widget", roles: ["ADMIN"] },
     ],
   },
@@ -185,11 +187,12 @@ export function useNavSections(): { sections: NavSectionDef[]; isFreelancer: boo
   const isFreelancer = orgSettings?.orgType === "FREELANCER";
   const role = user?.role as Role;
 
-  function isFeatureAllowed(feature?: "campaigns" | "automation"): boolean {
+  function isFeatureAllowed(feature?: NavItemDef["feature"]): boolean {
     if (!feature) return true;
     if (!plan) return true; // don't hide while loading
     if (feature === "campaigns") return plan.campaignsEnabled ?? false;
     if (feature === "automation") return plan.automationEnabled ?? false;
+    if (feature === "ai") return plan.aiEnabled ?? true;
     return true;
   }
 

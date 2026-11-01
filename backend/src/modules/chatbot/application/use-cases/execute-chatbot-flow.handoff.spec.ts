@@ -46,6 +46,7 @@ function setup(
     audit: { log: jest.fn() },
     recorded: [] as unknown[],
     trail: { start: jest.fn(), recentSafetyStops: jest.fn().mockResolvedValue(opts.earlierStops ?? 0) },
+    orgContext: { getContext: jest.fn().mockResolvedValue('## Business Context\nBusiness: Test shop') },
   };
   deps.trail.start.mockImplementation(() => (end: unknown) => deps.recorded.push(end));
   const useCase = new ExecuteChatbotFlowUseCase(
@@ -65,6 +66,7 @@ function setup(
     deps.limiter as never,
     deps.audit as never,
     deps.trail as never,
+    deps.orgContext as never,
   );
   const sent = () => deps.outbound.send.mock.calls.map((c) => c[0].body);
   return { useCase, deps, sent };

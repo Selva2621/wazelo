@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 
 .Claude/
 /backend/uploads/*
+
+# Demo video project (recordings, renders, scripts): local only
+/demo/

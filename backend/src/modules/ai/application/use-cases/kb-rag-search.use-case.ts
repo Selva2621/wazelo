@@ -29,14 +29,26 @@ export class KbRagSearchUseCase {
    * RAG-style search: find relevant knowledge (website, documents, articles) and generate an answer.
    * Used by agents to quickly find answers, or by chatbot for auto-replies.
    */
-  async execute(rawQuery: string, orgId: string, instructions?: string | null): Promise<KbRagResult> {
+  async execute(
+    rawQuery: string,
+    orgId: string,
+    instructions?: string | null,
+    /** The chat so far ("Customer: … / Agent: …"), so follow-up questions make sense */
+    chat?: { conversation?: string; teamText?: string },
+  ): Promise<KbRagResult> {
     // Sanitize query before using it in AI prompt and DB search
     const query = sanitizePromptInput(rawQuery, 500);
     if (!query) return { answer: '', sources: [], confidence: 0 };
 
-    // Website pages, uploaded documents and published articles, ranked by full-text search.
-    // `instructions`: the owner's own guidance (e.g. the chat widget's "Custom instructions")
-    const result = await this.kbAnswer.answer({ orgId, question: query, maxTokens: 600, instructions });
+    // Website pages, uploaded documents and published articles, ranked by full-text search
+    const result = await this.kbAnswer.answer({
+      orgId,
+      question: query,
+      maxTokens: 600,
+      instructions,
+      conversation: chat?.conversation,
+      teamText: chat?.teamText,
+    });
     if (!result.answer || !result.found) return { answer: '', sources: [], confidence: 0, blocked: result.blocked, usage: result.usage };
 
     const articleIds = result.sources.map((s) => s.articleId).filter((id): id is string => !!id);

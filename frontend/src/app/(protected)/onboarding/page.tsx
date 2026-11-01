@@ -31,6 +31,9 @@ function apiMessage(err: unknown): string | undefined {
   return Array.isArray(message) ? message[0] : message;
 }
 
+/** The two free-trial plans (backend: shared/constants/trial-plans.ts) */
+const TRIAL_SLUGS = ["free-trial", "free-trial-solo"];
+
 function daysRemaining(endsAt?: string | null) {
   if (!endsAt) return 0;
   const diff = new Date(endsAt).getTime() - Date.now();
@@ -525,7 +528,7 @@ function ConfirmStep({
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { data: subData, isLoading: subLoading } = useSubscription();
+  const { data: subData, isLoading: subLoading, refetch: refetchSubscription } = useSubscription();
   const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
   const { data: plans, isLoading: plansLoading } = usePlans();
   const createOrder = useCreateOrder();
@@ -552,6 +555,27 @@ export default function OnboardingPage() {
   const isOnTrial = subData?.subscription?.status === "TRIAL";
   const trialDaysLeft = daysRemaining(subData?.subscription?.trialEndsAt);
 
+  // Signup starts every trial on the team plan; picking Solo / Freelancer moves it to the
+  // solo trial in a background job. Until that lands the plan here is the wrong one, so
+  // check again for a few seconds and hide its limits meanwhile.
+  const trialPlan = subData?.subscription?.plan;
+  const expectedTrialSlug = orgSettings?.orgType === "FREELANCER" ? "free-trial-solo" : "free-trial";
+  const trialPlanPending =
+    isOnTrial &&
+    !!orgSettings?.orgType &&
+    orgSettings.orgType !== "CRM" &&
+    TRIAL_SLUGS.includes(trialPlan?.slug ?? "") &&
+    trialPlan?.slug !== expectedTrialSlug;
+  const [alignChecks, setAlignChecks] = useState(0);
+  useEffect(() => {
+    if (!trialPlanPending || alignChecks >= 10) return;
+    const timer = window.setTimeout(() => {
+      refetchSubscription();
+      setAlignChecks((n) => n + 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [trialPlanPending, alignChecks, refetchSubscription]);
+
   // If on active trial → show trial welcome screen
   if (!subLoading && isOnTrial) {
     return (
@@ -564,7 +588,8 @@ export default function OnboardingPage() {
             <TrialActiveStep
               firstName={user?.firstName ?? ""}
               daysLeft={trialDaysLeft}
-              plan={subData?.subscription?.plan}
+              // Gave up waiting (10s): show nothing rather than the wrong plan's limits
+              plan={trialPlanPending ? undefined : trialPlan}
               onContinue={() => router.push("/dashboard")}
             />
           </div>

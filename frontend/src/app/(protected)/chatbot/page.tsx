@@ -167,7 +167,7 @@ export default function ChatbotPage() {
         }
         more={[
           aiEnabled && { label: "Custom flow", onSelect: handleCreate, disabled: createFlow.isPending },
-          aiEnabled && { label: "Bot knowledge", onSelect: () => router.push("/chatbot/knowledge") },
+          aiEnabled && { label: "AI assistant", onSelect: () => router.push("/ai-assistant") },
         ]}
       />
       {/* Header */}
@@ -178,9 +178,9 @@ export default function ChatbotPage() {
         actions={
           <>
             {aiEnabled && (
-              <Button variant="secondary" onClick={() => router.push("/chatbot/knowledge")}>
+              <Button variant="secondary" onClick={() => router.push("/ai-assistant")}>
                 <BookOpen className="mr-1 h-4 w-4" />
-                Bot knowledge
+                AI assistant
               </Button>
             )}
             <Button

@@ -10,6 +10,7 @@ import { AiReplyLimiterService, AI_REPLY_LIMITS } from '@/modules/ai/domain/serv
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { AiReplyOutcome, AuditAction } from '@prisma/client';
 import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
+import { sanitizePromptInput } from '@/common/utils/prompt-sanitizer.util';
 
 @Injectable()
 export class SendWidgetMessageUseCase {
@@ -94,8 +95,16 @@ export class SendWidgetMessageUseCase {
 
     if (done && affordable && !overLimit) {
       try {
-        // The owner's "Custom instructions" from the widget settings shape the answer
-        const ragResult = await this.kbRagSearch.execute(dto.body, orgId, config.aiSystemPrompt);
+        // The chat so far, like the WhatsApp bot reads it. Tone and rules come from the
+        // AI assistant's shared instructions (in the business profile), same as WhatsApp.
+        const chat = (await this.widgetRepository.findRecentMessages(session.id, orgId)).map((m) => ({
+          fromVisitor: m.sender === 'visitor',
+          body: sanitizePromptInput(m.body, 1000),
+        }));
+        const ragResult = await this.kbRagSearch.execute(dto.body, orgId, null, {
+          conversation: chat.map((m) => `${m.fromVisitor ? 'Customer' : 'Agent'}: ${m.body}`).join('\n'),
+          teamText: chat.filter((m) => !m.fromVisitor).map((m) => m.body).join('\n'),
+        });
         const usage = { model: ragResult.usage?.model, tokens: ragResult.usage?.tokens };
         if (ragResult.answer) {
           await this.aiCredits.charge(orgId, 'widget_reply');

@@ -1120,8 +1120,8 @@ function WorkingHoursSection() {
         <h3 className="text-body-lg font-semibold text-on-surface mb-1">Reply outside hours</h3>
         <p className="text-body text-on-surface-variant">
           The message customers get when nobody is available is set with the chatbot&apos;s opening hours.{" "}
-          <Link href="/chatbot/knowledge" className="font-medium text-primary hover:underline">
-            Set it in Chatbot → Handover &amp; hours
+          <Link href="/ai-assistant" className="font-medium text-primary hover:underline">
+            Set it in AI assistant → Handover &amp; hours
           </Link>
         </p>
       </div>

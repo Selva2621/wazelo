@@ -22,6 +22,7 @@ import { AiReplyLimiterService, AI_REPLY_LIMITS } from '@/modules/ai/domain/serv
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { AiReplyOutcome, AuditAction } from '@prisma/client';
 import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
+import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
 
 /** Used when the flow has no prompt of its own. */
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
@@ -78,6 +79,7 @@ export class ExecuteChatbotFlowUseCase {
     private readonly limiter: AiReplyLimiterService,
     private readonly audit: AuditService,
     private readonly trail: AiReplyTrailService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
   /**
@@ -281,7 +283,11 @@ export class ExecuteChatbotFlowUseCase {
       // Nothing to answer from: fall through to a conversation-only reply
     }
 
-    const systemPrompt = `${flow.aiSystemPrompt || DEFAULT_SYSTEM_PROMPT}\n\n${UNTRUSTED_DATA_RULE}`;
+    // Same business profile and "Rules & tone" the website chat answers with
+    const profile = await this.orgContext.getContext(orgId, { forCustomers: true });
+    const systemPrompt = [profile ? `${profile}\n\n---` : '', flow.aiSystemPrompt || DEFAULT_SYSTEM_PROMPT, UNTRUSTED_DATA_RULE]
+      .filter(Boolean)
+      .join('\n\n');
     const userPrompt = `Conversation so far:\n${wrapUntrusted('conversation', context)}\n\nReply to the customer's latest message as the agent:`;
 
     const result = await this.aiProvider.complete({
@@ -296,7 +302,7 @@ export class ExecuteChatbotFlowUseCase {
         reply,
         // The business's own prompt may hold facts the bot should repeat, so only our fixed text counts as a leak
         ownInstructions: `${flow.aiSystemPrompt ? '' : DEFAULT_SYSTEM_PROMPT}\n${UNTRUSTED_DATA_RULE}`,
-        trustedText: `${flow.aiSystemPrompt ?? ''}\n${teamText}`,
+        trustedText: `${profile}\n${flow.aiSystemPrompt ?? ''}\n${teamText}`,
         customerText,
       });
       if (!check.ok) {

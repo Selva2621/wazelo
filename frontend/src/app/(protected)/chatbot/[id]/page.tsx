@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -321,14 +322,19 @@ function LeftPanel({
           </div>
           {aiEnabled && (
             <div className="space-y-1.5">
-              <label className="text-caption text-on-surface-variant">System Prompt</label>
+              <label htmlFor="flow-ai-prompt" className="text-caption text-on-surface-variant">Extra instructions for this bot (optional)</label>
               <textarea
+                id="flow-ai-prompt"
                 value={aiSystemPrompt}
                 onChange={(e) => setAiSystemPrompt(e.target.value)}
                 rows={4}
-                placeholder="You are a helpful customer support agent for [Company]. Be concise and friendly."
+                placeholder="e.g. Only talk about bookings. Ask for the date and number of people."
                 className="w-full px-2.5 py-2 rounded-lg border border-outline bg-surface-container text-caption text-on-surface resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+              <p className="text-caption text-on-surface-variant">
+                Tone and rules for every channel are in{" "}
+                <Link href="/ai-assistant" className="font-medium text-primary hover:underline">AI assistant</Link>.
+              </p>
             </div>
           )}
         </section>
@@ -1352,13 +1358,9 @@ function ChatbotEditorInner() {
                     <span className="text-label text-on-surface">AI Auto-Reply is enabled</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {aiSystemPrompt.trim() ? (
-                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-                    )}
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                     <span className="text-label text-on-surface">
-                      {aiSystemPrompt.trim() ? "System prompt configured" : "No system prompt — set one in the left panel"}
+                      Answers like your AI assistant{aiSystemPrompt.trim() ? ", plus this bot's extra instructions" : ""}
                     </span>
                   </div>
                 </div>

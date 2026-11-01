@@ -133,14 +133,14 @@ export const automationTours: TourDef[] = [
 
   {
     id: "chatbot-builder",
-    version: 1,
+    version: 2,
     title: "Flow builder",
     summary: "Design a chatbot flow with nodes, or switch it to AI mode.",
     section: "Automation",
     startHref: "/chatbot",
     startHint: "Open any chatbot",
     navHref: "/chatbot",
-    // /chatbot/knowledge has its own tour
+    // /chatbot/knowledge only redirects to /ai-assistant
     match: (p) => p !== "/chatbot/knowledge" && detail("/chatbot")(p),
     steps: [
       {
@@ -158,8 +158,8 @@ export const automationTours: TourDef[] = [
         target: "[role=\"switch\"][aria-label=\"AI mode\"]",
         ifMissing: "skip",
         title: "AI mode",
-        body: "Turn on to let AI answer instead of a fixed flow, using a short instruction and your knowledge documents.",
-        example: { kind: "tip", text: "Example instruction: “You are Kavya Boutique's assistant. Be brief, friendly, and offer the catalogue.”" },
+        body: "Turn on to let AI answer instead of a fixed flow. It uses your AI assistant's knowledge and instructions; add extra ones for this bot only if needed.",
+        example: { kind: "tip", text: "Example extra instruction: “Only talk about bookings. Ask for the date and number of people.”" },
       },
       {
         target: "builder-canvas",
@@ -176,14 +176,24 @@ export const automationTours: TourDef[] = [
 
   {
     id: "bot-knowledge",
-    version: 1,
-    title: "Bot knowledge",
-    summary: "What the AI bot knows: websites, files, FAQs and instructions.",
+    version: 2,
+    title: "AI assistant",
+    summary: "One AI for WhatsApp and your website: what it knows and how it talks.",
     section: "Automation",
-    startHref: "/chatbot/knowledge",
-    navHref: "/chatbot",
-    match: exact("/chatbot/knowledge"),
+    startHref: "/ai-assistant",
+    navHref: "/ai-assistant",
+    match: exact("/ai-assistant"),
     steps: [
+      {
+        target: "ai-channels",
+        title: "Where it answers",
+        body: "Your WhatsApp chatbot and website chat both answer from this page, so customers get the same reply everywhere.",
+      },
+      {
+        target: "kb-instructions",
+        title: "Instructions",
+        body: "Tone and rules for every channel (e.g. “never promise discounts”).",
+      },
       {
         target: "kb-websites",
         title: "Your website",
@@ -213,13 +223,13 @@ export const automationTours: TourDef[] = [
         body: "Upload price lists, brochures or policies as PDF or text.",
       },
       {
-        target: "kb-instructions",
-        title: "Instructions and handover",
-        body: "Tone and rules for the bot (e.g. “never promise discounts”), and when to pass the chat to a person.",
+        target: "kb-handover",
+        title: "Handover",
+        body: "When to pass the chat to a person, and your opening hours.",
       },
       {
         target: "#test-bot",
-        title: "Test your bot",
+        title: "Test your assistant",
         body: "Ask a question as a customer would and see the answer and which source it used.",
         example: { kind: "chat", messages: [{ from: "customer", text: "What are your prices?" }] },
       },
@@ -228,7 +238,7 @@ export const automationTours: TourDef[] = [
 
   {
     id: "chat-widget",
-    version: 1,
+    version: 2,
     title: "Website chat widget",
     summary: "A chat bubble for your website that lands in your inbox.",
     section: "Automation",
@@ -264,7 +274,7 @@ export const automationTours: TourDef[] = [
         target: "widget-ai",
         only: "desktop",
         title: "AI replies",
-        body: "Let the AI assistant answer visitors at any hour using your bot knowledge.",
+        body: "Let the AI answer visitors at any hour. It uses the same knowledge and instructions as WhatsApp, set in AI assistant.",
       },
       {
         target: ["widget-embed", "widget-segments"],

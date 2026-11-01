@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { Page } from 'playwright';
 import { BaseScraper } from './base-scraper';
 import { launchBrowser } from './browser';
@@ -19,6 +20,8 @@ const MAX_SCROLLS = 40;
 type Coords = { lat: number; lng: number };
 
 export class GoogleMapsScraper extends BaseScraper {
+  private readonly logger = new Logger(GoogleMapsScraper.name);
+
   async scrape(
     keywords: string,
     location?: string,
@@ -59,14 +62,25 @@ export class GoogleMapsScraper extends BaseScraper {
       }
 
       const results: ScrapedLead[] = [];
+      let attempted = 0;
+      let failed = 0;
       for (const placeUrl of placeUrls) {
         if (results.length >= maxResults || options?.signal?.aborted) break;
+        attempted++;
         try {
           const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview, options?.country);
           if (!accept || (await accept(lead))) results.push(lead);
-        } catch {
-          // Skip failed detail pages
+        } catch (error) {
+          // Skip the failed place, but say why — silent skips turn a broken run into "0 found"
+          if (options?.signal?.aborted) break;
+          failed++;
+          const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
+          this.logger.warn(`Skipped place ${placeUrl.split('?')[0]}: ${message}`);
         }
+      }
+      // Every place failed: report it as a failed run, not a clean "0 found"
+      if (attempted > 0 && failed === attempted) {
+        throw new Error(`all ${failed} place pages failed to load`);
       }
 
       await context.close();

@@ -2,6 +2,7 @@
 
 import { useProductTerms } from "@/lib/product-terms";
 import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import {
   Check,
   Code,
@@ -404,8 +405,6 @@ const FREELANCER_WIDGET_DEFAULTS = {
   welcomeMessage: "Hi! Tell me about your project and I'll get back to you within a few hours.",
   placeholder: "Describe your project...",
   preChatFormEnabled: true,
-  aiSystemPrompt:
-    "You are the assistant of an independent freelancer. Answer questions about their services and process briefly and politely. Never promise prices or deadlines — say the freelancer will confirm them personally. Ask what the visitor needs and by when.",
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -429,7 +428,6 @@ export default function ChatWidgetSettingsPage() {
     whatsappNumber: "",
     preChatFormEnabled: false,
     aiAssistantEnabled: false,
-    aiSystemPrompt: "",
   });
   // Last saved values: phones show a Save bar only while the form differs from these
   const [savedForm, setSavedForm] = useState(form);
@@ -475,7 +473,6 @@ export default function ChatWidgetSettingsPage() {
         whatsappNumber: config.whatsappNumber || "",
         preChatFormEnabled: starter?.preChatFormEnabled ?? config.preChatFormEnabled ?? false,
         aiAssistantEnabled: config.aiAssistantEnabled ?? false,
-        aiSystemPrompt: config.aiSystemPrompt || starter?.aiSystemPrompt || "",
       };
       setForm(next);
       setSavedForm(next);
@@ -488,7 +485,6 @@ export default function ChatWidgetSettingsPage() {
       companyName: form.companyName || null,
       avatarUrl: form.avatarUrl || null,
       whatsappNumber: form.whatsappNumber || null,
-      aiSystemPrompt: form.aiSystemPrompt || null,
     });
   };
 
@@ -581,24 +577,14 @@ export default function ChatWidgetSettingsPage() {
       </div>
     </div>
   );
-  const aiPromptField = (
-    <div>
-      <label htmlFor="widget-ai-prompt" className="text-label font-medium text-on-surface-variant">
-        Custom instructions (optional)
-      </label>
-      <textarea
-        id="widget-ai-prompt"
-        value={form.aiSystemPrompt}
-        onChange={(e) => setForm((f) => ({ ...f, aiSystemPrompt: e.target.value }))}
-        rows={4}
-        maxLength={2000}
-        placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our ${terms.plural}. If unsure, ask the visitor to leave their contact details.`}
-        className={cn(inputCls, "resize-none mt-1")}
-      />
-      <p className="text-caption text-on-surface-variant/60 mt-1 text-right tabular-nums">
-        {(form.aiSystemPrompt ?? "").length}/2000
-      </p>
-    </div>
+  // The website AI shares its knowledge and instructions with WhatsApp: one place to edit them
+  const aiSharedNote = (
+    <p className="text-label text-on-surface-variant">
+      Same knowledge and instructions as WhatsApp.{" "}
+      <Link href="/ai-assistant" className="font-medium text-primary hover:underline">
+        Edit in AI assistant
+      </Link>
+    </p>
   );
   const embedCodeBlock = (
     <>
@@ -778,10 +764,10 @@ export default function ChatWidgetSettingsPage() {
               {switchRow("Pre-chat form", "Ask name and phone first", form.preChatFormEnabled, () =>
                 setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled })),
               )}
-              {switchRow("AI assistant", "Replies from your Knowledge Base", form.aiAssistantEnabled, () =>
+              {switchRow("AI replies", "Answers visitors from your AI assistant", form.aiAssistantEnabled, () =>
                 setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled })),
               )}
-              {form.aiAssistantEnabled && <div className="pt-3">{aiPromptField}</div>}
+              {form.aiAssistantEnabled && <div className="pt-3">{aiSharedNote}</div>}
             </div>
           )}
 
@@ -876,18 +862,18 @@ export default function ChatWidgetSettingsPage() {
         <div data-tour="widget-ai" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">AI assistant</p>
+              <p className="text-body-lg font-medium text-on-surface">AI replies</p>
               <p className="text-label text-on-surface-variant">
-                Auto-reply using your org&apos;s Knowledge Base &amp; {terms.singular} data
+                Answer visitors any time from your {terms.plural}, website and FAQs
               </p>
             </div>
             <Toggle
-              label="AI assistant"
+              label="AI replies"
               enabled={form.aiAssistantEnabled}
               onChange={() => setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled }))}
             />
           </div>
-          {form.aiAssistantEnabled && aiPromptField}
+          {aiSharedNote}
         </div>
 
         {/* Save */}

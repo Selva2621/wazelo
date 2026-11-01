@@ -104,9 +104,9 @@ export function useSetupChecklist() {
       },
       canTeachBot && {
         id: "knowledge",
-        label: "Teach your bot",
-        description: "Add your website, files or FAQs so the bot can answer questions.",
-        href: "/chatbot/knowledge",
+        label: "Teach your AI assistant",
+        description: "Add your website, files or FAQs so it can answer customers on WhatsApp and your website.",
+        href: "/ai-assistant",
         done: hasKnowledge,
       },
       isFreelancer

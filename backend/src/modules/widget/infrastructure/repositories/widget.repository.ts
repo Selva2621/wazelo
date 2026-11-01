@@ -202,6 +202,17 @@ export class WidgetRepository {
     return s?.pauseHours ?? 12;
   }
 
+  /** The last `take` messages of a chat, oldest first: what the AI reads before replying. */
+  async findRecentMessages(sessionId: string, orgId: string, take = 20) {
+    const rows = await this.prisma.widgetMessage.findMany({
+      where: { sessionId, orgId },
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: { sender: true, body: true },
+    });
+    return rows.reverse();
+  }
+
   async findSessionMessages(
     sessionId: string,
     orgId: string,
