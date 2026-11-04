@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import type { LeadFilters, ScrapeSource, WebsiteIssue } from "@/lib/types/lead-scraper";
 import { SuggestMulti } from "./business-type-input";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, SKILL_SUGGESTIONS } from "@/lib/constants/scraper-suggestions";
@@ -169,10 +170,10 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
               <Section title="Quality">
                 <div className="flex items-center gap-4 flex-wrap">
                   <Field label="Min rating">
-                    <select value={value.minRating ?? ""} onChange={(e) => set({ minRating: e.target.value ? Number(e.target.value) : undefined })} className={inputClass}>
+                    <Select value={value.minRating ?? ""} onChange={(e) => set({ minRating: e.target.value ? Number(e.target.value) : undefined })} size="sm" className="w-auto">
                       <option value="">Any</option>
                       {[3, 3.5, 4, 4.5].map((r) => <option key={r} value={r}>{r.toFixed(1)}+</option>)}
-                    </select>
+                    </Select>
                   </Field>
                   <Field label="Reviews">
                     <input type="number" min={0} placeholder="min" value={value.minReviews ?? ""} onChange={(e) => set({ minReviews: num(e.target.value) })} className={`${inputClass} w-20`} />
@@ -198,10 +199,10 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                     </div>
                   </Field>
                   <Field label="Last review within">
-                    <select value={value.activeWithinMonths ?? ""} onChange={(e) => set({ activeWithinMonths: e.target.value ? Number(e.target.value) : undefined })} className={inputClass}>
+                    <Select value={value.activeWithinMonths ?? ""} onChange={(e) => set({ activeWithinMonths: e.target.value ? Number(e.target.value) : undefined })} size="sm" className="w-auto">
                       <option value="">Any time</option>
                       {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""}</option>)}
-                    </select>
+                    </Select>
                     {value.activeWithinMonths != null && <span className="text-caption">slower</span>}
                   </Field>
                 </div>
@@ -212,11 +213,11 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                   <Check label="Has phone" checked={!!value.hasPhone} onChange={(v) => set({ hasPhone: flag(v) })} />
                   <Check label="Mobile numbers only" hint="no landlines" checked={!!value.mobileOnly} onChange={(v) => set({ mobileOnly: flag(v) })} />
                   <Field label="Social profiles">
-                    <select value={value.social ?? ""} onChange={(e) => set({ social: (e.target.value || undefined) as LeadFilters["social"] })} className={inputClass}>
+                    <Select value={value.social ?? ""} onChange={(e) => set({ social: (e.target.value || undefined) as LeadFilters["social"] })} size="sm" className="w-auto">
                       <option value="">Any</option>
                       <option value="has">Has Instagram/Facebook</option>
                       <option value="none">No social profiles</option>
-                    </select>
+                    </Select>
                   </Field>
                 </div>
               </Section>
@@ -259,21 +260,21 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                     <input type="number" min={0} placeholder="max" value={value.maxBudget ?? ""} onChange={(e) => set({ maxBudget: num(e.target.value) })} className={`${inputClass} w-24`} />
                   </Field>
                   <Field label="Type">
-                    <select value={value.budgetType ?? ""} onChange={(e) => set({ budgetType: (e.target.value || undefined) as LeadFilters["budgetType"] })} className={inputClass}>
+                    <Select value={value.budgetType ?? ""} onChange={(e) => set({ budgetType: (e.target.value || undefined) as LeadFilters["budgetType"] })} size="sm" className="w-auto">
                       <option value="">Any</option>
                       <option value="fixed">Fixed price</option>
                       <option value="hourly">Hourly</option>
-                    </select>
+                    </Select>
                   </Field>
                 </div>
               </Section>
 
               <Section title="Job">
                 <Field label="Posted within">
-                  <select value={value.postedWithinDays ?? ""} onChange={(e) => set({ postedWithinDays: e.target.value ? Number(e.target.value) : undefined })} className={inputClass}>
+                  <Select value={value.postedWithinDays ?? ""} onChange={(e) => set({ postedWithinDays: e.target.value ? Number(e.target.value) : undefined })} size="sm" className="w-auto">
                     <option value="">Any time</option>
                     {[1, 3, 7, 14, 30].map((d) => <option key={d} value={d}>{d === 1 ? "24 hours" : `${d} days`}</option>)}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label="Skills include" asDiv>
                   <SuggestMulti groups={SKILL_SUGGESTIONS[source] ?? []} value={value.includeSkills} onChange={(includeSkills) => set({ includeSkills })} placeholder="Type or pick — React, WordPress" />

@@ -121,6 +121,8 @@ export class SequenceRepository {
     orgId: string;
     stepOrder: number;
     name?: string;
+    channel?: 'WHATSAPP' | 'EMAIL';
+    emailSubject?: string | null;
     messageType?: string;
     messageBody?: string;
     mediaUrl?: string;
@@ -133,6 +135,8 @@ export class SequenceRepository {
 
   async updateStep(stepId: string, orgId: string, data: Partial<{
     name: string;
+    channel: 'WHATSAPP' | 'EMAIL';
+    emailSubject: string | null;
     messageBody: string;
     mediaUrl: string | null;
     mediaMimeType: string | null;

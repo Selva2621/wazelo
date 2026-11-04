@@ -12,14 +12,18 @@ describe('normalizeVisitorPhone', () => {
   });
 });
 
-describe('WidgetLeadsService', () => {
-  function setup({ created = true, visitorMessages = 1 } = {}) {
+describe('WidgetLeadsService (consented visitors only)', () => {
+  function setup({ created = true, admin = true } = {}) {
     const prisma = {
       user: {
-        findFirst: jest.fn(async () => ({ id: 'admin1' })),
+        findFirst: jest.fn(async () => (admin ? { id: 'admin1' } : null)),
         findMany: jest.fn(async () => [{ id: 'admin1' }, { id: 'mgr1' }]),
       },
-      widgetMessage: { count: jest.fn(async () => visitorMessages) },
+      consentRecord: { create: jest.fn(async () => ({})) },
+      contact: {
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        findFirst: jest.fn(async (): Promise<Record<string, unknown> | null> => null),
+      },
     };
     const contacts = {
       upsertByPhone: jest.fn(async () => ({ contact: { id: 'ct1' }, created })),
@@ -29,35 +33,69 @@ describe('WidgetLeadsService', () => {
     const notifications = { dispatchToOrg: jest.fn(async () => undefined) };
     const events = { emit: jest.fn() };
     const service = new WidgetLeadsService(prisma as never, contacts as never, notifications as never, events as never);
-    return { service, contacts, notifications, events };
+    return { service, prisma, contacts, notifications, events };
   }
 
-  const msg = { orgId: 'o1', sessionId: 'ws1', messageId: 'm1', visitorName: 'Ravi', visitorPhone: '+91 98765 43210', body: 'Do you design logos?' };
+  const visitor = {
+    orgId: 'o1',
+    sessionId: 'ws1',
+    phone: '+919876543210',
+    email: 'ravi@example.com',
+    name: 'Ravi',
+    consentText: 'I agree to be contacted by Kavya on WhatsApp and email.',
+    ipAddress: '1.2.3.4',
+  };
 
-  it('turns a visitor with a phone into a tagged contact, runs "contact created", alerts the team', async () => {
-    const { service, contacts, notifications, events } = setup();
-    expect(await service.capture(msg)).toEqual({ contactId: 'ct1', created: true });
+  it('new contact: saved with email, tagged, consent stored word for word, team alerted — but no welcome yet', async () => {
+    const { service, prisma, contacts, notifications, events } = setup();
+    expect(await service.capture(visitor)).toEqual({ contactId: 'ct1', created: true });
     expect(contacts.upsertByPhone).toHaveBeenCalledWith(
       expect.objectContaining({ phoneNumber: '+919876543210', name: 'Ravi', source: 'WEBSITE' }),
       'admin1',
     );
+    expect(prisma.contact.updateMany).toHaveBeenCalledWith({ where: { id: 'ct1', email: null }, data: { email: 'ravi@example.com' } });
     expect(contacts.findOrCreateTag).toHaveBeenCalledWith('o1', 'website-chat');
-    expect(events.emit).toHaveBeenCalledWith('contact.created', expect.objectContaining({ contactId: 'ct1' }));
+    expect(prisma.consentRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        contactId: 'ct1',
+        granted: true,
+        source: 'website_chat',
+        ipAddress: '1.2.3.4',
+        metadata: expect.objectContaining({ channels: ['WHATSAPP', 'EMAIL'], text: visitor.consentText }),
+      }),
+    });
+    // The welcome waits until the website chat ends
+    expect(events.emit).not.toHaveBeenCalled();
     expect(notifications.dispatchToOrg).toHaveBeenCalledWith(
-      'o1', ['admin1', 'mgr1'], 'MESSAGE_RECEIVED', 'HIGH', 'Ravi asked on your website', 'Do you design logos?', expect.anything(), 'widget-lead:ws1',
+      'o1', ['admin1', 'mgr1'], 'MESSAGE_RECEIVED', 'NORMAL', 'Ravi started a chat on your website',
+      expect.stringContaining('when the chat ends'), expect.anything(), 'widget-lead:ws1',
     );
   });
 
-  it('existing contact: no new "contact created"; later messages in the chat: no repeat alert', async () => {
-    const { service, events, notifications } = setup({ created: false, visitorMessages: 3 });
-    await service.capture(msg);
-    expect(events.emit).not.toHaveBeenCalled();
-    expect(notifications.dispatchToOrg).not.toHaveBeenCalled();
+  it('existing contact: linked and consent stored, team told it is already a contact', async () => {
+    const { service, prisma, notifications } = setup({ created: false });
+    expect(await service.capture(visitor)).toEqual({ contactId: 'ct1', created: false });
+    expect(prisma.consentRecord.create).toHaveBeenCalled();
+    expect(notifications.dispatchToOrg).toHaveBeenCalledWith(
+      'o1', expect.anything(), 'MESSAGE_RECEIVED', 'NORMAL', expect.any(String), expect.stringContaining('Already a contact'), expect.anything(), 'widget-lead:ws1',
+    );
   });
 
-  it('does nothing without a usable phone number', async () => {
-    const { service, contacts } = setup();
-    expect(await service.capture({ ...msg, visitorPhone: undefined })).toBeNull();
+  it('releaseWelcome: "contact created" runs when the chat ends; not for an opted-out contact', async () => {
+    const a = setup();
+    a.prisma.contact.findFirst.mockResolvedValueOnce({ id: 'ct1', phoneNumber: '+919876543210', ownerId: 'admin1', optedOut: false });
+    expect(await a.service.releaseWelcome('o1', 'ct1')).toBe(true);
+    expect(a.events.emit).toHaveBeenCalledWith('contact.created', expect.objectContaining({ contactId: 'ct1', source: 'WEBSITE' }));
+
+    const b = setup();
+    b.prisma.contact.findFirst.mockResolvedValueOnce({ id: 'ct1', phoneNumber: '+91', ownerId: 'admin1', optedOut: true });
+    expect(await b.service.releaseWelcome('o1', 'ct1')).toBe(false);
+    expect(b.events.emit).not.toHaveBeenCalled();
+  });
+
+  it('no admin to own the contact: nothing is created', async () => {
+    const { service, contacts } = setup({ admin: false });
+    expect(await service.capture(visitor)).toBeNull();
     expect(contacts.upsertByPhone).not.toHaveBeenCalled();
   });
 });

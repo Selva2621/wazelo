@@ -167,6 +167,16 @@ export class UpdateOrgSettingsUseCase {
       );
     }
 
+    // Becoming a TEAM (usually right after signup, on the "How will you use Wazelo?" step)
+    // seeds the business starter templates the same way
+    if (changes.orgType && dto.orgType === OrgType.TEAM) {
+      await this.queueService.publishOnce(
+        QUEUE_NAMES.ORG_ONBOARDING,
+        { orgId, mode: 'org-type-changed' },
+        `org-templates:${orgId}:team`,
+      );
+    }
+
     // Emit event for real-time updates
     this.eventEmitter.emit(EVENT_NAMES.ORG_SETTINGS_UPDATED, {
       orgId,

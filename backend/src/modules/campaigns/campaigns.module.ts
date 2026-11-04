@@ -4,6 +4,7 @@ import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { AiModule } from '@/modules/ai/ai.module';
+import { EmailModule } from '@/modules/email/email.module';
 
 // Repositories
 import { CampaignRepository } from './infrastructure/repositories/campaign.repository';
@@ -38,6 +39,8 @@ import { CampaignRepliesService } from './application/services/campaign-replies.
     AuditModule,
     BillingModule,
     AiModule,
+    // Email campaigns send from the workspace's own mailbox
+    EmailModule,
     forwardRef(() => WhatsAppModule),
     forwardRef(() => MessagesModule),
   ],

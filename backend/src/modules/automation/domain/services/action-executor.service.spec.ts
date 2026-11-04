@@ -35,6 +35,7 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
   const conversationRepo = { findOrCreate: jest.fn(async () => ({ id: 'c1' })), assignTo: jest.fn(async () => ({})) };
   const messageEventRepo = { record: jest.fn(async () => undefined) };
   const sessionRepo = { findAnyActiveByOrgId: jest.fn(async () => ({ id: 'any-session' })) };
+  const orgEmail = { queue: jest.fn(async (): Promise<Record<string, unknown>> => ({ emailMessageId: 'em1', status: 'QUEUED' })) };
   const service = new ActionExecutorService(
     queueService as never,
     prisma as never,
@@ -48,8 +49,9 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
     changeLeadStatus as never,
     sequenceRepo as never,
     events as never,
+    orgEmail as never,
   );
-  return { service, messageRepo, queueService, assignContact, addTag, changeLeadStatus, sequenceRepo, events, conversationRepo, prisma };
+  return { service, messageRepo, queueService, assignContact, addTag, changeLeadStatus, sequenceRepo, events, conversationRepo, prisma, orgEmail };
 }
 
 const send = (eventPayload?: Record<string, unknown>) => ({
@@ -112,6 +114,48 @@ describe('ActionExecutorService contact actions (run now, as the rule creator)',
     expect((await service.execute(action(AutomationActionType.UPDATE_STATUS, { newStatus: 'INTERESTED' }))).success).toBe(true);
     expect(changeLeadStatus.execute).toHaveBeenCalledWith('ct1', 'o1', 'creator', expect.objectContaining({ status: 'INTERESTED' }));
     expect((await service.execute(action(AutomationActionType.UPDATE_STATUS, { newStatus: 'NOPE' }))).success).toBe(false);
+  });
+});
+
+describe('ActionExecutorService SEND_EMAIL', () => {
+  const input = (actionConfig: Record<string, unknown>) => ({
+    orgId: 'o1',
+    contactId: 'ct1',
+    actionType: AutomationActionType.SEND_EMAIL,
+    actionConfig,
+    executionId: 'ex1',
+    ruleId: 'r1',
+    eventPayload: { orderName: '#1001' },
+  });
+
+  it('queues the email from the workspace mailbox, once per run (idempotency key), with event fields filled', async () => {
+    const { service, orgEmail } = setup();
+    const r = await service.execute(input({ subject: 'Order {{shopify.order_name}}', body: 'Hi {{name}}, thanks!' }));
+    expect(r).toMatchObject({ success: true, result: { emailMessageId: 'em1', status: 'QUEUED' } });
+    expect(orgEmail.queue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactId: 'ct1',
+        subject: 'Order #1001',
+        body: 'Hi {{name}}, thanks!',
+        source: 'AUTOMATION',
+        sourceId: 'r1',
+        idempotencyKey: 'auto-email-ex1-r1-ct1',
+      }),
+    );
+  });
+
+  it("is skipped (not failed) when the email can't go, with the reason", async () => {
+    const { service, orgEmail } = setup();
+    orgEmail.queue.mockResolvedValueOnce({ emailMessageId: 'em2', status: 'SKIPPED', reason: 'Unsubscribed from email' });
+    const r = await service.execute(input({ subject: 'Hi', body: 'Hello' }));
+    expect(r).toMatchObject({ success: true, result: { skipped: true, reason: 'Unsubscribed from email' } });
+  });
+
+  it('fails without a subject or message', async () => {
+    const { service, orgEmail } = setup();
+    const r = await service.execute(input({ subject: '', body: 'Hello' }));
+    expect(r.success).toBe(false);
+    expect(orgEmail.queue).not.toHaveBeenCalled();
   });
 });
 

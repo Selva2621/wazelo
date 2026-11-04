@@ -14,6 +14,7 @@ import { PAGE_SIZE } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar } from "@/hooks/use-mobile-chrome";
 import { PageHeader } from "@/components/layout/page-header";
@@ -221,23 +222,23 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">Category</label>
-              <select
+              <Select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                aria-label="Category"
               >
                 {CATEGORIES.map((c) => <option key={c} value={c}>{sentenceCase(c)}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">Priority</label>
-              <select
+              <Select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                aria-label="Priority"
               >
                 {PRIORITIES.map((p) => <option key={p} value={p}>{sentenceCase(p)}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 

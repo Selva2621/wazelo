@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { WidgetConfig, WidgetSession, WidgetMessage } from '@prisma/client';
+import { OrgType, WidgetConfig, WidgetSession, WidgetMessage } from '@prisma/client';
 
 // ─── Input interfaces ─────────────────────────────────────────────────────────
 
@@ -32,13 +32,15 @@ export interface UpdateSessionVisitorInput {
 }
 
 /** Who wrote a website-chat message: the visitor, a person on the team, or the AI assistant */
-export type WidgetSender = 'visitor' | 'agent' | 'bot';
+/** "system": a notice in the chat, e.g. "Priya joined the chat" */
+export type WidgetSender = 'visitor' | 'agent' | 'bot' | 'system';
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
 export type WidgetConfigWithOrg = WidgetConfig & {
   orgName: string;
   orgSlug: string;
+  orgType: OrgType;
 };
 
 export type SessionWithMessages = WidgetSession & {
@@ -60,7 +62,7 @@ export class WidgetRepository {
   async findConfigByOrgSlug(slug: string): Promise<WidgetConfigWithOrg | null> {
     const org = await this.prisma.organization.findUnique({
       where: { slug },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, orgType: true },
     });
     if (!org) return null;
 
@@ -69,7 +71,7 @@ export class WidgetRepository {
     });
 
     return config
-      ? { ...config, orgName: org.name, orgSlug: org.slug }
+      ? { ...config, orgName: org.name, orgSlug: org.slug, orgType: org.orgType }
       : null;
   }
 
@@ -137,9 +139,11 @@ export class WidgetRepository {
     orgId: string,
     sender: WidgetSender,
     body: string,
+    /** The team member who wrote it (sender "agent") */
+    senderUserId?: string,
   ): Promise<WidgetMessage> {
     return this.prisma.widgetMessage.create({
-      data: { sessionId, orgId, sender, body },
+      data: { sessionId, orgId, sender, body, senderUserId: senderUserId ?? null },
     });
   }
 

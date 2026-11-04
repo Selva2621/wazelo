@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ContactSource } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EVENT_NAMES } from '@/common/constants';
@@ -9,15 +9,6 @@ import type { ContactCreatedEvent } from '@/events/event-bus';
 
 /** Tag on contacts that came from the website chat, so they're easy to filter */
 export const WEBSITE_CHAT_TAG = 'website-chat';
-
-interface WidgetMessageEvent {
-  orgId: string;
-  sessionId: string;
-  messageId: string;
-  visitorName?: string;
-  visitorPhone?: string;
-  body: string;
-}
 
 /**
  * "+91 98765-43210" → "+919876543210". Null when it isn't a plausible phone
@@ -31,10 +22,23 @@ export function normalizeVisitorPhone(raw: string | undefined | null): string | 
   return trimmed.startsWith('+') ? `+${digits}` : digits;
 }
 
+export interface ConsentedVisitor {
+  orgId: string;
+  sessionId: string;
+  phone: string;
+  email?: string | null;
+  name?: string | null;
+  /** The sentence the visitor agreed to, word for word */
+  consentText: string;
+  ipAddress?: string;
+}
+
 /**
- * Website chat → CRM. A visitor who leaves a phone number becomes a contact
- * (tagged "website-chat"), so "contact created" rules and sequences, deals and
- * WhatsApp follow-up all apply; the team gets one alert per chat with the question.
+ * Website chat → CRM, only with the visitor's consent. A visitor who ticks "I agree
+ * to be contacted" becomes a contact (tagged "website-chat", with a consent record).
+ * Their welcome — the "contact created" automations — is released separately when
+ * the website chat ends, so nothing pings them on WhatsApp while they're still
+ * chatting. Without consent the visitor stays a website chat only.
  */
 @Injectable()
 export class WidgetLeadsService {
@@ -47,22 +51,14 @@ export class WidgetLeadsService {
     private readonly events: EventEmitter2,
   ) {}
 
-  @OnEvent(EVENT_NAMES.WIDGET_MESSAGE_RECEIVED, { async: true })
-  async onWidgetMessage(event: WidgetMessageEvent): Promise<void> {
-    try {
-      await this.capture(event);
-    } catch (err) {
-      this.logger.warn(`Couldn't add website visitor to contacts: ${(err as Error).message}`);
-    }
-  }
-
-  async capture(event: WidgetMessageEvent): Promise<{ contactId: string; created: boolean } | null> {
-    const phone = normalizeVisitorPhone(event.visitorPhone);
-    if (!phone) return null;
-
+  /**
+   * Saves the contact and the consent. `created`: a new contact, whose welcome the
+   * caller holds until the chat ends. Null when the workspace has no admin to own it.
+   */
+  async capture(v: ConsentedVisitor): Promise<{ contactId: string; created: boolean } | null> {
     // Contacts need an owner: the workspace's first admin
     const owner = await this.prisma.user.findFirst({
-      where: { orgId: event.orgId, role: 'ADMIN', deletedAt: null },
+      where: { orgId: v.orgId, role: 'ADMIN', deletedAt: null },
       orderBy: { createdAt: 'asc' },
       select: { id: true },
     });
@@ -70,53 +66,99 @@ export class WidgetLeadsService {
 
     const { contact, created } = await this.contacts.upsertByPhone(
       {
-        orgId: event.orgId,
-        phoneNumber: phone,
-        name: event.visitorName?.trim() || undefined,
+        orgId: v.orgId,
+        phoneNumber: v.phone,
+        name: v.name?.trim() || undefined,
         source: ContactSource.WEBSITE,
         ownerId: owner.id,
-        metadata: { from: 'website-chat' },
+        metadata: { from: 'website-chat', widgetSessionId: v.sessionId },
       },
       owner.id,
     );
+    // The email they gave, unless the contact already has one
+    if (v.email) {
+      await this.prisma.contact.updateMany({ where: { id: contact.id, email: null }, data: { email: v.email } });
+    }
 
-    const tag = await this.contacts.findOrCreateTag(event.orgId, WEBSITE_CHAT_TAG);
-    await this.contacts.addTagToContact(contact.id, tag.id, event.orgId, owner.id);
+    const tag = await this.contacts.findOrCreateTag(v.orgId, WEBSITE_CHAT_TAG);
+    await this.contacts.addTagToContact(contact.id, tag.id, v.orgId, owner.id);
 
-    if (created) {
-      // Same as a contact added by the team: "contact created" rules and sequences run
-      this.events.emit(EVENT_NAMES.CONTACT_CREATED, {
+    // What they agreed to, when, and from where
+    await this.prisma.consentRecord.create({
+      data: {
+        orgId: v.orgId,
         contactId: contact.id,
-        orgId: event.orgId,
-        phoneNumber: phone,
-        ownerId: owner.id,
-        source: ContactSource.WEBSITE,
-        createdById: owner.id,
-      } satisfies ContactCreatedEvent);
-    }
-
-    // One alert per website chat: on the visitor's first message in it
-    const visitorMessages = await this.prisma.widgetMessage.count({
-      where: { sessionId: event.sessionId, sender: 'visitor' },
+        consentType: 'messaging',
+        granted: true,
+        source: 'website_chat',
+        ipAddress: v.ipAddress?.slice(0, 45),
+        metadata: { channels: ['WHATSAPP', 'EMAIL'], text: v.consentText, widgetSessionId: v.sessionId },
+      },
     });
-    if (visitorMessages === 1) {
-      const admins = await this.prisma.user.findMany({
-        where: { orgId: event.orgId, role: { in: ['ADMIN', 'MANAGER'] }, deletedAt: null },
-        select: { id: true },
-      });
-      const who = event.visitorName?.trim() || phone;
-      await this.notifications.dispatchToOrg(
-        event.orgId,
-        admins.map((u) => u.id),
-        'MESSAGE_RECEIVED',
-        'HIGH',
-        `${who} asked on your website`,
-        event.body.slice(0, 200),
-        { contactId: contact.id, widgetSessionId: event.sessionId, phoneNumber: phone },
-        `widget-lead:${event.sessionId}`,
-      );
-    }
 
+    // Every new lead reaches the team (one alert per chat)
+    const team = await this.prisma.user.findMany({
+      where: { orgId: v.orgId, role: { in: ['ADMIN', 'MANAGER'] }, deletedAt: null },
+      select: { id: true },
+    });
+    const who = v.name?.trim() || v.phone;
+    await this.notifications.dispatchToOrg(
+      v.orgId,
+      team.map((u) => u.id),
+      'MESSAGE_RECEIVED',
+      'NORMAL',
+      `${who} started a chat on your website`,
+      created ? 'Saved as a contact. Your welcome message goes when the chat ends.' : 'Already a contact: the chat is linked to them.',
+      { contactId: contact.id, widgetSessionId: v.sessionId, phoneNumber: v.phone },
+      `widget-lead:${v.sessionId}`,
+    );
+
+    return { contactId: contact.id, created };
+  }
+
+  /**
+   * The website chat ended: the new contact's "contact created" automations
+   * (welcome message, sequences) run now, as for a contact the team added.
+   */
+  async releaseWelcome(orgId: string, contactId: string): Promise<boolean> {
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: contactId, orgId, deletedAt: null },
+      select: { id: true, phoneNumber: true, ownerId: true, optedOut: true },
+    });
+    if (!contact || contact.optedOut) return false;
+    this.events.emit(EVENT_NAMES.CONTACT_CREATED, {
+      contactId: contact.id,
+      orgId,
+      phoneNumber: contact.phoneNumber,
+      ownerId: contact.ownerId,
+      source: ContactSource.WEBSITE,
+      createdById: contact.ownerId,
+    } satisfies ContactCreatedEvent);
+    return true;
+  }
+
+  /**
+   * A team member saves the visitor as a lead without the visitor's consent: the
+   * contact exists for the team, but "contact created" automations don't run, so no
+   * message goes out until the team (or the visitor) starts it.
+   */
+  async saveWithoutConsent(v: { orgId: string; sessionId: string; phone: string; email?: string | null; name?: string | null; userId: string }) {
+    const { contact, created } = await this.contacts.upsertByPhone(
+      {
+        orgId: v.orgId,
+        phoneNumber: v.phone,
+        name: v.name?.trim() || undefined,
+        source: ContactSource.WEBSITE,
+        ownerId: v.userId,
+        metadata: { from: 'website-chat', widgetSessionId: v.sessionId, consent: false, savedBy: v.userId },
+      },
+      v.userId,
+    );
+    if (v.email) {
+      await this.prisma.contact.updateMany({ where: { id: contact.id, email: null }, data: { email: v.email } });
+    }
+    const tag = await this.contacts.findOrCreateTag(v.orgId, WEBSITE_CHAT_TAG);
+    await this.contacts.addTagToContact(contact.id, tag.id, v.orgId, v.userId);
     return { contactId: contact.id, created };
   }
 }

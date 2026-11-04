@@ -7,6 +7,8 @@ import { UnansweredCard } from "@/components/knowledge/unanswered-card";
 import { HandoverCard } from "@/components/knowledge/handover-card";
 import { RepliesOnCard } from "@/components/knowledge/replies-on-card";
 import { useAiCredits } from "@/hooks/use-ai-credits";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 import { aiApi } from "@/lib/api/ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +40,8 @@ interface ChatTurn {
   missed?: boolean;
 }
 
-function TestChat({ askCost }: { askCost: number }) {
+function TestChat({ askCost, isFreelancer }: { askCost: number; isFreelancer: boolean }) {
+  const people = isFreelancer ? "Clients" : "Customers";
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
@@ -65,7 +68,7 @@ function TestChat({ askCost }: { askCost: number }) {
               id: Date.now() + 1,
               role: "bot",
               missed: true,
-              text: "Not in your knowledge yet. Customers would be told a team member will reply. Add it to your website, a file or the instructions.",
+              text: `Not in your knowledge yet. ${people} would be told ${isFreelancer ? "you'll" : "a team member will"} reply. Add it to your website, a file or the instructions.`,
             },
       ]);
     } catch (err) {
@@ -82,13 +85,17 @@ function TestChat({ askCost }: { askCost: number }) {
           <Sparkles className="h-4 w-4 text-primary" aria-hidden />
           Test your assistant
         </h2>
-        <p className={hint}>Ask what customers ask. Each question uses {credits(askCost)}.</p>
+        <p className={hint}>Ask what {people.toLowerCase()} ask. Each question uses {credits(askCost)}.</p>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4" aria-live="polite">
         {turns.length === 0 && !asking && (
           <p className="pt-8 text-center text-body text-on-surface-variant">
-            Try &ldquo;What are your prices?&rdquo; or &ldquo;Do you deliver?&rdquo;
+            {isFreelancer ? (
+              <>Try &ldquo;What are your rates?&rdquo; or &ldquo;Can I see your past work?&rdquo;</>
+            ) : (
+              <>Try &ldquo;What are your prices?&rdquo; or &ldquo;Do you deliver?&rdquo;</>
+            )}
           </p>
         )}
         {turns.map((t) => (
@@ -152,6 +159,9 @@ export default function AiAssistantPage() {
   const buildCost = costOf(creditsData?.costs, "kb_build", 10);
   const askCost = costOf(creditsData?.costs, "kb_search", 1);
   const faqCost = costOf(creditsData?.costs, "faq_generate", 3);
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
 
   return (
     // No overflow wrapper here: the window scrolls, so the test chat can stick beside the cards
@@ -183,7 +193,7 @@ export default function AiAssistantPage() {
             <div data-tour="kb-unanswered"><UnansweredCard className={card} /></div>
             <div data-tour="kb-handover"><HandoverCard className={card} /></div>
           </div>
-          <TestChat askCost={askCost} />
+          <TestChat askCost={askCost} isFreelancer={isFreelancer} />
         </div>
       </div>
     </div>

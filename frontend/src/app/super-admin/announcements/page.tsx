@@ -12,6 +12,7 @@ import {
   useSAPlans,
 } from "@/hooks/use-super-admin";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -411,27 +412,27 @@ export default function SuperAdminAnnouncementsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label htmlFor={fid("severity")} className={labelClass}>Severity</label>
-            <select id={fid("severity")} className={inputClass} value={severity} onChange={(e) => setSeverity(e.target.value as Severity)}>
+            <Select id={fid("severity")} value={severity} onChange={(e) => setSeverity(e.target.value as Severity)}>
               <option value="INFO">Info</option>
               <option value="WARNING">Warning</option>
               <option value="CRITICAL">Critical</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label htmlFor={fid("target")} className={labelClass}>Audience</label>
-            <select id={fid("target")} className={inputClass} value={target} onChange={(e) => setTarget(e.target.value as Target)}>
+            <Select id={fid("target")} value={target} onChange={(e) => setTarget(e.target.value as Target)}>
               <option value="ALL">All organizations</option>
               <option value="PLAN">Organizations on a plan</option>
               <option value="ORG">One organization</option>
-            </select>
+            </Select>
           </div>
           {target === "PLAN" && (
             <div>
               <label htmlFor={fid("plan")} className={labelClass}>Plan</label>
-              <select id={fid("plan")} className={inputClass} value={planSlug} onChange={(e) => setPlanSlug(e.target.value)}>
+              <Select id={fid("plan")} value={planSlug} onChange={(e) => setPlanSlug(e.target.value)}>
                 <option value="">Choose a plan…</option>
                 {planSlugs.map((p) => <option key={p.slug} value={p.slug}>{p.name} ({p.slug})</option>)}
-              </select>
+              </Select>
             </div>
           )}
           {target === "ORG" && (

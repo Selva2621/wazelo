@@ -295,6 +295,14 @@ enum AuditAction {
 
   // Chat Widget actions (Phase 4)
   WIDGET_CONFIG_UPDATED
+  // Website chat: consent, handover to a person, lead decision
+  WIDGET_CONSENT_GIVEN
+  WIDGET_CHAT_ACCEPTED
+  WIDGET_CHAT_DECLINED
+  WIDGET_CHAT_ASSIGNED
+  WIDGET_CHAT_ENDED
+  WIDGET_LEAD_SAVED
+  WIDGET_LEAD_DISMISSED
 
   // Chatbot & knowledge base (what the AI assistant says)
   CHATBOT_FLOW_CREATED
@@ -401,6 +409,8 @@ enum AutomationActionType {
   STOP_SEQUENCE
   /// Give the contact's chat to a person (bots pause there, like a manual assign)
   ASSIGN_CONVERSATION
+  /// Email the contact from the workspace's email account
+  SEND_EMAIL
 }
 
 enum AutomationRuleStatus {
@@ -1080,6 +1090,9 @@ model Contact {
   mergedIntoId String?       @map("merged_into_id") @db.Uuid
   optedOut     Boolean       @default(false) @map("opted_out")
   optedOutAt   DateTime?     @map("opted_out_at")
+  /// Clicked "Unsubscribe" in an email: no more emails (WhatsApp is separate)
+  emailOptedOut   Boolean    @default(false) @map("email_opted_out")
+  emailOptedOutAt DateTime?  @map("email_opted_out_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   deletedAt    DateTime?     @map("deleted_at")
@@ -1352,7 +1365,12 @@ model DeadLetterMessage {
 model Campaign {
   id              String               @id @default(uuid()) @db.Uuid
   orgId           String               @map("org_id") @db.Uuid
-  sessionId       String               @map("session_id") @db.Uuid
+  /// WHATSAPP (sent from sessionId) or EMAIL (sent from the workspace's email account)
+  channel         ChannelType          @default(WHATSAPP)
+  /// The WhatsApp number it sends from (null for email campaigns)
+  sessionId       String?              @map("session_id") @db.Uuid
+  /// Email campaigns: the subject line ({{name}} fields allowed)
+  emailSubject    String?              @map("email_subject") @db.VarChar(255)
   name            String               @db.VarChar(255)
   description     String?              @db.Text
   messageType     MessageType          @default(TEXT) @map("message_type")
@@ -1383,7 +1401,7 @@ model Campaign {
   productId   String?   @map("product_id") @db.Uuid
 
   organization Organization        @relation(fields: [orgId], references: [id])
-  session      WhatsAppSession     @relation(fields: [sessionId], references: [id])
+  session      WhatsAppSession?    @relation(fields: [sessionId], references: [id])
   createdBy    User                @relation("CampaignCreator", fields: [createdById], references: [id])
   product      Product?            @relation("CampaignProduct", fields: [productId], references: [id])
   recipients   CampaignRecipient[]
@@ -1411,6 +1429,8 @@ model CampaignRecipient {
   contactId    String                  @map("contact_id") @db.Uuid
   contactPhone String                  @map("contact_phone") @db.VarChar(20)
   messageId    String?                 @unique @map("message_id") @db.Uuid
+  /// Email campaigns: the email sent to this recipient
+  emailMessageId String?               @unique @map("email_message_id") @db.Uuid
   status       CampaignRecipientStatus @default(PENDING)
   failedReason String?                 @map("failed_reason") @db.Text
   processedAt  DateTime?               @map("processed_at")
@@ -1501,6 +1521,10 @@ model CampaignSequenceStep {
   orgId         String      @map("org_id") @db.Uuid
   stepOrder     Int         @map("step_order")
   name          String?     @db.VarChar(255)
+  /// WHATSAPP (from the sequence's number) or EMAIL (from the workspace's email account)
+  channel       ChannelType @default(WHATSAPP)
+  /// Email steps: the subject line
+  emailSubject  String?     @map("email_subject") @db.VarChar(255)
   messageType   MessageType @default(TEXT) @map("message_type")
   messageBody   String?     @map("message_body") @db.Text
   mediaUrl      String?     @map("media_url") @db.VarChar(2048)
@@ -2049,6 +2073,8 @@ enum NotificationType {
   PROPOSAL_RESPONSE
   WHATSAPP_SESSION_UNSTABLE
   WHATSAPP_PHONE_INACTIVE
+  /// A website visitor asked to talk to a person
+  WEBSITE_HANDOFF
 }
 
 enum TicketStatus {
@@ -3306,22 +3332,176 @@ model WidgetSession {
   pageUrl       String?  @map("page_url") @db.VarChar(2048)
   userAgent     String?  @map("user_agent") @db.VarChar(512)
   status        String   @default("open") @db.VarChar(20) // open | closed
+  /// Who is answering: AI | WAITING (asked for a person) | PERSON | ENDED
+  state         String   @default("AI") @db.VarChar(10)
+  /// The team member handling the chat (after accept / auto-assign)
+  assignedToId  String?  @map("assigned_to_id") @db.Uuid
+  handoffRequestedAt DateTime? @map("handoff_requested_at")
+  /// ASKED_FOR_PERSON | UNANSWERED | BUTTON
+  handoffReason String?  @map("handoff_reason") @db.VarChar(20)
+  acceptedAt    DateTime? @map("accepted_at")
+  /// AI questions in a row it couldn't answer (2 → hand over)
+  botMissStreak Int      @default(0) @map("bot_miss_streak")
+  /// Visitor agreed to be contacted: WHATSAPP | EMAIL
+  consentChannel String? @map("consent_channel") @db.VarChar(10)
+  consentAt     DateTime? @map("consent_at")
+  /// Contact created (or found) from this chat — only with consent or a member's "Save as lead"
+  contactId     String?  @map("contact_id") @db.Uuid
+  /// A new contact was saved from this chat: its welcome ("contact created" automations) waits until the chat ends
+  welcomePending Boolean @default(false) @map("welcome_pending")
+  welcomeAt     DateTime? @map("welcome_at")
+  /// LEAD | NOT_LEAD, chosen by the member who handled the chat
+  leadDecision  String?  @map("lead_decision") @db.VarChar(10)
+  endedAt       DateTime? @map("ended_at")
+  /// CONSENT | MEMBER | VISITOR | ...
+  endReason     String?  @map("end_reason") @db.VarChar(20)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   organization Organization   @relation(fields: [orgId], references: [id])
   messages     WidgetMessage[]
+  events       WidgetChatEvent[]
+  offers       WidgetHandoffOffer[]
 
   @@unique([orgId, visitorId], name: "unique_visitor_per_org")
   @@index([orgId])
+  @@index([orgId, state])
+  @@index([assignedToId])
   @@map("widget_sessions")
+}
+
+/// Everything that happened in a website chat, in order: nothing is left out
+model WidgetChatEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  /// e.g. AI_ANSWERED, AI_NOT_FOUND, HANDOFF_REQUESTED, TEAM_NOTIFIED, OFFERED, DECLINED, ACCEPTED,
+  /// OFFER_EXPIRED, NO_ONE_AVAILABLE, CONSENT_GIVEN, CONTACT_CREATED, LEAD_SAVED, ENDED, SEND_FAILED
+  type      String   @db.VarChar(30)
+  /// visitor | ai | user | system
+  actorType String   @map("actor_type") @db.VarChar(10)
+  actorId   String?  @map("actor_id") @db.Uuid
+  data      Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session WidgetSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, createdAt])
+  @@index([orgId, createdAt])
+  @@index([orgId, type])
+  @@map("widget_chat_events")
+}
+
+// ─────────────────────────────────────────────
+// Email: the workspace's own mailbox (SMTP), templates, and every email sent
+// ─────────────────────────────────────────────
+
+/// The workspace's business email, connected over SMTP. One per workspace.
+model EmailAccount {
+  id                String    @id @default(uuid()) @db.Uuid
+  orgId             String    @unique @map("org_id") @db.Uuid
+  /// GMAIL | OUTLOOK | ZOHO | CUSTOM (fills the server details in the setup form)
+  provider          String    @default("CUSTOM") @db.VarChar(10)
+  host              String    @db.VarChar(255)
+  port              Int       @default(587)
+  /// true = TLS from the start (port 465); false = STARTTLS (587)
+  secure            Boolean   @default(false)
+  username          String    @db.VarChar(320)
+  /// AES-256-GCM, never returned by the API
+  encryptedPassword String    @map("encrypted_password") @db.Text
+  fromName          String    @map("from_name") @db.VarChar(255)
+  fromAddress       String    @map("from_address") @db.VarChar(320)
+  replyTo           String?   @map("reply_to") @db.VarChar(320)
+  /// UNVERIFIED | ACTIVE | ERROR
+  status            String    @default("UNVERIFIED") @db.VarChar(12)
+  lastError         String?   @map("last_error") @db.VarChar(500)
+  verifiedAt        DateTime? @map("verified_at")
+  /// Mail providers cap sending per day (Gmail ~500): sending stops here, nothing gets the account blocked
+  dailyLimit        Int       @default(300) @map("daily_limit")
+  sentToday         Int       @default(0) @map("sent_today")
+  /// The day sentToday counts (UTC date)
+  sentDay           DateTime? @map("sent_day") @db.Date
+  createdById       String    @map("created_by_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_accounts")
+}
+
+/// A reusable email: subject + message with {{name}} style fields
+model EmailTemplate {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  subject     String    @db.VarChar(255)
+  /// Plain text with blank lines between paragraphs; links are made clickable
+  body        String    @db.Text
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([orgId, deletedAt])
+  @@map("email_templates")
+}
+
+/// Every email the workspace sends, and what happened to it
+model EmailMessage {
+  id                String    @id @default(uuid()) @db.Uuid
+  orgId             String    @map("org_id") @db.Uuid
+  contactId         String?   @map("contact_id") @db.Uuid
+  toAddress         String    @map("to_address") @db.VarChar(320)
+  subject           String    @db.VarChar(255)
+  body              String    @db.Text
+  /// QUEUED | SENT | FAILED | SKIPPED (opted out, no email, limit reached …)
+  status            String    @default("QUEUED") @db.VarChar(10)
+  error             String?   @db.VarChar(500)
+  /// CAMPAIGN | AUTOMATION | SEQUENCE | TEST
+  source            String    @db.VarChar(12)
+  /// The campaign / rule / sequence step it came from
+  sourceId          String?   @map("source_id") @db.Uuid
+  providerMessageId String?   @map("provider_message_id") @db.VarChar(255)
+  attempts          Int       @default(0)
+  /// One email per (source, recipient): a retried job never sends twice
+  idempotencyKey    String    @unique @map("idempotency_key") @db.VarChar(255)
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([orgId, createdAt])
+  @@index([orgId, status])
+  @@index([source, sourceId])
+  @@index([contactId])
+  @@map("email_messages")
+}
+
+/// A website chat offered to a team member: they accept or decline (or it times out)
+model WidgetHandoffOffer {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  sessionId   String    @map("session_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  /// OFFERED | ACCEPTED | DECLINED | EXPIRED | CANCELLED (someone else took it / chat ended)
+  status      String    @default("OFFERED") @db.VarChar(10)
+  offeredAt   DateTime  @default(now()) @map("offered_at")
+  expiresAt   DateTime? @map("expires_at")
+  respondedAt DateTime? @map("responded_at")
+
+  session WidgetSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, status])
+  @@index([userId, status])
+  @@index([orgId, status])
+  @@map("widget_handoff_offers")
 }
 
 model WidgetMessage {
   id        String   @id @default(uuid()) @db.Uuid
   sessionId String   @map("session_id") @db.Uuid
   orgId     String   @map("org_id") @db.Uuid
-  sender    String   @db.VarChar(10) // "visitor" | "agent"
+  sender    String   @db.VarChar(10) // "visitor" | "agent" | "bot" | "system"
+  /// The team member who wrote it (sender "agent")
+  senderUserId String? @map("sender_user_id") @db.Uuid
   body      String   @db.VarChar(4096)
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -3567,6 +3747,12 @@ model BotSettings {
   afterHoursMessage String   @default("Thanks! Our team is offline right now and will reply when we're back.") @map("after_hours_message") @db.VarChar(500)
   // How long the bot stays quiet in a chat after a person replies or it hands over
   pauseHours        Int      @default(24) @map("pause_hours")
+  // Website chat handover: MANUAL = everyone online is alerted, first to accept takes it;
+  // AUTO = offered to one online member at a time, next one after acceptTimeoutSec
+  handoffMode       String   @default("MANUAL") @map("handoff_mode") @db.VarChar(10)
+  acceptTimeoutSec  Int      @default(120) @map("accept_timeout_sec")
+  // Nobody took the chat within this: the visitor is offered a WhatsApp/email follow-up
+  waitTimeoutMin    Int      @default(5) @map("wait_timeout_min")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

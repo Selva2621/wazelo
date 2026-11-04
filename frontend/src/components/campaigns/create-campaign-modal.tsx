@@ -2,16 +2,24 @@
 
 import { useState, useMemo, useEffect } from "react";
 import {
-  X, FileText, Search, ExternalLink, ChevronDown,
+  X, FileText, Search, ExternalLink,
   Megaphone, MessageSquare, Users, Clock, Wifi,
-  Package, ScanSearch, Tag, Smartphone,
+  Package, Tag, Smartphone, Mail,
 } from "lucide-react";
+import { useEmailAccount, useEmailTemplates } from "@/hooks/use-email";
+import { EMAIL_FIELDS } from "@/lib/email-render";
+import { EmailPreview } from "@/components/email/email-preview";
+import {
+  ChannelSwitch, EmailConnectNotice, FieldChips, insertAtCursor, isEmailReady, type Channel,
+} from "@/components/campaigns/email-channel";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import type { EmailAccount, EmailTemplate } from "@/lib/api/email";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateCampaign, useExecuteCampaign, usePreviewAudience } from "@/hooks/use-campaigns";
 import { ProductSelectField } from "@/components/ui/product-select-field";
 import { useProductTerms } from "@/lib/product-terms";
@@ -24,7 +32,7 @@ import { useTemplates } from "@/hooks/use-templates";
 import { useOrgTags } from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
-import type { MessageTemplate } from "@/lib/types/templates";
+import { templateImageUrl, type MessageTemplate } from "@/lib/types/templates";
 import { IconButton } from "@/components/ui/icon-button";
 import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
@@ -56,9 +64,12 @@ const CONTACT_PLACEHOLDERS = new Set([
   "contact.name", "contact.phone", "contact.email", "contact.leadStatus",
 ]);
 
-function customPlaceholders(body: string): string[] {
+/** Fields the backend fills per contact in an email */
+const EMAIL_PLACEHOLDERS = new Set([...EMAIL_FIELDS.map((f) => f.key), "first_name"]);
+
+function customPlaceholders(body: string, known: Set<string> = CONTACT_PLACEHOLDERS): string[] {
   const keys = Array.from(body.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g), (m) => m[1]);
-  return [...new Set(keys.filter((k) => !CONTACT_PLACEHOLDERS.has(k)))];
+  return [...new Set(keys.filter((k) => !known.has(k)))];
 }
 
 function fillPlaceholders(body: string, values: Record<string, string>): string {
@@ -81,15 +92,14 @@ function FilterSelect({
   className?: string;
 }) {
   return (
-    <div className={`relative max-lg:max-w-full ${className}`}>
-      <select
+    <div className={`max-lg:max-w-full ${className}`}>
+      <Select
+        size="sm"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none text-label bg-surface-container border border-outline-variant/20 rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
       >
         {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
+      </Select>
     </div>
   );
 }
@@ -102,6 +112,94 @@ function SectionHeading({ icon, label }: { icon: React.ReactNode; label: string 
       <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">
         {label}
       </p>
+    </div>
+  );
+}
+
+// ─── Email message fields ─────────────────────────────────────────────────────
+function EmailFields({
+  account, ready, templates, subject, body, subjectError, bodyError,
+  registerSubject, registerBody, setSubject, setBody,
+}: {
+  account: EmailAccount | null | undefined;
+  ready: boolean;
+  templates: EmailTemplate[];
+  subject: string;
+  body: string;
+  subjectError?: string;
+  bodyError?: string;
+  registerSubject: UseFormRegisterReturn;
+  registerBody: UseFormRegisterReturn;
+  setSubject: (v: string) => void;
+  setBody: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {!ready && <EmailConnectNotice account={account} />}
+
+      {templates.length > 0 && (
+        <div>
+          <Label htmlFor="emailTemplate">
+            Use email template{" "}
+            <span className="font-normal text-on-surface-variant/50">(optional)</span>
+          </Label>
+          <Select
+            id="emailTemplate"
+            value=""
+            onChange={(e) => {
+              const tpl = templates.find((t) => t.id === e.target.value);
+              if (!tpl) return;
+              setSubject(tpl.subject);
+              setBody(tpl.body);
+            }}
+          >
+            <option value="">Choose a template…</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      <div>
+        <Label htmlFor="emailSubject">Subject *</Label>
+        <Input
+          id="emailSubject"
+          placeholder="e.g., A little something for you, {{name}}"
+          maxLength={255}
+          error={subjectError}
+          {...registerSubject}
+        />
+        <FieldChips
+          label="Insert field in subject"
+          fields={EMAIL_FIELDS}
+          onInsert={(token) => setSubject(insertAtCursor("emailSubject", subject, token))}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="messageBody">Message *</Label>
+        <textarea
+          id="messageBody"
+          placeholder="Write your email…"
+          rows={8}
+          aria-invalid={!!bodyError}
+          aria-describedby={bodyError ? "messageBody-error" : undefined}
+          className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-y placeholder:text-on-surface-variant/40"
+          {...registerBody}
+        />
+        <div className="flex items-start justify-between gap-2">
+          <FieldChips
+            label="Insert field in message"
+            fields={EMAIL_FIELDS}
+            onInsert={(token) => setBody(insertAtCursor("messageBody", body, token))}
+          />
+          <p className="mt-1 shrink-0 text-caption text-on-surface-variant/50 tabular-nums">{body.length} / 20,000</p>
+        </div>
+        {bodyError && (
+          <p id="messageBody-error" role="alert" className="text-label text-error mt-1">{bodyError}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -133,6 +231,9 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const { data: products } = useProducts();
   const terms = useProductTerms();
   const { data: scrapeRunsData } = useScrapeRuns({ take: 50 });
+  const { data: emailAccount } = useEmailAccount({ enabled: open });
+  const { data: emailTemplates } = useEmailTemplates();
+  const emailReady = isEmailReady(emailAccount);
 
   const {
     register, handleSubmit, watch, setValue, reset,
@@ -140,6 +241,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   } = useForm<CreateCampaignFormData>({
     resolver: zodResolver(createCampaignSchema),
     defaultValues: {
+      channel: "WHATSAPP",
       messageType: "TEXT",
       audienceType: "ALL",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -158,18 +260,39 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     setValue("audienceFilters", initialAudienceFilters);
   }, [open, initialAudienceFilters, setValue]);
 
+  const channel = watch("channel") as Channel;
+  const isEmail = channel === "EMAIL";
   const messageType = watch("messageType") as MessageType;
   const audienceType = watch("audienceType") as CampaignAudienceType;
   const messageBody = watch("messageBody") || "";
+  const emailSubject = watch("emailSubject") || "";
   const audienceFilters = watch("audienceFilters");
   const mediaUrl = watch("mediaUrl");
   const sessionId = watch("sessionId");
   const senderName = sessions.find((s) => s.id === sessionId)?.name;
 
+  function switchChannel(next: Channel) {
+    if (next === channel) return;
+    setValue("channel", next);
+    // Email is text only; a WhatsApp template or file doesn't carry over
+    setValue("messageType", "TEXT");
+    setValue("mediaUrl", "");
+    setValue("mediaMimeType", "");
+    setSelectedTemplate(null);
+    setShowTemplatePicker(false);
+    // The count differs per channel
+    previewAudience.reset();
+  }
+
   // Template placeholders like {{lead.service}} aren't contact fields — the
   // user fills them once for the whole campaign
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
-  const extraPlaceholders = useMemo(() => customPlaceholders(messageBody), [messageBody]);
+  const extraPlaceholders = useMemo(
+    () => (isEmail
+      ? customPlaceholders(`${emailSubject}\n${messageBody}`, EMAIL_PLACEHOLDERS)
+      : customPlaceholders(messageBody)),
+    [isEmail, emailSubject, messageBody],
+  );
   const unfilledPlaceholders = extraPlaceholders.filter((k) => !placeholderValues[k]?.trim());
 
   const filteredTemplates = useMemo(() => {
@@ -194,6 +317,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   async function onSubmit(data: CreateCampaignFormData) {
     if (unfilledPlaceholders.length > 0) return;
+    if (data.channel === "EMAIL" && !emailReady) return;
     if (scheduleMode !== "immediate") {
       submitCampaign(data);
       return;
@@ -203,6 +327,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
       const preview = await previewAudience.mutateAsync({
         audienceType: data.audienceType,
         audienceFilters: data.audienceType === "FILTERED" ? data.audienceFilters : undefined,
+        channel: data.channel,
       });
       recipients = preview.estimatedRecipients ?? null;
     } catch {
@@ -213,16 +338,31 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   function submitCampaign(data: CreateCampaignFormData) {
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
+    const { channel: ch, emailSubject: subject, sessionId: sid, ...rest } = data;
+    const shared = {
+      ...rest,
+      description: data.description || undefined,
+      messageBody: data.messageBody ? fillPlaceholders(data.messageBody, placeholderValues) : undefined,
+      scheduledAt: isScheduled ? data.scheduledAt : undefined,
+      productId: productId || undefined,
+    };
     createCampaign.mutate(
-      {
-        ...data,
-        description: data.description || undefined,
-        messageBody: data.messageBody ? fillPlaceholders(data.messageBody, placeholderValues) : undefined,
-        mediaUrl: data.mediaUrl || undefined,
-        mediaMimeType: data.mediaMimeType || undefined,
-        scheduledAt: isScheduled ? data.scheduledAt : undefined,
-        productId: productId || undefined,
-      },
+      ch === "EMAIL"
+        ? {
+            ...shared,
+            channel: "EMAIL",
+            emailSubject: fillPlaceholders(subject ?? "", placeholderValues).trim(),
+            messageType: "TEXT",
+            mediaUrl: undefined,
+            mediaMimeType: undefined,
+          }
+        : {
+            ...shared,
+            channel: "WHATSAPP",
+            sessionId: sid || undefined,
+            mediaUrl: data.mediaUrl || undefined,
+            mediaMimeType: data.mediaMimeType || undefined,
+          },
       {
         onSuccess: ({ campaign: created }) => {
           // The backend saves unscheduled campaigns as drafts; "Send now" starts it right away
@@ -277,7 +417,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           {/* LEFT PANEL — Campaign details + Message content */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 border-r border-outline-variant/10 max-lg:min-w-0 max-lg:overflow-visible max-lg:border-r-0 max-lg:px-4 max-lg:pb-3">
 
-            <CampaignCapacityNotice />
+            {!isEmail && <CampaignCapacityNotice />}
 
             {/* Campaign name + description */}
             <div className="space-y-3">
@@ -307,6 +447,30 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             <div className="space-y-3">
               <SectionHeading icon={<MessageSquare className="h-3.5 w-3.5" />} label="Message" />
 
+              <ChannelSwitch
+                name="campaign-channel"
+                label="Send by"
+                value={channel}
+                onChange={switchChannel}
+                data-tour="campaign-channel"
+              />
+
+              {isEmail ? (
+                <EmailFields
+                  account={emailAccount}
+                  ready={emailReady}
+                  templates={emailTemplates ?? []}
+                  subject={emailSubject}
+                  body={messageBody}
+                  subjectError={errors.emailSubject?.message}
+                  bodyError={errors.messageBody?.message}
+                  registerSubject={register("emailSubject")}
+                  registerBody={register("messageBody")}
+                  setSubject={(v) => setValue("emailSubject", v, { shouldValidate: !!errors.emailSubject })}
+                  setBody={(v) => setValue("messageBody", v, { shouldValidate: !!errors.messageBody })}
+                />
+              ) : (
+              <>
               {/* Type pills */}
               <div>
                 <Label>Type</Label>
@@ -418,6 +582,13 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                               onClick={() => {
                                 setSelectedTemplate(tpl);
                                 setValue("messageBody", body, { shouldValidate: true });
+                                // A template with an image goes out as an image with the message as caption
+                                const image = templateImageUrl(tpl);
+                                if (image) {
+                                  setValue("messageType", "IMAGE", { shouldValidate: true });
+                                  setValue("mediaUrl", image, { shouldValidate: true });
+                                  setValue("mediaMimeType", "");
+                                }
                                 setShowTemplatePicker(false);
                                 setTemplateSearch("");
                               }}
@@ -461,9 +632,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   <p className="text-caption text-on-surface-variant/50 tabular-nums">{messageBody.length} / 4,096</p>
                 </div>
                 {errors.messageBody && (
-                  <p className="text-label text-error mt-1">{errors.messageBody.message}</p>
+                  <p role="alert" className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
               </div>
+              </>
+              )}
 
               {extraPlaceholders.length > 0 && (
                 <div className="space-y-2 rounded-xl bg-surface-container-low p-3">
@@ -737,6 +910,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     previewAudience.mutate({
                       audienceType,
                       audienceFilters: audienceType === "FILTERED" ? audienceFilters : undefined,
+                      channel,
                     })
                   }
                   loading={previewAudience.isPending}
@@ -749,12 +923,29 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   </span>
                 )}
               </div>
+              {isEmail && (
+                <p className="mt-1.5 text-caption text-on-surface-variant">
+                  Only contacts with an email who haven&apos;t unsubscribed
+                </p>
+              )}
             </div>
 
-            {/* WhatsApp Session */}
+            {/* Sender: WhatsApp number or the workspace email */}
             <div>
-              <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="Send from" />
-              {sessions.length === 0 ? (
+              <SectionHeading
+                icon={isEmail ? <Mail className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
+                label="Send from"
+              />
+              {isEmail ? (
+                emailReady ? (
+                  <p className="rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface break-all">
+                    {emailAccount.fromName}{" "}
+                    <span className="text-on-surface-variant">&lt;{emailAccount.fromAddress}&gt;</span>
+                  </p>
+                ) : (
+                  <p className="text-label text-on-surface-variant">No business email connected</p>
+                )
+              ) : sessions.length === 0 ? (
                 <div className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
                   No WhatsApp number is connected.{" "}
                   {/* New tab so the campaign being written isn't lost */}
@@ -764,15 +955,15 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   , then come back and pick it here.
                 </div>
               ) : (
-                <select
-                  {...register("sessionId")}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+                <Select
+                  value={sessionId ?? ""}
+                  onValueChange={(v) => setValue("sessionId", v, { shouldValidate: true, shouldDirty: true })}
                 >
                   {sessions.length > 1 && <option value="">Choose a WhatsApp number</option>}
                   {sessions.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
-                </select>
+                </Select>
               )}
               {errors.sessionId && (
                 <p className="text-label text-error mt-1">{errors.sessionId.message}</p>
@@ -826,8 +1017,20 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           {/* RIGHT PANEL — what the contact sees */}
           <div className="hidden xl:flex w-[320px] shrink-0 overflow-y-auto flex-col items-center px-6 py-5 bg-surface-container-lowest">
             <div className="self-stretch">
-              <SectionHeading icon={<Smartphone className="h-3.5 w-3.5" />} label="Preview" />
+              <SectionHeading
+                icon={isEmail ? <Mail className="h-3.5 w-3.5" /> : <Smartphone className="h-3.5 w-3.5" />}
+                label="Preview"
+              />
             </div>
+            {isEmail ? (
+              <EmailPreview
+                className="self-stretch"
+                fromName={emailAccount?.fromName ?? ""}
+                fromAddress={emailAccount?.fromAddress}
+                subject={fillPlaceholders(emailSubject, placeholderValues)}
+                body={fillPlaceholders(messageBody, placeholderValues)}
+              />
+            ) : (
             <WhatsAppPhonePreview
               senderName={senderName}
               messages={[{
@@ -837,6 +1040,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 mediaUrl,
               }]}
             />
+            )}
           </div>
         </form>
 
@@ -855,6 +1059,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               type="submit"
               form="campaign-form"
               loading={createCampaign.isPending || previewAudience.isPending}
+              disabled={isEmail && !emailReady}
               onClick={handleSubmit(onSubmit)}
               className="max-lg:flex-1"
             >

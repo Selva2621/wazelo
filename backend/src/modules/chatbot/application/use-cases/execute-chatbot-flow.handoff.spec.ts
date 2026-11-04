@@ -19,6 +19,7 @@ function setup(
     limited?: boolean;
     /** Safety stops already in this chat this week */
     earlierStops?: number;
+    voice?: { kind: 'TEAM' | 'FREELANCER'; service: string | null };
   } = {},
 ) {
   const deps = {
@@ -46,7 +47,10 @@ function setup(
     audit: { log: jest.fn() },
     recorded: [] as unknown[],
     trail: { start: jest.fn(), recentSafetyStops: jest.fn().mockResolvedValue(opts.earlierStops ?? 0) },
-    orgContext: { getContext: jest.fn().mockResolvedValue('## Business Context\nBusiness: Test shop') },
+    orgContext: {
+      getContext: jest.fn().mockResolvedValue('## Business Context\nBusiness: Test shop'),
+      getVoice: jest.fn().mockResolvedValue(opts.voice ?? { kind: 'TEAM', service: null }),
+    },
   };
   deps.trail.start.mockImplementation(() => (end: unknown) => deps.recorded.push(end));
   const useCase = new ExecuteChatbotFlowUseCase(
@@ -182,6 +186,29 @@ describe('AI chatbot handover', () => {
     expect(deps.trail.recentSafetyStops).toHaveBeenCalledWith('org-1', 'conv-1', 7);
     expect(deps.behavior.handOff).toHaveBeenCalledWith('org-1', 'conv-1', 'REPLY_BLOCKED', { pauseHours: 168 });
     expect(sent()).toEqual(['Someone from our team will reply shortly.']);
+  });
+
+  it('without a prompt of its own, the bot speaks for a freelancer or as team support', async () => {
+    const systemPrompt = (d: { aiProvider: { complete: jest.Mock } }) => d.aiProvider.complete.mock.calls[0][0].systemPrompt as string;
+
+    const solo = setup({ kb: { answer: '', found: false }, voice: { kind: 'FREELANCER', service: 'interior design' } });
+    await solo.useCase.execute(payload);
+    expect(systemPrompt(solo.deps)).toContain('assistant of an independent freelancer who offers interior design');
+    expect(systemPrompt(solo.deps)).not.toContain('customer support agent');
+
+    const team = setup({ kb: { answer: '', found: false } });
+    await team.useCase.execute(payload);
+    expect(systemPrompt(team.deps)).toContain('professional customer support agent');
+  });
+
+  it("keeps the flow's own prompt when it has one", async () => {
+    const { useCase, deps } = setup({ kb: { answer: '', found: false }, voice: { kind: 'FREELANCER', service: 'design' } });
+    deps.chatbotRepo.findFirstMessageFlow.mockResolvedValue({ ...flow, aiSystemPrompt: 'You are Priya, a baker.' });
+    await useCase.execute(payload);
+    const prompt = deps.aiProvider.complete.mock.calls[0][0].systemPrompt as string;
+    expect(prompt).toContain('You are Priya, a baker.');
+    expect(prompt).not.toContain('independent freelancer');
+    expect(deps.orgContext.getVoice).not.toHaveBeenCalled();
   });
 
   it('still replies when logging the miss fails', async () => {

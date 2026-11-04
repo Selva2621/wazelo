@@ -7,6 +7,7 @@ import { useSAOrgCredits } from "@/hooks/use-super-admin";
 import type { CreditEntry, CreditEntryKind } from "@/lib/api/super-admin";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -218,17 +219,16 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
               </div>
               <div>
                 <label htmlFor={`${fieldId}-currency`} className={labelClass}>Currency</label>
-                <select
+                <Select
                   id={`${fieldId}-currency`}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className={`${inputClass} h-10 py-0`}
                   disabled={pending}
                 >
                   {currencyOptions.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             {mode === "revoke" && (

@@ -21,6 +21,7 @@ import { AddTagUseCase } from '@/modules/contacts/application/use-cases/manage-t
 import { ChangeLeadStatusUseCase } from '@/modules/contacts/application/use-cases/change-lead-status.use-case';
 import { QUEUE_NAMES, MESSAGING_CONFIG, CAMPAIGN_CONFIG, EVENT_NAMES } from '@/common/constants';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 
 export interface ActionExecutionInput {
   orgId: string;
@@ -57,6 +58,7 @@ export class ActionExecutorService {
     private readonly changeLeadStatus: ChangeLeadStatusUseCase,
     private readonly sequenceRepo: SequenceRepository,
     private readonly events: EventEmitter2,
+    private readonly orgEmail: OrgEmailService,
   ) {}
 
   async execute(input: ActionExecutionInput): Promise<ActionResult> {
@@ -75,6 +77,8 @@ export class ActionExecutorService {
         return this.executeStopSequence(input);
       case AutomationActionType.ASSIGN_CONVERSATION:
         return this.executeAssignConversation(input);
+      case AutomationActionType.SEND_EMAIL:
+        return this.executeSendEmail(input);
       default:
         return {
           actionType: input.actionType,
@@ -112,6 +116,34 @@ export class ActionExecutorService {
     }
 
     return vars;
+  }
+
+  // ─── SEND_EMAIL ───────────────────────────────────────────────────────────
+
+  /**
+   * Emails the contact from the workspace's mailbox. Skipped (not failed) when it
+   * can't go: no email account, no address, unsubscribed — the reason is in the
+   * rule's log and on the email's log row.
+   */
+  private async executeSendEmail(input: ActionExecutionInput): Promise<ActionResult> {
+    const { subject, body } = input.actionConfig as { subject?: string; body?: string };
+    if (!subject?.trim() || !body?.trim()) {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: false, error: 'The email needs a subject and a message' };
+    }
+    const extra = this.buildVarMap(null, input.eventPayload);
+    const result = await this.orgEmail.queue({
+      orgId: input.orgId,
+      contactId: input.contactId,
+      subject: this.interpolate(subject, extra),
+      body: this.interpolate(body, extra),
+      source: 'AUTOMATION',
+      sourceId: input.ruleId,
+      idempotencyKey: `auto-email-${input.executionId}-${input.ruleId}-${input.contactId}`,
+    });
+    if (result.status === 'SKIPPED') {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { skipped: true, reason: result.reason, emailMessageId: result.emailMessageId } };
+    }
+    return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { emailMessageId: result.emailMessageId, status: result.status } };
   }
 
   // ─── SEND_MESSAGE ─────────────────────────────────────────────────────────

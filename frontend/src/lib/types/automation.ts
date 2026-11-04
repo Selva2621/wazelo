@@ -22,6 +22,7 @@ export type AutomationConditionOperator =
 
 export type AutomationActionType =
   | "SEND_MESSAGE"
+  | "SEND_EMAIL"
   | "ASSIGN_CONTACT"
   | "ADD_TAG"
   | "UPDATE_STATUS"

@@ -13,7 +13,8 @@ import {
   useSetWebsiteAutoResync,
   useUploadDocument,
 } from "@/hooks/use-knowledge-base";
-import { useAiMemory, useUpdateAiMemory } from "@/hooks/use-settings";
+import { useAiMemory, useOrgSettings, useUpdateAiMemory } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 import type { KbWebsiteSource } from "@/lib/api/knowledge-base";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -289,6 +290,10 @@ export function InstructionsCard({
   const [text, setText] = useState<string | null>(null);
   const value = text ?? memory?.customContext ?? "";
   const dirty = text !== null && text !== (memory?.customContext ?? "");
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
+  const people = isFreelancer ? "clients" : "customers";
 
   return (
     <section aria-labelledby="instructions-heading" className={cn(knowledgeCard, "p-5 space-y-3", className)}>
@@ -296,9 +301,9 @@ export function InstructionsCard({
         <h2 id="instructions-heading" className={hideTitle ? "sr-only" : sectionTitle}>{title}</h2>
         <p className={hint}>{description}</p>
       </div>
-      {/* The bot that answers customers reads this too, so it can repeat it */}
+      {/* The bot that answers customers / clients reads this too, so it can repeat it */}
       <p role="note" className="rounded-lg bg-warning-container px-3 py-2 text-label text-warning">
-        Customers&apos; bots read this too — don&apos;t put private numbers here (costs, margins, passwords).
+        The bot may repeat this to {people}. Don&apos;t put private numbers here (costs, margins, passwords).
       </p>
       <textarea
         aria-labelledby="instructions-heading"
@@ -306,7 +311,11 @@ export function InstructionsCard({
         disabled={isLoading}
         onChange={(e) => setText(e.target.value.slice(0, 2000))}
         rows={5}
-        placeholder={"Friendly and short. Reply in Tamil or English, as the customer writes.\nWe're open 9am–8pm, Monday to Saturday.\nIf you're not sure, say a team member will reply soon."}
+        placeholder={
+          isFreelancer
+            ? "Friendly and short. Reply in Tamil or English, as the client writes.\nI reply within a few hours, Monday to Saturday.\nIf you're not sure, say I'll reply personally soon."
+            : "Friendly and short. Reply in Tamil or English, as the customer writes.\nWe're open 9am–8pm, Monday to Saturday.\nIf you're not sure, say a team member will reply soon."
+        }
         className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
       <div className="flex items-center justify-between gap-3">

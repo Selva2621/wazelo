@@ -1,9 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { BotSettings } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { workspaceKind, type WorkspaceKind } from '@/shared/utils/workspace-voice';
 
 export type BotSettingsInput = Partial<
-  Pick<BotSettings, 'handoffMessage' | 'hoursEnabled' | 'openMinute' | 'closeMinute' | 'openDays' | 'afterHoursMessage' | 'pauseHours'>
+  Pick<
+    BotSettings,
+    | 'handoffMessage'
+    | 'hoursEnabled'
+    | 'openMinute'
+    | 'closeMinute'
+    | 'openDays'
+    | 'afterHoursMessage'
+    | 'pauseHours'
+    | 'handoffMode'
+    | 'acceptTimeoutSec'
+    | 'waitTimeoutMin'
+  >
 >;
 
 /** The org's bot handover/hours settings, and the bot's state in each chat. */
@@ -18,6 +31,12 @@ export class BotBehaviorRepository {
 
   saveSettings(orgId: string, data: BotSettingsInput): Promise<BotSettings> {
     return this.prisma.botSettings.upsert({ where: { orgId }, create: { orgId, ...data }, update: data });
+  }
+
+  /** Freelancer (one person, "I") or a team ("we"): decides how the default handoff lines read */
+  async workspaceKind(orgId: string): Promise<WorkspaceKind> {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { orgType: true } });
+    return workspaceKind(org?.orgType);
   }
 
   async timezone(orgId: string): Promise<string> {

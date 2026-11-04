@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SlidersHorizontal, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs } from "@/components/ui/tabs";
 import { FilterBar } from "@/components/ui/filter-bar";
@@ -155,17 +156,17 @@ export default function CustomFieldsPage() {
             <div className="px-6 py-4 space-y-3">
               {!editId && (
                 <>
-                  <select aria-label="Entity" value={form.entity} onChange={(e) => setForm((f) => ({ ...f, entity: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body">
+                  <Select aria-label="Entity" value={form.entity} onChange={(e) => setForm((f) => ({ ...f, entity: e.target.value }))}>
                     {ENTITIES.map((e) => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
-                  </select>
+                  </Select>
                   <input aria-label="Field name" value={form.fieldName} onChange={(e) => setForm((f) => ({ ...f, fieldName: e.target.value.replace(/[^a-z0-9_]/g, "") }))} placeholder="field_name (snake_case)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body font-mono" />
                 </>
               )}
               <input aria-label="Display label" value={form.fieldLabel} onChange={(e) => setForm((f) => ({ ...f, fieldLabel: e.target.value }))} placeholder="Display label" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
               {!editId && (
-                <select aria-label="Field type" value={form.fieldType} onChange={(e) => setForm((f) => ({ ...f, fieldType: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body">
+                <Select aria-label="Field type" value={form.fieldType} onChange={(e) => setForm((f) => ({ ...f, fieldType: e.target.value }))}>
                   {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </Select>
               )}
               {(form.fieldType === "select" || form.fieldType === "multiselect") && (
                 <input aria-label="Options" value={form.options} onChange={(e) => setForm((f) => ({ ...f, options: e.target.value }))} placeholder="Options (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />

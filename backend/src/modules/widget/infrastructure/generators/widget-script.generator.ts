@@ -1,13 +1,13 @@
 /**
  * Generates a self-contained embeddable widget JavaScript snippet.
  *
- * Features:
+ * The visitor's side of the website chat:
  * - Shadow DOM isolation (host-page CSS cannot bleed in)
- * - Pre-chat form (name + phone) when preChatFormEnabled is set on config
- * - localStorage persistence for visitor ID, identity, and message cache
- * - POSTs messages to /api/v1/widgets/:orgSlug/message
- * - WhatsApp click-to-chat fallback when no API connectivity
- * - Smooth open/close animations
+ * - A form before the chat: first name, mobile and email are required; the
+ *   "I agree to be contacted" box is optional (ticked = saved as a contact)
+ * - AI answers, "Talk to a person", who is answering now (AI / connecting / a person / ended)
+ * - When nobody can take the chat: a one-tap "Yes, contact me"
+ * - Polls for replies every 4 s while open; localStorage keeps the visitor id and recent messages
  */
 export function generateWidgetScript(orgSlug: string): string {
   // Allow only safe slug characters before embedding into JS string
@@ -24,6 +24,7 @@ export function generateWidgetScript(orgSlug: string): string {
     return s ? new URL(s.src).origin + '/api/v1' : '';
   })();
   var STORAGE_KEY = 'wazelo_' + SLUG;
+  var BASE = API_BASE + '/widgets/' + encodeURIComponent(SLUG);
 
   // ── LocalStorage helpers ─────────────────────────────────────────────────
   function loadState() {
@@ -45,319 +46,373 @@ export function generateWidgetScript(orgSlug: string): string {
     return s.vid;
   }
 
-  // ── XSS escape ───────────────────────────────────────────────────────────
-  function esc(str) {
-    var d = document.createElement('div');
-    d.textContent = str || '';
-    return d.innerHTML;
+  function post(path, body) {
+    return fetch(BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) {
+          // Field errors ({ errors: { email: ['Enter a valid email'] } }) say more than "Validation failed"
+          var fieldMsgs = data && data.errors && typeof data.errors === 'object'
+            ? Object.keys(data.errors).map(function (k) { return [].concat(data.errors[k])[0]; }).filter(Boolean)
+            : [];
+          var msg = fieldMsgs[0] || (data && data.message);
+          throw new Error(Array.isArray(msg) ? msg[0] : msg || 'Something went wrong. Please try again.');
+        }
+        return data;
+      });
+    });
   }
 
   // ── Fetch config then render ─────────────────────────────────────────────
   function init() {
-    fetch(API_BASE + '/widgets/' + encodeURIComponent(SLUG) + '/config', { cache: 'no-store' })
+    fetch(BASE + '/config', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) { if (cfg) render(cfg); })
       .catch(function () {});
   }
 
-  // ── Send message to backend ──────────────────────────────────────────────
-  function sendMessage(cfg, body, visitorName, visitorPhone, onSuccess, onError) {
-    fetch(API_BASE + '/widgets/' + encodeURIComponent(SLUG) + '/message', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        visitorId: getVisitorId(),
-        visitorName: visitorName || undefined,
-        visitorPhone: visitorPhone || undefined,
-        body: body,
-        pageUrl: window.location.href,
-      }),
-    })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
-      .then(function (data) { onSuccess(data); })
-      .catch(function (err) { onError(err); });
-  }
-
-  // ── Add a message bubble to the chat area ────────────────────────────────
-  function appendBubble(chatArea, text, sender, color) {
-    var isVisitor = sender === 'visitor';
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;justify-content:' + (isVisitor ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;';
-    var bubble = document.createElement('div');
-    bubble.style.cssText =
-      'max-width:80%;padding:8px 12px;border-radius:' + (isVisitor ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';' +
-      'font-size:13px;line-height:1.4;word-break:break-word;' +
-      (isVisitor ? 'background:' + color + ';color:#fff;' : 'background:#f1f5f9;color:#1e293b;');
-    bubble.textContent = text;
-    row.appendChild(bubble);
-    chatArea.appendChild(row);
-    chatArea.scrollTop = chatArea.scrollHeight;
-  }
-
-  // ── Render the full widget ────────────────────────────────────────────────
   function render(cfg) {
     var pos = cfg.position || 'bottom-right';
     var isRight = pos.indexOf('right') >= 0;
     var isCenter = pos.indexOf('center') >= 0;
     var color = /^#[0-9A-Fa-f]{3,6}$/.test(cfg.primaryColor) ? cfg.primaryColor : '#6366f1';
-    var state = loadState();
-    var hasIdentity = !!(state.name || state.phone);
+    var company = cfg.companyName || 'us';
+    var chat = { state: 'AI', agentName: null, offerFollowUp: false, needsDetails: true };
 
-    // ── Outer container ──────────────────────────────────────────────────
     var host = document.createElement('div');
     host.id = 'wazelo-widget-host';
     host.style.cssText =
       'position:fixed;z-index:2147483647;bottom:20px;' +
       (isCenter ? 'left:50%;transform:translateX(-50%);' : isRight ? 'right:20px;' : 'left:20px;') +
-      'font-family:system-ui,-apple-system,sans-serif;';
-
-    // ── Shadow DOM ───────────────────────────────────────────────────────
+      // Keep the open/close button under the panel's corner (not at its left edge)
+      'display:flex;flex-direction:column;align-items:' +
+      (isCenter ? 'center' : isRight ? 'flex-end' : 'flex-start') +
+      ';font-family:system-ui,-apple-system,sans-serif;';
     var shadow = host.attachShadow({ mode: 'open' });
 
     var style = document.createElement('style');
     style.textContent = [
       '* { box-sizing: border-box; margin: 0; padding: 0; }',
-      '.panel { width: 340px; background: #fff; border-radius: 16px;',
+      '.panel { width: 340px; max-width: calc(100vw - 40px); background: #fff; border-radius: 16px;',
       '  box-shadow: 0 8px 40px rgba(0,0,0,.16); display: none; flex-direction: column;',
-      '  overflow: hidden; margin-bottom: 12px; max-height: 500px; }',
+      '  overflow: hidden; margin-bottom: 12px; height: 520px; max-height: calc(100vh - 110px); }',
       '.panel.open { display: flex; }',
-      '.header { background: ' + color + '; color: #fff; padding: 14px 16px; flex-shrink: 0; }',
+      '.header { background: ' + color + '; color: #fff; padding: 12px 14px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }',
+      '.header-text { flex: 1; min-width: 0; }',
       '.header-name { font-size: 15px; font-weight: 600; }',
-      '.header-sub { font-size: 12px; opacity: .8; margin-top: 2px; }',
-      '.chat-area { flex: 1; overflow-y: auto; padding: 12px 16px; background: #fff; min-height: 100px; }',
-      '.pre-chat { padding: 16px; display: flex; flex-direction: column; gap: 10px; }',
-      '.pre-chat input { width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0;',
-      '  border-radius: 8px; font-size: 13px; outline: none; }',
-      '.pre-chat input:focus { border-color: ' + color + '; }',
-      '.input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #f1f5f9; flex-shrink: 0; }',
-      '.input-row textarea { flex: 1; resize: none; border: 1px solid #e2e8f0; border-radius: 8px;',
-      '  padding: 8px 10px; font-size: 13px; line-height: 1.4; height: 40px; max-height: 120px;',
+      '.header-sub { font-size: 12px; opacity: .85; margin-top: 2px; }',
+      '.end-btn { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; }',
+      '.end-btn:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid ' + color + '; outline-offset: 2px; }',
+      '.chat-area { flex: 1; overflow-y: auto; padding: 12px 14px; background: #fff; }',
+      '.row { display: flex; margin-bottom: 8px; }',
+      '.bubble { max-width: 80%; padding: 8px 12px; font-size: 13px; line-height: 1.45; word-break: break-word; white-space: pre-wrap; }',
+      '.visitor { justify-content: flex-end; }',
+      '.visitor .bubble { background: ' + color + '; color: #fff; border-radius: 14px 14px 4px 14px; }',
+      '.agent .bubble { background: #f1f5f9; color: #1e293b; border-radius: 14px 14px 14px 4px; }',
+      '.system { justify-content: center; }',
+      '.system .bubble { background: none; color: #64748b; font-size: 12px; padding: 2px 8px; text-align: center; }',
+      '.form { padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }',
+      '.form h2 { font-size: 15px; color: #0f172a; }',
+      '.form p.lead { font-size: 13px; color: #475569; }',
+      '.field label { display: block; font-size: 12px; font-weight: 500; color: #334155; margin-bottom: 4px; }',
+      '.field input { width: 100%; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }',
+      '.field input:focus { border-color: ' + color + '; }',
+      '.check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #334155; line-height: 1.4; }',
+      '.check input { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; }',
+      '.primary { padding: 10px 16px; background: ' + color + '; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }',
+      '.primary[disabled] { opacity: .6; cursor: default; }',
+      '.error-msg { font-size: 12px; color: #dc2626; min-height: 1em; }',
+      '.card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin: 4px 0 10px; display: flex; flex-direction: column; gap: 8px; }',
+      '.card p { font-size: 13px; color: #334155; }',
+      '.person-row { padding: 6px 14px 0; flex-shrink: 0; }',
+      '.link-btn { background: none; border: 0; color: ' + color + '; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 0; }',
+      '.input-row { display: flex; gap: 8px; padding: 8px 12px 10px; flex-shrink: 0; }',
+      '.input-row textarea { flex: 1; resize: none; border: 1px solid #cbd5e1; border-radius: 8px;',
+      '  padding: 9px 10px; font-size: 14px; line-height: 1.4; height: 40px; max-height: 120px;',
       '  overflow-y: auto; outline: none; font-family: inherit; }',
       '.input-row textarea:focus { border-color: ' + color + '; }',
       '.send-btn { width: 40px; height: 40px; border-radius: 50%; background: ' + color + ';',
-      '  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;',
-      '  flex-shrink: 0; }',
-      '.send-btn:hover { opacity: .85; }',
+      '  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }',
       '.send-btn svg { width: 18px; height: 18px; fill: white; }',
-      '.wa-link { display: flex; align-items: center; gap: 8px; background: #25D366; color: #fff;',
-      '  text-decoration: none; padding: 10px 14px; border-radius: 10px; font-size: 13px;',
-      '  font-weight: 500; margin: 12px; }',
-      '.wa-link svg { width: 20px; height: 20px; fill: white; flex-shrink: 0; }',
       '.fab { width: 56px; height: 56px; border-radius: 50%; background: ' + color + ';',
       '  border: none; cursor: pointer; display: flex; align-items: center;',
-      '  justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,.2);',
-      '  transition: transform .2s, box-shadow .2s; }',
-      '.fab:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(0,0,0,.25); }',
+      '  justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,.2); transition: transform .2s; }',
+      '.fab:hover { transform: scale(1.06); }',
       '.fab svg { width: 26px; height: 26px; fill: white; }',
-      '.submit-btn { padding: 9px 16px; background: ' + color + '; color: #fff; border: none;',
-      '  border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }',
-      '.submit-btn:hover { opacity: .85; }',
-      '.error-msg { font-size: 12px; color: #ef4444; }',
-      '.sent-note { font-size: 12px; color: #64748b; text-align: center; padding: 8px 0; }',
+      '@media (prefers-reduced-motion: reduce) { .fab { transition: none; } }',
     ].join('\\n');
     shadow.appendChild(style);
 
-    // ── Panel ────────────────────────────────────────────────────────────
     var panel = document.createElement('div');
     panel.className = 'panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Chat with ' + company);
 
-    // Header
+    // ── Header: who is answering ─────────────────────────────────────────
     var header = document.createElement('div');
     header.className = 'header';
-    header.innerHTML =
-      '<div class="header-name">' + esc(cfg.companyName || 'Chat') + '</div>' +
-      '<div class="header-sub">Typically replies in minutes</div>';
+    var headerText = document.createElement('div');
+    headerText.className = 'header-text';
+    var headerName = document.createElement('div');
+    headerName.className = 'header-name';
+    headerName.textContent = cfg.companyName || 'Chat';
+    var headerSub = document.createElement('div');
+    headerSub.className = 'header-sub';
+    headerSub.setAttribute('aria-live', 'polite');
+    headerText.appendChild(headerName);
+    headerText.appendChild(headerSub);
+    var endBtn = document.createElement('button');
+    endBtn.className = 'end-btn';
+    endBtn.type = 'button';
+    endBtn.textContent = 'End chat';
+    header.appendChild(headerText);
+    header.appendChild(endBtn);
     panel.appendChild(header);
 
-    // ── Pre-chat form (shown only on first open if enabled + no identity) ──
-    var preChatEl = null;
-    if (cfg.preChatFormEnabled && !hasIdentity) {
-      preChatEl = document.createElement('div');
-      preChatEl.className = 'pre-chat';
-
-      var nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.placeholder = 'Your name';
-      nameInput.value = state.name || '';
-
-      var phoneInput = document.createElement('input');
-      phoneInput.type = 'tel';
-      phoneInput.placeholder = 'Your phone (optional)';
-      phoneInput.value = state.phone || '';
-
-      var errorEl = document.createElement('div');
-      errorEl.className = 'error-msg';
-
-      var submitBtn = document.createElement('button');
-      submitBtn.className = 'submit-btn';
-      submitBtn.textContent = 'Start Chat';
-
-      submitBtn.onclick = function () {
-        if (!nameInput.value.trim()) {
-          errorEl.textContent = 'Please enter your name.';
-          return;
-        }
-        errorEl.textContent = '';
-        saveState({ name: nameInput.value.trim(), phone: phoneInput.value.trim() });
-        panel.removeChild(preChatEl);
-        panel.insertBefore(chatArea, inputRow);
-        preChatEl = null;
-      };
-
-      preChatEl.appendChild(nameInput);
-      preChatEl.appendChild(phoneInput);
-      preChatEl.appendChild(errorEl);
-      preChatEl.appendChild(submitBtn);
-      panel.appendChild(preChatEl);
+    // ── Form before the chat ─────────────────────────────────────────────
+    var form = document.createElement('form');
+    form.className = 'form';
+    form.noValidate = true;
+    var consentLabel = 'I agree to be contacted by ' + company + ' on WhatsApp and email.';
+    form.innerHTML =
+      '<h2>Before we start</h2>' +
+      '<p class="lead">Tell us who you are, then ask us anything.</p>' +
+      field('wz-name', 'First name', 'text', 'given-name') +
+      field('wz-phone', 'Mobile number (with country code)', 'tel', 'tel') +
+      field('wz-email', 'Email', 'email', 'email') +
+      '<label class="check"><input type="checkbox" id="wz-consent" /><span></span></label>' +
+      '<div class="error-msg" role="alert" id="wz-error"></div>' +
+      '<button type="submit" class="primary" id="wz-start">Start chat</button>';
+    form.querySelector('.check span').textContent = consentLabel;
+    function field(id, label, type, autocomplete) {
+      return '<div class="field"><label for="' + id + '">' + label + '</label>' +
+        '<input id="' + id + '" type="' + type + '" autocomplete="' + autocomplete + '" required /></div>';
     }
 
-    // ── Chat area ─────────────────────────────────────────────────────────
+    // ── Chat ─────────────────────────────────────────────────────────────
     var chatArea = document.createElement('div');
     chatArea.className = 'chat-area';
+    chatArea.setAttribute('aria-live', 'polite');
 
-    // Restore cached messages
-    var cached = state.msgs || [];
-    cached.forEach(function (m) { appendBubble(chatArea, m.body, m.sender, color); });
+    var followCard = document.createElement('div');
+    followCard.className = 'card';
+    followCard.innerHTML = '<p></p><button type="button" class="primary">Yes, contact me</button><div class="error-msg" role="alert"></div>';
+    followCard.querySelector('p').textContent = consentLabel;
 
-    // Welcome bubble
-    if (!cached.length) {
-      appendBubble(chatArea, cfg.welcomeMessage || 'Hi! How can we help you?', 'agent', color);
-    }
+    var personRow = document.createElement('div');
+    personRow.className = 'person-row';
+    var personBtn = document.createElement('button');
+    personBtn.type = 'button';
+    personBtn.className = 'link-btn';
+    personBtn.textContent = 'Talk to a person';
+    personRow.appendChild(personBtn);
 
-    if (!cfg.preChatFormEnabled || hasIdentity) {
-      panel.appendChild(chatArea);
-    }
-
-    // ── Input row ─────────────────────────────────────────────────────────
     var inputRow = document.createElement('div');
     inputRow.className = 'input-row';
+    var textarea = document.createElement('textarea');
+    textarea.placeholder = cfg.placeholder || 'Type a message...';
+    textarea.setAttribute('aria-label', 'Message');
+    var sendBtn = document.createElement('button');
+    sendBtn.type = 'button';
+    sendBtn.className = 'send-btn';
+    sendBtn.setAttribute('aria-label', 'Send');
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+    inputRow.appendChild(textarea);
+    inputRow.appendChild(sendBtn);
 
-    if (cfg.whatsappNumber) {
-      // Simple WA link mode — still inside the popup
-      var waLink = document.createElement('a');
-      waLink.className = 'wa-link';
-      waLink.href = 'https://wa.me/' + cfg.whatsappNumber.replace(/[^0-9]/g, '') +
-        '?text=' + encodeURIComponent(cfg.welcomeMessage || 'Hi!');
-      waLink.target = '_blank';
-      waLink.rel = 'noopener noreferrer';
-      waLink.innerHTML =
-        '<svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.625-1.476A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.115 0-4.142-.659-5.853-1.903l-.42-.298-2.744.877.877-2.622-.326-.448A9.71 9.71 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75z"/></svg>' +
-        'Chat on WhatsApp';
-      inputRow.appendChild(waLink);
-    } else {
-      // Full message input
-      var textarea = document.createElement('textarea');
-      textarea.placeholder = cfg.placeholder || 'Type a message...';
-
-      var sendBtn = document.createElement('button');
-      sendBtn.className = 'send-btn';
-      sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
-
-      function doSend() {
-        var text = textarea.value.trim();
-        if (!text) return;
-        textarea.value = '';
-        textarea.style.height = '40px';
-
+    function appendBubble(text, sender, remember) {
+      var kind = sender === 'visitor' ? 'visitor' : sender === 'system' ? 'system' : 'agent';
+      var row = document.createElement('div');
+      row.className = 'row ' + kind;
+      var bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      chatArea.insertBefore(row, followCard.parentNode === chatArea ? followCard : null);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      if (remember) {
         var s = loadState();
-        appendBubble(chatArea, text, 'visitor', color);
-
-        // Persist to local cache (keep last 20)
         var msgs = s.msgs || [];
-        msgs.push({ body: text, sender: 'visitor' });
-        if (msgs.length > 20) msgs = msgs.slice(-20);
+        msgs.push({ body: text, sender: kind });
+        if (msgs.length > 30) msgs = msgs.slice(-30);
         saveState({ msgs: msgs });
-
-        // "typing…" while the assistant may be answering
-        var typing = null;
-        if (cfg.aiAssistantEnabled) {
-          appendBubble(chatArea, '…', 'agent', color);
-          typing = chatArea.lastChild;
-        }
-        function stopTyping() {
-          if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          typing = null;
-        }
-
-        sendMessage(cfg, text, s.name, s.phone,
-          function (data) {
-            stopTyping();
-            // From now on the widget checks for replies from the team
-            saveState({ sent: true });
-            // The AI assistant's answer, when it had one (skipped if the poll already showed it)
-            var ar = data && data.agentReply;
-            if (ar && ar.body && (loadState().seen || []).indexOf(ar.messageId) < 0) {
-              appendBubble(chatArea, ar.body, 'agent', color);
-              var st = loadState();
-              var list = st.msgs || [];
-              list.push({ body: ar.body, sender: 'agent' });
-              if (list.length > 20) list = list.slice(-20);
-              saveState({ msgs: list });
-            }
-            if (ar && ar.messageId) rememberReply(ar.messageId, ar.createdAt);
-          },
-          function () {
-            stopTyping();
-            appendBubble(chatArea, 'Failed to send. Please try again.', 'agent', color);
-          }
-        );
       }
-
-      sendBtn.onclick = doSend;
-      textarea.onkeydown = function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
-      };
-      textarea.oninput = function () {
-        this.style.height = '40px';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-      };
-
-      inputRow.appendChild(textarea);
-      inputRow.appendChild(sendBtn);
+      return row;
     }
 
-    panel.appendChild(inputRow);
-
-    // ── Replies from the team (Inbox → Website) or the AI, while the chat is open ──
     function rememberReply(id, createdAt) {
       var st = loadState();
       var seen = st.seen || [];
       if (seen.indexOf(id) < 0) seen.push(id);
-      if (seen.length > 100) seen = seen.slice(-100);
+      if (seen.length > 150) seen = seen.slice(-150);
       var patch = { seen: seen };
       if (createdAt && (!st.lastAt || createdAt > st.lastAt)) patch.lastAt = createdAt;
       saveState(patch);
     }
+    function showReply(m) {
+      if (!m || !m.id) return;
+      if ((loadState().seen || []).indexOf(m.id) < 0) appendBubble(m.body, m.sender, true);
+      rememberReply(m.id, m.createdAt);
+    }
 
+    // ── What the visitor sees for each state ─────────────────────────────
+    function applyChat(next) {
+      if (!next) return;
+      chat = next;
+      var sub =
+        // offerFollowUp = nobody can take it now (offline / after hours): don't promise "connecting"
+        // The business name, not "our team": reads right for a team and for a solo freelancer
+        chat.state === 'WAITING' ? (chat.offerFollowUp ? "You'll get a reply here soon" : 'Connecting you to ' + company + '…') :
+        chat.state === 'PERSON' ? (chat.agentName ? chat.agentName + ' from ' + company : 'Chatting with ' + company) :
+        chat.state === 'ENDED' ? 'Chat ended · write to start again' :
+        cfg.aiAssistantEnabled ? 'AI assistant · replies instantly' : 'Typically replies in minutes';
+      headerSub.textContent = sub;
+      endBtn.style.display = chat.state === 'ENDED' || chat.needsDetails ? 'none' : '';
+      personRow.style.display = chat.state === 'AI' ? '' : 'none';
+      var showFollow = chat.state === 'WAITING' && chat.offerFollowUp && !chat.consentGiven;
+      if (showFollow && followCard.parentNode !== chatArea) { chatArea.appendChild(followCard); chatArea.scrollTop = chatArea.scrollHeight; }
+      if (!showFollow && followCard.parentNode === chatArea) chatArea.removeChild(followCard);
+      showView(chat.needsDetails ? 'form' : 'chat');
+    }
+
+    var view = null;
+    function showView(next) {
+      if (view === next) return;
+      view = next;
+      [form, chatArea, personRow, inputRow].forEach(function (el) { if (el.parentNode === panel) panel.removeChild(el); });
+      if (next === 'form') {
+        panel.appendChild(form);
+        headerSub.textContent = 'Fill in your details to start';
+      } else {
+        panel.appendChild(chatArea);
+        panel.appendChild(personRow);
+        panel.appendChild(inputRow);
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+    }
+
+    // Restore what this browser already saw
+    var state = loadState();
+    (state.msgs || []).forEach(function (m) { appendBubble(m.body, m.sender, false); });
+    if (!(state.msgs || []).length) appendBubble(cfg.welcomeMessage || 'Hi! How can we help you?', 'agent', true);
+    applyChat({ state: 'AI', needsDetails: !state.started, agentName: null, offerFollowUp: false });
+
+    // ── Start the chat ───────────────────────────────────────────────────
+    var startBtn = form.querySelector('#wz-start');
+    var formError = form.querySelector('#wz-error');
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var name = form.querySelector('#wz-name').value.trim();
+      var phone = form.querySelector('#wz-phone').value.trim();
+      var email = form.querySelector('#wz-email').value.trim();
+      var consent = form.querySelector('#wz-consent').checked;
+      if (!name) { formError.textContent = 'Enter your first name.'; return; }
+      if (phone.replace(/\\D/g, '').length < 8) { formError.textContent = 'Enter your mobile number with country code.'; return; }
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)) { formError.textContent = 'Enter a valid email.'; return; }
+      formError.textContent = '';
+      startBtn.disabled = true;
+      post('/start', { visitorId: getVisitorId(), firstName: name, phone: phone, email: email, consent: consent, pageUrl: window.location.href })
+        .then(function (data) {
+          saveState({ started: true, name: name });
+          applyChat(data.chat);
+          startPolling();
+          textarea.focus();
+        })
+        .catch(function (err) { formError.textContent = err.message; })
+        .then(function () { startBtn.disabled = false; });
+    };
+
+    // ── Send ─────────────────────────────────────────────────────────────
+    var sending = false;
+    function doSend() {
+      var text = textarea.value.trim();
+      if (!text || sending) return;
+      sending = true;
+      textarea.value = '';
+      textarea.style.height = '40px';
+      var mine = appendBubble(text, 'visitor', true);
+      var typing = chat.state === 'AI' && cfg.aiAssistantEnabled ? appendBubble('…', 'agent', false) : null;
+      post('/message', { visitorId: getVisitorId(), body: text, pageUrl: window.location.href })
+        .then(function (data) {
+          var ar = data && data.agentReply;
+          if (ar && ar.messageId) showReply({ id: ar.messageId, body: ar.body, sender: 'bot', createdAt: ar.createdAt });
+          applyChat(data && data.chat);
+        })
+        .catch(function (err) {
+          // Not sent: take it out of the chat and history, and give the text back to resend
+          if (mine && mine.parentNode) mine.parentNode.removeChild(mine);
+          var st = loadState();
+          var msgs = st.msgs || [];
+          for (var i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].sender === 'visitor' && msgs[i].body === text) { msgs.splice(i, 1); break; }
+          }
+          saveState({ msgs: msgs });
+          if (!textarea.value) textarea.value = text;
+          appendBubble(err.message || 'Failed to send. Please try again.', 'system', false);
+          if (/details|name, mobile/i.test(err.message || '')) {
+            saveState({ started: false });
+            applyChat({ state: 'AI', needsDetails: true });
+          }
+        })
+        .then(function () {
+          if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          sending = false;
+        });
+    }
+    sendBtn.onclick = doSend;
+    textarea.onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } };
+    textarea.oninput = function () { this.style.height = '40px'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; };
+
+    // ── Talk to a person / Yes, contact me / End chat ────────────────────
+    personBtn.onclick = function () {
+      personBtn.disabled = true;
+      post('/handoff', { visitorId: getVisitorId() })
+        .then(function (data) {
+          if (data.message) showReply({ id: data.message.id, body: data.message.body, sender: 'bot', createdAt: data.message.createdAt });
+          applyChat(data.chat);
+        })
+        .catch(function (err) { appendBubble(err.message, 'system', false); })
+        .then(function () { personBtn.disabled = false; });
+    };
+    var followBtn = followCard.querySelector('button');
+    var followErr = followCard.querySelector('.error-msg');
+    followBtn.onclick = function () {
+      followBtn.disabled = true;
+      post('/consent', { visitorId: getVisitorId(), consent: true })
+        .then(function (data) {
+          if (data.message) showReply({ id: data.message.id, body: data.message.body, sender: 'bot', createdAt: data.message.createdAt });
+          applyChat(data.chat);
+          pollReplies();
+        })
+        .catch(function (err) { followErr.textContent = err.message; })
+        .then(function () { followBtn.disabled = false; });
+    };
+    endBtn.onclick = function () {
+      post('/end', { visitorId: getVisitorId() })
+        .then(function (data) { applyChat(data.chat); pollReplies(); })
+        .catch(function () {});
+    };
+
+    // ── Replies from the team or the AI, while the chat is open ──────────
     var polling = false;
     function pollReplies() {
       var st = loadState();
-      // Nothing to wait for until the visitor has written
-      if (!st.sent || polling) return;
+      if (!st.started || polling) return;
       polling = true;
-      var url = API_BASE + '/widgets/' + encodeURIComponent(SLUG) + '/messages?visitorId=' +
-        encodeURIComponent(getVisitorId()) + (st.lastAt ? '&after=' + encodeURIComponent(st.lastAt) : '');
+      var url = BASE + '/messages?visitorId=' + encodeURIComponent(getVisitorId()) +
+        (st.lastAt ? '&after=' + encodeURIComponent(st.lastAt) : '');
       fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
-          var list = (data && data.messages) || [];
-          list.forEach(function (m) {
-            if ((loadState().seen || []).indexOf(m.id) < 0) {
-              appendBubble(chatArea, m.body, 'agent', color);
-              var s2 = loadState();
-              var msgs = s2.msgs || [];
-              msgs.push({ body: m.body, sender: 'agent' });
-              if (msgs.length > 20) msgs = msgs.slice(-20);
-              saveState({ msgs: msgs });
-            }
-            rememberReply(m.id, m.createdAt);
-          });
+          ((data && data.messages) || []).forEach(showReply);
+          if (data && data.chat) applyChat(data.chat);
         })
         .catch(function () {})
         .then(function () { polling = false; });
     }
-
-    // Every 4 seconds while open; once right away when the visitor opens the chat
     var pollTimer = null;
     function startPolling() {
       pollReplies();
@@ -367,22 +422,27 @@ export function generateWidgetScript(orgSlug: string): string {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     }
 
-    // ── FAB button ────────────────────────────────────────────────────────
+    // ── Launcher ─────────────────────────────────────────────────────────
     var fab = document.createElement('button');
     fab.className = 'fab';
+    fab.type = 'button';
     fab.setAttribute('aria-label', 'Open chat');
-
-    var iconChat = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
-    var iconClose = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+    fab.setAttribute('aria-expanded', 'false');
+    var iconChat = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+    var iconClose = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
     fab.innerHTML = iconChat;
-
     var isOpen = false;
     fab.onclick = function () {
       isOpen = !isOpen;
       panel.classList.toggle('open', isOpen);
       fab.innerHTML = isOpen ? iconClose : iconChat;
       fab.setAttribute('aria-label', isOpen ? 'Close chat' : 'Open chat');
-      if (isOpen) startPolling(); else stopPolling();
+      fab.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      if (isOpen) {
+        startPolling();
+        var first = view === 'form' ? form.querySelector('#wz-name') : textarea;
+        setTimeout(function () { first.focus(); }, 0);
+      } else stopPolling();
     };
 
     shadow.appendChild(panel);
@@ -390,7 +450,6 @@ export function generateWidgetScript(orgSlug: string): string {
     document.body.appendChild(host);
   }
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

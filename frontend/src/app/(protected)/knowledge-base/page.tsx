@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BookOpen, Plus, Eye, ThumbsUp, Pencil, Trash2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { SearchInput } from "@/components/ui/search-input";
@@ -227,10 +228,10 @@ export default function KnowledgeBasePage() {
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
               <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Article title" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-              <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none">
+              <Select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
                 <option value="">No category</option>
                 {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
               <textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Article content (Markdown supported)" rows={10} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none font-mono" />
               <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder="Tags (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body focus:border-primary focus:outline-none" />
               <div className="flex gap-4">

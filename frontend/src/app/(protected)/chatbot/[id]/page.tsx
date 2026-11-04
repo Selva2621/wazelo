@@ -62,6 +62,7 @@ import { useActivateChatbotFlowChecked } from "@/hooks/use-activate-chatbot-flow
 import { useKbDocuments, useUploadDocument, useDeleteDocument } from "@/hooks/use-knowledge-base";
 import { useProducts } from "@/hooks/use-products";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatbotNodeType } from "@/lib/types/chatbot";
@@ -70,6 +71,8 @@ import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useProductTerms } from "@/lib/product-terms";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ─── Node type metadata ───────────────────────────────────────────────────────
 
@@ -116,7 +119,7 @@ function defaultData(type: ChatbotNodeType): Record<string, unknown> {
     case "ASSIGN_AGENT":    return { strategy: "round_robin" };
     case "SET_TAG":         return { tagName: "" };
     case "API_CALL":        return { url: "", method: "GET", headers: "{}", body: "", responseVar: "" };
-    case "AI_REPLY":        return { systemPrompt: "You are a helpful customer support agent. Be concise and friendly.", maxTokens: 500 };
+    case "AI_REPLY":        return { systemPrompt: "You are a helpful assistant. Be concise and friendly.", maxTokens: 500 };
     case "INTENT_DETECT":   return { intents: ["order_status", "pricing", "support", "other"], description: "" };
     case "CAROUSEL":        return { headerText: "Please select an option:", items: [{ title: "Option 1", description: "" }, { title: "Option 2", description: "" }] };
     default:                return {};
@@ -273,6 +276,9 @@ function LeftPanel({
   const deleteDoc = useDeleteDocument();
   const { data: availableProducts } = useProducts();
   const terms = useProductTerms();
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
 
   return (
     <div data-tour="builder-left" className={`w-[220px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col overflow-y-auto ${mobileOpen ? `${MOBILE_SHEET} max-lg:max-h-[75dvh]` : "max-lg:hidden"}`}>
@@ -287,15 +293,15 @@ function LeftPanel({
         {/* Trigger */}
         <section className="space-y-2">
           <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">Trigger</p>
-          <select
+          <Select
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-outline text-label text-on-surface bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/20"
+            size="sm"
           >
             <option value="KEYWORD">Keyword Match</option>
             <option value="FIRST_MESSAGE">First Message</option>
             <option value="BUTTON_REPLY">Button Reply</option>
-          </select>
+          </Select>
           {triggerType === "KEYWORD" && (
             <input
               value={triggerValue}
@@ -328,7 +334,11 @@ function LeftPanel({
                 value={aiSystemPrompt}
                 onChange={(e) => setAiSystemPrompt(e.target.value)}
                 rows={4}
-                placeholder="e.g. Only talk about bookings. Ask for the date and number of people."
+                placeholder={
+                  isFreelancer
+                    ? "e.g. Only talk about my services. Ask what they need and by when."
+                    : "e.g. Only talk about bookings. Ask for the date and number of people."
+                }
                 className="w-full px-2.5 py-2 rounded-lg border border-outline bg-surface-container text-caption text-on-surface resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <p className="text-caption text-on-surface-variant">
@@ -546,11 +556,11 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
               <input value={String(nodeData.field ?? "")} onChange={(e) => onUpdate(nodeId, { field: e.target.value })} placeholder="e.g. customer_name" className={inputCls} />
             ))}
             {field("Operator", (
-              <select value={String(nodeData.operator ?? "equals")} onChange={(e) => onUpdate(nodeId, { operator: e.target.value })} className={inputCls}>
+              <Select value={String(nodeData.operator ?? "equals")} onChange={(e) => onUpdate(nodeId, { operator: e.target.value })} size="sm">
                 <option value="equals">Equals</option>
                 <option value="contains">Contains</option>
                 <option value="not_equals">Not Equals</option>
-              </select>
+              </Select>
             ))}
             {field("Value", (
               <input value={String(nodeData.value ?? "")} onChange={(e) => onUpdate(nodeId, { value: e.target.value })} placeholder="Expected value" className={inputCls} />
@@ -577,9 +587,9 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
 
         {nodeType === "ASSIGN_AGENT" && (
           field("Assignment Strategy", (
-            <select value={String(nodeData.strategy ?? "round_robin")} onChange={(e) => onUpdate(nodeId, { strategy: e.target.value })} className={inputCls}>
+            <Select value={String(nodeData.strategy ?? "round_robin")} onChange={(e) => onUpdate(nodeId, { strategy: e.target.value })} size="sm">
               <option value="round_robin">Round Robin</option>
-            </select>
+            </Select>
           ))
         )}
 
@@ -595,13 +605,13 @@ function RightPanel({ nodeId, nodeType, nodeData, onUpdate, onClose }: RightPane
               <input value={String(nodeData.url ?? "")} onChange={(e) => onUpdate(nodeId, { url: e.target.value })} placeholder="https://api.example.com/webhook" className={inputCls} />
             ))}
             {field("Method", (
-              <select value={String(nodeData.method ?? "GET")} onChange={(e) => onUpdate(nodeId, { method: e.target.value })} className={inputCls}>
+              <Select value={String(nodeData.method ?? "GET")} onChange={(e) => onUpdate(nodeId, { method: e.target.value })} size="sm">
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="PUT">PUT</option>
                 <option value="PATCH">PATCH</option>
                 <option value="DELETE">DELETE</option>
-              </select>
+              </Select>
             ))}
             {field("Headers (JSON)", (
               <>

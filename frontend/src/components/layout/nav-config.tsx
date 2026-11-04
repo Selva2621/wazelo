@@ -25,6 +25,7 @@ import {
   Globe,
   ScanSearch,
   Compass,
+  Mail,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuthStore } from "@/stores/auth-store";
@@ -144,6 +145,8 @@ const navGroups: NavGroup[] = [
       // Everyone needs their own number connected before anything can be sent
       { href: "/settings/whatsapp", icon: <Wifi className="h-5 w-5" />, label: "WhatsApp" },
       { href: "/settings", icon: <Settings className="h-5 w-5" />, label: "Settings", roles: ["ADMIN"], parent: "settings", childLabel: "Workspace" },
+      // The workspace's business email: campaigns, automations and sequences send from it
+      { href: "/settings/email", icon: <Mail className="h-5 w-5" />, label: "Email", roles: ["ADMIN"], parent: "settings" },
       // { href: "/settings/channels", icon: <Radio className="h-5 w-5" />, label: "Channels", roles: ["ADMIN", "MANAGER"] },
       { href: "/settings/billing", icon: <CreditCard className="h-5 w-5" />, label: "Billing", roles: ["ADMIN"], parent: "settings" },
       { href: "/settings/ai-credits", icon: <Sparkles className="h-5 w-5" />, label: "AI credits", roles: ["ADMIN", "MANAGER"], parent: "settings" },

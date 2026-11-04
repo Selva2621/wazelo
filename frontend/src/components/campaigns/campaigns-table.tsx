@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { CampaignStatusBadge } from "./campaign-status-badge";
 import { CampaignProgressBar } from "./campaign-progress-bar";
 import type { Campaign } from "@/lib/types/campaigns";
+import { ChannelIcon } from "./email-channel";
 
 interface CampaignsTableProps {
   campaigns: Campaign[];
@@ -41,7 +42,10 @@ const columns: DataTableColumn<Campaign>[] = [
     header: "Campaign",
     cell: (c) => (
       <div className="min-w-0">
-        <p className="truncate text-body font-medium text-on-surface">{c.name}</p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <ChannelIcon channel={c.channel} />
+          <p className="truncate text-body font-medium text-on-surface">{c.name}</p>
+        </div>
         {c.description && <p className="truncate text-caption text-on-surface-variant">{c.description}</p>}
       </div>
     ),
@@ -126,6 +130,7 @@ export function CampaignsTable({
         >
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex items-center gap-2">
+              <ChannelIcon channel={c.channel} />
               <p className="min-w-0 flex-1 truncate text-body font-medium text-on-surface">{c.name}</p>
               <CampaignStatusBadge status={c.status} pulse={c.status === "RUNNING"} />
             </div>

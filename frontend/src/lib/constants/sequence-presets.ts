@@ -1,4 +1,4 @@
-import { getOutreachSteps } from "@/lib/constants/outreach";
+import { getOutreachStepsFor } from "@/lib/constants/outreach";
 import type { OrgType } from "@/lib/types/auth";
 
 /**
@@ -87,9 +87,9 @@ const NEW_LEAD_WELCOME: SequencePreset = {
   exitOnReply: true,
   trigger: { type: "CONTACT_CREATED" },
   steps: [
-    text("Welcome", 0, "Hi {{name}}! Welcome aboard. We're excited to have you. How can we help you today?"),
-    text("Day 1 check-in", DAY, "Hi {{name}}, just checking in! Did you get a chance to explore our services? Feel free to ask any questions."),
-    text("Day 3 value", 2 * DAY, "Hey {{name}}, here's something you might find valuable: the features our customers love most. Want to learn more?"),
+    text("Welcome", 0, "Hi {{name}}, thanks for connecting with us! How can we help you today?"),
+    text("Day 1 check-in", DAY, "Hi {{name}}, just checking in. Did you find what you were looking for? Feel free to ask us anything."),
+    text("Day 3 value", 2 * DAY, "Hi {{name}}, many of our customers start by telling us what they need, and we suggest the best option. Want us to help you choose?"),
   ],
 };
 
@@ -99,9 +99,9 @@ const ENQUIRY_FOLLOW_UP: SequencePreset = {
   description: "Follow up when an enquiry goes quiet",
   exitOnReply: true,
   steps: [
-    text("1 hour follow-up", HOUR, "Hi {{name}}, thank you for reaching out! I wanted to follow up on your enquiry. Do you have any questions?"),
-    text("Day 1 reminder", DAY, "Hi {{name}}, just a friendly reminder that I'm here if you need any more information about what you asked for."),
-    text("Last follow-up", 2 * DAY, "Hey {{name}}, I don't want to miss the chance to help you. This is my last follow-up. Let me know if you'd like to proceed!"),
+    text("1 hour follow-up", HOUR, "Hi {{name}}, thank you for reaching out! We wanted to follow up on your enquiry. Do you have any questions?"),
+    text("Day 1 reminder", DAY, "Hi {{name}}, a friendly reminder that we're here if you need more details about what you asked for."),
+    text("Last follow-up", 2 * DAY, "Hi {{name}}, this is our last follow-up on your enquiry. Just reply here whenever you'd like to go ahead."),
   ],
 };
 
@@ -111,7 +111,7 @@ const RE_ENGAGEMENT: SequencePreset = {
   description: "Win back inactive customers",
   exitOnReply: true,
   steps: [
-    text("Re-engage", 0, "Hey {{name}}, we haven't heard from you in a while! We've been making some exciting improvements. Would you like to hear what's new?"),
+    text("Re-engage", 0, "Hi {{name}}, we haven't heard from you in a while! Would you like to hear what's new with us?"),
     text("Special offer", 3 * DAY, "Hi {{name}}, we miss you! Here's a special offer just for you. Reply 'YES' to learn more."),
   ],
 };
@@ -131,23 +131,24 @@ const POST_PURCHASE_FEEDBACK: SequencePreset = {
 
 interface PresetOrgSettings {
   orgType?: OrgType;
+  name?: string | null;
   freelancerTypes?: readonly string[] | null;
   freelancerService?: string | null;
   freelancerServiceLabel?: string | null;
 }
 
-/** Presets for this org. The outreach intro is written for the freelancer's line of work. */
+/**
+ * Presets for this org. Freelancers get outreach written for their line of work;
+ * teams get the same steps in the business's "we" voice.
+ */
 export function getSequencePresets(org?: PresetOrgSettings): SequencePreset[] {
   const isFreelancer = org?.orgType === "FREELANCER";
-  const service = org?.freelancerServiceLabel ?? org?.freelancerService;
   const outreach: SequencePreset = {
     id: "lead-outreach",
     name: isFreelancer ? "Cold outreach" : "Scraped lead outreach",
     description: "First contact with leads from the lead scraper",
     exitOnReply: true,
-    steps: getOutreachSteps(isFreelancer ? org?.freelancerTypes : null, isFreelancer ? service : null).map(
-      (s) => ({ ...s, messageType: "TEXT" as const }),
-    ),
+    steps: getOutreachStepsFor(org).map((s) => ({ ...s, messageType: "TEXT" as const })),
   };
 
   return isFreelancer

@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-teams";
 import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
@@ -288,17 +289,18 @@ export default function TeamDetailPage({
           <div className="space-y-0.5 min-w-[120px] max-lg:basis-full">
             <p className="text-label text-on-surface-variant">Manager</p>
             {isEditing ? (
-              <select
+              <Select
                 value={editManagerId}
                 onChange={(e) => setEditManagerId(e.target.value)}
-                className="mt-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 max-lg:h-11 max-lg:w-full"
+                size="sm"
+                className="mt-1 w-auto max-lg:w-full"
               >
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <div className="flex items-center gap-2 mt-1">
                 <Avatar
@@ -355,10 +357,10 @@ export default function TeamDetailPage({
         {/* Add member inline form (edit mode only) */}
         {isEditing && addingMember && (
           <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 max-lg:flex-wrap max-lg:[&>button]:h-11 max-lg:[&>button]:flex-1">
-            <select
+            <Select
               value={newMemberUserId}
               onChange={(e) => setNewMemberUserId(e.target.value)}
-              className="max-lg:h-11 max-lg:basis-full flex-1 rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="max-lg:basis-full flex-1"
             >
               <option value="">Select user to add</option>
               {availableToAdd.map((u) => (
@@ -366,7 +368,7 @@ export default function TeamDetailPage({
                   {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                 </option>
               ))}
-            </select>
+            </Select>
             <Button size="sm" onClick={handleAddMember} disabled={!newMemberUserId || addMember.isPending}>
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               Add

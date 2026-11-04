@@ -13,6 +13,7 @@ import {
   DEFAULT_TAGS,
 } from '@/shared/constants/org-defaults';
 import {
+  BUSINESS_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
   SystemTemplate,
 } from '@/shared/constants/system-templates';
@@ -176,6 +177,8 @@ export class OnboardOrgUseCase {
       ...(orgType === OrgType.FREELANCER
         ? await this.freelancerTemplates(freelancerTypes ?? [], freelancerService)
         : []),
+      // Team / business workspaces: welcome, follow-up, reminders, offers… ready to send
+      ...(orgType === OrgType.TEAM ? BUSINESS_SYSTEM_TEMPLATES : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(

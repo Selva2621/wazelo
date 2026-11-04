@@ -104,21 +104,13 @@ export default function ChatbotPage() {
     );
   };
 
+  // The AI recipe written for this kind of workspace (freelancer assistant or team support bot)
   const handleCreateAiBot = () => {
-    createFlow.mutate(
-      {
-        name: "AI Support Bot",
-        description: "AI-powered chatbot that automatically replies to customers using your product knowledge.",
-        trigger: { type: "FIRST_MESSAGE" },
-        aiEnabled: true,
-        aiSystemPrompt:
-          "You are a helpful and professional customer support agent. Answer customer questions accurately and concisely based on the product knowledge provided. If you don't know the answer, politely say so and offer to connect them with a human agent. Keep responses under 150 words.",
-        useKnowledgeBase: true,
-      },
-      {
-        onSuccess: (flow) => router.push(`/chatbot/${flow.id}`),
-      },
-    );
+    const aiPreset = presets.find((p) => p.icon === "ai");
+    if (!aiPreset) return;
+    createFlow.mutate(aiPreset.flow, {
+      onSuccess: (flow) => router.push(`/chatbot/${flow.id}`),
+    });
   };
 
   if (isLoading) {

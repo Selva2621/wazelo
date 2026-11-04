@@ -115,6 +115,7 @@ import type {
 import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
 import { COUNTRIES, CURRENCY_CODES, DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type {
   NotificationType,
@@ -133,7 +134,7 @@ import {
   useRebuildAiMemory,
   useDeleteAiMemoryDocument,
 } from "@/hooks/use-settings";
-import type { SlaPolicy } from "@/lib/types/sla";
+import type { SlaPolicy, CreateSlaPolicyRequest, UpdateSlaPolicyRequest } from "@/lib/types/sla";
 import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { useProductTerms } from "@/lib/product-terms";
@@ -245,9 +246,12 @@ export default function SettingsPage() {
   const tabParam: SettingsTab | null = rawTab && VALID_TABS.includes(rawTab as SettingsTab) ? (rawTab as SettingsTab) : null;
   const [activeTab, setActiveTab] = useState<SettingsTab>(tabParam ?? "organization");
 
-  useEffect(() => {
+  // Follow ?tab when it changes
+  const [syncedTabParam, setSyncedTabParam] = useState(tabParam);
+  if (tabParam !== syncedTabParam) {
+    setSyncedTabParam(tabParam);
     if (tabParam) setActiveTab(tabParam);
-  }, [tabParam]);
+  }
 
   // Mobile: no ?tab shows the list of sections; ?tab shows that section alone
   const mobileTabLabel = tabParam
@@ -374,20 +378,21 @@ function OrganizationSection() {
   const toggleFreelancerType = (value: string) =>
     setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
 
-  useEffect(() => {
-    if (data) {
-      setName(data.name ?? "");
-      setTimezone(data.timezone ?? "UTC");
-      setCountry(data.country ?? DEFAULT_COUNTRY_CODE);
-      setCurrency(data.currency ?? "INR");
-      setLanguage(data.language ?? "en");
-      setIndustry(data.industry ?? "");
-      setDescription(data.description ?? "");
-      setWebsite(data.website ?? "");
-      setFreelancerTypes(data.freelancerTypes ?? []);
-      setFreelancerService(data.freelancerService ?? "");
-    }
-  }, [data]);
+  // Copy each loaded copy of the settings into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setName(data.name ?? "");
+    setTimezone(data.timezone ?? "UTC");
+    setCountry(data.country ?? DEFAULT_COUNTRY_CODE);
+    setCurrency(data.currency ?? "INR");
+    setLanguage(data.language ?? "en");
+    setIndustry(data.industry ?? "");
+    setDescription(data.description ?? "");
+    setWebsite(data.website ?? "");
+    setFreelancerTypes(data.freelancerTypes ?? []);
+    setFreelancerService(data.freelancerService ?? "");
+  }
 
   const handleSave = () => {
     const payload: UpdateOrgSettingsRequest = {
@@ -466,18 +471,13 @@ function OrganizationSection() {
             >
               Currency
             </label>
-            <select
-              id="org-currency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-            >
+            <Select id="org-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCY_CODES.map((code) => (
                 <option key={code} value={code}>
                   {code}
                 </option>
               ))}
-            </select>
+            </Select>
             <p className="text-caption text-on-surface-variant">Default for deals and {terms.plural}</p>
           </div>
         </div>
@@ -488,17 +488,13 @@ function OrganizationSection() {
             <Globe className="h-3.5 w-3.5" />
             Timezone
           </label>
-          <select
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-          >
+          <Select value={timezone} onChange={(e) => setTimezone(e.target.value)} aria-label="Timezone">
             {[...new Set([...TIMEZONES, ...COUNTRIES.map((c) => c.timezone), timezone])].map((tz) => (
               <option key={tz} value={tz}>
                 {tz}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Language */}
@@ -506,17 +502,13 @@ function OrganizationSection() {
           <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
             Language
           </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-          >
+          <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
             {LANGUAGES.map((lang) => (
               <option key={lang.value} value={lang.value}>
                 {lang.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Business Profile */}
@@ -796,14 +788,15 @@ function WhatsAppSection() {
   const [autoReconnect, setAutoReconnect] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(3600);
 
-  useEffect(() => {
-    if (data) {
-      setMessageDelay(data.messageDelay ?? 1000);
-      setRetryLimit(data.retryLimit ?? 3);
-      setAutoReconnect(data.autoReconnect ?? true);
-      setSessionTimeout(data.sessionTimeout ?? 3600);
-    }
-  }, [data]);
+  // Copy each loaded copy of the config into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setMessageDelay(data.messageDelay ?? 1000);
+    setRetryLimit(data.retryLimit ?? 3);
+    setAutoReconnect(data.autoReconnect ?? true);
+    setSessionTimeout(data.sessionTimeout ?? 3600);
+  }
 
   const handleSave = () => {
     const payload: UpdateWhatsAppConfigRequest = {
@@ -1012,14 +1005,15 @@ function WorkingHoursSection() {
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [workDays, setWorkDays] = useState([true, true, true, true, true, false, false]);
-  useEffect(() => {
-    if (data) {
-      setEnabled(data.enabled ?? true);
-      setStartHour(data.startHour ?? "09:00");
-      setEndHour(data.endHour ?? "18:00");
-      setWorkDays(data.workDays ?? [true, true, true, true, true, false, false]);
-    }
-  }, [data]);
+  // Copy each loaded copy of the hours into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setEnabled(data.enabled ?? true);
+    setStartHour(data.startHour ?? "09:00");
+    setEndHour(data.endHour ?? "18:00");
+    setWorkDays(data.workDays ?? [true, true, true, true, true, false, false]);
+  }
 
   const toggleDay = (idx: number) => {
     const next = [...workDays];
@@ -1161,9 +1155,12 @@ function FeatureFlagsSection() {
     billing: true,
   });
 
-  useEffect(() => {
-    if (data) setFlags(data);
-  }, [data]);
+  // Copy each loaded copy of the flags into local state
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setFlags(data);
+  }
 
   const toggleFlag = (key: keyof FeatureFlagsType) => {
     const updated = { ...flags, [key]: !flags[key] };
@@ -1300,7 +1297,7 @@ function AiSettingsSection() {
             </p>
             <p className="text-caption text-on-surface-variant/60">
               AI analyzes incoming messages and auto-creates deals when customers
-              show buying intent (e.g., "I want to buy", "send me pricing")
+              show buying intent (e.g., &ldquo;I want to buy&rdquo;, &ldquo;send me pricing&rdquo;)
             </p>
           </div>
           <button role="switch" aria-checked={aiPurchaseIntent} aria-label="Auto-detect purchase intent"
@@ -1334,6 +1331,7 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, { label: string; descri
   WHATSAPP_SESSION_DISCONNECTED: { label: "Session Disconnected", description: "WhatsApp session disconnects" },
   WHATSAPP_SESSION_UNSTABLE: { label: "Connection Unstable", description: "WhatsApp keeps failing to reconnect" },
   WHATSAPP_PHONE_INACTIVE: { label: "Phone Inactive", description: "Your phone hasn't been online for days — WhatsApp may unlink" },
+  WEBSITE_HANDOFF: { label: "Website visitor wants a person", description: "A visitor on your website asked to talk to someone" },
   PAYMENT_FAILED: { label: "Payment Failed", description: "Payment failure alerts" },
   USAGE_LIMIT_WARNING: { label: "Usage Warning", description: "Approaching plan limits" },
   USAGE_LIMIT_REACHED: { label: "Usage Limit Reached", description: "Plan limit reached alerts" },
@@ -1962,9 +1960,12 @@ function WebhookCard({
 function WebhookDeliveryLogs({ webhookId }: { webhookId: string }) {
   const [deliveryPage, setDeliveryPage] = useState(1);
 
-  useEffect(() => {
+  // Back to page 1 when a different webhook is shown
+  const [syncedWebhookId, setSyncedWebhookId] = useState(webhookId);
+  if (webhookId !== syncedWebhookId) {
+    setSyncedWebhookId(webhookId);
     setDeliveryPage(1);
-  }, [webhookId]);
+  }
 
   const { data, isLoading } = useWebhookDeliveries(webhookId, {
     limit: PAGE_SIZE,
@@ -2740,7 +2741,7 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
                 <p>
                   Successful responses are wrapped as <code className="bg-surface-container px-1 rounded">{"{ success, data, timestamp }"}</code>.
                   Errors return <code className="bg-surface-container px-1 rounded">{"{ statusCode, message, error }"}</code>.
-                  Send an <code className="bg-surface-container px-1 rounded">Idempotency-Key</code> header (or <code className="bg-surface-container px-1 rounded">idempotencyKey</code> in the body) on send and send-template so a retried request doesn't send twice.
+                  Send an <code className="bg-surface-container px-1 rounded">Idempotency-Key</code> header (or <code className="bg-surface-container px-1 rounded">idempotencyKey</code> in the body) on send and send-template so a retried request doesn&apos;t send twice.
                 </p>
                 <p>
                   Each key can make 60 requests per minute. Check the{" "}
@@ -2899,7 +2900,7 @@ function SlaSection() {
 
       {showForm && (
         <SlaPolicyForm
-          onSubmit={(data) => createPolicy.mutate(data as any, { onSuccess: () => setShowForm(false) })}
+          onSubmit={(data) => createPolicy.mutate(data as CreateSlaPolicyRequest, { onSuccess: () => setShowForm(false) })}
           onCancel={() => setShowForm(false)}
           isSubmitting={createPolicy.isPending}
         />
@@ -2908,7 +2909,7 @@ function SlaSection() {
       {editPolicy && (
         <SlaPolicyForm
           policy={editPolicy}
-          onSubmit={(data) => updatePolicy.mutate({ id: editPolicy.id, data: data as any }, { onSuccess: () => setEditPolicy(null) })}
+          onSubmit={(data) => updatePolicy.mutate({ id: editPolicy.id, data: data as UpdateSlaPolicyRequest }, { onSuccess: () => setEditPolicy(null) })}
           onCancel={() => setEditPolicy(null)}
           isSubmitting={updatePolicy.isPending}
         />
@@ -3067,9 +3068,12 @@ function ShopifySection() {
 
   const shopifyIntegration = integrations?.find((i) => i.provider === "SHOPIFY");
 
-  useEffect(() => {
+  // Open the form when loading finishes with no store connected (re-checked only when these change)
+  const [syncedShopify, setSyncedShopify] = useState<{ isLoading: boolean; integration: typeof shopifyIntegration } | null>(null);
+  if (!syncedShopify || syncedShopify.isLoading !== isLoading || syncedShopify.integration !== shopifyIntegration) {
+    setSyncedShopify({ isLoading, integration: shopifyIntegration });
     if (!isLoading && !shopifyIntegration) setShowForm(true);
-  }, [isLoading, shopifyIntegration]);
+  }
 
   function handleTest() {
     if (!shopifyIntegration) return;

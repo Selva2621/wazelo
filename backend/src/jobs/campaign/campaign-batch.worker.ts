@@ -14,7 +14,9 @@ import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
   MESSAGING_CONFIG,
+  EVENT_NAMES,
 } from '@/common/constants';
+import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 import {
   CampaignRecipientStatus,
   CampaignStatus,
@@ -27,7 +29,8 @@ interface CampaignBatchJobData {
   campaignId: string;
   batchNumber: number;
   orgId: string;
-  sessionId: string;
+  /** Null for email campaigns */
+  sessionId: string | null;
 }
 
 @Injectable()
@@ -44,6 +47,7 @@ export class CampaignBatchWorker implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly killSwitches: KillSwitchService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgEmail: OrgEmailService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -100,9 +104,15 @@ export class CampaignBatchWorker implements OnModuleInit {
     );
 
     // 3. Process each recipient
+    const isEmail = campaign.channel === 'EMAIL';
+    if (!isEmail && !sessionId) {
+      this.logger.error(`Campaign ${campaignId} has no WhatsApp number; batch ${batchNumber} skipped`);
+      return;
+    }
     for (const recipient of recipients) {
       try {
-        await this.processRecipient(recipient, campaign, sessionId, orgId);
+        if (isEmail) await this.processEmailRecipient(recipient, campaign, orgId);
+        else await this.processRecipient(recipient, campaign, sessionId!, orgId);
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         this.logger.error(
@@ -121,6 +131,38 @@ export class CampaignBatchWorker implements OnModuleInit {
         await this.campaignRepo.incrementCounter(campaignId, 'failedCount', 1);
       }
     }
+    // Skipped recipients send no status event: the campaign checks whether it's done now
+    this.eventEmitter.emit(EVENT_NAMES.CAMPAIGN_BATCH_SETTLED, { campaignId, orgId, batchNumber });
+  }
+
+  /**
+   * Email campaigns: the email goes from the workspace's mailbox. A contact with no
+   * email or who unsubscribed is SKIPPED with the reason; otherwise the recipient is
+   * QUEUED and the email's result (sent / failed) updates it later.
+   */
+  private async processEmailRecipient(recipient: Record<string, any>, campaign: Record<string, any>, orgId: string): Promise<void> {
+    const result = await this.orgEmail.queue({
+      orgId,
+      contactId: recipient.contactId,
+      subject: campaign.emailSubject ?? campaign.name,
+      body: campaign.messageBody ?? '',
+      source: 'CAMPAIGN',
+      sourceId: campaign.id,
+      idempotencyKey: `campaign-email-${campaign.id}-${recipient.contactId}`,
+    });
+    if (result.status === 'SKIPPED') {
+      await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.SKIPPED, {
+        emailMessageId: result.emailMessageId,
+        failedReason: result.reason,
+        processedAt: new Date(),
+      });
+      return;
+    }
+    await this.recipientRepo.updateStatus(
+      recipient.id,
+      result.status === 'SENT' ? CampaignRecipientStatus.SENT : result.status === 'FAILED' ? CampaignRecipientStatus.FAILED : CampaignRecipientStatus.QUEUED,
+      { emailMessageId: result.emailMessageId, ...(result.reason ? { failedReason: result.reason } : {}) },
+    );
   }
 
   private async processRecipient(

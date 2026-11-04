@@ -8,6 +8,7 @@ import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
 
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 
 // Same filling as campaigns and automations (one shared helper)
 export { fillContactPlaceholders };
@@ -26,6 +27,7 @@ export class SequenceStepWorker implements OnModuleInit {
     private readonly messageRepo: MessageRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
+    private readonly orgEmail: OrgEmailService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -133,6 +135,12 @@ export class SequenceStepWorker implements OnModuleInit {
 
     const step = steps[nextStepIndex];
 
+    // Email step: from the workspace's mailbox (its own unsubscribe applies, not the WhatsApp opt-out)
+    if (step.channel === 'EMAIL') {
+      await this.sendEmailStep(recipient, step, steps, nextStepIndex, sequenceId, orgId);
+      return;
+    }
+
     // Never send to someone who replied STOP / unsubscribe
     const digits = recipient.contactPhone.replace(/^\+/, '');
     const optedOut = await this.prisma.contact.findFirst({
@@ -219,6 +227,52 @@ export class SequenceStepWorker implements OnModuleInit {
       this.logger.error(
         `Failed to send sequence step for recipient ${recipientId}: ${error}`,
       );
+    }
+  }
+
+  /**
+   * An email step: queued from the workspace's mailbox, recorded on the recipient's
+   * steps (SKIPPED with the reason when it can't go — no email, unsubscribed, no
+   * account), then the recipient moves on like after a WhatsApp step.
+   */
+  private async sendEmailStep(
+    recipient: { id: string; contactId: string },
+    step: { id: string; stepOrder: number; emailSubject: string | null; messageBody: string | null },
+    steps: { delayMinutes: number }[],
+    stepIndex: number,
+    sequenceId: string,
+    orgId: string,
+  ): Promise<void> {
+    try {
+      const recipientStep = await this.sequenceRepo.createRecipientStep({
+        recipientId: recipient.id,
+        stepId: step.id,
+        orgId,
+        scheduledAt: new Date(),
+      });
+      const result = await this.orgEmail.queue({
+        orgId,
+        contactId: recipient.contactId,
+        subject: step.emailSubject || 'A message for you',
+        body: step.messageBody ?? '',
+        source: 'SEQUENCE',
+        sourceId: recipientStep.id,
+        idempotencyKey: `seq-email-${sequenceId}-${recipient.id}-step-${step.stepOrder}`,
+      });
+      await this.sequenceRepo.updateRecipientStepStatus(
+        recipientStep.id,
+        result.status === 'SKIPPED' ? CampaignRecipientStatus.SKIPPED : result.status === 'SENT' ? CampaignRecipientStatus.SENT : CampaignRecipientStatus.QUEUED,
+        { processedAt: new Date(), ...(result.reason ? { failedReason: result.reason } : {}) },
+      );
+
+      const nextIndex = stepIndex + 1;
+      const nextStepAt = nextIndex < steps.length ? new Date(Date.now() + steps[nextIndex].delayMinutes * 60_000) : null;
+      await this.sequenceRepo.advanceRecipient(recipient.id, nextIndex, nextStepAt);
+      if (nextIndex >= steps.length) await this.sequenceRepo.completeRecipient(recipient.id);
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      this.logger.debug(`Sequence ${sequenceId}: email step ${step.stepOrder} → ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
+    } catch (error) {
+      this.logger.error(`Failed to send sequence email step for recipient ${recipient.id}: ${error}`);
     }
   }
 }

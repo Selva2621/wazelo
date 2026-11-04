@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Demo video project (recordings, renders, scripts): local only
 /demo/
+
+# Playwright MCP test screenshots, snapshots and logs (local only)
+.playwright-mcp/

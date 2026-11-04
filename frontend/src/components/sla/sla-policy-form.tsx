@@ -9,6 +9,7 @@ import type {
   SlaPriority,
 } from "@/lib/types/sla";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 
 const METRIC_OPTIONS: { value: SlaMetricType; label: string; description: string }[] = [
   { value: "FIRST_RESPONSE_TIME", label: "First Response", description: "Time until the first agent reply" },
@@ -323,27 +324,25 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
             <div className="grid grid-cols-2 gap-4 pt-1">
               <div>
                 <label className="block text-caption text-on-surface-variant/60 mb-1.5">Start hour</label>
-                <select
+                <Select
                   value={businessStart}
                   onChange={(e) => setBusinessStart(Number(e.target.value))}
-                  className={inputCls}
                 >
                   {Array.from({ length: 13 }, (_, i) => i + 6).map((h) => (
                     <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-caption text-on-surface-variant/60 mb-1.5">End hour</label>
-                <select
+                <Select
                   value={businessEnd}
                   onChange={(e) => setBusinessEnd(Number(e.target.value))}
-                  className={inputCls}
                 >
                   {Array.from({ length: 13 }, (_, i) => i + 12).map((h) => (
                     <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
           )}

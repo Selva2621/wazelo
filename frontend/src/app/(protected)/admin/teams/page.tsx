@@ -7,6 +7,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useTeams, useCreateTeam, useDeleteTeam } from "@/hooks/use-teams";
 import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -229,10 +230,9 @@ export default function AdminTeamsPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">Manager</label>
-              <select
+              <Select
                 value={newTeamManagerId}
                 onChange={(e) => { setNewTeamManagerId(e.target.value); setCreateError(""); }}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">Select manager</option>
                 {managers.map((u) => (
@@ -240,7 +240,7 @@ export default function AdminTeamsPage() {
                     {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 

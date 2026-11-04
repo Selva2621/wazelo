@@ -608,7 +608,6 @@ export default function LeadScraperPage() {
                   value={scrapeCountry}
                   onChange={setPickedCountry}
                   showDialCode
-                  className="rounded-xl border-outline-variant bg-surface-container"
                 />
                 <p className="mt-1 text-caption text-on-surface-variant">
                   Numbers found without a country code get +{getCountry(scrapeCountry).dialCode}
@@ -723,7 +722,7 @@ export default function LeadScraperPage() {
                             value={scrapeCountry}
                             onChange={setPickedCountry}
                             showDialCode
-                            className="h-11 w-full rounded-xl border-outline-variant bg-surface-container"
+                            className="w-full"
                           />
                         </div>
                       )}

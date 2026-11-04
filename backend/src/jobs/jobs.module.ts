@@ -82,6 +82,12 @@ import { OrgModule } from '@/modules/org/org.module';
 // Deal follow-up reminders
 import { DealFollowUpWorker } from './deals/deal-follow-up.worker';
 import { DealsModule } from '@/modules/deals/deals.module';
+// Website chat handover timers
+import { WebsiteHandoffWorker } from './widget/website-handoff.worker';
+import { WidgetModule } from '@/modules/widget/widget.module';
+// Email from each workspace's own mailbox
+import { SendOrgEmailWorker } from './email/send-org-email.worker';
+import { EmailModule } from '@/modules/email/email.module';
 
 @Module({
   imports: [
@@ -113,6 +119,8 @@ import { DealsModule } from '@/modules/deals/deals.module';
     LeadScraperModule,
     OrgModule,
     DealsModule,
+    WidgetModule,
+    EmailModule,
   ],
   providers: [
     DealFollowUpWorker,
@@ -175,6 +183,10 @@ import { DealsModule } from '@/modules/deals/deals.module';
     ScrapeWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
+    // Website chat handover: offer ran out → next member; nobody took it → follow-up
+    WebsiteHandoffWorker,
+    // Email from each workspace's own mailbox (retries, daily limit, log)
+    SendOrgEmailWorker,
   ],
 })
 export class JobsModule {}

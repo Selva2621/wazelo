@@ -303,13 +303,14 @@ export class CampaignController {
   @Permissions(PERMISSIONS.CAMPAIGNS_READ)
   @HttpCode(HttpStatus.OK)
   async previewAudience(
-    @Body() body: { audienceType: string; audienceFilters?: AudienceFiltersDto },
+    @Body() body: { audienceType: string; audienceFilters?: AudienceFiltersDto; channel?: string },
     @CurrentUser() user: JwtPayload,
   ) {
     return this.previewAudienceUseCase.execute(
       user.orgId,
       body.audienceType as any,
       body.audienceFilters,
+      body.channel === 'EMAIL' ? 'EMAIL' : 'WHATSAPP',
     );
   }
 

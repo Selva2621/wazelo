@@ -44,12 +44,14 @@ export class ExecuteCampaignUseCase {
     // 2. Verify valid transition
     this.stateMachine.assertTransition(campaign.status, CampaignStatus.RUNNING);
 
-    // 3. Verify session is connected
-    const session = await this.sessionRepo.findByIdAndOrg(campaign.sessionId, orgId);
-    if (!session || session.status !== 'CONNECTED') {
-      throw new BadRequestException(
-        'WhatsApp session is not connected. Connect via QR first.',
-      );
+    // 3. Verify session is connected (email campaigns send from the workspace's mailbox instead)
+    if (campaign.channel !== 'EMAIL') {
+      const session = campaign.sessionId ? await this.sessionRepo.findByIdAndOrg(campaign.sessionId, orgId) : null;
+      if (!session || session.status !== 'CONNECTED') {
+        throw new BadRequestException(
+          'WhatsApp session is not connected. Connect via QR first.',
+        );
+      }
     }
 
     // 4. If scheduled in the future, don't execute now

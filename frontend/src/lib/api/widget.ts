@@ -29,8 +29,11 @@ export async function updateWidgetConfig(config: Partial<WidgetConfig>): Promise
 
 // ─── Website chats (Inbox → Website) ───
 
-/** Who wrote it: the visitor, a person on the team, or the AI assistant */
-export type WebsiteChatSender = "visitor" | "agent" | "bot";
+/** Who wrote it: the visitor, a person on the team, the AI assistant, or a notice ("Priya joined the chat") */
+export type WebsiteChatSender = "visitor" | "agent" | "bot" | "system";
+
+/** Who is answering: the AI, nobody yet (asked for a person), a team member, or nobody (ended) */
+export type WebsiteChatState = "AI" | "WAITING" | "PERSON" | "ENDED";
 
 export interface WebsiteChatSummary {
   id: string;
@@ -39,10 +42,37 @@ export interface WebsiteChatSummary {
   visitorEmail: string | null;
   pageUrl: string | null;
   status: "open" | "closed";
+  state: WebsiteChatState;
+  assignedTo: { id: string; name: string } | null;
+  /** When the visitor asked for a person */
+  handoffRequestedAt: string | null;
+  /** This chat was offered to me (accept / decline) */
+  offeredToMe: boolean;
+  leadDecision: "LEAD" | "NOT_LEAD" | null;
+  consentChannel: string | null;
   lastMessage: { body: string; sender: WebsiteChatSender; createdAt: string } | null;
   /** The visitor wrote last: someone should reply */
   waiting: boolean;
   updatedAt: string;
+}
+
+export interface WebsiteChatDetail {
+  id: string;
+  visitorName: string | null;
+  visitorPhone: string | null;
+  visitorEmail: string | null;
+  pageUrl: string | null;
+  status: "open" | "closed";
+  state: WebsiteChatState;
+  assignedTo: { id: string; name: string } | null;
+  handoffRequestedAt: string | null;
+  handoffReason: string | null;
+  consentChannel: string | null;
+  consentAt: string | null;
+  contactId: string | null;
+  leadDecision: "LEAD" | "NOT_LEAD" | null;
+  endedAt: string | null;
+  endReason: string | null;
 }
 
 export interface WebsiteChatMessage {
@@ -50,6 +80,25 @@ export interface WebsiteChatMessage {
   sender: WebsiteChatSender;
   body: string;
   createdAt: string;
+  /** The team member who wrote it */
+  senderName?: string | null;
+}
+
+export interface WebsiteChatEvent {
+  id: string;
+  type: string;
+  actorType: "visitor" | "ai" | "user" | "system";
+  actorId: string | null;
+  actorName: string | null;
+  data: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface WebsiteChatAiSummary {
+  summary: string;
+  openQuestions: string[];
+  mentioned: Record<string, string>;
+  leadHint: "LIKELY" | "MAYBE" | "UNLIKELY";
 }
 
 export async function listWebsiteChats(status: "open" | "closed" = "open"): Promise<{ data: WebsiteChatSummary[]; total: number }> {
@@ -57,11 +106,44 @@ export async function listWebsiteChats(status: "open" | "closed" = "open"): Prom
   return data;
 }
 
-export async function getWebsiteChat(id: string): Promise<{
-  chat: Omit<WebsiteChatSummary, "lastMessage" | "waiting" | "updatedAt">;
-  messages: WebsiteChatMessage[];
-}> {
+export async function getWebsiteChat(id: string): Promise<{ chat: WebsiteChatDetail; messages: WebsiteChatMessage[] }> {
   const { data } = await apiClient.get(`/widget/chats/${id}/messages`);
+  return data;
+}
+
+export async function acceptWebsiteChat(id: string): Promise<void> {
+  await apiClient.post(`/widget/chats/${id}/accept`);
+}
+
+export async function declineWebsiteChat(id: string): Promise<void> {
+  await apiClient.post(`/widget/chats/${id}/decline`);
+}
+
+/** Give the chat back to the AI assistant */
+export async function releaseWebsiteChat(id: string): Promise<void> {
+  await apiClient.post(`/widget/chats/${id}/release`);
+}
+
+export async function decideWebsiteLead(
+  id: string,
+  body: { decision: "LEAD" | "NOT_LEAD"; phone?: string },
+): Promise<{ decision: "LEAD" | "NOT_LEAD"; contactId: string | null; consent?: boolean }> {
+  const { data } = await apiClient.post(`/widget/chats/${id}/lead`, body);
+  return data;
+}
+
+export async function getWebsiteChatTimeline(id: string): Promise<WebsiteChatEvent[]> {
+  const { data } = await apiClient.get(`/widget/chats/${id}/timeline`);
+  return data;
+}
+
+export async function summarizeWebsiteChat(id: string): Promise<WebsiteChatAiSummary> {
+  const { data } = await apiClient.post(`/widget/chats/${id}/ai/summary`);
+  return data;
+}
+
+export async function suggestWebsiteReplies(id: string): Promise<{ replies: string[]; sources: string[] }> {
+  const { data } = await apiClient.post(`/widget/chats/${id}/ai/suggestions`);
   return data;
 }
 

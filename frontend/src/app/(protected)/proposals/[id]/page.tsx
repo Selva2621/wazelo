@@ -23,6 +23,7 @@ import { proposalsApi, type Proposal, type ProposalEdits, type ProposalItem } fr
 import { ProposalDocument, money } from "@/components/proposals/proposal-document";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -503,14 +504,15 @@ function Editor({ proposal }: { proposal: Proposal }) {
                 <Plus className="h-4 w-4" aria-hidden /> Add item
               </Button>
               {!!products?.length && (
-                <select
+                <Select
                   aria-label={`Add from your ${terms.plural}`}
                   value=""
                   onChange={(e) => {
                     const p = products.find((x) => x.id === e.target.value);
                     if (p) edit({ items: [...form.items, row({ name: p.name, unitPrice: p.price ? Number(p.price) : 0 })] });
                   }}
-                  className="rounded-lg border border-outline-variant bg-surface px-2 py-1.5 text-label text-on-surface outline-none focus:border-primary"
+                  size="sm"
+                  className="w-auto"
                 >
                   <option value="">Add from {terms.plural}…</option>
                   {products.map((p) => (
@@ -518,7 +520,7 @@ function Editor({ proposal }: { proposal: Proposal }) {
                       {p.name}{p.price ? ` · ${money(Number(p.price), p.currency || proposal.currency)}` : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </div>
           </div>

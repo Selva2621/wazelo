@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs } from "@/components/ui/tabs";
@@ -513,16 +514,17 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
                       className="rounded"
                     />
                   ) : def.fieldType === "select" && def.options ? (
-                    <select
+                    <Select
                       value={values[def.id] || ""}
                       onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                      className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label"
+                      size="sm"
+                      className="w-auto"
                     >
                       <option value="">—</option>
                       {(def.options as string[]).map((o) => (
                         <option key={o} value={o}>{o}</option>
                       ))}
-                    </select>
+                    </Select>
                   ) : (
                     <input
                       type={def.fieldType === "number" ? "number" : def.fieldType === "date" ? "date" : "text"}
@@ -626,22 +628,20 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
           {terms.Plural} <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
         </h3>
         {available.length > 0 && (
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                assignProduct.mutate({ contactId, productId: e.target.value });
-                e.target.value = "";
-              }
+          <Select
+            value=""
+            onValueChange={(v) => {
+              if (v) assignProduct.mutate({ contactId, productId: v });
             }}
-            defaultValue=""
             aria-label={`Assign ${terms.singular}`}
-            className="h-8 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-label text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            size="sm"
+            className="w-auto"
           >
             <option value="" disabled>+ Assign {terms.singular}</option>
             {available.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 

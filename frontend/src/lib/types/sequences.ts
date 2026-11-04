@@ -13,6 +13,9 @@ export interface SequenceTrigger {
   toStatus?: LeadStatus;
 }
 
+/** How a step reaches the contact; email steps send from the workspace email */
+export type SequenceStepChannel = "WHATSAPP" | "EMAIL";
+
 export interface StepCondition {
   keyword: string;
   goToStepOrder: number;
@@ -24,6 +27,9 @@ export interface SequenceStep {
   orgId: string;
   stepOrder: number;
   name: string | null;
+  /** Older steps predate channels and are WhatsApp */
+  channel?: SequenceStepChannel;
+  emailSubject?: string | null;
   messageType: string;
   messageBody: string | null;
   mediaUrl: string | null;
@@ -90,6 +96,8 @@ export interface SequenceRecipientsResponse {
 
 export interface CreateSequenceStepRequest {
   name?: string;
+  channel?: SequenceStepChannel;
+  emailSubject?: string;
   messageType?: string;
   messageBody?: string;
   mediaUrl?: string;

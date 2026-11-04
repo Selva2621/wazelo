@@ -16,7 +16,8 @@ export function InboxChannelTabs({ active, className }: { active: "whatsapp" | "
     queryFn: () => listWebsiteChats("open"),
     refetchInterval: 15_000,
   });
-  const waiting = data?.data.filter((c) => c.waiting).length ?? 0;
+  // Visitors waiting for a person (the AI is answering the rest)
+  const waiting = data?.data.filter((c) => c.state === "WAITING").length ?? 0;
 
   const tab = (key: "whatsapp" | "website", href: string, label: string, Icon: typeof Globe, count?: number) => (
     <Link

@@ -1,6 +1,7 @@
 import { OrgType } from '@prisma/client';
 import { OnboardOrgUseCase } from './onboard-org.use-case';
 import {
+  BUSINESS_SYSTEM_TEMPLATES,
   FREELANCER_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
 } from '@/shared/constants/system-templates';
@@ -159,6 +160,19 @@ describe('OnboardOrgUseCase', () => {
     expect(rbacService.seedDefaultPermissionsForOrg).not.toHaveBeenCalled();
     expect(repo.createTags).not.toHaveBeenCalled();
     expect(repo.markOnboarded).not.toHaveBeenCalled();
+  });
+
+  it('org-type-changed to TEAM: adds the business starter templates (and no freelancer ones)', async () => {
+    const { useCase, repo } = setup({ org: { orgType: OrgType.TEAM, onboardedAt: new Date() } });
+
+    await useCase.execute(ORG_ID, 'org-type-changed');
+
+    expect(repo.createSystemTemplates).toHaveBeenCalledWith(ORG_ID, [
+      ...SHOPIFY_SYSTEM_TEMPLATES,
+      ...BUSINESS_SYSTEM_TEMPLATES,
+    ]);
+    const seeded = repo.createSystemTemplates.mock.calls[0][1] as { name: string }[];
+    expect(seeded.some((t) => t.name.startsWith('freelancer_'))).toBe(false);
   });
 
   it('words the freelancer templates for their line of work', async () => {

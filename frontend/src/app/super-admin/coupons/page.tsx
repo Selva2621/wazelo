@@ -7,6 +7,7 @@ import { useSACouponActions, useSACoupons, useSAPlans } from "@/hooks/use-super-
 import type { Coupon, CouponKind, CreateCouponBody } from "@/lib/api/super-admin";
 import type { Plan } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -227,15 +228,14 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
           </div>
           <div>
             <label htmlFor={`${fieldId}-cur`} className={labelClass}>Currency</label>
-            <select
+            <Select
               id={`${fieldId}-cur`}
               value={form.currency}
               onChange={(e) => set("currency", e.target.value)}
-              className={inputClass}
               disabled={pending}
             >
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
       )}

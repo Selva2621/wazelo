@@ -166,9 +166,15 @@ export class UsageRepository {
   /**
    * Get total message template count for an org (live count).
    */
+  /** Templates the org made itself: the starter (system) templates Wazelo adds are free */
   async getTemplateCount(orgId: string): Promise<number> {
-    return this.prisma.messageTemplate.count({
-      where: { orgId, deletedAt: null },
-    });
+    const rows = await this.prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM message_templates
+      WHERE org_id = ${orgId}::uuid
+        AND deleted_at IS NULL
+        AND COALESCE(example_values->>'isSystemTemplate', 'false') <> 'true'
+    `;
+    return Number(rows[0]?.count ?? 0);
   }
 }

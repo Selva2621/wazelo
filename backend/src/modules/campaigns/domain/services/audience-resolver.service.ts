@@ -27,6 +27,7 @@ export interface AudienceResult {
 }
 
 const E164_REGEX = /^\+?[1-9]\d{6,14}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 @Injectable()
 export class AudienceResolverService {
@@ -104,6 +105,48 @@ export class AudienceResolverService {
   }
 
   /**
+   * Email campaigns: contacts with a valid email who haven't unsubscribed from
+   * email (the WhatsApp opt-out doesn't apply), one per address.
+   */
+  async resolveEmailAudience(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<{ contacts: (ResolvedContact & { email: string })[]; total: number }> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forEmail(await this.buildWhereClause(orgId, audienceType, filters));
+    const contacts: (ResolvedContact & { email: string })[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    while (true) {
+      const batch = await this.prisma.contact.findMany({
+        where,
+        select: { id: true, phoneNumber: true, email: true },
+        orderBy: { id: 'asc' },
+        take: 1000,
+        ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      });
+      if (batch.length === 0) break;
+      for (const c of batch) {
+        const email = c.email?.trim().toLowerCase();
+        if (!email || !EMAIL_REGEX.test(email) || seen.has(email)) continue;
+        seen.add(email);
+        contacts.push({ id: c.id, phoneNumber: c.phoneNumber, email });
+      }
+      cursor = batch[batch.length - 1].id;
+      if (batch.length < 1000) break;
+    }
+    this.logger.log(`Resolved ${contacts.length} email recipients for org ${orgId} (audience: ${audienceType})`);
+    return { contacts, total: contacts.length };
+  }
+
+  /** Same audience, for email: has an email, not unsubscribed from email (WhatsApp opt-out doesn't apply) */
+  private forEmail(where: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+    const { optedOut: _whatsAppOptOut, ...rest } = where;
+    return { ...rest, emailOptedOut: false, email: { not: null } };
+  }
+
+  /**
    * Keep only "warm" contacts — ones who have messaged this org before.
    * Bulk messages to people who never wrote first get a WhatsApp number
    * reported and banned, so Baileys campaigns only go to warm contacts.
@@ -145,10 +188,11 @@ export class AudienceResolverService {
     orgId: string,
     audienceType: CampaignAudienceType,
     filters?: AudienceFilters,
+    channel: 'WHATSAPP' | 'EMAIL' = 'WHATSAPP',
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
     const where = await this.buildWhereClause(orgId, audienceType, filters);
-    return this.prisma.contact.count({ where });
+    return this.prisma.contact.count({ where: channel === 'EMAIL' ? this.forEmail(where) : where });
   }
 
   private async buildWhereClause(

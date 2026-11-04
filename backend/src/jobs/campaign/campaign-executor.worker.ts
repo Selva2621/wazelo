@@ -22,7 +22,8 @@ import {
 interface CampaignExecuteJobData {
   campaignId: string;
   orgId: string;
-  sessionId: string;
+  /** Null for email campaigns */
+  sessionId: string | null;
   scheduled?: boolean;
   resumed?: boolean;
 }
@@ -122,7 +123,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
       }
 
       // 3. Dispatch batch jobs for PENDING recipients
-      await this.dispatchBatches(campaignId, orgId, sessionId);
+      await this.dispatchBatches(campaignId, orgId, sessionId, currentCampaign.channel === 'EMAIL');
 
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -166,26 +167,30 @@ export class CampaignExecutorWorker implements OnModuleInit {
   ): Promise<void> {
     // Resolve audience
     const filters = campaign.audienceFilters as Record<string, unknown> | null;
-    const resolved = await this.audienceResolver.resolveAudience(
-      orgId,
-      campaign.audienceType as CampaignAudienceType,
-      filters ? {
-        leadStatuses: filters.leadStatuses as string[] | undefined,
-        tagIds: filters.tagIds as string[] | undefined,
-        ownerIds: filters.ownerIds as string[] | undefined,
-        sources: filters.sources as string[] | undefined,
-      } : undefined,
-    );
+    const audienceFilters = filters ? {
+      leadStatuses: filters.leadStatuses as string[] | undefined,
+      tagIds: filters.tagIds as string[] | undefined,
+      ownerIds: filters.ownerIds as string[] | undefined,
+      sources: filters.sources as string[] | undefined,
+    } : undefined;
+    const isEmail = campaign.channel === 'EMAIL';
+    const resolved = isEmail
+      ? await this.audienceResolver.resolveEmailAudience(orgId, campaign.audienceType as CampaignAudienceType, audienceFilters)
+      : await this.audienceResolver.resolveAudience(orgId, campaign.audienceType as CampaignAudienceType, audienceFilters);
 
     if (resolved.total === 0) {
-      throw new Error('No eligible recipients found for this campaign');
+      throw new Error(
+        isEmail
+          ? 'None of the selected contacts has an email address (or they all unsubscribed from email)'
+          : 'No eligible recipients found for this campaign',
+      );
     }
 
     // Campaigns run on the user's own WhatsApp number (Baileys): only message
     // people who have written to us before, cold blasts get numbers banned.
     // In WhatsApp test mode every send goes to a test number, so the whole
-    // audience runs — that's what is being tested.
-    const contacts = CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY && !isTestModeOn()
+    // audience runs — that's what is being tested. Email doesn't have this rule.
+    const contacts = !isEmail && CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY && !isTestModeOn()
       ? await this.audienceResolver.keepWarmContacts(orgId, resolved.contacts)
       : resolved.contacts;
     const total = contacts.length;
@@ -233,7 +238,9 @@ export class CampaignExecutorWorker implements OnModuleInit {
   private async dispatchBatches(
     campaignId: string,
     orgId: string,
-    sessionId: string,
+    sessionId: string | null,
+    /** Email: batches a minute apart (the mailbox's daily limit paces sending) */
+    isEmail = false,
   ): Promise<void> {
     const maxBatch = await this.recipientRepo.getMaxBatchNumber(campaignId);
 
@@ -252,7 +259,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
 
     for (let i = 0; i < pendingBatches.length; i++) {
       const batchNumber = pendingBatches[i];
-      const delaySeconds = i * CAMPAIGN_CONFIG.BATCH_DELAY_SECONDS;
+      const delaySeconds = i * (isEmail ? 60 : CAMPAIGN_CONFIG.BATCH_DELAY_SECONDS);
 
       if (delaySeconds > 0) {
         await this.queueService.publishDelayed(

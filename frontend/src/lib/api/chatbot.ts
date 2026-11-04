@@ -20,6 +20,12 @@ export interface BotBehavior {
   openDays: number[];
   afterHoursMessage: string;
   pauseHours: number;
+  /** Website chat: MANUAL = everyone online is alerted, first to accept takes it; AUTO = one member at a time */
+  handoffMode: "MANUAL" | "AUTO";
+  /** Auto-assign: seconds a member has to accept before the next one is asked */
+  acceptTimeoutSec: number;
+  /** Minutes before a visitor nobody took is offered a follow-up */
+  waitTimeoutMin: number;
   timezone: string;
   openNow: boolean;
 }

@@ -11,11 +11,14 @@ export class PreviewAudienceUseCase {
     orgId: string,
     audienceType: CampaignAudienceType,
     filters?: AudienceFiltersDto,
+    /** Email: only contacts with an email who haven't unsubscribed from email */
+    channel: 'WHATSAPP' | 'EMAIL' = 'WHATSAPP',
   ) {
     const count = await this.audienceResolver.previewAudienceCount(
       orgId,
       audienceType,
       filters,
+      channel,
     );
 
     return { estimatedRecipients: count };

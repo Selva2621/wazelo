@@ -1,6 +1,6 @@
-import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ReactNode, SelectHTMLAttributes } from "react";
+import type { ReactNode } from "react";
+import { Select, type SelectProps } from "./select";
 
 /** All of a list's filters on one row (tabs, chips, selects), wrapping only when it must. */
 export function FilterBar({ children, className }: { children: ReactNode; className?: string }) {
@@ -16,7 +16,7 @@ export function FilterBarDivider() {
   return <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-outline-variant max-lg:hidden" />;
 }
 
-interface FilterSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface FilterSelectProps extends Omit<SelectProps, "variant" | "aria-label"> {
   /** Accessible name; the first option ("All owners") is the visible label. */
   label: string;
   /** Show the select as set (tinted) when a value is chosen. */
@@ -25,32 +25,23 @@ interface FilterSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   wrapperClassName?: string;
 }
 
-/** Compact select for a filter bar, with a chevron so it reads as a control. */
+/**
+ * Compact pill dropdown for a filter bar. Set filters read like the active chip (filled),
+ * so all filters share one language. Opens the app's rounded menu (a sheet on phones).
+ */
 export function FilterSelect({ label, active, className, wrapperClassName, children, ...props }: FilterSelectProps) {
   return (
     <span className={cn("relative inline-flex", wrapperClassName)}>
-      <select
-        aria-label={label}
-        className={cn(
-          "h-8 cursor-pointer appearance-none rounded-full border pl-3 pr-8 text-label font-medium outline-none transition-colors duration-120 ease-standard",
-          "focus-visible:ring-2 focus-visible:ring-focus",
-          // Set filters read like the active chip (filled), so all filters share one language
-          active
-            ? "border-transparent bg-on-surface text-surface"
-            : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
-          className,
-        )}
+      <Select
         {...props}
+        variant="filter"
+        aria-label={label}
+        sheetTitle={props.sheetTitle ?? label}
+        active={active}
+        className={className}
       >
         {children}
-      </select>
-      <ChevronDown
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2",
-          active ? "text-surface" : "text-on-surface-variant",
-        )}
-      />
+      </Select>
     </span>
   );
 }

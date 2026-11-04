@@ -6,6 +6,7 @@ import {
   IsArray,
   ValidateNested,
   IsInt,
+  IsNumber,
   IsUUID,
   Min,
   Max,
@@ -42,6 +43,24 @@ export class TriggerConfigDto {
   @Min(60)
   @Max(2592000) // max 30 days
   delaySeconds?: number;
+
+  /** DEAL_STAGE_CHANGED: the stage a deal is created in or moved to (empty → any stage) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  stageId?: string;
+
+  /** SHOPIFY_ORDER_CREATED / SHOPIFY_ORDER_FULFILLED */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minOrderValue?: number;
+
+  /** SHOPIFY_CART_ABANDONED */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minCartValue?: number;
 }
 
 export class ConditionDto {

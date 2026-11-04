@@ -5,6 +5,49 @@ const memberInbox = (p: string) => /^\/(team\/members|admin\/users)\/[^/]+\/inbo
 
 /** Inbox: WhatsApp + website chats, AI help, quick replies */
 export const messagingTours: TourDef[] = [
+  // Before "inbox": the first tour that matches the page wins
+  {
+    id: "website-inbox",
+    version: 1,
+    title: "Website chats",
+    summary: "Take website visitors who ask for a person, with AI help beside the chat.",
+    section: "Messaging",
+    startHref: "/inbox?channel=website",
+    navHref: "/inbox",
+    match: (p, search) => p === "/inbox" && search.get("channel") === "website",
+    steps: [
+      {
+        target: "website-waiting",
+        ifMissing: "skip",
+        title: "Waiting for a person",
+        body: "Visitors who asked to talk to someone come first. Everyone online is alerted (or one person at a time with auto-assign).",
+      },
+      {
+        target: "website-handoff-banner",
+        ifMissing: "skip",
+        title: "Accept or decline",
+        body: "Accept to take the chat; the AI steps back and the visitor sees you joined. Decline passes it to the rest of the team.",
+      },
+      {
+        target: ["website-chat-ai", "website-chat-panel"],
+        ifMissing: "skip",
+        title: "AI help",
+        body: "A summary of what the visitor wants, and replies to pick from. You always choose what to send.",
+      },
+      {
+        target: "website-chat-lead",
+        ifMissing: "skip",
+        title: "Lead or not",
+        body: "Decide at the end. Visitors who agreed to be contacted get your welcome message when the chat ends.",
+      },
+      {
+        target: "website-chat-timeline",
+        ifMissing: "skip",
+        title: "Timeline",
+        body: "Every step is recorded: who was alerted, who accepted, what the AI did, and anything that failed.",
+      },
+    ],
+  },
   {
     id: "inbox",
     version: 1,

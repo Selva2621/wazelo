@@ -1,6 +1,7 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+import { voiceRule, type WorkspaceVoice } from '@/shared/utils/workspace-voice';
 
 export interface GeneratedSequenceStep {
   name: string;
@@ -32,12 +33,20 @@ const ALLOWED_VARIABLE = /^\{\{\s*contact\.(name|phone|email)\s*\}\}$/;
 const VARIABLE_RULES = `- You may personalise with these variables only: {{contact.name}}, {{contact.phone}}, {{contact.email}}. Never invent other {{...}} variables.
 - Never leave fill-in blanks like [your name] or [link] — write complete, ready-to-send text.`;
 
-const GENERATE_PROMPT = `You write WhatsApp follow-up sequences for a CRM. A sequence is a first message plus timed follow-ups sent to a contact until they reply.
+/** Who is writing, to whom, and what about: follows the workspace type */
+function audienceRule(voice: WorkspaceVoice): string {
+  return voice.kind === 'FREELANCER'
+    ? `- The sender is a solo freelancer${voice.service ? ` offering ${voice.service}` : ''} writing to a client about their project, a proposal or the service they asked about. ${voiceRule(voice)}`
+    : `- The sender is a business with a team writing to a customer about their enquiry, booking or order. ${voiceRule(voice)}`;
+}
+
+const GENERATE_PROMPT = (voice: WorkspaceVoice) => `You write WhatsApp follow-up sequences for a CRM. A sequence is a first message plus timed follow-ups sent to a contact until they reply.
 
 Write a sequence for the user's goal.
 
 Rules:
-- Each message is a natural, friendly WhatsApp message, 1–4 short sentences, under 600 characters. No subject lines, no hashtags.
+${audienceRule(voice)}
+- Each message is a natural, friendly and professional WhatsApp message, 1–4 short sentences, under 600 characters. No subject lines, no hashtags.
 - Each follow-up must add something new (a reminder of value, a question, a small offer, a polite last check-in) — never just "following up".
 - The last message is a polite close-out that makes it easy to say no.
 ${VARIABLE_RULES}
@@ -58,8 +67,9 @@ const REWRITE_GUIDE: Record<RewriteStyle, string> = {
   formal: 'Make it more polite and professional, like a formal business message — still concise.',
 };
 
-const REWRITE_PROMPT = `You rewrite a single WhatsApp message from a follow-up sequence in a CRM.
+const REWRITE_PROMPT = (voice: WorkspaceVoice) => `You rewrite a single WhatsApp message from a follow-up sequence in a CRM.
 Keep the same language, intent and any {{...}} variables that are already in it.
+${audienceRule(voice)}
 ${VARIABLE_RULES}
 Return ONLY the rewritten message text — no quotes, no explanation.`;
 
@@ -126,9 +136,9 @@ export class GenerateSequenceUseCase {
     return { messageBody: text };
   }
 
-  private async withOrgContext(orgId: string, prompt: string): Promise<string> {
-    const ctx = await this.orgContext.getContext(orgId);
-    return ctx ? `${ctx}\n\n---\n\n${prompt}` : prompt;
+  private async withOrgContext(orgId: string, prompt: (voice: WorkspaceVoice) => string): Promise<string> {
+    const [ctx, voice] = await Promise.all([this.orgContext.getContext(orgId), this.orgContext.getVoice(orgId)]);
+    return ctx ? `${ctx}\n\n---\n\n${prompt(voice)}` : prompt(voice);
   }
 }
 

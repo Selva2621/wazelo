@@ -43,10 +43,14 @@ export class ResumeCampaignUseCase {
     this.stateMachine.assertTransition(campaign.status, CampaignStatus.RUNNING);
 
     // If the campaign's WhatsApp number was logged out or banned, continue on a connected one
-    const sessionId = await this.resolveSendingSession(campaign.sessionId, orgId, userId);
-    if (sessionId !== campaign.sessionId) {
-      await this.campaignRepo.moveToSession(campaignId, sessionId);
-      this.logger.log(`Campaign ${campaignId} moved from session ${campaign.sessionId} to ${sessionId}`);
+    // (email campaigns send from the workspace's mailbox: no number)
+    let sessionId: string | null = null;
+    if (campaign.channel !== 'EMAIL') {
+      sessionId = await this.resolveSendingSession(campaign.sessionId ?? '', orgId, userId);
+      if (sessionId !== campaign.sessionId) {
+        await this.campaignRepo.moveToSession(campaignId, sessionId);
+        this.logger.log(`Campaign ${campaignId} moved from session ${campaign.sessionId} to ${sessionId}`);
+      }
     }
 
     // Reset SKIPPED recipients back to PENDING for re-processing

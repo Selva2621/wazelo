@@ -175,6 +175,7 @@ export function usePreviewAudience() {
     mutationFn: (data: {
       audienceType: string;
       audienceFilters?: Record<string, unknown>;
+      channel?: "WHATSAPP" | "EMAIL";
     }) => campaignsApi.previewAudience(data),
   });
 }

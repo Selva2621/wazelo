@@ -3,7 +3,7 @@ import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/commo
 import type { ChunkHit } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
 import { KnowledgeSearchService } from '../../domain/services/knowledge-search.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
-import { OrgContextService } from '../../domain/services/org-context.service';
+import { hasBusinessProfile, OrgContextService } from '../../domain/services/org-context.service';
 import { checkReply, ReplyBlockReason } from '../../domain/services/reply-guard';
 
 export interface KnowledgeSource {
@@ -46,7 +46,7 @@ const PASSAGE_CHARS = 1200;
 const KB_RULES = [
   'You answer customers on behalf of this business.',
   'Use ONLY the business profile above and the numbered knowledge passages. Never invent prices, policies, dates or contact details.',
-  "If they don't contain the answer, say politely that you'll check with the team and get back, and set found to false.",
+  "If they don't contain the answer, say politely that you'll find out and get back to them, and set found to false.",
   "Reply in the customer's language, short and friendly (2–4 sentences), like a WhatsApp message. No markdown headings.",
   UNTRUSTED_DATA_RULE,
   'Return ONLY valid JSON: {"answer": "...", "found": true|false, "sources": [passage numbers used], "confidence": 0.0-1.0}',
@@ -79,7 +79,7 @@ export class KbAnswerService {
       this.orgContext.getContext(q.orgId, { forCustomers: true }),
     ]);
     // Nothing to answer from: don't spend an AI call (or the org's credits) on a guess
-    if (!hits.length && !profile) return none;
+    if (!hits.length && !hasBusinessProfile(profile)) return none;
 
     // Website pages and documents can carry hidden instructions too, so they're cleaned like customer text
     const knowledge = hits

@@ -27,6 +27,7 @@ import {
 import { useAdminSessions } from "@/hooks/use-whatsapp";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -179,17 +180,18 @@ export default function AdminUsersPage() {
         const isSelf = user.id === currentUser?.id;
         return changingRoleUserId === user.id ? (
           <div className="flex items-center gap-1.5">
-            <select
+            <Select
               value={newRole}
               onChange={(e) =>
                 setNewRole(e.target.value as Role)
               }
-              className="rounded-md border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              size="sm"
+              className="w-auto"
             >
               <option value="EMPLOYEE">Employee</option>
               <option value="MANAGER">Manager</option>
               <option value="ADMIN">Admin</option>
-            </select>
+            </Select>
             <button
               onClick={() => handleChangeRole(user.id)}
               className="text-caption text-primary hover:text-primary/80 font-medium"
@@ -369,10 +371,11 @@ export default function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-first" className="text-label font-medium text-on-surface-variant">
                 First name
               </label>
               <input
+                id="new-user-first"
                 type="text"
                 placeholder="John"
                 value={formData.firstName}
@@ -381,10 +384,11 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-last" className="text-label font-medium text-on-surface-variant">
                 Last name
               </label>
               <input
+                id="new-user-last"
                 type="text"
                 placeholder="Doe"
                 value={formData.lastName}
@@ -395,10 +399,11 @@ export default function AdminUsersPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
+            <label htmlFor="new-user-email" className="text-label font-medium text-on-surface-variant">
               Email address
             </label>
             <input
+              id="new-user-email"
               type="email"
               placeholder="john.doe@company.com"
               value={formData.email}
@@ -409,10 +414,11 @@ export default function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-password" className="text-label font-medium text-on-surface-variant">
                 Password
               </label>
               <input
+                id="new-user-password"
                 type="password"
                 placeholder="Min 8 characters"
                 value={formData.password}
@@ -421,18 +427,18 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-role" className="text-label font-medium text-on-surface-variant">
                 Role
               </label>
-              <select
+              <Select
+                id="new-user-role"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="EMPLOYEE">Employee</option>
                 <option value="MANAGER">Manager</option>
                 <option value="ADMIN">Admin</option>
-              </select>
+              </Select>
             </div>
           </div>
 

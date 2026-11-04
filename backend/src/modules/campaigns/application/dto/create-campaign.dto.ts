@@ -11,6 +11,8 @@ import {
   IsNumber,
   MaxLength,
   ValidateNested,
+  ValidateIf,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CampaignAudienceType, LeadStatus, ContactSource } from '@prisma/client';
@@ -81,9 +83,21 @@ export class CreateCampaignDto {
   @IsEnum(MessageType)
   messageType: MessageType;
 
+  /** WHATSAPP (default) or EMAIL (sent from the workspace's email account) */
+  @IsOptional()
+  @IsIn(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  /** Email campaigns: the subject line */
   @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(255)
+  emailSubject?: string;
+
+  /** WhatsApp messages are checked against 4096 characters in the use case; emails can be longer */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()
@@ -103,8 +117,10 @@ export class CreateCampaignDto {
   @Type(() => AudienceFiltersDto)
   audienceFilters?: AudienceFiltersDto;
 
+  /** The WhatsApp number it sends from (required for WhatsApp campaigns) */
+  @ValidateIf((o: CreateCampaignDto) => o.channel !== 'EMAIL')
   @IsUUID()
-  sessionId: string;
+  sessionId?: string;
 
   @IsOptional()
   @IsDateString()

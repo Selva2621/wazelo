@@ -40,11 +40,25 @@ export function useSequence(id: string | undefined) {
 export interface SequenceEdits {
   settings?: { name?: string; description?: string; exitOnReply?: boolean };
   /** Existing messages whose fields changed */
-  updated: { stepId: string; name?: string; messageBody?: string; delayMinutes?: number }[];
+  updated: {
+    stepId: string;
+    name?: string;
+    messageBody?: string;
+    delayMinutes?: number;
+    channel?: "WHATSAPP" | "EMAIL";
+    emailSubject?: string;
+  }[];
   /** Drafts only */
   removed: string[];
   /** Drafts only, appended in order */
-  added: { stepOrder: number; name?: string; messageBody: string; delayMinutes: number }[];
+  added: {
+    stepOrder: number;
+    name?: string;
+    messageBody: string;
+    delayMinutes: number;
+    channel?: "WHATSAPP" | "EMAIL";
+    emailSubject?: string;
+  }[];
 }
 
 /** Save an edited sequence: only the parts that changed, in a safe order. */

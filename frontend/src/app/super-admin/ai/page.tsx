@@ -23,13 +23,12 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { cn, formatMoney } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 
 const sectionClass = "bg-surface-container-lowest border border-outline-variant rounded-2xl p-5";
-const selectClass =
-  "h-10 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 text-body-lg text-on-surface outline-none hover:border-outline focus:border-primary focus:ring-2 focus:ring-primary/30";
 const n = (value: number) => value.toLocaleString("en-IN");
 
 /** One credit's price — often a fraction of a cent/paisa, so shown to 2 significant digits ($0.0038). */
@@ -291,13 +290,13 @@ function ProviderCard({ settings }: { settings: SAAiSettings }) {
         <div className="grid gap-4 px-5 pb-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <div className="space-y-1.5">
             <Label htmlFor="ai-provider">Provider</Label>
-            <select id="ai-provider" value={provider} onChange={(e) => changeProvider(e.target.value)} className={selectClass}>
+            <Select id="ai-provider" value={provider} onChange={(e) => changeProvider(e.target.value)}>
               {settings.providers.map((p) => (
                 <option key={p} value={p}>
                   {PROVIDER_LABELS[p] ?? p}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
@@ -885,10 +884,10 @@ function PacksCard({ packs }: { packs: SAAiCreditPack[] }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="pack-currency">Currency</Label>
-              <select id="pack-currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className={selectClass}>
+              <Select id="pack-currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
                 <option value="INR">INR</option>
                 <option value="USD">USD</option>
-              </select>
+              </Select>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4">

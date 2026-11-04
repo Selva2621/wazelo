@@ -8,7 +8,11 @@ import {
 
 export interface CreateCampaignInput {
   orgId: string;
-  sessionId: string;
+  /** WHATSAPP (default) or EMAIL */
+  channel?: 'WHATSAPP' | 'EMAIL';
+  /** The WhatsApp number it sends from; not used for email */
+  sessionId?: string | null;
+  emailSubject?: string | null;
   name: string;
   description?: string;
   messageType: string;
@@ -55,7 +59,9 @@ export class CampaignRepository {
     return this.prisma.campaign.create({
       data: {
         orgId: input.orgId,
-        sessionId: input.sessionId,
+        channel: input.channel ?? 'WHATSAPP',
+        sessionId: input.sessionId ?? null,
+        emailSubject: input.emailSubject ?? null,
         name: input.name,
         description: input.description || null,
         messageType: input.messageType as any,

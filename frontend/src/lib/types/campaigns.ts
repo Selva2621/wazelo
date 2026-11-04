@@ -21,6 +21,9 @@ export type CampaignRecipientStatus =
 
 export type MessageType = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "AUDIO";
 
+/** How a campaign reaches contacts */
+export type CampaignChannel = "WHATSAPP" | "EMAIL";
+
 // ─── Audience Filters ───
 
 export interface AudienceFilters {
@@ -35,7 +38,11 @@ export interface AudienceFilters {
 export interface Campaign {
   id: string;
   orgId: string;
-  sessionId: string;
+  /** Null for email campaigns */
+  sessionId: string | null;
+  /** Older campaigns predate channels and are WhatsApp */
+  channel?: CampaignChannel;
+  emailSubject?: string | null;
   name: string;
   description: string | null;
   messageType: MessageType;
@@ -154,7 +161,10 @@ export interface CreateCampaignRequest {
   mediaMimeType?: string;
   audienceType: CampaignAudienceType;
   audienceFilters?: AudienceFilters;
-  sessionId: string;
+  /** Required for WhatsApp; omitted for email */
+  sessionId?: string;
+  channel?: CampaignChannel;
+  emailSubject?: string;
   scheduledAt?: string;
   timezone?: string;
   idempotencyKey?: string;

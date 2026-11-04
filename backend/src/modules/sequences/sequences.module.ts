@@ -8,11 +8,14 @@ import { GenerateSequenceUseCase } from './application/use-cases/generate-sequen
 import { AiModule } from '@/modules/ai/ai.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 
+import { SequenceEmailResultsService } from './application/services/sequence-email-results.service';
+
 @Module({
   // AiModule: the AI provider for drafting; BillingModule: the @AiCredits guard and charge
   imports: [CampaignsModule, AiModule, BillingModule],
   controllers: [SequencesController],
-  providers: [SequenceRepository, SequenceTemplateRepository, EnrollContactUseCase, GenerateSequenceUseCase],
+  // SequenceEmailResultsService: an email step's result (sent / failed) lands on the recipient's step
+  providers: [SequenceRepository, SequenceTemplateRepository, EnrollContactUseCase, GenerateSequenceUseCase, SequenceEmailResultsService],
   exports: [SequenceRepository, SequenceTemplateRepository, EnrollContactUseCase],
 })
 export class SequencesModule {}

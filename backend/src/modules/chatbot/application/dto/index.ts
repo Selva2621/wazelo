@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsBoolean, IsArray, IsNotEmpty, IsNotEmptyObject, ValidateNested, IsObject,
-  IsInt, Min, Max, MaxLength, ArrayMaxSize,
+  IsInt, Min, Max, MaxLength, ArrayMaxSize, IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -129,4 +129,23 @@ export class BotBehaviorDto {
   @Min(1)
   @Max(168)
   pauseHours?: number;
+
+  /** Website chat handover: MANUAL = everyone online, first to accept; AUTO = one member at a time */
+  @IsOptional()
+  @IsIn(['MANUAL', 'AUTO'])
+  handoffMode?: 'MANUAL' | 'AUTO';
+
+  /** Auto-assign: seconds a member has to accept before the next one is asked */
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(900)
+  acceptTimeoutSec?: number;
+
+  /** Minutes before a visitor nobody took is offered a WhatsApp / email follow-up */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  waitTimeoutMin?: number;
 }

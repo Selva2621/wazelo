@@ -1,13 +1,61 @@
 import type { TourDef } from "../types";
 import { detail, exact, listOrEmpty, primaryAction } from "../match";
 
+type ChatLine = { from: "customer" | "you" | "bot"; text: string };
+
+/** Sequences list tour; TEAM also shows for legacy CRM / DEVELOPER orgs */
+function sequencesTour(o: {
+  id: string;
+  version: number;
+  orgType: NonNullable<TourDef["orgType"]>;
+  flow: string[];
+  exampleTitle: string;
+  exampleBody: string;
+  chat: ChatLine[];
+}): TourDef {
+  return {
+    id: o.id,
+    version: o.version,
+    title: "Sequences",
+    summary: "Automatic follow-up messages over days or weeks.",
+    section: "Marketing",
+    startHref: "/sequences",
+    navHref: "/sequences",
+    orgType: o.orgType,
+    match: exact("/sequences"),
+    steps: [
+      {
+        target: primaryAction(),
+        title: "New sequence",
+        body: "A sequence sends a series of messages on a timer, stopping when the person replies. Each step can be WhatsApp or email. Start blank, from a template, or let AI write it.",
+        example: { kind: "flow", nodes: o.flow },
+      },
+      {
+        title: o.exampleTitle,
+        body: o.exampleBody,
+        example: { kind: "chat", messages: o.chat },
+      },
+      {
+        target: "sequence-tabs",
+        title: "Status",
+        body: "Draft, active, paused and completed sequences.",
+      },
+      {
+        target: listOrEmpty,
+        title: "Your sequences",
+        body: "Start, pause, resume or stop from each row, or open one for its funnel.",
+      },
+    ],
+  };
+}
+
 /** Campaigns, drip sequences and message templates */
 export const marketingTours: TourDef[] = [
   {
     id: "campaigns",
-    version: 1,
+    version: 2,
     title: "Campaigns",
-    summary: "Send one message to many contacts, now or on a schedule.",
+    summary: "Send one WhatsApp message or email to many contacts, now or on a schedule.",
     section: "Marketing",
     startHref: "/campaigns",
     navHref: "/campaigns",
@@ -26,6 +74,11 @@ export const marketingTours: TourDef[] = [
             "Schedule: 24 Oct, 10:00 am IST",
           ],
         },
+      },
+      {
+        title: "WhatsApp or email",
+        body: "Choose the channel at the top of the message. Email campaigns send from your business email (Settings → Email) to contacts who have an email and haven't unsubscribed.",
+        example: { kind: "chips", items: ["WhatsApp", "Email"] },
       },
       {
         title: "Personalised for each person",
@@ -54,7 +107,7 @@ export const marketingTours: TourDef[] = [
 
   {
     id: "campaign-detail",
-    version: 1,
+    version: 2,
     title: "Campaign report",
     summary: "Run, pause and measure one campaign.",
     section: "Marketing",
@@ -85,7 +138,7 @@ export const marketingTours: TourDef[] = [
       {
         target: "campaign-details",
         title: "What was sent",
-        body: "The message, audience, sending number and schedule.",
+        body: "The channel (WhatsApp or email), message, audience, sender and schedule.",
       },
       {
         target: "campaign-recipients",
@@ -95,49 +148,33 @@ export const marketingTours: TourDef[] = [
     ],
   },
 
-  {
+  // Same steps for both; the example follows the presets each type gets (getSequencePresets)
+  sequencesTour({
     id: "sequences",
-    version: 1,
-    title: "Sequences",
-    summary: "Automatic follow-up messages over days or weeks.",
-    section: "Marketing",
-    startHref: "/sequences",
-    navHref: "/sequences",
-    match: exact("/sequences"),
-    steps: [
-      {
-        target: primaryAction(),
-        title: "New sequence",
-        body: "A sequence sends a series of messages on a timer, stopping when the person replies. Start blank, from a template, or let AI write it.",
-        example: {
-          kind: "flow",
-          nodes: ["Day 0: Intro", "Day 2: Case study", "Day 5: Offer", "Stops on reply"],
-        },
-      },
-      {
-        title: "Example: follow up a lead",
-        body: "Enrol new leads and the sequence keeps in touch for you, so nobody is forgotten.",
-        example: {
-          kind: "chat",
-          messages: [
-            { from: "you", text: "Day 0 · Hi Rahul, thanks for your interest in our website packages!" },
-            { from: "you", text: "Day 2 · Here's how we doubled bookings for a Pune clinic 👉 link" },
-            { from: "customer", text: "Interesting, can we talk tomorrow?" },
-          ],
-        },
-      },
-      {
-        target: "sequence-tabs",
-        title: "Status",
-        body: "Draft, active, paused and completed sequences.",
-      },
-      {
-        target: listOrEmpty,
-        title: "Your sequences",
-        body: "Start, pause, resume or stop from each row, or open one for its funnel.",
-      },
+    version: 3,
+    orgType: "TEAM",
+    flow: ["Day 0: Thanks for your enquiry", "Day 1: Reminder", "Day 3: Last follow-up", "Stops on reply"],
+    exampleTitle: "Example: follow up an enquiry",
+    exampleBody: "Add new enquiries and the sequence keeps in touch for you, so nobody is forgotten.",
+    chat: [
+      { from: "you", text: "Day 0 · Hi Rahul, thank you for reaching out! Do you have any questions?" },
+      { from: "you", text: "Day 1 · A friendly reminder that we're here if you need more details." },
+      { from: "customer", text: "Yes, can I book for Saturday?" },
     ],
-  },
+  }),
+  sequencesTour({
+    id: "sequences-freelancer",
+    version: 1,
+    orgType: "FREELANCER",
+    flow: ["Day 0: Proposal sent", "Day 2: Follow-up", "Day 5: Last check-in", "Stops on reply"],
+    exampleTitle: "Example: chase a proposal",
+    exampleBody: "When a client gets your quote, the sequence follows up for you, so no proposal is forgotten.",
+    chat: [
+      { from: "you", text: "Day 0 · Hi Rahul, I've sent over the proposal we discussed." },
+      { from: "you", text: "Day 2 · Just checking if you had a chance to look at it. Happy to jump on a quick call." },
+      { from: "customer", text: "Looks good, can we start next week?" },
+    ],
+  }),
 
   {
     id: "sequence-detail",
@@ -176,14 +213,20 @@ export const marketingTours: TourDef[] = [
 
   {
     id: "templates",
-    version: 1,
+    version: 2,
     title: "Templates",
-    summary: "Reusable messages for campaigns, sequences and quick sends.",
+    summary: "Reusable WhatsApp and email messages for campaigns, sequences and quick sends.",
     section: "Marketing",
     startHref: "/settings/templates",
     navHref: "/settings/templates",
     match: exact("/settings/templates"),
     steps: [
+      {
+        target: "templates-tabs",
+        title: "WhatsApp or email",
+        body: "Keep WhatsApp messages and emails in their own tabs. Email templates have a subject and a message.",
+        example: { kind: "chips", items: ["WhatsApp", "Email"] },
+      },
       {
         target: primaryAction(),
         title: "Create a template",
@@ -207,7 +250,13 @@ export const marketingTours: TourDef[] = [
         },
       },
       {
-        target: "templates-tabs",
+        target: "template-preview",
+        title: "Live preview",
+        body: "See what a contact receives as you type, with the {{variables}} filled for a sample contact. On phones, switch to Preview.",
+        ifMissing: "center",
+      },
+      {
+        target: "templates-categories",
         title: "Categories",
         body: "Marketing, utility (order updates, reminders) and others.",
       },

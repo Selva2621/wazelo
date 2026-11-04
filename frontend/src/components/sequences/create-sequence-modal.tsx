@@ -19,6 +19,7 @@ import { useGenerateSequence, useRewriteSequenceStep } from "@/hooks/use-sequenc
 import type { GeneratedSequence, SequenceRewriteStyle } from "@/lib/api/sequences";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import { hasOutreachBlanks } from "@/lib/constants/outreach";
@@ -44,6 +45,12 @@ import type {
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
+import { EmailPreview } from "@/components/email/email-preview";
+import { useEmailAccount } from "@/hooks/use-email";
+import { EMAIL_FIELDS } from "@/lib/email-render";
+import {
+  ChannelSwitch, EmailConnectNotice, FieldChips, insertAtCursor, isEmailReady,
+} from "@/components/campaigns/email-channel";
 import { useProductTerms } from "@/lib/product-terms";
 
 interface CreateSequenceModalProps {
@@ -126,9 +133,6 @@ export function CreateSequenceModal({ open = true, ...props }: CreateSequenceMod
 const FIELD_LABEL = "text-label font-medium text-on-surface";
 const FIELD_INPUT =
   "mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
-/** Full-width select, same look as the text inputs */
-const FIELD_SELECT =
-  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 /** Inline compact select/input (wait times, conditions) */
 const FIELD_SMALL =
   "rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1 text-caption text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
@@ -159,7 +163,13 @@ function snapDelay(minutes: number): number {
 const AI_STEP_COUNTS = [3, 4, 5];
 
 /** Starter-screen card: describe the goal, pick how many messages, get a filled-in draft. */
-function AiDraftCard({ onDraft }: { onDraft: (draft: GeneratedSequence, goal: string) => void }) {
+function AiDraftCard({
+  onDraft,
+  isFreelancer,
+}: {
+  onDraft: (draft: GeneratedSequence, goal: string) => void;
+  isFreelancer: boolean;
+}) {
   const [prompt, setPrompt] = useState("");
   const [count, setCount] = useState(3);
   const generate = useGenerateSequence();
@@ -197,7 +207,11 @@ function AiDraftCard({ onDraft }: { onDraft: (draft: GeneratedSequence, goal: st
         rows={2}
         maxLength={600}
         disabled={generate.isPending}
-        placeholder="e.g. Follow up with leads who asked for a website quote and remind them about the free consultation"
+        placeholder={
+          isFreelancer
+            ? "e.g. Follow up with clients who asked for a quote and offer a quick call to go through it"
+            : "e.g. Follow up with customers who enquired but didn't book, and remind them we're here to help"
+        }
         className="mt-2 w-full resize-none rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <fieldset className="mt-4" disabled={generate.isPending}>
@@ -476,6 +490,14 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
     setSteps([...steps, { _key: keySeq.current++, messageType: "TEXT", messageBody: "", delayMinutes: 1440 }]);
   };
 
+  // Email steps send from the workspace email; the preview follows the step being edited
+  const { data: emailAccount } = useEmailAccount();
+  const emailReady = isEmailReady(emailAccount);
+  const [focusedKey, setFocusedKey] = useState<number | null>(null);
+  const focusedStep = steps.find((s) => s._key === focusedKey);
+  const focusedIndex = focusedStep ? steps.indexOf(focusedStep) : -1;
+  const hasEmailSteps = steps.some((s) => s.channel === "EMAIL");
+
   const removeStep = (index: number) => {
     if (steps.length <= 1) return;
     setSteps(steps.filter((_, i) => i !== index));
@@ -507,6 +529,8 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
     name.trim() &&
     steps.length > 0 &&
     steps.every((s) => s.messageBody?.trim()) &&
+    steps.every((s) => s.channel !== "EMAIL" || s.emailSubject?.trim()) &&
+    (!hasEmailSteps || emailReady) &&
     !hasBlanks &&
     (joinMode === "AUTO" ? triggerReady : audienceType !== "SCRAPED" || !!scrapeRunId);
 
@@ -515,6 +539,9 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
     if (!name.trim()) return "Give the sequence a name";
     const emptyStep = steps.findIndex((s) => !s.messageBody?.trim());
     if (emptyStep >= 0) return `Write message ${emptyStep + 1}`;
+    const noSubject = steps.findIndex((s) => s.channel === "EMAIL" && !s.emailSubject?.trim());
+    if (noSubject >= 0) return `Add a subject to message ${noSubject + 1}`;
+    if (hasEmailSteps && !emailReady) return "Connect your business email to send email steps";
     const blankStep = steps.findIndex((s) => hasOutreachBlanks(s.messageBody ?? ""));
     if (blankStep >= 0) {
       const blank = steps[blankStep].messageBody?.match(/\[[^\]]+\]/)?.[0];
@@ -543,7 +570,10 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
         : { audienceType: audienceType === "SCRAPED" ? "FILTERED" : audienceType, audienceFilters }),
       exitOnReply,
       steps: steps.map((s) => ({
-        messageType: s.messageType || "TEXT",
+        messageType: s.channel === "EMAIL" ? "TEXT" : s.messageType || "TEXT",
+        ...(s.channel === "EMAIL"
+          ? { channel: "EMAIL" as const, emailSubject: s.emailSubject?.trim() }
+          : { channel: "WHATSAPP" as const }),
         messageBody: s.messageBody,
         delayMinutes: s.delayMinutes ?? 1440,
         name: s.name,
@@ -631,7 +661,10 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
 
             {panelOpen && source === "ai" && (
               <div id="seq-start-panel">
-                <AiDraftCard onDraft={applyDraft} />
+                <AiDraftCard
+                  onDraft={applyDraft}
+                  isFreelancer={(orgSettings?.orgType ?? userOrgType) === "FREELANCER"}
+                />
               </div>
             )}
 
@@ -733,24 +766,22 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
           {joinMode === "AUTO" && (
             <div className="space-y-2 pl-2 border-l-2 border-primary/30">
               <label htmlFor="seq-trigger" className={cn(FIELD_LABEL, "block")}>Start when</label>
-              <select
+              <Select
                 id="seq-trigger"
                 value={trigger.type}
                 onChange={(e) => setTrigger({ type: e.target.value as SequenceTriggerType })}
-                className={FIELD_SELECT}
               >
                 {TRIGGER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
-              </select>
+              </Select>
 
               {trigger.type === "DEAL_STAGE_CHANGED" &&
                 (pipelines?.length ? (
-                  <select
+                  <Select
                     aria-label="Deal stage"
                     value={trigger.stageId ?? ""}
                     onChange={(e) => setTrigger({ type: "DEAL_STAGE_CHANGED", stageId: e.target.value || undefined })}
-                    className={FIELD_SELECT}
                   >
                     <option value="">Choose a stage…</option>
                     {pipelines.map((p) =>
@@ -762,25 +793,24 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                         </optgroup>
                       ),
                     )}
-                  </select>
+                  </Select>
                 ) : (
                   <p className="text-caption text-on-surface-variant">No deal pipeline yet. Create one in Deals first.</p>
                 ))}
 
               {trigger.type === "LEAD_STATUS_CHANGED" && (
-                <select
+                <Select
                   aria-label="Lead status"
                   value={trigger.toStatus ?? ""}
                   onChange={(e) =>
                     setTrigger({ type: "LEAD_STATUS_CHANGED", toStatus: (e.target.value || undefined) as LeadStatus | undefined })
                   }
-                  className={FIELD_SELECT}
                 >
                   <option value="">Choose a status…</option>
                   {LEAD_STATUS_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
-                </select>
+                </Select>
               )}
 
               {trigger.type === "CONTACT_CREATED" && (
@@ -830,11 +860,10 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                   </p>
                 ) : (
                   <>
-                    <select
+                    <Select
                       aria-label="Scrape run"
                       value={scrapeRunId}
                       onChange={(e) => setScrapeRunId(e.target.value)}
-                      className={FIELD_SELECT}
                     >
                       <option value="">Choose a scrape run…</option>
                       {scrapeRuns.map((r) => (
@@ -842,7 +871,7 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                           {r.keywords}{r.location ? ` – ${r.location}` : ""} ({r.importedCount} imported)
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -912,22 +941,26 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                         <label htmlFor={`seq-delay-${step._key}`} className="text-caption text-on-surface-variant">
                           {index === 0 ? "After the trigger, wait" : "Wait"}
                         </label>
-                        <select
+                        <Select
                           id={`seq-delay-${step._key}`}
                           value={step.delayMinutes}
                           onChange={(e) => updateStep(index, "delayMinutes", parseInt(e.target.value))}
-                          className={FIELD_SMALL}
+                          size="sm"
+                          className="w-auto"
                         >
                           {DELAY_PRESETS.map((p) => (
                             <option key={p.value} value={p.value}>{p.label}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
                   )}
 
                   {/* Step card */}
-                  <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
+                  <div
+                    onFocus={() => setFocusedKey(step._key)}
+                    className="rounded-xl border border-outline-variant bg-surface-container-lowest p-3"
+                  >
                     <div className="mb-2 flex items-center gap-2">
                       {/* Number badge (no drag handle: steps can't be reordered, conditions point at positions) */}
                       <span
@@ -950,15 +983,54 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                         </IconButton>
                       )}
                     </div>
+                    <ChannelSwitch
+                      name={`seq-step-channel-${step._key}`}
+                      label={`Message ${index + 1} sent by`}
+                      value={step.channel ?? "WHATSAPP"}
+                      onChange={(channel) => {
+                        updateStep(index, "channel", channel);
+                        setFocusedKey(step._key);
+                      }}
+                      className="mb-2"
+                    />
+                    {step.channel === "EMAIL" && (
+                      <div className="mb-2 space-y-2">
+                        {!emailReady && <EmailConnectNotice account={emailAccount} />}
+                        <div>
+                          <label htmlFor={`seq-subject-${step._key}`} className="text-label font-medium text-on-surface">
+                            Subject <span aria-hidden className="text-error">*</span>
+                          </label>
+                          <input
+                            id={`seq-subject-${step._key}`}
+                            value={step.emailSubject || ""}
+                            onChange={(e) => updateStep(index, "emailSubject", e.target.value)}
+                            placeholder="e.g., Quick follow-up, {{name}}"
+                            maxLength={255}
+                            required
+                            className={FIELD_INPUT}
+                          />
+                        </div>
+                      </div>
+                    )}
                     <textarea
+                      id={`seq-body-${step._key}`}
                       value={step.messageBody || ""}
                       onChange={(e) => updateStep(index, "messageBody", e.target.value)}
-                      placeholder="Write the message…"
+                      placeholder={step.channel === "EMAIL" ? "Write the email…" : "Write the message…"}
                       aria-label={`Message ${index + 1} text`}
-                      rows={3}
-                      maxLength={4096}
+                      rows={step.channel === "EMAIL" ? 6 : 3}
+                      maxLength={step.channel === "EMAIL" ? 20000 : 4096}
                       className={cn(FIELD_INPUT, "mt-0 resize-y")}
                     />
+                    {step.channel === "EMAIL" && (
+                      <FieldChips
+                        label={`Insert field in message ${index + 1}`}
+                        fields={EMAIL_FIELDS}
+                        onInsert={(token) =>
+                          updateStep(index, "messageBody", insertAtCursor(`seq-body-${step._key}`, step.messageBody ?? "", token))
+                        }
+                      />
+                    )}
 
                     {/* AI rewrite + conditions */}
                     <div className="mt-2 flex items-center gap-4">
@@ -994,16 +1066,17 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
                               className={cn(FIELD_SMALL, "min-w-0 flex-1 max-sm:basis-full")}
                             />
                             <span className="shrink-0 whitespace-nowrap text-caption text-on-surface-variant">→ go to</span>
-                            <select
+                            <Select
                               aria-label={`Message ${index + 1}, condition ${ci + 1}: go to`}
                               value={cond.goToStepOrder}
                               onChange={(e) => updateCondition(index, ci, "goToStepOrder", parseInt(e.target.value))}
-                              className={cn(FIELD_SMALL, "min-w-0 max-sm:flex-1")}
+                              size="sm"
+                              className="w-auto min-w-0 max-sm:flex-1"
                             >
                               {steps.map((_, si) => (
                                 <option key={si} value={si}>Message {si + 1}</option>
                               ))}
-                            </select>
+                            </Select>
                             <IconButton size="xs" variant="danger"
                               onClick={() => removeCondition(index, ci)} aria-label={`Remove condition ${ci + 1}`}>
                               <X className="h-3 w-3" />
@@ -1035,19 +1108,41 @@ function CreateSequenceForm({ sessionId, onSubmit, onClose, submitting }: Omit<C
           role="region"
           className="hidden lg:flex w-[360px] shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden [scrollbar-width:none] border-l border-outline-variant bg-surface-container-low px-5 py-4"
         >
-          <p className="mb-3 self-stretch text-label font-medium text-on-surface-variant">Preview</p>
-          <WhatsAppPhonePreview
-            senderName={senderName}
-            messages={steps.map((s, i) => ({
-              key: s._key,
-              body: s.messageBody ?? "",
-              messageType: s.messageType,
-              gapLabel:
-                (i > 0 || joinMode === "AUTO") && s.delayMinutes
-                  ? `After ${formatDelay(s.delayMinutes)}`
-                  : undefined,
-            }))}
-          />
+          <p className="mb-3 self-stretch text-label font-medium text-on-surface-variant">
+            {focusedStep?.channel === "EMAIL" ? `Preview · Message ${focusedIndex + 1} (email)` : "Preview"}
+          </p>
+          {focusedStep?.channel === "EMAIL" ? (
+            <EmailPreview
+              className="self-stretch"
+              fromName={emailAccount?.fromName ?? ""}
+              fromAddress={emailAccount?.fromAddress}
+              subject={focusedStep.emailSubject ?? ""}
+              body={focusedStep.messageBody ?? ""}
+            />
+          ) : (
+            <>
+              <WhatsAppPhonePreview
+                senderName={senderName}
+                messages={steps
+                  .map((s, i) => ({ s, i }))
+                  .filter(({ s }) => s.channel !== "EMAIL")
+                  .map(({ s, i }) => ({
+                    key: s._key,
+                    body: s.messageBody ?? "",
+                    messageType: s.messageType,
+                    gapLabel:
+                      (i > 0 || joinMode === "AUTO") && s.delayMinutes
+                        ? `After ${formatDelay(s.delayMinutes)}`
+                        : undefined,
+                  }))}
+              />
+              {hasEmailSteps && (
+                <p className="mt-3 self-stretch text-caption text-on-surface-variant">
+                  Email messages aren&apos;t shown here. Click one to preview it.
+                </p>
+              )}
+            </>
+          )}
         </div>
         </div>
 

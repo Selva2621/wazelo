@@ -5,6 +5,7 @@ import { Ban, CalendarPlus, FilePlus2, Pencil, PlayCircle, Repeat, Trash2, XCirc
 import { useSAOrgActions, useSAPlans } from "@/hooks/use-super-admin";
 import type { Plan } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Modal } from "@/components/ui/modal";
@@ -224,14 +225,14 @@ export function OrgActionsPanel({ orgId, orgName, orgSlug, orgTimezone, orgStatu
                 <label htmlFor={fieldId} className="block text-label font-medium text-on-surface-variant mb-1">
                   New plan
                 </label>
-                <select id={fieldId} autoFocus value={planId} onChange={(e) => setPlanId(e.target.value)} className={inputClass}>
+                <Select id={fieldId} autoFocus value={planId} onChange={(e) => setPlanId(e.target.value)}>
                   <option value="">Choose a plan…</option>
                   {activePlans.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} — {formatMoney(p.priceInCents, p.currency)}/{p.billingCycle === "YEARLY" ? "yr" : "mo"}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <p className="text-label text-on-surface-variant mt-1">
                   Applies immediately at the new plan&apos;s price. Usage so far this period is kept.
                 </p>

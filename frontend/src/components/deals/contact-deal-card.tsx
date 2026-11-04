@@ -6,6 +6,7 @@ import { cn, formatAmount } from "@/lib/utils";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   useContactDeals,
   useCreateDeal,
@@ -193,20 +194,21 @@ function DealDetails({
 
           <label className="flex items-center justify-between gap-2 text-label text-on-surface-variant">
             Stage
-            <select
+            <Select
+              size="sm"
               value={deal.stageId}
               disabled={moveDeal.isPending}
               onChange={(e) =>
                 moveDeal.mutate({ pipelineId: deal.pipelineId, dealId: deal.id, stageId: e.target.value })
               }
-              className="min-w-0 max-w-[60%] rounded-md border border-outline-variant/30 bg-surface-container-low px-2 py-1 text-body text-on-surface outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-auto min-w-0 max-w-[60%]"
             >
               {sortedStages.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <div className="flex items-center justify-between gap-2 text-label text-on-surface-variant">

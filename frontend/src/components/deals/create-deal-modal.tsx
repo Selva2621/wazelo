@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useCreateDeal, usePipelines } from "@/hooks/use-deals";
 import { useContacts } from "@/hooks/use-contacts";
 import { ProductSelectField } from "@/components/ui/product-select-field";
@@ -186,19 +187,18 @@ export function CreateDealModal({
         {needsFetch && pipelines && pipelines.length > 1 && (
           <div className="space-y-1.5">
             <label className="text-label font-medium text-on-surface-variant">Pipeline</label>
-            <select
+            <Select
               value={pipelineChoice}
               onChange={(e) => {
                 setSelectedPipelineId(e.target.value);
                 const p = pipelines.find((pp) => pp.id === e.target.value);
                 if (p?.stages?.length) setStageId(p.stages[0].id);
               }}
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body text-on-surface"
             >
               {pipelines.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -207,15 +207,14 @@ export function CreateDealModal({
           <label className="text-label font-medium text-on-surface-variant">
             Stage <span className="text-error">*</span>
           </label>
-          <select
+          <Select
             value={effectiveStageId}
             onChange={(e) => { setStageId(e.target.value); setErrors((p) => ({ ...p, stage: "" })); }}
-            className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body text-on-surface"
           >
             {activeStages.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </Select>
           {errors.stage && <p className="text-caption text-error">{errors.stage}</p>}
         </div>
 

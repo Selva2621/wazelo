@@ -54,7 +54,7 @@ async function bootstrap() {
   );
 
   // CORS — include x-trace-id header for client-side correlation
-  app.enableCors({
+  const appCors = {
     origin: frontendUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -62,7 +62,20 @@ async function bootstrap() {
     // Content-Disposition + X-Export-Truncated: CSV export downloads (super admin lists)
     // X-RateLimit-* / Retry-After: so API clients in the browser can read their limits
     exposedHeaders: ['x-trace-id', 'Content-Disposition', 'X-Export-Truncated', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'],
-  });
+  };
+  // The website chat widget runs on customers' own sites, so its public routes accept any
+  // origin (no cookies: visitors are identified by their session id, never by login).
+  // Everything else stays locked to the app.
+  const widgetPath = `/${apiPrefix.replace(/^\/|\/$/g, '')}/widgets/`;
+  const widgetCors = {
+    origin: '*',
+    credentials: false,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+  };
+  app.enableCors((req: { url?: string }, cb: (err: Error | null, options: object) => void) =>
+    cb(null, req.url?.startsWith(widgetPath) ? widgetCors : appCors),
+  );
 
   // Files are served through the authenticated FileServeController
   // Do NOT use app.useStaticAssets() for uploads — it bypasses auth guards

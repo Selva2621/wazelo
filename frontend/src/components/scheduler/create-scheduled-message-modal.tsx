@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateScheduledMessage } from "@/hooks/use-scheduler";
 import { ProductSelectField } from "@/components/ui/product-select-field";
 import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
@@ -59,11 +60,10 @@ export function CreateScheduledMessageModal({
   const mediaUrl = watch("mediaUrl");
 
   // A file picked for one type doesn't fit another
-  const typeField = register("messageType");
-  const onTypeChange: typeof typeField.onChange = (e) => {
+  const onTypeChange = (v: string) => {
     setValue("mediaUrl", "");
     setValue("mediaMimeType", "");
-    return typeField.onChange(e);
+    setValue("messageType", v as MessageType, { shouldValidate: true, shouldDirty: true });
   };
 
   function onSubmit(data: CreateScheduledMessageFormData) {
@@ -107,10 +107,12 @@ export function CreateScheduledMessageModal({
           {/* Session */}
           <div>
             <Label htmlFor="sessionId">WhatsApp Session</Label>
-            <select
+            <Select
               id="sessionId"
-              {...register("sessionId")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={watch("sessionId") ?? ""}
+              onValueChange={(v) => setValue("sessionId", v, { shouldValidate: true, shouldDirty: true })}
+              aria-invalid={!!errors.sessionId}
+              className="mt-1"
             >
               <option value="">Select session...</option>
               {sessions.map((s) => (
@@ -118,7 +120,7 @@ export function CreateScheduledMessageModal({
                   {s.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.sessionId && (
               <p className="mt-1 text-label text-error">
                 {errors.sessionId.message}
@@ -140,18 +142,18 @@ export function CreateScheduledMessageModal({
           {/* Message Type */}
           <div>
             <Label htmlFor="messageType">Message Type</Label>
-            <select
+            <Select
               id="messageType"
-              {...typeField}
-              onChange={onTypeChange}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={watch("messageType") ?? ""}
+              onValueChange={onTypeChange}
+              className="mt-1"
             >
               {MESSAGE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Message Body (for TEXT) */}

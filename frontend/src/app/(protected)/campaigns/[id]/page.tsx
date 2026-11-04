@@ -32,6 +32,7 @@ import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badg
 import { CampaignAnalyticsCards } from "@/components/campaigns/campaign-analytics-cards";
 import { CampaignProgressRing } from "@/components/campaigns/campaign-progress-ring";
 import { CampaignRecipientsTable } from "@/components/campaigns/campaign-recipients-table";
+import { ChannelIcon } from "@/components/campaigns/email-channel";
 import type {
   CampaignRecipientStatus,
   ListRecipientsParams,
@@ -217,7 +218,7 @@ export default function CampaignDetailPage() {
             <ConfirmDialog
               open={confirmRerun}
               title="Send this campaign again now?"
-              message="WhatsApp messages go out right away to the same audience, including contacts added since. Contacts without a saved name are greeted as “there”. This campaign's report stays as it is."
+              message={`${campaign.channel === "EMAIL" ? "Emails" : "WhatsApp messages"} go out right away to the same audience, including contacts added since. Contacts without a saved name are greeted as “there”. This campaign's report stays as it is.`}
               confirmLabel="Send now"
               loading={rerunMut.isPending}
               onCancel={() => setConfirmRerun(false)}
@@ -266,12 +267,32 @@ export default function CampaignDetailPage() {
             <div className="space-y-3">
               <div>
                 <p className="text-caption text-on-surface-variant">
+                  Channel
+                </p>
+                <p className="flex items-center gap-1.5 text-body text-on-surface">
+                  <ChannelIcon channel={campaign.channel} />
+                  {campaign.channel === "EMAIL" ? "Email" : "WhatsApp"}
+                </p>
+              </div>
+              {campaign.channel === "EMAIL" ? (
+                campaign.emailSubject && (
+                  <div>
+                    <p className="text-caption text-on-surface-variant">
+                      Subject
+                    </p>
+                    <p className="text-body text-on-surface break-words">{campaign.emailSubject}</p>
+                  </div>
+                )
+              ) : (
+              <div>
+                <p className="text-caption text-on-surface-variant">
                   Message type
                 </p>
                 <p className="text-body text-on-surface">
                   {campaign.messageType.charAt(0) + campaign.messageType.slice(1).toLowerCase().replace(/_/g, " ")}
                 </p>
               </div>
+              )}
               <div>
                 <p className="text-caption text-on-surface-variant">
                   Audience

@@ -15,6 +15,17 @@ import { UsageMetricType } from '@prisma/client';
  */
 export const USAGE_LIMIT_KEY = 'usage_limit';
 
+/** Plain words for the limit message (users never see the metric code) */
+const LIMIT_NAMES: Record<UsageMetricType, string> = {
+  MESSAGES_SENT: 'messages this month',
+  ACTIVE_USERS: 'team members',
+  WHATSAPP_SESSIONS: 'WhatsApp numbers',
+  CAMPAIGN_EXECUTIONS: 'campaign sends this month',
+  API_CALLS: 'API calls this month',
+  AI_CREDITS: 'AI credits',
+  MESSAGE_TEMPLATES: 'templates',
+};
+
 /**
  * Guard that checks if the requesting org has exceeded their plan's usage limits.
  * Applied to specific routes that consume limited resources.
@@ -58,7 +69,7 @@ export class UsageLimitGuard implements CanActivate {
       throw new ForbiddenException({
         statusCode: 403,
         error: 'USAGE_LIMIT_EXCEEDED',
-        message: `You have reached the ${metricType} limit for your current plan. Please upgrade to continue.`,
+        message: `Your plan allows ${result.limitValue} ${LIMIT_NAMES[metricType] ?? 'of these'}, and you've used them all. Upgrade your plan, or remove some you no longer need.`,
         details: {
           metricType,
           currentValue: result.currentValue,

@@ -90,6 +90,53 @@ export const settingsTours: TourDef[] = [
   },
 
   {
+    id: "email",
+    version: 1,
+    title: "Business email",
+    summary: "Connect your email so campaigns, automations and sequences can send from it.",
+    section: "Settings",
+    startHref: "/settings/email",
+    navHref: "/settings/email",
+    match: exact("/settings/email"),
+    steps: [
+      {
+        target: "email-provider",
+        title: "Pick your email",
+        body: "Gmail, Outlook and Zoho fill in the server details for you. Anything else: choose Other.",
+        example: { kind: "chips", items: ["Gmail", "Outlook", "Zoho", "Other"] },
+      },
+      {
+        target: "email-form",
+        title: "Sign in with an app password",
+        body: "Enter the name people see, your address and an app password. We check it with your mail server and send you a test email.",
+        example: {
+          kind: "fields",
+          rows: [
+            ["From name", "Kavya Boutique"],
+            ["Email", "hello@kavya.in"],
+            ["App password", "•••• •••• •••• ••••"],
+          ],
+        },
+      },
+      {
+        target: "email-guide",
+        title: "Step-by-step help",
+        body: "How to create the app password for the email you picked.",
+      },
+      {
+        target: "email-status",
+        title: "Connected",
+        body: "See who you send as and how many emails went out today. At the daily limit, sending pauses until tomorrow.",
+      },
+      {
+        target: "email-recent",
+        title: "Recent emails",
+        body: "Every email from campaigns, automations and sequences, with the reason if one failed or was skipped.",
+      },
+    ],
+  },
+
+  {
     id: "settings",
     version: 1,
     title: "Workspace settings",

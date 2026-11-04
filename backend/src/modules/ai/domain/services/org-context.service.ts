@@ -5,6 +5,15 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { sanitizeContextInput, sanitizePromptInput, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
 import type { ChunkHit } from '@/modules/knowledge-base/infrastructure/repositories/kb-chunk.repository';
 import { KnowledgeSearchService } from './knowledge-search.service';
+import { builtInProfile } from '@/shared/constants/freelancer-profiles';
+import { TEAM_VOICE, voiceLine, workspaceKind, type WorkspaceVoice } from '@/shared/utils/workspace-voice';
+
+const BUSINESS_CONTEXT_HEADING = '## Business Context';
+
+/** Whether a context from getContext carries business facts, not just the voice line */
+export function hasBusinessProfile(context: string): boolean {
+  return context.includes(BUSINESS_CONTEXT_HEADING);
+}
 
 /**
  * Lightweight service that reads the org's AI memory and returns a
@@ -41,24 +50,82 @@ export class OrgContextService {
     return text;
   }
 
+  /**
+   * Who AI text speaks as: a solo freelancer ("I", to clients, with their service in
+   * words) or a business with a team ("we", to customers). Cached like the context.
+   */
+  async getVoice(orgId: string): Promise<WorkspaceVoice> {
+    const hit = this.voiceCache.get(orgId);
+    if (hit && Date.now() - hit.at < CONTEXT_CACHE_MS) return hit.voice;
+
+    const voice = await this.readVoice(orgId);
+    if (this.voiceCache.size >= CONTEXT_CACHE_MAX && !this.voiceCache.has(orgId)) {
+      const oldest = this.voiceCache.keys().next().value;
+      if (oldest !== undefined) this.voiceCache.delete(oldest);
+    }
+    this.voiceCache.delete(orgId);
+    this.voiceCache.set(orgId, { voice, at: Date.now() });
+    return voice;
+  }
+
   /** Forget an org's cached context: its AI memory just changed (rules, document, rebuild). */
   @OnEvent(EVENT_NAMES.AI_MEMORY_UPDATED)
   onMemoryUpdated(payload: { orgId: string }): void {
     if (payload?.orgId) this.forget(payload.orgId);
   }
 
+  /**
+   * Settings changed (org type, line of work…). The AI memory rebuild that follows also
+   * clears the cache, but it can fail quietly, so the voice is dropped here as well.
+   */
+  @OnEvent(EVENT_NAMES.ORG_SETTINGS_UPDATED)
+  onOrgSettingsUpdated(payload: { orgId: string }): void {
+    if (payload?.orgId) this.forget(payload.orgId);
+  }
+
   forget(orgId: string): void {
     this.cache.delete(`${orgId}:customers`);
     this.cache.delete(`${orgId}:team`);
+    this.voiceCache.delete(orgId);
   }
 
   private readonly cache = new Map<string, { text: string; at: number }>();
+  private readonly voiceCache = new Map<string, { voice: WorkspaceVoice; at: number }>();
+
+  private async readVoice(orgId: string): Promise<WorkspaceVoice> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { orgType: true, freelancerTypes: true, freelancerService: true },
+    });
+    if (!org || workspaceKind(org.orgType) !== 'FREELANCER') return TEAM_VOICE;
+
+    // Same words as Settings shows: built-in lines of work, saved ones, and "Something else" text
+    const custom = org.freelancerTypes.filter((t) => t !== 'OTHER' && !builtInProfile(t));
+    const saved = custom.length
+      ? await this.prisma.freelancerServiceProfile.findMany({
+          where: { key: { in: custom }, deletedAt: null },
+          select: { key: true, serviceLabel: true },
+        })
+      : [];
+    const words = [
+      ...org.freelancerTypes.map((t) => builtInProfile(t)?.serviceLabel ?? saved.find((s) => s.key === t)?.serviceLabel),
+      org.freelancerTypes.includes('OTHER') ? org.freelancerService : null,
+    ]
+      .map((w) => sanitizePromptInput(w ?? '', 120))
+      .filter(Boolean);
+    return { kind: 'FREELANCER', service: words.length ? [...new Set(words)].join(', ') : null };
+  }
 
   private async buildContext(orgId: string, opts: { forCustomers?: boolean }): Promise<string> {
-    const mem = await this.prisma.orgAiMemory.findUnique({ where: { orgId } });
-    if (!mem) return '';
+    const [mem, voice] = await Promise.all([
+      this.prisma.orgAiMemory.findUnique({ where: { orgId } }),
+      this.getVoice(orgId),
+    ]);
+    // No profile built yet: the voice still goes with every prompt (it's not a business fact,
+    // so it comes without the Business Context heading — see hasBusinessProfile)
+    if (!mem) return voiceLine(voice);
 
-    const parts: string[] = ['## Business Context'];
+    const parts: string[] = [BUSINESS_CONTEXT_HEADING, voiceLine(voice)];
 
     if (mem.businessName) parts.push(`Business: ${mem.businessName}`);
     if (mem.industry) parts.push(`Industry: ${mem.industry}`);

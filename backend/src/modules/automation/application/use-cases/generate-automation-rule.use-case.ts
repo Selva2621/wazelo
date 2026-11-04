@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+import { voiceRule, type WorkspaceVoice } from '@/shared/utils/workspace-voice';
 
 export interface GeneratedAutomationRule {
   name: string;
@@ -32,9 +33,23 @@ const TRIGGER_TYPES = [
   'SHOPIFY_ORDER_FULFILLED',
   'SHOPIFY_CART_ABANDONED',
   'WIDGET_MESSAGE_RECEIVED',
+  'DEAL_STAGE_CHANGED',
 ];
 
 const ACTION_TYPES = ['SEND_MESSAGE', 'ASSIGN_CONTACT', 'ADD_TAG', 'UPDATE_STATUS'];
+
+/** What kind of workspace the rule is for: who the contacts are, how messages speak, which rules fit */
+function workspaceGuide(voice: WorkspaceVoice): string {
+  if (voice.kind === 'FREELANCER') {
+    return `Workspace: a solo freelancer${voice.service ? ` offering ${voice.service}` : ''}. Contacts are clients; deals are their projects (e.g. Enquiry → Proposal sent → Won).
+- ${voiceRule(voice)}
+- Good fits: DEAL_STAGE_CHANGED to chase a sent proposal or thank a new client, NO_REPLY to nudge a quiet client, CONTACT_CREATED or MESSAGE_RECEIVED to welcome a new enquiry and ask about their project.
+- There is no team: don't use ASSIGN_CONTACT. Shopify triggers rarely apply.`;
+  }
+  return `Workspace: a business with a team. Contacts are customers (enquiries, bookings, orders).
+- ${voiceRule(voice)}
+- Good fits: MESSAGE_RECEIVED keyword replies, CONTACT_CREATED welcomes, ASSIGN_CONTACT to route enquiries to the team, LEAD_STATUS_CHANGED follow-ups, DEAL_STAGE_CHANGED as a booking or order moves along, Shopify triggers if they sell online.`;
+}
 
 const SYSTEM_PROMPT = `You are an automation rule generator for a WhatsApp CRM platform.
 
@@ -50,6 +65,7 @@ Available trigger types:
 - SHOPIFY_ORDER_FULFILLED: triggerConfig can have { minOrderValue?: number }
 - SHOPIFY_CART_ABANDONED: triggerConfig can have { minCartValue?: number }
 - WIDGET_MESSAGE_RECEIVED: triggerConfig can have { messageKeyword?: string }
+- DEAL_STAGE_CHANGED: a deal is created in or moved to a pipeline stage. triggerConfig is {} — never invent a stageId; the user picks the stage before saving. Name the stage you mean (e.g. "Proposal sent", "Won") in the rule's description.
 
 Available action types:
 - SEND_MESSAGE: actionConfig must have { messageBody: string }. Use {{contact.name}}, {{contact.phone}}, {{shopify.order_name}}, {{shopify.total_price}}, {{shopify.recovery_url}} variables where appropriate.
@@ -59,7 +75,7 @@ Available action types:
 
 Rules:
 - Actions array must have at least 1 item with orderIndex starting at 0
-- SEND_MESSAGE messageBody should be a natural WhatsApp message, under 500 chars
+- SEND_MESSAGE messageBody should be a natural, professional WhatsApp message, under 500 chars, written in the workspace's voice (see "Workspace" above)
 - delaySeconds on actions: use 0 unless the user asks for a delay
 - cooldownSeconds: set if user mentions "once per day" (86400), "once per week" (604800), else omit
 - maxExecutionsPerContact: set to 1 if user says "only once per customer", else omit
@@ -89,11 +105,11 @@ export class GenerateAutomationRuleUseCase {
     orgId: string,
     prompt: string,
   ): Promise<GenerateAutomationRuleResult> {
-    const ctx = await this.orgContext.getContext(orgId);
+    const [ctx, voice] = await Promise.all([this.orgContext.getContext(orgId), this.orgContext.getVoice(orgId)]);
 
-    const systemPrompt = ctx
-      ? `${ctx}\n\n---\n\n${SYSTEM_PROMPT}`
-      : SYSTEM_PROMPT;
+    // The JSON format stays last, right before the request
+    const rules = `${workspaceGuide(voice)}\n\n${SYSTEM_PROMPT}`;
+    const systemPrompt = ctx ? `${ctx}\n\n---\n\n${rules}` : rules;
 
     const result = await this.aiProvider.complete({
       systemPrompt,
@@ -112,6 +128,13 @@ export class GenerateAutomationRuleUseCase {
         // Validate trigger type
         if (!TRIGGER_TYPES.includes(parsed.rule?.triggerType)) {
           parsed.rule.triggerType = 'MESSAGE_RECEIVED';
+        }
+        if (!parsed.rule.triggerConfig || typeof parsed.rule.triggerConfig !== 'object') {
+          parsed.rule.triggerConfig = {};
+        }
+        // The AI can't know stage ids: the draft means "any stage" until the user picks one
+        if (parsed.rule.triggerType === 'DEAL_STAGE_CHANGED') {
+          delete parsed.rule.triggerConfig.stageId;
         }
 
         // Validate action types

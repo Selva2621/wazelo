@@ -22,6 +22,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { LeadStatusBadge } from "./lead-status-badge";
@@ -597,14 +598,15 @@ function CustomFieldsTab({ contactId }: { contactId: string }) {
                   className="rounded"
                 />
               ) : def.fieldType === "select" && def.options ? (
-                <select
+                <Select
+                  size="sm"
                   value={values[def.id] || ""}
                   onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                  className="max-w-[160px] rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label"
+                  className="max-w-[160px]"
                 >
                   <option value="">—</option>
                   {(def.options as string[]).map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
+                </Select>
               ) : (
                 <input
                   type={def.fieldType === "number" ? "number" : def.fieldType === "date" ? "date" : "text"}

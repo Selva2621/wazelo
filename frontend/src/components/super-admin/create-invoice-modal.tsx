@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSAInvoiceActions } from "@/hooks/use-super-admin";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -149,17 +150,16 @@ function CreateInvoiceForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor={`${fieldId}-currency`} className={labelClass}>Currency</label>
-          <select
+          <Select
             id={`${fieldId}-currency`}
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className={inputClass}
             disabled={pending}
           >
             {[...new Set([fallbackCurrency, ...CURRENCIES])].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor={`${fieldId}-due`} className={labelClass}>Due date</label>

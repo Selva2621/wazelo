@@ -24,16 +24,7 @@ import { AiReplyOutcome, AuditAction } from '@prisma/client';
 import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
 
-/** Used when the flow has no prompt of its own. */
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
-
-IMPORTANT RULES:
-- Identify which product the customer is asking about from their message.
-- Answer ONLY using information from the product documentation provided. Do not make up information.
-- If the documentation covers multiple products, use only the relevant product's information.
-- If you cannot find the answer in the documentation, say: "I don't have specific information about that. Let me connect you with a human agent who can help."
-- Keep responses concise (under 150 words), friendly, and professional.
-- If the customer hasn't specified a product and you have docs for multiple products, ask which product they need help with.`;
+import { defaultBotPrompt, defaultReplyStepPrompt } from '../../domain/services/default-bot-prompt';
 
 interface FlowNode {
   id: string;
@@ -285,7 +276,9 @@ export class ExecuteChatbotFlowUseCase {
 
     // Same business profile and "Rules & tone" the website chat answers with
     const profile = await this.orgContext.getContext(orgId, { forCustomers: true });
-    const systemPrompt = [profile ? `${profile}\n\n---` : '', flow.aiSystemPrompt || DEFAULT_SYSTEM_PROMPT, UNTRUSTED_DATA_RULE]
+    // No prompt of its own: a default written for this kind of workspace (freelancer or team)
+    const defaultPrompt = flow.aiSystemPrompt ? '' : defaultBotPrompt(await this.orgContext.getVoice(orgId));
+    const systemPrompt = [profile ? `${profile}\n\n---` : '', flow.aiSystemPrompt || defaultPrompt, UNTRUSTED_DATA_RULE]
       .filter(Boolean)
       .join('\n\n');
     const userPrompt = `Conversation so far:\n${wrapUntrusted('conversation', context)}\n\nReply to the customer's latest message as the agent:`;
@@ -301,7 +294,7 @@ export class ExecuteChatbotFlowUseCase {
       const check = checkReply({
         reply,
         // The business's own prompt may hold facts the bot should repeat, so only our fixed text counts as a leak
-        ownInstructions: `${flow.aiSystemPrompt ? '' : DEFAULT_SYSTEM_PROMPT}\n${UNTRUSTED_DATA_RULE}`,
+        ownInstructions: `${defaultPrompt}\n${UNTRUSTED_DATA_RULE}`,
         trustedText: `${profile}\n${flow.aiSystemPrompt ?? ''}\n${teamText}`,
         customerText,
       });
@@ -491,8 +484,8 @@ export class ExecuteChatbotFlowUseCase {
           await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
           break;
         }
-        const systemPrompt = (node.data.systemPrompt as string) ||
-          'You are a helpful customer support agent. Reply concisely.';
+        const systemPrompt =
+          (node.data.systemPrompt as string) || defaultReplyStepPrompt(await this.orgContext.getVoice(orgId));
         const maxTokens = (node.data.maxTokens as number) || 500;
 
         const messages = this.messageCrypto.decryptBodies(

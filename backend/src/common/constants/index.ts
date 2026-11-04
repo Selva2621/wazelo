@@ -90,6 +90,14 @@ export const QUEUE_NAMES = {
   CRAWL_WEBSITE: 'crawl-website',
   // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
   ORG_ONBOARDING: 'org-onboarding',
+  // Website chat handover: an offer to one member ran out (auto-assign → next member)
+  WIDGET_OFFER_TIMEOUT: 'widget-offer-timeout',
+  // Website chat handover: nobody took the chat in time → offer the visitor a follow-up
+  WIDGET_WAIT_TIMEOUT: 'widget-wait-timeout',
+  // Website chat: no message for 30 min → the chat ends (and a pending welcome goes out)
+  WIDGET_IDLE_CHECK: 'widget-idle-check',
+  // Email from the workspace's own mailbox: one job per email (retries with backoff)
+  SEND_ORG_EMAIL: 'send-org-email',
 } as const;
 
 export const EVENT_NAMES = {
@@ -307,6 +315,12 @@ export const EVENT_NAMES = {
   // Chat Widget events (Phase 4)
   WIDGET_CONFIG_UPDATED: 'widget.config_updated',
   WIDGET_MESSAGE_RECEIVED: 'widget.message_received',
+
+  // Email (the workspace's own mailbox): one per email, after the send was tried
+  EMAIL_SENT: 'email.sent',
+  EMAIL_FAILED: 'email.failed',
+  /** A campaign batch finished handing out its recipients: check whether the campaign is done */
+  CAMPAIGN_BATCH_SETTLED: 'campaign.batch_settled',
 
   // Deal events
   DEAL_AUTO_CREATED: 'deals.auto_created',

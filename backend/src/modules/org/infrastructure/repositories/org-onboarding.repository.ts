@@ -93,7 +93,10 @@ export class OrgOnboardingRepository {
           periodEnd: endsAt,
         })),
       });
-    });
+    // Prisma's 5s default is too tight for a remote/cold database: three round trips of
+    // ~2s each expired it, failed the whole onboarding job and left new orgs with no
+    // templates or defaults. Same budget style as the signup transaction.
+    }, { maxWait: 10000, timeout: 20000 });
   }
 
   // ───── AI memory ─────

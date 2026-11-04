@@ -75,7 +75,7 @@ export function buildLayout(opts: {
             <td>
               <div style="background:linear-gradient(135deg,${brand.primary} 0%,${brand.primaryDark} 100%);padding:28px 40px;border-radius:12px 12px 0 0;text-align:center;">
                 <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;line-height:1;">
-                  CRM-<span style="color:${brand.primaryLight};">WA</span>
+                  Waze<span style="color:${brand.primaryLight};">lo</span>
                 </div>
                 <div style="color:rgba(255,255,255,0.75);font-size:12px;margin-top:6px;letter-spacing:0.3px;">
                   WhatsApp CRM for growing teams

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Package, ArrowRight } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { useProductTerms } from "@/lib/product-terms";
+import { Select } from "@/components/ui/select";
 
 interface ProductSelectFieldProps {
   /** Current selected product id ("" = none) */
@@ -66,10 +67,9 @@ export function ProductSelectField({
       )}
 
       {hasProducts && (
-        <select
+        <Select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={selectCls}
         >
           <option value="">No {terms.singular}</option>
           {filtered.map((p) => (
@@ -77,7 +77,7 @@ export function ProductSelectField({
               {p.name}
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
       {noProducts && (

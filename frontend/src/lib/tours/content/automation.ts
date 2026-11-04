@@ -1,31 +1,37 @@
 import type { TourDef } from "../types";
 import { detail, exact, listOrEmpty, primaryAction } from "../match";
 
-/** Automation rules, chatbots, bot knowledge and the website chat widget */
-export const automationTours: TourDef[] = [
-  {
-    id: "automation",
-    version: 1,
+type OrgTourType = NonNullable<TourDef["orgType"]>;
+type ChatLine = { from: "customer" | "you" | "bot"; text: string };
+
+/*
+ * Automation, chatbot, builder and AI assistant tours come in a TEAM and a FREELANCER
+ * version with the same steps and data-tour targets; only the examples differ.
+ * TEAM ones also show for legacy CRM / DEVELOPER orgs (the provider only hides them from freelancers).
+ */
+
+function automationTour(o: { id: string; version: number; orgType: OrgTourType; rule: string[]; recipes: string[] }): TourDef {
+  return {
+    id: o.id,
+    version: o.version,
     title: "Automation",
     summary: "“When this happens, do that” rules that run on their own.",
     section: "Automation",
     startHref: "/automation",
     navHref: "/automation",
+    orgType: o.orgType,
     match: exact("/automation"),
     steps: [
       {
         title: "How a rule works",
         body: "A rule has a trigger (what happens), optional conditions (only if…) and actions (what Wazelo does).",
-        example: {
-          kind: "flow",
-          nodes: ["New message contains “price”", "Contact is New", "Send price list", "Tag: pricing", "Assign to Rahul"],
-        },
+        example: { kind: "flow", nodes: o.rule },
       },
       {
         target: "section[aria-label=\"Start from a recipe\"]",
         title: "Start from a recipe",
         body: "Ready-made rules for common jobs. Pick one and adjust it.",
-        example: { kind: "chips", items: ["Welcome new contacts", "Out-of-hours reply", "Tag by keyword", "Assign round-robin"] },
+        example: { kind: "chips", items: o.recipes },
       },
       {
         target: primaryAction(),
@@ -44,11 +50,183 @@ export const automationTours: TourDef[] = [
         body: "Switch a rule on or off, or open it to edit.",
       },
     ],
-  },
+  };
+}
+
+function chatbotTour(o: { id: string; version: number; orgType: OrgTourType; people: string; chat: ChatLine[] }): TourDef {
+  return {
+    id: o.id,
+    version: o.version,
+    title: "Chatbot",
+    summary: `AI or step-by-step bots that answer ${o.people} for you.`,
+    section: "Automation",
+    startHref: "/chatbot",
+    navHref: "/chatbot",
+    orgType: o.orgType,
+    match: exact("/chatbot"),
+    steps: [
+      {
+        title: "Two kinds of bot",
+        body: "An AI chatbot answers in its own words from your business knowledge. A custom flow follows the buttons and questions you design.",
+        example: { kind: "chat", messages: o.chat },
+      },
+      {
+        target: [...primaryAction(), "empty-state"],
+        title: "Create a bot",
+        body: "Start from a recipe or blank. Bots stay as drafts until you activate them.",
+      },
+      {
+        target: "bot-health",
+        title: "Bot health",
+        body: "How many questions the bot answered, couldn't answer, or handed to a person. Unanswered questions are the best list of FAQs to add.",
+      },
+      {
+        target: "bot-flows",
+        title: "Your bots",
+        body: `Edit, pause or activate each one. Only active bots reply to ${o.people}.`,
+      },
+    ],
+  };
+}
+
+function builderTour(o: { id: string; version: number; orgType: OrgTourType; keyword: string; flow: string[]; aiTip: string }): TourDef {
+  return {
+    id: o.id,
+    version: o.version,
+    title: "Flow builder",
+    summary: "Design a chatbot flow with nodes, or switch it to AI mode.",
+    section: "Automation",
+    startHref: "/chatbot",
+    startHint: "Open any chatbot",
+    navHref: "/chatbot",
+    orgType: o.orgType,
+    // /chatbot/knowledge only redirects to /ai-assistant
+    match: (p) => p !== "/chatbot/knowledge" && detail("/chatbot")(p),
+    steps: [
+      {
+        target: "[aria-label=\"Flow name\"]",
+        title: "Name and status",
+        body: "Draft bots don't reply yet; activate when you're happy with the test.",
+      },
+      {
+        target: ["builder-left", "builder-mobile-pill"],
+        title: "Trigger and nodes",
+        body: `Set what starts the bot (e.g. the keyword “${o.keyword}” or any first message), then add nodes: message, buttons, question, condition, hand over to a person.`,
+        example: { kind: "flow", nodes: o.flow },
+      },
+      {
+        target: "[role=\"switch\"][aria-label=\"AI mode\"]",
+        ifMissing: "skip",
+        title: "AI mode",
+        body: "Turn on to let AI answer instead of a fixed flow. It uses your AI assistant's knowledge and instructions; add extra ones for this bot only if needed.",
+        example: { kind: "tip", text: `Example extra instruction: “${o.aiTip}”` },
+      },
+      {
+        target: "builder-canvas",
+        title: "Canvas",
+        body: "Drag to connect nodes. Click a node to edit its text, buttons and next step.",
+      },
+      {
+        target: ["builder-toolbar", "m-more"],
+        title: "Test, tidy and save",
+        body: "Test chats with your bot right here, Auto-layout tidies the nodes, Save keeps changes, Activate puts it live.",
+      },
+    ],
+  };
+}
+
+function knowledgeTour(o: {
+  id: string;
+  version: number;
+  orgType: OrgTourType;
+  people: string;
+  person: string;
+  rule: string;
+  sites: string[];
+  faq: [q: string, a: string];
+  files: string;
+  handover: string;
+  test: string;
+}): TourDef {
+  return {
+    id: o.id,
+    version: o.version,
+    title: "AI assistant",
+    summary: "One AI for WhatsApp and your website: what it knows and how it talks.",
+    section: "Automation",
+    startHref: "/ai-assistant",
+    navHref: "/ai-assistant",
+    orgType: o.orgType,
+    match: exact("/ai-assistant"),
+    steps: [
+      {
+        target: "ai-channels",
+        title: "Where it answers",
+        body: `Your WhatsApp chatbot and website chat both answer from this page, so ${o.people} get the same reply everywhere.`,
+      },
+      {
+        target: "kb-instructions",
+        title: "Instructions",
+        body: `Tone and rules for every channel (e.g. “${o.rule}”).`,
+      },
+      {
+        target: "kb-websites",
+        title: "Your website",
+        body: "Add your site's address and the bot reads its pages for answers.",
+        example: { kind: "chips", items: o.sites },
+      },
+      {
+        target: "kb-unanswered",
+        title: "Unanswered questions",
+        body: "Questions the bot couldn't answer. Turn each one into an FAQ with one click.",
+      },
+      {
+        target: "kb-faqs",
+        title: "FAQs",
+        body: "Exact answers for common questions; the bot prefers these.",
+        example: { kind: "fields", rows: [["Q", o.faq[0]], ["A", o.faq[1]]] },
+      },
+      {
+        target: "kb-files",
+        title: "Files",
+        body: o.files,
+      },
+      {
+        target: "kb-handover",
+        title: "Handover",
+        body: o.handover,
+      },
+      {
+        target: "#test-bot",
+        title: "Test your assistant",
+        body: `Ask a question as ${o.person} would and see the answer and which source it used.`,
+        example: { kind: "chat", messages: [{ from: "customer", text: o.test }] },
+      },
+    ],
+  };
+}
+
+/** Automation rules, chatbots, bot knowledge and the website chat widget */
+export const automationTours: TourDef[] = [
+  // Team and freelancer versions differ only in the examples; recipe chips match getAutomationPresets()
+  automationTour({
+    id: "automation",
+    version: 2,
+    orgType: "TEAM",
+    rule: ["Message says “price”", "Reply with prices", "Mark Interested", "Assign to a teammate"],
+    recipes: ["Welcome new customers", "Answer pricing questions", "Follow up after 2 days", "Tag website leads"],
+  }),
+  automationTour({
+    id: "automation-freelancer",
+    version: 1,
+    orgType: "FREELANCER",
+    rule: ["Message says “price”", "Ask scope and timeline", "Mark Interested"],
+    recipes: ["Welcome new enquiries", "Answer pricing questions", "Follow up after 2 days", "Chase a sent proposal", "Thank a new client"],
+  }),
 
   {
     id: "automation-rule",
-    version: 1,
+    version: 2,
     title: "Rule editor",
     summary: "Set the trigger, conditions and actions of one rule.",
     section: "Automation",
@@ -76,8 +254,8 @@ export const automationTours: TourDef[] = [
       {
         target: "rule-actions",
         title: "Actions",
-        body: "One or more things to do, in order: send a message or template, add a tag, change status, assign, start or stop a sequence.",
-        example: { kind: "flow", nodes: ["Send template “price_list”", "Add tag “pricing”", "Assign to Sales team"] },
+        body: "One or more things to do, in order: send a WhatsApp message or an email, add a tag, change status, assign, start or stop a sequence.",
+        example: { kind: "flow", nodes: ["Send template “price_list”", "Send email “Welcome”", "Add tag “pricing”"] },
       },
       {
         target: "rule-advanced",
@@ -92,153 +270,75 @@ export const automationTours: TourDef[] = [
     ],
   },
 
-  {
+  // Recipes: getChatbotPresets()
+  chatbotTour({
     id: "chatbot",
     version: 1,
-    title: "Chatbot",
-    summary: "AI or step-by-step bots that answer customers for you.",
-    section: "Automation",
-    startHref: "/chatbot",
-    navHref: "/chatbot",
-    match: exact("/chatbot"),
-    steps: [
-      {
-        title: "Two kinds of bot",
-        body: "An AI chatbot answers in its own words from your business knowledge. A custom flow follows the buttons and questions you design.",
-        example: {
-          kind: "chat",
-          messages: [
-            { from: "customer", text: "What time do you close today?" },
-            { from: "bot", text: "We're open till 8 pm today. Would you like to book a slot?" },
-          ],
-        },
-      },
-      {
-        target: [...primaryAction(), "empty-state"],
-        title: "Create a bot",
-        body: "Start from a recipe or blank. Bots stay as drafts until you activate them.",
-      },
-      {
-        target: "bot-health",
-        title: "Bot health",
-        body: "How many questions the bot answered, couldn't answer, or handed to a person. Unanswered questions are the best list of FAQs to add.",
-      },
-      {
-        target: "bot-flows",
-        title: "Your bots",
-        body: "Edit, pause or activate each one. Only active bots reply to customers.",
-      },
+    orgType: "TEAM",
+    people: "customers",
+    chat: [
+      { from: "customer", text: "What time do you close today?" },
+      { from: "bot", text: "We're open till 8 pm today. Would you like to book a slot?" },
     ],
-  },
+  }),
+  chatbotTour({
+    id: "chatbot-freelancer",
+    version: 1,
+    orgType: "FREELANCER",
+    people: "clients",
+    chat: [
+      { from: "customer", text: "Can you design a logo for my café?" },
+      { from: "bot", text: "Happy to help! What style do you like, and when do you need it?" },
+    ],
+  }),
 
-  {
+  builderTour({
     id: "chatbot-builder",
     version: 2,
-    title: "Flow builder",
-    summary: "Design a chatbot flow with nodes, or switch it to AI mode.",
-    section: "Automation",
-    startHref: "/chatbot",
-    startHint: "Open any chatbot",
-    navHref: "/chatbot",
-    // /chatbot/knowledge only redirects to /ai-assistant
-    match: (p) => p !== "/chatbot/knowledge" && detail("/chatbot")(p),
-    steps: [
-      {
-        target: "[aria-label=\"Flow name\"]",
-        title: "Name and status",
-        body: "Draft bots don't reply yet; activate when you're happy with the test.",
-      },
-      {
-        target: ["builder-left", "builder-mobile-pill"],
-        title: "Trigger and nodes",
-        body: "Set what starts the bot (e.g. the keyword “menu” or any first message), then add nodes: message, buttons, question, condition, hand over to a person.",
-        example: { kind: "flow", nodes: ["Trigger: “menu”", "Buttons: Prices / Timings / Talk to us", "Reply", "Hand over"] },
-      },
-      {
-        target: "[role=\"switch\"][aria-label=\"AI mode\"]",
-        ifMissing: "skip",
-        title: "AI mode",
-        body: "Turn on to let AI answer instead of a fixed flow. It uses your AI assistant's knowledge and instructions; add extra ones for this bot only if needed.",
-        example: { kind: "tip", text: "Example extra instruction: “Only talk about bookings. Ask for the date and number of people.”" },
-      },
-      {
-        target: "builder-canvas",
-        title: "Canvas",
-        body: "Drag to connect nodes. Click a node to edit its text, buttons and next step.",
-      },
-      {
-        target: ["builder-toolbar", "m-more"],
-        title: "Test, tidy and save",
-        body: "Test chats with your bot right here, Auto-layout tidies the nodes, Save keeps changes, Activate puts it live.",
-      },
-    ],
-  },
+    orgType: "TEAM",
+    keyword: "menu",
+    flow: ["Trigger: “menu”", "Buttons: Prices / Timings / Talk to us", "Reply", "Hand over"],
+    aiTip: "Only talk about bookings. Ask for the date and number of people.",
+  }),
+  builderTour({
+    id: "chatbot-builder-freelancer",
+    version: 1,
+    orgType: "FREELANCER",
+    keyword: "portfolio",
+    flow: ["Trigger: “portfolio”", "Send my recent work", "Ask: which kind of project?", "Reply"],
+    aiTip: "Only talk about my services. Ask what they need and by when.",
+  }),
 
-  {
+  knowledgeTour({
     id: "bot-knowledge",
     version: 2,
-    title: "AI assistant",
-    summary: "One AI for WhatsApp and your website: what it knows and how it talks.",
-    section: "Automation",
-    startHref: "/ai-assistant",
-    navHref: "/ai-assistant",
-    match: exact("/ai-assistant"),
-    steps: [
-      {
-        target: "ai-channels",
-        title: "Where it answers",
-        body: "Your WhatsApp chatbot and website chat both answer from this page, so customers get the same reply everywhere.",
-      },
-      {
-        target: "kb-instructions",
-        title: "Instructions",
-        body: "Tone and rules for every channel (e.g. “never promise discounts”).",
-      },
-      {
-        target: "kb-websites",
-        title: "Your website",
-        body: "Add your site's address and the bot reads its pages for answers.",
-        example: { kind: "chips", items: ["kavyaboutique.in", "kavyaboutique.in/shipping"] },
-      },
-      {
-        target: "kb-unanswered",
-        title: "Unanswered questions",
-        body: "Questions the bot couldn't answer. Turn each one into an FAQ with one click.",
-      },
-      {
-        target: "kb-faqs",
-        title: "FAQs",
-        body: "Exact answers for common questions; the bot prefers these.",
-        example: {
-          kind: "fields",
-          rows: [
-            ["Q", "Do you deliver outside India?"],
-            ["A", "Yes, to the UAE and UK in 7–10 days."],
-          ],
-        },
-      },
-      {
-        target: "kb-files",
-        title: "Files",
-        body: "Upload price lists, brochures or policies as PDF or text.",
-      },
-      {
-        target: "kb-handover",
-        title: "Handover",
-        body: "When to pass the chat to a person, and your opening hours.",
-      },
-      {
-        target: "#test-bot",
-        title: "Test your assistant",
-        body: "Ask a question as a customer would and see the answer and which source it used.",
-        example: { kind: "chat", messages: [{ from: "customer", text: "What are your prices?" }] },
-      },
-    ],
-  },
+    orgType: "TEAM",
+    people: "customers",
+    person: "a customer",
+    rule: "never promise discounts",
+    sites: ["kavyaboutique.in", "kavyaboutique.in/shipping"],
+    faq: ["Do you deliver outside India?", "Yes, to the UAE and UK in 7–10 days."],
+    files: "Upload price lists, brochures or policies as PDF or text.",
+    handover: "When to pass the chat to a person, and your opening hours.",
+    test: "What are your prices?",
+  }),
+  knowledgeTour({
+    id: "bot-knowledge-freelancer",
+    version: 1,
+    orgType: "FREELANCER",
+    people: "clients",
+    person: "a client",
+    rule: "never promise a deadline",
+    sites: ["priyadesigns.in", "priyadesigns.in/portfolio"],
+    faq: ["How long does a logo take?", "Usually 5–7 days, with two rounds of changes."],
+    files: "Upload your rate card, service list or past work as PDF or text.",
+    handover: "When to pass the chat to you, and the hours you reply.",
+    test: "What are your rates?",
+  }),
 
   {
     id: "chat-widget",
-    version: 2,
+    version: 3,
     title: "Website chat widget",
     summary: "A chat bubble for your website that lands in your inbox.",
     section: "Automation",
@@ -254,7 +354,7 @@ export const automationTours: TourDef[] = [
       {
         target: ["widget-appearance", "widget-segments"],
         title: "Make it yours",
-        body: "Company name, colour, position, avatar, welcome message and a WhatsApp button so visitors can continue on WhatsApp.",
+        body: "Company name, colour, position, avatar and welcome message.",
         example: {
           kind: "fields",
           rows: [
@@ -267,8 +367,8 @@ export const automationTours: TourDef[] = [
       {
         target: "widget-prechat",
         only: "desktop",
-        title: "Ask for details first",
-        body: "Optionally ask for name and phone before chatting, so every visitor becomes a contact.",
+        title: "Details before the chat",
+        body: "Every visitor gives first name, mobile and email first. Those who tick “I agree to be contacted” become contacts, and your welcome message goes when the chat ends.",
       },
       {
         target: "widget-ai",

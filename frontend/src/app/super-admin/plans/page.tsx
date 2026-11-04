@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { Package, Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useSAPlans, useSACreatePlan, useSAUpdatePlan, useSAPlanLifecycle } from "@/hooks/use-super-admin";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { TABLE_CARD } from "@/components/super-admin/list-styles";
@@ -232,28 +233,26 @@ function PlanFormBody({
         </div>
         <div>
           <label htmlFor={fid("cycle")} className={labelClass}>Billing cycle</label>
-          <select
+          <Select
             id={fid("cycle")}
             disabled={isEdit}
-            className={inputClass}
             value={form.billingCycle}
             onChange={(e) => set("billingCycle", e.target.value as BillingCycle)}
           >
             <option value="MONTHLY">Monthly</option>
             <option value="YEARLY">Yearly</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor={fid("currency")} className={labelClass}>Currency</label>
-          <select
+          <Select
             id={fid("currency")}
             disabled={isEdit}
-            className={inputClass}
             value={form.currency}
             onChange={(e) => set("currency", e.target.value)}
           >
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </Select>
           {!isEdit && (
             <p className="text-label text-on-surface-variant mt-0.5">
               INR plans are shown to orgs in India, USD plans to everyone else. A USD plan needs its own

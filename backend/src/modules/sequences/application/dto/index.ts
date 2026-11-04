@@ -86,12 +86,24 @@ export class SequenceStepDto {
   @MaxLength(255)
   name?: string;
 
+  /** WHATSAPP (default) or EMAIL (from the workspace's email account) */
+  @IsOptional()
+  @IsEnum(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  /** Email steps: the subject line */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  emailSubject?: string;
+
   @IsEnum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO', 'INTERACTIVE'])
   messageType: string = 'TEXT';
 
+  /** Emails can be longer than WhatsApp messages (4096) */
   @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()
@@ -183,8 +195,17 @@ export class UpdateSequenceStepDto {
   name?: string;
 
   @IsOptional()
+  @IsEnum(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(255)
+  emailSubject?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()

@@ -34,6 +34,7 @@ import {
   IsUUID,
   IsObject,
   MaxLength,
+  IsUrl,
   IsEnum,
   Matches,
 } from 'class-validator';
@@ -50,6 +51,8 @@ class CreateTemplateDto {
   @IsOptional() @IsString() @MaxLength(50) category?: string;
   @IsOptional() @IsString() @MaxLength(10) language?: string;
   @IsOptional() @IsUUID() productId?: string;
+  /** Image sent above the message (uploaded or pasted link) */
+  @IsOptional() @IsUrl({ require_tld: false, protocols: ['http', 'https'] }) @MaxLength(2048) imageUrl?: string;
 }
 
 class UpdateTemplateDto {
@@ -58,6 +61,8 @@ class UpdateTemplateDto {
   @IsOptional() @IsString() @MaxLength(50) category?: string;
   @IsOptional() @IsString() @MaxLength(10) language?: string;
   @IsOptional() @IsUUID() productId?: string;
+  /** null removes the image; leave out to keep it */
+  @IsOptional() @IsUrl({ require_tld: false, protocols: ['http', 'https'] }) @MaxLength(2048) imageUrl?: string | null;
 }
 
 class GenerateTemplateDto {
@@ -126,6 +131,7 @@ export class TemplatesController {
       language: dto.language,
       category: dto.category,
       productId: dto.productId,
+      imageUrl: dto.imageUrl,
     });
   }
 
@@ -144,6 +150,8 @@ export class TemplatesController {
       category: dto.category,
       language: dto.language,
       productId: dto.productId,
+      imageUrl: dto.imageUrl,
+      current: template.components,
     });
     return this.templateRepo.findById(id, user.orgId);
   }

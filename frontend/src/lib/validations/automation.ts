@@ -17,20 +17,29 @@ const conditionSchema = z.object({
   value: z.any(),
 });
 
-const actionSchema = z.object({
-  actionType: z.enum([
-    "SEND_MESSAGE",
-    "ASSIGN_CONTACT",
-    "ADD_TAG",
-    "UPDATE_STATUS",
-    "ENROLL_IN_SEQUENCE",
-    "STOP_SEQUENCE",
-    "ASSIGN_CONVERSATION",
-  ]),
-  actionConfig: z.record(z.string(), z.any()),
-  orderIndex: z.number().int().min(0).optional(),
-  delaySeconds: z.number().int().min(0).optional(),
-});
+const actionSchema = z
+  .object({
+    actionType: z.enum([
+      "SEND_MESSAGE",
+      "SEND_EMAIL",
+      "ASSIGN_CONTACT",
+      "ADD_TAG",
+      "UPDATE_STATUS",
+      "ENROLL_IN_SEQUENCE",
+      "STOP_SEQUENCE",
+      "ASSIGN_CONVERSATION",
+    ]),
+    actionConfig: z.record(z.string(), z.any()),
+    orderIndex: z.number().int().min(0).optional(),
+    delaySeconds: z.number().int().min(0).optional(),
+  })
+  .superRefine((a, ctx) => {
+    if (a.actionType !== "SEND_EMAIL") return;
+    if (!String(a.actionConfig.subject ?? "").trim())
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "subject"], message: "Add a subject" });
+    if (!String(a.actionConfig.body ?? "").trim())
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "body"], message: "Add a message" });
+  });
 
 export const createAutomationRuleSchema = z.object({
   name: z

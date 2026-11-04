@@ -50,6 +50,7 @@ import { LeadAdsModule } from './modules/lead-ads/lead-ads.module';
 import { LeadScoringModule } from './modules/lead-scoring/lead-scoring.module';
 import { SequencesModule } from './modules/sequences/sequences.module';
 import { WidgetModule } from './modules/widget/widget.module';
+import { EmailModule as OrgEmailModule } from './modules/email/email.module';
 import { GdprModule } from './modules/gdpr/gdpr.module';
 import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
@@ -145,6 +146,8 @@ import { EventsModule } from './events/events.module';
     LeadScoringModule,
     SequencesModule,
     WidgetModule,
+    // The workspace's own mailbox: setup, templates, sending, unsubscribe
+    OrgEmailModule,
     GdprModule,
     KnowledgeBaseModule,
     CustomFieldsModule,

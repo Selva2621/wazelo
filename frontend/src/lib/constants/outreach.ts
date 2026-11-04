@@ -108,6 +108,47 @@ export function getOutreachSteps(types?: readonly string[] | null, service?: str
   ];
 }
 
+/**
+ * Ready-made outreach for a business / team workspace: same shape and timing as the
+ * freelancer version, in the business's own "we" voice.
+ */
+export function getTeamOutreachSteps(orgName?: string | null): OutreachStep[] {
+  const who = orgName?.trim() ? `this is ${orgName.trim()}` : "this is our team";
+  return [
+    {
+      name: "Intro",
+      delayMinutes: 0,
+      messageBody: `Hi {{name}}, ${who}. We came across your business online. We offer [what you offer] and think it could help you. Would you be open to a quick chat this week?`,
+    },
+    {
+      name: "Follow-up",
+      delayMinutes: 2 * DAY,
+      messageBody: "Hi {{name}}, just following up on our last message. Happy to share details or answer any questions.",
+    },
+    {
+      name: "Last check-in",
+      delayMinutes: 3 * DAY,
+      messageBody: "Hi {{name}}, a last check-in from our side. If now isn't the right time, no problem. Reply anytime if you need us.",
+    },
+  ];
+}
+
+interface OutreachOrg {
+  orgType?: string | null;
+  name?: string | null;
+  freelancerTypes?: readonly string[] | null;
+  freelancerService?: string | null;
+  freelancerServiceLabel?: string | null;
+}
+
+/** Outreach written for this workspace: freelancers in their line of work, everyone else as a team. */
+export function getOutreachStepsFor(org?: OutreachOrg | null): OutreachStep[] {
+  if (org?.orgType === "FREELANCER") {
+    return getOutreachSteps(org.freelancerTypes, org.freelancerServiceLabel ?? org.freelancerService);
+  }
+  return getTeamOutreachSteps(org?.name);
+}
+
 /** Default (no type known) — kept for callers that don't have org settings */
 export const OUTREACH_STEPS = getOutreachSteps(null);
 

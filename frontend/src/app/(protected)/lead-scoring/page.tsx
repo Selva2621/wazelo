@@ -18,6 +18,7 @@ import {
   useDeleteScoringRule,
 } from "@/hooks/use-lead-scoring";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -107,15 +108,14 @@ function RuleForm({ initial, onSave, onClose, isPending }: RuleFormProps) {
             <label className="block text-label font-medium text-on-surface-variant mb-1">
               Trigger Signal <span className="text-error">*</span>
             </label>
-            <select
+            <Select
               value={signal}
               onChange={(e) => setSignal(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {SCORING_SIGNALS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Points */}

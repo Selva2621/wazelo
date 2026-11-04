@@ -33,8 +33,9 @@ export class SendWidgetMessageDto {
   @MaxLength(4096)
   body: string;
 
+  // require_tld off: sites on localhost or intranet names are real pages too
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false, protocols: ['http', 'https'] })
   @MaxLength(2048)
   pageUrl?: string;
 }

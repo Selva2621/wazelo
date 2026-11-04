@@ -6,6 +6,8 @@ import { X, Check, MessageCircle, Power, Sparkles, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSetupChecklist, type ChecklistItem } from "@/hooks/use-setup-checklist";
 import { useWhatsAppSession } from "@/hooks/use-whatsapp";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
@@ -125,6 +127,14 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   // Phones: a finished checklist folds to its title row; the steps open on request
   const [stepsOpen, setStepsOpen] = useState(false);
 
+  // What the assistant pack really turns on differs per workspace (see assistant-setup FREELANCER_PACK / TEAM_PACK)
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const assistantPitch =
+    (orgSettings?.orgType ?? userOrgType) === "FREELANCER"
+      ? "Asks about new projects, shares your portfolio and chases proposals for you"
+      : "Answers new enquiries, follows up and tags website leads for your team";
+
   const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
   const assistantDone = assistant.done || turnedOn;
 
@@ -225,7 +235,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
               detail={
                 !assistantDone
                   ? whatsappReady
-                    ? "Answers new enquiries, follows up and chases proposals for you"
+                    ? assistantPitch
                     : (
                       <span className="inline-flex items-center gap-1">
                         <Lock className="h-3 w-3" /> Connect WhatsApp first
@@ -307,7 +317,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                   Turn on your assistant
                 </h2>
                 <p className="text-label text-on-surface-variant">
-                  Answers new enquiries, follows up and chases proposals for you.
+                  {assistantPitch}.
                 </p>
               </div>
             </div>

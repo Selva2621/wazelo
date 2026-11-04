@@ -4,6 +4,7 @@ import { BotSettings } from '@prisma/client';
 import { EVENT_NAMES } from '@/common/constants';
 import { BotBehaviorRepository, BotSettingsInput } from '../../infrastructure/repositories/bot-behavior.repository';
 import { isOpen } from '../../domain/services/bot-hours';
+import { inWorkspaceVoice } from '@/shared/utils/workspace-voice';
 
 /** REPLY_BLOCKED: the AI's reply failed the safety check (likely a prompt injection), so a person answers instead */
 export type HandoffReason = 'ASKED_FOR_PERSON' | 'UNANSWERED' | 'REPLY_BLOCKED' | 'REPLY_LIMIT';
@@ -49,6 +50,10 @@ export class BotBehaviorService {
       openDays: s.openDays,
       afterHoursMessage: s.afterHoursMessage,
       pauseHours: s.pauseHours,
+      // Website chat handover
+      handoffMode: s.handoffMode,
+      acceptTimeoutSec: s.acceptTimeoutSec,
+      waitTimeoutMin: s.waitTimeoutMin,
     };
   }
 
@@ -74,7 +79,9 @@ export class BotBehaviorService {
     const open = isOpen(settings, timezone, now);
     this.events.emit(EVENT_NAMES.CHATBOT_SESSION_HANDED_OFF, { orgId, conversationId, reason, teamOpen: open });
     this.logger.log(`Bot handed conversation ${conversationId} to the team (${reason}, ${open ? 'open' : 'after hours'})`);
-    return open ? settings.handoffMessage : settings.afterHoursMessage;
+    // Freelancers are one person: the stock "our team…" lines read as "I" (edited ones are kept)
+    const kind = await this.repo.workspaceKind(orgId);
+    return inWorkspaceVoice(open ? settings.handoffMessage : settings.afterHoursMessage, kind);
   }
 
   /** Counts an unanswered question; true when it's time to hand over. */

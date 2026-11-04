@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { COUNTRIES, countryFlag } from "@/lib/constants/countries";
+import { Select } from "@/components/ui/select";
 
 interface CountrySelectProps {
   value: string;
@@ -17,13 +17,11 @@ interface CountrySelectProps {
 /** Country picker with flags; value is an ISO code ("IN") */
 export function CountrySelect({ value, onChange, showDialCode, className, ...rest }: CountrySelectProps) {
   return (
-    <select
+    <Select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={cn(
-        "w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60",
-        className,
-      )}
+      onValueChange={onChange}
+      searchable
+      className={className}
       {...rest}
     >
       {COUNTRIES.map((c) => (
@@ -32,6 +30,6 @@ export function CountrySelect({ value, onChange, showDialCode, className, ...res
           {showDialCode ? ` (+${c.dialCode})` : ""}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

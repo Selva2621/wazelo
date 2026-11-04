@@ -6,6 +6,7 @@ import { MediaPicker } from "@/components/ui/media-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateProduct, useUpdateProduct, useProductCategories } from "@/hooks/use-products";
 import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
@@ -171,15 +172,15 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
             </Label>
             <div className="flex mt-1 rounded-xl overflow-hidden border border-outline-variant/10 bg-surface-container-low focus-within:ring-2 focus-within:ring-primary/40">
               {/* Currency selector */}
-              <select
+              <Select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="shrink-0 border-r border-outline-variant/10 bg-surface-container px-3 py-2.5 text-body text-on-surface-variant font-medium outline-none"
+                className="w-auto shrink-0 rounded-none border-r border-outline-variant/10 bg-surface-container font-medium"
               >
                 {currencies.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
-              </select>
+              </Select>
               {/* Price input */}
               <input
                 id="pf-price"
@@ -213,17 +214,17 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 Category{" "}
                 <span className="font-normal text-on-surface-variant/50">(optional)</span>
               </Label>
-              <select
+              <Select
                 id="pf-cat"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className={`mt-1 ${inputCls}`}
+                className="mt-1"
               >
                 <option value="">No category</option>
                 {(categories ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 

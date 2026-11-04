@@ -5,9 +5,15 @@ import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Select } from "@/components/ui/select";
 import { RewriteMenu } from "@/components/sequences/create-sequence-modal";
 import { useSaveSequenceEdits, type SequenceEdits } from "@/hooks/use-sequences";
-import type { CampaignSequence } from "@/lib/types/sequences";
+import type { CampaignSequence, SequenceStepChannel } from "@/lib/types/sequences";
+import { useEmailAccount } from "@/hooks/use-email";
+import { EMAIL_FIELDS } from "@/lib/email-render";
+import {
+  ChannelSwitch, EmailConnectNotice, FieldChips, insertAtCursor, isEmailReady,
+} from "@/components/campaigns/email-channel";
 
 const WAITS = [
   { label: "1 hour", value: 60 },
@@ -22,7 +28,15 @@ const LABEL = "text-label font-medium text-on-surface";
 const INPUT =
   "mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
-type DraftStep = { key: string; stepId?: string; name: string; messageBody: string; delayMinutes: number };
+type DraftStep = {
+  key: string;
+  stepId?: string;
+  name: string;
+  channel: SequenceStepChannel;
+  emailSubject: string;
+  messageBody: string;
+  delayMinutes: number;
+};
 
 /**
  * In-place editor for a draft or paused sequence. Drafts can add/remove messages; paused
@@ -46,12 +60,16 @@ export function SequenceEditor({
       key: s.id,
       stepId: s.id,
       name: s.name ?? "",
+      channel: s.channel ?? "WHATSAPP",
+      emailSubject: s.emailSubject ?? "",
       messageBody: s.messageBody ?? "",
       delayMinutes: s.delayMinutes,
     })),
   );
   const newKey = useRef(0);
   const save = useSaveSequenceEdits(sequence.id);
+  const { data: emailAccount } = useEmailAccount();
+  const emailReady = isEmailReady(emailAccount);
 
   const update = (key: string, patch: Partial<DraftStep>) =>
     setSteps((list) => list.map((s) => (s.key === key ? { ...s, ...patch } : s)));
@@ -62,7 +80,11 @@ export function SequenceEditor({
       ? "Keep at least one message"
       : (() => {
           const empty = steps.findIndex((s) => !s.messageBody.trim());
-          return empty >= 0 ? `Write message ${empty + 1}` : null;
+          if (empty >= 0) return `Write message ${empty + 1}`;
+          const noSubject = steps.findIndex((s) => s.channel === "EMAIL" && !s.emailSubject.trim());
+          if (noSubject >= 0) return `Add a subject to message ${noSubject + 1}`;
+          if (!emailReady && steps.some((s) => s.channel === "EMAIL")) return "Connect your business email to send email steps";
+          return null;
         })();
 
   const buildEdits = (): SequenceEdits => {
@@ -77,6 +99,10 @@ export function SequenceEditor({
       const fields: SequenceEdits["updated"][number] = { stepId: s.stepId! };
       if (s.name.trim() !== (before.name ?? "")) fields.name = s.name.trim();
       if (s.messageBody !== (before.messageBody ?? "")) fields.messageBody = s.messageBody;
+      if (s.channel !== (before.channel ?? "WHATSAPP")) fields.channel = s.channel;
+      if (s.channel === "EMAIL" && s.emailSubject.trim() !== (before.emailSubject ?? "")) {
+        fields.emailSubject = s.emailSubject.trim();
+      }
       // The API keeps a 1-minute minimum; a first message with no wait is never re-sent
       if (s.delayMinutes !== before.delayMinutes && s.delayMinutes >= 1) fields.delayMinutes = s.delayMinutes;
       if (Object.keys(fields).length > 1) updated.push(fields);
@@ -91,6 +117,8 @@ export function SequenceEditor({
           .map((s, i) => ({
             stepOrder: lastOrder + 1 + i,
             name: s.name.trim() || undefined,
+            channel: s.channel,
+            emailSubject: s.channel === "EMAIL" ? s.emailSubject.trim() : undefined,
             messageBody: s.messageBody,
             delayMinutes: Math.max(1, s.delayMinutes),
           }))
@@ -162,15 +190,16 @@ export function SequenceEditor({
                 {(i > 0 || sequence.triggerType) && (
                   <label className="flex items-center gap-1.5 text-caption text-on-surface-variant">
                     {i === 0 ? "After the trigger, wait" : "Wait"}
-                    <select
+                    <Select
                       value={s.delayMinutes}
                       onChange={(e) => update(s.key, { delayMinutes: parseInt(e.target.value) })}
-                      className="rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1 text-caption text-on-surface focus:border-primary focus:outline-none"
+                      size="sm"
+                      className="w-auto"
                     >
                       {(WAITS.some((w) => w.value === s.delayMinutes) ? WAITS : [{ label: `${s.delayMinutes} min`, value: s.delayMinutes }, ...WAITS]).map((w) => (
                         <option key={w.value} value={w.value}>{w.label}</option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 )}
                 {isDraft && steps.length > 1 && (
@@ -185,14 +214,49 @@ export function SequenceEditor({
                   </IconButton>
                 )}
               </div>
+              <ChannelSwitch
+                name={`edit-step-channel-${s.key}`}
+                label={`Message ${i + 1} sent by`}
+                value={s.channel}
+                onChange={(channel) => update(s.key, { channel })}
+                className="mb-2"
+              />
+              {s.channel === "EMAIL" && (
+                <div className="mb-2 space-y-2">
+                  {!emailReady && <EmailConnectNotice account={emailAccount} />}
+                  <div>
+                    <label htmlFor={`edit-subject-${s.key}`} className={LABEL}>
+                      Subject <span aria-hidden className="text-error">*</span>
+                    </label>
+                    <input
+                      id={`edit-subject-${s.key}`}
+                      value={s.emailSubject}
+                      onChange={(e) => update(s.key, { emailSubject: e.target.value })}
+                      maxLength={255}
+                      required
+                      className={INPUT}
+                    />
+                  </div>
+                </div>
+              )}
               <textarea
+                id={`edit-body-${s.key}`}
                 value={s.messageBody}
                 onChange={(e) => update(s.key, { messageBody: e.target.value })}
                 aria-label={`Message ${i + 1} text`}
-                rows={3}
-                maxLength={4096}
+                rows={s.channel === "EMAIL" ? 6 : 3}
+                maxLength={s.channel === "EMAIL" ? 20000 : 4096}
                 className={cn(INPUT, "mt-0 resize-y")}
               />
+              {s.channel === "EMAIL" && (
+                <FieldChips
+                  label={`Insert field in message ${i + 1}`}
+                  fields={EMAIL_FIELDS}
+                  onInsert={(token) =>
+                    update(s.key, { messageBody: insertAtCursor(`edit-body-${s.key}`, s.messageBody, token) })
+                  }
+                />
+              )}
               <div className="mt-2">
                 <RewriteMenu
                   message={s.messageBody}
@@ -207,7 +271,7 @@ export function SequenceEditor({
           <button
             type="button"
             onClick={() =>
-              setSteps((list) => [...list, { key: `new-${newKey.current++}`, name: "", messageBody: "", delayMinutes: 1440 }])
+              setSteps((list) => [...list, { key: `new-${newKey.current++}`, name: "", channel: "WHATSAPP", emailSubject: "", messageBody: "", delayMinutes: 1440 }])
             }
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-outline-variant py-2.5 text-label font-medium text-primary outline-none transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-focus"
           >

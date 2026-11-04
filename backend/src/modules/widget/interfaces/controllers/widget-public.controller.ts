@@ -16,6 +16,9 @@ import { StartWidgetSessionUseCase } from '../../application/use-cases/start-wid
 import { SendWidgetMessageUseCase } from '../../application/use-cases/send-widget-message.use-case';
 import { SendWidgetMessageDto } from '../../application/dto/send-widget-message.dto';
 import { generateWidgetScript } from '../../infrastructure/generators/widget-script.generator';
+import { inWorkspaceVoice, workspaceKind } from '@/shared/utils/workspace-voice';
+import { WebsiteChatUseCase } from '../../application/use-cases/website-chat.use-case';
+import { WidgetConsentDto, WidgetStartDto, WidgetVisitorDto } from '../../application/dto/website-chat.dto';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +33,7 @@ export class WidgetPublicController {
     private readonly widgetRepository: WidgetRepository,
     private readonly startWidgetSessionUseCase: StartWidgetSessionUseCase,
     private readonly sendWidgetMessageUseCase: SendWidgetMessageUseCase,
+    private readonly websiteChat: WebsiteChatUseCase,
   ) {}
 
   /**
@@ -54,7 +58,8 @@ export class WidgetPublicController {
       companyName: config.companyName || config.orgName,
       position: config.position,
       primaryColor: config.primaryColor,
-      welcomeMessage: config.welcomeMessage,
+      // A freelancer's stock greeting reads "How can I help" (an edited one is kept as is)
+      welcomeMessage: inWorkspaceVoice(config.welcomeMessage, workspaceKind(config.orgType)),
       placeholder: config.placeholder,
       avatarUrl: config.avatarUrl,
       whatsappNumber: config.whatsappNumber,
@@ -115,11 +120,54 @@ export class WidgetPublicController {
     if (!visitorId || visitorId.length > 64) return res.status(200).json({ messages: [] });
     const orgId = await this.widgetRepository.findOrgIdBySlug(orgSlug);
     const session = orgId ? await this.widgetRepository.findSessionByVisitor(orgId, visitorId) : null;
-    if (!session) return res.status(200).json({ messages: [] });
+    if (!session || !orgId) return res.status(200).json({ messages: [] });
 
     const since = after && !Number.isNaN(Date.parse(after)) ? new Date(after) : new Date(0);
     const messages = await this.widgetRepository.findRepliesAfter(session.id, since);
-    return res.status(200).json({ messages });
+    // Who is answering (AI / waiting / a person by first name) and whether to offer the follow-up card
+    const chat = await this.websiteChat.visitorState(orgId, session.id);
+    return res.status(200).json({ messages, chat });
+  }
+
+  /**
+   * The form before the chat: first name, mobile, email (required) and the optional
+   * "I agree to be contacted" box. Ticked: saved as a contact; welcome when the chat ends.
+   */
+  @Post(':orgSlug/start')
+  async start(
+    @Param('orgSlug') orgSlug: string,
+    @Body() dto: WidgetStartDto,
+    @Res() res: Response,
+    @Ip() ip: string,
+  ) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(201).json(await this.websiteChat.start(orgSlug, dto, ip));
+  }
+
+  /** Nobody could take the chat: the visitor taps "Yes, contact me". The chat ends with a thank-you. */
+  @Post(':orgSlug/consent')
+  async consent(
+    @Param('orgSlug') orgSlug: string,
+    @Body() dto: WidgetConsentDto,
+    @Res() res: Response,
+    @Ip() ip: string,
+  ) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(201).json(await this.websiteChat.consent(orgSlug, dto.visitorId, ip));
+  }
+
+  /** "Talk to a person" */
+  @Post(':orgSlug/handoff')
+  async askForPerson(@Param('orgSlug') orgSlug: string, @Body() dto: WidgetVisitorDto, @Res() res: Response) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(201).json(await this.websiteChat.askForPerson(orgSlug, dto.visitorId));
+  }
+
+  /** The visitor ends the conversation */
+  @Post(':orgSlug/end')
+  async endChat(@Param('orgSlug') orgSlug: string, @Body() dto: WidgetVisitorDto, @Res() res: Response) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(200).json(await this.websiteChat.endByVisitor(orgSlug, dto.visitorId));
   }
 
   /**

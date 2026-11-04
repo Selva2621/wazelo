@@ -85,6 +85,7 @@ export const campaignsApi = {
   previewAudience: (data: {
     audienceType: string;
     audienceFilters?: Record<string, unknown>;
+    channel?: "WHATSAPP" | "EMAIL";
   }) =>
     apiClient
       .post<AudiencePreview>("/campaigns/preview-audience", data)

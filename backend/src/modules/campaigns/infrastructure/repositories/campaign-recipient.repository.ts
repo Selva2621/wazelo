@@ -52,6 +52,11 @@ export class CampaignRecipientRepository {
     });
   }
 
+  /** Email campaigns: the recipient an email belongs to */
+  async findByEmailMessageId(emailMessageId: string): Promise<CampaignRecipient | null> {
+    return this.prisma.campaignRecipient.findUnique({ where: { emailMessageId } });
+  }
+
   async findPendingByBatch(
     campaignId: string,
     batchNumber: number,
@@ -68,13 +73,14 @@ export class CampaignRecipientRepository {
   async updateStatus(
     id: string,
     status: CampaignRecipientStatus,
-    extra?: { messageId?: string; failedReason?: string; processedAt?: Date },
+    extra?: { messageId?: string; emailMessageId?: string; failedReason?: string; processedAt?: Date },
   ): Promise<void> {
     await this.prisma.campaignRecipient.update({
       where: { id },
       data: {
         status,
         ...(extra?.messageId && { messageId: extra.messageId }),
+        ...(extra?.emailMessageId && { emailMessageId: extra.emailMessageId }),
         ...(extra?.failedReason && { failedReason: extra.failedReason }),
         ...(extra?.processedAt && { processedAt: extra.processedAt }),
       },

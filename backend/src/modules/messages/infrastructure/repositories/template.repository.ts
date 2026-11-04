@@ -1,6 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 
+type Component = { type: string; format?: string; text?: string; url?: string };
+
+/** Stored like WhatsApp's template parts: an optional image header, then the message */
+export function templateComponents(body: string, imageUrl?: string | null): Component[] {
+  const parts: Component[] = [];
+  if (imageUrl) parts.push({ type: 'HEADER', format: 'IMAGE', url: imageUrl });
+  parts.push({ type: 'BODY', text: body });
+  return parts;
+}
+
+export function templateImageUrl(components: unknown): string | null {
+  const header = (components as Component[] | null)?.find((c) => c.type === 'HEADER' && c.format === 'IMAGE');
+  return header?.url ?? null;
+}
+
+export function templateBody(components: unknown): string {
+  return (components as Component[] | null)?.find((c) => c.type === 'BODY')?.text ?? '';
+}
+
 @Injectable()
 export class TemplateRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -75,6 +94,7 @@ export class TemplateRepository {
     language?: string;
     category?: string;
     productId?: string;
+    imageUrl?: string;
   }) {
     return this.prisma.messageTemplate.create({
       data: {
@@ -83,7 +103,7 @@ export class TemplateRepository {
         language: data.language ?? 'en',
         category: data.category ?? null,
         status: 'PENDING',
-        components: [{ type: 'BODY', text: data.body }] as any,
+        components: templateComponents(data.body, data.imageUrl) as any,
         exampleValues: data.productId ? { productId: data.productId } : undefined,
       },
     });
@@ -92,13 +112,27 @@ export class TemplateRepository {
   async update(
     id: string,
     orgId: string,
-    data: { name?: string; body?: string; category?: string; language?: string; productId?: string | null },
+    data: {
+      name?: string;
+      body?: string;
+      category?: string;
+      language?: string;
+      productId?: string | null;
+      /** The current parts, so a body-only or image-only change keeps the other */
+      current?: unknown;
+      /** null or '' removes the image */
+      imageUrl?: string | null;
+    },
   ) {
     const patch: Record<string, unknown> = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.category !== undefined) patch.category = data.category;
     if (data.language !== undefined) patch.language = data.language;
-    if (data.body !== undefined) patch.components = [{ type: 'BODY', text: data.body }];
+    if (data.body !== undefined || data.imageUrl !== undefined) {
+      const body = data.body ?? templateBody(data.current);
+      const imageUrl = data.imageUrl !== undefined ? data.imageUrl : templateImageUrl(data.current);
+      patch.components = templateComponents(body, imageUrl);
+    }
     if (data.productId !== undefined) patch.exampleValues = data.productId ? { productId: data.productId } : null;
 
     return this.prisma.messageTemplate.updateMany({

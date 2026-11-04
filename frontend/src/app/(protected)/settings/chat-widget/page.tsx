@@ -13,11 +13,13 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { BottomSheet } from "@/components/ios/bottom-sheet";
 import { SegmentedControl } from "@/components/ios/segmented-control";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWidgetConfig, useUpdateWidgetConfig } from "@/hooks/use-widget";
 import { uploadApi } from "@/lib/api/messages";
+import { API_BASE_URL } from "@/lib/api/client";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
@@ -210,25 +212,41 @@ function buildPreviewHtml(cfg: {
     preChatEl.className = 'pre-chat';
 
     var lbl = document.createElement('p');
-    lbl.textContent = 'Tell us about yourself';
+    lbl.textContent = 'Before we start';
 
     var nameInput = document.createElement('input');
     nameInput.type = 'text';
-    nameInput.placeholder = 'Your name *';
+    nameInput.placeholder = 'First name *';
 
     var phoneInput = document.createElement('input');
     phoneInput.type = 'tel';
-    phoneInput.placeholder = 'Phone number (optional)';
+    phoneInput.placeholder = 'Mobile number with country code *';
+
+    var emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.placeholder = 'Email *';
+
+    var consentRow = document.createElement('label');
+    consentRow.style.cssText = 'display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#334155;line-height:1.4;';
+    var consentBox = document.createElement('input');
+    consentBox.type = 'checkbox';
+    consentBox.style.cssText = 'width:auto;margin-top:2px;';
+    var consentText = document.createElement('span');
+    consentText.textContent = 'I agree to be contacted by ' + (cfg.companyName || 'us') + ' on WhatsApp and email.';
+    consentRow.appendChild(consentBox);
+    consentRow.appendChild(consentText);
 
     var errorEl = document.createElement('div');
     errorEl.className = 'error-msg';
 
     var submitBtn = document.createElement('button');
     submitBtn.className = 'submit-btn';
-    submitBtn.textContent = 'Start Chat';
+    submitBtn.textContent = 'Start chat';
 
     submitBtn.onclick = function () {
-      if (!nameInput.value.trim()) { errorEl.textContent = 'Please enter your name.'; return; }
+      if (!nameInput.value.trim()) { errorEl.textContent = 'Enter your first name.'; return; }
+      if (phoneInput.value.replace(/\\D/g, '').length < 8) { errorEl.textContent = 'Enter your mobile number.'; return; }
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(emailInput.value.trim())) { errorEl.textContent = 'Enter a valid email.'; return; }
       errorEl.textContent = '';
       panel.removeChild(preChatEl);
       appendBubble(chatArea, cfg.welcomeMessage, 'agent');
@@ -239,6 +257,8 @@ function buildPreviewHtml(cfg: {
     preChatEl.appendChild(lbl);
     preChatEl.appendChild(nameInput);
     preChatEl.appendChild(phoneInput);
+    preChatEl.appendChild(emailInput);
+    preChatEl.appendChild(consentRow);
     preChatEl.appendChild(errorEl);
     preChatEl.appendChild(submitBtn);
     panel.appendChild(preChatEl);
@@ -362,37 +382,46 @@ function buildPreviewHtml(cfg: {
 
 function WidgetPreview({ form }: { form: Parameters<typeof buildPreviewHtml>[0] }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const [key, setKey] = useState(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  const html = useMemo(() => buildPreviewHtml(form), [
-    form.primaryColor,
-    form.companyName,
-    form.welcomeMessage,
-    form.placeholder,
-    form.position,
-    form.preChatFormEnabled,
-    form.whatsappNumber,
-    form.aiAssistantEnabled,
-    form.avatarUrl,
-  ]);
+  // The start form is always on, and chats always stay on the website
+  const { primaryColor, companyName, welcomeMessage, placeholder, position, aiAssistantEnabled, avatarUrl } = form;
+  const html = useMemo(
+    () =>
+      buildPreviewHtml({
+        primaryColor,
+        companyName,
+        welcomeMessage,
+        placeholder,
+        position,
+        preChatFormEnabled: true,
+        whatsappNumber: "",
+        aiAssistantEnabled,
+        avatarUrl,
+      }),
+    [primaryColor, companyName, welcomeMessage, placeholder, position, aiAssistantEnabled, avatarUrl],
+  );
 
+  // A fresh blob URL per html; the old one is revoked when html changes or on unmount.
+  // The URL is handed to state from a microtask (not synchronously in the effect body).
   useEffect(() => {
-    // Revoke previous blob URL
-    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    const blob = new Blob([html], { type: "text/html" });
-    blobUrlRef.current = URL.createObjectURL(blob);
-    setKey((k) => k + 1);
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    let live = true;
+    queueMicrotask(() => {
+      if (live) setBlobUrl(url);
+    });
     return () => {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      live = false;
+      URL.revokeObjectURL(url);
     };
   }, [html]);
 
   return (
     <iframe
-      key={key}
+      // Remount on each new URL so the preview reloads without adding history entries
+      key={blobUrl ?? "blank"}
       ref={iframeRef}
-      src={blobUrlRef.current ?? "about:blank"}
+      src={blobUrl ?? "about:blank"}
       className="w-full h-full border-0 rounded-b-2xl"
       sandbox="allow-scripts allow-same-origin"
       title="Widget Preview"
@@ -488,7 +517,12 @@ export default function ChatWidgetSettingsPage() {
     });
   };
 
-  const embedCode = `<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/widgets/${orgSlug}/embed.js" async></script>`;
+  // The API's public address: absolute when the API has its own domain, else this app's domain
+  // (same-origin proxy). The widget finds the API from this script's own link.
+  const apiBase = /^https?:\/\//.test(API_BASE_URL)
+    ? API_BASE_URL.replace(/\/$/, "")
+    : `${typeof window !== "undefined" ? window.location.origin : ""}${API_BASE_URL.replace(/\/$/, "")}`;
+  const embedCode = `<script src="${apiBase}/widgets/${orgSlug}/embed.js" async></script>`;
 
   const copyEmbed = () => {
     navigator.clipboard.writeText(embedCode);
@@ -506,9 +540,9 @@ export default function ChatWidgetSettingsPage() {
   const positionField = (
     <div>
       <label htmlFor="widget-position" className="text-label font-medium text-on-surface-variant">Position</label>
-      <select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
+      <Select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className="mt-1">
         {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-      </select>
+      </Select>
     </div>
   );
   const colorField = (
@@ -518,12 +552,6 @@ export default function ChatWidgetSettingsPage() {
         <input type="color" aria-label="Pick primary color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant cursor-pointer p-0.5 max-lg:h-11 max-lg:w-11" />
         <input id="widget-color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
       </div>
-    </div>
-  );
-  const whatsappField = (
-    <div>
-      <label htmlFor="widget-whatsapp" className="text-label font-medium text-on-surface-variant">WhatsApp number</label>
-      <input id="widget-whatsapp" value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
     </div>
   );
   const welcomeField = (
@@ -577,6 +605,10 @@ export default function ChatWidgetSettingsPage() {
       </div>
     </div>
   );
+  // The form before every chat (not optional): who the visitor is, and whether they agree to be contacted
+  const preChatNote =
+    "Visitors give their first name, mobile and email before chatting. If they tick “I agree to be contacted”, they're saved as a contact and your welcome automation runs when the chat ends.";
+
   // The website AI shares its knowledge and instructions with WhatsApp: one place to edit them
   const aiSharedNote = (
     <p className="text-label text-on-surface-variant">
@@ -755,15 +787,15 @@ export default function ChatWidgetSettingsPage() {
             <div className="space-y-4">
               {welcomeField}
               {placeholderField}
-              {whatsappField}
             </div>
           )}
 
           {tab === "visitors" && (
             <div className="divide-y divide-outline-variant/60">
-              {switchRow("Pre-chat form", "Ask name and phone first", form.preChatFormEnabled, () =>
-                setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled })),
-              )}
+              <div className="py-3">
+                <p className="text-body-lg text-on-surface">Before the chat</p>
+                <p className="text-label text-on-surface-variant">{preChatNote}</p>
+              </div>
               {switchRow("AI replies", "Answers visitors from your AI assistant", form.aiAssistantEnabled, () =>
                 setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled })),
               )}
@@ -839,7 +871,6 @@ export default function ChatWidgetSettingsPage() {
             {companyField}
             {positionField}
             {colorField}
-            {whatsappField}
           </div>
 
           {welcomeField}
@@ -847,15 +878,10 @@ export default function ChatWidgetSettingsPage() {
           {avatarField}
         </div>
 
-        {/* Pre-chat form */}
+        {/* Before the chat (always on) */}
         <div data-tour="widget-prechat" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-body-lg font-medium text-on-surface">Pre-chat form</p>
-              <p className="text-label text-on-surface-variant">Collect visitor name &amp; phone before chat starts</p>
-            </div>
-            <Toggle label="Pre-chat form" enabled={form.preChatFormEnabled} onChange={() => setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled }))} />
-          </div>
+          <p className="text-body-lg font-medium text-on-surface">Before the chat</p>
+          <p className="text-label text-on-surface-variant">{preChatNote}</p>
         </div>
 
         {/* AI Assistant */}

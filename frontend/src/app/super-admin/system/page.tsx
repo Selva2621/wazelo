@@ -42,6 +42,7 @@ import {
 } from "@/hooks/use-observability";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -838,9 +839,8 @@ function AlertRuleFormBody({
           <label htmlFor={fid("condition")} className={labelClass}>
             Condition
           </label>
-          <select
+          <Select
             id={fid("condition")}
-            className={inputClass}
             value={form.condition}
             onChange={(e) => set("condition", e.target.value as AlertCondition)}
           >
@@ -849,7 +849,7 @@ function AlertRuleFormBody({
                 {c.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor={fid("threshold")} className={labelClass}>

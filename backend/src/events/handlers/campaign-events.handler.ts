@@ -19,6 +19,7 @@ import {
   CampaignCancelledEvent,
 } from '@/events/event-bus';
 import { CampaignRecipientStatus, CampaignStatus } from '@prisma/client';
+import type { EmailOutcomeEvent } from '@/modules/email/application/services/org-email.service';
 
 @Injectable()
 export class CampaignEventsHandler {
@@ -30,6 +31,37 @@ export class CampaignEventsHandler {
     private readonly eventEmitter: EventEmitter2,
     private readonly wsGateway: AppWebSocketGateway,
   ) {}
+
+  // ─── Email campaigns: the email's result updates its recipient ───
+
+  @OnEvent(EVENT_NAMES.EMAIL_SENT)
+  async handleEmailSent(payload: EmailOutcomeEvent): Promise<void> {
+    if (payload.source !== 'CAMPAIGN') return;
+    const recipient = await this.recipientRepo.findByEmailMessageId(payload.emailMessageId);
+    if (!recipient) return;
+    await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.SENT, { processedAt: new Date() });
+    await this.campaignRepo.incrementCounter(recipient.campaignId, 'sentCount', 1);
+    await this.emitProgressAndCheckCompletion(recipient.campaignId);
+  }
+
+  @OnEvent(EVENT_NAMES.EMAIL_FAILED)
+  async handleEmailFailed(payload: EmailOutcomeEvent): Promise<void> {
+    if (payload.source !== 'CAMPAIGN') return;
+    const recipient = await this.recipientRepo.findByEmailMessageId(payload.emailMessageId);
+    if (!recipient) return;
+    await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.FAILED, {
+      failedReason: payload.error ?? 'Email failed',
+      processedAt: new Date(),
+    });
+    await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
+    await this.emitProgressAndCheckCompletion(recipient.campaignId);
+  }
+
+  /** A batch handed out all its recipients (some may have been skipped, which sends no event) */
+  @OnEvent(EVENT_NAMES.CAMPAIGN_BATCH_SETTLED)
+  async handleBatchSettled(payload: { campaignId: string }): Promise<void> {
+    await this.emitProgressAndCheckCompletion(payload.campaignId);
+  }
 
   // ─── Message lifecycle → Campaign progress tracking ───
 

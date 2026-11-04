@@ -40,7 +40,13 @@ export async function updateSequence(
 export async function updateSequenceStep(
   id: string,
   stepId: string,
-  req: { name?: string; messageBody?: string; delayMinutes?: number },
+  req: {
+    name?: string;
+    messageBody?: string;
+    delayMinutes?: number;
+    channel?: "WHATSAPP" | "EMAIL";
+    emailSubject?: string;
+  },
 ): Promise<CampaignSequence> {
   const { data } = await apiClient.patch(`/sequences/${id}/steps/${stepId}`, req);
   return data;
@@ -48,7 +54,15 @@ export async function updateSequenceStep(
 
 export async function addSequenceStep(
   id: string,
-  req: { stepOrder: number; name?: string; messageType: string; messageBody: string; delayMinutes: number },
+  req: {
+    stepOrder: number;
+    name?: string;
+    messageType: string;
+    messageBody: string;
+    delayMinutes: number;
+    channel?: "WHATSAPP" | "EMAIL";
+    emailSubject?: string;
+  },
 ): Promise<CampaignSequence> {
   const { data } = await apiClient.post(`/sequences/${id}/steps`, req);
   return data;

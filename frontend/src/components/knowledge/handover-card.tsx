@@ -4,9 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useBotBehavior, useSaveBotBehavior } from "@/hooks/use-chatbot";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 import type { BotBehaviorInput } from "@/lib/api/chatbot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +44,9 @@ export function HandoverCard({ className }: { className?: string }) {
   const { data: saved, isLoading } = useBotBehavior();
   const save = useSaveBotBehavior();
   const [edits, setEdits] = useState<BotBehaviorInput>({});
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
 
   if (isLoading || !saved) {
     return <section aria-label="Handover and hours" className={cn("h-40 animate-pulse p-5", className)} />;
@@ -62,7 +68,9 @@ export function HandoverCard({ className }: { className?: string }) {
           Handover &amp; hours
         </h2>
         <p className={hint}>
-          The bot hands a chat to your team when the customer asks for a person, or after 2 questions it can&apos;t answer.
+          {isFreelancer
+            ? "The bot hands a chat to you when the client asks for a person, or after 2 questions it can't answer."
+            : "The bot hands a chat to your team when the customer asks for a person, or after 2 questions it can't answer."}
         </p>
       </div>
 
@@ -80,20 +88,85 @@ export function HandoverCard({ className }: { className?: string }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-body text-on-surface">
-        <label htmlFor="pause-hours">After your team replies, the bot stays quiet in that chat for</label>
-        <select
+        <label htmlFor="pause-hours">After {isFreelancer ? "you reply" : "your team replies"}, the bot stays quiet in that chat for</label>
+        <Select
           id="pause-hours"
           value={v.pauseHours}
           onChange={(e) => set({ pauseHours: Number(e.target.value) })}
-          className="rounded-lg border border-outline-variant bg-surface px-2 py-1 text-body outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          size="sm"
+          className="w-auto"
         >
           {[...new Set([...PAUSE_OPTIONS, saved.pauseHours])].sort((a, b) => a - b).map((h) => (
             <option key={h} value={h}>
               {h} hours
             </option>
           ))}
-        </select>
+        </Select>
       </div>
+
+      {/* Website chat: who gets a visitor who asks for a person */}
+      <fieldset className="space-y-3 border-t border-outline-variant pt-4" data-tour="handover-website">
+        <legend className={label}>Website chat: who takes it</legend>
+        <div className="space-y-2" role="radiogroup" aria-label="Who takes a website chat">
+          {(
+            [
+              { value: "MANUAL", title: "Everyone online is alerted", detail: "The first person to accept takes the chat." },
+              { value: "AUTO", title: "Auto-assign", detail: "Offered to one person at a time (fewest chats first). If they don't accept in time, the next one is asked." },
+            ] as const
+          ).map((o) => (
+            <label key={o.value} className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-outline-variant p-3 has-[:checked]:border-primary">
+              <input
+                type="radio"
+                name="handoff-mode"
+                value={o.value}
+                checked={v.handoffMode === o.value}
+                onChange={() => set({ handoffMode: o.value })}
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span>
+                <span className="block text-body text-on-surface">{o.title}</span>
+                <span className={hint}>{o.detail}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {v.handoffMode === "AUTO" && (
+          <div className="flex flex-wrap items-center gap-2 text-body text-on-surface">
+            <label htmlFor="accept-timeout">Each person has</label>
+            <Select
+              id="accept-timeout"
+              value={v.acceptTimeoutSec}
+              onChange={(e) => set({ acceptTimeoutSec: Number(e.target.value) })}
+              size="sm"
+              className="w-auto"
+            >
+              {[...new Set([60, 120, 180, 300, saved.acceptTimeoutSec])].sort((a, b) => a - b).map((s) => (
+                <option key={s} value={s}>
+                  {s % 60 === 0 ? `${s / 60} min` : `${s} seconds`}
+                </option>
+              ))}
+            </Select>
+            <span>to accept.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 text-body text-on-surface">
+          <label htmlFor="wait-timeout">If nobody takes it within</label>
+          <Select
+            id="wait-timeout"
+            value={v.waitTimeoutMin}
+            onChange={(e) => set({ waitTimeoutMin: Number(e.target.value) })}
+            size="sm"
+            className="w-auto"
+          >
+            {[...new Set([2, 5, 10, 15, saved.waitTimeoutMin])].sort((a, b) => a - b).map((m) => (
+              <option key={m} value={m}>
+                {m} min
+              </option>
+            ))}
+          </Select>
+          <span>we offer to contact the visitor on WhatsApp instead.</span>
+        </div>
+      </fieldset>
 
       <div className="space-y-3 border-t border-outline-variant pt-4">
         <div className="flex items-center justify-between gap-3">

@@ -152,6 +152,15 @@ apiClient.interceptors.response.use(
         if (axios.isAxiosError(refreshError) && refreshError.response?.status === 429) {
           return Promise.reject(new ApiError(429, "Too many requests. Please try again shortly."));
         }
+        // Server down, database unreachable, network lost, laptop waking from sleep: says
+        // nothing about the session. Only 401/403 from refresh ends it (same rule as the
+        // startup check in the protected layout).
+        const refreshStatus = axios.isAxiosError(refreshError) ? refreshError.response?.status : undefined;
+        if (refreshStatus !== 401 && refreshStatus !== 403) {
+          return Promise.reject(
+            new ApiError(refreshStatus ?? 0, "Can't reach Wazelo right now. Check your connection and try again."),
+          );
+        }
         const { useAuthStore } = require("@/stores/auth-store");
         useAuthStore.getState().clearAuth();
         return Promise.reject(

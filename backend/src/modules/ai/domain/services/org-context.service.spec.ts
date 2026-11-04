@@ -1,10 +1,60 @@
-import { OrgContextService } from './org-context.service';
+import { hasBusinessProfile, OrgContextService } from './org-context.service';
 
-function setup(memory: Record<string, unknown> | null, hits: unknown[] = []) {
-  const prisma = { orgAiMemory: { findUnique: jest.fn(async () => memory) } };
+type Org = { orgType: string; freelancerTypes: string[]; freelancerService: string | null };
+const TEAM_ORG: Org = { orgType: 'TEAM', freelancerTypes: [], freelancerService: null };
+
+function setup(
+  memory: Record<string, unknown> | null,
+  hits: unknown[] = [],
+  org: Org | null = TEAM_ORG,
+  saved: Array<{ key: string; serviceLabel: string }> = [],
+) {
+  const prisma = {
+    orgAiMemory: { findUnique: jest.fn(async () => memory) },
+    organization: { findUnique: jest.fn(async () => org) },
+    freelancerServiceProfile: { findMany: jest.fn(async () => saved) },
+  };
   const chunks = { search: jest.fn(async () => hits) };
-  return { service: new OrgContextService(prisma as never, chunks as never), chunks };
+  return { service: new OrgContextService(prisma as never, chunks as never), chunks, prisma };
 }
+
+describe('OrgContextService voice', () => {
+  it('tells the AI to write as "we" for a team (and for legacy CRM orgs)', async () => {
+    for (const orgType of ['TEAM', 'CRM', 'DEVELOPER']) {
+      const ctx = await setup({ businessName: 'Selva Studio' }, [], { ...TEAM_ORG, orgType }).service.getContext('o1');
+      expect(ctx).toContain('Voice: This is a business with a team. Write as "we" / "our team" to customers.');
+    }
+  });
+
+  it('tells the AI to write as "I" for a freelancer, with their service in words', async () => {
+    const { service } = setup({ businessName: 'Asha' }, [], {
+      orgType: 'FREELANCER',
+      freelancerTypes: ['INTERIOR_DESIGNER', 'CAKES', 'OTHER'],
+      freelancerService: 'home staging',
+    }, [{ key: 'CAKES', serviceLabel: 'custom cakes' }]);
+    const ctx = await service.getContext('o1', { forCustomers: true });
+    expect(ctx).toContain(
+      'Voice: This is a solo freelancer offering interior design, custom cakes, home staging. Write in first person singular ("I"), as the freelancer, to clients. Never say "we" or "our team".',
+    );
+  });
+
+  it('still gives the voice when no AI memory is built yet, without counting as a business profile', async () => {
+    const ctx = await setup(null, [], { orgType: 'FREELANCER', freelancerTypes: [], freelancerService: null }).service.getContext('o1');
+    expect(ctx).toContain('This is a solo freelancer. Write in first person singular');
+    expect(hasBusinessProfile(ctx)).toBe(false);
+    expect(hasBusinessProfile(await setup({ businessName: 'X' }).service.getContext('o1'))).toBe(true);
+  });
+
+  it('drops the cached voice when org settings change', async () => {
+    const { service, prisma } = setup({ businessName: 'Selva Studio' });
+    await service.getContext('o1');
+    await service.getVoice('o1');
+    expect(prisma.organization.findUnique).toHaveBeenCalledTimes(1);
+    prisma.organization.findUnique.mockResolvedValue({ orgType: 'FREELANCER', freelancerTypes: [], freelancerService: null });
+    service.onOrgSettingsUpdated({ orgId: 'o1' });
+    expect(await service.getContext('o1')).toContain('solo freelancer');
+  });
+});
 
 describe('OrgContextService', () => {
   it('includes the document uploaded in Settings → AI Memory (it used to be left out)', async () => {

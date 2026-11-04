@@ -5,6 +5,7 @@ import { X, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateProductCategory, useUpdateProductCategory, useProductCategories } from "@/hooks/use-products";
 import type { ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
@@ -197,17 +198,17 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
                 Parent Category{" "}
                 <span className="font-normal text-on-surface-variant/50">(optional)</span>
               </Label>
-              <select
+              <Select
                 id="cf-parent"
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
-                className={`mt-1 ${inputCls}`}
+                className="mt-1"
               >
                 <option value="">None (top-level)</option>
                 {parentOptions.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <Label htmlFor="cf-sort">

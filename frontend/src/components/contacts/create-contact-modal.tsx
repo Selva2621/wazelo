@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Tag, Package, ChevronDown, ArrowRight } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   useCreateContact,
   useOrgMembers,
@@ -145,11 +146,15 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
     register,
     handleSubmit,
     reset,
+    control,
+    setValue,
     formState: { errors },
   } = useForm<CreateContactFormData>({
     resolver: zodResolver(createContactSchema),
     defaultValues: { source: "MANUAL" },
   });
+  const source = useWatch({ control, name: "source" });
+  const ownerId = useWatch({ control, name: "ownerId" });
 
   function toggleTag(id: string) {
     setSelectedTagIds((prev) =>
@@ -215,18 +220,18 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
           <div>
             <Label htmlFor="phoneNumber">Phone Number *</Label>
             <div className="flex items-start gap-2">
-              <select
+              <Select
                 aria-label="Country code"
                 value={country}
                 onChange={(e) => setPickedCountry(e.target.value)}
-                className="h-10 w-28 shrink-0 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-2 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-28 shrink-0"
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code} title={c.name}>
                     {countryFlag(c.code)} +{c.dialCode}
                   </option>
                 ))}
-              </select>
+              </Select>
               <div className="flex-1 min-w-0">
                 <Input
                   id="phoneNumber"
@@ -264,24 +269,24 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
 
           <div>
             <Label htmlFor="source">Source</Label>
-            <select
+            <Select
               id="source"
-              {...register("source")}
-              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body-lg text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+              value={source ?? ""}
+              onValueChange={(v) => setValue("source", v as CreateContactFormData["source"], { shouldValidate: true, shouldDirty: true })}
             >
               <option value="MANUAL">Manual</option>
               <option value="WHATSAPP">WhatsApp</option>
               <option value="IMPORT">Import</option>
               <option value="API">API</option>
-            </select>
+            </Select>
           </div>
 
           <div>
             <Label htmlFor="ownerId">Assign To</Label>
-            <select
+            <Select
               id="ownerId"
-              {...register("ownerId")}
-              className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body-lg text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40"
+              value={ownerId ?? ""}
+              onValueChange={(v) => setValue("ownerId", v || undefined, { shouldValidate: true, shouldDirty: true })}
             >
               <option value="">Me (default)</option>
               {(members ?? []).map((m) => (
@@ -289,7 +294,7 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
                   {m.firstName} {m.lastName}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <MultiSelect

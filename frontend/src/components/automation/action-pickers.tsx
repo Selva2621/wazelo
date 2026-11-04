@@ -1,12 +1,12 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import { Select, type SelectProps as UiSelectProps } from "@/components/ui/select";
 import { useOrgMembers } from "@/hooks/use-contacts";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
 import { usePipelines } from "@/hooks/use-deals";
 import { useSequences } from "@/hooks/use-sequences";
 
-type SelectProps = Omit<ComponentProps<"select">, "children">;
+type SelectProps = Omit<UiSelectProps, "children">;
 
 /** Picks a connected WhatsApp number; empty value means the contact's own session. */
 export function SessionSelect(props: SelectProps) {
@@ -14,7 +14,7 @@ export function SessionSelect(props: SelectProps) {
   const sessions = data?.sessions ?? [];
 
   return (
-    <select {...props}>
+    <Select {...props}>
       <option value="">Automatic (the number the contact last chatted with)</option>
       {sessions.map((s) => {
         const owner = (s as { user?: { firstName?: string } }).user?.firstName;
@@ -24,7 +24,7 @@ export function SessionSelect(props: SelectProps) {
           </option>
         );
       })}
-    </select>
+    </Select>
   );
 }
 
@@ -34,7 +34,7 @@ export function StageSelect(props: SelectProps) {
   const list = pipelines ?? [];
 
   return (
-    <select {...props}>
+    <Select {...props}>
       <option value="">Any stage</option>
       {list.map((p) =>
         list.length === 1 ? (
@@ -45,7 +45,7 @@ export function StageSelect(props: SelectProps) {
           </optgroup>
         ),
       )}
-    </select>
+    </Select>
   );
 }
 
@@ -58,7 +58,7 @@ export function SequenceSelect({ anyLabel, ...props }: SelectProps & { anyLabel?
   const running = (data?.data ?? []).filter((s) => s.status === "ACTIVE" || s.status === "PAUSED");
 
   return (
-    <select {...props}>
+    <Select {...props}>
       <option value="">
         {anyLabel ?? (running.length ? "Choose a sequence" : "No running sequences — start one first")}
       </option>
@@ -67,7 +67,7 @@ export function SequenceSelect({ anyLabel, ...props }: SelectProps & { anyLabel?
           {s.name}{s.status === "PAUSED" ? " (paused)" : ""}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -76,13 +76,13 @@ export function MemberSelect(props: SelectProps) {
   const { data: members } = useOrgMembers();
 
   return (
-    <select {...props}>
+    <Select {...props}>
       <option value="">Choose a team member</option>
       {(members ?? []).map((m) => (
         <option key={m.id} value={m.id}>
           {`${m.firstName} ${m.lastName}`.trim() || m.email}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

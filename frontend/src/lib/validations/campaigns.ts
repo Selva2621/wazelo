@@ -20,30 +20,41 @@ export const createCampaignSchema = z
       .min(1, "Campaign name is required")
       .max(255, "Name must be 255 characters or less"),
     description: z.string().max(2000).optional().or(z.literal("")),
+    channel: z.enum(["WHATSAPP", "EMAIL"]),
+    emailSubject: z.string().max(255, "Subject must be 255 characters or less").optional().or(z.literal("")),
     messageType: z.enum(["TEXT", "IMAGE", "VIDEO", "DOCUMENT", "AUDIO"]),
-    messageBody: z.string().max(4096).optional().or(z.literal("")),
+    messageBody: z.string().max(20000, "Message must be 20,000 characters or less").optional().or(z.literal("")),
     mediaUrl: z.string().url("Enter a valid URL").max(2048).optional().or(z.literal("")),
     mediaMimeType: z.string().max(100).optional().or(z.literal("")),
     audienceType: z.enum(["ALL", "FILTERED"]),
     audienceFilters: audienceFiltersSchema.optional(),
-    sessionId: z.string().uuid("Select a WhatsApp session"),
+    sessionId: z.string().optional().or(z.literal("")),
     scheduledAt: z.string().optional().or(z.literal("")),
     timezone: z.string().max(100).optional(),
   })
-  .refine(
-    (data) => {
-      if (data.messageType === "TEXT") return !!data.messageBody;
-      return true;
-    },
-    { message: "Message body is required for text messages", path: ["messageBody"] },
-  )
-  .refine(
-    (data) => {
-      if (data.messageType !== "TEXT") return !!data.mediaUrl;
-      return true;
-    },
-    { message: "Upload a file or paste a URL", path: ["mediaUrl"] },
-  );
+  .superRefine((data, ctx) => {
+    if (data.channel === "EMAIL") {
+      if (!data.emailSubject?.trim()) {
+        ctx.addIssue({ code: "custom", message: "Add a subject", path: ["emailSubject"] });
+      }
+      if (!data.messageBody?.trim()) {
+        ctx.addIssue({ code: "custom", message: "Write the email", path: ["messageBody"] });
+      }
+      return;
+    }
+    if (!data.sessionId || !z.string().uuid().safeParse(data.sessionId).success) {
+      ctx.addIssue({ code: "custom", message: "Select a WhatsApp session", path: ["sessionId"] });
+    }
+    if ((data.messageBody?.length ?? 0) > 4096) {
+      ctx.addIssue({ code: "custom", message: "Message must be 4,096 characters or less", path: ["messageBody"] });
+    }
+    if (data.messageType === "TEXT" && !data.messageBody) {
+      ctx.addIssue({ code: "custom", message: "Message body is required for text messages", path: ["messageBody"] });
+    }
+    if (data.messageType !== "TEXT" && !data.mediaUrl) {
+      ctx.addIssue({ code: "custom", message: "Upload a file or paste a URL", path: ["mediaUrl"] });
+    }
+  });
 
 export const updateCampaignSchema = z.object({
   name: z.string().min(1).max(255).optional(),

@@ -8,6 +8,7 @@ import { CampaignRepository } from '../../infrastructure/repositories/campaign.r
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { EmailRepository } from '@/modules/email/infrastructure/repositories/email.repository';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import { AuditAction, CampaignStatus } from '@prisma/client';
@@ -33,6 +34,7 @@ export class CreateCampaignUseCase {
     private readonly queueService: QueueService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly emailRepo: EmailRepository,
   ) {}
 
   async execute(
@@ -50,30 +52,47 @@ export class CreateCampaignUseCase {
       }
     }
 
-    // 2. Validate session exists and belongs to org
-    const session = await this.sessionRepo.findByIdAndOrg(dto.sessionId, orgId);
-    if (!session) {
-      throw new BadRequestException('WhatsApp session not found');
-    }
-    if (session.status !== 'CONNECTED') {
-      throw new BadRequestException(
-        'WhatsApp session is not connected. Connect via QR first.',
-      );
-    }
+    const isEmail = dto.channel === 'EMAIL';
+    if (isEmail) {
+      // 2. Email: sent from the workspace's own mailbox, which must be connected
+      const account = await this.emailRepo.account(orgId);
+      if (!account) throw new BadRequestException('Connect your business email in Settings → Email first');
+      if (account.status !== 'ACTIVE') throw new BadRequestException('Your email account needs to be reconnected in Settings → Email');
+      if (!dto.emailSubject?.trim()) throw new BadRequestException('Email campaigns need a subject');
+      if (!dto.messageBody?.trim()) throw new BadRequestException('Email campaigns need a message');
+      assertNoUnknownPlaceholders(`${dto.emailSubject} ${dto.messageBody}`);
+    } else {
+      // 2. Validate session exists and belongs to org
+      if (!dto.sessionId) throw new BadRequestException('Choose the WhatsApp number to send from');
+      const session = await this.sessionRepo.findByIdAndOrg(dto.sessionId, orgId);
+      if (!session) {
+        throw new BadRequestException('WhatsApp session not found');
+      }
+      if (session.status !== 'CONNECTED') {
+        throw new BadRequestException(
+          'WhatsApp session is not connected. Connect via QR first.',
+        );
+      }
 
-    // 3. Validate message content
-    if (dto.messageType === 'TEXT' && !dto.messageBody) {
-      throw new BadRequestException('Text campaigns require a messageBody');
+      // 3. Validate message content
+      if (dto.messageType === 'TEXT' && !dto.messageBody) {
+        throw new BadRequestException('Text campaigns require a messageBody');
+      }
+      if ((dto.messageBody?.length ?? 0) > 4096) {
+        throw new BadRequestException('WhatsApp messages can be at most 4096 characters');
+      }
+      if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(dto.messageType) && !dto.mediaUrl) {
+        throw new BadRequestException(`${dto.messageType} campaigns require a mediaUrl`);
+      }
+      assertNoUnknownPlaceholders(dto.messageBody);
     }
-    if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(dto.messageType) && !dto.mediaUrl) {
-      throw new BadRequestException(`${dto.messageType} campaigns require a mediaUrl`);
-    }
-    assertNoUnknownPlaceholders(dto.messageBody);
 
     // 4. Create campaign as DRAFT
     const campaign = await this.campaignRepo.create({
       orgId,
-      sessionId: dto.sessionId,
+      channel: isEmail ? 'EMAIL' : 'WHATSAPP',
+      sessionId: isEmail ? null : dto.sessionId,
+      emailSubject: isEmail ? dto.emailSubject!.trim() : null,
       name: dto.name,
       description: dto.description,
       messageType: dto.messageType,
