@@ -42,6 +42,20 @@ const columns: DataTableColumn<CampaignRecipient>[] = [
     cell: (r) => r.contactPhone,
   },
   {
+    id: "batch",
+    header: "Batch",
+    className: "w-[75px]",
+    cellClassName: "text-label text-on-surface-variant tabular-nums",
+    cell: (r) => r.batchNumber,
+  },
+  {
+    id: "session",
+    header: "WhatsApp sender",
+    className: "w-[150px]",
+    cellClassName: "text-label text-on-surface-variant",
+    cell: (r) => r.session?.phoneNumber || "—",
+  },
+  {
     id: "status",
     header: "Status",
     className: "w-[90px]",
@@ -50,6 +64,20 @@ const columns: DataTableColumn<CampaignRecipient>[] = [
       const cfg = RECIPIENT_STATUS_CONFIG[r.status];
       return <Badge dot variant={cfg.variant}>{cfg.label}</Badge>;
     },
+  },
+  {
+    id: "failureReason",
+    header: "Failure reason",
+    className: "w-[220px]",
+    cellClassName: "text-caption text-error",
+    cell: (r) =>
+      r.status === "FAILED" ? (
+        <span className="block truncate" title={r.failedReason ?? "No failure details recorded"}>
+          {r.failedReason || "No failure details recorded"}
+        </span>
+      ) : (
+        "—"
+      ),
   },
   {
     id: "processed",
@@ -105,6 +133,17 @@ export function CampaignRecipientsTable({
             <span className="text-label text-on-surface-variant/60 tabular-nums">
               {r.contactPhone}
             </span>
+            <span className="text-caption text-on-surface-variant">
+              Batch {r.batchNumber} · {r.session?.phoneNumber || "Sender unavailable"}
+            </span>
+            {r.status === "FAILED" && (
+              <span
+                className="col-span-2 line-clamp-2 text-caption text-error"
+                title={r.failedReason ?? "No failure details recorded"}
+              >
+                {r.failedReason || "No failure details recorded"}
+              </span>
+            )}
             <span className="text-caption text-on-surface-variant/60 text-right">
               {processedTime(r)}
             </span>

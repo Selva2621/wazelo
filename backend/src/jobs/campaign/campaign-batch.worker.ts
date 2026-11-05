@@ -27,10 +27,9 @@ import {
 
 interface CampaignBatchJobData {
   campaignId: string;
-  batchNumber: number;
   orgId: string;
-  /** Null for email campaigns */
-  sessionId: string | null;
+  /** Older jobs may omit the batch number; they are expanded into batch jobs. */
+  batchNumber?: number;
 }
 
 @Injectable()
@@ -62,77 +61,90 @@ export class CampaignBatchWorker implements OnModuleInit {
   }
 
   private async handle(data: CampaignBatchJobData, jobId: string): Promise<void> {
-    const { campaignId, batchNumber, orgId } = data;
+    const { campaignId, orgId, batchNumber } = data;
+    const batchLabel = batchNumber ? ` batch ${batchNumber}` : '';
 
     // 1. Load campaign, verify still RUNNING
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) {
-      this.logger.warn(`Campaign ${campaignId} not found, skipping batch ${batchNumber}`);
+      this.logger.warn(`Campaign ${campaignId} not found, skipping${batchLabel}`);
       return;
     }
 
     if (campaign.status !== CampaignStatus.RUNNING) {
       this.logger.log(
-        `Campaign ${campaignId} is ${campaign.status}, skipping batch ${batchNumber}`,
+        `Campaign ${campaignId} is ${campaign.status}, skipping${batchLabel}`,
       );
       return;
     }
-
-    // The campaign's current number — a delayed batch job may predate a move to
-    // a new number (the old one was logged out or banned)
-    const sessionId = campaign.sessionId;
 
     // Platform kill switch: pause the campaign; this batch's recipients stay
     // PENDING and are re-dispatched when the campaign is resumed.
     if (await this.killSwitches.isDisabled('campaigns')) {
       await pauseCampaignForKillSwitch(this.campaignRepo, campaignId, orgId, this.eventEmitter);
       this.logger.warn(
-        `Campaigns switched off platform-wide — paused campaign ${campaignId}, batch ${batchNumber} left pending`,
+        `Campaigns switched off platform-wide — paused campaign ${campaignId}${batchLabel} left pending`,
       );
       return;
     }
 
-    // 2. Load PENDING recipients for this batch
-    const recipients = await this.recipientRepo.findPendingByBatch(campaignId, batchNumber);
-    if (recipients.length === 0) {
-      this.logger.log(`Campaign ${campaignId} batch ${batchNumber}: no pending recipients`);
+    // Older campaign jobs didn't identify a batch; fan them out to the pending
+    // batches instead of accidentally running a campaign-wide recipient pump.
+    if (batchNumber === undefined) {
+      await this.dispatchPendingBatches(campaignId, orgId);
       return;
     }
 
-    this.logger.log(
-      `Campaign ${campaignId} batch ${batchNumber}: processing ${recipients.length} recipients`,
-    );
-
-    // 3. Process each recipient
+    // Claim one recipient at a time within this batch. Other batches can send
+    // concurrently using their independently assigned WhatsApp sessions.
     const isEmail = campaign.channel === 'EMAIL';
-    if (!isEmail && !sessionId) {
-      this.logger.error(`Campaign ${campaignId} has no WhatsApp number; batch ${batchNumber} skipped`);
-      return;
-    }
-    for (const recipient of recipients) {
+    while (true) {
+      if (await this.killSwitches.isDisabled('campaigns')) {
+        await pauseCampaignForKillSwitch(this.campaignRepo, campaignId, orgId, this.eventEmitter);
+        return;
+      }
+
+      const recipient = await this.recipientRepo.claimNextPending(campaignId, batchNumber);
+      if (!recipient) {
+        if (!(await this.recipientRepo.hasQueuedRecipients(campaignId, batchNumber))) {
+          this.eventEmitter.emit(EVENT_NAMES.CAMPAIGN_BATCH_SETTLED, { campaignId, orgId, batchNumber });
+        }
+        return;
+      }
+
+      let waitingForOutcome = false;
       try {
-        if (isEmail) await this.processEmailRecipient(recipient, campaign, orgId);
-        else await this.processRecipient(recipient, campaign, sessionId!, orgId);
+        const sessionId = recipient.sessionId ?? campaign.sessionId;
+        if (!isEmail && !sessionId) {
+          throw new Error(`No WhatsApp session is assigned to batch ${batchNumber}`);
+        }
+        waitingForOutcome = isEmail
+          ? await this.processEmailRecipient(recipient, campaign, orgId)
+          : await this.processRecipient(recipient, campaign, sessionId!, orgId);
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         this.logger.error(
           `Campaign ${campaignId} recipient ${recipient.id} failed: ${reason}`,
         );
 
-        await this.recipientRepo.updateStatus(
-          recipient.id,
-          CampaignRecipientStatus.FAILED,
-          {
-            failedReason: reason,
-            processedAt: new Date(),
-          },
-        );
-
-        await this.campaignRepo.incrementCounter(campaignId, 'failedCount', 1);
+        if (await this.recipientRepo.markFailedIfActive(recipient.id, reason)) {
+          await this.campaignRepo.incrementCounter(campaignId, 'failedCount', 1);
+        }
       }
+
+      if (waitingForOutcome) return;
     }
-    // Skipped recipients send no status event: the campaign checks whether it's done now
-    this.eventEmitter.emit(EVENT_NAMES.CAMPAIGN_BATCH_SETTLED, { campaignId, orgId, batchNumber });
+  }
+
+  private async dispatchPendingBatches(campaignId: string, orgId: string): Promise<void> {
+    const batchNumbers = await this.recipientRepo.getPendingBatchNumbers(campaignId);
+    await Promise.all(batchNumbers.map((batchNumber) =>
+      this.queueService.publishOnce(
+        QUEUE_NAMES.CAMPAIGN_BATCH,
+        { campaignId, orgId, batchNumber },
+        `campaign-batch-${campaignId}-${batchNumber}`,
+      ),
+    ));
   }
 
   /**
@@ -140,7 +152,7 @@ export class CampaignBatchWorker implements OnModuleInit {
    * email or who unsubscribed is SKIPPED with the reason; otherwise the recipient is
    * QUEUED and the email's result (sent / failed) updates it later.
    */
-  private async processEmailRecipient(recipient: Record<string, any>, campaign: Record<string, any>, orgId: string): Promise<void> {
+  private async processEmailRecipient(recipient: Record<string, any>, campaign: Record<string, any>, orgId: string): Promise<boolean> {
     const result = await this.orgEmail.queue({
       orgId,
       contactId: recipient.contactId,
@@ -156,13 +168,24 @@ export class CampaignBatchWorker implements OnModuleInit {
         failedReason: result.reason,
         processedAt: new Date(),
       });
-      return;
+      return false;
+    }
+    if (result.status === 'FAILED') {
+      if (await this.recipientRepo.markFailedIfActive(recipient.id, result.reason ?? 'Email failed')) {
+        await this.campaignRepo.incrementCounter(campaign.id, 'failedCount', 1);
+      }
+      return false;
     }
     await this.recipientRepo.updateStatus(
       recipient.id,
-      result.status === 'SENT' ? CampaignRecipientStatus.SENT : result.status === 'FAILED' ? CampaignRecipientStatus.FAILED : CampaignRecipientStatus.QUEUED,
+      result.status === 'SENT' ? CampaignRecipientStatus.SENT : CampaignRecipientStatus.QUEUED,
       { emailMessageId: result.emailMessageId, ...(result.reason ? { failedReason: result.reason } : {}) },
     );
+    if (result.status === 'SENT') {
+      await this.campaignRepo.incrementCounter(campaign.id, 'sentCount', 1);
+      return false;
+    }
+    return true;
   }
 
   private async processRecipient(
@@ -170,7 +193,7 @@ export class CampaignBatchWorker implements OnModuleInit {
     campaign: Record<string, any>,
     sessionId: string,
     orgId: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     // Re-check contact validity (not deleted, not opted out)
     const contact = await this.prisma.contact.findFirst({
       where: {
@@ -190,7 +213,7 @@ export class CampaignBatchWorker implements OnModuleInit {
           processedAt: new Date(),
         },
       );
-      return;
+      return false;
     }
 
     if (contact.optedOut) {
@@ -202,7 +225,7 @@ export class CampaignBatchWorker implements OnModuleInit {
           processedAt: new Date(),
         },
       );
-      return;
+      return false;
     }
 
     // Find or create conversation
@@ -210,6 +233,7 @@ export class CampaignBatchWorker implements OnModuleInit {
       orgId,
       sessionId,
       contactPhone: recipient.contactPhone,
+      contactId: recipient.contactId,
     });
 
     // Create message with campaign-scoped idempotency key
@@ -218,13 +242,33 @@ export class CampaignBatchWorker implements OnModuleInit {
     // Check idempotency — message may already exist from a previous attempt
     const existingMessage = await this.messageRepo.findByIdempotencyKey(idempotencyKey);
     if (existingMessage) {
-      // Link and mark as queued (already in pipeline)
-      await this.recipientRepo.updateStatus(
-        recipient.id,
-        CampaignRecipientStatus.QUEUED,
-        { messageId: existingMessage.id },
-      );
-      return;
+      if (
+        existingMessage.status === MessageStatus.SENT ||
+        existingMessage.status === MessageStatus.DELIVERED ||
+        existingMessage.status === MessageStatus.READ
+      ) {
+        await this.recipientRepo.updateStatus(
+          recipient.id,
+          existingMessage.status === MessageStatus.SENT
+            ? CampaignRecipientStatus.SENT
+            : CampaignRecipientStatus.DELIVERED,
+          { messageId: existingMessage.id, processedAt: new Date() },
+        );
+        return false;
+      }
+
+      if (existingMessage.status === MessageStatus.FAILED) {
+        const reason = existingMessage.failedReason ?? 'Message previously failed';
+        if (await this.recipientRepo.markFailedIfActive(recipient.id, reason)) {
+          await this.campaignRepo.incrementCounter(campaign.id, 'failedCount', 1);
+        }
+        return false;
+      }
+
+      await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.QUEUED, {
+        messageId: existingMessage.id,
+      });
+      return true;
     }
 
     // Fill contact details, the same way as sequences and automations (no saved name → "there")
@@ -285,5 +329,6 @@ export class CampaignBatchWorker implements OnModuleInit {
       resolvedBody,
       false,
     );
+    return true;
   }
 }

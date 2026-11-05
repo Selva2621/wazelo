@@ -256,6 +256,13 @@ export default function CampaignDetailPage() {
             repliedCount={campaign.repliedCount}
           />
         </div>
+        {campaign.status === "COMPLETED" && campaign.failedCount > 0 && (
+          <p className="rounded-xl border border-error/20 bg-error/5 px-4 py-3 text-body text-on-surface-variant">
+            Campaign processing is complete, but {campaign.failedCount} recipient
+            {campaign.failedCount === 1 ? "" : "s"} failed. Check each failed
+            recipient below for the reason.
+          </p>
+        )}
 
         {/* Two-column layout */}
         <div className="grid grid-cols-[1fr_1.5fr] gap-6 max-lg:grid-cols-1 max-lg:gap-4">

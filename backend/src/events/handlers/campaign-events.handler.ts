@@ -4,7 +4,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
 import { CampaignRecipientRepository } from '@/modules/campaigns/infrastructure/repositories/campaign-recipient.repository';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
-import { EVENT_NAMES } from '@/common/constants';
+import { QueueService } from '@/infrastructure/queue/queue.service';
+import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import {
   WhatsAppMessageSentEvent,
   WhatsAppMessageFailedEvent,
@@ -30,6 +31,7 @@ export class CampaignEventsHandler {
     private readonly recipientRepo: CampaignRecipientRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly wsGateway: AppWebSocketGateway,
+    private readonly queueService: QueueService,
   ) {}
 
   // ─── Email campaigns: the email's result updates its recipient ───
@@ -39,9 +41,16 @@ export class CampaignEventsHandler {
     if (payload.source !== 'CAMPAIGN') return;
     const recipient = await this.recipientRepo.findByEmailMessageId(payload.emailMessageId);
     if (!recipient) return;
-    await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.SENT, { processedAt: new Date() });
+    const updated = await this.recipientRepo.updateStatusIfCurrent(
+      recipient.id,
+      CampaignRecipientStatus.QUEUED,
+      CampaignRecipientStatus.SENT,
+      { processedAt: new Date() },
+    );
+    if (!updated) return;
     await this.campaignRepo.incrementCounter(recipient.campaignId, 'sentCount', 1);
     await this.emitProgressAndCheckCompletion(recipient.campaignId);
+    await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
   }
 
   @OnEvent(EVENT_NAMES.EMAIL_FAILED)
@@ -49,12 +58,14 @@ export class CampaignEventsHandler {
     if (payload.source !== 'CAMPAIGN') return;
     const recipient = await this.recipientRepo.findByEmailMessageId(payload.emailMessageId);
     if (!recipient) return;
-    await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.FAILED, {
-      failedReason: payload.error ?? 'Email failed',
-      processedAt: new Date(),
-    });
+    const failed = await this.recipientRepo.markFailedIfActive(
+      recipient.id,
+      payload.error ?? 'Email failed',
+    );
+    if (!failed) return;
     await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
     await this.emitProgressAndCheckCompletion(recipient.campaignId);
+    await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
   }
 
   /** A batch handed out all its recipients (some may have been skipped, which sends no event) */
@@ -70,13 +81,16 @@ export class CampaignEventsHandler {
     const recipient = await this.recipientRepo.findByMessageId(payload.messageId);
     if (!recipient) return; // Not a campaign message
 
-    await this.recipientRepo.updateStatus(
+    const updated = await this.recipientRepo.updateStatusIfCurrent(
       recipient.id,
+      CampaignRecipientStatus.QUEUED,
       CampaignRecipientStatus.SENT,
       { processedAt: new Date() },
     );
+    if (!updated) return;
     await this.campaignRepo.incrementCounter(recipient.campaignId, 'sentCount', 1);
     await this.emitProgressAndCheckCompletion(recipient.campaignId);
+    await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
   }
 
   @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_DELIVERED)
@@ -84,10 +98,12 @@ export class CampaignEventsHandler {
     const recipient = await this.recipientRepo.findByMessageId(payload.messageId);
     if (!recipient) return;
 
-    await this.recipientRepo.updateStatus(
+    const updated = await this.recipientRepo.updateStatusIfCurrent(
       recipient.id,
+      CampaignRecipientStatus.SENT,
       CampaignRecipientStatus.DELIVERED,
     );
+    if (!updated) return;
     await this.campaignRepo.incrementCounter(recipient.campaignId, 'deliveredCount', 1);
     await this.emitProgressAndCheckCompletion(recipient.campaignId);
   }
@@ -111,16 +127,11 @@ export class CampaignEventsHandler {
     // Only mark as FAILED if this is a permanent failure (dead-lettered)
     // Retries are handled by SendMessageWorker without changing recipient status
     if (payload.retryCount >= 3) {
-      await this.recipientRepo.updateStatus(
-        recipient.id,
-        CampaignRecipientStatus.FAILED,
-        {
-          failedReason: payload.reason,
-          processedAt: new Date(),
-        },
-      );
+      const failed = await this.recipientRepo.markFailedIfActive(recipient.id, payload.reason);
+      if (!failed) return;
       await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
       await this.emitProgressAndCheckCompletion(recipient.campaignId);
+      await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
     }
   }
 
@@ -129,20 +140,12 @@ export class CampaignEventsHandler {
     const recipient = await this.recipientRepo.findByMessageId(payload.messageId);
     if (!recipient) return;
 
-    // Ensure recipient is marked FAILED
-    if (recipient.status !== CampaignRecipientStatus.FAILED) {
-      await this.recipientRepo.updateStatus(
-        recipient.id,
-        CampaignRecipientStatus.FAILED,
-        {
-          failedReason: payload.reason,
-          processedAt: new Date(),
-        },
-      );
-      await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
-    }
-
+    // Both failure events may arrive for the same dead-lettered message.
+    const failed = await this.recipientRepo.markFailedIfActive(recipient.id, payload.reason);
+    if (!failed) return;
+    await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
     await this.emitProgressAndCheckCompletion(recipient.campaignId);
+    await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
   }
 
   // ─── Campaign lifecycle → WebSocket broadcasts ───
@@ -238,6 +241,28 @@ export class CampaignEventsHandler {
           `Campaign ${campaignId} completed: ${campaign.sentCount} sent, ${campaign.failedCount} failed`,
         );
       }
+
     }
+  }
+
+  private async dispatchNextRecipient(
+    campaignId: string,
+    batchNumber: number,
+    completedRecipientId: string,
+  ): Promise<void> {
+    const campaign = await this.campaignRepo.findById(campaignId);
+    if (
+      !campaign ||
+      campaign.status !== CampaignStatus.RUNNING ||
+      (await this.recipientRepo.hasQueuedRecipients(campaignId, batchNumber))
+    ) {
+      return;
+    }
+
+    await this.queueService.publishOnce(
+      QUEUE_NAMES.CAMPAIGN_BATCH,
+      { campaignId, orgId: campaign.orgId, batchNumber },
+      `campaign-next-recipient-${campaignId}-${batchNumber}-${completedRecipientId}`,
+    );
   }
 }

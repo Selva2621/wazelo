@@ -236,7 +236,9 @@ export function useWhatsAppSocket() {
     );
 
     socket.on("whatsapp:session:reconnecting", () => {
-      setStatus("reconnecting");
+      // Re-read server state instead of applying an event that may arrive late,
+      // after a newer connected event has already been persisted.
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
     });
 
     socket.on("whatsapp:sending:paused", () => {

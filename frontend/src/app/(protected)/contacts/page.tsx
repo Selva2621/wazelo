@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { Plus, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const STATUS_TABS: { id: string; label: string }[] = [
 
 export default function ContactsPage() {
   usePageTitle("Contacts");
+  const router = useRouter();
 
   const [showCreate, setShowCreate] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
@@ -260,6 +262,9 @@ export default function ContactsPage() {
         <ContactsBulkBar
           selectedIds={selectedIds}
           onClear={() => setSelectedIds(new Set())}
+          onCreateCampaign={() =>
+            router.push(`/campaigns?action=new&contactIds=${encodeURIComponent([...selectedIds].join(","))}`)
+          }
         />
       )}
 

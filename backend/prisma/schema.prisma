@@ -885,6 +885,7 @@ model WhatsAppSession {
   messages     Message[]
   authKeys     WhatsAppAuthKey[]
   campaigns    Campaign[]
+  campaignRecipients CampaignRecipient[]
   sequences    CampaignSequence[]
 
   @@unique([userId, deletedAt], name: "unique_active_session_per_user")
@@ -1274,6 +1275,7 @@ model Conversation {
   channel      Channel?     @relation(fields: [channelId], references: [id])
   messages     Message[]
 
+  // The migration also adds a partial org + phone unique index for WhatsApp conversations.
   @@unique([orgId, sessionId, contactPhone], name: "unique_conversation_per_contact_session")
   @@unique([orgId, channelId, contactIdentifier], name: "unique_conversation_per_contact_channel")
   @@index([orgId])
@@ -1437,16 +1439,19 @@ model CampaignRecipient {
   /// First message from the contact after this campaign reached them (within a week)
   repliedAt    DateTime?               @map("replied_at")
   batchNumber  Int                     @map("batch_number")
+  sessionId    String?                 @map("session_id") @db.Uuid
   createdAt    DateTime                @default(now()) @map("created_at")
 
   campaign Campaign @relation(fields: [campaignId], references: [id])
   contact  Contact  @relation(fields: [contactId], references: [id])
   message  Message? @relation(fields: [messageId], references: [id])
+  session  WhatsAppSession? @relation(fields: [sessionId], references: [id])
 
   @@unique([campaignId, contactId], name: "unique_recipient_per_campaign")
   @@index([campaignId])
   @@index([campaignId, status])
   @@index([campaignId, batchNumber])
+  @@index([campaignId, batchNumber, sessionId])
   @@index([messageId])
   @@index([orgId])
   // "Did this person just answer one of our campaigns?" on every incoming message

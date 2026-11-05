@@ -154,10 +154,18 @@ export class SessionHealthWorker implements OnModuleInit {
   private async handleHealthCheck(session: Record<string, any>): Promise<void> {
     // Check if Baileys socket is still alive
     if (this.connectionManager.isConnected(session.id)) {
-      // Socket is alive — update heartbeat
-      await this.sessionRepo.updateHeartbeat(session.id);
+      // The live socket is authoritative if a prior reconnect event left status stale.
+      if (session.status === WhatsAppSessionStatus.RECONNECTING) {
+        await this.sessionRepo.markConnectedFromHealthCheck(session.id);
+      } else {
+        await this.sessionRepo.updateHeartbeat(session.id);
+      }
       return;
     }
+
+    // A reconnect is already scheduled for this session; don't start another retry
+    // sequence from the periodic health check.
+    if (session.status === WhatsAppSessionStatus.RECONNECTING) return;
 
     // Socket is gone — start reconnect flow
     if (this.sessionService.canRetryReconnect(session.reconnectCount)) {

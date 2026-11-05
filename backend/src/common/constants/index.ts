@@ -440,16 +440,12 @@ export const SEND_SAFETY_CONFIG = {
 } as const;
 
 export const CAMPAIGN_CONFIG = {
-  /** Number of recipients per batch job */
-  BATCH_SIZE: 50,
-  /** Delay in seconds between batch dispatches — roughly how long the send pacer needs for one batch */
-  BATCH_DELAY_SECONDS: 50 * 25,
-  /** Concurrent campaign batch workers */
+  /** Recipient grouping and unit of sequential processing; separate batches run concurrently */
+  BATCH_SIZE: Math.max(1, Number.parseInt(process.env.CAMPAIGN_BATCH_SIZE ?? '100', 10) || 100),
+  /** Maximum recipients resolved for one campaign; override with CAMPAIGN_MAX_RECIPIENTS */
+  MAX_RECIPIENTS: Math.max(1, Number.parseInt(process.env.CAMPAIGN_MAX_RECIPIENTS ?? '10000', 10) || 10000),
+  /** Concurrent campaigns are allowed; recipient claims serialize each individual campaign */
   WORKER_CONCURRENCY: 3,
-  /** Maximum recipients per campaign (unofficial WhatsApp numbers can't safely send more) */
-  MAX_RECIPIENTS: 500,
-  /** Baileys campaigns only go to contacts who have messaged this org before */
-  WARM_CONTACTS_ONLY: true,
   /** Campaign messages get lower priority than direct messages */
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
