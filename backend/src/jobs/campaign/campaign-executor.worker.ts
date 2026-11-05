@@ -47,34 +47,53 @@ export class CampaignExecutorWorker implements OnModuleInit {
       QUEUE_NAMES.CAMPAIGN_EXECUTE,
       async (job) => this.handle(job.data, job.id),
     );
+
     this.logger.log('CampaignExecutorWorker subscribed');
   }
 
-  private async handle(data: CampaignExecuteJobData, jobId: string): Promise<void> {
+  private async handle(
+    data: CampaignExecuteJobData,
+    jobId: string,
+  ): Promise<void> {
     const { campaignId, orgId, sessionId } = data;
 
     // 1. Load campaign and verify status
     const campaign = await this.campaignRepo.findById(campaignId);
+
     if (!campaign) {
-      this.logger.warn(`Campaign ${campaignId} not found, skipping job ${jobId}`);
+      this.logger.warn(
+        `Campaign ${campaignId} not found, skipping job ${jobId}`,
+      );
       return;
     }
 
-    // Platform kill switch: a SCHEDULED campaign stays SCHEDULED (the scheduler
-    // safety net starts it once the switch is off); a RUNNING one is paused with
-    // its PENDING recipients intact, so a normal resume continues it.
+    // Platform kill switch
     if (await this.killSwitches.isDisabled('campaigns')) {
       if (campaign.status === CampaignStatus.RUNNING) {
-        await pauseCampaignForKillSwitch(this.campaignRepo, campaignId, orgId, this.eventEmitter);
-        this.logger.warn(`Campaigns switched off platform-wide — paused campaign ${campaignId} (job ${jobId})`);
+        await pauseCampaignForKillSwitch(
+          this.campaignRepo,
+          campaignId,
+          orgId,
+          this.eventEmitter,
+        );
+
+        this.logger.warn(
+          `Campaigns switched off platform-wide — paused campaign ${campaignId} (job ${jobId})`,
+        );
       } else {
-        this.logger.warn(`Campaigns switched off platform-wide — not starting campaign ${campaignId} (${campaign.status}, job ${jobId})`);
+        this.logger.warn(
+          `Campaigns switched off platform-wide — not starting campaign ${campaignId} (${campaign.status}, job ${jobId})`,
+        );
       }
+
       return;
     }
 
     // For scheduled campaigns, transition SCHEDULED → RUNNING first
-    if (data.scheduled && campaign.status === CampaignStatus.SCHEDULED) {
+    if (
+      data.scheduled &&
+      campaign.status === CampaignStatus.SCHEDULED
+    ) {
       const transitioned = await this.campaignRepo.transitionStatus(
         campaignId,
         CampaignStatus.SCHEDULED,
@@ -91,43 +110,67 @@ export class CampaignExecutorWorker implements OnModuleInit {
           metadata: { triggeredBy: 'delayed-job' },
         });
       } else {
-        // Already transitioned (by scheduler worker) — continue execution
-        this.logger.log(`Campaign ${campaignId} already transitioned from SCHEDULED, continuing execution`);
+        this.logger.log(
+          `Campaign ${campaignId} already transitioned from SCHEDULED, continuing execution`,
+        );
       }
     }
 
     // Must be RUNNING to proceed
     const currentCampaign = await this.campaignRepo.findById(campaignId);
-    if (!currentCampaign || currentCampaign.status !== CampaignStatus.RUNNING) {
-      this.logger.log(`Campaign ${campaignId} is not RUNNING (${currentCampaign?.status}), skipping`);
+
+    if (
+      !currentCampaign ||
+      currentCampaign.status !== CampaignStatus.RUNNING
+    ) {
+      this.logger.log(
+        `Campaign ${campaignId} is not RUNNING (${currentCampaign?.status}), skipping`,
+      );
       return;
     }
 
     try {
       // 2. Check if recipients already exist (resume scenario)
-      const hasPending = await this.recipientRepo.hasPendingRecipients(campaignId);
+      const hasPending =
+        await this.recipientRepo.hasPendingRecipients(campaignId);
 
       if (!hasPending) {
-        // Check if any recipients exist at all (completed batches from previous run)
-        const existingCount = await this.recipientRepo.countByCampaign(campaignId);
+        // Check if any recipients exist at all
+        const existingCount =
+          await this.recipientRepo.countByCampaign(campaignId);
 
         if (existingCount === 0) {
           // Fresh execution: resolve audience
-          await this.resolveAndCreateRecipients(campaignId, orgId, currentCampaign);
+          await this.resolveAndCreateRecipients(
+            campaignId,
+            orgId,
+            currentCampaign,
+          );
         } else {
-          // All recipients processed already — mark complete
-          this.logger.log(`Campaign ${campaignId}: all ${existingCount} recipients already processed`);
+          // All recipients processed already
+          this.logger.log(
+            `Campaign ${campaignId}: all ${existingCount} recipients already processed`,
+          );
+
           await this.completeCampaign(campaignId, orgId);
           return;
         }
       }
 
       // 3. Dispatch batch jobs for PENDING recipients
-      await this.dispatchBatches(campaignId, orgId, sessionId, currentCampaign.channel === 'EMAIL');
-
+      await this.dispatchBatches(
+        campaignId,
+        orgId,
+        sessionId,
+        currentCampaign.channel === 'EMAIL',
+      );
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Campaign ${campaignId} execution failed: ${reason}`);
+      const reason =
+        error instanceof Error ? error.message : String(error);
+
+      this.logger.error(
+        `Campaign ${campaignId} execution failed: ${reason}`,
+      );
 
       await this.campaignRepo.transitionStatus(
         campaignId,
@@ -166,17 +209,32 @@ export class CampaignExecutorWorker implements OnModuleInit {
     campaign: Record<string, any>,
   ): Promise<void> {
     // Resolve audience
-    const filters = campaign.audienceFilters as Record<string, unknown> | null;
-    const audienceFilters = filters ? {
-      leadStatuses: filters.leadStatuses as string[] | undefined,
-      tagIds: filters.tagIds as string[] | undefined,
-      ownerIds: filters.ownerIds as string[] | undefined,
-      sources: filters.sources as string[] | undefined,
-    } : undefined;
+    const filters = campaign.audienceFilters as
+      | Record<string, unknown>
+      | null;
+
+    const audienceFilters = filters
+      ? {
+          leadStatuses: filters.leadStatuses as string[] | undefined,
+          tagIds: filters.tagIds as string[] | undefined,
+          ownerIds: filters.ownerIds as string[] | undefined,
+          sources: filters.sources as string[] | undefined,
+        }
+      : undefined;
+
     const isEmail = campaign.channel === 'EMAIL';
+
     const resolved = isEmail
-      ? await this.audienceResolver.resolveEmailAudience(orgId, campaign.audienceType as CampaignAudienceType, audienceFilters)
-      : await this.audienceResolver.resolveAudience(orgId, campaign.audienceType as CampaignAudienceType, audienceFilters);
+      ? await this.audienceResolver.resolveEmailAudience(
+          orgId,
+          campaign.audienceType as CampaignAudienceType,
+          audienceFilters,
+        )
+      : await this.audienceResolver.resolveAudience(
+          orgId,
+          campaign.audienceType as CampaignAudienceType,
+          audienceFilters,
+        );
 
     if (resolved.total === 0) {
       throw new Error(
@@ -186,23 +244,14 @@ export class CampaignExecutorWorker implements OnModuleInit {
       );
     }
 
-    // Campaigns run on the user's own WhatsApp number (Baileys): only message
-    // people who have written to us before, cold blasts get numbers banned.
-    // In WhatsApp test mode every send goes to a test number, so the whole
-    // audience runs — that's what is being tested. Email doesn't have this rule.
-    const contacts = !isEmail && CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY && !isTestModeOn()
-      ? await this.audienceResolver.keepWarmContacts(orgId, resolved.contacts)
-      : resolved.contacts;
+    // Include all resolved contacts.
+    // No filtering based on whether the contact messaged first.
+    const contacts = resolved.contacts;
     const total = contacts.length;
 
     if (total === 0) {
       throw new Error(
-        'None of the selected contacts has messaged you before. To protect your WhatsApp number from a ban, campaigns only go to contacts who have chatted with you.',
-      );
-    }
-    if (total < resolved.total) {
-      this.logger.log(
-        `Campaign ${campaignId}: skipped ${resolved.total - total} contacts who never messaged first`,
+        'No eligible recipients found for this campaign',
       );
     }
 
@@ -214,21 +263,27 @@ export class CampaignExecutorWorker implements OnModuleInit {
 
     // Bulk insert recipients in batches of 1000
     const insertBatchSize = 1000;
+
     for (let i = 0; i < contacts.length; i += insertBatchSize) {
       const batch = contacts.slice(i, i + insertBatchSize);
+
       await this.recipientRepo.bulkCreate(
         batch.map((contact, idx) => ({
           campaignId,
           orgId,
           contactId: contact.id,
           contactPhone: contact.phoneNumber,
-          batchNumber: Math.floor((i + idx) / CAMPAIGN_CONFIG.BATCH_SIZE) + 1,
+          batchNumber:
+            Math.floor((i + idx) / CAMPAIGN_CONFIG.BATCH_SIZE) + 1,
         })),
       );
     }
 
     // Update total recipients
-    await this.campaignRepo.updateTotalRecipients(campaignId, total);
+    await this.campaignRepo.updateTotalRecipients(
+      campaignId,
+      total,
+    );
 
     this.logger.log(
       `Campaign ${campaignId}: resolved ${total} recipients`,
@@ -239,15 +294,22 @@ export class CampaignExecutorWorker implements OnModuleInit {
     campaignId: string,
     orgId: string,
     sessionId: string | null,
-    /** Email: batches a minute apart (the mailbox's daily limit paces sending) */
+    /** Email: batches a minute apart */
     isEmail = false,
   ): Promise<void> {
-    const maxBatch = await this.recipientRepo.getMaxBatchNumber(campaignId);
+    const maxBatch =
+      await this.recipientRepo.getMaxBatchNumber(campaignId);
 
     // Find batches that still have PENDING recipients
     const pendingBatches: number[] = [];
+
     for (let batch = 1; batch <= maxBatch; batch++) {
-      const recipients = await this.recipientRepo.findPendingByBatch(campaignId, batch);
+      const recipients =
+        await this.recipientRepo.findPendingByBatch(
+          campaignId,
+          batch,
+        );
+
       if (recipients.length > 0) {
         pendingBatches.push(batch);
       }
@@ -259,14 +321,21 @@ export class CampaignExecutorWorker implements OnModuleInit {
 
     for (let i = 0; i < pendingBatches.length; i++) {
       const batchNumber = pendingBatches[i];
-      const delaySeconds = i * (isEmail ? 60 : CAMPAIGN_CONFIG.BATCH_DELAY_SECONDS);
+
+      const delaySeconds =
+        i *
+        (isEmail
+          ? 60
+          : CAMPAIGN_CONFIG.BATCH_DELAY_SECONDS);
 
       if (delaySeconds > 0) {
         await this.queueService.publishDelayed(
           QUEUE_NAMES.CAMPAIGN_BATCH,
           { campaignId, batchNumber, orgId, sessionId },
           delaySeconds,
-          { singletonKey: `campaign-batch-${campaignId}-${batchNumber}` },
+          {
+            singletonKey: `campaign-batch-${campaignId}-${batchNumber}`,
+          },
         );
       } else {
         await this.queueService.publishOnce(
@@ -278,7 +347,10 @@ export class CampaignExecutorWorker implements OnModuleInit {
     }
   }
 
-  private async completeCampaign(campaignId: string, orgId: string): Promise<void> {
+  private async completeCampaign(
+    campaignId: string,
+    orgId: string,
+  ): Promise<void> {
     await this.campaignRepo.transitionStatus(
       campaignId,
       CampaignStatus.RUNNING,
@@ -293,7 +365,9 @@ export class CampaignExecutorWorker implements OnModuleInit {
       newStatus: CampaignStatus.COMPLETED,
     });
 
-    const campaign = await this.campaignRepo.findById(campaignId);
+    const campaign =
+      await this.campaignRepo.findById(campaignId);
+
     if (campaign) {
       this.eventEmitter.emit(EVENT_NAMES.CAMPAIGN_COMPLETED, {
         campaignId,
