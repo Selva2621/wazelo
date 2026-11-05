@@ -30,7 +30,11 @@ import {
 } from "@/lib/validations/campaigns";
 import type { MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import { useTemplates } from "@/hooks/use-templates";
-import { useOrgTags } from "@/hooks/use-contacts";
+import {
+  useCreateSavedContactGroups,
+  useOrgTags,
+  useSavedContactGroups,
+} from "@/hooks/use-contacts";
 import { useProducts } from "@/hooks/use-products";
 import { useScrapeRuns } from "@/hooks/use-lead-scraper";
 import { templateImageUrl, type MessageTemplate } from "@/lib/types/templates";
@@ -218,6 +222,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const createCampaign = useCreateCampaign();
   const executeCampaign = useExecuteCampaign();
   const previewAudience = usePreviewAudience();
+  const createSavedGroups = useCreateSavedContactGroups();
 
   const [scheduleMode, setScheduleMode] = useState<"immediate" | "scheduled" | "draft">("immediate");
   const [productId, setProductId] = useState("");
@@ -229,6 +234,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const { data: orgTags } = useOrgTags();
+  const { data: savedContactGroups } = useSavedContactGroups(open);
   const { data: products } = useProducts();
   const terms = useProductTerms();
   const { data: scrapeRunsData } = useScrapeRuns({ take: 50 });
@@ -318,6 +324,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   }
 
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [savedGroupName, setSavedGroupName] = useState("");
   const [pendingSend, setPendingSend] = useState<{
     data: CreateCampaignFormData;
     recipients: number | null;
@@ -440,6 +447,42 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         assignment.batchNumber === batchNumber ? { ...assignment, sessionId } : assignment,
       ),
     }));
+  }
+
+  function toggleSavedGroup(groupId: string) {
+    const current = audienceFilters?.contactGroupIds ?? [];
+    const next = current.includes(groupId)
+      ? current.filter((id) => id !== groupId)
+      : [...current, groupId];
+    setValue("audienceType", "FILTERED", { shouldValidate: true });
+    setValue("audienceFilters", {
+      ...audienceFilters,
+      contactGroupIds: next.length ? next : undefined,
+    }, { shouldValidate: true, shouldDirty: true });
+  }
+
+  function saveSelectedContactsAsGroups() {
+    const contactIds = audienceFilters?.contactIds ?? [];
+    if (!savedGroupName.trim() || contactIds.length === 0) return;
+    createSavedGroups.mutate(
+      { name: savedGroupName.trim(), contactIds },
+      {
+        onSuccess: ({ groups }) => {
+          const contactGroupIds = [
+            ...new Set([
+              ...(audienceFilters?.contactGroupIds ?? []),
+              ...groups.map((group) => group.id),
+            ]),
+          ];
+          setValue("audienceType", "FILTERED", { shouldValidate: true });
+          setValue("audienceFilters", {
+            ...audienceFilters,
+            contactGroupIds,
+          }, { shouldValidate: true, shouldDirty: true });
+          setSavedGroupName("");
+        },
+      },
+    );
   }
 
   function toggleSession(sessionId: string) {
@@ -786,20 +829,83 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 <div className="space-y-4 p-3 rounded-xl border border-outline-variant/15 bg-surface-container-low">
 
                   {!!audienceFilters?.contactIds?.length && (
-                    <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-3 py-2">
-                      <p className="text-caption text-on-surface">
-                        {audienceFilters.contactIds.length} manually selected contact{audienceFilters.contactIds.length === 1 ? "" : "s"}
+                    <div className="space-y-2 rounded-lg bg-primary/5 px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-caption text-on-surface">
+                          {audienceFilters.contactIds.length} manually selected contact{audienceFilters.contactIds.length === 1 ? "" : "s"}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setValue("audienceFilters", { ...audienceFilters, contactIds: undefined })}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          aria-label="Saved group name"
+                          placeholder="Name these contacts"
+                          maxLength={100}
+                          value={savedGroupName}
+                          onChange={(event) => setSavedGroupName(event.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={!savedGroupName.trim() || createSavedGroups.isPending}
+                          loading={createSavedGroups.isPending}
+                          onClick={saveSelectedContactsAsGroups}
+                        >
+                          Save group{audienceFilters.contactIds.length > 100 ? "s" : ""}
+                        </Button>
+                      </div>
+                      <p className="text-caption text-on-surface-variant">
+                        Larger selections are split using the configured batch size (100 by default).
                       </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setValue("audienceFilters", { ...audienceFilters, contactIds: undefined })}
-                      >
-                        Clear selection
-                      </Button>
+                      <p className="text-caption text-on-surface-variant">
+                        Contacts already in another saved group will be moved to the new group.
+                      </p>
                     </div>
                   )}
+
+                  <div>
+                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">
+                      Saved contact groups
+                    </p>
+                    {!savedContactGroups?.length ? (
+                      <p className="text-caption text-on-surface-variant">
+                        Save a manual selection above to reuse it in future campaigns.
+                      </p>
+                    ) : (
+                      <div className="max-h-40 space-y-1 overflow-y-auto">
+                        {savedContactGroups.map((group) => {
+                          const selected = audienceFilters?.contactGroupIds?.includes(group.id) ?? false;
+                          return (
+                            <label
+                              key={group.id}
+                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-container"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleSavedGroup(group.id)}
+                                className="accent-primary"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-label text-on-surface">
+                                {group.name}
+                              </span>
+                              <span className="shrink-0 text-caption text-on-surface-variant">
+                                {group.contactCount}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Lead Status */}
                   <div>

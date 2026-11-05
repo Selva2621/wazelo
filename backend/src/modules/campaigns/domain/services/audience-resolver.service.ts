@@ -4,6 +4,7 @@ import { CampaignAudienceType, Prisma } from '@prisma/client';
 
 export interface AudienceFilters {
   contactIds?: string[];
+  contactGroupIds?: string[];
   leadStatuses?: string[];
   tagIds?: string[];
   ownerIds?: string[];
@@ -182,8 +183,26 @@ export class AudienceResolverService {
     };
 
     if (audienceType === CampaignAudienceType.FILTERED && filters) {
-      if (filters.contactIds && filters.contactIds.length > 0) {
+      if (filters.contactIds?.length && !filters.contactGroupIds?.length) {
         intersectIds(filters.contactIds);
+      }
+
+      const selectedContactConditions: Prisma.ContactWhereInput[] = [];
+      if (filters.contactIds?.length && filters.contactGroupIds?.length) {
+        selectedContactConditions.push({ id: { in: filters.contactIds } });
+      }
+      if (filters.contactGroupIds?.length) {
+        selectedContactConditions.push({
+          savedGroupMemberships: {
+            some: {
+              groupId: { in: filters.contactGroupIds },
+              group: { orgId },
+            },
+          },
+        });
+      }
+      if (selectedContactConditions.length > 0) {
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: selectedContactConditions }];
       }
 
       if (filters.leadStatuses && filters.leadStatuses.length > 0) {

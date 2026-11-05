@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const audienceFiltersSchema = z.object({
   contactIds: z.array(z.string().uuid()).optional(),
+  contactGroupIds: z.array(z.string().uuid()).optional(),
   leadStatuses: z.array(z.string()).optional(),
   tagIds: z.array(z.string().uuid()).optional(),
   ownerIds: z.array(z.string().uuid()).optional(),

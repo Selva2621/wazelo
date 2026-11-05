@@ -34,6 +34,7 @@ import {
   BulkChangeLeadStatusDto,
   BulkAssignContactsDto,
   BulkAddTagDto,
+  CreateSavedContactGroupsDto,
 } from '../../application/dto';
 import {
   CreateContactUseCase,
@@ -50,6 +51,7 @@ import {
   RemoveTagUseCase,
   GetContactHistoryUseCase,
   BulkContactsUseCase,
+  SavedContactGroupsUseCase,
 } from '../../application/use-cases';
 import { ExportContactsUseCase } from '../../application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from '../../application/use-cases/import-contacts.use-case';
@@ -75,6 +77,7 @@ export class ContactsController {
     private readonly exportContactsUseCase: ExportContactsUseCase,
     private readonly importContactsUseCase: ImportContactsUseCase,
     private readonly bulkContactsUseCase: BulkContactsUseCase,
+    private readonly savedContactGroupsUseCase: SavedContactGroupsUseCase,
   ) {}
 
   // ───── Contact CRUD ─────
@@ -108,6 +111,25 @@ export class ContactsController {
   @Permissions(PERMISSIONS.CONTACTS_READ)
   async getContactGroups(@CurrentUser() user: JwtPayload) {
     return this.listContactsUseCase.groups(user.orgId, user.sub, user.role);
+  }
+
+  @Get('saved-groups')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async listSavedContactGroups(@CurrentUser() user: JwtPayload) {
+    return this.savedContactGroupsUseCase.list(user.orgId);
+  }
+
+  @Post('saved-groups')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async createSavedContactGroups(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateSavedContactGroupsDto,
+  ) {
+    return this.savedContactGroupsUseCase.create(
+      user.orgId,
+      dto.name,
+      dto.contactIds,
+    );
   }
 
   @Get('export')

@@ -47,6 +47,13 @@ export interface ContactGroups {
   }[];
 }
 
+export interface SavedContactGroup {
+  id: string;
+  name: string;
+  contactCount: number;
+  createdAt: string;
+}
+
 // ─── Tag ───
 
 export interface Tag {

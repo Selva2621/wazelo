@@ -32,6 +32,7 @@ export const contactKeys = {
   orgTags: ["contacts", "org-tags"] as const,
   orgMembers: ["contacts", "org-members"] as const,
   groups: ["contacts", "groups"] as const,
+  savedGroups: ["contacts", "saved-groups"] as const,
 };
 
 // ─── Query Hooks ───
@@ -48,6 +49,14 @@ export function useContactGroups() {
   return useQuery({
     queryKey: contactKeys.groups,
     queryFn: () => contactsApi.groups(),
+  });
+}
+
+export function useSavedContactGroups(enabled = true) {
+  return useQuery({
+    queryKey: contactKeys.savedGroups,
+    queryFn: () => contactsApi.savedGroups(),
+    enabled,
   });
 }
 
@@ -207,6 +216,21 @@ export function useBulkContactAction() {
       }
     },
     onError: (err: Error) => toast.error(err.message || "Bulk action failed"),
+  });
+}
+
+export function useCreateSavedContactGroups() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; contactIds: string[] }) =>
+      contactsApi.createSavedGroups(input),
+    onSuccess: ({ groups, batchSize }) => {
+      queryClient.invalidateQueries({ queryKey: contactKeys.savedGroups });
+      toast.success(
+        `Saved ${groups.length} contact group${groups.length === 1 ? "" : "s"} (${batchSize} contacts per group)`,
+      );
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to save contact groups"),
   });
 }
 
