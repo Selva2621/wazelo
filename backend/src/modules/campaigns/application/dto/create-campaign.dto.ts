@@ -14,6 +14,7 @@ import {
   IsIn,
   IsInt,
   Min,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CampaignAudienceType, LeadStatus, ContactSource } from '@prisma/client';
@@ -30,8 +31,15 @@ export class CampaignBatchAssignmentDto {
 export class AudienceFiltersDto {
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10_000)
   @IsUUID('4', { each: true })
   contactIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10_000)
+  @IsUUID('4', { each: true })
+  contactGroupIds?: string[];
 
   @IsOptional()
   @IsArray()

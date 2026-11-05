@@ -20,6 +20,7 @@ import type {
   BulkContactAction,
   BulkContactsResult,
   ContactGroups,
+  SavedContactGroup,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -40,6 +41,14 @@ export const contactsApi = {
 
   groups: () =>
     apiClient.get<ContactGroups>("/contacts/groups").then((r) => r.data),
+
+  savedGroups: () =>
+    apiClient.get<SavedContactGroup[]>("/contacts/saved-groups").then((r) => r.data),
+
+  createSavedGroups: (data: { name: string; contactIds: string[] }) =>
+    apiClient
+      .post<{ groups: SavedContactGroup[]; batchSize: number }>("/contacts/saved-groups", data)
+      .then((r) => r.data),
 
   get: (contactId: string) =>
     apiClient.get<Contact>(`/contacts/${contactId}`).then((r) => r.data),

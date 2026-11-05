@@ -521,6 +521,7 @@ model Organization {
   whatsappSessions        WhatsAppSession[]
   messages                Message[]
   contacts                Contact[]
+  savedContactGroups      SavedContactGroup[]
   conversations           Conversation[]
   deadLetterMessages      DeadLetterMessage[]
   campaigns               Campaign[]
@@ -1105,6 +1106,7 @@ model Contact {
   statusHistory      ContactStatusHistory[]
   ownerHistory       ContactOwnerHistory[]
   contactTags        ContactTag[]
+  savedGroupMemberships SavedContactGroupMember[]
   notes              ContactNote[]
   campaignRecipients CampaignRecipient[]
   deals              Deal[]
@@ -1218,6 +1220,33 @@ model ContactTag {
   @@index([tagId])
   @@index([orgId])
   @@map("contact_tags")
+}
+
+model SavedContactGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members      SavedContactGroupMember[]
+
+  @@unique([orgId, name], name: "unique_saved_contact_group_name")
+  @@index([orgId, createdAt])
+  @@map("saved_contact_groups")
+}
+
+model SavedContactGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  contactId String   @unique(map: "saved_contact_group_members_contact_id_key") @map("contact_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group   SavedContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("saved_contact_group_members")
 }
 
 // ─────────────────────────────────────────────

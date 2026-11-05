@@ -15,6 +15,7 @@ import { LeadStatusBadge } from "./lead-status-badge";
 import { BULK_CONTACTS_MAX, type LeadStatus } from "@/lib/types/contacts";
 
 const STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
+const CAMPAIGN_SELECTION_MAX = 10_000;
 
 type Menu = "status" | "assign" | "tag" | null;
 
@@ -35,7 +36,8 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
   const barRef = useRef<HTMLDivElement>(null);
 
   const count = selectedIds.size;
-  const overLimit = count > BULK_CONTACTS_MAX;
+  const overBulkLimit = count > BULK_CONTACTS_MAX;
+  const overCampaignLimit = count > CAMPAIGN_SELECTION_MAX;
 
   useEffect(() => {
     if (!menu) return;
@@ -89,7 +91,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 variant="ghost"
                 size="sm"
                 onClick={onCreateCampaign}
-                disabled={overLimit}
+                disabled={overCampaignLimit}
                 aria-label="Create campaign for selected contacts"
               >
                 <Megaphone className="h-4 w-4" />
@@ -101,7 +103,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 onToggle={() => toggle("status")}
                 icon={<CircleDot className="h-4 w-4" />}
                 label="Status"
-                disabled={overLimit || bulk.isPending}
+                disabled={overBulkLimit || bulk.isPending}
               >
                 {STATUSES.map((s) => (
                   <MenuItem key={s} onClick={() => run({ action: "status", contactIds, status: s })}>
@@ -116,7 +118,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                   onToggle={() => toggle("assign")}
                   icon={<UserRoundCog className="h-4 w-4" />}
                   label="Assign"
-                  disabled={overLimit || bulk.isPending}
+                  disabled={overBulkLimit || bulk.isPending}
                 >
                   <OwnerOptions onPick={(ownerId) => run({ action: "assign", contactIds, ownerId })} />
                 </BarMenu>
@@ -127,7 +129,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 onToggle={() => toggle("tag")}
                 icon={<Tag className="h-4 w-4" />}
                 label="Tag"
-                disabled={overLimit || bulk.isPending}
+                disabled={overBulkLimit || bulk.isPending}
               >
                 <TagForm onSubmit={(name) => run({ action: "tags", contactIds, name })} />
               </BarMenu>
@@ -137,7 +139,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                   variant="ghost"
                   size="sm"
                   onClick={() => setConfirmDelete(true)}
-                  disabled={overLimit || bulk.isPending}
+                  disabled={overBulkLimit || bulk.isPending}
                   aria-label="Delete"
                   className="text-error hover:bg-error/10 hover:text-error"
                 >
@@ -151,9 +153,14 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 <X className="h-4 w-4" />
               </IconButton>
             </div>
-            {overLimit && (
+            {overBulkLimit && !overCampaignLimit && (
               <p className="mt-2 text-center text-caption text-error">
-                Select up to {BULK_CONTACTS_MAX} contacts at a time.
+                Bulk actions support up to {BULK_CONTACTS_MAX} contacts. Campaigns support up to {CAMPAIGN_SELECTION_MAX}.
+              </p>
+            )}
+            {overCampaignLimit && (
+              <p className="mt-2 text-center text-caption text-error">
+                Campaigns support up to {CAMPAIGN_SELECTION_MAX} selected contacts.
               </p>
             )}
           </motion.div>

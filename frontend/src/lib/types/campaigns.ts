@@ -28,6 +28,7 @@ export type CampaignChannel = "WHATSAPP" | "EMAIL";
 
 export interface AudienceFilters {
   contactIds?: string[];
+  contactGroupIds?: string[];
   leadStatuses?: string[];
   tagIds?: string[];
   ownerIds?: string[];

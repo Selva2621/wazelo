@@ -65,4 +65,41 @@ describe('AudienceResolverService', () => {
       }),
     );
   });
+
+  it('unions manually selected contacts with org-scoped saved groups', async () => {
+    const contactIds = ['c4a760c0-b079-4d4a-a0dc-0f97c47e6311'];
+    const contactFindMany = jest.fn().mockResolvedValue([]);
+    const resolver = new AudienceResolverService({
+      contact: { findMany: contactFindMany },
+    } as never);
+
+    await resolver.resolveAudience('org-1', CampaignAudienceType.FILTERED, {
+      contactIds,
+      contactGroupIds: ['d4a760c0-b079-4d4a-a0dc-0f97c47e6311'],
+      leadStatuses: ['NEW'],
+    });
+
+    expect(contactFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [
+                { id: { in: contactIds } },
+                {
+                  savedGroupMemberships: {
+                    some: {
+                      groupId: { in: ['d4a760c0-b079-4d4a-a0dc-0f97c47e6311'] },
+                      group: { orgId: 'org-1' },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+          leadStatus: { in: ['NEW'] },
+        }),
+      }),
+    );
+  });
 });
