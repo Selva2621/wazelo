@@ -35,6 +35,14 @@ interface CreateAutomationRuleModalProps {
   preset?: AutomationPreset | null;
 }
 
+/**
+ * For optional number boxes: empty means "not set". (valueAsNumber turns an empty box
+ * into NaN, which failed validation with no message, so the rule silently didn't save.)
+ */
+const NUMBER_OR_UNSET = {
+  setValueAs: (v: unknown) => (v === "" || v == null ? undefined : Number(v)),
+};
+
 const EMPTY_RULE: Partial<CreateAutomationRuleFormData> = {
   triggerType: "MESSAGE_RECEIVED",
   triggerConfig: {},
@@ -289,6 +297,8 @@ export function CreateAutomationRuleModal({
   const createRule = useCreateAutomationRule();
   const generateRule = useGenerateAutomationRule();
   const [productId, setProductId] = useState("");
+  /** The last save was stopped by a field the form rejected */
+  const [blocked, setBlocked] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -338,6 +348,8 @@ export function CreateAutomationRuleModal({
   }
 
   function handleClose() {
+    setBlocked(false);
+    createRule.reset();
     reset();
     setProductId("");
     setAiPrompt("");
@@ -404,7 +416,13 @@ export function CreateAutomationRuleModal({
 
         {/* Form */}
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(
+            (data) => {
+              setBlocked(false);
+              onSubmit(data);
+            },
+            () => setBlocked(true),
+          )}
           className="flex-1 overflow-y-auto px-6 py-4 space-y-5"
         >
           {/* AI Generate Panel */}
@@ -576,7 +594,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.delaySeconds"
                   type="number"
                   placeholder="e.g. 3600 (1 hour)"
-                  {...register("triggerConfig.delaySeconds", { valueAsNumber: true })}
+                  {...register("triggerConfig.delaySeconds", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -625,7 +643,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.minOrderValue"
                   type="number"
                   placeholder="e.g. 500 — only trigger for orders above this amount"
-                  {...register("triggerConfig.minOrderValue", { valueAsNumber: true })}
+                  {...register("triggerConfig.minOrderValue", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -637,7 +655,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.minCartValue"
                   type="number"
                   placeholder="e.g. 200 — only trigger for carts above this amount"
-                  {...register("triggerConfig.minCartValue", { valueAsNumber: true })}
+                  {...register("triggerConfig.minCartValue", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -719,7 +737,7 @@ export function CreateAutomationRuleModal({
                     <Input
                       type="number"
                       placeholder="0"
-                      {...register(`actions.${idx}.delaySeconds`, { valueAsNumber: true })}
+                      {...register(`actions.${idx}.delaySeconds`, NUMBER_OR_UNSET)}
                     />
                   </div>
                 </div>
@@ -743,7 +761,7 @@ export function CreateAutomationRuleModal({
                   id="priority"
                   type="number"
                   placeholder="0"
-                  {...register("priority", { valueAsNumber: true })}
+                  {...register("priority", NUMBER_OR_UNSET)}
                 />
               </div>
               <div>
@@ -752,7 +770,7 @@ export function CreateAutomationRuleModal({
                   id="maxExecutionsPerContact"
                   type="number"
                   placeholder="0 (unlimited)"
-                  {...register("maxExecutionsPerContact", { valueAsNumber: true })}
+                  {...register("maxExecutionsPerContact", NUMBER_OR_UNSET)}
                 />
               </div>
               <div>
@@ -761,7 +779,7 @@ export function CreateAutomationRuleModal({
                   id="cooldownSeconds"
                   type="number"
                   placeholder="0"
-                  {...register("cooldownSeconds", { valueAsNumber: true })}
+                  {...register("cooldownSeconds", NUMBER_OR_UNSET)}
                 />
               </div>
             </div>
@@ -773,6 +791,15 @@ export function CreateAutomationRuleModal({
             onChange={setProductId}
             onBeforeRedirect={onClose}
           />
+
+          {/* Why it didn't save: a field the form rejected, or the server's answer */}
+          {(blocked || createRule.isError) && (
+            <p role="alert" className="rounded-lg border border-error/15 bg-error/8 px-3 py-2 text-label text-error">
+              {createRule.isError
+                ? createRule.error?.message || "Couldn't save the rule. Please try again."
+                : "Something above isn't filled in correctly. Check the fields and try again."}
+            </p>
+          )}
 
           {/* Submit */}
           <div className="flex justify-end gap-2 pt-2 pb-2 max-lg:[&>button]:flex-1">

@@ -11,6 +11,10 @@ import { useProducts } from "@/hooks/use-products";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useSubscription } from "@/hooks/use-billing";
 import { useKbDocuments, useKbFaqs, useKbWebsites } from "@/hooks/use-knowledge-base";
+import { useWidgetConfig } from "@/hooks/use-widget";
+import { useEmailAccount } from "@/hooks/use-email";
+import { useUsers } from "@/hooks/use-users";
+import { useBotBehavior } from "@/hooks/use-chatbot";
 
 export interface ChecklistItem {
   id: string;
@@ -19,6 +23,8 @@ export interface ChecklistItem {
   href: string;
   /** Handled in place instead of navigating to href. */
   action?: "connect-whatsapp";
+  /** Button text; falls back to the per-step default in the checklist */
+  actionLabel?: string;
   done: boolean;
   /** Nice to have: listed last, marked "Optional", never holds back "You're all set". */
   optional?: boolean;
@@ -32,6 +38,7 @@ export function useSetupChecklist() {
   const role = user?.role;
   const { data: orgSettings } = useOrgSettings();
   const isFreelancer = orgSettings?.orgType === "FREELANCER";
+  const isAdmin = role === "ADMIN";
 
   const [dismissed, setDismissed] = useState(false);
 
@@ -48,16 +55,25 @@ export function useSetupChecklist() {
   // Bot knowledge: admins only (editing needs settings rights) and only on plans with AI
   const { data: sub } = useSubscription();
   const aiEnabled = sub?.subscription?.plan?.aiEnabled ?? true;
-  const canTeachBot = role === "ADMIN" && aiEnabled;
+  const canTeachBot = isAdmin && aiEnabled;
   const { data: kbWebsites } = useKbWebsites({ enabled: canTeachBot });
   const { data: kbDocuments } = useKbDocuments(undefined, { enabled: canTeachBot });
   const { data: kbFaqs } = useKbFaqs({ enabled: canTeachBot });
+
+  // Website chat, business email, team and working hours: settings only admins change
+  const { data: widget } = useWidgetConfig({ enabled: isAdmin });
+  const { data: emailAccount } = useEmailAccount({ enabled: isAdmin });
+  const { data: usersData } = useUsers(undefined, { enabled: isAdmin && !isFreelancer });
+  const { data: behavior } = useBotBehavior({ enabled: isAdmin && !isFreelancer });
 
   const items: ChecklistItem[] = useMemo(() => {
     const hasWhatsApp =
       !!whatsappSession && whatsappSession.status === "CONNECTED";
 
-    const hasTemplate = Array.isArray(templates) && templates.length > 0;
+    // Starter templates come with every workspace: only ones the member made count
+    const hasTemplate =
+      Array.isArray(templates) &&
+      templates.some((t) => (t.exampleValues as Record<string, unknown> | null)?.isSystemTemplate !== true);
 
     const contactCount =
       (contactsData as { total?: number } | undefined)?.total ?? 0;
@@ -71,9 +87,14 @@ export function useSetupChecklist() {
       (kbDocuments ?? []).some((d) => d.status === "READY") ||
       (kbFaqs ?? []).some((f) => f.isPublished);
 
+    const hasWidget = !!widget?.enabled;
+    const hasEmail = emailAccount?.status === "ACTIVE";
+    const hasTeammate = (usersData?.total ?? usersData?.users?.length ?? 0) > 1;
+    const hasHours = !!behavior?.hoursEnabled;
+
     // Only show steps the user can act on: products (services, for freelancers) are
     // admin-only, templates need admin or manager
-    const canManageProducts = role === "ADMIN";
+    const canManageProducts = isAdmin;
     const canManageTemplates = role === "ADMIN" || role === "MANAGER";
 
     const all: (ChecklistItem | false)[] = [
@@ -98,7 +119,7 @@ export function useSetupChecklist() {
       canManageTemplates && {
         id: "template",
         label: "Create a message template",
-        description: "Save a reusable message for campaigns and outreach.",
+        description: "Edit a starter template or write your own for campaigns and outreach.",
         href: "/settings/templates",
         done: hasTemplate,
       },
@@ -115,6 +136,7 @@ export function useSetupChecklist() {
             label: "Find your first leads",
             description: "Run the lead scraper or add a lead by hand.",
             href: "/leads/scraper",
+            actionLabel: "Find leads",
             done: hasContact,
           }
         : {
@@ -122,11 +144,50 @@ export function useSetupChecklist() {
             label: "Import your contacts",
             description: "Add or import your customer list to start conversations.",
             href: "/contacts",
+            actionLabel: "Import",
             done: hasContact,
           },
+      // Team workspaces: chats are shared and handed over between members
+      isAdmin && !isFreelancer && {
+        id: "team",
+        label: "Invite your team",
+        description: "Add teammates so chats can be shared and handed over.",
+        href: "/admin/users",
+        actionLabel: "Invite",
+        done: hasTeammate,
+      },
+      isAdmin && {
+        id: "widget",
+        label: "Add chat to your website",
+        description: isFreelancer
+          ? "Visitors chat with your AI assistant and can ask for you."
+          : "Visitors chat with your AI assistant and can ask for a person.",
+        href: "/settings/chat-widget",
+        actionLabel: "Set up",
+        done: hasWidget,
+        optional: true,
+      },
+      isAdmin && {
+        id: "email",
+        label: "Connect your email",
+        description: "Send email campaigns and follow-ups from your own address.",
+        href: "/settings/email",
+        actionLabel: "Connect",
+        done: hasEmail,
+        optional: true,
+      },
+      isAdmin && !isFreelancer && {
+        id: "hours",
+        label: "Set working hours",
+        description: "After hours, customers are told when you'll reply.",
+        href: "/ai-assistant#handover",
+        actionLabel: "Set",
+        done: hasHours,
+        optional: true,
+      },
     ];
     return all.filter((i): i is ChecklistItem => Boolean(i));
-  }, [whatsappSession, templates, contactsData, products, role, isFreelancer, canTeachBot, kbWebsites, kbDocuments, kbFaqs]);
+  }, [whatsappSession, templates, contactsData, products, role, isAdmin, isFreelancer, canTeachBot, kbWebsites, kbDocuments, kbFaqs, widget, emailAccount, usersData, behavior]);
 
   // Progress counts the required steps only
   const required = items.filter((i) => !i.optional);

@@ -155,6 +155,21 @@ function TestChat({ askCost, isFreelancer }: { askCost: number; isFreelancer: bo
  */
 export default function AiAssistantPage() {
   usePageTitle("AI assistant");
+  // Links like /ai-assistant#handover (dashboard "Set working hours"): the cards render after
+  // their data loads, so the browser's own jump misses. Scroll once the card is there.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const el = document.getElementById(id);
+      if (el || ++tries > 20) {
+        window.clearInterval(timer);
+        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 150);
+    return () => window.clearInterval(timer);
+  }, []);
   const { data: creditsData } = useAiCredits();
   const buildCost = costOf(creditsData?.costs, "kb_build", 10);
   const askCost = costOf(creditsData?.costs, "kb_search", 1);
@@ -191,7 +206,8 @@ export default function AiAssistantPage() {
             <div data-tour="kb-faqs"><FaqsCard suggestCost={faqCost} className={card} /></div>
             <div data-tour="kb-files"><FilesCard /></div>
             <div data-tour="kb-unanswered"><UnansweredCard className={card} /></div>
-            <div data-tour="kb-handover"><HandoverCard className={card} /></div>
+            {/* id: the dashboard's "Set working hours" step links here */}
+            <div id="handover" data-tour="kb-handover" className="scroll-mt-24"><HandoverCard className={card} /></div>
           </div>
           <TestChat askCost={askCost} isFreelancer={isFreelancer} />
         </div>

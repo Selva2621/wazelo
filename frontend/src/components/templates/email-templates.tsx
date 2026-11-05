@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Mail, MessageSquare, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState, LoadError } from "@/components/ui/empty-state";
@@ -32,6 +33,7 @@ import { channelPanelProps } from "./channel-tabs";
 import { EditPreviewSwitch, TemplatePreviewPanel, type EditorView } from "./template-preview-panel";
 import {
   AiWriteModal,
+  TEMPLATE_LANGUAGES,
   FormError,
   LABEL_CLASS,
   SectionHeading,
@@ -74,6 +76,8 @@ export function EmailTemplates({ channelTabs }: { channelTabs: ReactNode }) {
   // Write with AI: asks what the email should say, then fills subject + message
   const [showAi, setShowAi] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  // Language for Write with AI (Tamil, Hindi…); fields like {{name}} stay as they are
+  const [aiLanguage, setAiLanguage] = useState("en");
   const [aiError, setAiError] = useState("");
 
   const subjectRef = useRef<HTMLInputElement>(null);
@@ -148,7 +152,7 @@ export function EmailTemplates({ channelTabs }: { channelTabs: ReactNode }) {
     const prompt = aiPrompt.trim();
     if (!prompt) return;
     setAiError("");
-    generateEmail.mutate(prompt, {
+    generateEmail.mutate({ prompt, language: aiLanguage }, {
       onSuccess: (r) => {
         setSubject(r.subject);
         setBody(r.body);
@@ -491,7 +495,18 @@ export function EmailTemplates({ channelTabs }: { channelTabs: ReactNode }) {
             ? "AI replaces the subject and message. Review before saving. Uses AI credits."
             : "AI writes the subject and message. Review before saving. Uses AI credits."
         }
-      />
+      >
+        <div>
+          <label htmlFor="email-ai-language" className="mb-1.5 block text-caption font-medium text-on-surface-variant">
+            Language
+          </label>
+          <Select id="email-ai-language" value={aiLanguage} onValueChange={setAiLanguage}>
+            {TEMPLATE_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </Select>
+        </div>
+      </AiWriteModal>
 
       <ConfirmDialog
         open={!!deleteTarget}

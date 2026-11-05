@@ -78,7 +78,7 @@ export class EmailController {
   @AiCredits('smart_reply')
   @HttpCode(HttpStatus.OK)
   generateTemplate(@CurrentUser() user: JwtPayload, @Body() dto: GenerateEmailTemplateDto) {
-    return this.generate.execute(user.orgId, dto.prompt);
+    return this.generate.execute(user.orgId, dto.prompt, dto.language);
   }
 
   @Post('templates')

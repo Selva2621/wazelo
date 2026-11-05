@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWidgetConfig, updateWidgetConfig, type WidgetConfig } from "@/lib/api/widget";
 
-export function useWidgetConfig() {
+export function useWidgetConfig(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["widget", "config"],
     queryFn: getWidgetConfig,
+    enabled: options.enabled ?? true,
   });
 }
 

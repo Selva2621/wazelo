@@ -41,6 +41,8 @@ import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { AutomationRulesTable } from "@/components/automation/automation-rules-table";
 import { ExecutionLogsTable } from "@/components/automation/execution-logs-table";
 import { CreateAutomationRuleModal } from "@/components/automation/create-automation-rule-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import { useSubscription } from "@/hooks/use-billing";
 import type {
   AutomationRuleStatus,
@@ -97,6 +99,24 @@ export default function AutomationPage() {
   const enableRule = useEnableAutomationRule();
   const disableRule = useDisableAutomationRule();
   const deleteRule = useDeleteAutomationRule();
+  // Ask first. A rule that's on must be turned off before the server will delete it,
+  // so confirming does both (it used to fail with no message)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; active: boolean } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.active) await disableRule.mutateAsync(deleteTarget.id);
+      await deleteRule.mutateAsync(deleteTarget.id);
+      toast.success("Rule deleted");
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error((err as Error)?.message || "Couldn't delete the rule. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // Rules query
   const effectiveRuleStatus: AutomationRuleStatus | undefined =
@@ -228,7 +248,10 @@ export default function AutomationPage() {
             isLoading={rulesLoading}
             onEnable={(id) => enableRule.mutate(id)}
             onDisable={(id) => disableRule.mutate(id)}
-            onDelete={(id) => deleteRule.mutate(id)}
+            onDelete={(id) => {
+              const rule = rulesData?.data?.find((r) => r.id === id);
+              setDeleteTarget({ id, name: rule?.name ?? "this rule", active: rule?.status !== "INACTIVE" });
+            }}
             onPageChange={setRulesPage}
             onCreateClick={() => setShowCreateModal(true)}
           />
@@ -243,6 +266,21 @@ export default function AutomationPage() {
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete this rule?"
+        message={
+          deleteTarget?.active
+            ? `"${deleteTarget.name}" is on. It will be turned off and deleted. This can't be undone.`
+            : `"${deleteTarget?.name}" will be deleted. This can't be undone.`
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+      />
 
       {/* Create Modal */}
       <CreateAutomationRuleModal

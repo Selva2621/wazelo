@@ -49,6 +49,7 @@ import {
   FormError,
   LABEL_CLASS,
   SectionHeading,
+  TEMPLATE_LANGUAGES,
   TEXTAREA_CLASS,
   TemplateEditorModal,
   WriteWithAiButton,
@@ -78,13 +79,7 @@ function getShopifyType(tpl: MessageTemplate): string | null {
   const ev = tpl.exampleValues as Record<string, string> | null;
   return ev?.shopifyType ?? null;
 }
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "Hindi" },
-  { value: "ta", label: "Tamil" },
-  { value: "es", label: "Spanish" },
-  { value: "ar", label: "Arabic" },
-] as const;
+const LANGUAGES = TEMPLATE_LANGUAGES;
 
 const SYSTEM_FIELDS = [
   { fieldName: "name", fieldLabel: "Name" },

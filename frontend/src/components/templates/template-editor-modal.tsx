@@ -11,6 +11,29 @@ export const TEXTAREA_CLASS =
   "w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 placeholder:text-on-surface-variant/40";
 export const LABEL_CLASS = "mb-1.5 block";
 
+/**
+ * Languages a template (and Write with AI) can be in — same list for WhatsApp and email.
+ * WhatsApp/Meta language codes; keep in step with backend/src/shared/constants/languages.ts.
+ * Starter templates stay English; members create or AI-write in any of these.
+ */
+export const TEMPLATE_LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "ta", label: "Tamil" },
+  { value: "hi", label: "Hindi" },
+  { value: "te", label: "Telugu" },
+  { value: "kn", label: "Kannada" },
+  { value: "ml", label: "Malayalam" },
+  { value: "mr", label: "Marathi" },
+  { value: "bn", label: "Bengali" },
+  { value: "gu", label: "Gujarati" },
+  { value: "pa", label: "Punjabi" },
+  { value: "ur", label: "Urdu" },
+  { value: "ar", label: "Arabic" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "id", label: "Indonesian" },
+] as const;
+
 /** Small uppercase heading over a group of fields (as in the campaign modal) */
 export function SectionHeading({ icon, label, action }: { icon: ReactNode; label: string; action?: ReactNode }) {
   return (

@@ -60,7 +60,10 @@ export function useSaveEmailTemplate() {
 
 /** Write with AI: fills subject + message; nothing is saved until the member saves */
 export function useGenerateEmailTemplate() {
-  return useMutation({ mutationFn: (prompt: string) => emailApi.generateEmailTemplate(prompt) });
+  return useMutation({
+    mutationFn: ({ prompt, language }: { prompt: string; language?: string }) =>
+      emailApi.generateEmailTemplate(prompt, language),
+  });
 }
 
 export function useDeleteEmailTemplate() {

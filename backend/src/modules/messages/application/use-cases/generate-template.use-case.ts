@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+import { languageStyleRule, templateLanguageName } from '@/shared/constants/languages';
 
 export interface GenerateTemplateResult {
   name: string;
@@ -24,7 +25,7 @@ export class GenerateTemplateUseCase {
   }): Promise<GenerateTemplateResult> {
     const { orgId, prompt, category, language } = params;
 
-    const langLabel = language === 'hi' ? 'Hindi' : language === 'ta' ? 'Tamil' : language === 'es' ? 'Spanish' : language === 'ar' ? 'Arabic' : 'English';
+    const langLabel = templateLanguageName(language);
 
     // The business (Settings → AI Memory) and what its website/documents say about this message
     const [ctx, knowledge] = await Promise.all([
@@ -33,10 +34,15 @@ export class GenerateTemplateUseCase {
     ]);
     const result = await this.aiProvider.complete({
       systemPrompt: ctx ? `${ctx}\n\n---\n\n${SYSTEM_PROMPT}` : SYSTEM_PROMPT,
-      userPrompt: [knowledge, `Create a ${category || 'UTILITY'} WhatsApp template in ${langLabel} for: ${prompt}`]
+      userPrompt: [
+        knowledge,
+        `Create a ${category || 'UTILITY'} WhatsApp template in ${langLabel} for: ${prompt}`,
+        langLabel !== 'English' ? languageStyleRule(language) : '',
+      ]
         .filter(Boolean)
         .join('\n\n'),
-      maxTokens: 512,
+      // Tamil, Hindi, Arabic… take several times more tokens than English for the same message
+      maxTokens: langLabel === 'English' ? 512 : 1400,
     });
 
     try {

@@ -2,6 +2,7 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { sanitizePromptInput } from '@/common/utils/prompt-sanitizer.util';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
 import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+import { languageStyleRule, templateLanguageName } from '@/shared/constants/languages';
 
 export interface GeneratedEmail {
   subject: string;
@@ -30,13 +31,15 @@ export class GenerateEmailTemplateUseCase {
     private readonly orgContext: OrgContextService,
   ) {}
 
-  async execute(orgId: string, prompt: string): Promise<GeneratedEmail> {
+  async execute(orgId: string, prompt: string, language?: string): Promise<GeneratedEmail> {
     // Customers read the email: only customer-safe business details
     const profile = await this.orgContext.getContext(orgId, { forCustomers: true });
+    const instructions = `${INSTRUCTIONS} ${languageRule(language)}`;
     const result = await this.aiProvider.complete({
-      systemPrompt: profile ? `${profile}\n\n---\n\n${INSTRUCTIONS}` : INSTRUCTIONS,
+      systemPrompt: profile ? `${profile}\n\n---\n\n${instructions}` : instructions,
       userPrompt: `What the email should say: ${sanitizePromptInput(prompt, 500)}`,
-      maxTokens: 700,
+      // Tamil, Hindi, Arabic… take several times more tokens than English for the same email
+      maxTokens: !language || language === 'en' ? 700 : 1600,
     });
     const parsed = parseGeneratedEmail(result.text);
     if (!parsed) {
@@ -46,6 +49,14 @@ export class GenerateEmailTemplateUseCase {
     }
     return parsed;
   }
+}
+
+/** Which language to write in. Fields like {{name}} stay exactly as written, in English. */
+export function languageRule(language?: string): string {
+  const name = templateLanguageName(language);
+  if (name === 'English') return 'Write in English.';
+  // Same everyday-spoken style as WhatsApp templates, for both the subject and the message
+  return `${languageStyleRule(language)} This applies to both the subject and the message; {{company}} also stays as written.`;
 }
 
 /** The model's JSON (often wrapped in ```json or a sentence) → subject + body, or null when unreadable */

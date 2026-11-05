@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { useBotInsights } from "@/hooks/use-chatbot";
+import { useOrgSettings } from "@/hooks/use-settings";
 import type { BotInsights } from "@/lib/api/chatbot";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +79,8 @@ function SuspiciousCard({ items }: { items: BotInsights["suspicious"] }) {
  */
 export function BotHealthStrip({ className }: { className?: string }) {
   const { data } = useBotInsights();
+  // A freelancer is one person: chats are handed to them, not to a team
+  const solo = useOrgSettings().data?.orgType === "FREELANCER";
   if (!data || data.total === 0) return null;
 
   const rate = data.answerRate === null ? "–" : `${Math.round(data.answerRate * 100)}%`;
@@ -86,7 +89,7 @@ export function BotHealthStrip({ className }: { className?: string }) {
       <section aria-label={`AI bot, last ${data.days} days`} className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest">
         <div className="grid grid-cols-4 divide-x divide-outline-variant/20 max-sm:grid-cols-2 max-sm:divide-x-0 max-sm:[&>*:nth-child(odd)]:border-r max-sm:[&>*:nth-child(odd)]:border-outline-variant/20 max-sm:[&>*:nth-child(-n+2)]:border-b max-sm:[&>*:nth-child(-n+2)]:border-outline-variant/20">
           <Stat value={rate} label="answered by the bot" />
-          <Stat value={String(data.handedOff)} label="handed to your team" />
+          <Stat value={String(data.handedOff)} label={solo ? "handed to you" : "handed to your team"} />
           <Stat value={String(data.blocked + data.limited)} label="stopped by safety checks" tone={data.blocked + data.limited ? "warning" : undefined} />
           <Stat value={String(data.credits)} label={`AI credits, ${data.days} days`} />
         </div>

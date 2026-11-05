@@ -1,4 +1,5 @@
 import { IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { TEMPLATE_LANGUAGE_CODES } from '@/shared/constants/languages';
 
 /** Connect (or update) the workspace's business email */
 export class SaveEmailAccountDto {
@@ -67,6 +68,11 @@ export class GenerateEmailTemplateDto {
   @IsNotEmpty({ message: 'Say what the email should be about' })
   @MaxLength(500)
   prompt!: string;
+
+  /** Language to write in (same choices as WhatsApp templates); English when left out */
+  @IsOptional()
+  @IsIn(TEMPLATE_LANGUAGE_CODES)
+  language?: string;
 }
 
 export class SaveEmailTemplateDto {

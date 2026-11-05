@@ -22,8 +22,12 @@ export function useBotInsights(enabled = true, days = 7) {
   });
 }
 
-export function useBotBehavior() {
-  return useQuery({ queryKey: ["chatbot", "behavior"], queryFn: () => chatbotApi.getBehavior() });
+export function useBotBehavior(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["chatbot", "behavior"],
+    queryFn: () => chatbotApi.getBehavior(),
+    enabled: options.enabled ?? true,
+  });
 }
 
 export function useSaveBotBehavior() {

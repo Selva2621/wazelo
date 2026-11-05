@@ -72,6 +72,6 @@ export const emailApi = {
     await apiClient.delete(`/email/templates/${id}`);
   },
   /** Write with AI: a subject + message from a short request (uses AI credits) */
-  generateEmailTemplate: async (prompt: string): Promise<{ subject: string; body: string }> =>
-    (await apiClient.post("/email/templates/generate", { prompt })).data,
+  generateEmailTemplate: async (prompt: string, language?: string): Promise<{ subject: string; body: string }> =>
+    (await apiClient.post("/email/templates/generate", { prompt, ...(language && language !== "en" ? { language } : {}) })).data,
 };
