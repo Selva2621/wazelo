@@ -44,7 +44,8 @@ export const leadScraperApi = {
     apiClient.post<{ success: boolean }>(`/lead-scraper/runs/${id}/cancel`).then((r) => r.data),
 
   importResults: (id: string, data: ImportScrapeResultsRequest): Promise<ImportScrapeResultsResponse> =>
-    apiClient.post<ImportScrapeResultsResponse>(`/lead-scraper/runs/${id}/import`, data).then((r) => r.data),
+    // Big imports outlast the default 15s; giving up early showed "failed" while it worked
+    apiClient.post<ImportScrapeResultsResponse>(`/lead-scraper/runs/${id}/import`, data, { timeout: 120_000 }).then((r) => r.data),
 
   checkWhatsApp: (phone: string): Promise<CheckWhatsAppResult> =>
     apiClient.get<CheckWhatsAppResult>("/lead-scraper/check-whatsapp", { params: { phone } }).then((r) => r.data),

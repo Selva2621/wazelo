@@ -7,6 +7,9 @@ import { EVENT_NAMES } from '@/common/constants';
 import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 import { toE164 } from '@/shared/utils/phone.util';
 
+/** Phone numbers imported at once */
+const IMPORT_CONCURRENCY = 8;
+
 export interface ImportScrapeResultsOutcome {
   imported: number;
   skipped: number;
@@ -59,17 +62,23 @@ export class ImportScrapeResultsUseCase {
     let skipped = 0;
     let noPhone = 0;
 
+    // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
+    // Truelancer, Upwork) have no phone — bid on them via their link instead
+    // of creating a contact with a made-up number.
+    // Leads sharing a number (chain branches) are imported one after another so
+    // the upsert never races itself into duplicate contacts.
+    const byPhone = new Map<string, typeof results>();
     for (const result of results) {
-      try {
-        // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
-        // Truelancer, Upwork) have no phone — bid on them via their link instead
-        // of creating a contact with a made-up number.
-        const phoneNumber = toE164(result.phone, country);
-        if (!phoneNumber) {
-          noPhone++;
-          continue;
-        }
+      const phoneNumber = toE164(result.phone, country);
+      if (!phoneNumber) {
+        noPhone++;
+        continue;
+      }
+      byPhone.set(phoneNumber, [...(byPhone.get(phoneNumber) ?? []), result]);
+    }
 
+    const importOne = async (phoneNumber: string, result: (typeof results)[number]) => {
+      try {
         const metadata: Record<string, unknown> = {
           company: result.company,
           jobTitle: result.jobTitle,
@@ -120,6 +129,17 @@ export class ImportScrapeResultsUseCase {
         this.logger.warn(`Failed to import result ${result.id}: ${err instanceof Error ? err.message : String(err)}`);
         skipped++;
       }
+    };
+
+    // A few numbers at a time: one by one took ~0.8s per lead on a remote DB,
+    // so 50 leads outran the app's request timeout
+    const groups = [...byPhone.entries()];
+    for (let i = 0; i < groups.length; i += IMPORT_CONCURRENCY) {
+      await Promise.all(
+        groups.slice(i, i + IMPORT_CONCURRENCY).map(async ([phoneNumber, group]) => {
+          for (const result of group) await importOne(phoneNumber, result);
+        }),
+      );
     }
 
     const totalImported = await this.prisma.scrapeResult.count({

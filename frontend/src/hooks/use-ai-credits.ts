@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiCreditsApi } from "@/lib/api/ai-credits";
+import { ApiError } from "@/lib/api/client";
 import { billingKeys } from "@/hooks/use-billing";
 
 export const aiCreditKeys = {
@@ -18,8 +19,10 @@ export function useAiCredits(options?: { enabled?: boolean }) {
     queryKey: aiCreditKeys.overview(),
     queryFn: aiCreditsApi.get,
     enabled: options?.enabled ?? true,
-    refetchInterval: 60_000,
-    // Employees without billing access get a 403: no pill, no retry storm
+    // Employees without billing access get a 403: no pill, no retry, and no asking
+    // again every minute (a role change shows up on the next page load)
+    refetchInterval: (query) =>
+      query.state.error instanceof ApiError && query.state.error.statusCode === 403 ? false : 60_000,
     retry: false,
   });
 }

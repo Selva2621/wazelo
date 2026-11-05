@@ -373,6 +373,13 @@ export const WHATSAPP_CONFIG = {
   DISCONNECT_DETECTION_TIMEOUT_MS: 120_000, // 2 min — phone must miss 4 heartbeats before stale
   MAX_RECONNECT_ATTEMPTS: 15,               // ~46h total window with exponential backoff
   RECONNECT_DELAY_MS: 5_000,
+  /**
+   * "Opened in another session" (440) is often our own overlapping socket (a restart,
+   * a duplicate connect), so try again a few times. Capped per window so a number
+   * really in use elsewhere isn't kicked off over and over.
+   */
+  REPLACED_RECONNECT_DELAYS_S: [10, 30, 60],
+  REPLACED_RECONNECT_WINDOW_MS: 30 * 60_000,
   MAX_MESSAGE_RETRY_COUNT: 3,
   MESSAGE_RETRY_DELAY_SECONDS: 5,
   SESSION_ENCRYPTION_ALGORITHM: 'aes-256-gcm',

@@ -12,10 +12,11 @@ import {
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
 import { EVENT_NAMES } from '@/common/constants';
-import { WhatsAppNumberLostEvent } from '../event-bus';
+import { WhatsAppNumberLostEvent, WhatsAppSessionDisconnectedEvent } from '../event-bus';
+import { isNumberLost } from '@/modules/whatsapp/domain/services/disconnect-classifier';
 
 /**
- * When a WhatsApp number is logged out or banned, hold everything queued on it
+ * When a WhatsApp number is logged out, banned or disconnected for good, hold everything queued on it
  * so nothing keeps hammering a dead number and nothing is lost:
  * - running campaigns → PAUSED (resume re-sends pending recipients)
  * - active sequences → PAUSED
@@ -46,6 +47,17 @@ export class WhatsAppNumberLostHandler {
     } catch (error) {
       this.logger.error(`Failed to hold work for lost session ${event.sessionId}: ${error}`);
     }
+  }
+
+  /**
+   * Any other final disconnect (reconnect gave up, opened elsewhere, unlinked by the
+   * user): same hold, so a running campaign pauses instead of failing every message.
+   * Logged out / banned already arrive as WHATSAPP_NUMBER_LOST.
+   */
+  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED)
+  async onSessionDisconnected(event: WhatsAppSessionDisconnectedEvent): Promise<void> {
+    if (isNumberLost(event.disconnectReason)) return;
+    await this.onNumberLost({ ...event, disconnectReason: event.disconnectReason ?? 'DISCONNECTED' });
   }
 
   private async pauseCampaigns(event: WhatsAppNumberLostEvent): Promise<number> {

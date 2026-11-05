@@ -152,7 +152,7 @@ export function useImportScrapeResults(runId: string) {
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.all });
       toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} skipped` : ""}.`);
       if (data.noPhone) {
-        toast.info(`${data.noPhone} lead${data.noPhone !== 1 ? "s have" : " has"} no phone number — open the job link to bid instead.`);
+        toast.info(`${data.noPhone} lead${data.noPhone !== 1 ? "s have" : " has"} no phone number, so ${data.noPhone !== 1 ? "they weren't" : "it wasn't"} added. Open the lead's link to reach them.`);
       }
     },
     onError: (err: any) => {

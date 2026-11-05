@@ -25,6 +25,7 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { KEYWORD_ALIASES, KEYWORD_SUGGESTIONS, mapsTipFor, suggestedFor } from "@/lib/constants/scraper-suggestions";
 import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 import { DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
 
@@ -417,7 +418,15 @@ export default function LeadScraperPage() {
 
   // Picks for the org's line of work (chosen in onboarding)
   const { data: orgSettings } = useOrgSettings();
-  const suggested = selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
+  // Job boards are for pitching freelance work and their leads have no phone to
+  // message, so team workspaces only get Google Maps
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
+  const scrapers = isFreelancer ? SCRAPERS : SCRAPERS.filter((s) => s.source === "GOOGLE_MAPS");
+  const sourceOptions = isFreelancer
+    ? SOURCE_OPTIONS
+    : SOURCE_OPTIONS.filter((o) => o.value === "" || o.value === "GOOGLE_MAPS");
+  const suggested =selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
   const mapsTip = isMaps ? mapsTipFor(orgSettings?.freelancerTypes) : undefined;
   const tipApplied = !!mapsTip && Object.entries(mapsTip.filters).every(
     ([k, v]) => leadFilters[k as keyof LeadFilters] === v,
@@ -535,7 +544,7 @@ export default function LeadScraperPage() {
       <div data-tour="scraper-sources">
         <h2 className="text-title-sm font-semibold text-on-surface mb-3">Pick a scraper</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {SCRAPERS.map((s) => (
+          {scrapers.map((s) => (
             <button
               key={s.source}
               onClick={() => { setSelected(s.source); setKeywords(""); setPendingType(""); setLocation(""); setMaxResults(20); setLeadFilters(DEFAULT_LEAD_FILTERS); }}
@@ -788,7 +797,7 @@ export default function LeadScraperPage() {
               value={filterSource}
               onChange={(e) => { setFilterSource(e.target.value as ScrapeSource | ""); setPage(0); }}
             >
-              {SOURCE_OPTIONS.map((o) => (
+              {sourceOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </FilterSelect>

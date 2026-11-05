@@ -1,6 +1,54 @@
 import type { TourDef } from "../types";
 import { detail, exact, listOrEmpty, primaryAction } from "../match";
 
+function leadScraperTour(o: {
+  id: string;
+  orgType: NonNullable<TourDef["orgType"]>;
+  summary: string;
+  sourcesBody: string;
+  sources: string[];
+}): TourDef {
+  return {
+    id: o.id,
+    version: 1,
+    title: "Lead scraper",
+    summary: o.summary,
+    section: "Sales",
+    startHref: "/leads/scraper",
+    navHref: "/leads/scraper",
+    orgType: o.orgType,
+    match: exact("/leads/scraper"),
+    steps: [
+      {
+        target: "scraper-sources",
+        title: "Pick a source",
+        body: o.sourcesBody,
+        example: { kind: "chips", items: o.sources },
+      },
+      {
+        target: "scraper-form",
+        ifMissing: "center",
+        title: "Describe who you want",
+        body: "Enter business types or keywords, a location and how many results. Filters can keep only places with a phone number or a minimum rating.",
+        example: {
+          kind: "fields",
+          rows: [
+            ["Looking for", "dental clinics, physiotherapy"],
+            ["Location", "Koramangala, Bengaluru"],
+            ["Max results", "100"],
+          ],
+        },
+      },
+      {
+        target: ["scraper-runs", ...listOrEmpty],
+        title: "Recent runs",
+        body: "Each search is a run. Open one to review results, check who's on WhatsApp and import them as contacts. You can add a note, re-run or duplicate a run.",
+        example: { kind: "flow", nodes: ["Run", "Check WhatsApp", "Import", "Message leads"] },
+      },
+    ],
+  };
+}
+
 /** Contacts, lead finding, pipeline, deals, proposals and the product catalogue */
 export const salesTours: TourDef[] = [
   {
@@ -101,44 +149,22 @@ export const salesTours: TourDef[] = [
     ],
   },
 
-  {
+  // Freelancers also get the job boards; team workspaces only Google Maps (see the scraper page)
+  leadScraperTour({
     id: "lead-scraper",
-    version: 1,
-    title: "Lead scraper",
+    orgType: "FREELANCER",
     summary: "Find new leads on Google Maps, freelance sites and LinkedIn.",
-    section: "Sales",
-    startHref: "/leads/scraper",
-    navHref: "/leads/scraper",
-    match: exact("/leads/scraper"),
-    steps: [
-      {
-        target: "scraper-sources",
-        title: "Pick a source",
-        body: "Google Maps finds local businesses with phone numbers. Upwork, Freelancer, Truelancer and LinkedIn find people posting work you can pitch for.",
-        example: { kind: "chips", items: ["Google Maps", "Upwork", "Freelancer.in", "Truelancer", "LinkedIn"] },
-      },
-      {
-        target: "scraper-form",
-        ifMissing: "center",
-        title: "Describe who you want",
-        body: "Enter business types or keywords, a location and how many results. Filters can keep only places with a phone number or a minimum rating.",
-        example: {
-          kind: "fields",
-          rows: [
-            ["Looking for", "dental clinics, physiotherapy"],
-            ["Location", "Koramangala, Bengaluru"],
-            ["Max results", "100"],
-          ],
-        },
-      },
-      {
-        target: ["scraper-runs", ...listOrEmpty],
-        title: "Recent runs",
-        body: "Each search is a run. Open one to review results, check who's on WhatsApp and import them as contacts. You can add a note, re-run or duplicate a run.",
-        example: { kind: "flow", nodes: ["Run", "Check WhatsApp", "Import", "Message leads"] },
-      },
-    ],
-  },
+    sourcesBody:
+      "Google Maps finds local businesses with phone numbers. Upwork, Freelancer, Truelancer and LinkedIn find people posting work you can pitch for.",
+    sources: ["Google Maps", "Upwork", "Freelancer.in", "Truelancer", "LinkedIn"],
+  }),
+  leadScraperTour({
+    id: "lead-scraper-team",
+    orgType: "TEAM",
+    summary: "Find local businesses on Google Maps to add as leads.",
+    sourcesBody: "Google Maps finds local businesses with their phone numbers, ready to message on WhatsApp.",
+    sources: ["Google Maps"],
+  }),
 
   {
     id: "scraper-run",

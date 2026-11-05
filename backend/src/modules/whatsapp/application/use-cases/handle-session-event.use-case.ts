@@ -4,7 +4,7 @@ import { WhatsAppSessionRepository } from '../../infrastructure/repositories/wha
 import { WhatsAppSessionService } from '../../domain/services/session.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { QueueService } from '@/infrastructure/queue/queue.service';
-import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
+import { EVENT_NAMES, QUEUE_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
 import { AuditAction, WhatsAppSessionStatus } from '@prisma/client';
 
 export interface SessionEventPayload {
@@ -30,6 +30,8 @@ export interface SessionEventPayload {
 @Injectable()
 export class HandleSessionEventUseCase {
   private readonly logger = new Logger(HandleSessionEventUseCase.name);
+  /** When each session last got a "replaced" (440) retry — one backend instance */
+  private readonly replacedRetries = new Map<string, number[]>();
 
   constructor(
     private readonly sessionRepo: WhatsAppSessionRepository,
@@ -219,11 +221,17 @@ export class HandleSessionEventUseCase {
     });
   }
 
-  /** Replaced by another session (440) or invalid session (411/500): stop, the user reconnects. */
+  /**
+   * Replaced by another session (440): try again a few times first — it is often our
+   * own overlapping socket. Invalid session (411/500), or 440 that keeps coming back:
+   * stop, the user reconnects.
+   */
   private async handleStopped(
     session: Record<string, any>,
     payload: SessionEventPayload,
   ) {
+    if (payload.disconnectReason === 'REPLACED' && (await this.retryReplaced(session))) return;
+
     await this.sessionRepo.markAsDisconnected(session.id);
     await this.sessionRepo.updateStatus(session.id, {
       status: WhatsAppSessionStatus.DISCONNECTED,
@@ -251,6 +259,44 @@ export class HandleSessionEventUseCase {
       reason: payload.reason || 'WhatsApp session stopped',
       disconnectReason: payload.disconnectReason,
     });
+  }
+
+  /** Schedules the next "replaced" retry; false once this window's tries are used up. */
+  private async retryReplaced(session: Record<string, any>): Promise<boolean> {
+    const now = Date.now();
+    const recent = (this.replacedRetries.get(session.id) ?? []).filter(
+      (at) => now - at < WHATSAPP_CONFIG.REPLACED_RECONNECT_WINDOW_MS,
+    );
+    const delays = WHATSAPP_CONFIG.REPLACED_RECONNECT_DELAYS_S;
+    if (recent.length >= delays.length) {
+      this.replacedRetries.delete(session.id);
+      this.logger.warn(`Session ${session.id} replaced again after ${delays.length} retries — stopping`);
+      return false;
+    }
+    this.replacedRetries.set(session.id, [...recent, now]);
+
+    // RECONNECTING, so a backend restart in between still brings it back
+    await this.sessionRepo.incrementReconnectCount(session.id);
+    await this.sessionRepo.updateStatus(session.id, {
+      status: WhatsAppSessionStatus.RECONNECTING,
+      disconnectCode: 440,
+      disconnectReason: 'REPLACED',
+    });
+
+    const attempt = recent.length + 1;
+    this.logger.log(`Session ${session.id} was replaced — retry ${attempt} of ${delays.length} in ${delays[recent.length]}s`);
+    await this.queueService.publish(
+      QUEUE_NAMES.WHATSAPP_SESSION_HEALTH_CHECK,
+      { sessionId: session.id, action: 'reconnect', attempt },
+      { startAfter: delays[recent.length] },
+    );
+    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_SESSION_RECONNECTING, {
+      sessionId: session.id,
+      orgId: session.orgId,
+      userId: session.userId,
+      attempt,
+    });
+    return true;
   }
 
   private async handleHeartbeat(session: Record<string, any>) {

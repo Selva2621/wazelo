@@ -307,6 +307,13 @@ export class SendMessageWorker implements OnModuleInit {
     // 5. Verify session is connected
     if (!this.whatsappApi.isSessionConnected(sessionId)) {
       const session = await this.sessionRepo.findById(sessionId);
+      // A short drop is retried automatically: wait for it instead of failing the
+      // message for good. If reconnecting gives up, the session-lost handler pauses
+      // the campaign and puts its recipients back, so nothing is lost.
+      if (session?.status === 'RECONNECTING') {
+        await this.holdMessage(data, new Date(Date.now() + 60_000), 'Waiting for WhatsApp to reconnect');
+        return;
+      }
       if (!session || session.status !== 'CONNECTED') {
         await this.handleFailure(
           message,
