@@ -12,7 +12,6 @@ import {
   EVENT_NAMES,
   CAMPAIGN_CONFIG,
 } from '@/common/constants';
-import { isTestModeOn } from '@/common/utils/test-recipient-guard.util';
 import {
   AuditAction,
   CampaignStatus,
@@ -51,7 +50,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
   }
 
   private async handle(data: CampaignExecuteJobData, jobId: string): Promise<void> {
-    const { campaignId, orgId, sessionId } = data;
+    const { campaignId, orgId } = data;
 
     // 1. Load campaign and verify status
     const campaign = await this.campaignRepo.findById(campaignId);
@@ -104,10 +103,11 @@ export class CampaignExecutorWorker implements OnModuleInit {
     }
 
     try {
-      // 2. Check if recipients already exist (resume scenario)
+      // Resolve the audience once, then start every pending batch independently.
       const hasPending = await this.recipientRepo.hasPendingRecipients(campaignId);
+      const hasQueued = await this.recipientRepo.hasQueuedRecipients(campaignId);
 
-      if (!hasPending) {
+      if (!hasPending && !hasQueued) {
         // Check if any recipients exist at all (completed batches from previous run)
         const existingCount = await this.recipientRepo.countByCampaign(campaignId);
 
@@ -122,8 +122,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
         }
       }
 
-      // 3. Dispatch batch jobs for PENDING recipients
-      await this.dispatchBatches(campaignId, orgId, sessionId, currentCampaign.channel === 'EMAIL');
+      await this.dispatchPendingBatches(campaignId, orgId);
 
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -168,6 +167,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
     // Resolve audience
     const filters = campaign.audienceFilters as Record<string, unknown> | null;
     const audienceFilters = filters ? {
+      contactIds: filters.contactIds as string[] | undefined,
       leadStatuses: filters.leadStatuses as string[] | undefined,
       tagIds: filters.tagIds as string[] | undefined,
       ownerIds: filters.ownerIds as string[] | undefined,
@@ -186,25 +186,8 @@ export class CampaignExecutorWorker implements OnModuleInit {
       );
     }
 
-    // Campaigns run on the user's own WhatsApp number (Baileys): only message
-    // people who have written to us before, cold blasts get numbers banned.
-    // In WhatsApp test mode every send goes to a test number, so the whole
-    // audience runs — that's what is being tested. Email doesn't have this rule.
-    const contacts = !isEmail && CAMPAIGN_CONFIG.WARM_CONTACTS_ONLY && !isTestModeOn()
-      ? await this.audienceResolver.keepWarmContacts(orgId, resolved.contacts)
-      : resolved.contacts;
-    const total = contacts.length;
-
-    if (total === 0) {
-      throw new Error(
-        'None of the selected contacts has messaged you before. To protect your WhatsApp number from a ban, campaigns only go to contacts who have chatted with you.',
-      );
-    }
-    if (total < resolved.total) {
-      this.logger.log(
-        `Campaign ${campaignId}: skipped ${resolved.total - total} contacts who never messaged first`,
-      );
-    }
+    const contacts = resolved.contacts;
+    const total = resolved.total;
 
     if (total > CAMPAIGN_CONFIG.MAX_RECIPIENTS) {
       throw new Error(
@@ -212,18 +195,61 @@ export class CampaignExecutorWorker implements OnModuleInit {
       );
     }
 
-    // Bulk insert recipients in batches of 1000
-    const insertBatchSize = 1000;
+    // Keep DB writes bounded while preserving the configured send batch number.
+    const insertBatchSize = CAMPAIGN_CONFIG.BATCH_SIZE;
+    const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
+      ? campaign.metadata as Record<string, unknown>
+      : {};
+    const rawAssignments = metadata.batchSessionAssignments;
+    const hasExplicitAssignments = Array.isArray(rawAssignments) && rawAssignments.length > 0;
+    const assignmentByBatch = new Map<number, string>();
+    if (hasExplicitAssignments) {
+      for (const assignment of rawAssignments) {
+        if (
+          assignment &&
+          typeof assignment === 'object' &&
+          'batchNumber' in assignment &&
+          'sessionId' in assignment &&
+          typeof assignment.batchNumber === 'number' &&
+          typeof assignment.sessionId === 'string'
+        ) {
+          assignmentByBatch.set(assignment.batchNumber, assignment.sessionId);
+        }
+      }
+    }
+    if (!isEmail && hasExplicitAssignments) {
+      const batchCount = Math.ceil(total / CAMPAIGN_CONFIG.BATCH_SIZE);
+      for (let batchNumber = 1; batchNumber <= batchCount; batchNumber++) {
+        if (!assignmentByBatch.has(batchNumber)) {
+          throw new Error(`No WhatsApp session is assigned to campaign batch ${batchNumber}`);
+        }
+      }
+    }
+
     for (let i = 0; i < contacts.length; i += insertBatchSize) {
       const batch = contacts.slice(i, i + insertBatchSize);
       await this.recipientRepo.bulkCreate(
-        batch.map((contact, idx) => ({
-          campaignId,
-          orgId,
-          contactId: contact.id,
-          contactPhone: contact.phoneNumber,
-          batchNumber: Math.floor((i + idx) / CAMPAIGN_CONFIG.BATCH_SIZE) + 1,
-        })),
+        batch.map((contact, idx) => {
+          const batchNumber = Math.floor((i + idx) / CAMPAIGN_CONFIG.BATCH_SIZE) + 1;
+          const assignedSessionId = isEmail
+            ? null
+            : hasExplicitAssignments
+              ? assignmentByBatch.get(batchNumber) ?? null
+              : typeof campaign.sessionId === 'string'
+                ? campaign.sessionId
+                : null;
+          if (!isEmail && !assignedSessionId) {
+            throw new Error(`No WhatsApp session is assigned to campaign batch ${batchNumber}`);
+          }
+          return {
+            campaignId,
+            orgId,
+            contactId: contact.id,
+            contactPhone: contact.phoneNumber,
+            batchNumber,
+            sessionId: assignedSessionId,
+          };
+        }),
       );
     }
 
@@ -235,47 +261,15 @@ export class CampaignExecutorWorker implements OnModuleInit {
     );
   }
 
-  private async dispatchBatches(
-    campaignId: string,
-    orgId: string,
-    sessionId: string | null,
-    /** Email: batches a minute apart (the mailbox's daily limit paces sending) */
-    isEmail = false,
-  ): Promise<void> {
-    const maxBatch = await this.recipientRepo.getMaxBatchNumber(campaignId);
-
-    // Find batches that still have PENDING recipients
-    const pendingBatches: number[] = [];
-    for (let batch = 1; batch <= maxBatch; batch++) {
-      const recipients = await this.recipientRepo.findPendingByBatch(campaignId, batch);
-      if (recipients.length > 0) {
-        pendingBatches.push(batch);
-      }
-    }
-
-    this.logger.log(
-      `Campaign ${campaignId}: dispatching ${pendingBatches.length} batch jobs`,
-    );
-
-    for (let i = 0; i < pendingBatches.length; i++) {
-      const batchNumber = pendingBatches[i];
-      const delaySeconds = i * (isEmail ? 60 : CAMPAIGN_CONFIG.BATCH_DELAY_SECONDS);
-
-      if (delaySeconds > 0) {
-        await this.queueService.publishDelayed(
-          QUEUE_NAMES.CAMPAIGN_BATCH,
-          { campaignId, batchNumber, orgId, sessionId },
-          delaySeconds,
-          { singletonKey: `campaign-batch-${campaignId}-${batchNumber}` },
-        );
-      } else {
-        await this.queueService.publishOnce(
-          QUEUE_NAMES.CAMPAIGN_BATCH,
-          { campaignId, batchNumber, orgId, sessionId },
-          `campaign-batch-${campaignId}-${batchNumber}`,
-        );
-      }
-    }
+  private async dispatchPendingBatches(campaignId: string, orgId: string): Promise<void> {
+    const pendingBatchNumbers = await this.recipientRepo.getPendingBatchNumbers(campaignId);
+    await Promise.all(pendingBatchNumbers.map((batchNumber) =>
+      this.queueService.publishOnce(
+        QUEUE_NAMES.CAMPAIGN_BATCH,
+        { campaignId, orgId, batchNumber },
+        `campaign-batch-${campaignId}-${batchNumber}`,
+      ),
+    ));
   }
 
   private async completeCampaign(campaignId: string, orgId: string): Promise<void> {

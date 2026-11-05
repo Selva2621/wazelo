@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AudienceResolverService } from '../../domain/services/audience-resolver.service';
 import { AudienceFiltersDto } from '../dto/create-campaign.dto';
 import { CampaignAudienceType } from '@prisma/client';
+import { CAMPAIGN_CONFIG } from '@/common/constants';
 
 @Injectable()
 export class PreviewAudienceUseCase {
@@ -21,6 +22,10 @@ export class PreviewAudienceUseCase {
       channel,
     );
 
-    return { estimatedRecipients: count };
+    return {
+      estimatedRecipients: count,
+      batchSize: CAMPAIGN_CONFIG.BATCH_SIZE,
+      maxRecipients: CAMPAIGN_CONFIG.MAX_RECIPIENTS,
+    };
   }
 }

@@ -12,6 +12,7 @@ export interface CreateRecipientInput {
   contactId: string;
   contactPhone: string;
   batchNumber: number;
+  sessionId?: string | null;
 }
 
 export interface RecipientStatusCounts {
@@ -39,6 +40,7 @@ export class CampaignRecipientRepository {
         contactId: r.contactId,
         contactPhone: r.contactPhone,
         batchNumber: r.batchNumber,
+        sessionId: r.sessionId ?? null,
         status: CampaignRecipientStatus.PENDING,
       })),
       skipDuplicates: true,
@@ -70,6 +72,90 @@ export class CampaignRecipientRepository {
     });
   }
 
+  /**
+   * Atomically claims the next recipient only when no other recipient in its
+   * batch is queued. Other batches can progress independently.
+   */
+  async claimNextPending(campaignId: string, batchNumber: number): Promise<CampaignRecipient | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${campaignId}), ${batchNumber})`;
+
+      const inFlight = await tx.campaignRecipient.findFirst({
+        where: { campaignId, batchNumber, status: CampaignRecipientStatus.QUEUED },
+        select: { id: true },
+      });
+      if (inFlight) return null;
+
+      const recipient = await tx.campaignRecipient.findFirst({
+        where: { campaignId, batchNumber, status: CampaignRecipientStatus.PENDING },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+      if (!recipient) return null;
+
+      const claimed = await tx.campaignRecipient.updateMany({
+        where: { id: recipient.id, status: CampaignRecipientStatus.PENDING },
+        data: { status: CampaignRecipientStatus.QUEUED },
+      });
+      return claimed.count === 1
+        ? { ...recipient, status: CampaignRecipientStatus.QUEUED }
+        : null;
+    });
+  }
+
+  async hasQueuedRecipients(campaignId: string, batchNumber?: number): Promise<boolean> {
+    const recipient = await this.prisma.campaignRecipient.findFirst({
+      where: {
+        campaignId,
+        status: CampaignRecipientStatus.QUEUED,
+        ...(batchNumber !== undefined && { batchNumber }),
+      },
+      select: { id: true },
+    });
+    return recipient !== null;
+  }
+
+  async getPendingBatchNumbers(campaignId: string): Promise<number[]> {
+    const batches = await this.prisma.campaignRecipient.groupBy({
+      by: ['batchNumber'],
+      where: { campaignId, status: CampaignRecipientStatus.PENDING },
+      orderBy: { batchNumber: 'asc' },
+    });
+    return batches.map((batch) => batch.batchNumber);
+  }
+
+  async reassignPendingSession(
+    campaignId: string,
+    previousSessionId: string,
+    nextSessionId: string,
+  ): Promise<number> {
+    const result = await this.prisma.campaignRecipient.updateMany({
+      where: {
+        campaignId,
+        sessionId: previousSessionId,
+        status: CampaignRecipientStatus.PENDING,
+      },
+      data: { sessionId: nextSessionId },
+    });
+    return result.count;
+  }
+
+  async updateStatusIfCurrent(
+    id: string,
+    currentStatus: CampaignRecipientStatus,
+    status: CampaignRecipientStatus,
+    extra?: { failedReason?: string; processedAt?: Date },
+  ): Promise<boolean> {
+    const result = await this.prisma.campaignRecipient.updateMany({
+      where: { id, status: currentStatus },
+      data: {
+        status,
+        ...(extra?.failedReason && { failedReason: extra.failedReason }),
+        ...(extra?.processedAt && { processedAt: extra.processedAt }),
+      },
+    });
+    return result.count === 1;
+  }
+
   async updateStatus(
     id: string,
     status: CampaignRecipientStatus,
@@ -85,6 +171,21 @@ export class CampaignRecipientRepository {
         ...(extra?.processedAt && { processedAt: extra.processedAt }),
       },
     });
+  }
+
+  async markFailedIfActive(id: string, reason: string): Promise<boolean> {
+    const result = await this.prisma.campaignRecipient.updateMany({
+      where: {
+        id,
+        status: { in: [CampaignRecipientStatus.PENDING, CampaignRecipientStatus.QUEUED] },
+      },
+      data: {
+        status: CampaignRecipientStatus.FAILED,
+        failedReason: reason,
+        processedAt: new Date(),
+      },
+    });
+    return result.count > 0;
   }
 
   /**
@@ -175,7 +276,10 @@ export class CampaignRecipientRepository {
         skip: options.skip ?? 0,
         orderBy: { createdAt: 'asc' },
         // The recipients table shows who each row is
-        include: { contact: { select: { id: true, name: true } } },
+        include: {
+          contact: { select: { id: true, name: true } },
+          session: { select: { id: true, phoneNumber: true } },
+        },
       }),
       this.prisma.campaignRecipient.count({ where }),
     ]);

@@ -176,7 +176,7 @@ export class WhatsAppSessionController {
   // ───── Admin Session Management ─────
 
   @Get('admin/sessions')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.WHATSAPP_SESSION_VIEW_ALL)
   async listAllSessions(
     @CurrentUser() user: JwtPayload,

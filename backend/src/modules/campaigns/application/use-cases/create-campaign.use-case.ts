@@ -53,6 +53,7 @@ export class CreateCampaignUseCase {
     }
 
     const isEmail = dto.channel === 'EMAIL';
+    const primarySessionId = dto.batchAssignments?.[0]?.sessionId ?? dto.sessionId ?? null;
     if (isEmail) {
       // 2. Email: sent from the workspace's own mailbox, which must be connected
       const account = await this.emailRepo.account(orgId);
@@ -62,15 +63,28 @@ export class CreateCampaignUseCase {
       if (!dto.messageBody?.trim()) throw new BadRequestException('Email campaigns need a message');
       assertNoUnknownPlaceholders(`${dto.emailSubject} ${dto.messageBody}`);
     } else {
-      // 2. Validate session exists and belongs to org
-      if (!dto.sessionId) throw new BadRequestException('Choose the WhatsApp number to send from');
-      const session = await this.sessionRepo.findByIdAndOrg(dto.sessionId, orgId);
-      if (!session) {
-        throw new BadRequestException('WhatsApp session not found');
+      // Validate every selected batch session before storing the assignment plan.
+      const batchAssignments = dto.batchAssignments ?? [];
+      const duplicateBatchNumbers = batchAssignments.some(
+        (assignment, index) =>
+          batchAssignments.findIndex((candidate) => candidate.batchNumber === assignment.batchNumber) !== index,
+      );
+      if (duplicateBatchNumbers) {
+        throw new BadRequestException('Assign exactly one WhatsApp session to each batch');
       }
-      if (session.status !== 'CONNECTED') {
+
+      const selectedSessionIds = [...new Set([
+        ...(dto.sessionId ? [dto.sessionId] : []),
+        ...batchAssignments.map((assignment) => assignment.sessionId),
+      ])];
+      if (selectedSessionIds.length === 0) {
+        throw new BadRequestException('Select a WhatsApp session for each campaign batch');
+      }
+
+      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(selectedSessionIds, orgId);
+      if (connectedSessions.length !== selectedSessionIds.length) {
         throw new BadRequestException(
-          'WhatsApp session is not connected. Connect via QR first.',
+          'Every selected WhatsApp session must belong to this organization and be connected',
         );
       }
 
@@ -91,7 +105,7 @@ export class CreateCampaignUseCase {
     const campaign = await this.campaignRepo.create({
       orgId,
       channel: isEmail ? 'EMAIL' : 'WHATSAPP',
-      sessionId: isEmail ? null : dto.sessionId,
+      sessionId: isEmail ? null : primarySessionId,
       emailSubject: isEmail ? dto.emailSubject!.trim() : null,
       name: dto.name,
       description: dto.description,
@@ -105,6 +119,9 @@ export class CreateCampaignUseCase {
       timezone: dto.timezone,
       createdById: userId,
       idempotencyKey: dto.idempotencyKey,
+      metadata: !isEmail && dto.batchAssignments?.length
+        ? { batchSessionAssignments: dto.batchAssignments }
+        : undefined,
       productId: dto.productId,
     });
 
@@ -135,7 +152,8 @@ export class CreateCampaignUseCase {
         name: dto.name,
         messageType: dto.messageType,
         audienceType: dto.audienceType,
-        sessionId: dto.sessionId,
+        sessionId: primarySessionId,
+        batchAssignments: dto.batchAssignments,
       },
       ipAddress,
       userAgent,
@@ -165,7 +183,7 @@ export class CreateCampaignUseCase {
           {
             campaignId: campaign.id,
             orgId,
-            sessionId: dto.sessionId,
+            sessionId: primarySessionId,
             scheduled: true,
           },
           delaySeconds,

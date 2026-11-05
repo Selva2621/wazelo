@@ -49,6 +49,19 @@ export class WhatsAppSessionRepository {
     });
   }
 
+  async findConnectedByIdsAndOrg(ids: string[], orgId: string) {
+    if (ids.length === 0) return [];
+    return this.prisma.whatsAppSession.findMany({
+      where: {
+        id: { in: ids },
+        orgId,
+        status: WhatsAppSessionStatus.CONNECTED,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+  }
+
   async findAnyByUserId(userId: string, orgId: string) {
     return this.prisma.whatsAppSession.findFirst({
       where: { userId, orgId, deletedAt: null },
@@ -151,6 +164,19 @@ export class WhatsAppSessionRepository {
     return this.prisma.whatsAppSession.update({
       where: { id },
       data: {
+        lastHeartbeatAt: new Date(),
+        lastActiveAt: new Date(),
+      },
+    });
+  }
+
+  async markConnectedFromHealthCheck(id: string) {
+    return this.prisma.whatsAppSession.update({
+      where: { id },
+      data: {
+        status: WhatsAppSessionStatus.CONNECTED,
+        reconnectCount: 0,
+        disconnectedAt: null,
         lastHeartbeatAt: new Date(),
         lastActiveAt: new Date(),
       },
@@ -262,10 +288,16 @@ export class WhatsAppSessionRepository {
     return this.prisma.whatsAppSession.findMany({
       where: {
         deletedAt: null,
-        status: {
-          in: [WhatsAppSessionStatus.CONNECTED, WhatsAppSessionStatus.RECONNECTING],
-        },
-        lastHeartbeatAt: { lt: heartbeatThreshold },
+        OR: [
+          {
+            status: WhatsAppSessionStatus.CONNECTED,
+            OR: [
+              { lastHeartbeatAt: { lt: heartbeatThreshold } },
+              { lastHeartbeatAt: null },
+            ],
+          },
+          { status: WhatsAppSessionStatus.RECONNECTING },
+        ],
       },
     });
   }

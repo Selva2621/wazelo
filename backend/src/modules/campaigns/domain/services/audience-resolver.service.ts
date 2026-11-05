@@ -3,6 +3,7 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { CampaignAudienceType, Prisma } from '@prisma/client';
 
 export interface AudienceFilters {
+  contactIds?: string[];
   leadStatuses?: string[];
   tagIds?: string[];
   ownerIds?: string[];
@@ -147,40 +148,6 @@ export class AudienceResolverService {
   }
 
   /**
-   * Keep only "warm" contacts — ones who have messaged this org before.
-   * Bulk messages to people who never wrote first get a WhatsApp number
-   * reported and banned, so Baileys campaigns only go to warm contacts.
-   */
-  async keepWarmContacts(orgId: string, contacts: ResolvedContact[]): Promise<ResolvedContact[]> {
-    const warm: ResolvedContact[] = [];
-    const chunkSize = 1000;
-
-    for (let i = 0; i < contacts.length; i += chunkSize) {
-      const chunk = contacts.slice(i, i + chunkSize);
-      const variants = chunk.flatMap((c) => {
-        const digits = c.phoneNumber.replace(/^\+/, '');
-        return [digits, `+${digits}`];
-      });
-
-      const inbound = await this.prisma.message.findMany({
-        where: {
-          orgId,
-          direction: 'INBOUND',
-          deletedAt: null,
-          contactPhone: { in: variants },
-        },
-        select: { contactPhone: true },
-        distinct: ['contactPhone'],
-      });
-      const warmPhones = new Set(inbound.map((m) => m.contactPhone.replace(/^\+/, '')));
-
-      warm.push(...chunk.filter((c) => warmPhones.has(c.phoneNumber.replace(/^\+/, ''))));
-    }
-
-    return warm;
-  }
-
-  /**
    * Preview audience count without fetching all contacts.
    * Used by the preview-audience endpoint for fast feedback.
    */
@@ -206,8 +173,19 @@ export class AudienceResolverService {
       mergedIntoId: null,
       optedOut: false,
     };
+    const intersectIds = (ids: string[]) => {
+      const currentIds =
+        where.id && typeof where.id === 'object' && 'in' in where.id
+          ? (where.id.in as string[])
+          : undefined;
+      where.id = { in: currentIds ? currentIds.filter((id) => ids.includes(id)) : ids };
+    };
 
     if (audienceType === CampaignAudienceType.FILTERED && filters) {
+      if (filters.contactIds && filters.contactIds.length > 0) {
+        intersectIds(filters.contactIds);
+      }
+
       if (filters.leadStatuses && filters.leadStatuses.length > 0) {
         where.leadStatus = { in: filters.leadStatuses as any };
       }
@@ -239,7 +217,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const contactIds = imported.map((r) => r.contactId as string);
-        where.id = { in: contactIds };
+        intersectIds(contactIds);
       }
 
       // hasPhone filter
@@ -259,11 +237,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const websiteContactIds = websiteResults.map((r) => r.contactId as string);
-        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
-          where.id = { in: (where.id.in as string[]).filter((id) => websiteContactIds.includes(id)) };
-        } else {
-          where.id = { in: websiteContactIds };
-        }
+        intersectIds(websiteContactIds);
       }
 
       // dateAdded filter
@@ -283,12 +257,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const ratedContactIds = ratedResults.map((r) => r.contactId as string);
-        // Intersect with existing id filter if present
-        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
-          where.id = { in: (where.id.in as string[]).filter((id) => ratedContactIds.includes(id)) };
-        } else {
-          where.id = { in: ratedContactIds };
-        }
+        intersectIds(ratedContactIds);
       }
     }
 

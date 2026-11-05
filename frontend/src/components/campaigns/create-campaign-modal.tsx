@@ -26,6 +26,7 @@ import { useProductTerms } from "@/lib/product-terms";
 import {
   createCampaignSchema,
   type CreateCampaignFormData,
+  type CreateCampaignFormInput,
 } from "@/lib/validations/campaigns";
 import type { MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import { useTemplates } from "@/hooks/use-templates";
@@ -238,21 +239,26 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const {
     register, handleSubmit, watch, setValue, reset,
     formState: { errors },
-  } = useForm<CreateCampaignFormData>({
+  } = useForm<CreateCampaignFormInput, unknown, CreateCampaignFormData>({
     resolver: zodResolver(createCampaignSchema),
     defaultValues: {
       channel: "WHATSAPP",
       messageType: "TEXT",
       audienceType: "ALL",
+      sessionIds: [],
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
   });
 
-  // With a single connected number there is nothing to choose; preselect it
+  const selectedSessionIds = watch("sessionIds") ?? [];
+
+  // With a single connected number there is nothing to choose; preselect it.
   const onlySessionId = sessions.length === 1 ? sessions[0].id : null;
   useEffect(() => {
-    if (open && onlySessionId) setValue("sessionId", onlySessionId);
-  }, [open, onlySessionId, setValue]);
+    if (open && onlySessionId && selectedSessionIds.length === 0) {
+      setValue("sessionIds", [onlySessionId]);
+    }
+  }, [open, onlySessionId, selectedSessionIds.length, setValue]);
 
   useEffect(() => {
     if (!open || !initialAudienceFilters) return;
@@ -268,8 +274,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const emailSubject = watch("emailSubject") || "";
   const audienceFilters = watch("audienceFilters");
   const mediaUrl = watch("mediaUrl");
-  const sessionId = watch("sessionId");
-  const senderName = sessions.find((s) => s.id === sessionId)?.name;
+  const senderName = sessions.find((s) => s.id === selectedSessionIds[0])?.name;
 
   function switchChannel(next: Channel) {
     if (next === channel) return;
@@ -312,17 +317,31 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     setValue("audienceFilters", { ...audienceFilters, [key]: next.length ? next : undefined });
   }
 
-  // "Send now" goes out to the whole audience at once, so confirm the count first
-  const [pendingSend, setPendingSend] = useState<{ data: CreateCampaignFormData; recipients: number | null } | null>(null);
+  const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [pendingSend, setPendingSend] = useState<{
+    data: CreateCampaignFormData;
+    recipients: number | null;
+    batchSize: number;
+    maxRecipients: number;
+    batchAssignments: { batchNumber: number; sessionId: string }[];
+  } | null>(null);
 
   async function onSubmit(data: CreateCampaignFormData) {
     if (unfilledPlaceholders.length > 0) return;
     if (data.channel === "EMAIL" && !emailReady) return;
-    if (scheduleMode !== "immediate") {
+    if (data.channel === "EMAIL" && scheduleMode !== "immediate") {
       submitCampaign(data);
       return;
     }
+    if (data.channel !== "EMAIL" && data.sessionIds.length === 0) {
+      setAudienceError("Select at least one connected WhatsApp session.");
+      return;
+    }
+
+    setAudienceError(null);
     let recipients: number | null = null;
+    let batchSize = 100;
+    let maxRecipients = 10_000;
     try {
       const preview = await previewAudience.mutateAsync({
         audienceType: data.audienceType,
@@ -330,15 +349,45 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         channel: data.channel,
       });
       recipients = preview.estimatedRecipients ?? null;
-    } catch {
-      // Still let them confirm without a count
+      batchSize = preview.batchSize;
+      maxRecipients = preview.maxRecipients;
+    } catch (error) {
+      if (data.channel !== "EMAIL") {
+        setAudienceError(error instanceof Error ? error.message : "Could not preview the campaign audience.");
+        return;
+      }
     }
-    setPendingSend({ data, recipients });
+
+    if (data.channel !== "EMAIL" && recipients === null) {
+      setAudienceError("Preview the audience before assigning WhatsApp sessions to batches.");
+      return;
+    }
+    if (data.channel !== "EMAIL" && recipients === 0) {
+      setAudienceError("No eligible WhatsApp recipients match this audience.");
+      return;
+    }
+    const batchCount = data.channel === "EMAIL" || !recipients
+      ? 0
+      : Math.ceil(recipients / batchSize);
+    const firstSessionId = data.sessionIds[0] ?? "";
+    setPendingSend({
+      data,
+      recipients,
+      batchSize,
+      maxRecipients,
+      batchAssignments: Array.from({ length: batchCount }, (_, index) => ({
+        batchNumber: index + 1,
+        sessionId: firstSessionId,
+      })),
+    });
   }
 
-  function submitCampaign(data: CreateCampaignFormData) {
+  function submitCampaign(
+    data: CreateCampaignFormData,
+    batchAssignments: { batchNumber: number; sessionId: string }[] = [],
+  ) {
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
-    const { channel: ch, emailSubject: subject, sessionId: sid, ...rest } = data;
+    const { channel: ch, emailSubject: subject, sessionId: sid, sessionIds: _sessionIds, ...rest } = data;
     const shared = {
       ...rest,
       description: data.description || undefined,
@@ -359,7 +408,8 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         : {
             ...shared,
             channel: "WHATSAPP",
-            sessionId: sid || undefined,
+            sessionId: batchAssignments[0]?.sessionId || sid || undefined,
+            batchAssignments,
             mediaUrl: data.mediaUrl || undefined,
             mediaMimeType: data.mediaMimeType || undefined,
           },
@@ -375,11 +425,28 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           setShowTemplatePicker(false);
           setPlaceholderValues({});
           setPendingSend(null);
+          setAudienceError(null);
           onClose();
           router.push(`/campaigns/${created.id}`);
         },
       },
     );
+  }
+
+  function updateBatchAssignment(batchNumber: number, sessionId: string) {
+    setPendingSend((current) => current && ({
+      ...current,
+      batchAssignments: current.batchAssignments.map((assignment) =>
+        assignment.batchNumber === batchNumber ? { ...assignment, sessionId } : assignment,
+      ),
+    }));
+  }
+
+  function toggleSession(sessionId: string) {
+    const nextSessionIds = selectedSessionIds.includes(sessionId)
+      ? selectedSessionIds.filter((id) => id !== sessionId)
+      : [...selectedSessionIds, sessionId];
+    setValue("sessionIds", nextSessionIds, { shouldValidate: true, shouldDirty: true });
   }
 
   const completedRuns = scrapeRunsData?.runs.filter((r) => r.status === "COMPLETED") ?? [];
@@ -718,6 +785,22 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               {audienceType === "FILTERED" && (
                 <div className="space-y-4 p-3 rounded-xl border border-outline-variant/15 bg-surface-container-low">
 
+                  {!!audienceFilters?.contactIds?.length && (
+                    <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-3 py-2">
+                      <p className="text-caption text-on-surface">
+                        {audienceFilters.contactIds.length} manually selected contact{audienceFilters.contactIds.length === 1 ? "" : "s"}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setValue("audienceFilters", { ...audienceFilters, contactIds: undefined })}
+                      >
+                        Clear selection
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Lead Status */}
                   <div>
                     <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Lead Status</p>
@@ -889,6 +972,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                    !audienceFilters?.sources?.length &&
                    !audienceFilters?.tagIds?.length &&
                    !audienceFilters?.productIds?.length &&
+                   !audienceFilters?.contactIds?.length &&
                    !audienceFilters?.scrapeRunId &&
                    audienceFilters?.hasPhone === undefined &&
                    audienceFilters?.hasWebsite === undefined &&
@@ -930,11 +1014,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               )}
             </div>
 
-            {/* Sender: WhatsApp number or the workspace email */}
+            {/* WhatsApp sessions assigned to individual batches */}
             <div>
               <SectionHeading
                 icon={isEmail ? <Mail className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
-                label="Send from"
+                label={isEmail ? "Send from" : "WhatsApp sessions"}
               />
               {isEmail ? (
                 emailReady ? (
@@ -947,26 +1031,35 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 )
               ) : sessions.length === 0 ? (
                 <div className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
-                  No WhatsApp number is connected.{" "}
+                  No connected WhatsApp sessions are available.{" "}
                   {/* New tab so the campaign being written isn't lost */}
                   <a href="/settings/whatsapp" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-on-surface">
                     Connect WhatsApp
                   </a>
-                  , then come back and pick it here.
+                  or ask an organization admin to connect a session.
                 </div>
               ) : (
-                <Select
-                  value={sessionId ?? ""}
-                  onValueChange={(v) => setValue("sessionId", v, { shouldValidate: true, shouldDirty: true })}
-                >
-                  {sessions.length > 1 && <option value="">Choose a WhatsApp number</option>}
-                  {sessions.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </Select>
+                <div className="space-y-2">
+                  <p className="text-caption text-on-surface-variant">
+                    Select connected team sessions, then assign one sender to each configured batch.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {sessions.map((session) => (
+                      <label key={session.id} className="flex items-center gap-2 rounded-lg border border-outline-variant/20 px-3 py-2 text-label text-on-surface">
+                        <input
+                          type="checkbox"
+                          checked={selectedSessionIds.includes(session.id)}
+                          onChange={() => toggleSession(session.id)}
+                          className="accent-primary"
+                        />
+                        <span className="truncate">{session.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               )}
-              {errors.sessionId && (
-                <p className="text-label text-error mt-1">{errors.sessionId.message}</p>
+              {errors.sessionIds && (
+                <p className="text-label text-error mt-1">{errors.sessionIds.message}</p>
               )}
             </div>
 
@@ -1046,6 +1139,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <ModalFooter className="shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant/10 bg-surface-container-lowest max-lg:flex-wrap max-lg:px-4 max-lg:pt-3">
+          {audienceError && (
+            <p className="text-label text-error flex-1 max-lg:basis-full" role="alert">
+              {audienceError}
+            </p>
+          )}
           {createCampaign.isError && (
             <p className="text-label text-error flex-1 max-lg:basis-full">
               {(createCampaign.error as Error)?.message || "Failed to create campaign"}
@@ -1073,18 +1171,58 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
     <ConfirmDialog
       open={!!pendingSend}
-      title="Send this campaign now?"
+      title={
+        scheduleMode === "immediate"
+          ? "Send this campaign now?"
+          : scheduleMode === "scheduled"
+            ? "Schedule this campaign?"
+            : "Save this campaign as a draft?"
+      }
       message={
         pendingSend?.recipients != null
-          ? `It goes out to about ${pendingSend.recipients.toLocaleString()} contact${pendingSend.recipients === 1 ? "" : "s"} right away. You can pause it from the campaign page.`
+          ? `The audience preview estimates ${pendingSend.recipients.toLocaleString()} contacts, split into ${pendingSend.batchAssignments.length} batch${pendingSend.batchAssignments.length === 1 ? "" : "es"} of up to ${pendingSend.batchSize}. The resolved campaign limit is ${pendingSend.maxRecipients.toLocaleString()} recipients. Each batch runs independently on its assigned WhatsApp session.`
           : "It goes out to your whole audience right away. You can pause it from the campaign page."
       }
-      confirmLabel="Send now"
-      variant="warning"
+      confirmLabel={scheduleMode === "immediate" ? "Send now" : scheduleMode === "scheduled" ? "Schedule" : "Save draft"}
+      variant={scheduleMode === "immediate" ? "warning" : "default"}
       loading={createCampaign.isPending}
+      confirmDisabled={
+        !!pendingSend &&
+        pendingSend.data.channel !== "EMAIL" &&
+        pendingSend.batchAssignments.some((assignment) => !assignment.sessionId)
+      }
       onCancel={() => setPendingSend(null)}
-      onConfirm={() => pendingSend && submitCampaign(pendingSend.data)}
-    />
+      onConfirm={() => pendingSend && submitCampaign(pendingSend.data, pendingSend.batchAssignments)}
+    >
+      {pendingSend?.data.channel !== "EMAIL" && pendingSend?.batchAssignments.length ? (
+        <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+          <p className="text-caption text-on-surface-variant">
+            Assign a connected session to each batch. Session assignments stay fixed for this campaign.
+          </p>
+          {pendingSend.batchAssignments.map((assignment) => (
+            <label key={assignment.batchNumber} className="block text-left">
+              <span className="mb-1 block text-caption font-medium text-on-surface">
+                Batch {assignment.batchNumber}
+              </span>
+              <select
+                value={assignment.sessionId}
+                onChange={(event) => updateBatchAssignment(assignment.batchNumber, event.target.value)}
+                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-label text-on-surface"
+              >
+                {pendingSend.data.sessionIds.map((id) => {
+                  const session = sessions.find((item) => item.id === id);
+                  return (
+                    <option key={id} value={id}>
+                      {session?.name ?? "Unavailable session"}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </ConfirmDialog>
     </>
   );
 }

@@ -72,11 +72,15 @@ export default function CampaignsPage() {
     if (url.searchParams.get("action") !== "new") return;
     const source = url.searchParams.get("source");
     const scrapeRunId = url.searchParams.get("scrapeRunId");
-    for (const key of ["action", "source", "scrapeRunId"]) url.searchParams.delete(key);
+    const contactIds = (url.searchParams.get("contactIds") ?? "").split(",").filter(Boolean);
+    for (const key of ["action", "source", "scrapeRunId", "contactIds"]) url.searchParams.delete(key);
     window.history.replaceState(null, "", url.pathname + url.search);
     const frame = requestAnimationFrame(() => {
-      if (scrapeRunId) setInitialAudience({ scrapeRunId });
-      else if (source) setInitialAudience({ sources: [source] });
+      const filters = {
+        ...(contactIds.length ? { contactIds } : {}),
+        ...(scrapeRunId ? { scrapeRunId } : source ? { sources: [source] } : {}),
+      };
+      setInitialAudience(Object.keys(filters).length ? filters : undefined);
       setShowCreate(true);
     });
     return () => cancelAnimationFrame(frame);
@@ -93,7 +97,7 @@ export default function CampaignsPage() {
 
   const userRole = useAuthStore((s) => s.user?.role);
   const { data: session } = useWhatsAppSession();
-  const { data: adminSessionsData } = useAdminSessions();
+  const { data: adminSessionsData } = useAdminSessions({ status: "CONNECTED", limit: 100 });
 
   const effectiveStatus: CampaignStatus | undefined =
     statusTab !== "ALL" ? (statusTab as CampaignStatus) : undefined;
@@ -164,7 +168,7 @@ export default function CampaignsPage() {
           status: s.status,
         }));
     }
-    return session
+    return session?.status === "CONNECTED"
       ? [{ id: session.id, name: session.phoneNumber || "WhatsApp Session", status: session.status }]
       : [];
   }, [userRole, adminSessionsData, session]);

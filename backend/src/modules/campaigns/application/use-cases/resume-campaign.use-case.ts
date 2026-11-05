@@ -46,10 +46,38 @@ export class ResumeCampaignUseCase {
     // (email campaigns send from the workspace's mailbox: no number)
     let sessionId: string | null = null;
     if (campaign.channel !== 'EMAIL') {
-      sessionId = await this.resolveSendingSession(campaign.sessionId ?? '', orgId, userId);
-      if (sessionId !== campaign.sessionId) {
-        await this.campaignRepo.moveToSession(campaignId, sessionId);
-        this.logger.log(`Campaign ${campaignId} moved from session ${campaign.sessionId} to ${sessionId}`);
+      const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
+        ? campaign.metadata as Record<string, unknown>
+        : {};
+      const assignmentRows = Array.isArray(metadata.batchSessionAssignments)
+        ? metadata.batchSessionAssignments
+        : [];
+      const assignedSessionIds = [...new Set(assignmentRows.flatMap((assignment) =>
+        assignment &&
+        typeof assignment === 'object' &&
+        'sessionId' in assignment &&
+        typeof assignment.sessionId === 'string'
+          ? [assignment.sessionId]
+          : [],
+      ))];
+
+      if (assignedSessionIds.length > 0) {
+        const connected = await this.sessionRepo.findConnectedByIdsAndOrg(assignedSessionIds, orgId);
+        if (connected.length !== assignedSessionIds.length) {
+          throw new BadRequestException(
+            'Reconnect every WhatsApp session assigned to this campaign before resuming',
+          );
+        }
+        sessionId = campaign.sessionId ?? assignedSessionIds[0];
+      } else {
+        sessionId = await this.resolveSendingSession(campaign.sessionId ?? '', orgId, userId);
+        if (sessionId !== campaign.sessionId) {
+          await this.campaignRepo.moveToSession(campaignId, sessionId);
+          if (campaign.sessionId) {
+            await this.recipientRepo.reassignPendingSession(campaignId, campaign.sessionId, sessionId);
+          }
+          this.logger.log(`Campaign ${campaignId} moved from session ${campaign.sessionId} to ${sessionId}`);
+        }
       }
     }
 

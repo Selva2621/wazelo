@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CircleDot, Tag, Trash2, UserRoundCog, X } from "lucide-react";
+import { CircleDot, Megaphone, Tag, Trash2, UserRoundCog, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { springs } from "@/lib/motion-tokens";
 import { useAuthStore } from "@/stores/auth-store";
@@ -21,10 +21,11 @@ type Menu = "status" | "assign" | "tag" | null;
 interface ContactsBulkBarProps {
   selectedIds: Set<string>;
   onClear: () => void;
+  onCreateCampaign: () => void;
 }
 
 /** Floating action bar for the contacts list; appears once at least one row is selected. */
-export function ContactsBulkBar({ selectedIds, onClear }: ContactsBulkBarProps) {
+export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: ContactsBulkBarProps) {
   const reduceMotion = useReducedMotion();
   const role = useAuthStore((s) => s.user?.role);
   const canManage = role === "ADMIN" || role === "MANAGER";
@@ -83,6 +84,17 @@ export function ContactsBulkBar({ selectedIds, onClear }: ContactsBulkBarProps) 
                 {count} selected
               </span>
               <span aria-hidden className="mx-1 h-5 w-px bg-outline-variant/40" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onCreateCampaign}
+                disabled={overLimit}
+                aria-label="Create campaign for selected contacts"
+              >
+                <Megaphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Campaign</span>
+              </Button>
 
               <BarMenu
                 open={menu === "status"}

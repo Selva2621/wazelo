@@ -19,6 +19,7 @@ export class GetCampaignUseCase {
 
     return {
       ...campaign,
+      failedCount: recipientCounts.failed,
       recipientCounts,
     };
   }

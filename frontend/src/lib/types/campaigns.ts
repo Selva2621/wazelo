@@ -27,6 +27,7 @@ export type CampaignChannel = "WHATSAPP" | "EMAIL";
 // ─── Audience Filters ───
 
 export interface AudienceFilters {
+  contactIds?: string[];
   leadStatuses?: string[];
   tagIds?: string[];
   ownerIds?: string[];
@@ -83,6 +84,11 @@ export interface CampaignRecipient {
   failedReason: string | null;
   processedAt: string | null;
   batchNumber: number;
+  sessionId: string | null;
+  session?: {
+    id: string;
+    phoneNumber: string | null;
+  } | null;
   createdAt: string;
   contact?: {
     id: string;
@@ -148,6 +154,8 @@ export interface CampaignAnalytics {
 
 export interface AudiencePreview {
   estimatedRecipients: number;
+  batchSize: number;
+  maxRecipients: number;
 }
 
 // ─── Request DTOs ───
@@ -163,6 +171,8 @@ export interface CreateCampaignRequest {
   audienceFilters?: AudienceFilters;
   /** Required for WhatsApp; omitted for email */
   sessionId?: string;
+  /** One WhatsApp session assignment for each 1-based recipient batch */
+  batchAssignments?: { batchNumber: number; sessionId: string }[];
   channel?: CampaignChannel;
   emailSubject?: string;
   scheduledAt?: string;

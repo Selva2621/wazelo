@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const audienceFiltersSchema = z.object({
+  contactIds: z.array(z.string().uuid()).optional(),
   leadStatuses: z.array(z.string()).optional(),
   tagIds: z.array(z.string().uuid()).optional(),
   ownerIds: z.array(z.string().uuid()).optional(),
@@ -29,6 +30,7 @@ export const createCampaignSchema = z
     audienceType: z.enum(["ALL", "FILTERED"]),
     audienceFilters: audienceFiltersSchema.optional(),
     sessionId: z.string().optional().or(z.literal("")),
+    sessionIds: z.array(z.string().uuid()).default([]),
     scheduledAt: z.string().optional().or(z.literal("")),
     timezone: z.string().max(100).optional(),
   })
@@ -42,8 +44,8 @@ export const createCampaignSchema = z
       }
       return;
     }
-    if (!data.sessionId || !z.string().uuid().safeParse(data.sessionId).success) {
-      ctx.addIssue({ code: "custom", message: "Select a WhatsApp session", path: ["sessionId"] });
+    if (data.sessionIds.length === 0 && !data.sessionId) {
+      ctx.addIssue({ code: "custom", message: "Select at least one WhatsApp session", path: ["sessionIds"] });
     }
     if ((data.messageBody?.length ?? 0) > 4096) {
       ctx.addIssue({ code: "custom", message: "Message must be 4,096 characters or less", path: ["messageBody"] });
@@ -73,6 +75,7 @@ export const scheduleCampaignSchema = z.object({
   timezone: z.string().max(100).optional(),
 });
 
-export type CreateCampaignFormData = z.infer<typeof createCampaignSchema>;
+export type CreateCampaignFormInput = z.input<typeof createCampaignSchema>;
+export type CreateCampaignFormData = z.output<typeof createCampaignSchema>;
 export type UpdateCampaignFormData = z.infer<typeof updateCampaignSchema>;
 export type ScheduleCampaignFormData = z.infer<typeof scheduleCampaignSchema>;

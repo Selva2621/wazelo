@@ -11,13 +11,28 @@ import {
   IsNumber,
   MaxLength,
   ValidateNested,
-  ValidateIf,
   IsIn,
+  IsInt,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CampaignAudienceType, LeadStatus, ContactSource } from '@prisma/client';
 
+export class CampaignBatchAssignmentDto {
+  @IsInt()
+  @Min(1)
+  batchNumber: number;
+
+  @IsUUID('4')
+  sessionId: string;
+}
+
 export class AudienceFiltersDto {
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  contactIds?: string[];
+
   @IsOptional()
   @IsArray()
   @IsEnum(LeadStatus, { each: true })
@@ -117,10 +132,17 @@ export class CreateCampaignDto {
   @Type(() => AudienceFiltersDto)
   audienceFilters?: AudienceFiltersDto;
 
-  /** The WhatsApp number it sends from (required for WhatsApp campaigns) */
-  @ValidateIf((o: CreateCampaignDto) => o.channel !== 'EMAIL')
+  /** Legacy default WhatsApp number; new campaigns submit a session per batch. */
+  @IsOptional()
   @IsUUID()
   sessionId?: string;
+
+  /** One selected WhatsApp session for each recipient batch. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CampaignBatchAssignmentDto)
+  batchAssignments?: CampaignBatchAssignmentDto[];
 
   @IsOptional()
   @IsDateString()

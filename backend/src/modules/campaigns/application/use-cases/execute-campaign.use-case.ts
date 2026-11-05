@@ -46,10 +46,29 @@ export class ExecuteCampaignUseCase {
 
     // 3. Verify session is connected (email campaigns send from the workspace's mailbox instead)
     if (campaign.channel !== 'EMAIL') {
-      const session = campaign.sessionId ? await this.sessionRepo.findByIdAndOrg(campaign.sessionId, orgId) : null;
-      if (!session || session.status !== 'CONNECTED') {
+      const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
+        ? campaign.metadata as Record<string, unknown>
+        : {};
+      const assignmentRows = Array.isArray(metadata.batchSessionAssignments)
+        ? metadata.batchSessionAssignments
+        : [];
+      const assignedSessionIds = [...new Set(assignmentRows.flatMap((assignment) =>
+        assignment &&
+        typeof assignment === 'object' &&
+        'sessionId' in assignment &&
+        typeof assignment.sessionId === 'string'
+          ? [assignment.sessionId]
+          : [],
+      ))];
+      const sessionIds = assignedSessionIds.length > 0
+        ? assignedSessionIds
+        : campaign.sessionId
+          ? [campaign.sessionId]
+          : [];
+      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(sessionIds, orgId);
+      if (sessionIds.length === 0 || connectedSessions.length !== sessionIds.length) {
         throw new BadRequestException(
-          'WhatsApp session is not connected. Connect via QR first.',
+          'Every assigned WhatsApp session must be connected before this campaign can start',
         );
       }
     }
