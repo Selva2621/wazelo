@@ -243,6 +243,14 @@ export class CampaignRepository {
     });
   }
 
+  async findStatusEvents(campaignId: string): Promise<{ newStatus: CampaignStatus; createdAt: Date }[]> {
+    return this.prisma.campaignEvent.findMany({
+      where: { campaignId },
+      select: { newStatus: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async softDelete(id: string, orgId: string): Promise<void> {
     await this.prisma.campaign.updateMany({
       where: { id, orgId, deletedAt: null },

@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
+import { CampaignRecipientRepository } from '../../infrastructure/repositories/campaign-recipient.repository';
 import { ListCampaignsQueryDto } from '../dto/list-campaigns-query.dto';
 
 @Injectable()
 export class ListCampaignsUseCase {
-  constructor(private readonly campaignRepo: CampaignRepository) {}
+  constructor(
+    private readonly campaignRepo: CampaignRepository,
+    private readonly recipientRepo: CampaignRecipientRepository,
+  ) {}
 
   async execute(orgId: string, query: ListCampaignsQueryDto) {
     const page = query.page ?? 1;
@@ -21,8 +25,20 @@ export class ListCampaignsUseCase {
       },
     );
 
+    const recipientCounts = await this.recipientRepo.countByStatusForCampaigns(
+      campaigns.map((campaign) => campaign.id),
+    );
+
     return {
-      data: campaigns,
+      data: campaigns.map((campaign) => {
+        const counts = recipientCounts.get(campaign.id);
+        return {
+          ...campaign,
+          processedRecipientCount: counts
+            ? counts.sent + counts.delivered + counts.failed + counts.skipped
+            : 0,
+        };
+      }),
       total,
       page,
       limit,

@@ -477,13 +477,13 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       }
     });
 
-    // ── messages.upsert (incoming messages) ──
+    // ── messages.upsert (incoming and phone-originated live messages) ──
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
       if (type !== 'notify') return;
 
       for (const msg of messages) {
         try {
-          // Our own sends come back as 'append'; a 'notify' fromMe was typed on the phone
+          // App-originated sends come back as 'append'; only sync live phone sends.
           if (msg.key.fromMe && msg.key.remoteJid !== 'status@broadcast') {
             this.reportPhoneActivity(sessionId, orgId, userId);
             this.reportPhoneReply(msg, sessionId, orgId);
@@ -607,7 +607,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     sessionId: string,
   ): Record<string, unknown> | null {
     if (msg.key.remoteJid === 'status@broadcast') return null;
-    if (msg.key.fromMe) return null;
 
     const remoteJid = msg.key.remoteJid || '';
     // Accept regular users (@s.whatsapp.net) and LID-addressed users (@lid)
@@ -705,7 +704,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       sessionId,
       whatsappMessageId: msg.key.id || `unknown-${Date.now()}`,
       contactPhone: `+${contactPhone}`,
-      contactName,
+      contactName: msg.key.fromMe ? undefined : contactName,
+      fromMe: Boolean(msg.key.fromMe),
       type,
       body,
       mediaUrl: undefined,

@@ -153,6 +153,14 @@ export class MessageRepository {
     return this.prisma.message.update({ where: { id }, data });
   }
 
+  async clearQueuedRetryAt(id: string): Promise<boolean> {
+    const result = await this.prisma.message.updateMany({
+      where: { id, status: MessageStatus.QUEUED },
+      data: { nextRetryAt: null },
+    });
+    return result.count > 0;
+  }
+
   async markFailed(id: string, reason: string) {
     return this.prisma.message.update({
       where: { id },

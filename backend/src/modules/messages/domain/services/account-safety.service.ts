@@ -54,14 +54,22 @@ export class AccountSafetyService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Should this bulk message go out now? */
-  async checkBulkSend(orgId: string, sessionId: string, contactPhone: string, now = new Date()): Promise<BulkSendDecision> {
+  async checkBulkSend(
+    orgId: string,
+    sessionId: string,
+    contactPhone: string,
+    now = new Date(),
+    campaignId?: string,
+  ): Promise<BulkSendDecision> {
     const session = await this.prisma.whatsAppSession.findUnique({
       where: { id: sessionId },
       select: { linkedAt: true, createdAt: true, sendingPausedUntil: true, sendingPausedReason: true },
     });
     if (!session) return { allowed: true };
 
-    const timeZone = await this.orgTimeZone(orgId);
+    const timeZone = campaignId
+      ? await this.campaignTimeZone(campaignId, orgId)
+      : await this.orgTimeZone(orgId);
     const dayStart = localDayStart(now, timeZone);
     const [bulkSentToday, coldSentToday, recipientIsCold] = await Promise.all([
       this.countBulkSentSince(sessionId, dayStart),
@@ -78,6 +86,12 @@ export class AccountSafetyService {
       bulkSentToday,
       coldSentToday,
       recipientIsCold,
+      ...(campaignId && {
+        sendWindow: {
+          startHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
+          endHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
+        },
+      }),
     });
 
     if (decision.allowed) {
@@ -388,5 +402,13 @@ export class AccountSafetyService {
     const timeZone = org?.timezone || 'UTC';
     this.tzCache.set(orgId, { timeZone, at: Date.now() });
     return timeZone;
+  }
+
+  private async campaignTimeZone(campaignId: string, orgId: string): Promise<string> {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id: campaignId, orgId, deletedAt: null },
+      select: { timezone: true },
+    });
+    return campaign?.timezone || this.orgTimeZone(orgId);
   }
 }

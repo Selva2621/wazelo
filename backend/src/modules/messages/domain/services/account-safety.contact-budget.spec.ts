@@ -5,10 +5,16 @@ import { AccountSafetyService } from './account-safety.service';
 const NOW = new Date('2026-10-20T12:00:00.000Z');
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 
-function setup(recentSends: Date[], recipientStatus?: SequenceRecipientStatus) {
+function setup(
+  recentSends: Date[],
+  recipientStatus?: SequenceRecipientStatus,
+  orgTimezone = 'UTC',
+  campaignTimezone?: string,
+) {
   const prisma = {
     whatsAppSession: { findUnique: jest.fn(async () => ({ linkedAt: new Date('2025-01-01'), createdAt: new Date('2025-01-01'), sendingPausedUntil: null, sendingPausedReason: null })) },
-    organization: { findUnique: jest.fn(async () => ({ timezone: 'UTC' })) },
+    organization: { findUnique: jest.fn(async () => ({ timezone: orgTimezone })) },
+    campaign: { findFirst: jest.fn(async () => campaignTimezone ? { timezone: campaignTimezone } : null) },
     message: {
       count: jest.fn(async () => 0),
       findFirst: jest.fn(async () => ({ id: 'inbound' })), // warm contact
@@ -35,6 +41,14 @@ describe('Per-contact limit on business-started messages', () => {
       expect(decision.retryAt.getTime()).toBeGreaterThanOrEqual(hoursAgo(20).getTime() + 24 * 3_600_000);
       expect(decision.retryAt.getTime()).toBeLessThan(hoursAgo(20).getTime() + 25 * 3_600_000);
     }
+  });
+
+  it('uses the campaign timezone for its sending window instead of the organization timezone', async () => {
+    const now = new Date('2026-11-06T04:02:00.000Z');
+    const decision = await setup([], undefined, 'UTC', 'Asia/Calcutta')
+      .checkBulkSend('o1', 's1', '+919000000001', now, 'campaign-1');
+
+    expect(decision).toEqual({ allowed: true });
   });
 });
 

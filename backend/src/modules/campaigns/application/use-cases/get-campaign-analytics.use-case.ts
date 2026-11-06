@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CampaignStatus, WhatsAppSessionStatus } from '@prisma/client';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
 import { CampaignRecipientRepository } from '../../infrastructure/repositories/campaign-recipient.repository';
+import { WHATSAPP_CONFIG } from '@/common/constants';
 
 @Injectable()
 export class GetCampaignAnalyticsUseCase {
@@ -15,7 +17,41 @@ export class GetCampaignAnalyticsUseCase {
       throw new NotFoundException('Campaign not found');
     }
 
-    const recipientCounts = await this.recipientRepo.countByStatus(campaignId);
+    const [recipientCounts, batches, statusEvents] = await Promise.all([
+      this.recipientRepo.countByStatus(campaignId),
+      this.recipientRepo.getBatchProgress(campaignId),
+      this.campaignRepo.findStatusEvents(campaignId),
+    ]);
+    const now = new Date();
+    const elapsedMs = this.calculateElapsedMs(campaign, statusEvents, now);
+    const batchProgress = batches.map((batch) => {
+      const issues: string[] = [];
+      if (!batch.sessionId) {
+        issues.push('No WhatsApp session is assigned to this batch');
+      } else if (!batch.sessionStatus) {
+        issues.push('WhatsApp session is unavailable');
+      } else if (batch.sessionStatus !== WhatsAppSessionStatus.CONNECTED) {
+        issues.push(`WhatsApp session is ${batch.sessionStatus.toLowerCase()}`);
+      } else if (
+        !batch.lastHeartbeatAt ||
+        now.getTime() - batch.lastHeartbeatAt.getTime() > WHATSAPP_CONFIG.DISCONNECT_DETECTION_TIMEOUT_MS
+      ) {
+        issues.push('WhatsApp session heartbeat is stale');
+      }
+
+      if (batch.sendingPausedUntil && batch.sendingPausedUntil > now) {
+        issues.push(
+          batch.sendingPausedReason
+            ? `Bulk sending paused: ${batch.sendingPausedReason}`
+            : `Bulk sending paused until ${batch.sendingPausedUntil.toISOString()}`,
+        );
+      }
+      for (const failure of batch.failureReasons) {
+        issues.push(`${failure.count} failed: ${failure.reason}`);
+      }
+
+      return { ...batch, issues };
+    });
 
     const totalProcessed =
       recipientCounts.sent +
@@ -44,6 +80,11 @@ export class GetCampaignAnalyticsUseCase {
       status: campaign.status,
       startedAt: campaign.startedAt,
       completedAt: campaign.completedAt,
+      timing: {
+        elapsedMs,
+        asOf: now.toISOString(),
+      },
+      batches: batchProgress,
       metrics: {
         totalRecipients: campaign.totalRecipients,
         sent: campaign.sentCount,
@@ -70,5 +111,41 @@ export class GetCampaignAnalyticsUseCase {
             : 0,
       },
     };
+  }
+
+  private calculateElapsedMs(
+    campaign: { status: CampaignStatus; startedAt: Date | null; completedAt?: Date | null; updatedAt?: Date },
+    events: { newStatus: CampaignStatus; createdAt: Date }[],
+    now: Date,
+  ): number {
+    let activeSince: Date | null = null;
+    let elapsedMs = 0;
+    let sawRunningEvent = false;
+
+    for (const event of events) {
+      if (event.newStatus === CampaignStatus.RUNNING) {
+        if (!activeSince) {
+          activeSince = !sawRunningEvent && campaign.startedAt
+            ? campaign.startedAt
+            : event.createdAt;
+          sawRunningEvent = true;
+        }
+      } else if (activeSince) {
+        elapsedMs += Math.max(0, event.createdAt.getTime() - activeSince.getTime());
+        activeSince = null;
+      }
+    }
+
+    if (!sawRunningEvent && campaign.startedAt) {
+      activeSince = campaign.startedAt;
+    }
+    if (activeSince) {
+      const end = campaign.status === CampaignStatus.RUNNING
+        ? now
+        : campaign.completedAt ?? campaign.updatedAt ?? now;
+      elapsedMs += Math.max(0, end.getTime() - activeSince.getTime());
+    }
+
+    return elapsedMs;
   }
 }
