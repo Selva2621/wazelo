@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, QrCode, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,13 +31,14 @@ export function QrCodeDisplay({
   className,
 }: QrCodeDisplayProps) {
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const totalRef = useRef(1);
+  const [totalSeconds, setTotalSeconds] = useState(1);
 
   useEffect(() => {
     if (!expiresAt) return;
-    totalRef.current = Math.max(1, Math.round((expiresAt - Date.now()) / 1000));
+    const total = Math.max(1, Math.round((expiresAt - Date.now()) / 1000));
 
     const update = () => {
+      setTotalSeconds(total);
       setSecondsLeft(Math.floor((expiresAt - Date.now()) / 1000));
     };
 
@@ -68,7 +69,7 @@ export function QrCodeDisplay({
   const waitingForNext =
     Boolean(qrCode) && expiresAt !== null && !live && secondsLeft > -NEXT_QR_GRACE_S && !stopped;
   const showRefresh = stopped || (!live && !waitingForNext && !isRefreshing);
-  const progress = live ? Math.min(1, secondsLeft / totalRef.current) : 0;
+  const progress = live ? Math.min(1, secondsLeft / totalSeconds) : 0;
 
   return (
     <div className={cn("flex flex-col items-center gap-5", className)}>

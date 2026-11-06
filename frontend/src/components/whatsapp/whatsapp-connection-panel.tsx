@@ -29,9 +29,7 @@ import { Alert } from "@/components/ui/alert";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { QrCodeDisplay } from "@/components/whatsapp/qr-code-display";
 import { PairingCodeForm } from "@/components/whatsapp/pairing-code-form";
-import { DisconnectButton } from "@/components/whatsapp/disconnect-button";
-import { AccountHealthCard } from "@/components/whatsapp/account-health";
-import { BrowserPushCard } from "@/components/notifications/browser-push-card";
+import { WhatsAppConnectedOverview } from "@/components/whatsapp/whatsapp-connected-overview";
 
 interface WhatsAppConnectionPanelProps {
   /** Hides reconnect/disconnect and the account health card, for use inside a modal. */
@@ -139,7 +137,10 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   return (
     <div data-tour="wa-panel">
       {error && (
-        <Alert variant="error" className="mb-6">
+        <Alert
+          variant="error"
+          className={status === "connected" && !compact ? "mx-5 mt-5 sm:mx-6 sm:mt-6" : "mb-6"}
+        >
           {error}
         </Alert>
       )}
@@ -225,7 +226,18 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       )}
 
       {/* ─── Connected State ─── */}
-      {status === "connected" && session && (
+      {status === "connected" && session && !compact && (
+        <WhatsAppConnectedOverview
+          session={session}
+          onReconnect={handleReconnect}
+          reconnecting={reconnectSession.isPending}
+          onDisconnect={() => disconnectSession.mutate()}
+          disconnecting={disconnectSession.isPending}
+        />
+      )}
+
+      {/* Compact (setup modal): a short confirmation */}
+      {status === "connected" && session && compact && (
         <div className="flex flex-col items-center py-6 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-container">
             <CheckCircle2 className="h-8 w-8 text-success" />
@@ -257,32 +269,10 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap justify-center">
-            <Button onClick={() => router.push("/inbox")}>
-              Go to Inbox
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            {!compact && (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={handleReconnect}
-                  loading={reconnectSession.isPending}
-                  title="Force reconnect the session without re-scanning QR"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reconnect
-                </Button>
-                <DisconnectButton
-                  onDisconnect={() => disconnectSession.mutate()}
-                  loading={disconnectSession.isPending}
-                />
-              </>
-            )}
-          </div>
-
-          {!compact && <BrowserPushCard variant="compact" className="mt-6 max-w-[420px]" />}
-          {!compact && <AccountHealthCard className="mt-8 bg-surface-container-low" />}
+          <Button onClick={() => router.push("/inbox")}>
+            Go to Inbox
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Button>
         </div>
       )}
 
