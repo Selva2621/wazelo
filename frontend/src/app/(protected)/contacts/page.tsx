@@ -1,13 +1,14 @@
 "use client";
 
+import { PICKED_FROM_SESSION, stashPickedContacts } from "@/lib/campaigns/picked-contacts";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
-import { Plus, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
+import { Plus, GitMerge, Upload, Download, LayoutList, Kanban, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
+import { useContacts, useExportContacts, useSavedContactGroups } from "@/hooks/use-contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
@@ -21,6 +22,7 @@ import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
 import { ImportContactsModal } from "@/components/contacts/import-contacts-modal";
+import { GroupsPanel } from "@/components/contacts/groups-panel";
 import { LoadError } from "@/components/ui/empty-state";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
@@ -55,10 +57,16 @@ export default function ContactsPage() {
     return () => cancelAnimationFrame(frame);
   }, []);
   const [showImport, setShowImport] = useState(false);
+  // Groups panel; opened from the bulk bar it starts with the selection
+  const [groupsPanel, setGroupsPanel] = useState<{ open: boolean; fromSelection: boolean }>({
+    open: false,
+    fromSelection: false,
+  });
   const [statusTab, setStatusTab] = useState("ALL");
   const [view, setView] = useState<"list" | "kanban">("list");
 
   const exportContacts = useExportContacts();
+  const { data: savedGroups } = useSavedContactGroups();
 
   const {
     selectedContactId,
@@ -118,6 +126,8 @@ export default function ContactsPage() {
   });
   const selectedIds = selection.key === paramsKey ? selection.ids : EMPTY_SELECTION;
   const setSelectedIds = (ids: Set<string>) => setSelection({ key: paramsKey, ids });
+  // The board has no selection
+  const panelSelection = useMemo(() => (view === "list" ? [...selectedIds] : []), [view, selectedIds]);
 
   // Add counts to status tabs
   const tabsWithCounts = STATUS_TABS.map((tab) => ({
@@ -151,6 +161,7 @@ export default function ContactsPage() {
             { label: "Import CSV", onSelect: () => setShowImport(true) },
             { label: "Export CSV", onSelect: () => exportContacts.mutate() },
             { label: "Merge contacts", onSelect: () => setShowMerge(true) },
+            { label: "Groups", onSelect: () => setGroupsPanel({ open: true, fromSelection: false }) },
           ]}
         />
         <SearchInput
@@ -189,6 +200,21 @@ export default function ContactsPage() {
                   <GitMerge className="h-4 w-4" />
                 </Button>
               </div>
+              {/* Saved groups: one campaign batch each */}
+              <Button
+                data-tour="contacts-groups"
+                variant="ghost"
+                size="sm"
+                onClick={() => setGroupsPanel({ open: true, fromSelection: false })}
+                aria-haspopup="dialog"
+                aria-label={`Groups${savedGroups?.length ? `, ${savedGroups.length}` : ""}`}
+              >
+                <FolderOpen className="h-4 w-4" aria-hidden />
+                Groups
+                {!!savedGroups?.length && (
+                  <span className="tabular-nums text-on-surface-variant">{savedGroups.length}</span>
+                )}
+              </Button>
               {/* View toggle */}
               <div role="group" aria-label="View" data-tour="contacts-view-toggle" className="flex items-center gap-0.5 rounded-lg border border-outline-variant p-0.5">
                 {(
@@ -262,9 +288,11 @@ export default function ContactsPage() {
         <ContactsBulkBar
           selectedIds={selectedIds}
           onClear={() => setSelectedIds(new Set())}
-          onCreateCampaign={() =>
-            router.push(`/campaigns?action=new&contactIds=${encodeURIComponent([...selectedIds].join(","))}`)
-          }
+          onCreateCampaign={() => {
+            stashPickedContacts([...selectedIds]);
+            router.push(`/campaigns?action=new&contactIds=${PICKED_FROM_SESSION}`);
+          }}
+          onGroup={() => setGroupsPanel({ open: true, fromSelection: true })}
         />
       )}
 
@@ -287,6 +315,13 @@ export default function ContactsPage() {
       <ImportContactsModal
         open={showImport}
         onClose={() => setShowImport(false)}
+      />
+      <GroupsPanel
+        open={groupsPanel.open}
+        onClose={() => setGroupsPanel((p) => ({ ...p, open: false }))}
+        selectedIds={panelSelection}
+        startWithSelection={groupsPanel.fromSelection}
+        onSelectionUsed={() => setSelectedIds(new Set())}
       />
     </div>
   );

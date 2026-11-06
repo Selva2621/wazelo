@@ -1099,6 +1099,9 @@ model Contact {
   updatedAt    DateTime      @updatedAt @map("updated_at")
   deletedAt    DateTime?     @map("deleted_at")
 
+  /// On WhatsApp? null = not checked or lookup failed. WhatsApp campaigns skip false.
+  waExists     Boolean?  @map("wa_exists")
+  waCheckedAt  DateTime? @map("wa_checked_at")
   organization       Organization           @relation(fields: [orgId], references: [id])
   owner              User                   @relation("ContactOwner", fields: [ownerId], references: [id])
   mergedInto         Contact?               @relation("ContactMerge", fields: [mergedIntoId], references: [id])
@@ -1228,12 +1231,17 @@ model SavedContactGroup {
   name      String   @db.VarChar(100)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  /// Background "on WhatsApp?" check of the group's numbers
+  waCheck   Json?     @map("wa_check")
 
   organization Organization                @relation(fields: [orgId], references: [id], onDelete: Cascade)
   members      SavedContactGroupMember[]
 
-  @@unique([orgId, name], name: "unique_saved_contact_group_name")
+  // Name is unique among non-deleted groups: partial unique index
+  // "saved_contact_groups_org_id_name_active_key" lives in migration SQL only.
   @@index([orgId, createdAt])
+  @@index([orgId, deletedAt])
   @@map("saved_contact_groups")
 }
 
@@ -1469,6 +1477,8 @@ model CampaignRecipient {
   repliedAt    DateTime?               @map("replied_at")
   batchNumber  Int                     @map("batch_number")
   sessionId    String?                 @map("session_id") @db.Uuid
+  /// When the recipient was handed to a sender (finds recipients stuck in QUEUED)
+  claimedAt    DateTime?               @map("claimed_at")
   createdAt    DateTime                @default(now()) @map("created_at")
 
   campaign Campaign @relation(fields: [campaignId], references: [id])
@@ -1481,6 +1491,7 @@ model CampaignRecipient {
   @@index([campaignId, status])
   @@index([campaignId, batchNumber])
   @@index([campaignId, batchNumber, sessionId])
+  @@index([campaignId, status, claimedAt])
   @@index([messageId])
   @@index([orgId])
   // "Did this person just answer one of our campaigns?" on every incoming message

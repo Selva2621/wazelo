@@ -86,6 +86,8 @@ export const QUEUE_NAMES = {
   SCRAPE_LEADS: 'scrape-leads',
   // One "is this number on WhatsApp?" lookup per job; each job queues the next
   SCRAPE_WA_CHECK: 'scrape-wa-check',
+  /** "Check numbers on WhatsApp" for a saved contact group */
+  GROUP_WA_CHECK: 'group-wa-check',
   // Knowledge base — read an org's website into KB documents + searchable passages
   CRAWL_WEBSITE: 'crawl-website',
   // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
@@ -356,7 +358,12 @@ export const EVENT_NAMES = {
 } as const;
 
 export const WHATSAPP_CONFIG = {
-  QR_REFRESH_INTERVAL_MS: 25_000,
+  /** How long each QR code lives (passed to Baileys so the UI countdown matches) */
+  QR_REFRESH_INTERVAL_MS: 30_000,
+  /** Stop making new QR codes after this long without a scan (e.g. the modal was closed) */
+  QR_LINK_WINDOW_MS: 5 * 60_000,
+  /** After a scan, refresh-QR is refused this long so it can't break the login in progress */
+  QR_SCAN_FINISH_MS: 60_000,
   /** How long the HTTP request waits for WhatsApp to issue a pairing code */
   PAIRING_CODE_TIMEOUT_MS: 20_000,
   /** "Reconnect from your phone" link in disconnect emails — read hours later, so not short */
@@ -444,7 +451,8 @@ export const SEND_SAFETY_CONFIG = {
 } as const;
 
 export const CAMPAIGN_CONFIG = {
-  /** Recipient grouping and unit of sequential processing; separate batches run concurrently */
+  /** Recipient grouping; batches are dealt round-robin across the selected numbers and
+   *  each number sends its batches one after another (numbers run in parallel) */
   BATCH_SIZE: Math.max(1, Number.parseInt(process.env.CAMPAIGN_BATCH_SIZE ?? '100', 10) || 100),
   /** Maximum recipients resolved for one campaign; override with CAMPAIGN_MAX_RECIPIENTS */
   MAX_RECIPIENTS: Math.max(1, Number.parseInt(process.env.CAMPAIGN_MAX_RECIPIENTS ?? '10000', 10) || 10000),
@@ -454,6 +462,8 @@ export const CAMPAIGN_CONFIG = {
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
   SCHEDULE_CHECK_INTERVAL_SECONDS: 30,
+  /** A recipient QUEUED this long is checked against its message (missed event / crash) */
+  STALE_QUEUED_RECIPIENT_MS: 15 * 60 * 1000,
 } as const;
 
 export const AUTOMATION_CONFIG = {
@@ -493,6 +503,8 @@ export const SCHEDULER_CONFIG = {
 export const MESSAGING_CONFIG = {
   /** Max retries before dead-lettering */
   MAX_RETRY_COUNT: 3,
+  /** How long a one-to-one reply waits for a reconnecting number before it fails */
+  DIRECT_RECONNECT_WAIT_MS: 5 * 60 * 1000,
   /** Base delay in seconds for exponential backoff (delay = base * 2^attempt) */
   RETRY_BASE_DELAY_SECONDS: 5,
   /** Maximum backoff delay cap in seconds */

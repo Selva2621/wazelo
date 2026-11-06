@@ -31,6 +31,12 @@ export class ConversationRepository {
     sessionId: string;
     contactPhone: string;
     contactId?: string;
+    /**
+     * Bulk sends (campaigns) keep an existing thread on its current number, so it
+     * doesn't jump to the campaign's number (and out of the inbox of agents who
+     * only see that number). A reply from the contact moves it as usual.
+     */
+    preserveSession?: boolean;
   }) {
     const contactPhone = normalizeContactPhone(input.contactPhone);
     const where = {
@@ -43,7 +49,7 @@ export class ConversationRepository {
       const conv = await this.prisma.conversation.update({
         where: { id: existing.id },
         data: {
-          sessionId: input.sessionId,
+          ...(!input.preserveSession && { sessionId: input.sessionId }),
           deletedAt: null,
           ...(input.contactId && { contactId: input.contactId }),
         },
@@ -83,7 +89,7 @@ export class ConversationRepository {
       const conv = await this.prisma.conversation.update({
         where: { id: conflictingConversation.id },
         data: {
-          sessionId: input.sessionId,
+          ...((!input.preserveSession || !conflictingConversation.sessionId) && { sessionId: input.sessionId }),
           deletedAt: null,
           ...(input.contactId && { contactId: input.contactId }),
         },

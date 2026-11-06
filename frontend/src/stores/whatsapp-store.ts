@@ -10,6 +10,10 @@ interface WhatsAppState {
   status: SessionStatus;
   qrCode: string | null;
   qrExpiresAt: number | null;
+  /** The phone scanned the QR; WhatsApp is finishing the login */
+  qrScanned: boolean;
+  /** The server stopped making QR codes (none scanned in time) — the user must refresh */
+  qrStopped: boolean;
   /** Latest pairing code when linking by phone number instead of QR */
   pairingCode: string | null;
   error: string | null;
@@ -18,6 +22,8 @@ interface WhatsAppState {
   setStatus: (status: SessionStatus) => void;
   setQr: (qr: string, expiresAt: number) => void;
   clearQr: () => void;
+  markQrScanned: () => void;
+  markQrStopped: () => void;
   setPairingCode: (code: string | null) => void;
   setError: (error: string | null) => void;
   reset: () => void;
@@ -28,6 +34,8 @@ const initialState = {
   status: "loading" as SessionStatus,
   qrCode: null,
   qrExpiresAt: null,
+  qrScanned: false,
+  qrStopped: false,
   pairingCode: null,
   error: null,
 };
@@ -45,15 +53,26 @@ export const useWhatsAppStore = create<WhatsAppState>()((set) => ({
         status = "connecting";
       }
     }
-    set({ session, status, error: null });
+    set((state) => ({
+      session,
+      status,
+      error: null,
+      // The scanned screen only makes sense while the session is still linking
+      qrScanned: status === "connecting" ? state.qrScanned : false,
+    }));
   },
 
   setStatus: (status) => set({ status }),
 
   setQr: (qrCode, qrExpiresAt) =>
-    set({ qrCode, qrExpiresAt, status: "connecting" }),
+    set({ qrCode, qrExpiresAt, qrScanned: false, qrStopped: false, status: "connecting" }),
 
-  clearQr: () => set({ qrCode: null, qrExpiresAt: null, pairingCode: null }),
+  clearQr: () =>
+    set({ qrCode: null, qrExpiresAt: null, qrScanned: false, qrStopped: false, pairingCode: null }),
+
+  markQrScanned: () => set({ qrCode: null, qrExpiresAt: null, qrScanned: true, qrStopped: false }),
+
+  markQrStopped: () => set({ qrCode: null, qrExpiresAt: null, qrStopped: true }),
 
   setPairingCode: (pairingCode) =>
     set(pairingCode ? { pairingCode, status: "connecting" } : { pairingCode }),

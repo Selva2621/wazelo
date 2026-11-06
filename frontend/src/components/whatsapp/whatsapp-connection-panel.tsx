@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Smartphone,
@@ -29,9 +29,7 @@ import { Alert } from "@/components/ui/alert";
 import { SessionStatusBadge } from "@/components/whatsapp/session-status-badge";
 import { QrCodeDisplay } from "@/components/whatsapp/qr-code-display";
 import { PairingCodeForm } from "@/components/whatsapp/pairing-code-form";
-import { DisconnectButton } from "@/components/whatsapp/disconnect-button";
-import { AccountHealthCard } from "@/components/whatsapp/account-health";
-import { BrowserPushCard } from "@/components/notifications/browser-push-card";
+import { WhatsAppConnectedOverview } from "@/components/whatsapp/whatsapp-connected-overview";
 
 interface WhatsAppConnectionPanelProps {
   /** Hides reconnect/disconnect and the account health card, for use inside a modal. */
@@ -54,6 +52,8 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   const session = useWhatsAppStore((s) => s.session);
   const qrCode = useWhatsAppStore((s) => s.qrCode);
   const qrExpiresAt = useWhatsAppStore((s) => s.qrExpiresAt);
+  const qrScanned = useWhatsAppStore((s) => s.qrScanned);
+  const qrStopped = useWhatsAppStore((s) => s.qrStopped);
   const pairingCode = useWhatsAppStore((s) => s.pairingCode);
   const error = useWhatsAppStore((s) => s.error);
 
@@ -114,6 +114,18 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
     }
   };
 
+  // Reopened (e.g. the modal was closed) with an old QR on screen: get a fresh one.
+  // The server refuses if the QR was already scanned, so a login in progress is safe.
+  const autoRefreshed = useRef(false);
+  useEffect(() => {
+    if (isLoading || autoRefreshed.current) return;
+    autoRefreshed.current = true;
+    const { qrExpiresAt: expiresAt, qrStopped: stopped, qrScanned: scanned } =
+      useWhatsAppStore.getState();
+    const staleQr = stopped || (expiresAt !== null && expiresAt < Date.now());
+    if (session?.status === "CONNECTING" && staleQr && !scanned) refreshQr.mutate(session.id);
+  }, [isLoading, session, refreshQr]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -125,7 +137,10 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   return (
     <div data-tour="wa-panel">
       {error && (
-        <Alert variant="error" className="mb-6">
+        <Alert
+          variant="error"
+          className={status === "connected" && !compact ? "mx-5 mt-5 sm:mx-6 sm:mt-6" : "mb-6"}
+        >
           {error}
         </Alert>
       )}
@@ -179,9 +194,12 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
                 expiresAt={qrExpiresAt}
                 onRefresh={handleRefreshQr}
                 isRefreshing={refreshQr.isPending}
+                scanned={qrScanned}
+                stopped={qrStopped}
               />
 
               {/* Instructions */}
+              {!qrScanned && (
               <div className="mt-8 w-full space-y-3">
                 <p className="text-body font-medium text-on-surface-variant uppercase tracking-wider mb-3">
                   How to connect
@@ -201,11 +219,6 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
                   </div>
                 ))}
               </div>
-
-              {!qrCode && !refreshQr.isPending && (
-                <p className="mt-6 text-body text-on-surface-variant animate-pulse">
-                  Waiting for QR code...
-                </p>
               )}
             </>
           )}
@@ -213,7 +226,18 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       )}
 
       {/* ─── Connected State ─── */}
-      {status === "connected" && session && (
+      {status === "connected" && session && !compact && (
+        <WhatsAppConnectedOverview
+          session={session}
+          onReconnect={handleReconnect}
+          reconnecting={reconnectSession.isPending}
+          onDisconnect={() => disconnectSession.mutate()}
+          disconnecting={disconnectSession.isPending}
+        />
+      )}
+
+      {/* Compact (setup modal): a short confirmation */}
+      {status === "connected" && session && compact && (
         <div className="flex flex-col items-center py-6 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-container">
             <CheckCircle2 className="h-8 w-8 text-success" />
@@ -245,32 +269,10 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap justify-center">
-            <Button onClick={() => router.push("/inbox")}>
-              Go to Inbox
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            {!compact && (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={handleReconnect}
-                  loading={reconnectSession.isPending}
-                  title="Force reconnect the session without re-scanning QR"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reconnect
-                </Button>
-                <DisconnectButton
-                  onDisconnect={() => disconnectSession.mutate()}
-                  loading={disconnectSession.isPending}
-                />
-              </>
-            )}
-          </div>
-
-          {!compact && <BrowserPushCard variant="compact" className="mt-6 max-w-[420px]" />}
-          {!compact && <AccountHealthCard className="mt-8 bg-surface-container-low" />}
+          <Button onClick={() => router.push("/inbox")}>
+            Go to Inbox
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Button>
         </div>
       )}
 

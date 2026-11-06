@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import {
   X, FileText, Search, ExternalLink,
   Megaphone, MessageSquare, Users, Clock, Wifi,
-  Package, Tag, Smartphone, Mail,
+  Package, Smartphone, Mail,
 } from "lucide-react";
 import { useEmailAccount, useEmailTemplates } from "@/hooks/use-email";
 import { EMAIL_FIELDS } from "@/lib/email-render";
@@ -13,6 +13,7 @@ import {
   ChannelSwitch, EmailConnectNotice, FieldChips, insertAtCursor, isEmailReady, type Channel,
 } from "@/components/campaigns/email-channel";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import type { EmailAccount, EmailTemplate } from "@/lib/api/email";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +33,7 @@ import type { MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import { useTemplates } from "@/hooks/use-templates";
 import {
   useCreateSavedContactGroups,
+  useCheckSavedGroupMove,
   useOrgTags,
   useSavedContactGroups,
 } from "@/hooks/use-contacts";
@@ -43,12 +45,12 @@ import { CampaignCapacityNotice } from "@/components/whatsapp/account-health";
 import { WhatsAppPhonePreview } from "@/components/whatsapp/whatsapp-phone-preview";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Switch } from "@/components/ui/switch";
+import { groupNamesSummary } from "@/components/contacts/saved-group-actions";
+import type { SavedGroupMoveImpact } from "@/lib/types/contacts";
 import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
-import {
-  CONTACT_SOURCES,
-  CONTACT_SOURCE_LABELS,
-  SCRAPE_SOURCE_LABELS,
-} from "@/lib/constants/contact-sources";
+import { SCRAPE_SOURCE_LABELS } from "@/lib/constants/contact-sources";
+import { AudiencePicker } from "@/components/campaigns/audience-picker";
 
 const SOURCE_LABELS: Record<string, string> = SCRAPE_SOURCE_LABELS;
 
@@ -87,37 +89,48 @@ function extractTemplateBody(template: MessageTemplate): string {
   return template.components.find((c) => c.type === "BODY")?.text ?? "";
 }
 
-// ─── Reusable styled select ───────────────────────────────────────────────────
-function FilterSelect({
-  value, onChange, children, className = "",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`max-lg:max-w-full ${className}`}>
-      <Select
-        size="sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {children}
-      </Select>
-    </div>
-  );
+/** Backend CAMPAIGN_BATCH_SIZE; the audience preview returns the live value */
+const DEFAULT_BATCH_SIZE = 100;
+
+interface NumberShare {
+  sessionId: string;
+  batches: number;
+  contacts: number;
+}
+
+/**
+ * Mirrors the backend plan: recipients are cut into batches of `batchSize`
+ * and dealt round-robin across the numbers in the order they were picked
+ * (1000 contacts, 3 numbers → 4 / 3 / 3 batches).
+ */
+function splitAcrossNumbers(sessionIds: string[], recipients: number, batchSize: number): NumberShare[] {
+  const shares = sessionIds.map((sessionId) => ({ sessionId, batches: 0, contacts: 0 }));
+  if (shares.length === 0 || recipients <= 0 || batchSize <= 0) return shares;
+  const batchCount = Math.ceil(recipients / batchSize);
+  for (let i = 0; i < batchCount; i++) {
+    const share = shares[i % shares.length];
+    share.batches += 1;
+    share.contacts += Math.min(batchSize, recipients - i * batchSize);
+  }
+  return shares;
+}
+
+function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+}
+
+function formatShare(share: NumberShare): string {
+  return `${plural(share.batches, "batch", "batches")} · ${plural(share.contacts, "contact")}`;
 }
 
 // ─── Section heading ──────────────────────────────────────────────────────────
 function SectionHeading({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-on-surface-variant/60">{icon}</span>
-      <p className="text-caption font-semibold text-on-surface-variant uppercase tracking-widest">
-        {label}
-      </p>
-    </div>
+    // Spans so it can sit inside a <legend>
+    <span className="flex items-center gap-2 mb-3">
+      <span className="text-on-surface-variant/60" aria-hidden="true">{icon}</span>
+      <span className="text-label font-semibold text-on-surface">{label}</span>
+    </span>
   );
 }
 
@@ -217,6 +230,14 @@ interface CreateCampaignModalProps {
   initialAudienceFilters?: CreateCampaignFormData["audienceFilters"];
 }
 
+/** True when a FILTERED audience actually narrows anything */
+function hasAnyAudienceFilter(filters: CreateCampaignFormData["audienceFilters"]): boolean {
+  if (!filters) return false;
+  return Object.values(filters).some((v) =>
+    Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== "",
+  );
+}
+
 export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFilters }: CreateCampaignModalProps) {
   const router = useRouter();
   const createCampaign = useCreateCampaign();
@@ -234,7 +255,8 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const { data: orgTags } = useOrgTags();
-  const { data: savedContactGroups } = useSavedContactGroups(open);
+  const savedGroupsQuery = useSavedContactGroups(open);
+  const savedContactGroups = savedGroupsQuery.data;
   const { data: products } = useProducts();
   const terms = useProductTerms();
   const { data: scrapeRunsData } = useScrapeRuns({ take: 50 });
@@ -243,7 +265,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const emailReady = isEmailReady(emailAccount);
 
   const {
-    register, handleSubmit, watch, setValue, reset,
+    register, handleSubmit, watch, setValue, getValues, reset,
     formState: { errors },
   } = useForm<CreateCampaignFormInput, unknown, CreateCampaignFormData>({
     resolver: zodResolver(createCampaignSchema),
@@ -256,7 +278,8 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     },
   });
 
-  const selectedSessionIds = watch("sessionIds") ?? [];
+  const watchedSessionIds = watch("sessionIds");
+  const selectedSessionIds = useMemo(() => watchedSessionIds ?? [], [watchedSessionIds]);
 
   // With a single connected number there is nothing to choose; preselect it.
   const onlySessionId = sessions.length === 1 ? sessions[0].id : null;
@@ -281,6 +304,34 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   const audienceFilters = watch("audienceFilters");
   const mediaUrl = watch("mediaUrl");
   const senderName = sessions.find((s) => s.id === selectedSessionIds[0])?.name;
+
+  // Only numbers that are still connected count, in the order they were picked
+  const activeSessionIds = useMemo(
+    () => selectedSessionIds.filter((id) => sessions.some((s) => s.id === id)),
+    [selectedSessionIds, sessions],
+  );
+  const sessionName = (id: string) => sessions.find((s) => s.id === id)?.name ?? "Disconnected number";
+
+  // A preview count is only an estimate: the audience is resolved again at send time
+  const preview = previewAudience.data;
+  const previewBatchSize = preview?.batchSize ?? DEFAULT_BATCH_SIZE;
+  const estimatedRecipients = preview
+    ? Math.min(preview.estimatedRecipients ?? 0, preview.maxRecipients ?? Infinity)
+    : null;
+  const numberShares = useMemo(
+    () => (estimatedRecipients === null
+      ? []
+      : splitAcrossNumbers(activeSessionIds, estimatedRecipients, previewBatchSize)),
+    [activeSessionIds, estimatedRecipients, previewBatchSize],
+  );
+  const shareBySession = new Map(numberShares.map((share) => [share.sessionId, share]));
+
+  // Drop a stale estimate when the audience changes
+  const audienceKey = JSON.stringify([audienceType, audienceFilters ?? null]);
+  const { reset: resetPreview } = previewAudience;
+  useEffect(() => {
+    resetPreview();
+  }, [audienceKey, resetPreview]);
 
   function switchChannel(next: Channel) {
     if (next === channel) return;
@@ -315,86 +366,83 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     );
   }, [templates, templateSearch]);
 
-  function toggleFilter(key: "leadStatuses" | "sources", value: string) {
-    const current = audienceFilters?.[key] ?? [];
-    const next = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value];
-    setValue("audienceFilters", { ...audienceFilters, [key]: next.length ? next : undefined });
-  }
 
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const [savedGroupName, setSavedGroupName] = useState("");
+  // WhatsApp only: run round the clock instead of 12 AM – 10 PM
+  const [sendAnyTime, setSendAnyTime] = useState(false);
+  const checkGroupMove = useCheckSavedGroupMove();
+  const [pendingGroupMove, setPendingGroupMove] = useState<SavedGroupMoveImpact | null>(null);
   const [pendingSend, setPendingSend] = useState<{
     data: CreateCampaignFormData;
     recipients: number | null;
     batchSize: number;
     maxRecipients: number;
-    batchAssignments: { batchNumber: number; sessionId: string }[];
+    /** WhatsApp numbers in send order; empty for email */
+    sessionIds: string[];
   } | null>(null);
+
+  function handleClose() {
+    setSavedGroupName("");
+    setSendAnyTime(false);
+    onClose();
+  }
 
   async function onSubmit(data: CreateCampaignFormData) {
     if (unfilledPlaceholders.length > 0) return;
-    if (data.channel === "EMAIL" && !emailReady) return;
-    if (data.channel === "EMAIL" && scheduleMode !== "immediate") {
+    const emailCampaign = data.channel === "EMAIL";
+    if (emailCampaign && !emailReady) return;
+    if (emailCampaign && scheduleMode !== "immediate") {
       submitCampaign(data);
       return;
     }
-    if (data.channel !== "EMAIL" && data.sessionIds.length === 0) {
-      setAudienceError("Select at least one connected WhatsApp session.");
+    const sessionIds = emailCampaign
+      ? []
+      : data.sessionIds.filter((id) => sessions.some((s) => s.id === id));
+    if (!emailCampaign && sessionIds.length === 0) {
+      setAudienceError("Select at least one connected WhatsApp number.");
+      return;
+    }
+
+    // "Groups" / "Custom" with nothing picked would otherwise reach everyone
+    if (data.audienceType === "FILTERED" && !hasAnyAudienceFilter(data.audienceFilters)) {
+      setAudienceError("Pick at least one group or filter, or choose Everyone.");
       return;
     }
 
     setAudienceError(null);
     let recipients: number | null = null;
-    let batchSize = 100;
+    let batchSize = DEFAULT_BATCH_SIZE;
     let maxRecipients = 10_000;
     try {
-      const preview = await previewAudience.mutateAsync({
+      const result = await previewAudience.mutateAsync({
         audienceType: data.audienceType,
         audienceFilters: data.audienceType === "FILTERED" ? data.audienceFilters : undefined,
         channel: data.channel,
       });
-      recipients = preview.estimatedRecipients ?? null;
-      batchSize = preview.batchSize;
-      maxRecipients = preview.maxRecipients;
+      recipients = result.estimatedRecipients ?? null;
+      batchSize = result.batchSize;
+      maxRecipients = result.maxRecipients;
     } catch (error) {
-      if (data.channel !== "EMAIL") {
+      if (!emailCampaign) {
         setAudienceError(error instanceof Error ? error.message : "Could not preview the campaign audience.");
         return;
       }
     }
 
-    if (data.channel !== "EMAIL" && recipients === null) {
-      setAudienceError("Preview the audience before assigning WhatsApp sessions to batches.");
+    // A scheduled or draft campaign may wait for its audience to grow; sending now can't
+    if (!emailCampaign && scheduleMode === "immediate" && recipients === 0) {
+      setAudienceError("No WhatsApp contacts match this audience.");
       return;
     }
-    if (data.channel !== "EMAIL" && recipients === 0) {
-      setAudienceError("No eligible WhatsApp recipients match this audience.");
-      return;
-    }
-    const batchCount = data.channel === "EMAIL" || !recipients
-      ? 0
-      : Math.ceil(recipients / batchSize);
-    const firstSessionId = data.sessionIds[0] ?? "";
-    setPendingSend({
-      data,
-      recipients,
-      batchSize,
-      maxRecipients,
-      batchAssignments: Array.from({ length: batchCount }, (_, index) => ({
-        batchNumber: index + 1,
-        sessionId: firstSessionId,
-      })),
-    });
+    setPendingSend({ data, recipients, batchSize, maxRecipients, sessionIds });
   }
 
-  function submitCampaign(
-    data: CreateCampaignFormData,
-    batchAssignments: { batchNumber: number; sessionId: string }[] = [],
-  ) {
+  function submitCampaign(data: CreateCampaignFormData, sessionIds: string[] = []) {
     const isScheduled = scheduleMode === "scheduled" && !!data.scheduledAt;
-    const { channel: ch, emailSubject: subject, sessionId: sid, sessionIds: _sessionIds, ...rest } = data;
+    // Senders are sent as `sessionIds`; the legacy single `sessionId` is left out
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { channel: ch, emailSubject: subject, sessionId: _sid, sessionIds: _sessionIds, ...rest } = data;
     const shared = {
       ...rest,
       description: data.description || undefined,
@@ -415,8 +463,9 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
         : {
             ...shared,
             channel: "WHATSAPP",
-            sessionId: batchAssignments[0]?.sessionId || sid || undefined,
-            batchAssignments,
+            // Batches are planned at run time, round-robin across these in order
+            sessionIds,
+            ...(sendAnyTime && { sendAnyTime: true }),
             mediaUrl: data.mediaUrl || undefined,
             mediaMimeType: data.mediaMimeType || undefined,
           },
@@ -433,53 +482,59 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           setPlaceholderValues({});
           setPendingSend(null);
           setAudienceError(null);
-          onClose();
+          handleClose();
           router.push(`/campaigns/${created.id}`);
         },
       },
     );
   }
 
-  function updateBatchAssignment(batchNumber: number, sessionId: string) {
-    setPendingSend((current) => current && ({
-      ...current,
-      batchAssignments: current.batchAssignments.map((assignment) =>
-        assignment.batchNumber === batchNumber ? { ...assignment, sessionId } : assignment,
-      ),
-    }));
-  }
 
-  function toggleSavedGroup(groupId: string) {
-    const current = audienceFilters?.contactGroupIds ?? [];
-    const next = current.includes(groupId)
-      ? current.filter((id) => id !== groupId)
-      : [...current, groupId];
-    setValue("audienceType", "FILTERED", { shouldValidate: true });
-    setValue("audienceFilters", {
-      ...audienceFilters,
-      contactGroupIds: next.length ? next : undefined,
-    }, { shouldValidate: true, shouldDirty: true });
-  }
-
+  // A contact is in one group only: warn before saving moves anyone out of another group
   function saveSelectedContactsAsGroups() {
+    const contactIds = audienceFilters?.contactIds ?? [];
+    if (!savedGroupName.trim() || contactIds.length === 0) return;
+    checkGroupMove.mutate(
+      { contactIds },
+      {
+        onSuccess: (impact) => {
+          if (impact.alreadyGrouped > 0) setPendingGroupMove(impact);
+          else createSelectedContactGroups();
+        },
+      },
+    );
+  }
+
+  function createSelectedContactGroups() {
+    setPendingGroupMove(null);
     const contactIds = audienceFilters?.contactIds ?? [];
     if (!savedGroupName.trim() || contactIds.length === 0) return;
     createSavedGroups.mutate(
       { name: savedGroupName.trim(), contactIds },
       {
-        onSuccess: ({ groups }) => {
+        onSuccess: (result) => {
+          // Read filters now, not from the render that started the save
+          const current = getValues("audienceFilters");
           const contactGroupIds = [
             ...new Set([
-              ...(audienceFilters?.contactGroupIds ?? []),
-              ...groups.map((group) => group.id),
+              ...(current?.contactGroupIds ?? []),
+              ...result.groups.map((group) => group.id),
             ]),
           ];
           setValue("audienceType", "FILTERED", { shouldValidate: true });
+          // The new group now holds the hand-picked contacts
           setValue("audienceFilters", {
-            ...audienceFilters,
+            ...current,
+            contactIds: undefined,
             contactGroupIds,
           }, { shouldValidate: true, shouldDirty: true });
           setSavedGroupName("");
+          const moved = "movedFromGroups" in result && typeof result.movedFromGroups === "number"
+            ? result.movedFromGroups
+            : 0;
+          if (moved > 0) {
+            toast.info(`${plural(moved, "contact")} moved from their old group`);
+          }
         },
       },
     );
@@ -492,15 +547,61 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     setValue("sessionIds", nextSessionIds, { shouldValidate: true, shouldDirty: true });
   }
 
-  const completedRuns = scrapeRunsData?.runs.filter((r) => r.status === "COMPLETED") ?? [];
+  // Options for the audience filter menus
+  const scrapeRunOptions = (scrapeRunsData?.runs ?? [])
+    .filter((r) => r.status === "COMPLETED")
+    .map((r) => ({
+      value: r.id,
+      label: `${SOURCE_LABELS[r.source] ?? r.source} — "${r.keywords}" (${r.importedCount > 0 ? `${r.importedCount} imported` : `${r.resultCount} found`})`,
+    }));
+  const tagOptions = (orgTags ?? []).map((t) => ({ value: t.id, label: t.name }));
+  const productOptions = (products ?? [])
+    .filter((p) => p.status === "ACTIVE")
+    .map((p) => ({ value: p.id, label: p.name }));
+
+
+  // Estimate line under the number picker (announced politely)
+  const numbersStatus = estimatedRecipients !== null && activeSessionIds.length > 0
+    ? `Est. ${plural(estimatedRecipients, "contact")} in ${plural(
+        Math.ceil(estimatedRecipients / previewBatchSize), "batch", "batches",
+      )} of ${previewBatchSize}. Final count is set at send time.`
+    : activeSessionIds.length > 1
+      ? `Batches of ${previewBatchSize} rotate across numbers in this order.`
+      : "";
+
+  // What the confirm dialog says before sending
+  const pendingCapped = !!pendingSend && pendingSend.recipients !== null
+    && pendingSend.recipients > pendingSend.maxRecipients;
+  const pendingRecipients = pendingSend?.recipients == null
+    ? null
+    : Math.min(pendingSend.recipients, pendingSend.maxRecipients);
+  const pendingShares = pendingSend && pendingSend.data.channel !== "EMAIL" && pendingRecipients
+    ? splitAcrossNumbers(pendingSend.sessionIds, pendingRecipients, pendingSend.batchSize)
+    : [];
+  let confirmMessage = "";
+  if (pendingSend?.data.channel === "EMAIL") {
+    confirmMessage = pendingRecipients != null
+      ? `About ${plural(pendingRecipients, "contact")} get this email. You can pause it from the campaign page.`
+      : "It goes out to your whole audience right away. You can pause it from the campaign page.";
+  } else if (pendingSend) {
+    const numbers = plural(pendingSend.sessionIds.length, "number");
+    confirmMessage = pendingRecipients
+      ? `About ${plural(pendingRecipients, "contact")} in ${plural(
+          Math.ceil(pendingRecipients / pendingSend.batchSize), "batch", "batches",
+        )} of up to ${pendingSend.batchSize}, from ${numbers}. Final count is set when it starts.`
+      : `Sends from ${numbers}. Batches are planned when it starts.`;
+  }
+  if (pendingCapped && pendingSend) {
+    confirmMessage += ` Capped at ${pendingSend.maxRecipients.toLocaleString()} recipients.`;
+  }
 
   return (
     <>
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       dismissible={!pendingSend}
-      aria-label="New Campaign"
+      aria-label="New campaign"
       className="max-w-4xl xl:max-w-6xl border border-outline-variant/15 flex flex-col max-h-[90vh] overflow-hidden"
     >
       {() => (
@@ -512,10 +613,10 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
               <Megaphone className="h-4 w-4 text-primary" />
             </span>
-            <h2 className="text-title-sm font-semibold text-on-surface">New Campaign</h2>
+            <h2 className="text-title-sm font-semibold text-on-surface">New campaign</h2>
           </div>
           <IconButton size="sm"
-            onClick={onClose} aria-label="Close">
+            onClick={handleClose} aria-label="Close">
             <X className="h-4 w-4" />
           </IconButton>
         </div>
@@ -533,7 +634,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             <div className="space-y-3">
               <SectionHeading icon={<Megaphone className="h-3.5 w-3.5" />} label="Details" />
               <div>
-                <Label htmlFor="name">Campaign Name *</Label>
+                <Label htmlFor="name">Campaign name *</Label>
                 <Input
                   id="name"
                   placeholder="e.g., Welcome Offer 2024"
@@ -582,13 +683,14 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               ) : (
               <>
               {/* Type pills */}
-              <div>
-                <Label>Type</Label>
+              <fieldset>
+                <legend className="text-body font-medium text-on-surface-variant">Type</legend>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {MSG_TYPES.map(({ value, label }) => (
                     <button
                       key={value}
                       type="button"
+                      aria-pressed={messageType === value}
                       onClick={() => {
                         if (value === messageType) return;
                         setValue("messageType", value, { shouldValidate: true });
@@ -596,7 +698,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                         setValue("mediaUrl", "");
                         setValue("mediaMimeType", "");
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors border ${
+                      className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                         messageType === value
                           ? "bg-primary/15 text-primary border-primary/30"
                           : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container border-transparent"
@@ -606,12 +708,12 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {/* Template picker */}
               <div>
-                <Label>
-                  WhatsApp Template{" "}
+                <Label htmlFor={selectedTemplate ? undefined : "templatePicker"}>
+                  WhatsApp template{" "}
                   <span className="font-normal text-on-surface-variant/50">(optional)</span>
                 </Label>
 
@@ -625,18 +727,20 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                         <span className="text-caption bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant shrink-0">{selectedTemplate.category}</span>
                       )}
                     </div>
-                    <IconButton size="xs" variant="danger" type="button" onClick={() => setSelectedTemplate(null)} aria-label="Remove">
+                    <IconButton size="xs" variant="danger" type="button" onClick={() => setSelectedTemplate(null)} aria-label="Remove template">
                       <X className="h-3.5 w-3.5" />
                     </IconButton>
                   </div>
                 ) : (
                   <button
+                    id="templatePicker"
                     type="button"
+                    aria-expanded={showTemplatePicker}
                     onClick={() => {
                       setShowTemplatePicker((v) => !v);
                       setVisibleTemplates(TEMPLATE_PAGE_SIZE);
                     }}
-                    className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-body text-on-surface-variant/60 hover:bg-surface-container transition-colors text-left"
+                    className="mt-1 w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-outline-variant/15 bg-surface-container-low text-body text-on-surface-variant/60 hover:bg-surface-container transition-colors text-left outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <FileText className="h-4 w-4 shrink-0" />
                     Select a template…
@@ -655,6 +759,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                           setVisibleTemplates(TEMPLATE_PAGE_SIZE);
                         }}
                         placeholder="Search templates…"
+                        aria-label="Search templates"
                         className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
                       />
                     </div>
@@ -729,11 +834,13 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
               {/* Message body */}
               <div>
-                <Label htmlFor="messageBody">Message Body</Label>
+                <Label htmlFor="messageBody">Message</Label>
                 <textarea
                   id="messageBody"
                   placeholder={`Type your message… Use {{name}} for personalization`}
                   rows={5}
+                  aria-invalid={!!errors.messageBody}
+                  aria-describedby={errors.messageBody ? "messageBody-error" : undefined}
                   className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
                   {...register("messageBody")}
                 />
@@ -742,7 +849,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   <p className="text-caption text-on-surface-variant/50 tabular-nums">{messageBody.length} / 4,096</p>
                 </div>
                 {errors.messageBody && (
-                  <p role="alert" className="text-label text-error mt-1">{errors.messageBody.message}</p>
+                  <p id="messageBody-error" role="alert" className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
               </div>
               </>
@@ -800,298 +907,36 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             <div>
               <SectionHeading icon={<Users className="h-3.5 w-3.5" />} label="Audience" />
 
-              {/* ALL / FILTERED toggle */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {(
-                  [
-                    { value: "ALL", title: "All Contacts", desc: "Everyone active" },
-                    { value: "FILTERED", title: "Filtered", desc: "Specific segment" },
-                  ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setValue("audienceType", opt.value, { shouldValidate: true })}
-                    className={`p-2.5 rounded-xl text-left transition-colors border max-lg:min-w-0 ${
-                      audienceType === opt.value
-                        ? "border-primary/50 bg-primary/5"
-                        : "border-outline-variant/15 bg-surface-container-low hover:bg-surface-container"
-                    }`}
-                  >
-                    <p className="text-label font-medium text-on-surface">{opt.title}</p>
-                    <p className="text-caption text-on-surface-variant/60">{opt.desc}</p>
-                  </button>
-                ))}
-              </div>
-
-              {/* FILTERED filters */}
-              {audienceType === "FILTERED" && (
-                <div className="space-y-4 p-3 rounded-xl border border-outline-variant/15 bg-surface-container-low">
-
-                  {!!audienceFilters?.contactIds?.length && (
-                    <div className="space-y-2 rounded-lg bg-primary/5 px-3 py-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-caption text-on-surface">
-                          {audienceFilters.contactIds.length} manually selected contact{audienceFilters.contactIds.length === 1 ? "" : "s"}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setValue("audienceFilters", { ...audienceFilters, contactIds: undefined })}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          aria-label="Saved group name"
-                          placeholder="Name these contacts"
-                          maxLength={100}
-                          value={savedGroupName}
-                          onChange={(event) => setSavedGroupName(event.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={!savedGroupName.trim() || createSavedGroups.isPending}
-                          loading={createSavedGroups.isPending}
-                          onClick={saveSelectedContactsAsGroups}
-                        >
-                          Save group{audienceFilters.contactIds.length > 100 ? "s" : ""}
-                        </Button>
-                      </div>
-                      <p className="text-caption text-on-surface-variant">
-                        Larger selections are split using the configured batch size (100 by default).
-                      </p>
-                      <p className="text-caption text-on-surface-variant">
-                        Contacts already in another saved group will be moved to the new group.
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">
-                      Saved contact groups
-                    </p>
-                    {!savedContactGroups?.length ? (
-                      <p className="text-caption text-on-surface-variant">
-                        Save a manual selection above to reuse it in future campaigns.
-                      </p>
-                    ) : (
-                      <div className="max-h-40 space-y-1 overflow-y-auto">
-                        {savedContactGroups.map((group) => {
-                          const selected = audienceFilters?.contactGroupIds?.includes(group.id) ?? false;
-                          return (
-                            <label
-                              key={group.id}
-                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-container"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={() => toggleSavedGroup(group.id)}
-                                className="accent-primary"
-                              />
-                              <span className="min-w-0 flex-1 truncate text-label text-on-surface">
-                                {group.name}
-                              </span>
-                              <span className="shrink-0 text-caption text-on-surface-variant">
-                                {group.contactCount}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Lead Status */}
-                  <div>
-                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Lead Status</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"] as const).map((s) => {
-                        const active = audienceFilters?.leadStatuses?.includes(s);
-                        return (
-                          <button key={s} type="button" onClick={() => toggleFilter("leadStatuses", s)}
-                            className={`px-2 py-0.5 rounded-md text-caption font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
-                            {s.charAt(0) + s.slice(1).toLowerCase()}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Source */}
-                  <div>
-                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Source</p>
-                    <div className="flex flex-wrap gap-1">
-                      {CONTACT_SOURCES.map((s) => {
-                        const active = audienceFilters?.sources?.includes(s);
-                        return (
-                          <button key={s} type="button" onClick={() => toggleFilter("sources", s)}
-                            className={`px-2 py-0.5 rounded-md text-caption font-medium border transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-outline-variant/20 text-on-surface-variant hover:bg-surface-container"}`}>
-                            {CONTACT_SOURCE_LABELS[s]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div>
-                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Tags</p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <FilterSelect
-                        value=""
-                        onChange={(id) => {
-                          if (!id) return;
-                          const current = audienceFilters?.tagIds ?? [];
-                          if (!current.includes(id)) {
-                            setValue("audienceFilters", { ...audienceFilters, tagIds: [...current, id] });
-                          }
-                        }}
-                      >
-                        <option value="">+ Add tag</option>
-                        {(orgTags ?? []).filter((t) => !(audienceFilters?.tagIds ?? []).includes(t.id)).map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </FilterSelect>
-                      {(audienceFilters?.tagIds ?? []).map((tagId) => {
-                        const tag = orgTags?.find((t) => t.id === tagId);
-                        return (
-                          <span key={tagId} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-caption text-primary font-medium">
-                            <Tag className="h-2.5 w-2.5" />
-                            {tag?.name ?? tagId}
-                            <IconButton size="xs" type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, tagIds: (audienceFilters?.tagIds ?? []).filter((id) => id !== tagId) })} className="hover:bg-primary/20" aria-label="Close">
-                              <X className="h-2.5 w-2.5" />
-                            </IconButton>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Products */}
-                  {products && products.length > 0 && (
-                    <div>
-                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">{terms.Plural}</p>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <FilterSelect
-                          value=""
-                          onChange={(id) => {
-                            if (!id) return;
-                            const current = audienceFilters?.productIds ?? [];
-                            if (!current.includes(id)) {
-                              setValue("audienceFilters", { ...audienceFilters, productIds: [...current, id] });
-                            }
-                          }}
-                        >
-                          <option value="">+ Add {terms.singular}</option>
-                          {(products ?? []).filter((p) => p.status === "ACTIVE" && !(audienceFilters?.productIds ?? []).includes(p.id)).map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </FilterSelect>
-                        {(audienceFilters?.productIds ?? []).map((pid) => {
-                          const product = products?.find((p) => p.id === pid);
-                          return (
-                            <span key={pid} className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2 py-0.5 text-caption text-secondary font-medium">
-                              {product?.name ?? pid}
-                              <IconButton size="xs" type="button" onClick={() => setValue("audienceFilters", { ...audienceFilters, productIds: (audienceFilters?.productIds ?? []).filter((id) => id !== pid) })} className="hover:bg-secondary/20" aria-label="Close">
-                                <X className="h-2.5 w-2.5" />
-                              </IconButton>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Scraper Run */}
-                  {completedRuns.length > 0 && (
-                    <div>
-                      <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">From Scraper Run</p>
-                      <FilterSelect
-                        value={audienceFilters?.scrapeRunId ?? ""}
-                        onChange={(v) => setValue("audienceFilters", { ...audienceFilters, scrapeRunId: v || undefined })}
-                      >
-                        <option value="">All contacts</option>
-                        {completedRuns.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {SOURCE_LABELS[r.source] ?? r.source} — &quot;{r.keywords}&quot; ({r.importedCount > 0 ? `${r.importedCount} imported` : `${r.resultCount} found`})
-                          </option>
-                        ))}
-                      </FilterSelect>
-                    </div>
-                  )}
-
-                  {/* Quick filters row */}
-                  <div>
-                    <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-widest mb-1.5">Quick Filters</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      <FilterSelect
-                        value={audienceFilters?.hasPhone === true ? "yes" : audienceFilters?.hasPhone === false ? "no" : ""}
-                        onChange={(v) => setValue("audienceFilters", { ...audienceFilters, hasPhone: v === "yes" ? true : v === "no" ? false : undefined })}
-                      >
-                        <option value="">Phone: All</option>
-                        <option value="yes">Has phone</option>
-                        <option value="no">No phone</option>
-                      </FilterSelect>
-
-                      <FilterSelect
-                        value={audienceFilters?.hasWebsite === true ? "yes" : audienceFilters?.hasWebsite === false ? "no" : ""}
-                        onChange={(v) => setValue("audienceFilters", { ...audienceFilters, hasWebsite: v === "yes" ? true : v === "no" ? false : undefined })}
-                      >
-                        <option value="">Website: All</option>
-                        <option value="yes">Has website</option>
-                        <option value="no">No website</option>
-                      </FilterSelect>
-
-                      <FilterSelect
-                        value={audienceFilters?.dateAdded ?? ""}
-                        onChange={(v) => setValue("audienceFilters", { ...audienceFilters, dateAdded: (v as "last_7d" | "last_30d" | "last_90d") || undefined })}
-                      >
-                        <option value="">Added: Any time</option>
-                        <option value="last_7d">Last 7 days</option>
-                        <option value="last_30d">Last 30 days</option>
-                        <option value="last_90d">Last 90 days</option>
-                      </FilterSelect>
-
-                      {audienceFilters?.scrapeRunId && (
-                        <FilterSelect
-                          value={audienceFilters?.minRating?.toString() ?? ""}
-                          onChange={(v) => setValue("audienceFilters", { ...audienceFilters, minRating: v ? Number(v) : undefined })}
-                        >
-                          <option value="">Rating: Any</option>
-                          <option value="3">Rating 3.0+</option>
-                          <option value="3.5">Rating 3.5+</option>
-                          <option value="4">Rating 4.0+</option>
-                          <option value="4.5">Rating 4.5+</option>
-                        </FilterSelect>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* No filters hint */}
-                  {!audienceFilters?.leadStatuses?.length &&
-                   !audienceFilters?.sources?.length &&
-                   !audienceFilters?.tagIds?.length &&
-                   !audienceFilters?.productIds?.length &&
-                   !audienceFilters?.contactIds?.length &&
-                   !audienceFilters?.scrapeRunId &&
-                   audienceFilters?.hasPhone === undefined &&
-                   audienceFilters?.hasWebsite === undefined &&
-                   !audienceFilters?.dateAdded && (
-                    <p className="text-caption text-on-surface-variant/40 italic">
-                      Select filters above to narrow your audience.
-                    </p>
-                  )}
-                </div>
-              )}
+              <AudiencePicker
+                audienceType={audienceType}
+                filters={audienceFilters}
+                onChange={(type, filters) => {
+                  setValue("audienceType", type, { shouldValidate: true });
+                  setValue("audienceFilters", filters, { shouldValidate: true, shouldDirty: true });
+                }}
+                batchSize={previewBatchSize}
+                isEmail={isEmail}
+                groups={{
+                  data: savedContactGroups,
+                  isLoading: savedGroupsQuery.isLoading,
+                  isError: savedGroupsQuery.isError,
+                  isFetching: savedGroupsQuery.isFetching,
+                  refetch: () => { void savedGroupsQuery.refetch(); },
+                }}
+                tags={tagOptions}
+                products={productOptions}
+                productLabel={{ singular: terms.singular, plural: terms.Plural }}
+                scrapeRuns={scrapeRunOptions}
+                saveGroup={{
+                  name: savedGroupName,
+                  setName: setSavedGroupName,
+                  onSave: saveSelectedContactsAsGroups,
+                  saving: createSavedGroups.isPending,
+                }}
+              />
 
               {/* Preview */}
-              <div className="flex items-center gap-3 mt-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3">
                 <Button
                   type="button"
                   variant="ghost"
@@ -1105,13 +950,18 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   }
                   loading={previewAudience.isPending}
                 >
-                  Preview Audience
+                  Preview audience
                 </Button>
-                {previewAudience.data && (
-                  <span className="text-label text-on-surface-variant">
-                    ~<span className="font-semibold text-on-surface">{(previewAudience.data.estimatedRecipients ?? 0).toLocaleString()}</span> recipients
-                  </span>
-                )}
+                <span className="text-label text-on-surface-variant" aria-live="polite">
+                  {preview && (
+                    <>
+                      ~<span className="font-semibold text-on-surface">{(preview.estimatedRecipients ?? 0).toLocaleString()}</span> recipients
+                      {!isEmail && (preview.notOnWhatsApp ?? 0) > 0 && (
+                        <> · {preview.notOnWhatsApp!.toLocaleString()} not on WhatsApp, skipped</>
+                      )}
+                    </>
+                  )}
+                </span>
               </div>
               {isEmail && (
                 <p className="mt-1.5 text-caption text-on-surface-variant">
@@ -1120,65 +970,99 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
               )}
             </div>
 
-            {/* WhatsApp sessions assigned to individual batches */}
-            <div>
-              <SectionHeading
-                icon={isEmail ? <Mail className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
-                label={isEmail ? "Send from" : "WhatsApp sessions"}
-              />
-              {isEmail ? (
-                emailReady ? (
+            {/* Sender: business email, or WhatsApp numbers that take turns sending batches */}
+            {isEmail ? (
+              <div>
+                <SectionHeading icon={<Mail className="h-3.5 w-3.5" />} label="Send from" />
+                {emailReady ? (
                   <p className="rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface break-all">
                     {emailAccount.fromName}{" "}
                     <span className="text-on-surface-variant">&lt;{emailAccount.fromAddress}&gt;</span>
                   </p>
                 ) : (
                   <p className="text-label text-on-surface-variant">No business email connected</p>
-                )
-              ) : sessions.length === 0 ? (
-                <div className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
-                  No connected WhatsApp sessions are available.{" "}
-                  {/* New tab so the campaign being written isn't lost */}
-                  <a href="/settings/whatsapp" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-on-surface">
-                    Connect WhatsApp
-                  </a>
-                  or ask an organization admin to connect a session.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-caption text-on-surface-variant">
-                    Select connected team sessions, then assign one sender to each configured batch.
+                )}
+              </div>
+            ) : (
+              <fieldset
+                data-tour="campaign-numbers"
+                aria-describedby={[
+                  numbersStatus ? "campaign-numbers-status" : "",
+                  errors.sessionIds ? "sessionIds-error" : "",
+                ].filter(Boolean).join(" ") || undefined}
+                className="min-w-0"
+              >
+                <legend className="w-full">
+                  <SectionHeading icon={<Wifi className="h-3.5 w-3.5" />} label="WhatsApp numbers" />
+                </legend>
+                {sessions.length === 0 ? (
+                  <p className="rounded-xl bg-warning-container px-4 py-3 text-label text-warning">
+                    No connected numbers.{" "}
+                    {/* New tab so the campaign being written isn't lost */}
+                    <a href="/settings/whatsapp" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-on-surface">
+                      Connect WhatsApp
+                    </a>
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {sessions.map((session) => (
-                      <label key={session.id} className="flex items-center gap-2 rounded-lg border border-outline-variant/20 px-3 py-2 text-label text-on-surface">
-                        <input
-                          type="checkbox"
-                          checked={selectedSessionIds.includes(session.id)}
-                          onChange={() => toggleSession(session.id)}
-                          className="accent-primary"
-                        />
-                        <span className="truncate">{session.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {errors.sessionIds && (
-                <p className="text-label text-error mt-1">{errors.sessionIds.message}</p>
-              )}
-            </div>
+                ) : (
+                  <ul className="divide-y divide-outline-variant/10 overflow-hidden rounded-xl border border-outline-variant/15">
+                    {sessions.map((session) => {
+                      const order = activeSessionIds.indexOf(session.id);
+                      const share = shareBySession.get(session.id);
+                      const inputId = `campaign-number-${session.id}`;
+                      return (
+                        <li key={session.id}>
+                          <label
+                            htmlFor={inputId}
+                            className="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-surface-container-low"
+                          >
+                            <input
+                              id={inputId}
+                              type="checkbox"
+                              checked={order >= 0}
+                              onChange={() => toggleSession(session.id)}
+                              aria-describedby={share ? `${inputId}-share` : undefined}
+                              className="h-4 w-4 shrink-0 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                            />
+                            {activeSessionIds.length > 1 && order >= 0 && (
+                              // Send order: batch 1 goes to the first number, batch 2 to the next…
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-semibold text-primary tabular-nums">
+                                <span className="sr-only">Order </span>{order + 1}
+                              </span>
+                            )}
+                            {/* Phones stack the summary under the number */}
+                            <span className="flex min-w-0 flex-1 items-center gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-0">
+                              <span className="min-w-0 max-w-full flex-1 truncate text-label text-on-surface">{session.name}</span>
+                              {share && (
+                                <span id={`${inputId}-share`} className="shrink-0 text-caption text-on-surface-variant tabular-nums">
+                                  {formatShare(share)}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <p id="campaign-numbers-status" aria-live="polite" className="mt-1.5 text-caption text-on-surface-variant empty:hidden">
+                  {sessions.length > 0 ? numbersStatus : ""}
+                </p>
+                {errors.sessionIds && (
+                  <p id="sessionIds-error" role="alert" className="text-label text-error mt-1">{errors.sessionIds.message}</p>
+                )}
+              </fieldset>
+            )}
 
             {/* Product (optional) */}
             <div>
               <SectionHeading icon={<Package className="h-3.5 w-3.5" />} label={`${terms.Singular} (optional)`} />
-              <ProductSelectField value={productId} onChange={setProductId} onBeforeRedirect={onClose} />
+              <ProductSelectField value={productId} onChange={setProductId} onBeforeRedirect={handleClose} />
             </div>
 
             {/* Scheduling */}
             <div>
               <SectionHeading icon={<Clock className="h-3.5 w-3.5" />} label="Scheduling" />
-              <div className="flex gap-2 mb-3 max-lg:gap-1.5">
+              <div className="flex gap-2 mb-3 max-lg:gap-1.5" role="group" aria-label="When to send">
                 {([
                   { value: "immediate", label: "Send now" },
                   { value: "scheduled", label: "Schedule" },
@@ -1187,8 +1071,9 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   <button
                     key={opt.value}
                     type="button"
+                    aria-pressed={scheduleMode === opt.value}
                     onClick={() => setScheduleMode(opt.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-label font-medium transition-colors border max-lg:min-w-0 max-lg:px-1.5 max-lg:min-h-11 ${
+                    className={`flex-1 px-3 py-2 rounded-lg text-label font-medium transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:min-w-0 max-lg:px-1.5 max-lg:min-h-11 ${
                       scheduleMode === opt.value
                         ? "border-primary/50 bg-primary/10 text-primary"
                         : "border-outline-variant/15 text-on-surface-variant hover:bg-surface-container"
@@ -1198,10 +1083,30 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   </button>
                 ))}
               </div>
+              {!isEmail && (
+                <div className="mb-3 flex items-start justify-between gap-3 border-t border-outline-variant pt-3">
+                  <div className="min-w-0">
+                    <p id="sendAnyTime-label" className="text-body font-medium text-on-surface">
+                      Send any time (24 hours)
+                    </p>
+                    <p id="sendAnyTime-hint" className="text-caption text-on-surface-variant">
+                      {sendAnyTime
+                        ? "Keeps sending day and night until everyone gets it. Daily limits per number still apply."
+                        : "Off: sends 12 AM – 10 PM in the campaign's time zone."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={sendAnyTime}
+                    onChange={setSendAnyTime}
+                    aria-labelledby="sendAnyTime-label"
+                    className="mt-0.5 shrink-0"
+                  />
+                </div>
+              )}
               {scheduleMode === "scheduled" && (
                 <div className="grid grid-cols-1 gap-2">
                   <div>
-                    <Label htmlFor="scheduledAt">Date & Time</Label>
+                    <Label htmlFor="scheduledAt">Date & time</Label>
                     <Input id="scheduledAt" type="datetime-local" error={errors.scheduledAt?.message} {...register("scheduledAt")} />
                   </div>
                   <div>
@@ -1251,12 +1156,12 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             </p>
           )}
           {createCampaign.isError && (
-            <p className="text-label text-error flex-1 max-lg:basis-full">
+            <p className="text-label text-error flex-1 max-lg:basis-full" role="alert">
               {(createCampaign.error as Error)?.message || "Failed to create campaign"}
             </p>
           )}
           <div className="flex gap-2 ml-auto max-lg:ml-0 max-lg:w-full">
-            <Button type="button" variant="secondary" onClick={onClose} className="max-lg:flex-1">
+            <Button type="button" variant="secondary" onClick={handleClose} className="max-lg:flex-1">
               Cancel
             </Button>
             <Button
@@ -1276,6 +1181,16 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     </Modal>
 
     <ConfirmDialog
+      open={!!pendingGroupMove}
+      title={`Move ${pendingGroupMove?.alreadyGrouped ?? 0} contacts?`}
+      message={`They're in ${groupNamesSummary(pendingGroupMove?.groups ?? [])}. A contact can only be in one group.`}
+      confirmLabel={`Move ${pendingGroupMove?.alreadyGrouped ?? 0} contacts`}
+      loading={createSavedGroups.isPending}
+      onCancel={() => setPendingGroupMove(null)}
+      onConfirm={createSelectedContactGroups}
+    />
+
+    <ConfirmDialog
       open={!!pendingSend}
       title={
         scheduleMode === "immediate"
@@ -1284,49 +1199,22 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             ? "Schedule this campaign?"
             : "Save this campaign as a draft?"
       }
-      message={
-        pendingSend?.recipients != null
-          ? `The audience preview estimates ${pendingSend.recipients.toLocaleString()} contacts, split into ${pendingSend.batchAssignments.length} batch${pendingSend.batchAssignments.length === 1 ? "" : "es"} of up to ${pendingSend.batchSize}. The resolved campaign limit is ${pendingSend.maxRecipients.toLocaleString()} recipients. Each batch runs independently on its assigned WhatsApp session.`
-          : "It goes out to your whole audience right away. You can pause it from the campaign page."
-      }
+      message={confirmMessage}
       confirmLabel={scheduleMode === "immediate" ? "Send now" : scheduleMode === "scheduled" ? "Schedule" : "Save draft"}
       variant={scheduleMode === "immediate" ? "warning" : "default"}
       loading={createCampaign.isPending}
-      confirmDisabled={
-        !!pendingSend &&
-        pendingSend.data.channel !== "EMAIL" &&
-        pendingSend.batchAssignments.some((assignment) => !assignment.sessionId)
-      }
       onCancel={() => setPendingSend(null)}
-      onConfirm={() => pendingSend && submitCampaign(pendingSend.data, pendingSend.batchAssignments)}
+      onConfirm={() => pendingSend && submitCampaign(pendingSend.data, pendingSend.sessionIds)}
     >
-      {pendingSend?.data.channel !== "EMAIL" && pendingSend?.batchAssignments.length ? (
-        <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
-          <p className="text-caption text-on-surface-variant">
-            Assign a connected session to each batch. Session assignments stay fixed for this campaign.
-          </p>
-          {pendingSend.batchAssignments.map((assignment) => (
-            <label key={assignment.batchNumber} className="block text-left">
-              <span className="mb-1 block text-caption font-medium text-on-surface">
-                Batch {assignment.batchNumber}
-              </span>
-              <select
-                value={assignment.sessionId}
-                onChange={(event) => updateBatchAssignment(assignment.batchNumber, event.target.value)}
-                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-label text-on-surface"
-              >
-                {pendingSend.data.sessionIds.map((id) => {
-                  const session = sessions.find((item) => item.id === id);
-                  return (
-                    <option key={id} value={id}>
-                      {session?.name ?? "Unavailable session"}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
+      {pendingShares.length > 1 ? (
+        <ul className="max-h-48 space-y-1 overflow-y-auto text-left" aria-label="Estimated split per number">
+          {pendingShares.map((share) => (
+            <li key={share.sessionId} className="flex items-center justify-between gap-3 text-label">
+              <span className="min-w-0 truncate text-on-surface">{sessionName(share.sessionId)}</span>
+              <span className="shrink-0 text-on-surface-variant tabular-nums">{formatShare(share)}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : null}
     </ConfirmDialog>
     </>

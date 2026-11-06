@@ -52,7 +52,7 @@ export class AudienceResolverService {
     filters?: AudienceFilters,
   ): Promise<AudienceResult> {
     if (filters) await this.resolveTeamIds(filters);
-    const where = await this.buildWhereClause(orgId, audienceType, filters);
+    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
 
     const contacts: ResolvedContact[] = [];
     const seenPhones = new Set<string>();
@@ -160,7 +160,34 @@ export class AudienceResolverService {
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
     const where = await this.buildWhereClause(orgId, audienceType, filters);
-    return this.prisma.contact.count({ where: channel === 'EMAIL' ? this.forEmail(where) : where });
+    return this.prisma.contact.count({ where: channel === 'EMAIL' ? this.forEmail(where) : this.forWhatsApp(where) });
+  }
+
+  /** How many of the (WhatsApp) audience a check found are not on WhatsApp, so they'll be skipped. */
+  async countNotOnWhatsApp(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<number> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = await this.buildWhereClause(orgId, audienceType, filters);
+    return this.prisma.contact.count({
+      where: { ...where, AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { waExists: false }] },
+    });
+  }
+
+  /**
+   * Same audience, for WhatsApp: skip numbers a check found are not on WhatsApp
+   * (unchecked ones still go). Undelivered sends lower the number's delivery rate,
+   * which auto-pauses it and is a ban signal. Explicit null branch: a plain
+   * `not: false` would also drop unchecked contacts.
+   */
+  private forWhatsApp(where: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+    const notOffWhatsApp: Prisma.ContactWhereInput = { OR: [{ waExists: null }, { waExists: true }] };
+    return {
+      ...where,
+      AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), notOffWhatsApp],
+    };
   }
 
   private async buildWhereClause(
@@ -196,7 +223,7 @@ export class AudienceResolverService {
           savedGroupMemberships: {
             some: {
               groupId: { in: filters.contactGroupIds },
-              group: { orgId },
+              group: { orgId, deletedAt: null },
             },
           },
         });

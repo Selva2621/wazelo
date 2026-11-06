@@ -5,6 +5,7 @@ import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositor
 import { CampaignRecipientRepository } from '@/modules/campaigns/infrastructure/repositories/campaign-recipient.repository';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { QueueService } from '@/infrastructure/queue/queue.service';
+import { CampaignBatchDispatcher } from '@/modules/campaigns/application/services/campaign-batch-dispatcher.service';
 import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import {
   WhatsAppMessageSentEvent,
@@ -32,6 +33,7 @@ export class CampaignEventsHandler {
     private readonly eventEmitter: EventEmitter2,
     private readonly wsGateway: AppWebSocketGateway,
     private readonly queueService: QueueService,
+    private readonly batchDispatcher: CampaignBatchDispatcher,
   ) {}
 
   // ─── Email campaigns: the email's result updates its recipient ───
@@ -70,8 +72,14 @@ export class CampaignEventsHandler {
 
   /** A batch handed out all its recipients (some may have been skipped, which sends no event) */
   @OnEvent(EVENT_NAMES.CAMPAIGN_BATCH_SETTLED)
-  async handleBatchSettled(payload: { campaignId: string }): Promise<void> {
+  async handleBatchSettled(payload: { campaignId: string; orgId?: string }): Promise<void> {
     await this.emitProgressAndCheckCompletion(payload.campaignId);
+
+    // Start the next batch on the number that just finished one
+    const campaign = await this.campaignRepo.findById(payload.campaignId);
+    if (campaign?.status === CampaignStatus.RUNNING) {
+      await this.batchDispatcher.dispatch(campaign.id, campaign.orgId, campaign.channel);
+    }
   }
 
   // ─── Message lifecycle → Campaign progress tracking ───

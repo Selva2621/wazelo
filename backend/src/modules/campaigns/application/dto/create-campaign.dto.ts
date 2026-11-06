@@ -14,6 +14,7 @@ import {
   IsIn,
   IsInt,
   Min,
+  Max,
   ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -22,6 +23,7 @@ import { MessageType, CampaignAudienceType, LeadStatus, ContactSource } from '@p
 export class CampaignBatchAssignmentDto {
   @IsInt()
   @Min(1)
+  @Max(1_000)
   batchNumber: number;
 
   @IsUUID('4')
@@ -145,9 +147,22 @@ export class CreateCampaignDto {
   @IsUUID()
   sessionId?: string;
 
-  /** One selected WhatsApp session for each recipient batch. */
+  /** WhatsApp only: send round the clock instead of the campaign window (daily caps still apply) */
+  @IsOptional()
+  @IsBoolean()
+  sendAnyTime?: boolean;
+
+  /** WhatsApp numbers to send from; batches are dealt round-robin across them at run time. */
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('4', { each: true })
+  sessionIds?: string[];
+
+  /** Optional per-batch overrides (batches without one follow the round-robin). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1_000)
   @ValidateNested({ each: true })
   @Type(() => CampaignBatchAssignmentDto)
   batchAssignments?: CampaignBatchAssignmentDto[];

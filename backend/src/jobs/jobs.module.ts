@@ -75,6 +75,7 @@ import { KbEmbeddingWorker } from './knowledge/kb-embedding.worker';
 import { AiModule } from '@/modules/ai/ai.module';
 import { KnowledgeBaseModule } from '@/modules/knowledge-base/knowledge-base.module';
 import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
+import { GroupWaCheckWorker } from './lead-scraper/group-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
 import { OrgOnboardingWorker } from './org/org-onboarding.worker';
@@ -181,6 +182,7 @@ import { EmailModule } from '@/modules/email/email.module';
     CrawlWebsiteWorker,
     KbEmbeddingWorker,
     ScrapeWaCheckWorker,
+    GroupWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
     // Website chat handover: offer ran out → next member; nobody took it → follow-up

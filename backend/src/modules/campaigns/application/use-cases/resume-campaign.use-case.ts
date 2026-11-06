@@ -13,6 +13,7 @@ import { MessageRepository } from '@/modules/messages/infrastructure/repositorie
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
+import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, WhatsAppSessionStatus } from '@prisma/client';
 
 @Injectable()
@@ -48,39 +49,7 @@ export class ResumeCampaignUseCase {
     // (email campaigns send from the workspace's mailbox: no number)
     let sessionId: string | null = null;
     if (campaign.channel !== 'EMAIL') {
-      const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
-        ? campaign.metadata as Record<string, unknown>
-        : {};
-      const assignmentRows = Array.isArray(metadata.batchSessionAssignments)
-        ? metadata.batchSessionAssignments
-        : [];
-      const assignedSessionIds = [...new Set(assignmentRows.flatMap((assignment) =>
-        assignment &&
-        typeof assignment === 'object' &&
-        'sessionId' in assignment &&
-        typeof assignment.sessionId === 'string'
-          ? [assignment.sessionId]
-          : [],
-      ))];
-
-      if (assignedSessionIds.length > 0) {
-        const connected = await this.sessionRepo.findConnectedByIdsAndOrg(assignedSessionIds, orgId);
-        if (connected.length !== assignedSessionIds.length) {
-          throw new BadRequestException(
-            'Reconnect every WhatsApp session assigned to this campaign before resuming',
-          );
-        }
-        sessionId = campaign.sessionId ?? assignedSessionIds[0];
-      } else {
-        sessionId = await this.resolveSendingSession(campaign.sessionId ?? '', orgId, userId);
-        if (sessionId !== campaign.sessionId) {
-          await this.campaignRepo.moveToSession(campaignId, sessionId);
-          if (campaign.sessionId) {
-            await this.recipientRepo.reassignPendingSession(campaignId, campaign.sessionId, sessionId);
-          }
-          this.logger.log(`Campaign ${campaignId} moved from session ${campaign.sessionId} to ${sessionId}`);
-        }
-      }
+      sessionId = await this.moveBatchesOffDeadNumbers(campaign, orgId, userId);
     }
 
     // Reset SKIPPED recipients back to PENDING for re-processing
@@ -168,6 +137,51 @@ export class ResumeCampaignUseCase {
         `campaign-resume-message-${queued.messageId}-${Date.now()}`,
       );
     }
+  }
+
+  /**
+   * Numbers that dropped (logged out, banned, unlinked) keep their unfinished
+   * batches stuck. Move each such batch's PENDING recipients to a connected
+   * number from the campaign's pool, round-robin; if none of the pool is
+   * connected, fall back to the resuming user's / any connected org number.
+   * Returns the campaign's (possibly new) primary number.
+   */
+  private async moveBatchesOffDeadNumbers(
+    campaign: { id: string; sessionId: string | null; metadata: unknown },
+    orgId: string,
+    userId: string,
+  ): Promise<string> {
+    const { pool } = readBatchPlanMetadata(campaign.metadata, campaign.sessionId);
+    const inUse = await this.recipientRepo.findUnfinishedSessionIds(campaign.id);
+    const considered = [...new Set([...pool, ...inUse])];
+
+    const connectedIds = new Set(
+      (await this.sessionRepo.findConnectedByIdsAndOrg(considered, orgId)).map((s) => s.id),
+    );
+    let targets = pool.filter((id) => connectedIds.has(id));
+    if (targets.length === 0) targets = [...connectedIds];
+    if (targets.length === 0) {
+      targets = [await this.resolveSendingSession(campaign.sessionId ?? '', orgId, userId)];
+    }
+
+    const deadIds = considered.filter((id) => !connectedIds.has(id) && !targets.includes(id));
+    const stranded = await this.recipientRepo.findPendingBatchesOnSessions(campaign.id, deadIds);
+    for (const [index, batchNumber] of stranded.entries()) {
+      await this.recipientRepo.reassignBatchSession(campaign.id, batchNumber, targets[index % targets.length]);
+    }
+
+    const primary = campaign.sessionId && connectedIds.has(campaign.sessionId)
+      ? campaign.sessionId
+      : targets[0];
+    if (primary !== campaign.sessionId) {
+      await this.campaignRepo.moveToSession(campaign.id, primary);
+    }
+    if (stranded.length > 0) {
+      this.logger.log(
+        `Campaign ${campaign.id}: moved ${stranded.length} batch(es) off disconnected numbers onto ${targets.length} connected number(s)`,
+      );
+    }
+    return primary;
   }
 
   /**

@@ -144,20 +144,41 @@ export interface RecipientStatusCounts {
 
 // ─── Analytics ───
 
+/** GET /campaigns/:id/analytics (matches the backend response) */
 export interface CampaignAnalytics {
-  campaign: Campaign;
+  campaignId: string;
+  name: string;
   status: CampaignStatus;
+  startedAt: string | null;
+  completedAt: string | null;
   timing: {
     elapsedMs: number;
     asOf: string;
   };
+  /** Local hours WhatsApp campaign messages may go out (null for email) */
+  sendWindow: { startHour: number; endHour: number; timeZone: string } | null;
   batches: CampaignBatchProgress[];
-  recipientCounts: RecipientStatusCounts;
-  deliveryRate: number;
-  failureRate: number;
-  readRate: number;
-  progress: number;
+  metrics: {
+    totalRecipients: number;
+    sent: number;
+    delivered: number;
+    failed: number;
+    read: number;
+    skipped: number;
+    pending: number;
+    queued: number;
+  };
+  rates: { deliveryRate: number; failureRate: number; readRate: number };
+  progress: { processed: number; remaining: number; percentComplete: number };
 }
+
+/**
+ * done = nothing left; sending = this number's current batch;
+ * waiting = queued behind an earlier batch on the same number;
+ * blocked = has work but its number can't send (see `issue`);
+ * paused = campaign paused; stopped = campaign ended with recipients left
+ */
+export type CampaignBatchState = "done" | "sending" | "waiting" | "blocked" | "paused" | "stopped";
 
 export interface CampaignBatchProgress {
   batchNumber: number;
@@ -168,7 +189,9 @@ export interface CampaignBatchProgress {
   sendingPausedUntil: string | null;
   sendingPausedReason: string | null;
   counts: RecipientStatusCounts;
-  failureReasons: { reason: string; count: number }[];
+  state: CampaignBatchState;
+  issue: string | null;
+  topFailures: { reason: string; count: number }[];
   issues: string[];
 }
 
@@ -176,6 +199,8 @@ export interface CampaignBatchProgress {
 
 export interface AudiencePreview {
   estimatedRecipients: number;
+  /** WhatsApp: audience members a number check found aren't on WhatsApp (skipped) */
+  notOnWhatsApp?: number;
   batchSize: number;
   maxRecipients: number;
 }
@@ -191,9 +216,13 @@ export interface CreateCampaignRequest {
   mediaMimeType?: string;
   audienceType: CampaignAudienceType;
   audienceFilters?: AudienceFilters;
-  /** Required for WhatsApp; omitted for email */
+  /** Legacy single sender; prefer sessionIds */
   sessionId?: string;
-  /** One WhatsApp session assignment for each 1-based recipient batch */
+  /** WhatsApp numbers to send from, in order; batches are dealt round-robin across them at run time */
+  sessionIds?: string[];
+  /** WhatsApp only: send round the clock (daily per-number limits still apply) */
+  sendAnyTime?: boolean;
+  /** Optional per-batch overrides (1-based); batches without one follow the round-robin */
   batchAssignments?: { batchNumber: number; sessionId: string }[];
   channel?: CampaignChannel;
   emailSubject?: string;

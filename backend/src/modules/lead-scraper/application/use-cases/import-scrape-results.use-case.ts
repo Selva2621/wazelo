@@ -15,6 +15,8 @@ export interface ImportScrapeResultsOutcome {
   skipped: number;
   /** Results with no usable phone number — a contact needs one to be messaged */
   noPhone: number;
+  /** Results that hit an error while importing (counted apart from duplicates) */
+  failed: number;
 }
 
 @Injectable()
@@ -61,6 +63,8 @@ export class ImportScrapeResultsUseCase {
     let imported = 0;
     let skipped = 0;
     let noPhone = 0;
+    // Real errors, reported separately so they aren't mistaken for duplicates
+    let failed = 0;
 
     // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
     // Truelancer, Upwork) have no phone — bid on them via their link instead
@@ -113,6 +117,14 @@ export class ImportScrapeResultsUseCase {
           where: { id: result.id },
           data: { imported: true, contactId: contact.id },
         });
+        // Keep a known "on WhatsApp?" answer so campaigns can skip dead numbers
+        // without checking them again
+        if (result.waExists !== null && result.waCheckedAt) {
+          await this.prisma.contact.update({
+            where: { id: contact.id },
+            data: { waExists: result.waExists, waCheckedAt: result.waCheckedAt },
+          });
+        }
 
         if (created) {
           imported++;
@@ -127,7 +139,7 @@ export class ImportScrapeResultsUseCase {
         }
       } catch (err) {
         this.logger.warn(`Failed to import result ${result.id}: ${err instanceof Error ? err.message : String(err)}`);
-        skipped++;
+        failed++;
       }
     };
 
@@ -150,6 +162,6 @@ export class ImportScrapeResultsUseCase {
       data: { importedCount: totalImported },
     });
 
-    return { imported, skipped, noPhone };
+    return { imported, skipped, noPhone, failed };
   }
 }

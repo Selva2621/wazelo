@@ -133,26 +133,39 @@ export function AccountHealthDetails({ health }: { health: SendHealth }) {
   );
 }
 
-/** Settings › WhatsApp card. */
-export function AccountHealthCard({ className }: { className?: string }) {
+/** Heading + health rows, without a card — for placing inside another card's section. */
+export function AccountHealthSection({ className }: { className?: string }) {
   const { data: health } = useSendHealth();
   if (!health) return null;
   const risk = riskConfig[health.risk];
 
   return (
-    <Card className={cn("w-full max-w-md text-left", className)}>
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-title-sm font-semibold text-on-surface">Account health</h3>
+    <section aria-labelledby="account-health-title" className={cn("text-left", className)}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 id="account-health-title" className="text-title-sm font-semibold text-on-surface">
+          Account health
+        </h3>
         <Badge variant={risk.variant}>
-          <risk.icon className="h-3.5 w-3.5" />
+          <risk.icon className="h-3.5 w-3.5" aria-hidden />
           {risk.label}
         </Badge>
       </div>
       <AccountHealthDetails health={health} />
       <p className="mt-4 flex gap-1.5 text-caption text-on-surface-variant">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
         Limits grow as your number ages. Campaigns only go to people who have messaged you.
       </p>
+    </section>
+  );
+}
+
+/** Settings › WhatsApp card. */
+export function AccountHealthCard({ className }: { className?: string }) {
+  const { data: health } = useSendHealth();
+  if (!health) return null;
+  return (
+    <Card className={cn("w-full max-w-md", className)}>
+      <AccountHealthSection />
     </Card>
   );
 }
@@ -248,8 +261,9 @@ export function CampaignCapacityNotice({ className }: { className?: string }) {
           : remaining === 0
             ? "Today's sending limit is used up — this campaign will start tomorrow morning."
             : `Today you can still send ${remaining} bulk messages (warm-up ${health.warmup.stage === 4 ? "complete" : `stage ${health.warmup.stage}`}).`}{" "}
-        Only contacts who have messaged you receive campaigns, between{" "}
-        {formatHour(health.sendingHours.start)}–{formatHour(health.sendingHours.end)}.
+        Campaigns send{" "}
+        {formatHour(health.campaignHours?.start ?? health.sendingHours.start)}–
+        {formatHour(health.campaignHours?.end ?? health.sendingHours.end)}.
       </p>
     </div>
   );

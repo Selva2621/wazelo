@@ -33,6 +33,7 @@ import { GenerateCampaignCopyUseCase } from './application/use-cases/generate-ca
 import { CampaignController } from './interfaces/controllers/campaign.controller';
 
 import { CampaignRepliesService } from './application/services/campaign-replies.service';
+import { CampaignBatchDispatcher } from './application/services/campaign-batch-dispatcher.service';
 
 @Module({
   imports: [
@@ -55,6 +56,8 @@ import { CampaignRepliesService } from './application/services/campaign-replies.
     CampaignStateMachineService,
     // Marks campaign recipients who write back ("Replied")
     CampaignRepliesService,
+    // Starts batches per number in order; repairs stuck recipients
+    CampaignBatchDispatcher,
 
     // Use cases
     CreateCampaignUseCase,
@@ -76,6 +79,7 @@ import { CampaignRepliesService } from './application/services/campaign-replies.
     CampaignRecipientRepository,
     AudienceResolverService,
     CampaignStateMachineService,
+    CampaignBatchDispatcher,
   ],
 })
 export class CampaignsModule {}

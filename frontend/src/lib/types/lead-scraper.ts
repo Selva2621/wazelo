@@ -168,4 +168,6 @@ export interface ImportScrapeResultsResponse {
   skipped: number;
   /** Results without a phone number — not imported; bid via their job link */
   noPhone: number;
+  /** Results that hit an error while importing (try again) */
+  failed?: number;
 }

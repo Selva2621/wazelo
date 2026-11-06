@@ -28,6 +28,8 @@ export interface SendHealth {
   optOuts24h: number;
   withinSendingHours: boolean;
   sendingHours: { start: number; end: number; timeZone: string };
+  /** Campaign sending window (campaign's time zone); older backends omit it */
+  campaignHours?: { start: number; end: number };
   paused: { until: string; reason: string | null } | null;
   risk: "ok" | "warning" | "paused";
 }
@@ -100,7 +102,7 @@ export const whatsappApi = {
   },
 
   refreshQr: async (sessionId: string) => {
-    const r = await apiClient.post<{ sessionId: string; message: string }>(
+    const r = await apiClient.post<{ sessionId: string; message: string; linking?: boolean }>(
       `/whatsapp/sessions/${sessionId}/refresh-qr`,
     );
     return r.data;

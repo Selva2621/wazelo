@@ -17,6 +17,8 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
   const [csvContent, setCsvContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<string[][]>([]);
+  // Data rows in the whole file (the preview shows only the first 5)
+  const [rowCount, setRowCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +49,7 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
 
       // Parse first 5 rows for preview
       const lines = text.split("\n").filter((l) => l.trim());
+      setRowCount(Math.max(0, lines.length - 1));
       const rows = lines.slice(0, 6).map((line) => {
         const result: string[] = [];
         let current = "";
@@ -99,6 +102,7 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
     setCsvContent("");
     setFileName("");
     setPreview([]);
+    setRowCount(0);
     importMutation.reset();
     onClose();
   };
@@ -264,7 +268,7 @@ export function ImportContactsModal({ open, onClose }: ImportContactsModalProps)
               loading={importMutation.isPending}
             >
               <Upload className="h-3.5 w-3.5 mr-1.5" />
-              Import {preview.length > 1 ? `${preview.length - 1} contacts` : ""}
+              Import {rowCount > 0 ? `${rowCount.toLocaleString()} contact${rowCount === 1 ? "" : "s"}` : ""}
             </Button>
           )}
         </ModalFooter>

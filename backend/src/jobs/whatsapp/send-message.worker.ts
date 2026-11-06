@@ -317,6 +317,19 @@ export class SendMessageWorker implements OnModuleInit {
       // message for good. If reconnecting gives up, the session-lost handler pauses
       // the campaign and puts its recipients back, so nothing is lost.
       if (session?.status === 'RECONNECTING') {
+        // A one-to-one reply retries quickly but gives up after a few minutes, so
+        // the agent sees it failed instead of it sitting queued for hours.
+        // Bulk messages keep waiting: if reconnecting gives up, the session-lost
+        // handler pauses the campaign and puts its recipients back.
+        if (lane === 'direct') {
+          const waitingMs = Date.now() - new Date(message.createdAt).getTime();
+          if (waitingMs > MESSAGING_CONFIG.DIRECT_RECONNECT_WAIT_MS) {
+            await this.handleFailure(message, jobId, 'WhatsApp is still reconnecting', false);
+            return;
+          }
+          await this.holdMessage(data, new Date(Date.now() + 10_000), 'Waiting for WhatsApp to reconnect', 10);
+          return;
+        }
         await this.holdMessage(data, new Date(Date.now() + 60_000), 'Waiting for WhatsApp to reconnect');
         return;
       }
@@ -432,9 +445,14 @@ export class SendMessageWorker implements OnModuleInit {
   }
 
   /** Keep a bulk message QUEUED and re-check it at `retryAt`. */
-  private async holdMessage(data: SendMessageJobData, retryAt: Date, reason: string): Promise<void> {
+  private async holdMessage(
+    data: SendMessageJobData,
+    retryAt: Date,
+    reason: string,
+    minDelaySeconds = 60,
+  ): Promise<void> {
     const { messageId, sessionId, orgId } = data;
-    const delaySeconds = Math.max(60, Math.ceil((retryAt.getTime() - Date.now()) / 1000));
+    const delaySeconds = Math.max(minDelaySeconds, Math.ceil((retryAt.getTime() - Date.now()) / 1000));
 
     // nextRetryAt keeps the stale-queue recovery from re-publishing it early
     await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, { nextRetryAt: retryAt });
@@ -444,7 +462,7 @@ export class SendMessageWorker implements OnModuleInit {
       delaySeconds,
       { singletonKey: `msg-held-${messageId}-${retryAt.getTime()}` },
     );
-    this.logger.log(`Bulk message ${messageId} held until ${retryAt.toISOString()}: ${reason}`);
+    this.logger.log(`Message ${messageId} held until ${retryAt.toISOString()}: ${reason}`);
   }
 
   /**

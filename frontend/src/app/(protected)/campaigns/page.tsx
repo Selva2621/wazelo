@@ -1,5 +1,6 @@
 "use client";
 
+import { PICKED_FROM_SESSION, takePickedContacts } from "@/lib/campaigns/picked-contacts";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { Plus, Megaphone, X } from "lucide-react";
@@ -72,7 +73,11 @@ export default function CampaignsPage() {
     if (url.searchParams.get("action") !== "new") return;
     const source = url.searchParams.get("source");
     const scrapeRunId = url.searchParams.get("scrapeRunId");
-    const contactIds = (url.searchParams.get("contactIds") ?? "").split(",").filter(Boolean);
+    // From the Contacts page selection (sessionStorage); a plain id list still works
+    const contactIdsParam = url.searchParams.get("contactIds") ?? "";
+    const contactIds = contactIdsParam === PICKED_FROM_SESSION
+      ? takePickedContacts()
+      : contactIdsParam.split(",").filter(Boolean);
     for (const key of ["action", "source", "scrapeRunId", "contactIds"]) url.searchParams.delete(key);
     window.history.replaceState(null, "", url.pathname + url.search);
     const frame = requestAnimationFrame(() => {
