@@ -44,6 +44,7 @@ export class BaileysBridgeHandler {
     mediaMimeType?: string;
     mediaSize?: number;
     timestamp: number;
+    fromMe?: boolean;
   }): Promise<void> {
     try {
       await this.handleIncomingMessage.execute(payload);

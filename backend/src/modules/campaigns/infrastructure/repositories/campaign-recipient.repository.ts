@@ -24,6 +24,18 @@ export interface RecipientStatusCounts {
   skipped: number;
 }
 
+export interface CampaignBatchProgress {
+  batchNumber: number;
+  sessionId: string | null;
+  sessionPhoneNumber: string | null;
+  sessionStatus: string | null;
+  lastHeartbeatAt: Date | null;
+  sendingPausedUntil: Date | null;
+  sendingPausedReason: string | null;
+  counts: RecipientStatusCounts;
+  failureReasons: { reason: string; count: number }[];
+}
+
 @Injectable()
 export class CampaignRecipientRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -78,7 +90,7 @@ export class CampaignRecipientRepository {
    */
   async claimNextPending(campaignId: string, batchNumber: number): Promise<CampaignRecipient | null> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${campaignId}), ${batchNumber})`;
+      await tx.$queryRaw`SELECT 1 AS acquired FROM (SELECT pg_advisory_xact_lock(hashtext(${campaignId}), ${batchNumber}::integer)) AS batch_lock`;
 
       const inFlight = await tx.campaignRecipient.findFirst({
         where: { campaignId, batchNumber, status: CampaignRecipientStatus.QUEUED },
@@ -112,6 +124,20 @@ export class CampaignRecipientRepository {
       select: { id: true },
     });
     return recipient !== null;
+  }
+
+  async findQueuedMessages(campaignId: string): Promise<Array<{ messageId: string; sessionId: string | null }>> {
+    const recipients = await this.prisma.campaignRecipient.findMany({
+      where: {
+        campaignId,
+        status: CampaignRecipientStatus.QUEUED,
+        messageId: { not: null },
+      },
+      select: { messageId: true, sessionId: true },
+    });
+    return recipients.flatMap((recipient) =>
+      recipient.messageId ? [{ messageId: recipient.messageId, sessionId: recipient.sessionId }] : [],
+    );
   }
 
   async getPendingBatchNumbers(campaignId: string): Promise<number[]> {
@@ -224,6 +250,107 @@ export class CampaignRecipientRepository {
     for (const c of counts) {
       const key = c.status.toLowerCase() as keyof RecipientStatusCounts;
       result[key] = c._count.id;
+    }
+
+    return result;
+  }
+
+  async getBatchProgress(campaignId: string): Promise<CampaignBatchProgress[]> {
+    const [groups, failureGroups] = await Promise.all([
+      this.prisma.campaignRecipient.groupBy({
+        by: ['batchNumber', 'sessionId', 'status'],
+        where: { campaignId },
+        _count: { id: true },
+        orderBy: [{ batchNumber: 'asc' }, { sessionId: 'asc' }],
+      }),
+      this.prisma.campaignRecipient.groupBy({
+        by: ['batchNumber', 'sessionId', 'failedReason'],
+        where: {
+          campaignId,
+          status: CampaignRecipientStatus.FAILED,
+          failedReason: { not: null },
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    const sessionIds = [...new Set(groups.flatMap((group) => group.sessionId ? [group.sessionId] : []))];
+    const sessions = sessionIds.length > 0
+      ? await this.prisma.whatsAppSession.findMany({
+          where: { id: { in: sessionIds } },
+          select: {
+            id: true,
+            phoneNumber: true,
+            status: true,
+            lastHeartbeatAt: true,
+            sendingPausedUntil: true,
+            sendingPausedReason: true,
+          },
+        })
+      : [];
+    const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+    const progress = new Map<string, CampaignBatchProgress>();
+
+    for (const group of groups) {
+      const key = `${group.batchNumber}:${group.sessionId ?? ''}`;
+      let batch = progress.get(key);
+      if (!batch) {
+        const session = group.sessionId ? sessionsById.get(group.sessionId) : undefined;
+        batch = {
+          batchNumber: group.batchNumber,
+          sessionId: group.sessionId,
+          sessionPhoneNumber: session?.phoneNumber ?? null,
+          sessionStatus: session?.status ?? null,
+          lastHeartbeatAt: session?.lastHeartbeatAt ?? null,
+          sendingPausedUntil: session?.sendingPausedUntil ?? null,
+          sendingPausedReason: session?.sendingPausedReason ?? null,
+          counts: { pending: 0, queued: 0, sent: 0, delivered: 0, failed: 0, skipped: 0 },
+          failureReasons: [],
+        };
+        progress.set(key, batch);
+      }
+
+      const status = group.status.toLowerCase() as keyof RecipientStatusCounts;
+      batch.counts[status] = group._count.id;
+    }
+
+    for (const group of failureGroups) {
+      if (!group.failedReason) continue;
+      const batch = progress.get(`${group.batchNumber}:${group.sessionId ?? ''}`);
+      batch?.failureReasons.push({ reason: group.failedReason, count: group._count.id });
+    }
+
+    return [...progress.values()];
+  }
+
+  async countByStatusForCampaigns(
+    campaignIds: string[],
+  ): Promise<Map<string, RecipientStatusCounts>> {
+    const result = new Map<string, RecipientStatusCounts>();
+    if (campaignIds.length === 0) return result;
+
+    for (const campaignId of campaignIds) {
+      result.set(campaignId, {
+        pending: 0,
+        queued: 0,
+        sent: 0,
+        delivered: 0,
+        failed: 0,
+        skipped: 0,
+      });
+    }
+
+    const counts = await this.prisma.campaignRecipient.groupBy({
+      by: ['campaignId', 'status'],
+      where: { campaignId: { in: campaignIds } },
+      _count: { id: true },
+    });
+
+    for (const count of counts) {
+      const campaignCounts = result.get(count.campaignId);
+      if (!campaignCounts) continue;
+      const key = count.status.toLowerCase() as keyof RecipientStatusCounts;
+      campaignCounts[key] = count._count.id;
     }
 
     return result;

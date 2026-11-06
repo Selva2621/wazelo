@@ -151,6 +151,7 @@ export const EVENT_NAMES = {
 
   // WhatsApp message events (EPIC 3)
   WHATSAPP_MESSAGE_RECEIVED: 'whatsapp.message_received',
+  WHATSAPP_MESSAGE_SYNCED: 'whatsapp.message_synced',
   WHATSAPP_MESSAGE_SENT: 'whatsapp.message_sent',
   WHATSAPP_MESSAGE_DELIVERED: 'whatsapp.message_delivered',
   WHATSAPP_MESSAGE_READ: 'whatsapp.message_read',
@@ -425,6 +426,9 @@ export const SEND_SAFETY_CONFIG = {
   /** Bulk messages only go out between these local hours (org time zone) */
   BULK_SEND_START_HOUR: 9,
   BULK_SEND_END_HOUR: 20,
+  /** Campaign messages use the campaign time zone and can send from midnight to 10 PM */
+  CAMPAIGN_SEND_START_HOUR: 0,
+  CAMPAIGN_SEND_END_HOUR: 22,
   /** Spread the morning restart so held messages don't all fire at 9:00 */
   BULK_RESUME_JITTER_MS: 20 * 60 * 1000,
   /** Auto-pause: judge delivery only once this many bulk messages are old enough */

@@ -59,6 +59,8 @@ export interface Campaign {
   startedAt: string | null;
   completedAt: string | null;
   totalRecipients: number;
+  /** Counted from recipient records for display; avoids stale campaign counters. */
+  processedRecipientCount?: number;
   sentCount: number;
   deliveredCount: number;
   failedCount: number;
@@ -144,11 +146,30 @@ export interface RecipientStatusCounts {
 
 export interface CampaignAnalytics {
   campaign: Campaign;
+  status: CampaignStatus;
+  timing: {
+    elapsedMs: number;
+    asOf: string;
+  };
+  batches: CampaignBatchProgress[];
   recipientCounts: RecipientStatusCounts;
   deliveryRate: number;
   failureRate: number;
   readRate: number;
   progress: number;
+}
+
+export interface CampaignBatchProgress {
+  batchNumber: number;
+  sessionId: string | null;
+  sessionPhoneNumber: string | null;
+  sessionStatus: string | null;
+  lastHeartbeatAt: string | null;
+  sendingPausedUntil: string | null;
+  sendingPausedReason: string | null;
+  counts: RecipientStatusCounts;
+  failureReasons: { reason: string; count: number }[];
+  issues: string[];
 }
 
 // ─── Audience Preview ───

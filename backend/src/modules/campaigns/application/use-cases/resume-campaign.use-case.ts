@@ -9,6 +9,7 @@ import { CampaignRepository } from '../../infrastructure/repositories/campaign.r
 import { CampaignRecipientRepository } from '../../infrastructure/repositories/campaign-recipient.repository';
 import { CampaignStateMachineService } from '../../domain/services/campaign-state-machine.service';
 import { QueueService } from '@/infrastructure/queue/queue.service';
+import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
@@ -26,6 +27,7 @@ export class ResumeCampaignUseCase {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly sessionRepo: WhatsAppSessionRepository,
+    private readonly messageRepo: MessageRepository,
   ) {}
 
   async execute(
@@ -96,6 +98,10 @@ export class ResumeCampaignUseCase {
       );
     }
 
+    if (campaign.channel !== 'EMAIL') {
+      await this.requeueHeldCampaignMessages(campaignId, orgId, sessionId);
+    }
+
     // Re-publish execution job to process remaining recipients
     await this.queueService.publishOnce(
       QUEUE_NAMES.CAMPAIGN_EXECUTE,
@@ -139,6 +145,29 @@ export class ResumeCampaignUseCase {
     );
 
     return updated;
+  }
+
+  private async requeueHeldCampaignMessages(
+    campaignId: string,
+    orgId: string,
+    fallbackSessionId: string | null,
+  ): Promise<void> {
+    const queuedMessages = await this.recipientRepo.findQueuedMessages(campaignId);
+    for (const queued of queuedMessages) {
+      const sessionId = queued.sessionId ?? fallbackSessionId;
+      if (!sessionId) {
+        this.logger.warn(`Cannot re-queue held campaign message ${queued.messageId}: no WhatsApp session assigned`);
+        continue;
+      }
+
+      if (!(await this.messageRepo.clearQueuedRetryAt(queued.messageId))) continue;
+
+      await this.queueService.publishOnce(
+        QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+        { messageId: queued.messageId, sessionId, orgId },
+        `campaign-resume-message-${queued.messageId}-${Date.now()}`,
+      );
+    }
   }
 
   /**

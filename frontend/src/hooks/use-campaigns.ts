@@ -46,6 +46,8 @@ export function useCampaignAnalytics(campaignId: string | null) {
     queryKey: campaignKeys.analytics(campaignId!),
     queryFn: () => campaignsApi.getAnalytics(campaignId!),
     enabled: !!campaignId,
+    refetchInterval: (query) =>
+      query.state.data?.status === "RUNNING" ? 5_000 : false,
   });
 }
 

@@ -28,6 +28,11 @@ export interface LocalClock {
   second: number;
 }
 
+export interface SendWindow {
+  startHour: number;
+  endHour: number;
+}
+
 /** Wall-clock time in an IANA time zone (falls back to UTC for an unknown zone). */
 export function localClock(now: Date, timeZone: string): LocalClock {
   let parts: Intl.DateTimeFormatPart[];
@@ -70,19 +75,29 @@ export function localDayStart(now: Date, timeZone: string): Date {
 }
 
 /** Next time bulk sending opens (start hour, local), from now. */
-export function nextSendWindowStart(now: Date, timeZone: string): Date {
+export function nextSendWindowStart(
+  now: Date,
+  timeZone: string,
+  startHour: number = SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+): Date {
   const { hour, minute, second } = localClock(now, timeZone);
-  const start = SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR;
   const secondsIntoDay = (hour * 60 + minute) * 60 + second;
-  let secondsUntil = start * 3600 - secondsIntoDay;
+  let secondsUntil = startHour * 3600 - secondsIntoDay;
   if (secondsUntil <= 0) secondsUntil += 24 * 3600;
-  const aligned = alignToLocalTime(new Date(now.getTime() + secondsUntil * 1000), timeZone, start, 0);
+  const aligned = alignToLocalTime(new Date(now.getTime() + secondsUntil * 1000), timeZone, startHour, 0);
   return aligned.getTime() > now.getTime() ? aligned : new Date(now.getTime() + secondsUntil * 1000);
 }
 
-export function isWithinSendWindow(now: Date, timeZone: string): boolean {
+export function isWithinSendWindow(
+  now: Date,
+  timeZone: string,
+  window: SendWindow = {
+    startHour: SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+    endHour: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
+  },
+): boolean {
   const { hour } = localClock(now, timeZone);
-  return hour >= SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR && hour < SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR;
+  return hour >= window.startHour && hour < window.endHour;
 }
 
 export interface BulkSendInput {
@@ -97,6 +112,8 @@ export interface BulkSendInput {
   coldSentToday: number;
   /** Has this recipient never messaged the org? */
   recipientIsCold: boolean;
+  /** Optional feature-specific window; otherwise use the shared bulk window. */
+  sendWindow?: SendWindow;
 }
 
 export type BulkSendDecision =
@@ -105,6 +122,10 @@ export type BulkSendDecision =
 
 export function decideBulkSend(input: BulkSendInput): BulkSendDecision {
   const { now, timeZone } = input;
+  const sendWindow = input.sendWindow ?? {
+    startHour: SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+    endHour: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
+  };
 
   if (input.pausedUntil && input.pausedUntil > now) {
     return {
@@ -114,22 +135,26 @@ export function decideBulkSend(input: BulkSendInput): BulkSendDecision {
     };
   }
 
-  if (!isWithinSendWindow(now, timeZone)) {
-    return { allowed: false, retryAt: nextSendWindowStart(now, timeZone), reason: 'Outside sending hours' };
+  if (!isWithinSendWindow(now, timeZone, sendWindow)) {
+    return {
+      allowed: false,
+      retryAt: nextSendWindowStart(now, timeZone, sendWindow.startHour),
+      reason: 'Outside sending hours',
+    };
   }
 
   const tier = warmupTier(input.linkedAt, now);
   if (input.bulkSentToday >= tier.bulkCap) {
     return {
       allowed: false,
-      retryAt: nextSendWindowStart(now, timeZone),
+      retryAt: nextSendWindowStart(now, timeZone, sendWindow.startHour),
       reason: `Daily limit reached (${tier.bulkCap} bulk messages, warm-up stage ${tier.stage})`,
     };
   }
   if (input.recipientIsCold && input.coldSentToday >= tier.coldCap) {
     return {
       allowed: false,
-      retryAt: nextSendWindowStart(now, timeZone),
+      retryAt: nextSendWindowStart(now, timeZone, sendWindow.startHour),
       reason: `Daily limit reached for new contacts (${tier.coldCap}, warm-up stage ${tier.stage})`,
     };
   }

@@ -88,6 +88,19 @@ describe('decideBulkSend', () => {
     expect(decision.allowed).toBe(false);
   });
 
+  it('uses the campaign window through 10 PM and reopens at midnight', () => {
+    const campaignWindow = { startHour: 0, endHour: 22 };
+    const atNineteenIst = new Date('2026-10-12T13:30:00.000Z');
+    expect(decideBulkSend(input({ now: atNineteenIst, sendWindow: campaignWindow }))).toEqual({ allowed: true });
+
+    const afterTenIst = new Date('2026-10-12T16:30:00.000Z');
+    expect(decideBulkSend(input({ now: afterTenIst, sendWindow: campaignWindow }))).toMatchObject({
+      allowed: false,
+      retryAt: new Date('2026-10-12T18:30:00.000Z'),
+      reason: 'Outside sending hours',
+    });
+  });
+
   it('holds once the daily bulk cap is reached', () => {
     const decision = decideBulkSend(input({ bulkSentToday: 500 }));
     expect(decision).toMatchObject({ allowed: false, reason: expect.stringContaining('Daily limit') });

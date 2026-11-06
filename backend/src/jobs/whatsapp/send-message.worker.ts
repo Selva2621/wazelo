@@ -217,7 +217,13 @@ export class SendMessageWorker implements OnModuleInit {
       // Skipped in WhatsApp test mode: everything goes to a test number, and a
       // campaign tested at night shouldn't sit held until morning.
       if (!isTestModeOn()) {
-        const decision = await this.accountSafety.checkBulkSend(orgId, sessionId, message.contactPhone);
+        const decision = await this.accountSafety.checkBulkSend(
+          orgId,
+          sessionId,
+          message.contactPhone,
+          new Date(),
+          typeof campaignId === 'string' ? campaignId : undefined,
+        );
         if (!decision.allowed) {
           await this.holdMessage(data, decision.retryAt, decision.reason);
           return;

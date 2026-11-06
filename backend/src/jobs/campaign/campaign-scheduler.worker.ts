@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
+import { CampaignRecipientRepository } from '@/modules/campaigns/infrastructure/repositories/campaign-recipient.repository';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import {
   QUEUE_NAMES,
@@ -24,6 +25,7 @@ export class CampaignSchedulerWorker implements OnModuleInit {
   constructor(
     private readonly queueService: QueueService,
     private readonly campaignRepo: CampaignRepository,
+    private readonly recipientRepo: CampaignRecipientRepository,
     private readonly killSwitches: KillSwitchService,
   ) {}
 
@@ -63,40 +65,66 @@ export class CampaignSchedulerWorker implements OnModuleInit {
       const now = new Date();
       const campaigns = await this.campaignRepo.findScheduledCampaigns(now);
 
-      if (campaigns.length === 0) {
-        // Re-schedule next check
-        await this.scheduleNextCheck();
-        return;
-      }
+      if (campaigns.length > 0) {
+        this.logger.log(`Found ${campaigns.length} scheduled campaign(s) due for execution`);
 
-      this.logger.log(`Found ${campaigns.length} scheduled campaign(s) due for execution`);
+        for (const campaign of campaigns) {
+          try {
+            // Publish execution job — let the executor handle status transition
+            // Using publishOnce to prevent duplicate execution
+            await this.queueService.publishOnce(
+              QUEUE_NAMES.CAMPAIGN_EXECUTE,
+              {
+                campaignId: campaign.id,
+                orgId: campaign.orgId,
+                sessionId: campaign.sessionId,
+                scheduled: true,
+              },
+              `campaign-exec-${campaign.id}`,
+            );
 
-      for (const campaign of campaigns) {
-        try {
-          // Publish execution job — let the executor handle status transition
-          // Using publishOnce to prevent duplicate execution
-          await this.queueService.publishOnce(
-            QUEUE_NAMES.CAMPAIGN_EXECUTE,
-            {
-              campaignId: campaign.id,
-              orgId: campaign.orgId,
-              sessionId: campaign.sessionId,
-              scheduled: true,
-            },
-            `campaign-exec-${campaign.id}`,
-          );
-
-          this.logger.log(`Campaign ${campaign.id} triggered by scheduler safety net`);
-        } catch (error) {
-          this.logger.error(
-            `Failed to trigger campaign ${campaign.id}:`,
-            error instanceof Error ? error.stack : String(error),
-          );
+            this.logger.log(`Campaign ${campaign.id} triggered by scheduler safety net`);
+          } catch (error) {
+            this.logger.error(
+              `Failed to trigger campaign ${campaign.id}:`,
+              error instanceof Error ? error.stack : String(error),
+            );
+          }
         }
       }
+
+      await this.recoverRunningCampaigns();
     } finally {
       // Always re-schedule next check
       await this.scheduleNextCheck();
+    }
+  }
+
+  private async recoverRunningCampaigns(): Promise<void> {
+    const campaigns = await this.campaignRepo.findRunningCampaigns();
+
+    for (const campaign of campaigns) {
+      try {
+        const batchNumbers = await this.recipientRepo.getPendingBatchNumbers(campaign.id);
+        for (const batchNumber of batchNumbers) {
+          await this.queueService.publishOnce(
+            QUEUE_NAMES.CAMPAIGN_BATCH,
+            { campaignId: campaign.id, orgId: campaign.orgId, batchNumber },
+            `campaign-batch-${campaign.id}-${batchNumber}`,
+          );
+        }
+
+        if (batchNumbers.length > 0) {
+          this.logger.warn(
+            `Recovered ${batchNumbers.length} pending batch(es) for running campaign ${campaign.id}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to recover pending batches for campaign ${campaign.id}:`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }
   }
 }

@@ -70,7 +70,12 @@ const columns: DataTableColumn<Campaign>[] = [
     header: "Progress",
     className: "w-40",
     skeleton: "bar",
-    cell: (c) => <CampaignProgressBar sent={c.sentCount + c.failedCount} total={c.totalRecipients} />,
+    cell: (c) => (
+      <CampaignProgressBar
+        sent={c.processedRecipientCount ?? c.sentCount + c.failedCount}
+        total={c.totalRecipients}
+      />
+    ),
   },
   {
     id: "delivery",
@@ -135,7 +140,10 @@ export function CampaignsTable({
               <CampaignStatusBadge status={c.status} pulse={c.status === "RUNNING"} />
             </div>
             {c.description && <p className="truncate text-caption text-on-surface-variant/70">{c.description}</p>}
-            <CampaignProgressBar sent={c.sentCount + c.failedCount} total={c.totalRecipients} />
+            <CampaignProgressBar
+              sent={c.processedRecipientCount ?? c.sentCount + c.failedCount}
+              total={c.totalRecipients}
+            />
             <p className="text-caption text-on-surface-variant">
               {c.totalRecipients.toLocaleString()} recipients
               {c.sentCount > 0 && (
