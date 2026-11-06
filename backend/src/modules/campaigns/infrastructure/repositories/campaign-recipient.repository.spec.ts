@@ -125,6 +125,8 @@ describe('CampaignRecipientRepository', () => {
     await expect(repository.claimNextPending('campaign-1', 2)).resolves.toEqual({
       ...recipient,
       status: CampaignRecipientStatus.QUEUED,
+      // The claim time lets the scheduler find recipients stuck after a crash
+      claimedAt: expect.any(Date),
     });
     expect(transaction.$queryRaw).toHaveBeenCalledTimes(1);
     const lockQuery = transaction.$queryRaw.mock.calls[0][0] as TemplateStringsArray;
@@ -145,7 +147,7 @@ describe('CampaignRecipientRepository', () => {
     );
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 'recipient-1', status: CampaignRecipientStatus.PENDING },
-      data: { status: CampaignRecipientStatus.QUEUED },
+      data: { status: CampaignRecipientStatus.QUEUED, claimedAt: expect.any(Date) },
     });
   });
 

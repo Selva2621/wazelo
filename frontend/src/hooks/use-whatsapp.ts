@@ -34,7 +34,8 @@ export function useWhatsAppSession() {
         throw err;
       }
     },
-    refetchInterval: 30_000,
+    // Right after a QR scan, check often so "Connected" shows the moment the login finishes
+    refetchInterval: () => (useWhatsAppStore.getState().qrScanned ? 2_000 : 30_000),
     retry: 1,
   });
 }
@@ -85,8 +86,20 @@ export function useDisconnectSession() {
 
 // ─── Refresh QR ──────────────────────────────────────────
 export function useRefreshQr() {
+  const queryClient = useQueryClient();
+  const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const markQrScanned = useWhatsAppStore((s) => s.markQrScanned);
+
   return useMutation({
     mutationFn: (sessionId: string) => whatsappApi.refreshQr(sessionId),
+    onMutate: () => clearQr(),
+    onSuccess: (data) => {
+      // Already scanned — the server is finishing the login, so don't show a new QR
+      if (data.linking) {
+        markQrScanned();
+        queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+      }
+    },
   });
 }
 
@@ -191,6 +204,8 @@ export function useWhatsAppSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const setQr = useWhatsAppStore((s) => s.setQr);
   const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const markQrScanned = useWhatsAppStore((s) => s.markQrScanned);
+  const markQrStopped = useWhatsAppStore((s) => s.markQrStopped);
   const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
   const setSession = useWhatsAppStore((s) => s.setSession);
   const setStatus = useWhatsAppStore((s) => s.setStatus);
@@ -214,6 +229,15 @@ export function useWhatsAppSocket() {
         : data.expiresAt;
       setQr(data.qrCode, expiresAtMs);
     });
+
+    // Phone scanned the QR — show "finishing login" instead of the countdown
+    socket.on("whatsapp:qr-scanned", () => {
+      markQrScanned();
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+    });
+
+    // No scan for several minutes — the server stopped making codes
+    socket.on("whatsapp:qr-expired", () => markQrStopped());
 
     // A new code is issued whenever the previous one expired unused
     socket.on("whatsapp:pairing-code", (data: { sessionId: string; pairingCode: string }) => {
@@ -249,7 +273,7 @@ export function useWhatsAppSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, setQr, clearQr, setPairingCode, setSession, setStatus, setError, queryClient]);
+  }, [accessToken, setQr, clearQr, markQrScanned, markQrStopped, setPairingCode, setSession, setStatus, setError, queryClient]);
 
   return socketRef;
 }

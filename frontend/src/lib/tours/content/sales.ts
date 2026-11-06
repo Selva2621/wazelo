@@ -53,7 +53,7 @@ function leadScraperTour(o: {
 export const salesTours: TourDef[] = [
   {
     id: "contacts",
-    version: 1,
+    version: 3,
     title: "Contacts",
     summary: "Add, import, filter and bulk-edit contacts and leads; list or board view.",
     section: "Sales",
@@ -87,6 +87,13 @@ export const salesTours: TourDef[] = [
         },
       },
       {
+        target: ["contacts-groups", "m-more"],
+        ifMissing: "skip",
+        title: "Groups",
+        body: "Split contacts into groups of 100, one campaign batch each. A contact is in one group only, so nobody gets a campaign twice.",
+        example: { kind: "chips", items: ["Group 1 · 100", "Group 2 · 100", "Group 3 · 48"] },
+      },
+      {
         target: "contacts-view-toggle",
         only: "desktop",
         title: "List or board",
@@ -102,7 +109,7 @@ export const salesTours: TourDef[] = [
         target: [...listOrEmpty, "contacts-board"],
         title: "Your contacts",
         body: "Open a contact for the full profile. Tick several to change status, add tags, assign an owner or start a campaign for just those people.",
-        example: { kind: "chips", items: ["Change status", "Add tag", "Assign", "Delete"] },
+        example: { kind: "chips", items: ["Change status", "Add tag", "Assign", "Group", "Delete"] },
       },
     ],
   },

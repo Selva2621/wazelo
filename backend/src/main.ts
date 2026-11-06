@@ -15,6 +15,9 @@ async function bootstrap() {
     // computed over the exact bytes sent, not over re-serialised JSON
     rawBody: true,
   });
+  // Campaigns and contact groups can carry up to 10,000 contact ids (~380 KB);
+  // Express's 100 KB default rejected those with 413. rawBody stays available.
+  app.useBodyParser('json', { limit: '1mb' });
 
   // Use structured logger as the application logger (EPIC 10)
   const structuredLogger = app.get(StructuredLogger);

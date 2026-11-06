@@ -31,7 +31,8 @@ export const createCampaignSchema = z
     audienceType: z.enum(["ALL", "FILTERED"]),
     audienceFilters: audienceFiltersSchema.optional(),
     sessionId: z.string().optional().or(z.literal("")),
-    sessionIds: z.array(z.string().uuid()).default([]),
+    /** WhatsApp numbers in send order; batches rotate across them */
+    sessionIds: z.array(z.string().uuid()).max(50, "Pick up to 50 numbers").default([]),
     scheduledAt: z.string().optional().or(z.literal("")),
     timezone: z.string().max(100).optional(),
   })
@@ -46,7 +47,7 @@ export const createCampaignSchema = z
       return;
     }
     if (data.sessionIds.length === 0 && !data.sessionId) {
-      ctx.addIssue({ code: "custom", message: "Select at least one WhatsApp session", path: ["sessionIds"] });
+      ctx.addIssue({ code: "custom", message: "Select at least one WhatsApp number", path: ["sessionIds"] });
     }
     if ((data.messageBody?.length ?? 0) > 4096) {
       ctx.addIssue({ code: "custom", message: "Message must be 4,096 characters or less", path: ["messageBody"] });

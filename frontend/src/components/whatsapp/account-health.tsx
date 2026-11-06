@@ -248,8 +248,9 @@ export function CampaignCapacityNotice({ className }: { className?: string }) {
           : remaining === 0
             ? "Today's sending limit is used up — this campaign will start tomorrow morning."
             : `Today you can still send ${remaining} bulk messages (warm-up ${health.warmup.stage === 4 ? "complete" : `stage ${health.warmup.stage}`}).`}{" "}
-        Only contacts who have messaged you receive campaigns, between{" "}
-        {formatHour(health.sendingHours.start)}–{formatHour(health.sendingHours.end)}.
+        Campaigns send{" "}
+        {formatHour(health.campaignHours?.start ?? health.sendingHours.start)}–
+        {formatHour(health.campaignHours?.end ?? health.sendingHours.end)}.
       </p>
     </div>
   );

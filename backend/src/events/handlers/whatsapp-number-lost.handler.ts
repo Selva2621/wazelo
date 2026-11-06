@@ -33,15 +33,42 @@ export class WhatsAppNumberLostHandler {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  /** Logged out / banned: the number is gone, so every queued message on it is held. */
   @OnEvent(EVENT_NAMES.WHATSAPP_NUMBER_LOST)
   async onNumberLost(event: WhatsAppNumberLostEvent): Promise<void> {
+    await this.holdWork(event, { bulkOnly: false });
+  }
+
+  /**
+   * Any other final disconnect (reconnect gave up, opened elsewhere, unlinked by the
+   * user or an admin): pause campaigns/sequences and hold only bulk messages.
+   * One-to-one inbox replies are left to the send worker, which reports them as
+   * "Session not connected" individually instead of failing them all at once.
+   * Logged out / banned already arrive as WHATSAPP_NUMBER_LOST.
+   */
+  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED)
+  async onSessionDisconnected(event: WhatsAppSessionDisconnectedEvent): Promise<void> {
+    if (isNumberLost(event.disconnectReason)) return;
+    await this.holdWork(
+      { ...event, disconnectReason: event.disconnectReason ?? 'DISCONNECTED' },
+      { bulkOnly: true },
+    );
+  }
+
+  /** Admin force-disconnect: same as a normal disconnect. */
+  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_FORCE_DISCONNECTED)
+  async onSessionForceDisconnected(event: WhatsAppSessionDisconnectedEvent): Promise<void> {
+    await this.onSessionDisconnected({ ...event, disconnectReason: event.disconnectReason ?? 'FORCE_DISCONNECTED' });
+  }
+
+  private async holdWork(event: WhatsAppNumberLostEvent, options: { bulkOnly: boolean }): Promise<void> {
     try {
       const pausedCampaigns = await this.pauseCampaigns(event);
       const pausedSequences = await this.pauseSequences(event);
-      const heldMessages = await this.holdQueuedMessages(event);
+      const heldMessages = await this.holdQueuedMessages(event, options);
 
       this.logger.warn(
-        `Number lost on session ${event.sessionId} (${event.disconnectReason}): ` +
+        `Number unavailable on session ${event.sessionId} (${event.disconnectReason}): ` +
           `paused ${pausedCampaigns} campaigns, ${pausedSequences} sequences, held ${heldMessages} messages`,
       );
     } catch (error) {
@@ -49,24 +76,25 @@ export class WhatsAppNumberLostHandler {
     }
   }
 
-  /**
-   * Any other final disconnect (reconnect gave up, opened elsewhere, unlinked by the
-   * user): same hold, so a running campaign pauses instead of failing every message.
-   * Logged out / banned already arrive as WHATSAPP_NUMBER_LOST.
-   */
-  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_DISCONNECTED)
-  async onSessionDisconnected(event: WhatsAppSessionDisconnectedEvent): Promise<void> {
-    if (isNumberLost(event.disconnectReason)) return;
-    await this.onNumberLost({ ...event, disconnectReason: event.disconnectReason ?? 'DISCONNECTED' });
-  }
-
   private async pauseCampaigns(event: WhatsAppNumberLostEvent): Promise<number> {
+    // Campaigns whose main number this is, and campaigns that send some of their
+    // remaining batches from it (multi-number campaigns)
     const campaigns = await this.prisma.campaign.findMany({
       where: {
         orgId: event.orgId,
-        sessionId: event.sessionId,
         status: CampaignStatus.RUNNING,
         deletedAt: null,
+        OR: [
+          { sessionId: event.sessionId },
+          {
+            recipients: {
+              some: {
+                sessionId: event.sessionId,
+                status: { in: [CampaignRecipientStatus.PENDING, CampaignRecipientStatus.QUEUED] },
+              },
+            },
+          },
+        ],
       },
       select: { id: true },
     });
@@ -107,13 +135,18 @@ export class WhatsAppNumberLostHandler {
     return result.count;
   }
 
-  private async holdQueuedMessages(event: WhatsAppNumberLostEvent): Promise<number> {
+  private async holdQueuedMessages(
+    event: WhatsAppNumberLostEvent,
+    options: { bulkOnly: boolean },
+  ): Promise<number> {
     const messages = await this.prisma.message.findMany({
       where: {
         sessionId: event.sessionId,
         direction: MessageDirection.OUTBOUND,
         deletedAt: null,
         status: { in: [MessageStatus.QUEUED, MessageStatus.PROCESSING] },
+        // Bulk lane = negative priority (campaigns, sequences)
+        ...(options.bulkOnly && { priority: { lt: 0 } }),
       },
       select: { id: true },
     });
@@ -134,7 +167,7 @@ export class WhatsAppNumberLostHandler {
         }),
         this.prisma.campaignRecipient.updateMany({
           where: { messageId: id, status: CampaignRecipientStatus.QUEUED },
-          data: { status: CampaignRecipientStatus.PENDING, messageId: null },
+          data: { status: CampaignRecipientStatus.PENDING, messageId: null, claimedAt: null },
         }),
       ]);
       await this.rewindSequenceStep(id);

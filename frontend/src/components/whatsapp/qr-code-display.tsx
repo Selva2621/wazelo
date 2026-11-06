@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { QrCode, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, QrCode, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+
+/** The server sends the next QR on its own; only offer Refresh if it is this late */
+const NEXT_QR_GRACE_S = 10;
 
 interface QrCodeDisplayProps {
   qrCode: string | null;
   expiresAt: number | null;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  /** The phone scanned the code; WhatsApp is finishing the login */
+  scanned?: boolean;
+  /** The server stopped making codes — only Refresh brings a new one */
+  stopped?: boolean;
   className?: string;
 }
 
@@ -19,17 +26,19 @@ export function QrCodeDisplay({
   expiresAt,
   onRefresh,
   isRefreshing,
+  scanned,
+  stopped,
   className,
 }: QrCodeDisplayProps) {
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const expired = secondsLeft <= 0 && expiresAt !== null;
+  const totalRef = useRef(1);
 
   useEffect(() => {
     if (!expiresAt) return;
+    totalRef.current = Math.max(1, Math.round((expiresAt - Date.now()) / 1000));
 
     const update = () => {
-      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-      setSecondsLeft(remaining);
+      setSecondsLeft(Math.floor((expiresAt - Date.now()) / 1000));
     };
 
     update();
@@ -37,16 +46,35 @@ export function QrCodeDisplay({
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  const progress = expiresAt
-    ? Math.max(0, secondsLeft / 20)
-    : 0;
+  if (scanned) {
+    return (
+      <div className={cn("flex flex-col items-center gap-4 py-6 text-center", className)}>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-container">
+          <CheckCircle2 className="h-8 w-8 text-success" />
+        </div>
+        <div>
+          <h3 className="text-title-sm font-medium text-on-surface mb-1">QR scanned</h3>
+          <p className="text-body text-on-surface-variant max-w-[320px]">
+            Finishing login. Keep WhatsApp open on your phone. You can close this window; it will still connect.
+          </p>
+        </div>
+        <Spinner size="md" className="text-primary" />
+      </div>
+    );
+  }
+
+  const live = Boolean(qrCode) && expiresAt !== null && secondsLeft > 0;
+  // Code ran out but the next one is on its way
+  const waitingForNext =
+    Boolean(qrCode) && expiresAt !== null && !live && secondsLeft > -NEXT_QR_GRACE_S && !stopped;
+  const showRefresh = stopped || (!live && !waitingForNext && !isRefreshing);
+  const progress = live ? Math.min(1, secondsLeft / totalRef.current) : 0;
 
   return (
     <div className={cn("flex flex-col items-center gap-5", className)}>
       {/* QR Code container with timer ring */}
       <div className="relative">
-        {/* Countdown ring */}
-        {qrCode && !expired && (
+        {live && (
           <svg
             className="absolute -inset-3 h-[calc(100%+24px)] w-[calc(100%+24px)]"
             viewBox="0 0 100 100"
@@ -76,46 +104,37 @@ export function QrCodeDisplay({
         )}
 
         {/* QR display area */}
-        <div
-          className={cn(
-            "relative flex h-[260px] w-[260px] items-center justify-center rounded-2xl bg-white p-4",
-            expired && "opacity-40",
-          )}
-        >
-          {qrCode && !expired ? (
+        <div className="relative flex h-[260px] w-[260px] items-center justify-center rounded-2xl bg-white p-4">
+          {live ? (
             <img
-              src={qrCode}
+              src={qrCode!}
               alt="WhatsApp QR Code"
               className="h-full w-full object-contain"
             />
-          ) : isRefreshing ? (
-            <Spinner size="lg" className="text-primary" />
-          ) : (
+          ) : isRefreshing || waitingForNext || (!qrCode && !stopped && expiresAt === null) ? (
             <div className="flex flex-col items-center gap-3 text-center">
-              <QrCode className="h-12 w-12 text-on-surface-variant" />
+              <Spinner size="lg" className="text-primary" />
               <p className="text-body text-on-surface-variant">
-                {expired ? "QR code expired" : "Waiting for QR code..."}
+                {waitingForNext ? "Getting a new code..." : "Waiting for QR code..."}
               </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-center opacity-60">
+              <QrCode className="h-12 w-12 text-on-surface-variant" />
+              <p className="text-body text-on-surface-variant">QR code expired</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Timer text */}
-      {qrCode && !expired && (
+      {live && (
         <p className="text-body text-on-surface-variant">
           Expires in <span className="font-medium text-on-surface">{secondsLeft}s</span>
         </p>
       )}
 
-      {/* Refresh button */}
-      {(expired || (!qrCode && !isRefreshing)) && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRefresh}
-          loading={isRefreshing}
-        >
+      {showRefresh && (
+        <Button variant="ghost" size="sm" onClick={onRefresh} loading={isRefreshing}>
           <RefreshCw className="h-4 w-4" />
           Refresh QR Code
         </Button>

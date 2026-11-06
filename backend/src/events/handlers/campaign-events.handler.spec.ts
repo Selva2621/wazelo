@@ -22,6 +22,7 @@ describe('CampaignEventsHandler', () => {
       { emit: jest.fn() } as never,
       { emitToOrg: jest.fn() } as never,
       { publishOnce: jest.fn() } as never,
+      { dispatch: jest.fn() } as never,
     );
     const event = {
       messageId: 'message-1',
@@ -49,6 +50,7 @@ describe('CampaignEventsHandler', () => {
       { emit: jest.fn() } as never,
       { emitToOrg: jest.fn() } as never,
       queueService as never,
+      { dispatch: jest.fn() } as never,
     );
 
     await handler.handleMessageFailed({
@@ -90,6 +92,7 @@ describe('CampaignEventsHandler', () => {
       { emit: jest.fn() } as never,
       { emitToOrg: jest.fn() } as never,
       queueService as never,
+      { dispatch: jest.fn() } as never,
     );
 
     await handler.handleMessageSent({
@@ -139,6 +142,7 @@ describe('CampaignEventsHandler', () => {
       { emit: jest.fn() } as never,
       { emitToOrg: jest.fn() } as never,
       queueService as never,
+      { dispatch: jest.fn() } as never,
     );
 
     await handler.handleMessageDeadLettered({

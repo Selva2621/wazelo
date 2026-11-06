@@ -35,6 +35,15 @@ export class RefreshQrUseCase {
       );
     }
 
+    // The QR was just scanned and the login is finishing — a new QR would break it
+    if (this.connectionManager.isFinishingLink(session.id)) {
+      return {
+        sessionId: session.id,
+        linking: true,
+        message: 'QR already scanned, finishing login',
+      };
+    }
+
     // Destroy existing connection and recreate — Baileys will auto-emit new QR via connection.update
     await this.connectionManager.destroyConnection(session.id);
     await this.connectionManager.createConnection(session.id, userId, orgId);

@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -426,7 +427,7 @@ export default function LeadScraperPage() {
   const sourceOptions = isFreelancer
     ? SOURCE_OPTIONS
     : SOURCE_OPTIONS.filter((o) => o.value === "" || o.value === "GOOGLE_MAPS");
-  const suggested =selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
+  const suggested = selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
   const mapsTip = isMaps ? mapsTipFor(orgSettings?.freelancerTypes) : undefined;
   const tipApplied = !!mapsTip && Object.entries(mapsTip.filters).every(
     ([k, v]) => leadFilters[k as keyof LeadFilters] === v,
@@ -471,6 +472,11 @@ export default function LeadScraperPage() {
   }
 
   function handleDuplicate(run: ScrapeRun) {
+    // Team workspaces only offer Google Maps; an older job-board run can't be re-run here
+    if (!scrapers.some((s) => s.source === run.source)) {
+      toast.info("This source isn't available for your workspace. Start a Google Maps search instead.");
+      return;
+    }
     setSelected(run.source);
     setKeywords(run.keywords);
     setPendingType("");

@@ -52,8 +52,25 @@ export class CreateCampaignUseCase {
       }
     }
 
+    // A "filtered" audience with no filter at all would silently mean everyone
+    if (dto.audienceType === 'FILTERED') {
+      const filters = (dto.audienceFilters ?? {}) as Record<string, unknown>;
+      const narrows = Object.values(filters).some((v) =>
+        Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '',
+      );
+      if (!narrows) {
+        throw new BadRequestException('Pick at least one group or filter, or send to all contacts');
+      }
+    }
+
     const isEmail = dto.channel === 'EMAIL';
-    const primarySessionId = dto.batchAssignments?.[0]?.sessionId ?? dto.sessionId ?? null;
+    // Numbers to send from: the selected pool, plus any number used in an override
+    const sessionPool = [...new Set([
+      ...(dto.sessionIds ?? []),
+      ...(dto.sessionId ? [dto.sessionId] : []),
+      ...(dto.batchAssignments ?? []).map((a) => a.sessionId),
+    ])];
+    const primarySessionId = sessionPool[0] ?? null;
     if (isEmail) {
       // 2. Email: sent from the workspace's own mailbox, which must be connected
       const account = await this.emailRepo.account(orgId);
@@ -73,12 +90,9 @@ export class CreateCampaignUseCase {
         throw new BadRequestException('Assign exactly one WhatsApp session to each batch');
       }
 
-      const selectedSessionIds = [...new Set([
-        ...(dto.sessionId ? [dto.sessionId] : []),
-        ...batchAssignments.map((assignment) => assignment.sessionId),
-      ])];
+      const selectedSessionIds = sessionPool;
       if (selectedSessionIds.length === 0) {
-        throw new BadRequestException('Select a WhatsApp session for each campaign batch');
+        throw new BadRequestException('Select at least one WhatsApp number to send from');
       }
 
       const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(selectedSessionIds, orgId);
@@ -119,8 +133,13 @@ export class CreateCampaignUseCase {
       timezone: dto.timezone,
       createdById: userId,
       idempotencyKey: dto.idempotencyKey,
-      metadata: !isEmail && dto.batchAssignments?.length
-        ? { batchSessionAssignments: dto.batchAssignments }
+      // Batches are planned when the campaign runs (round-robin over the pool)
+      metadata: !isEmail
+        ? {
+            sessionPool,
+            ...(dto.sendAnyTime ? { sendAnyTime: true } : {}),
+            ...(dto.batchAssignments?.length ? { batchSessionAssignments: dto.batchAssignments } : {}),
+          }
         : undefined,
       productId: dto.productId,
     });
@@ -153,6 +172,7 @@ export class CreateCampaignUseCase {
         messageType: dto.messageType,
         audienceType: dto.audienceType,
         sessionId: primarySessionId,
+        sessionPool,
         batchAssignments: dto.batchAssignments,
       },
       ipAddress,

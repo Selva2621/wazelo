@@ -150,7 +150,10 @@ export function useImportScrapeResults(runId: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.results(runId) });
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.all });
-      toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} skipped` : ""}.`);
+      toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} already saved` : ""}.`);
+      if (data.failed) {
+        toast.error(`${data.failed} lead${data.failed !== 1 ? "s" : ""} couldn't be imported. Try again.`);
+      }
       if (data.noPhone) {
         toast.info(`${data.noPhone} lead${data.noPhone !== 1 ? "s have" : " has"} no phone number, so ${data.noPhone !== 1 ? "they weren't" : "it wasn't"} added. Open the lead's link to reach them.`);
       }

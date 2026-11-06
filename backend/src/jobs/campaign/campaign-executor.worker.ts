@@ -3,10 +3,20 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
 import { CampaignRecipientRepository } from '@/modules/campaigns/infrastructure/repositories/campaign-recipient.repository';
-import { AudienceResolverService } from '@/modules/campaigns/domain/services/audience-resolver.service';
+import {
+  AudienceResolverService,
+  type AudienceFilters,
+} from '@/modules/campaigns/domain/services/audience-resolver.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import { pauseCampaignForKillSwitch } from './kill-switch-pause';
+import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
+import { CampaignBatchDispatcher } from '@/modules/campaigns/application/services/campaign-batch-dispatcher.service';
+import {
+  batchCountFor,
+  planBatchSessions,
+  readBatchPlanMetadata,
+} from '@/modules/campaigns/domain/services/batch-plan';
 import {
   QUEUE_NAMES,
   EVENT_NAMES,
@@ -39,6 +49,8 @@ export class CampaignExecutorWorker implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly killSwitches: KillSwitchService,
+    private readonly sessionRepo: WhatsAppSessionRepository,
+    private readonly batchDispatcher: CampaignBatchDispatcher,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -122,7 +134,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
         }
       }
 
-      await this.dispatchPendingBatches(campaignId, orgId);
+      await this.dispatchPendingBatches(campaignId, orgId, currentCampaign.channel ?? null);
 
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -165,14 +177,13 @@ export class CampaignExecutorWorker implements OnModuleInit {
     campaign: Record<string, any>,
   ): Promise<void> {
     // Resolve audience
-    const filters = campaign.audienceFilters as Record<string, unknown> | null;
-    const audienceFilters = filters ? {
-      contactIds: filters.contactIds as string[] | undefined,
-      leadStatuses: filters.leadStatuses as string[] | undefined,
-      tagIds: filters.tagIds as string[] | undefined,
-      ownerIds: filters.ownerIds as string[] | undefined,
-      sources: filters.sources as string[] | undefined,
-    } : undefined;
+    // Pass every stored filter through, exactly as the audience preview does.
+    // (Picking fields by hand dropped saved groups, products, teams, scrape runs…
+    // so a "send to group X" campaign went to everyone matching the other filters.)
+    const filters = campaign.audienceFilters;
+    const audienceFilters = filters && typeof filters === 'object' && !Array.isArray(filters)
+      ? (filters as AudienceFilters)
+      : undefined;
     const isEmail = campaign.channel === 'EMAIL';
     const resolved = isEmail
       ? await this.audienceResolver.resolveEmailAudience(orgId, campaign.audienceType as CampaignAudienceType, audienceFilters)
@@ -195,34 +206,26 @@ export class CampaignExecutorWorker implements OnModuleInit {
       );
     }
 
-    // Keep DB writes bounded while preserving the configured send batch number.
+    // Batches are planned now (not at creation), so a scheduled campaign whose
+    // audience grew still gets a number for every batch: overrides first, the
+    // rest dealt round-robin over the selected numbers that are connected.
     const insertBatchSize = CAMPAIGN_CONFIG.BATCH_SIZE;
-    const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
-      ? campaign.metadata as Record<string, unknown>
-      : {};
-    const rawAssignments = metadata.batchSessionAssignments;
-    const hasExplicitAssignments = Array.isArray(rawAssignments) && rawAssignments.length > 0;
-    const assignmentByBatch = new Map<number, string>();
-    if (hasExplicitAssignments) {
-      for (const assignment of rawAssignments) {
-        if (
-          assignment &&
-          typeof assignment === 'object' &&
-          'batchNumber' in assignment &&
-          'sessionId' in assignment &&
-          typeof assignment.batchNumber === 'number' &&
-          typeof assignment.sessionId === 'string'
-        ) {
-          assignmentByBatch.set(assignment.batchNumber, assignment.sessionId);
-        }
-      }
-    }
-    if (!isEmail && hasExplicitAssignments) {
-      const batchCount = Math.ceil(total / CAMPAIGN_CONFIG.BATCH_SIZE);
-      for (let batchNumber = 1; batchNumber <= batchCount; batchNumber++) {
-        if (!assignmentByBatch.has(batchNumber)) {
-          throw new Error(`No WhatsApp session is assigned to campaign batch ${batchNumber}`);
-        }
+    const batchCount = batchCountFor(total, CAMPAIGN_CONFIG.BATCH_SIZE);
+    let sessionByBatch = new Map<number, string>();
+    if (!isEmail) {
+      const { pool, overrides } = readBatchPlanMetadata(
+        campaign.metadata,
+        typeof campaign.sessionId === 'string' ? campaign.sessionId : null,
+      );
+      const connected = new Set(
+        (await this.sessionRepo.findConnectedByIdsAndOrg(pool, orgId)).map((s) => s.id),
+      );
+      // Prefer connected numbers; if none is connected right now keep the plan
+      // (the send worker holds messages until the number is back).
+      const usablePool = pool.filter((id) => connected.has(id));
+      sessionByBatch = planBatchSessions(batchCount, usablePool.length > 0 ? usablePool : pool, overrides);
+      if (sessionByBatch.size === 0) {
+        throw new Error('No WhatsApp number is selected for this campaign');
       }
     }
 
@@ -231,16 +234,7 @@ export class CampaignExecutorWorker implements OnModuleInit {
       await this.recipientRepo.bulkCreate(
         batch.map((contact, idx) => {
           const batchNumber = Math.floor((i + idx) / CAMPAIGN_CONFIG.BATCH_SIZE) + 1;
-          const assignedSessionId = isEmail
-            ? null
-            : hasExplicitAssignments
-              ? assignmentByBatch.get(batchNumber) ?? null
-              : typeof campaign.sessionId === 'string'
-                ? campaign.sessionId
-                : null;
-          if (!isEmail && !assignedSessionId) {
-            throw new Error(`No WhatsApp session is assigned to campaign batch ${batchNumber}`);
-          }
+          const assignedSessionId = isEmail ? null : sessionByBatch.get(batchNumber) ?? null;
           return {
             campaignId,
             orgId,
@@ -261,15 +255,10 @@ export class CampaignExecutorWorker implements OnModuleInit {
     );
   }
 
-  private async dispatchPendingBatches(campaignId: string, orgId: string): Promise<void> {
-    const pendingBatchNumbers = await this.recipientRepo.getPendingBatchNumbers(campaignId);
-    await Promise.all(pendingBatchNumbers.map((batchNumber) =>
-      this.queueService.publishOnce(
-        QUEUE_NAMES.CAMPAIGN_BATCH,
-        { campaignId, orgId, batchNumber },
-        `campaign-batch-${campaignId}-${batchNumber}`,
-      ),
-    ));
+  private async dispatchPendingBatches(campaignId: string, orgId: string, channel: string | null): Promise<void> {
+    // Resumed campaigns may have recipients stuck QUEUED from before the pause
+    await this.batchDispatcher.repairStuckRecipients(campaignId, orgId);
+    await this.batchDispatcher.dispatch(campaignId, orgId, channel);
   }
 
   private async completeCampaign(campaignId: string, orgId: string): Promise<void> {

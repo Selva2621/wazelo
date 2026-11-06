@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Smartphone,
@@ -54,6 +54,8 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
   const session = useWhatsAppStore((s) => s.session);
   const qrCode = useWhatsAppStore((s) => s.qrCode);
   const qrExpiresAt = useWhatsAppStore((s) => s.qrExpiresAt);
+  const qrScanned = useWhatsAppStore((s) => s.qrScanned);
+  const qrStopped = useWhatsAppStore((s) => s.qrStopped);
   const pairingCode = useWhatsAppStore((s) => s.pairingCode);
   const error = useWhatsAppStore((s) => s.error);
 
@@ -113,6 +115,18 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
       refreshQr.mutate(session.id);
     }
   };
+
+  // Reopened (e.g. the modal was closed) with an old QR on screen: get a fresh one.
+  // The server refuses if the QR was already scanned, so a login in progress is safe.
+  const autoRefreshed = useRef(false);
+  useEffect(() => {
+    if (isLoading || autoRefreshed.current) return;
+    autoRefreshed.current = true;
+    const { qrExpiresAt: expiresAt, qrStopped: stopped, qrScanned: scanned } =
+      useWhatsAppStore.getState();
+    const staleQr = stopped || (expiresAt !== null && expiresAt < Date.now());
+    if (session?.status === "CONNECTING" && staleQr && !scanned) refreshQr.mutate(session.id);
+  }, [isLoading, session, refreshQr]);
 
   if (isLoading) {
     return (
@@ -179,9 +193,12 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
                 expiresAt={qrExpiresAt}
                 onRefresh={handleRefreshQr}
                 isRefreshing={refreshQr.isPending}
+                scanned={qrScanned}
+                stopped={qrStopped}
               />
 
               {/* Instructions */}
+              {!qrScanned && (
               <div className="mt-8 w-full space-y-3">
                 <p className="text-body font-medium text-on-surface-variant uppercase tracking-wider mb-3">
                   How to connect
@@ -201,11 +218,6 @@ export function WhatsAppConnectionPanel({ compact = false }: WhatsAppConnectionP
                   </div>
                 ))}
               </div>
-
-              {!qrCode && !refreshQr.isPending && (
-                <p className="mt-6 text-body text-on-surface-variant animate-pulse">
-                  Waiting for QR code...
-                </p>
               )}
             </>
           )}

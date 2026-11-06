@@ -90,16 +90,40 @@ describe('AudienceResolverService', () => {
                   savedGroupMemberships: {
                     some: {
                       groupId: { in: ['d4a760c0-b079-4d4a-a0dc-0f97c47e6311'] },
-                      group: { orgId: 'org-1' },
+                      group: { orgId: 'org-1', deletedAt: null },
                     },
                   },
                 },
               ],
             },
+            // WhatsApp campaigns skip numbers a check found are not on WhatsApp
+            { OR: [{ waExists: null }, { waExists: true }] },
           ],
           leadStatus: { in: ['NEW'] },
         }),
       }),
     );
+  });
+
+  it('keeps unchecked numbers but drops ones known not to be on WhatsApp (preview too)', async () => {
+    const count = jest.fn().mockResolvedValue(3);
+    const resolver = new AudienceResolverService({ contact: { count } } as never);
+
+    await resolver.previewAudienceCount('org-1', CampaignAudienceType.ALL, undefined, 'WHATSAPP');
+    expect(count.mock.calls[0][0].where.AND).toContainEqual({ OR: [{ waExists: null }, { waExists: true }] });
+
+    // Email campaigns don't care whether a number is on WhatsApp
+    await resolver.previewAudienceCount('org-1', CampaignAudienceType.ALL, undefined, 'EMAIL');
+    expect(JSON.stringify(count.mock.calls[1][0].where)).not.toContain('waExists');
+  });
+
+  it('counts audience members a check found are not on WhatsApp (for the preview note)', async () => {
+    const count = jest.fn().mockResolvedValue(1);
+    const resolver = new AudienceResolverService({ contact: { count } } as never);
+
+    await expect(
+      resolver.countNotOnWhatsApp('org-1', CampaignAudienceType.FILTERED, { contactIds: ['c4a760c0-b079-4d4a-a0dc-0f97c47e6311'] }),
+    ).resolves.toBe(1);
+    expect(count.mock.calls[0][0].where.AND).toContainEqual({ waExists: false });
   });
 });

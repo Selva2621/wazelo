@@ -11,6 +11,7 @@ import { CampaignStateMachineService } from '../../domain/services/campaign-stat
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
+import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, UsageMetricType } from '@prisma/client';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 
@@ -46,29 +47,12 @@ export class ExecuteCampaignUseCase {
 
     // 3. Verify session is connected (email campaigns send from the workspace's mailbox instead)
     if (campaign.channel !== 'EMAIL') {
-      const metadata = campaign.metadata && typeof campaign.metadata === 'object' && !Array.isArray(campaign.metadata)
-        ? campaign.metadata as Record<string, unknown>
-        : {};
-      const assignmentRows = Array.isArray(metadata.batchSessionAssignments)
-        ? metadata.batchSessionAssignments
-        : [];
-      const assignedSessionIds = [...new Set(assignmentRows.flatMap((assignment) =>
-        assignment &&
-        typeof assignment === 'object' &&
-        'sessionId' in assignment &&
-        typeof assignment.sessionId === 'string'
-          ? [assignment.sessionId]
-          : [],
-      ))];
-      const sessionIds = assignedSessionIds.length > 0
-        ? assignedSessionIds
-        : campaign.sessionId
-          ? [campaign.sessionId]
-          : [];
-      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(sessionIds, orgId);
-      if (sessionIds.length === 0 || connectedSessions.length !== sessionIds.length) {
+      // Batches are dealt over the connected numbers of the pool, so one is enough
+      const { pool } = readBatchPlanMetadata(campaign.metadata, campaign.sessionId);
+      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(pool, orgId);
+      if (connectedSessions.length === 0) {
         throw new BadRequestException(
-          'Every assigned WhatsApp session must be connected before this campaign can start',
+          'Connect at least one of this campaign\'s WhatsApp numbers before starting it',
         );
       }
     }

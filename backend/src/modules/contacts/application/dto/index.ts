@@ -6,7 +6,13 @@ export { AssignContactDto } from './assign-contact.dto';
 export { MergeContactsDto } from './merge-contacts.dto';
 export { AddNoteDto } from './add-note.dto';
 export { AddTagDto } from './manage-tag.dto';
-export { CreateSavedContactGroupsDto } from './create-saved-contact-groups.dto';
+export {
+  CreateSavedContactGroupsDto,
+  SplitSavedContactGroupsDto,
+  CheckSavedGroupMoveDto,
+  MoveSavedGroupContactsDto,
+  RenameSavedContactGroupDto,
+} from './create-saved-contact-groups.dto';
 export {
   BulkContactIdsDto,
   BulkChangeLeadStatusDto,

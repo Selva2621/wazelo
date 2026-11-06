@@ -21,6 +21,11 @@ import type {
   BulkContactsResult,
   ContactGroups,
   SavedContactGroup,
+  CreateSavedGroupsRequest,
+  CreateSavedGroupsResult,
+  SplitSavedGroupsRequest,
+  SplitSavedGroupsResult,
+  SavedGroupMoveImpact,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -45,9 +50,48 @@ export const contactsApi = {
   savedGroups: () =>
     apiClient.get<SavedContactGroup[]>("/contacts/saved-groups").then((r) => r.data),
 
-  createSavedGroups: (data: { name: string; contactIds: string[] }) =>
+  createSavedGroups: (data: CreateSavedGroupsRequest) =>
     apiClient
-      .post<{ groups: SavedContactGroup[]; batchSize: number }>("/contacts/saved-groups", data)
+      .post<CreateSavedGroupsResult>("/contacts/saved-groups", data)
+      .then((r) => r.data),
+
+  /** Visible, not opted-out contacts that aren't in any group */
+  ungroupedCount: () =>
+    apiClient
+      .get<{ count: number }>("/contacts/saved-groups/ungrouped-count")
+      .then((r) => r.data.count),
+
+  splitSavedGroups: (data: SplitSavedGroupsRequest) =>
+    apiClient
+      .post<SplitSavedGroupsResult>("/contacts/saved-groups/split", data)
+      .then((r) => r.data),
+
+  checkSavedGroupMove: (data: { contactIds: string[]; groupId?: string }) =>
+    apiClient
+      .post<SavedGroupMoveImpact>("/contacts/saved-groups/check-move", data)
+      .then((r) => r.data),
+
+  /** groupId null takes the contacts out of every group */
+  moveToSavedGroup: (data: { contactIds: string[]; groupId: string | null }) =>
+    apiClient
+      .post<{ moved: number }>("/contacts/saved-groups/move", data)
+      .then((r) => r.data),
+
+  renameSavedGroup: (groupId: string, name: string) =>
+    apiClient
+      .patch<SavedContactGroup>(`/contacts/saved-groups/${groupId}`, { name })
+      .then((r) => r.data),
+
+  /** Start the background "on WhatsApp?" check of a group's numbers */
+  startGroupWaCheck: (groupId: string) =>
+    apiClient
+      .post<{ state: string }>(`/contacts/saved-groups/${groupId}/wa-check`)
+      .then((r) => r.data),
+  stopGroupWaCheck: (groupId: string) =>
+    apiClient.post(`/contacts/saved-groups/${groupId}/wa-check/stop`).then(() => undefined),
+  deleteSavedGroup: (groupId: string) =>
+    apiClient
+      .delete<{ deleted: boolean }>(`/contacts/saved-groups/${groupId}`)
       .then((r) => r.data),
 
   get: (contactId: string) =>

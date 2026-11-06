@@ -17,6 +17,7 @@ import {
   EVENT_NAMES,
 } from '@/common/constants';
 import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
+import { CampaignBatchDispatcher } from '@/modules/campaigns/application/services/campaign-batch-dispatcher.service';
 import {
   CampaignRecipientStatus,
   CampaignStatus,
@@ -47,6 +48,7 @@ export class CampaignBatchWorker implements OnModuleInit {
     private readonly killSwitches: KillSwitchService,
     private readonly eventEmitter: EventEmitter2,
     private readonly orgEmail: OrgEmailService,
+    private readonly batchDispatcher: CampaignBatchDispatcher,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -91,12 +93,12 @@ export class CampaignBatchWorker implements OnModuleInit {
     // Older campaign jobs didn't identify a batch; fan them out to the pending
     // batches instead of accidentally running a campaign-wide recipient pump.
     if (batchNumber === undefined) {
-      await this.dispatchPendingBatches(campaignId, orgId);
+      await this.batchDispatcher.dispatch(campaignId, orgId, campaign.channel);
       return;
     }
 
-    // Claim one recipient at a time within this batch. Other batches can send
-    // concurrently using their independently assigned WhatsApp sessions.
+    // Claim one recipient at a time within this batch. Batches on other numbers
+    // send at the same time; this number's next batch starts when this one settles.
     const isEmail = campaign.channel === 'EMAIL';
     while (true) {
       if (await this.killSwitches.isDisabled('campaigns')) {
@@ -134,17 +136,6 @@ export class CampaignBatchWorker implements OnModuleInit {
 
       if (waitingForOutcome) return;
     }
-  }
-
-  private async dispatchPendingBatches(campaignId: string, orgId: string): Promise<void> {
-    const batchNumbers = await this.recipientRepo.getPendingBatchNumbers(campaignId);
-    await Promise.all(batchNumbers.map((batchNumber) =>
-      this.queueService.publishOnce(
-        QUEUE_NAMES.CAMPAIGN_BATCH,
-        { campaignId, orgId, batchNumber },
-        `campaign-batch-${campaignId}-${batchNumber}`,
-      ),
-    ));
   }
 
   /**
@@ -234,6 +225,7 @@ export class CampaignBatchWorker implements OnModuleInit {
       sessionId,
       contactPhone: recipient.contactPhone,
       contactId: recipient.contactId,
+      preserveSession: true,
     });
 
     // Create message with campaign-scoped idempotency key

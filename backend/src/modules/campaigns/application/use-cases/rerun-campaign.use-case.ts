@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
+import { readSendAnyTime } from '@/modules/messages/domain/services/account-safety.service';
 import { CampaignStatus } from '@prisma/client';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
@@ -37,10 +39,17 @@ export class RerunCampaignUseCase {
       throw new BadRequestException('Only completed, failed or cancelled campaigns can be run again');
     }
 
+    // Same numbers and send-time choice as the original (email has neither)
+    const isEmail = source.channel === 'EMAIL';
+    const { pool } = readBatchPlanMetadata(source.metadata, source.sessionId);
     const dto = {
       name: rerunName(source.name),
       description: source.description ?? undefined,
-      sessionId: source.sessionId,
+      channel: isEmail ? 'EMAIL' : 'WHATSAPP',
+      emailSubject: source.emailSubject ?? undefined,
+      sessionId: isEmail ? undefined : source.sessionId ?? undefined,
+      sessionIds: isEmail ? undefined : pool,
+      sendAnyTime: !isEmail && readSendAnyTime(source.metadata),
       messageType: source.messageType,
       messageBody: source.messageBody ?? undefined,
       mediaUrl: source.mediaUrl ?? undefined,

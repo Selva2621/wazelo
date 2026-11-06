@@ -107,7 +107,7 @@ export const marketingTours: TourDef[] = [
 
   {
     id: "campaign-detail",
-    version: 2,
+    version: 4,
     title: "Campaign report",
     summary: "Run, pause and measure one campaign.",
     section: "Marketing",
@@ -124,11 +124,10 @@ export const marketingTours: TourDef[] = [
       {
         target: "campaign-analytics",
         title: "How it did",
-        body: "Sent, delivered, read and failed. Read rate is the best sign the message landed.",
+        body: "Progress, then delivered, read, replied and failed. Read rate is the best sign the message landed.",
         example: {
           kind: "fields",
           rows: [
-            ["Sent", "500"],
             ["Delivered", "488 (97.6%)"],
             ["Read", "341 (68%)"],
             ["Failed", "12"],
@@ -136,14 +135,9 @@ export const marketingTours: TourDef[] = [
         },
       },
       {
-        target: "campaign-details",
-        title: "What was sent",
-        body: "The channel (WhatsApp or email), message, audience, sender and schedule.",
-      },
-      {
-        target: "campaign-recipients",
-        title: "Every recipient",
-        body: "Filter by Sent, Delivered, Failed or Skipped to see who got it and why some didn't (e.g. not on WhatsApp).",
+        target: "campaign-sections",
+        title: "Batches, recipients, details",
+        body: "Batches of 100 are shared across your WhatsApp numbers; each number finishes one before the next. Recipients shows who got it and why some didn't.",
       },
     ],
   },

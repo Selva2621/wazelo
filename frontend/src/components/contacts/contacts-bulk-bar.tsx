@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CircleDot, Megaphone, Tag, Trash2, UserRoundCog, X } from "lucide-react";
+import { CircleDot, FolderInput, Megaphone, Tag, Trash2, UserRoundCog, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { springs } from "@/lib/motion-tokens";
 import { useAuthStore } from "@/stores/auth-store";
@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LeadStatusBadge } from "./lead-status-badge";
-import { BULK_CONTACTS_MAX, type LeadStatus } from "@/lib/types/contacts";
+import { BULK_CONTACTS_MAX, SAVED_GROUP_MAX_CONTACTS, type LeadStatus } from "@/lib/types/contacts";
 
 const STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
 const CAMPAIGN_SELECTION_MAX = 10_000;
+/* Phones: icon-only buttons, a little tighter so the whole bar fits the screen */
+const BAR_BUTTON = "max-sm:px-2";
 
 type Menu = "status" | "assign" | "tag" | null;
 
@@ -23,10 +25,12 @@ interface ContactsBulkBarProps {
   selectedIds: Set<string>;
   onClear: () => void;
   onCreateCampaign: () => void;
+  /** Opens the Groups panel with this selection */
+  onGroup: () => void;
 }
 
 /** Floating action bar for the contacts list; appears once at least one row is selected. */
-export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: ContactsBulkBarProps) {
+export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign, onGroup }: ContactsBulkBarProps) {
   const reduceMotion = useReducedMotion();
   const role = useAuthStore((s) => s.user?.role);
   const canManage = role === "ADMIN" || role === "MANAGER";
@@ -38,6 +42,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
   const count = selectedIds.size;
   const overBulkLimit = count > BULK_CONTACTS_MAX;
   const overCampaignLimit = count > CAMPAIGN_SELECTION_MAX;
+  const overGroupLimit = count > SAVED_GROUP_MAX_CONTACTS;
 
   useEffect(() => {
     if (!menu) return;
@@ -82,8 +87,9 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
             exit={{ opacity: 0, x: "-50%", y: reduceMotion ? 0 : 16 }}
           >
             <div className="flex items-center gap-1 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-1.5 shadow-modal">
-              <span className="px-2.5 text-body font-semibold text-on-surface tabular-nums whitespace-nowrap">
-                {count} selected
+              <span className="px-2.5 text-body font-semibold text-on-surface tabular-nums whitespace-nowrap max-sm:px-1.5">
+                {count}
+                <span className="max-sm:sr-only"> selected</span>
               </span>
               <span aria-hidden className="mx-1 h-5 w-px bg-outline-variant/40" />
 
@@ -93,6 +99,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 onClick={onCreateCampaign}
                 disabled={overCampaignLimit}
                 aria-label="Create campaign for selected contacts"
+                className={BAR_BUTTON}
               >
                 <Megaphone className="h-4 w-4" />
                 <span className="hidden sm:inline">Campaign</span>
@@ -134,6 +141,22 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                 <TagForm onSubmit={(name) => run({ action: "tags", contactIds, name })} />
               </BarMenu>
 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setMenu(null);
+                  onGroup();
+                }}
+                disabled={overGroupLimit}
+                aria-label="Group selected contacts"
+                aria-haspopup="dialog"
+                className={BAR_BUTTON}
+              >
+                <FolderInput className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Group</span>
+              </Button>
+
               {canManage && (
                 <Button
                   variant="ghost"
@@ -141,7 +164,7 @@ export function ContactsBulkBar({ selectedIds, onClear, onCreateCampaign }: Cont
                   onClick={() => setConfirmDelete(true)}
                   disabled={overBulkLimit || bulk.isPending}
                   aria-label="Delete"
-                  className="text-error hover:bg-error/10 hover:text-error"
+                  className={cn("text-error hover:bg-error/10 hover:text-error", BAR_BUTTON)}
                 >
                   <Trash2 className="h-4 w-4" />
                   <span className="hidden sm:inline">Delete</span>
@@ -207,7 +230,8 @@ function BarMenu({
   children: ReactNode;
 }) {
   return (
-    <div className="relative">
+    // Phones: `static`, so the menu opens across the whole bar instead of off-screen
+    <div className="relative max-sm:static">
       <Button
         variant="ghost"
         size="sm"
@@ -216,7 +240,7 @@ function BarMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        className={cn(open && "bg-primary/10 text-primary")}
+        className={cn(BAR_BUTTON, open && "bg-primary/10 text-primary")}
       >
         {icon}
         <span className="hidden sm:inline">{label}</span>
@@ -224,7 +248,11 @@ function BarMenu({
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 mb-2 w-56 max-h-72 overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-1 shadow-popover"
+          aria-label={label}
+          className={cn(
+            "absolute bottom-full left-0 mb-2 w-56 max-h-72 overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-1 shadow-popover",
+            "max-sm:inset-x-0 max-sm:w-auto",
+          )}
         >
           {children}
         </div>

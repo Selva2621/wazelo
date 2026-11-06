@@ -46,8 +46,14 @@ export function useCampaignAnalytics(campaignId: string | null) {
     queryKey: campaignKeys.analytics(campaignId!),
     queryFn: () => campaignsApi.getAnalytics(campaignId!),
     enabled: !!campaignId,
-    refetchInterval: (query) =>
-      query.state.data?.status === "RUNNING" ? 5_000 : false,
+    // A scheduled or paused campaign can start / resume on the server with no
+    // action in this tab, so keep polling until the campaign is finished.
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "RUNNING") return 5_000;
+      if (status === "SCHEDULED" || status === "PAUSED") return 30_000;
+      return false;
+    },
   });
 }
 

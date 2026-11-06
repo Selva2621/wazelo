@@ -38,6 +38,8 @@ export interface SendHealth {
   optOuts24h: number;
   withinSendingHours: boolean;
   sendingHours: { start: number; end: number; timeZone: string };
+  /** Campaigns have their own window (in the campaign's time zone) */
+  campaignHours: { start: number; end: number };
   paused: { until: string; reason: string | null } | null;
   /** ok | warning (close to a cap or weak delivery) | paused */
   risk: 'ok' | 'warning' | 'paused';
@@ -47,9 +49,29 @@ export interface SendHealth {
  * Feeds the pure send-safety policy with real counts for one WhatsApp number:
  * warm-up caps, sending hours, delivery health and auto-pause.
  */
+/** "Send any time" campaigns store `{ sendAnyTime: true }` in campaign.metadata. */
+export function readSendAnyTime(metadata: unknown): boolean {
+  return !!metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    && (metadata as Record<string, unknown>).sendAnyTime === true;
+}
+
+/** Local hours a campaign may send: its normal window, or all 24 hours. */
+export function campaignSendWindow(sendAnyTime: boolean): { startHour: number; endHour: number } {
+  return sendAnyTime
+    ? { startHour: 0, endHour: 24 }
+    : {
+        startHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
+        endHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
+      };
+}
+
 @Injectable()
 export class AccountSafetyService {
   private readonly tzCache = new Map<string, { timeZone: string; at: number }>();
+  private readonly campaignTzCache = new Map<
+    string,
+    { settings: { timeZone: string; sendAnyTime: boolean }; at: number }
+  >();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -67,10 +89,13 @@ export class AccountSafetyService {
     });
     if (!session) return { allowed: true };
 
-    const timeZone = campaignId
-      ? await this.campaignTimeZone(campaignId, orgId)
-      : await this.orgTimeZone(orgId);
-    const dayStart = localDayStart(now, timeZone);
+    // The daily cap is per number, so "today" is always the org's day: campaigns in
+    // other time zones and sequences on the same number share one budget. The
+    // campaign's own time zone only decides its sending window.
+    const orgTimeZone = await this.orgTimeZone(orgId);
+    const campaignSettings = campaignId ? await this.campaignSendSettings(campaignId, orgId) : null;
+    const timeZone = campaignSettings?.timeZone ?? orgTimeZone;
+    const dayStart = localDayStart(now, orgTimeZone);
     const [bulkSentToday, coldSentToday, recipientIsCold] = await Promise.all([
       this.countBulkSentSince(sessionId, dayStart),
       this.countColdBulkSentSince(sessionId, dayStart),
@@ -86,11 +111,10 @@ export class AccountSafetyService {
       bulkSentToday,
       coldSentToday,
       recipientIsCold,
-      ...(campaignId && {
-        sendWindow: {
-          startHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
-          endHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
-        },
+      // Campaigns use their own window; "send any time" campaigns run round the
+      // clock (the daily per-number caps still apply and roll over each day)
+      ...(campaignSettings && {
+        sendWindow: campaignSendWindow(campaignSettings.sendAnyTime),
       }),
     });
 
@@ -336,6 +360,10 @@ export class AccountSafetyService {
         end: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
         timeZone,
       },
+      campaignHours: {
+        start: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
+        end: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
+      },
       paused,
       risk: paused ? 'paused' : nearCap || weakDelivery || !health.healthy ? 'warning' : 'ok',
     };
@@ -404,11 +432,24 @@ export class AccountSafetyService {
     return timeZone;
   }
 
-  private async campaignTimeZone(campaignId: string, orgId: string): Promise<string> {
+  /** Campaign time zone + "send any time", cached briefly: read for every campaign message. */
+  private async campaignSendSettings(
+    campaignId: string,
+    orgId: string,
+  ): Promise<{ timeZone: string; sendAnyTime: boolean }> {
+    const cached = this.campaignTzCache.get(campaignId);
+    if (cached && Date.now() - cached.at < 5 * 60 * 1000) return cached.settings;
+
     const campaign = await this.prisma.campaign.findFirst({
       where: { id: campaignId, orgId, deletedAt: null },
-      select: { timezone: true },
+      select: { timezone: true, metadata: true },
     });
-    return campaign?.timezone || this.orgTimeZone(orgId);
+    const settings = {
+      timeZone: campaign?.timezone || (await this.orgTimeZone(orgId)),
+      sendAnyTime: readSendAnyTime(campaign?.metadata),
+    };
+    if (this.campaignTzCache.size > 1_000) this.campaignTzCache.clear();
+    this.campaignTzCache.set(campaignId, { settings, at: Date.now() });
+    return settings;
   }
 }

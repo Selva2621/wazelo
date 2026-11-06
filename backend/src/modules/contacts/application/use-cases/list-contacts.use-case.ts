@@ -62,7 +62,8 @@ export class ListContactsUseCase {
     return this.contactRepository.countGroups(orgId, scope);
   }
 
-  private async resolveOwnerScope(
+  /** Which contacts the caller may see: employee = own, manager = team, admin = all. */
+  async resolveOwnerScope(
     orgId: string,
     userId: string,
     role: string,

@@ -5,6 +5,7 @@ import {
   CampaignRecipientStatus,
   Prisma,
 } from '@prisma/client';
+import type { BatchWorkSummary } from '../../domain/services/batch-plan';
 
 export interface CreateRecipientInput {
   campaignId: string;
@@ -104,12 +105,13 @@ export class CampaignRecipientRepository {
       });
       if (!recipient) return null;
 
+      const claimedAt = new Date();
       const claimed = await tx.campaignRecipient.updateMany({
         where: { id: recipient.id, status: CampaignRecipientStatus.PENDING },
-        data: { status: CampaignRecipientStatus.QUEUED },
+        data: { status: CampaignRecipientStatus.QUEUED, claimedAt },
       });
       return claimed.count === 1
-        ? { ...recipient, status: CampaignRecipientStatus.QUEUED }
+        ? { ...recipient, status: CampaignRecipientStatus.QUEUED, claimedAt }
         : null;
     });
   }
@@ -147,6 +149,101 @@ export class CampaignRecipientRepository {
       orderBy: { batchNumber: 'asc' },
     });
     return batches.map((batch) => batch.batchNumber);
+  }
+
+  /** Unfinished work per batch (PENDING / QUEUED counts and the batch's session). */
+  async getBatchWorkSummary(campaignId: string): Promise<BatchWorkSummary[]> {
+    const groups = await this.prisma.campaignRecipient.groupBy({
+      by: ['batchNumber', 'sessionId', 'status'],
+      where: {
+        campaignId,
+        status: { in: [CampaignRecipientStatus.PENDING, CampaignRecipientStatus.QUEUED] },
+      },
+      _count: { id: true },
+    });
+
+    const byBatch = new Map<number, BatchWorkSummary>();
+    for (const group of groups) {
+      let summary = byBatch.get(group.batchNumber);
+      if (!summary) {
+        summary = { batchNumber: group.batchNumber, sessionId: group.sessionId, pending: 0, queued: 0 };
+        byBatch.set(group.batchNumber, summary);
+      }
+      if (group.status === CampaignRecipientStatus.PENDING) {
+        summary.pending += group._count.id;
+        // The batch belongs to the number its waiting recipients will send from
+        summary.sessionId = group.sessionId;
+      } else {
+        summary.queued += group._count.id;
+      }
+    }
+    return [...byBatch.values()].sort((a, b) => a.batchNumber - b.batchNumber);
+  }
+
+  /**
+   * QUEUED recipients claimed before `claimedBefore` (or claimed by an older
+   * build that did not record the time), with their message's current status.
+   */
+  async findStaleQueued(campaignId: string, claimedBefore: Date, take = 200) {
+    return this.prisma.campaignRecipient.findMany({
+      where: {
+        campaignId,
+        status: CampaignRecipientStatus.QUEUED,
+        OR: [{ claimedAt: null }, { claimedAt: { lt: claimedBefore } }],
+      },
+      select: {
+        id: true,
+        campaignId: true,
+        contactId: true,
+        batchNumber: true,
+        messageId: true,
+        emailMessageId: true,
+        message: { select: { status: true, failedReason: true } },
+      },
+      take,
+    });
+  }
+
+  /** Put a stuck QUEUED recipient back in line (a fresh claim re-checks its message). */
+  async requeueStuck(id: string): Promise<boolean> {
+    const result = await this.prisma.campaignRecipient.updateMany({
+      where: { id, status: CampaignRecipientStatus.QUEUED },
+      data: { status: CampaignRecipientStatus.PENDING, claimedAt: null },
+    });
+    return result.count === 1;
+  }
+
+  /** Move unfinished (PENDING) recipients of the given batches to another number. */
+  async reassignBatchSession(campaignId: string, batchNumber: number, sessionId: string): Promise<number> {
+    const result = await this.prisma.campaignRecipient.updateMany({
+      where: { campaignId, batchNumber, status: CampaignRecipientStatus.PENDING },
+      data: { sessionId },
+    });
+    return result.count;
+  }
+
+  /** Batches that still have PENDING recipients on one of these numbers. */
+  async findPendingBatchesOnSessions(campaignId: string, sessionIds: string[]): Promise<number[]> {
+    if (sessionIds.length === 0) return [];
+    const groups = await this.prisma.campaignRecipient.groupBy({
+      by: ['batchNumber'],
+      where: { campaignId, status: CampaignRecipientStatus.PENDING, sessionId: { in: sessionIds } },
+      orderBy: { batchNumber: 'asc' },
+    });
+    return groups.map((g) => g.batchNumber);
+  }
+
+  /** Distinct numbers a campaign's unfinished recipients send from. */
+  async findUnfinishedSessionIds(campaignId: string): Promise<string[]> {
+    const groups = await this.prisma.campaignRecipient.groupBy({
+      by: ['sessionId'],
+      where: {
+        campaignId,
+        status: { in: [CampaignRecipientStatus.PENDING, CampaignRecipientStatus.QUEUED] },
+        sessionId: { not: null },
+      },
+    });
+    return groups.flatMap((g) => (g.sessionId ? [g.sessionId] : []));
   }
 
   async reassignPendingSession(

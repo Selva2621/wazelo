@@ -1,3 +1,5 @@
+import { GroupWhatsAppCheckUseCase } from './application/use-cases/group-whatsapp-check.use-case';
+import { GroupWhatsAppCheckController } from './interfaces/controllers/group-whatsapp-check.controller';
 import { Module } from '@nestjs/common';
 import { ContactsModule } from '@/modules/contacts/contacts.module';
 import { QueueModule } from '@/infrastructure/queue/queue.module';
@@ -33,10 +35,11 @@ import { LeadScraperController } from './interfaces/controllers/lead-scraper.con
     ImportScrapeResultsUseCase,
     CheckWhatsAppUseCase,
     WhatsAppCheckRunUseCase,
+    GroupWhatsAppCheckUseCase,
     GetScrapeRunResultsUseCase,
     WhatsAppCheckThrottleService,
   ],
-  controllers: [LeadScraperController],
-  exports: [ProcessScrapeRunUseCase, WhatsAppCheckRunUseCase, ScrapeRunRepository],
+  controllers: [LeadScraperController, GroupWhatsAppCheckController],
+  exports: [ProcessScrapeRunUseCase, WhatsAppCheckRunUseCase, GroupWhatsAppCheckUseCase, ScrapeRunRepository],
 })
 export class LeadScraperModule {}
