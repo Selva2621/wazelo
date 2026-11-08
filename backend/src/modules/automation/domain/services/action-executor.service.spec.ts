@@ -157,6 +157,13 @@ describe('ActionExecutorService SEND_EMAIL', () => {
     expect(r.success).toBe(false);
     expect(orgEmail.queue).not.toHaveBeenCalled();
   });
+
+  it('sends no second welcome email when a "Lead Ad Received" rule emails the lead', async () => {
+    const { service, orgEmail } = setup();
+    const r = await service.execute({ ...input({ subject: 'Hi', body: 'Hello' }), eventPayload: { emailByLeadAdRule: true } });
+    expect(r).toMatchObject({ success: true, result: { skipped: true } });
+    expect(orgEmail.queue).not.toHaveBeenCalled();
+  });
 });
 
 describe('ActionExecutorService SEND_MESSAGE', () => {

@@ -136,6 +136,10 @@ export class ActionExecutorService {
     if (!subject?.trim() || !body?.trim()) {
       return { actionType: AutomationActionType.SEND_EMAIL, success: false, error: 'The email needs a subject and a message' };
     }
+    // A Meta lead already emailed by its "Lead Ad Received" rule — one welcome email, not two
+    if (input.eventPayload?.emailByLeadAdRule === true) {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { skipped: true, reason: 'A "Lead Ad Received" rule emails this lead' } };
+    }
     const extra = this.buildVarMap(null, input.eventPayload);
     const result = await this.orgEmail.queue({
       orgId: input.orgId,

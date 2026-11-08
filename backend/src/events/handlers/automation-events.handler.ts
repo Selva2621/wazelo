@@ -28,6 +28,8 @@ import {
   LeadAdReceivedEvent,
 } from '../event-bus';
 
+const NO_LEAD_WELCOME = { welcomeByLeadAdRule: false, emailByLeadAdRule: false };
+
 /**
  * Message variables for a lead: {{lead.campaign}}, {{lead.ad}}, {{lead.form}}, {{lead.platform}}
  * and one per form answer, keyed by the question's slug — "What's your city?" → {{lead.what_s_your_city}}
@@ -79,11 +81,10 @@ export class AutomationEventsHandler {
           phoneNumber: payload.phoneNumber,
           source: payload.source,
           ownerId: payload.ownerId,
-          // One welcome only: a "Lead Ad Received" rule that messages this lead wins,
-          // so this rule's "send message" steps skip (tags, assignment etc. still run)
-          ...(payload.leadAd && {
-            welcomeByLeadAdRule: await this.leadAdRuleWelcomes(payload.orgId, payload.leadAd).catch(() => false),
-          }),
+          // One welcome per channel: a "Lead Ad Received" rule that messages / emails this
+          // lead wins, so this rule's matching send steps skip (tags, assignment etc. still run)
+          ...(payload.leadAd &&
+            (await this.leadAdRuleWelcomes(payload.orgId, payload.leadAd).catch(() => NO_LEAD_WELCOME))),
         },
         context: {
           contact: {
@@ -137,21 +138,24 @@ export class AutomationEventsHandler {
     }
   }
 
-  /** Does an active "Lead Ad Received" rule send a WhatsApp message to this (new) lead? */
+  /** Which channels an active "Lead Ad Received" rule already welcomes this (new) lead on */
   private async leadAdRuleWelcomes(
     orgId: string,
     leadAd: { platform: string; formId: string | null },
-  ): Promise<boolean> {
+  ): Promise<typeof NO_LEAD_WELCOME> {
     const rules = await this.automationRepo.findActiveRulesByTriggerType(orgId, AutomationTriggerType.LEAD_AD_RECEIVED);
-    return rules.some(
-      (rule) =>
-        rule.actions.some((a) => a.actionType === AutomationActionType.SEND_MESSAGE) &&
-        this.triggerMatcher.matches({
-          triggerType: AutomationTriggerType.LEAD_AD_RECEIVED,
-          triggerConfig: (rule.triggerConfig ?? {}) as Record<string, unknown>,
-          eventPayload: { platform: leadAd.platform, formId: leadAd.formId, isNewContact: true },
-        }),
+    const matching = rules.filter((rule) =>
+      this.triggerMatcher.matches({
+        triggerType: AutomationTriggerType.LEAD_AD_RECEIVED,
+        triggerConfig: (rule.triggerConfig ?? {}) as Record<string, unknown>,
+        eventPayload: { platform: leadAd.platform, formId: leadAd.formId, isNewContact: true },
+      }),
     );
+    const sends = (type: AutomationActionType) => matching.some((r) => r.actions.some((a) => a.actionType === type));
+    return {
+      welcomeByLeadAdRule: sends(AutomationActionType.SEND_MESSAGE),
+      emailByLeadAdRule: sends(AutomationActionType.SEND_EMAIL),
+    };
   }
 
   /** Every lead form submission — new or repeat contact — is its own LEAD_AD_RECEIVED event */
