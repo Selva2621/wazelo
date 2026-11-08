@@ -59,6 +59,18 @@ export const campaignsApi = {
       .post<Campaign>(`/campaigns/${campaignId}/resume`)
       .then((r) => r.data),
 
+  /** Swap the media of a paused or scheduled campaign */
+  replaceMedia: (campaignId: string, data: { mediaUrl: string; mediaMimeType?: string }) =>
+    apiClient
+      .patch<Campaign>(`/campaigns/${campaignId}/media`, data)
+      .then((r) => r.data),
+
+  /** Resend to recipients that failed only because the WhatsApp connection was down */
+  retryFailed: (campaignId: string) =>
+    apiClient
+      .post<{ campaign: Campaign; retried: number }>(`/campaigns/${campaignId}/retry-failed`)
+      .then((r) => r.data),
+
   cancel: (campaignId: string) =>
     apiClient
       .post<Campaign>(`/campaigns/${campaignId}/cancel`)

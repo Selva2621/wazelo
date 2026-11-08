@@ -67,6 +67,10 @@ export interface Campaign {
   readCount: number;
   /** Recipients who wrote back within a week of the campaign */
   repliedCount?: number;
+  /** Detail only: failed recipients a retry would send again (connection was down) */
+  retryableFailedCount?: number;
+  /** Detail only: the uploaded media was cleared from the server and must be replaced */
+  mediaMissing?: boolean;
   createdById: string;
   idempotencyKey: string | null;
   metadata: Record<string, unknown> | null;

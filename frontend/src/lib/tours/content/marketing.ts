@@ -107,7 +107,7 @@ export const marketingTours: TourDef[] = [
 
   {
     id: "campaign-detail",
-    version: 4,
+    version: 5,
     title: "Campaign report",
     summary: "Run, pause and measure one campaign.",
     section: "Marketing",
@@ -133,6 +133,18 @@ export const marketingTours: TourDef[] = [
             ["Failed", "12"],
           ],
         },
+      },
+      {
+        target: "campaign-media-missing",
+        ifMissing: "skip",
+        title: "Media missing",
+        body: "If the campaign's file is cleared from the server, sending pauses. Upload it again here, then resume.",
+      },
+      {
+        target: "campaign-retry-failed",
+        ifMissing: "skip",
+        title: "Retry failed",
+        body: "Messages that failed because WhatsApp was disconnected can be sent again. Wrong numbers and blocks aren't retried.",
       },
       {
         target: "campaign-sections",

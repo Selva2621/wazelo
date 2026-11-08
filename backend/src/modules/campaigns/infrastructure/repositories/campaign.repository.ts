@@ -125,6 +125,22 @@ export class CampaignRepository {
     return { campaigns, total };
   }
 
+  /** Swap the media of a campaign that hasn't finished (paused or scheduled). */
+  async replaceMedia(
+    id: string,
+    orgId: string,
+    statuses: CampaignStatus[],
+    mediaUrl: string,
+    mediaMimeType: string | null,
+  ): Promise<Campaign | null> {
+    const result = await this.prisma.campaign.updateMany({
+      where: { id, orgId, status: { in: statuses }, deletedAt: null },
+      data: { mediaUrl, mediaMimeType },
+    });
+    if (result.count === 0) return null;
+    return this.findById(id);
+  }
+
   async updateDraft(
     id: string,
     orgId: string,

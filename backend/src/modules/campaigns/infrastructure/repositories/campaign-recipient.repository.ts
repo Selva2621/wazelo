@@ -7,6 +7,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import type { BatchWorkSummary } from '../../domain/services/batch-plan';
+import { CONNECTION_FAILURE_PATTERNS } from '@/shared/utils/connection-failure';
 
 export interface CreateRecipientInput {
   campaignId: string;
@@ -547,6 +548,60 @@ export class CampaignRecipientRepository {
    * Reset SKIPPED recipients back to PENDING for resume.
    * Only resets those that were skipped due to pause (not invalid contacts).
    */
+  /**
+   * Recipients that FAILED only because the WhatsApp connection was down (server
+   * restart, socket dropped) go back to PENDING so a resume sends them. Their
+   * old messages never reached WhatsApp, so their idempotency keys are freed
+   * for a fresh message. Anything WhatsApp accepted is never reset.
+   */
+  async resetConnectionFailuresToPending(campaignId: string): Promise<number> {
+    const resettable = await this.findConnectionFailures(campaignId);
+    if (resettable.length === 0) return 0;
+
+    const recipientIds = resettable.map((r) => r.id);
+    const messageIds = resettable.map((r) => r.messageId).filter((id): id is string => !!id);
+
+    return this.prisma.$transaction(async (tx) => {
+      if (messageIds.length > 0) {
+        await tx.message.updateMany({
+          where: { id: { in: messageIds }, status: MessageStatus.FAILED, whatsappMessageId: null },
+          data: { idempotencyKey: null },
+        });
+      }
+      const result = await tx.campaignRecipient.updateMany({
+        where: { id: { in: recipientIds }, status: CampaignRecipientStatus.FAILED },
+        data: {
+          status: CampaignRecipientStatus.PENDING,
+          messageId: null,
+          failedReason: null,
+          processedAt: null,
+          claimedAt: null,
+        },
+      });
+      return result.count;
+    });
+  }
+
+  /** How many FAILED recipients a retry would send again (see resetConnectionFailuresToPending). */
+  async countConnectionFailures(campaignId: string): Promise<number> {
+    return (await this.findConnectionFailures(campaignId)).length;
+  }
+
+  private async findConnectionFailures(campaignId: string) {
+    const failed = await this.prisma.campaignRecipient.findMany({
+      where: {
+        campaignId,
+        status: CampaignRecipientStatus.FAILED,
+        OR: CONNECTION_FAILURE_PATTERNS.map((pattern) => ({
+          failedReason: { contains: pattern, mode: Prisma.QueryMode.insensitive },
+        })),
+      },
+      select: { id: true, messageId: true, message: { select: { whatsappMessageId: true } } },
+    });
+    // Never resend something WhatsApp accepted
+    return failed.filter((r) => !r.message?.whatsappMessageId);
+  }
+
   async resetSkippedToPending(campaignId: string): Promise<number> {
     const result = await this.prisma.campaignRecipient.updateMany({
       where: {

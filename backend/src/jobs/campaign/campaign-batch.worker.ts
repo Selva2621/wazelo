@@ -10,6 +10,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import { pauseCampaignForKillSwitch } from './kill-switch-pause';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { isConnectionFailure } from '@/shared/utils/connection-failure';
 import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
@@ -249,7 +250,12 @@ export class CampaignBatchWorker implements OnModuleInit {
         return false;
       }
 
-      if (existingMessage.status === MessageStatus.FAILED) {
+      const failedOnConnection =
+        existingMessage.status === MessageStatus.FAILED &&
+        !existingMessage.whatsappMessageId &&
+        isConnectionFailure(existingMessage.failedReason);
+
+      if (existingMessage.status === MessageStatus.FAILED && !failedOnConnection) {
         const reason = existingMessage.failedReason ?? 'Message previously failed';
         if (await this.recipientRepo.markFailedIfActive(recipient.id, reason)) {
           await this.campaignRepo.incrementCounter(campaign.id, 'failedCount', 1);
@@ -257,10 +263,19 @@ export class CampaignBatchWorker implements OnModuleInit {
         return false;
       }
 
-      await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.QUEUED, {
-        messageId: existingMessage.id,
+      if (!failedOnConnection) {
+        await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.QUEUED, {
+          messageId: existingMessage.id,
+        });
+        return true;
+      }
+
+      // The earlier attempt never reached WhatsApp (the number's connection was
+      // down). Free its key and send a fresh message below.
+      await this.prisma.message.updateMany({
+        where: { id: existingMessage.id, status: MessageStatus.FAILED, whatsappMessageId: null },
+        data: { idempotencyKey: null },
       });
-      return true;
     }
 
     // Fill contact details, the same way as sequences and automations (no saved name → "there")
