@@ -3,6 +3,7 @@ import { CampaignStatus, WhatsAppSessionStatus } from '@prisma/client';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
 import { CampaignRecipientRepository } from '../../infrastructure/repositories/campaign-recipient.repository';
 import {
+  AccountSafetyService,
   campaignSendWindow,
   readSendAnyTime,
 } from '@/modules/messages/domain/services/account-safety.service';
@@ -112,12 +113,67 @@ export function summarizeBatches(
   });
 }
 
+export interface CampaignSendingAllowance {
+  sessionId: string;
+  warmupStage: number;
+  /** True when an admin's per-number setting decided the stage or a cap */
+  customized: boolean;
+  /** plan = no daily cap on this number (the plan's message limit governs) */
+  limitMode: 'plan' | 'warmup' | 'custom';
+  dailyBulkCap: number | null;
+  dailyColdCap: number | null;
+  bulkSentToday: number;
+  coldSentToday: number;
+  remainingBulk: number | null;
+  remainingCold: number | null;
+  resetsAt: string;
+  paused: { until: string; reason: string | null } | null;
+}
+
 @Injectable()
 export class GetCampaignAnalyticsUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepository,
     private readonly recipientRepo: CampaignRecipientRepository,
+    private readonly accountSafety: AccountSafetyService,
   ) {}
+
+  /**
+   * Why a WhatsApp campaign is (not) moving: recipients waiting on a limit, and
+   * today's allowance on each number that still has work.
+   */
+  private async sendingStatus(campaignId: string, orgId: string, now: Date) {
+    const [held, sessionIds] = await Promise.all([
+      this.recipientRepo.countHeld(campaignId, now),
+      this.recipientRepo.findUnfinishedSessionIds(campaignId),
+    ]);
+    const healths = await Promise.all(sessionIds.map((id) => this.accountSafety.getHealth(orgId, id, now)));
+    const numbers: CampaignSendingAllowance[] = healths.flatMap((h) =>
+      h
+        ? [{
+            sessionId: h.sessionId,
+            warmupStage: h.warmup.stage,
+            customized: h.warmup.customized,
+            limitMode: h.limitMode,
+            dailyBulkCap: h.warmup.bulkCap,
+            dailyColdCap: h.warmup.coldCap,
+            bulkSentToday: h.today.bulkSent,
+            coldSentToday: h.today.coldSent,
+            remainingBulk: h.remaining.bulk,
+            remainingCold: h.remaining.cold,
+            resetsAt: h.resetsAt,
+            paused: h.paused,
+          }]
+        : [],
+    );
+    return {
+      held: held.total,
+      nextAttemptAt: held.nextAttemptAt?.toISOString() ?? null,
+      numbers,
+      // Org-wide plan allowance (same on every number's health)
+      plan: healths.find((h) => h)?.plan ?? null,
+    };
+  }
 
   async execute(campaignId: string, orgId: string) {
     const campaign = await this.campaignRepo.findByIdAndOrg(campaignId, orgId);
@@ -131,6 +187,10 @@ export class GetCampaignAnalyticsUseCase {
       this.campaignRepo.findStatusEvents(campaignId),
     ]);
     const now = new Date();
+    const live = campaign.status === CampaignStatus.RUNNING || campaign.status === CampaignStatus.PAUSED;
+    const sending = campaign.channel !== 'EMAIL' && live
+      ? await this.sendingStatus(campaign.id, orgId, now)
+      : null;
     const elapsedMs = this.calculateElapsedMs(campaign, statusEvents, now);
     const batchProgress = summarizeBatches(batches, campaign.status, now);
 
@@ -170,6 +230,8 @@ export class GetCampaignAnalyticsUseCase {
         ? null
         : { ...campaignSendWindow(readSendAnyTime(campaign.metadata)), timeZone: campaign.timezone },
       batches: batchProgress,
+      // Held-by-limit recipients and per-number daily allowance (WhatsApp, running/paused only)
+      sending,
       metrics: {
         totalRecipients: campaign.totalRecipients,
         sent: campaign.sentCount,

@@ -28,7 +28,7 @@ function input(overrides: Partial<BulkSendInput> = {}): BulkSendInput {
 
 describe('warmupTier', () => {
   it('starts new numbers on the lowest caps', () => {
-    expect(warmupTier(new Date(morningIst.getTime() - 2 * DAY), morningIst)).toEqual({ stage: 1, coldCap: 20, bulkCap: 50 });
+    expect(warmupTier(new Date(morningIst.getTime() - 2 * DAY), morningIst, { warmupEnabled: true })).toEqual({ stage: 1, coldCap: 20, bulkCap: 50, mode: 'warmup', customized: false });
   });
 
   it('treats an unknown link date as brand new', () => {
@@ -36,7 +36,7 @@ describe('warmupTier', () => {
   });
 
   it('reaches full caps after three weeks', () => {
-    expect(warmupTier(new Date(morningIst.getTime() - 30 * DAY), morningIst)).toEqual({ stage: 4, coldCap: 200, bulkCap: 500 });
+    expect(warmupTier(new Date(morningIst.getTime() - 30 * DAY), morningIst, { warmupEnabled: true })).toEqual({ stage: 4, coldCap: 200, bulkCap: 500, mode: 'warmup', customized: false });
   });
 });
 
@@ -102,13 +102,17 @@ describe('decideBulkSend', () => {
   });
 
   it('holds once the daily bulk cap is reached', () => {
-    const decision = decideBulkSend(input({ bulkSentToday: 500 }));
+    const decision = decideBulkSend(input({ bulkSentToday: 500, limits: { warmupEnabled: true } }));
     expect(decision).toMatchObject({ allowed: false, reason: expect.stringContaining('Daily limit') });
   });
 
+  it('has no daily cap by default: only the plan message limit governs volume', () => {
+    expect(decideBulkSend(input({ bulkSentToday: 10_000, coldSentToday: 10_000, recipientIsCold: true })).allowed).toBe(true);
+  });
+
   it('caps cold recipients separately from warm ones', () => {
-    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: false })).allowed).toBe(true);
-    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: true })).allowed).toBe(false);
+    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: false, limits: { warmupEnabled: true } })).allowed).toBe(true);
+    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: true, limits: { warmupEnabled: true } })).allowed).toBe(false);
   });
 });
 

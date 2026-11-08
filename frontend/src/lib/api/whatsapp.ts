@@ -20,10 +20,29 @@ export interface WhatsAppSession {
 }
 
 /** Send-safety snapshot for the user's own WhatsApp number */
+/** Per-number limits an admin can set. Empty = no daily cap (plan limit only). */
+export interface SendingLimits {
+  warmupEnabled?: boolean;
+  warmupStage?: number;
+  dailyBulkCap?: number;
+  dailyColdCap?: number;
+  bulkGapMinMs?: number;
+  bulkGapMaxMs?: number;
+}
+
 export interface SendHealth {
   sessionId: string;
-  warmup: { stage: number; linkedDays: number; coldCap: number; bulkCap: number };
+  /** Caps are null when the number has no daily cap */
+  warmup: { stage: number; linkedDays: number; coldCap: number | null; bulkCap: number | null; customized?: boolean };
   today: { bulkSent: number; coldSent: number };
+  /** Older backends omit the fields below */
+  remaining?: { bulk: number | null; cold: number | null };
+  resetsAt?: string;
+  limits?: SendingLimits;
+  limitMode?: "plan" | "warmup" | "custom";
+  bulkGapMs?: { min: number; max: number };
+  /** Org plan messages this billing period; limit null = unlimited */
+  plan?: { used: number; limit: number | null; remaining: number | null };
   delivery: { sampled: number; delivered: number; rate: number | null };
   optOuts24h: number;
   withinSendingHours: boolean;
@@ -61,6 +80,12 @@ export const whatsappApi = {
 
   getMySendHealth: async () => {
     const r = await apiClient.get<SendHealth | null>("/whatsapp/sessions/me/health");
+    return r.data;
+  },
+
+  /** Admin only. Send {} to clear every override. */
+  updateMySendingLimits: async (limits: SendingLimits) => {
+    const r = await apiClient.put<SendHealth>("/whatsapp/sessions/me/sending-limits", limits);
     return r.data;
   },
 

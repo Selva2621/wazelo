@@ -4,22 +4,30 @@ import {
   CampaignStatus,
   MessageDirection,
   MessageStatus,
+  Prisma,
   SequenceRecipientStatus,
   SequenceStatus,
+  UsageMetricType,
 } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { SEND_SAFETY_CONFIG } from '@/common/constants';
 import {
   BulkSendDecision,
   HealthVerdict,
   decideBulkSend,
   evaluateDeliveryHealth,
+  SendingLimits,
+  bulkGapRange,
   isWithinSendWindow,
   localDayStart,
+  nextSendWindowStart,
+  readSendingLimits,
   warmupTier,
 } from './send-safety.policy';
 
 const TZ_CACHE_MS = 10 * 60 * 1000;
+const GAP_CACHE_MS = 60 * 1000;
 /** How often a message of a paused sequence re-checks whether it may go out */
 const SEQUENCE_PAUSE_RECHECK_MS = 15 * 60 * 1000;
 /** Rolling window for the per-contact limit on business-started messages */
@@ -32,8 +40,24 @@ export type BulkRelevance =
 
 export interface SendHealth {
   sessionId: string;
-  warmup: { stage: number; linkedDays: number; coldCap: number; bulkCap: number };
+  warmup: { stage: number; linkedDays: number; coldCap: number | null; bulkCap: number | null; customized: boolean };
   today: { bulkSent: number; coldSent: number };
+  /** What is left of today's caps on this number */
+  /** What is left of today's per-number caps (null = no daily cap on this number) */
+  remaining: { bulk: number | null; cold: number | null };
+  /** When today's counters reset (org midnight) */
+  resetsAt: string;
+  /** Admin-set limits for this number (empty = no daily cap, plan limit only) */
+  limits: SendingLimits;
+  /** plan | warmup | custom: what decides daily volume on this number */
+  limitMode: 'plan' | 'warmup' | 'custom';
+  /**
+   * The org's plan message allowance this billing period (shared by all numbers and
+   * channels). limit null = unlimited plan. This is the volume limit by default.
+   */
+  plan: { used: number; limit: number | null; remaining: number | null };
+  /** Effective gap between bulk messages */
+  bulkGapMs: { min: number; max: number };
   delivery: { sampled: number; delivered: number; rate: number | null };
   optOuts24h: number;
   withinSendingHours: boolean;
@@ -68,12 +92,16 @@ export function campaignSendWindow(sendAnyTime: boolean): { startHour: number; e
 @Injectable()
 export class AccountSafetyService {
   private readonly tzCache = new Map<string, { timeZone: string; at: number }>();
+  private readonly gapCache = new Map<string, { gap: { min: number; max: number }; at: number }>();
   private readonly campaignTzCache = new Map<
     string,
     { settings: { timeZone: string; sendAnyTime: boolean }; at: number }
   >();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usageTracking: UsageTrackingService,
+  ) {}
 
   /** Should this bulk message go out now? */
   async checkBulkSend(
@@ -85,7 +113,13 @@ export class AccountSafetyService {
   ): Promise<BulkSendDecision> {
     const session = await this.prisma.whatsAppSession.findUnique({
       where: { id: sessionId },
-      select: { linkedAt: true, createdAt: true, sendingPausedUntil: true, sendingPausedReason: true },
+      select: {
+        linkedAt: true,
+        createdAt: true,
+        sendingPausedUntil: true,
+        sendingPausedReason: true,
+        sendingLimits: true,
+      },
     });
     if (!session) return { allowed: true };
 
@@ -111,6 +145,9 @@ export class AccountSafetyService {
       bulkSentToday,
       coldSentToday,
       recipientIsCold,
+      // Counters reset at the org's midnight, whatever zone the campaign sends in
+      budgetTimeZone: orgTimeZone,
+      limits: readSendingLimits(session.sendingLimits),
       // Campaigns use their own window; "send any time" campaigns run round the
       // clock (the daily per-number caps still apply and roll over each day)
       ...(campaignSettings && {
@@ -297,6 +334,31 @@ export class AccountSafetyService {
     ]);
   }
 
+  /** Gap between bulk sends on this number; read for every paced message, so cached briefly. */
+  async getBulkGap(sessionId: string): Promise<{ min: number; max: number }> {
+    const hit = this.gapCache.get(sessionId);
+    if (hit && Date.now() - hit.at < GAP_CACHE_MS) return hit.gap;
+    const session = await this.prisma.whatsAppSession.findUnique({
+      where: { id: sessionId },
+      select: { sendingLimits: true },
+    });
+    const gap = bulkGapRange(readSendingLimits(session?.sendingLimits));
+    if (this.gapCache.size > 1_000) this.gapCache.clear();
+    this.gapCache.set(sessionId, { gap, at: Date.now() });
+    return gap;
+  }
+
+  /** Replace this number's sending limits ({} = back to the warm-up defaults). */
+  async setSendingLimits(sessionId: string, limits: SendingLimits): Promise<SendingLimits> {
+    const clean = readSendingLimits(limits);
+    await this.prisma.whatsAppSession.update({
+      where: { id: sessionId },
+      data: { sendingLimits: Object.keys(clean).length > 0 ? (clean as object) : Prisma.DbNull },
+    });
+    this.gapCache.delete(sessionId);
+    return clean;
+  }
+
   async pauseBulkSending(sessionId: string, reason: string, now = new Date()): Promise<Date> {
     const until = new Date(now.getTime() + SEND_SAFETY_CONFIG.HEALTH_PAUSE_MS);
     await this.prisma.whatsAppSession.update({
@@ -317,13 +379,21 @@ export class AccountSafetyService {
   async getHealth(orgId: string, sessionId: string, now = new Date()): Promise<SendHealth | null> {
     const session = await this.prisma.whatsAppSession.findFirst({
       where: { id: sessionId, orgId, deletedAt: null },
-      select: { id: true, linkedAt: true, createdAt: true, sendingPausedUntil: true, sendingPausedReason: true },
+      select: {
+        id: true,
+        linkedAt: true,
+        createdAt: true,
+        sendingPausedUntil: true,
+        sendingPausedReason: true,
+        sendingLimits: true,
+      },
     });
     if (!session) return null;
 
     const timeZone = await this.orgTimeZone(orgId);
     const linkedAt = session.linkedAt ?? session.createdAt;
-    const tier = warmupTier(linkedAt, now);
+    const limits = readSendingLimits(session.sendingLimits);
+    const tier = warmupTier(linkedAt, now, limits);
     const dayStart = localDayStart(now, timeZone);
 
     const [bulkSent, coldSent, health] = await Promise.all([
@@ -337,7 +407,14 @@ export class AccountSafetyService {
         ? { until: session.sendingPausedUntil.toISOString(), reason: session.sendingPausedReason }
         : null;
 
-    const nearCap = bulkSent >= tier.bulkCap * 0.8 || coldSent >= tier.coldCap * 0.8;
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    const planLimit = usage.limitValue > 0 ? usage.limitValue : null;
+    const planRemaining = planLimit === null ? null : Math.max(0, planLimit - usage.currentValue);
+
+    const nearCap =
+      (tier.bulkCap !== null && bulkSent >= tier.bulkCap * 0.8) ||
+      (tier.coldCap !== null && coldSent >= tier.coldCap * 0.8) ||
+      (planLimit !== null && usage.currentValue >= planLimit * 0.8);
     const weakDelivery =
       health.sampled >= SEND_SAFETY_CONFIG.HEALTH_MIN_SAMPLE &&
       health.deliveryRate !== null &&
@@ -350,8 +427,21 @@ export class AccountSafetyService {
         linkedDays: Math.floor((now.getTime() - linkedAt.getTime()) / (24 * 60 * 60 * 1000)),
         coldCap: tier.coldCap,
         bulkCap: tier.bulkCap,
+        customized: tier.customized,
       },
       today: { bulkSent, coldSent },
+      remaining: (() => {
+        const bulk = tier.bulkCap === null ? null : Math.max(0, tier.bulkCap - bulkSent);
+        // New contacts also use up bulk allowance
+        const coldLeft = tier.coldCap === null ? null : Math.max(0, tier.coldCap - coldSent);
+        const cold = coldLeft === null ? bulk : bulk === null ? coldLeft : Math.min(coldLeft, bulk);
+        return { bulk, cold };
+      })(),
+      resetsAt: nextSendWindowStart(now, timeZone, 0).toISOString(),
+      limits,
+      limitMode: tier.mode,
+      plan: { used: usage.currentValue, limit: planLimit, remaining: planRemaining },
+      bulkGapMs: bulkGapRange(limits),
       delivery: { sampled: health.sampled, delivered: health.delivered, rate: health.deliveryRate },
       optOuts24h: health.optOuts,
       withinSendingHours: isWithinSendWindow(now, timeZone),

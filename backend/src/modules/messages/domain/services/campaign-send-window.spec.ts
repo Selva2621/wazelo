@@ -30,10 +30,11 @@ describe('campaign send window', () => {
     expect(decideBulkSend({ ...base, sendWindow: campaignSendWindow(true) }).allowed).toBe(true);
   });
 
-  it('still stops at the daily cold cap, and resumes the next day', () => {
+  it('still stops at a daily cold cap when warm-up is on for the number, and resumes the next day', () => {
     const decision = decideBulkSend({
       ...base,
       coldSentToday: 10_000,
+      limits: { warmupEnabled: true },
       bulkSentToday: 10_000,
       sendWindow: campaignSendWindow(true),
     });

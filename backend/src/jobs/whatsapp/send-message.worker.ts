@@ -21,7 +21,9 @@ import {
   SEND_SAFETY_CONFIG,
 } from '@/common/constants';
 import { TEST_RECIPIENT_BLOCKED_ERROR, isTestModeOn } from '@/common/utils/test-recipient-guard.util';
-import { AuditAction, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
+import { AuditAction, CampaignRecipientStatus, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
+import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
+import { pauseCampaignSystem } from '@/jobs/campaign/kill-switch-pause';
 import { maskPhone, sentBy } from './send-log';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
@@ -90,6 +92,7 @@ export class SendMessageWorker implements OnModuleInit {
     private readonly orgStatus: OrgStatusService,
     private readonly killSwitches: KillSwitchService,
     private readonly usageTracking: UsageTrackingService,
+    private readonly campaignRepo: CampaignRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -139,6 +142,14 @@ export class SendMessageWorker implements OnModuleInit {
         error: 'Organization suspended',
         metadata: { jobId },
       });
+      // Lets a campaign close this recipient and move on instead of waiting on it
+      this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_FAILED, {
+        messageId,
+        sessionId,
+        orgId,
+        reason: 'Organization suspended',
+        retryCount: message.retryCount,
+      });
       this.logger.warn(`Message ${messageId} not sent — org ${orgId} is suspended`);
       return;
     }
@@ -167,6 +178,23 @@ export class SendMessageWorker implements OnModuleInit {
         : (await this.usageTracking.hasEndedSubscription(orgId))
           ? 'Your plan has ended. Choose a plan in Billing to keep sending.'
           : null;
+    if (blockReason && typeof campaignId === 'string') {
+      // A campaign that runs out of plan messages is paused, not failed: every
+      // unsent recipient stays PENDING and a resume (after an upgrade or the
+      // monthly reset) continues where it stopped. Nothing was sent, so nothing
+      // can be sent twice: the message's idempotency key is released.
+      await pauseCampaignSystem(this.campaignRepo, campaignId, orgId, blockReason, 'plan-message-limit', this.eventEmitter);
+      await this.accountSafety.dropBulkMessage(messageId, blockReason, CampaignRecipientStatus.PENDING);
+      await this.messageEventRepo.record({
+        messageId,
+        orgId,
+        status: MessageStatus.FAILED,
+        error: blockReason,
+        metadata: { jobId, usageLimit: true, campaignPaused: true },
+      });
+      this.logger.warn(`Campaign ${campaignId} paused for org ${orgId}: ${blockReason}`);
+      return;
+    }
     if (blockReason) {
       const reason = blockReason;
       await this.messageRepo.markFailed(messageId, reason);
@@ -242,7 +270,8 @@ export class SendMessageWorker implements OnModuleInit {
       const remaining = data.slotAt! - Date.now();
       if (remaining > 0) await sleep(remaining);
     } else {
-      const { sendAt, waitMs } = this.pacer.reserve(sessionId, lane);
+      const bulkGap = lane === 'bulk' ? await this.accountSafety.getBulkGap(sessionId) : undefined;
+      const { sendAt, waitMs } = this.pacer.reserve(sessionId, lane, Date.now(), bulkGap);
       if (waitMs > SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS) {
         // nextRetryAt keeps the stale-queue recovery from re-publishing it early
         await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, {
