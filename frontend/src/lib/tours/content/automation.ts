@@ -226,7 +226,7 @@ export const automationTours: TourDef[] = [
 
   {
     id: "automation-rule",
-    version: 2,
+    version: 3,
     title: "Rule editor",
     summary: "Set the trigger, conditions and actions of one rule.",
     section: "Automation",
@@ -243,8 +243,14 @@ export const automationTours: TourDef[] = [
       {
         target: "rule-trigger",
         title: "Trigger",
-        body: "What starts the rule: a new message, a keyword, a new contact, a status or tag change, and more.",
-        example: { kind: "chips", items: ["Message received", "Keyword: price", "Contact created", "Tag added"] },
+        body: "What starts the rule: a new message, a keyword, a new contact, a Facebook or Instagram lead form, a status change, and more.",
+        example: { kind: "chips", items: ["Message received", "Keyword: price", "Contact created", "Lead ad received"] },
+      },
+      {
+        target: "rule-lead-filters",
+        ifMissing: "skip",
+        title: "Lead ad filters",
+        body: "Pick the platform or one lead form, and turn on “New contacts only” so repeat leads aren't welcomed twice. Form answers go into messages as {{lead.city}}, {{lead.campaign}}…",
       },
       {
         target: "rule-conditions",

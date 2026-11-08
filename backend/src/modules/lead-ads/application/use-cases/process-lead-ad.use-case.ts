@@ -86,10 +86,14 @@ export class ProcessLeadAdUseCase {
         fields.email ||
         entry.leadgenId;
 
+      // A repeat lead from a known number enriches that contact; only a new one is "created"
+      const existingContactId = await this.findExistingContactId(entry.orgId, phoneNumber);
+      const isNewContact = !existingContactId;
+
       const contact = await this.prisma.contact.upsert({
         where: {
           // Use the partial unique index simulation
-          id: await this.findExistingContactId(entry.orgId, phoneNumber),
+          id: existingContactId ?? crypto.randomUUID(),
         },
         create: {
           orgId: entry.orgId,
@@ -161,19 +165,24 @@ export class ProcessLeadAdUseCase {
         contactEmail: fields.email,
         adName: leadData.adName || entry.adName,
         campaignName: leadData.campaignName || entry.campaignName,
-        formId: entry.formId,
+        formId: leadData.formId || entry.formId,
         leadData: fields.customFields,
+        isNewContact,
       });
 
-      // Also emit CONTACT_CREATED for existing automation triggers
-      this.eventEmitter.emit(EVENT_NAMES.CONTACT_CREATED, {
-        contactId: contact.id,
-        orgId: entry.orgId,
-        phoneNumber,
-        ownerId,
-        source,
-        createdById: ownerId,
-      });
+      // CONTACT_CREATED only for a new contact — a repeat lead must not re-run
+      // "new contact" automations, scoring or sequences
+      if (isNewContact) {
+        this.eventEmitter.emit(EVENT_NAMES.CONTACT_CREATED, {
+          contactId: contact.id,
+          orgId: entry.orgId,
+          phoneNumber,
+          ownerId,
+          source,
+          createdById: ownerId,
+          leadAd: { platform: entry.platform, formId: leadData.formId || entry.formId },
+        });
+      }
 
       this.logger.log(
         `Lead ${entry.leadgenId} processed → Contact ${contact.id} (${entry.platform})`,
@@ -201,12 +210,11 @@ export class ProcessLeadAdUseCase {
   private async findExistingContactId(
     orgId: string,
     phoneNumber: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const existing = await this.prisma.contact.findFirst({
       where: { orgId, phoneNumber, deletedAt: null },
       select: { id: true },
     });
-    // Return existing ID or a new UUID for creation
-    return existing?.id || crypto.randomUUID();
+    return existing?.id ?? null;
   }
 }

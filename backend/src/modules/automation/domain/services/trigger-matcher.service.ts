@@ -30,6 +30,9 @@ export class TriggerMatcherService {
         // Only raised by the no-reply worker, after it confirmed the contact stayed silent
         return input.eventPayload.noReplyConfirmed === true;
 
+      case AutomationTriggerType.LEAD_AD_RECEIVED:
+        return this.matchLeadAd(input.triggerConfig, input.eventPayload);
+
       case AutomationTriggerType.SHOPIFY_ORDER_CREATED:
         return this.matchShopifyOrder(input.triggerConfig, input.eventPayload);
 
@@ -80,6 +83,22 @@ export class TriggerMatcherService {
     if (source && _payload.source !== source) {
       return false;
     }
+    return true;
+  }
+
+  /** Empty filters match every lead; set ones must all match */
+  private matchLeadAd(
+    config: Record<string, unknown>,
+    payload: Record<string, unknown>,
+  ): boolean {
+    const platform = config.platform as string | undefined;
+    if (platform && payload.platform !== platform) return false;
+
+    const formId = (config.formId as string | undefined)?.trim();
+    if (formId && payload.formId !== formId) return false;
+
+    if (config.newContactsOnly === true && payload.isNewContact !== true) return false;
+
     return true;
   }
 

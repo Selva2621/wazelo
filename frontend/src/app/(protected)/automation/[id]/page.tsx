@@ -48,6 +48,8 @@ import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
+import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
 import { SendEmailFields, validateSendEmail, type SendEmailErrors } from "@/components/automation/send-email-fields";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -55,6 +57,7 @@ import { SendEmailFields, validateSendEmail, type SendEmailErrors } from "@/comp
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
   { value: "MESSAGE_RECEIVED",        label: "Message Received" },
   { value: "CONTACT_CREATED",         label: "Contact Created" },
+  { value: "LEAD_AD_RECEIVED",        label: "Lead Ad Received" },
   { value: "LEAD_STATUS_CHANGED",     label: "Lead Status Changed" },
   { value: "NO_REPLY",                label: "No Reply Follow-Up" },
   { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
@@ -95,14 +98,6 @@ const CONDITION_OPERATORS: { value: AutomationConditionOperator; label: string }
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
 
-const VAR_CHIPS = [
-  { label: "Name",       value: "{{contact.name}}" },
-  { label: "Phone",      value: "{{contact.phone}}" },
-  { label: "Order #",    value: "{{shopify.order_name}}" },
-  { label: "Total",      value: "{{shopify.total_price}}" },
-  { label: "Items",      value: "{{shopify.items}}" },
-  { label: "Cart Total", value: "{{shopify.cart_total}}" },
-];
 
 const TAKE = 20;
 
@@ -239,6 +234,20 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           onChange={(e) => onChange("minCartValue", parseFloat(e.target.value) || undefined)}
         />
       </div>
+    );
+  }
+
+  if (triggerType === "LEAD_AD_RECEIVED") {
+    return (
+      <LeadAdTriggerFields
+        value={{
+          platform: triggerConfig.platform as string | undefined,
+          formId: triggerConfig.formId as string | undefined,
+          newContactsOnly: triggerConfig.newContactsOnly as boolean | undefined,
+        }}
+        onChange={onChange}
+        inputClassName={inputCls}
+      />
     );
   }
 
@@ -454,7 +463,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
               className={`${inputCls} resize-none mt-1`}
             />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {VAR_CHIPS.map((chip) => (
+              {[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)].map((chip) => (
                 <button
                   key={chip.value}
                   type="button"
@@ -484,7 +493,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             subject={String(row.actionConfig.subject ?? "")}
             body={String(row.actionConfig.body ?? "")}
             onChange={(patch) => onUpdate(row.id, { actionConfig: { ...row.actionConfig, ...patch } })}
-            extraChips={triggerType.startsWith("SHOPIFY_") ? VAR_CHIPS.filter((c) => c.value.startsWith("{{shopify.")) : []}
+            extraChips={triggerVarChips(triggerType)}
             errors={emailErrors}
             inputClassName={inputCls}
             labelClassName="text-caption"

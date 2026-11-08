@@ -9,6 +9,9 @@ const triggerConfigSchema = z.object({
   minOrderValue: z.number().min(0).optional(),
   minCartValue: z.number().min(0).optional(),
   stageId: z.string().optional().or(z.literal("")),
+  platform: z.string().optional(),
+  formId: z.string().max(64).optional().or(z.literal("")),
+  newContactsOnly: z.boolean().optional(),
 });
 
 const conditionSchema = z.object({

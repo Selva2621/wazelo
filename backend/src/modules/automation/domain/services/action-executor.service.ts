@@ -109,6 +109,12 @@ export class ActionExecutorService {
       if (eventPayload.recoveryUrl)      vars['shopify.recovery_url']     = String(eventPayload.recoveryUrl);
       if (eventPayload.cartTotal)        vars['shopify.cart_total']       = String(eventPayload.cartTotal);
 
+      // Meta lead form answers + ad info: {{lead.city}}, {{lead.campaign}}…
+      const leadVars = eventPayload.leadVars as Record<string, string> | undefined;
+      if (leadVars && typeof leadVars === 'object') {
+        for (const [key, value] of Object.entries(leadVars)) vars[`lead.${key}`] = String(value);
+      }
+
       const items = (eventPayload.items ?? eventPayload.lineItems) as Array<{ quantity: number; title: string }> | undefined;
       if (Array.isArray(items)) {
         vars['shopify.items'] = items.map((i) => `${i.quantity}x ${i.title}`).join(', ');
@@ -183,6 +189,8 @@ export class ActionExecutorService {
     if (contact.deletedAt || contact.mergedIntoId) return skip('Contact deleted or merged');
     // A new contact who wrote first is greeted by the chatbot — one welcome, not two
     if (input.eventPayload?.welcomeByChatbot === true) return skip('The chatbot greets new chats');
+    // A Meta lead is greeted by its "Lead Ad Received" rule — one welcome, not two
+    if (input.eventPayload?.welcomeByLeadAdRule === true) return skip('A "Lead Ad Received" rule greets this lead');
     // Opted out: no messages we start. A reply to something they just wrote is still fine.
     if (contact.optedOut && !inbound) return skip('Contact opted out');
 

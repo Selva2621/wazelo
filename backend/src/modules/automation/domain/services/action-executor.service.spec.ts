@@ -203,6 +203,13 @@ describe('ActionExecutorService SEND_MESSAGE', () => {
     expect(messageRepo.create).not.toHaveBeenCalled();
   });
 
+  it('sends no second welcome when a "Lead Ad Received" rule greets the lead', async () => {
+    const { service, messageRepo } = setup();
+    const result = await service.execute(send({ contactId: 'ct1', welcomeByLeadAdRule: true }));
+    expect(result).toEqual(expect.objectContaining({ success: true, result: expect.objectContaining({ skipped: true }) }));
+    expect(messageRepo.create).not.toHaveBeenCalled();
+  });
+
   it('never messages a deleted or merged contact', async () => {
     for (const contact of [
       { ...baseContact, deletedAt: new Date() },

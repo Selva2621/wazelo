@@ -25,6 +25,8 @@ import { Modal } from "@/components/ui/modal";
 import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
 import type { AutomationPreset } from "@/lib/constants/automation-presets";
 import { SendEmailFields, type SendEmailErrors } from "@/components/automation/send-email-fields";
+import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -52,6 +54,7 @@ const EMPTY_RULE: Partial<CreateAutomationRuleFormData> = {
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
   { value: "MESSAGE_RECEIVED",      label: "Message Received" },
   { value: "CONTACT_CREATED",       label: "Contact Created" },
+  { value: "LEAD_AD_RECEIVED",      label: "Lead Ad Received" },
   { value: "LEAD_STATUS_CHANGED",   label: "Lead Status Changed" },
   { value: "NO_REPLY",              label: "No Reply Follow-Up" },
   { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
@@ -93,21 +96,7 @@ const TEAM_EXAMPLES = {
 };
 
 // Variable hint chips for message body textarea
-const VAR_CHIPS = [
-  { label: "Name",          value: "{{contact.name}}" },
-  { label: "Phone",         value: "{{contact.phone}}" },
-  { label: "Order #",       value: "{{shopify.order_name}}" },
-  { label: "Total",         value: "{{shopify.total_price}}" },
-  { label: "Currency",      value: "{{shopify.currency}}" },
-  { label: "Items",         value: "{{shopify.items}}" },
-  { label: "Recovery URL",  value: "{{shopify.recovery_url}}" },
-  { label: "Cart Total",    value: "{{shopify.cart_total}}" },
-];
-
-/** The trigger's own fields for an email (the contact fields come from EMAIL_FIELDS) */
-function shopifyChipsFor(triggerType: AutomationTriggerType) {
-  return triggerType.startsWith("SHOPIFY_") ? VAR_CHIPS.filter((c) => c.value.startsWith("{{shopify.")) : [];
-}
+const FIELD_INPUT_CLS = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
 
 // ─── Action config sub-form ───────────────────────────────────────────────────
 
@@ -124,7 +113,7 @@ interface ActionConfigFieldsProps {
 }
 
 function ActionConfigFields({ idx, actionType, register, setValue, getValues, config = {}, triggerType, configErrors }: ActionConfigFieldsProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = FIELD_INPUT_CLS;
 
   function insertVar(variable: string) {
     const field = `actions.${idx}.actionConfig.messageBody` as const;
@@ -140,7 +129,7 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
         onChange={(patch) =>
           setValue(`actions.${idx}.actionConfig`, { ...config, ...patch }, { shouldDirty: true, shouldValidate: !!configErrors })
         }
-        extraChips={shopifyChipsFor(triggerType)}
+        extraChips={triggerVarChips(triggerType)}
         errors={configErrors}
         inputClassName={inputCls.replace("mt-1 ", "")}
       />
@@ -166,12 +155,16 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
           <textarea
             {...register(`actions.${idx}.actionConfig.messageBody`)}
             rows={4}
-            placeholder={"Hi {{contact.name}}, your order {{shopify.order_name}} for ₹{{shopify.total_price}} is confirmed."}
+            placeholder={
+              triggerType === "LEAD_AD_RECEIVED"
+                ? "Hi {{contact.name}}, thanks for your interest in {{lead.campaign}}! We'll be in touch shortly."
+                : "Hi {{contact.name}}, thanks for reaching out!"
+            }
             className={`${inputCls} resize-none`}
           />
           {/* Variable chips */}
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {VAR_CHIPS.map((chip) => (
+            {[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)].map((chip) => (
               <button
                 key={chip.value}
                 type="button"
@@ -183,7 +176,9 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
             ))}
           </div>
           <p className="text-caption text-on-surface-variant/50 mt-1">
-            Click chips to insert variables. Unknown variables are left as-is.
+            {triggerType === "LEAD_AD_RECEIVED"
+              ? "Form answers work too: {{lead.city}}, {{lead.budget}}…"
+              : "Click chips to insert variables. Unknown variables are left as-is."}
           </p>
         </div>
       </div>
@@ -603,6 +598,20 @@ export function CreateAutomationRuleModal({
               <p className="text-label text-on-surface-variant/60">
                 Triggers when any new contact is created.
               </p>
+            )}
+
+            {triggerType === "LEAD_AD_RECEIVED" && (
+              <LeadAdTriggerFields
+                value={{
+                  platform: watch("triggerConfig.platform"),
+                  formId: watch("triggerConfig.formId"),
+                  newContactsOnly: watch("triggerConfig.newContactsOnly"),
+                }}
+                onChange={(k, v) =>
+                  setValue(`triggerConfig.${k}`, v as never, { shouldValidate: true, shouldDirty: true })
+                }
+                inputClassName={FIELD_INPUT_CLS}
+              />
             )}
 
             {triggerType === "DEAL_STAGE_CHANGED" && (

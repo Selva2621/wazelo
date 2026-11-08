@@ -270,6 +270,8 @@ export interface ContactCreatedEvent {
   ownerId: string;
   source: string;
   createdById: string;
+  /** Set when the contact came from a Meta lead form */
+  leadAd?: { platform: string; formId: string | null };
 }
 
 export interface ContactAutoCreatedEvent {
@@ -365,6 +367,8 @@ export interface LeadAdReceivedEvent {
   campaignName: string | null;
   formId: string | null;
   leadData: Record<string, unknown>;
+  /** false when the number was already a contact (a repeat lead) */
+  isNewContact: boolean;
 }
 
 export interface LeadAdProcessedEvent {

@@ -49,6 +49,12 @@ export interface TriggerConfig {
   delaySeconds?: number;
   /** DEAL_STAGE_CHANGED: empty → any stage */
   stageId?: string;
+  /** LEAD_AD_RECEIVED: facebook | instagram (empty → any) */
+  platform?: string;
+  /** LEAD_AD_RECEIVED: one Meta lead form (empty → any) */
+  formId?: string;
+  /** LEAD_AD_RECEIVED: skip repeat leads from existing contacts */
+  newContactsOnly?: boolean;
 }
 
 // ─── Condition ───
