@@ -416,7 +416,9 @@ export const SEND_SAFETY_CONFIG = {
   WA_CHECK_PER_DAY: 150,
   WA_CHECK_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   /**
-   * Warm-up: daily bulk caps by how long the number has been linked.
+   * Optional warm-up (opt-in per number via sending_limits.warmupEnabled): daily bulk
+   * caps by how long the number has been linked. Off by default: without it a number
+   * has no daily cap and only the org plan message limit limits volume.
    * `cold` = messages to people who never messaged first.
    */
   WARMUP_TIERS: [
@@ -450,14 +452,30 @@ export const SEND_SAFETY_CONFIG = {
   OPT_OUT_KEYWORDS: ['stop', 'unsubscribe', 'stop all', 'opt out', 'optout', 'remove me', 'spam'],
 } as const;
 
+/**
+ * Bounds for the per-number sending limits an admin can set (whatsapp_sessions.sending_limits).
+ * The warm-up tiers above are Wazelo defaults, not WhatsApp rules: a number that was
+ * already in use before it was linked can start at a later stage, and caps can be
+ * tuned. These ceilings stop a typo (e.g. 50000/day) from getting a number banned.
+ */
+export const SENDING_LIMIT_BOUNDS = {
+  DAILY_BULK_MAX: 1_000,
+  DAILY_COLD_MAX: 1_000,
+  /** Shortest allowed gap between two bulk messages on one number */
+  BULK_GAP_MIN_MS: 5_000,
+  BULK_GAP_MAX_MS: 10 * 60 * 1000,
+  WARMUP_STAGE_MIN: 1,
+  WARMUP_STAGE_MAX: 4,
+} as const;
+
 export const CAMPAIGN_CONFIG = {
   /** Recipient grouping; batches are dealt round-robin across the selected numbers and
    *  each number sends its batches one after another (numbers run in parallel) */
   BATCH_SIZE: Math.max(1, Number.parseInt(process.env.CAMPAIGN_BATCH_SIZE ?? '100', 10) || 100),
   /** Maximum recipients resolved for one campaign; override with CAMPAIGN_MAX_RECIPIENTS */
   MAX_RECIPIENTS: Math.max(1, Number.parseInt(process.env.CAMPAIGN_MAX_RECIPIENTS ?? '10000', 10) || 10000),
-  /** Concurrent campaigns are allowed; recipient claims serialize each individual campaign */
-  WORKER_CONCURRENCY: 3,
+  /** Concurrent campaign batches across all campaigns; override with CAMPAIGN_WORKER_CONCURRENCY */
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.CAMPAIGN_WORKER_CONCURRENCY ?? '3', 10) || 3),
   /** Campaign messages get lower priority than direct messages */
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
@@ -520,7 +538,7 @@ export const MESSAGING_CONFIG = {
   /** How long a message can stay in QUEUED before recovery picks it up (ms) */
   QUEUED_STALE_THRESHOLD_MS: 300_000,
   /** Worker concurrency (jobs processed in parallel) */
-  WORKER_CONCURRENCY: 5,
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.SEND_WORKER_CONCURRENCY ?? '5', 10) || 5),
   /** Incoming message processing timeout (ms) */
   INCOMING_PROCESS_TIMEOUT_MS: 30_000,
 } as const;

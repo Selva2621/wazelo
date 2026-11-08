@@ -1,3 +1,4 @@
+import type { AccountSafetyService } from '@/modules/messages/domain/services/account-safety.service';
 import { CampaignStatus, CampaignRecipientStatus, WhatsAppSessionStatus } from '@prisma/client';
 import { CampaignRecipientRepository, type CampaignBatchProgress } from '../../infrastructure/repositories/campaign-recipient.repository';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
@@ -61,7 +62,8 @@ describe('GetCampaignAnalyticsUseCase', () => {
       ]),
     } as unknown as CampaignRecipientRepository;
 
-    const result = await new GetCampaignAnalyticsUseCase(campaignRepo, recipientRepo)
+    const accountSafety = { getHealth: jest.fn() } as unknown as AccountSafetyService;
+    const result = await new GetCampaignAnalyticsUseCase(campaignRepo, recipientRepo, accountSafety)
       .execute('campaign-1', 'org-1');
 
     expect(result.timing.elapsedMs).toBe(45 * 60 * 1000);

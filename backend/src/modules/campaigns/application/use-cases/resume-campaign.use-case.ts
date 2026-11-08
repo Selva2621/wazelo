@@ -14,7 +14,8 @@ import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
-import { AuditAction, CampaignStatus, WhatsAppSessionStatus } from '@prisma/client';
+import { AuditAction, CampaignStatus, UsageMetricType, WhatsAppSessionStatus } from '@prisma/client';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 
 @Injectable()
 export class ResumeCampaignUseCase {
@@ -29,6 +30,7 @@ export class ResumeCampaignUseCase {
     private readonly eventEmitter: EventEmitter2,
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly messageRepo: MessageRepository,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
 
   async execute(
@@ -44,6 +46,15 @@ export class ResumeCampaignUseCase {
     }
 
     this.stateMachine.assertTransition(campaign.status, CampaignStatus.RUNNING);
+
+    // The plan's message limit is the campaign volume limit: resuming with none
+    // left would only pause again on the first message.
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    if (!usage.allowed && usage.limitValue > 0) {
+      throw new BadRequestException(
+        `Your plan's monthly message limit is used up (${usage.currentValue}/${usage.limitValue}). Upgrade your plan or wait for the next billing period, then resume.`,
+      );
+    }
 
     // If the campaign's WhatsApp number was logged out or banned, continue on a connected one
     // (email campaigns send from the workspace's mailbox: no number)

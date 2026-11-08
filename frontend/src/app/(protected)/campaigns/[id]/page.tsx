@@ -34,6 +34,7 @@ import { ChannelIcon } from "@/components/campaigns/email-channel";
 import { CampaignBatchTable } from "@/components/campaigns/campaign-batch-table";
 import { CampaignElapsedTimer } from "@/components/campaigns/campaign-elapsed-timer";
 import { CampaignSendWindowNote } from "@/components/campaigns/campaign-send-window-note";
+import { CampaignSendingStatusPanel } from "@/components/campaigns/campaign-sending-status";
 import type {
   CampaignRecipientStatus,
   ListRecipientsParams,
@@ -287,6 +288,10 @@ export default function CampaignDetailPage() {
           processed={analytics?.progress.processed ?? campaign.sentCount + campaign.failedCount}
           showProgress={isRunning || isPaused}
         />
+
+        {isWhatsAppCampaign && analytics?.sending && (isRunning || isPaused) && (
+          <CampaignSendingStatusPanel analytics={analytics} sending={analytics.sending} />
+        )}
 
         {campaign.status === "COMPLETED" && campaign.failedCount > 0 && (
           <p className="text-label text-on-surface-variant">

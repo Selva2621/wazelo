@@ -3,6 +3,7 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import {
   CampaignRecipient,
   CampaignRecipientStatus,
+  MessageStatus,
   Prisma,
 } from '@prisma/client';
 import type { BatchWorkSummary } from '../../domain/services/batch-plan';
@@ -65,6 +66,15 @@ export class CampaignRecipientRepository {
     return this.prisma.campaignRecipient.findUnique({
       where: { messageId },
     });
+  }
+
+  /** Is this campaign message FAILED for good (not QUEUED for a retry)? */
+  async isMessageFinallyFailed(messageId: string): Promise<boolean> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+      select: { status: true },
+    });
+    return message?.status === MessageStatus.FAILED;
   }
 
   /** Email campaigns: the recipient an email belongs to */
@@ -326,6 +336,28 @@ export class CampaignRecipientRepository {
       },
     });
     return result.count;
+  }
+
+  /**
+   * Recipients whose message is waiting on a sending limit / sending hours: still
+   * QUEUED with a re-check scheduled more than a minute out. (Normal pacing gaps
+   * are under a minute.) They are not lost — the send worker picks them up then.
+   */
+  async countHeld(campaignId: string, now = new Date()): Promise<{ total: number; nextAttemptAt: Date | null }> {
+    const where = {
+      campaignId,
+      status: CampaignRecipientStatus.QUEUED,
+      message: { is: { status: MessageStatus.QUEUED, nextRetryAt: { gt: new Date(now.getTime() + 60_000) } } },
+    };
+    const [total, next] = await Promise.all([
+      this.prisma.campaignRecipient.count({ where }),
+      this.prisma.campaignRecipient.findFirst({
+        where,
+        select: { message: { select: { nextRetryAt: true } } },
+        orderBy: { message: { nextRetryAt: 'asc' } },
+      }),
+    ]);
+    return { total, nextAttemptAt: next?.message?.nextRetryAt ?? null };
   }
 
   async countByStatus(campaignId: string): Promise<RecipientStatusCounts> {

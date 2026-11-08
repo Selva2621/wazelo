@@ -25,7 +25,7 @@ function setup(
     campaignSequence: { findUnique: jest.fn(async () => ({ status: SequenceStatus.ACTIVE })) },
     sequenceRecipient: { findFirst: jest.fn(async () => (recipientStatus ? { status: recipientStatus } : null)) },
   };
-  return new AccountSafetyService(prisma as never);
+  return new AccountSafetyService(prisma as never, {} as never);
 }
 
 describe('Per-contact limit on business-started messages', () => {

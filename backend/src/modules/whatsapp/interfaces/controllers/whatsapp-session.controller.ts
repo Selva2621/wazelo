@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Put,
   Body,
   Param,
   Query,
@@ -26,6 +27,7 @@ import {
   DisconnectSessionDto,
   ListSessionsQueryDto,
   RequestPairingCodeDto,
+  UpdateSendingLimitsDto,
 } from '../../application/dto';
 import {
   InitiateSessionUseCase,
@@ -161,6 +163,37 @@ export class WhatsAppSessionController {
   @HttpCode(HttpStatus.OK)
   async resumeMySending(@CurrentUser() user: JwtPayload) {
     return this.sendHealthUseCase.resumeForUser(user.sub, user.orgId);
+  }
+
+  /** Admins tune their own number's sending limits (warm-up stage, daily caps, gap). */
+  @Put('sessions/me/sending-limits')
+  @Roles('ADMIN')
+  @Permissions(PERMISSIONS.WHATSAPP_SESSION_ADMIN)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  async updateMySendingLimits(@CurrentUser() user: JwtPayload, @Body() dto: UpdateSendingLimitsDto) {
+    return this.sendHealthUseCase.updateLimitsForUser(user.sub, user.orgId, dto);
+  }
+
+  @Get('sessions/:sessionId/health')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.WHATSAPP_SESSION_VIEW_ALL)
+  async getSessionSendHealth(
+    @CurrentUser() user: JwtPayload,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.sendHealthUseCase.getForSession(sessionId, user.orgId);
+  }
+
+  @Put('sessions/:sessionId/sending-limits')
+  @Roles('ADMIN')
+  @Permissions(PERMISSIONS.WHATSAPP_SESSION_ADMIN)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  async updateSessionSendingLimits(
+    @CurrentUser() user: JwtPayload,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Body() dto: UpdateSendingLimitsDto,
+  ) {
+    return this.sendHealthUseCase.updateLimits(sessionId, user.orgId, user.sub, dto);
   }
 
   @Get('sessions/:sessionId')

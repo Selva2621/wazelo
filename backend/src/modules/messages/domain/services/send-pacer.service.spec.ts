@@ -67,4 +67,11 @@ describe('SendPacerService', () => {
     pacer.reset('s1');
     expect(pacer.reserve('s1', 'bulk', now).waitMs).toBe(0);
   });
+
+  it('spaces bulk slots by a per-number gap', () => {
+    const gap = { min: 60_000, max: 60_000 };
+    const first = pacer.reserve('s9', 'bulk', now, gap);
+    const second = pacer.reserve('s9', 'bulk', now, gap);
+    expect(second.sendAt - first.sendAt).toBe(60_000);
+  });
 });

@@ -16,6 +16,21 @@ export async function pauseCampaignForKillSwitch(
   orgId: string,
   eventEmitter?: EventEmitter2,
 ): Promise<boolean> {
+  return pauseCampaignSystem(campaignRepo, campaignId, orgId, CAMPAIGN_KILL_SWITCH_REASON, 'platform-kill-switch', eventEmitter);
+}
+
+/**
+ * Pause a RUNNING campaign on the system's behalf (no user). PENDING recipients
+ * stay PENDING, so a normal resume continues exactly where it stopped.
+ */
+export async function pauseCampaignSystem(
+  campaignRepo: CampaignRepository,
+  campaignId: string,
+  orgId: string,
+  reason: string,
+  triggeredBy: string,
+  eventEmitter?: EventEmitter2,
+): Promise<boolean> {
   const paused = await campaignRepo.transitionStatus(campaignId, CampaignStatus.RUNNING, CampaignStatus.PAUSED);
   if (!paused) return false;
 
@@ -24,9 +39,9 @@ export async function pauseCampaignForKillSwitch(
     orgId,
     previousStatus: CampaignStatus.RUNNING,
     newStatus: CampaignStatus.PAUSED,
-    metadata: { reason: CAMPAIGN_KILL_SWITCH_REASON, triggeredBy: 'platform-kill-switch' },
+    metadata: { reason, triggeredBy },
   });
 
-  eventEmitter?.emit(EVENT_NAMES.CAMPAIGN_PAUSED, { campaignId, orgId, pausedById: null, reason: CAMPAIGN_KILL_SWITCH_REASON });
+  eventEmitter?.emit(EVENT_NAMES.CAMPAIGN_PAUSED, { campaignId, orgId, pausedById: null, reason });
   return true;
 }

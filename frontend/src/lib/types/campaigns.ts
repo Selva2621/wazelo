@@ -170,6 +170,33 @@ export interface CampaignAnalytics {
   };
   rates: { deliveryRate: number; failureRate: number; readRate: number };
   progress: { processed: number; remaining: number; percentComplete: number };
+  /** WhatsApp campaigns while running/paused: limit holds and allowance (older backends omit it) */
+  sending?: CampaignSendingStatus | null;
+}
+
+export interface CampaignSendingAllowance {
+  sessionId: string;
+  warmupStage: number;
+  customized: boolean;
+  /** plan = no daily cap on this number */
+  limitMode: "plan" | "warmup" | "custom";
+  dailyBulkCap: number | null;
+  dailyColdCap: number | null;
+  bulkSentToday: number;
+  coldSentToday: number;
+  remainingBulk: number | null;
+  remainingCold: number | null;
+  resetsAt: string;
+  paused: { until: string; reason: string | null } | null;
+}
+
+export interface CampaignSendingStatus {
+  /** Recipients waiting on a sending limit or sending hours (they send automatically later) */
+  held: number;
+  nextAttemptAt: string | null;
+  numbers: CampaignSendingAllowance[];
+  /** Org plan messages this period; limit null = unlimited */
+  plan: { used: number; limit: number | null; remaining: number | null } | null;
 }
 
 /**
