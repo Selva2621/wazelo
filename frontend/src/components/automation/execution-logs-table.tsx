@@ -35,6 +35,7 @@ const ACTION_LABELS: Record<string, string> = {
   ENROLL_IN_SEQUENCE: "Add to sequence",
   STOP_SEQUENCE: "Stop sequence",
   ASSIGN_CONVERSATION: "Assign chat",
+  ADD_TO_PRODUCT: "Add to product",
 };
 
 const actionLabel = (type: unknown) => ACTION_LABELS[String(type)] ?? String(type ?? "Action");

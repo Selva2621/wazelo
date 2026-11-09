@@ -4,7 +4,7 @@ import { buildLeadVars } from '@/events/handlers/automation-events.handler';
 
 describe('LEAD_AD_RECEIVED trigger', () => {
   const matcher = new TriggerMatcherService();
-  const lead = { platform: 'facebook', formId: 'form-1', isNewContact: false };
+  const lead = { platform: 'facebook', pageId: 'page-1', formId: 'form-1', isNewContact: false };
   const matches = (triggerConfig: Record<string, unknown>, eventPayload = lead) =>
     matcher.matches({ triggerType: AutomationTriggerType.LEAD_AD_RECEIVED, triggerConfig, eventPayload });
 
@@ -16,6 +16,12 @@ describe('LEAD_AD_RECEIVED trigger', () => {
     expect(matches({ platform: 'facebook', formId: 'form-1' })).toBe(true);
     expect(matches({ platform: 'instagram' })).toBe(false);
     expect(matches({ formId: 'form-2' })).toBe(false);
+  });
+
+  it('filters by Facebook Page (one brand, many forms)', () => {
+    expect(matches({ pageId: 'page-1' })).toBe(true);
+    expect(matches({ pageId: ' page-1 ' })).toBe(true);
+    expect(matches({ pageId: 'page-2' })).toBe(false);
   });
 
   it('skips repeat leads when new contacts only', () => {

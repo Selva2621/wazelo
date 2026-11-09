@@ -11,6 +11,7 @@ const triggerConfigSchema = z.object({
   stageId: z.string().optional().or(z.literal("")),
   platform: z.string().optional(),
   formId: z.string().max(64).optional().or(z.literal("")),
+  pageId: z.string().max(64).optional().or(z.literal("")),
   newContactsOnly: z.boolean().optional(),
 });
 
@@ -31,12 +32,15 @@ const actionSchema = z
       "ENROLL_IN_SEQUENCE",
       "STOP_SEQUENCE",
       "ASSIGN_CONVERSATION",
+      "ADD_TO_PRODUCT",
     ]),
     actionConfig: z.record(z.string(), z.any()),
     orderIndex: z.number().int().min(0).optional(),
     delaySeconds: z.number().int().min(0).optional(),
   })
   .superRefine((a, ctx) => {
+    if (a.actionType === "ADD_TO_PRODUCT" && !a.actionConfig.productId)
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "productId"], message: "Choose a product" });
     if (a.actionType !== "SEND_EMAIL") return;
     if (!String(a.actionConfig.subject ?? "").trim())
       ctx.addIssue({ code: "custom", path: ["actionConfig", "subject"], message: "Add a subject" });

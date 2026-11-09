@@ -411,6 +411,8 @@ enum AutomationActionType {
   ASSIGN_CONVERSATION
   /// Email the contact from the workspace's email account
   SEND_EMAIL
+  /// Link the contact to a product (campaigns can target by product)
+  ADD_TO_PRODUCT
 }
 
 enum AutomationRuleStatus {

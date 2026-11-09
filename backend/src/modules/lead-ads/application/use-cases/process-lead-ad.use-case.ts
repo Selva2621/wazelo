@@ -3,7 +3,19 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ContactSource } from '@prisma/client';
 import { LeadAdRepository } from '../../infrastructure/repositories/lead-ad.repository';
-import { MetaGraphApiService } from '../../domain/services/meta-graph-api.service';
+import { ConfigService } from '@nestjs/config';
+import { MetaGraphApiService, type MetaLeadData } from '../../domain/services/meta-graph-api.service';
+
+/** A dev test lead (lead-ads/dev/simulate) keeps its form answers in rawWebhookData */
+export interface SimulatedLeadPayload {
+  simulated: true;
+  fieldData: { name: string; values: string[] }[];
+}
+
+export function readSimulatedLead(raw: unknown): SimulatedLeadPayload | null {
+  const r = raw as Partial<SimulatedLeadPayload> | null;
+  return r?.simulated === true && Array.isArray(r.fieldData) ? (r as SimulatedLeadPayload) : null;
+}
 import { LeadAssignmentService } from '../../domain/services/lead-assignment.service';
 import { ChannelService } from '@/modules/channels/domain/services/channel.service';
 import { EVENT_NAMES } from '@/common/constants';
@@ -21,6 +33,7 @@ export class ProcessLeadAdUseCase {
     private readonly channelService: ChannelService,
     private readonly eventEmitter: EventEmitter2,
     private readonly orgLocale: OrgLocaleService,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(leadAdEntryId: string): Promise<void> {
@@ -41,20 +54,28 @@ export class ProcessLeadAdUseCase {
     await this.leadAdRepo.update(leadAdEntryId, { status: 'PROCESSING' });
 
     try {
-      // 3. Get access token from channel
-      let accessToken: string;
-      if (entry.channelId) {
-        const config = await this.channelService.getDecryptedConfig(entry.channelId);
-        accessToken = config.accessToken as string;
+      // 3–4. Full lead data: from Meta, or the stored answers of a dev test lead
+      const simulated = readSimulatedLead(entry.rawWebhookData);
+      let leadData: MetaLeadData;
+      if (simulated) {
+        if (this.config.get<string>('NODE_ENV') === 'production') {
+          throw new Error('Test leads are disabled in production');
+        }
+        leadData = {
+          id: entry.leadgenId,
+          createdTime: entry.createdAt.toISOString(),
+          fieldData: simulated.fieldData,
+          adName: entry.adName ?? undefined,
+          campaignName: entry.campaignName ?? undefined,
+          formId: entry.formId ?? undefined,
+        };
       } else {
-        throw new Error('No channel linked to this lead — cannot fetch lead data');
+        if (!entry.channelId) {
+          throw new Error('No channel linked to this lead — cannot fetch lead data');
+        }
+        const config = await this.channelService.getDecryptedConfig(entry.channelId);
+        leadData = await this.metaGraphApi.fetchLeadData(entry.leadgenId, config.accessToken as string);
       }
-
-      // 4. Fetch full lead data from Meta Graph API
-      const leadData = await this.metaGraphApi.fetchLeadData(
-        entry.leadgenId,
-        accessToken,
-      );
 
       // 5. Parse lead fields
       const fields = this.metaGraphApi.parseLeadFields(leadData.fieldData);
@@ -180,7 +201,7 @@ export class ProcessLeadAdUseCase {
           ownerId,
           source,
           createdById: ownerId,
-          leadAd: { platform: entry.platform, formId: leadData.formId || entry.formId },
+          leadAd: { platform: entry.platform, pageId: entry.pageId, formId: leadData.formId || entry.formId },
         });
       }
 

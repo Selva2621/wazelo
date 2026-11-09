@@ -28,7 +28,8 @@ export type AutomationActionType =
   | "UPDATE_STATUS"
   | "ENROLL_IN_SEQUENCE"
   | "STOP_SEQUENCE"
-  | "ASSIGN_CONVERSATION";
+  | "ASSIGN_CONVERSATION"
+  | "ADD_TO_PRODUCT";
 
 export type AutomationRuleStatus = "ACTIVE" | "INACTIVE";
 
@@ -53,6 +54,8 @@ export interface TriggerConfig {
   platform?: string;
   /** LEAD_AD_RECEIVED: one Meta lead form (empty → any) */
   formId?: string;
+  /** LEAD_AD_RECEIVED: one Facebook Page, i.e. one brand (empty → any) */
+  pageId?: string;
   /** LEAD_AD_RECEIVED: skip repeat leads from existing contacts */
   newContactsOnly?: boolean;
 }

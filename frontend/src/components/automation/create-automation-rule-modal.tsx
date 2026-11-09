@@ -69,6 +69,7 @@ const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
   { value: "SEND_EMAIL",     label: "Send email" },
   { value: "ASSIGN_CONTACT", label: "Assign Contact" },
   { value: "ADD_TAG",        label: "Add Tag" },
+  { value: "ADD_TO_PRODUCT", label: "Add to Product" },
   { value: "UPDATE_STATUS",  label: "Update Lead Status" },
   { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence" },
   { value: "STOP_SEQUENCE", label: "Stop Sequence" },
@@ -110,9 +111,11 @@ interface ActionConfigFieldsProps {
   config?: Record<string, unknown>;
   triggerType: AutomationTriggerType;
   configErrors?: SendEmailErrors;
+  /** ADD_TO_PRODUCT: no product picked */
+  productError?: string;
 }
 
-function ActionConfigFields({ idx, actionType, register, setValue, getValues, config = {}, triggerType, configErrors }: ActionConfigFieldsProps) {
+function ActionConfigFields({ idx, actionType, register, setValue, getValues, config = {}, triggerType, configErrors, productError }: ActionConfigFieldsProps) {
   const inputCls = FIELD_INPUT_CLS;
 
   function insertVar(variable: string) {
@@ -207,6 +210,26 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
           placeholder="e.g. hot-lead"
           className={inputCls}
         />
+      </div>
+    );
+  }
+
+  if (actionType === "ADD_TO_PRODUCT") {
+    return (
+      <div>
+        <ProductSelectField
+          label="Add the contact to"
+          optional={false}
+          value={String(config.productId ?? "")}
+          onChange={(v) => setValue(`actions.${idx}.actionConfig.productId`, v || undefined, { shouldValidate: true, shouldDirty: true })}
+        />
+        {productError ? (
+          <p className="text-caption text-error mt-1">{productError}</p>
+        ) : (
+          <p className="text-caption text-on-surface-variant/50 mt-1">
+            They keep their other products. Campaigns can target everyone in it.
+          </p>
+        )}
       </div>
     );
   }
@@ -604,6 +627,7 @@ export function CreateAutomationRuleModal({
               <LeadAdTriggerFields
                 value={{
                   platform: watch("triggerConfig.platform"),
+                  pageId: watch("triggerConfig.pageId"),
                   formId: watch("triggerConfig.formId"),
                   newContactsOnly: watch("triggerConfig.newContactsOnly"),
                 }}
@@ -739,6 +763,7 @@ export function CreateAutomationRuleModal({
                     config={actionTypes?.[idx]?.actionConfig}
                     triggerType={triggerType}
                     configErrors={emailErrorsFor(idx)}
+                    productError={(errors.actions?.[idx]?.actionConfig as Record<string, { message?: string }> | undefined)?.productId?.message}
                   />
 
                   <div>

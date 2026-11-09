@@ -94,6 +94,10 @@ export class TriggerMatcherService {
     const platform = config.platform as string | undefined;
     if (platform && payload.platform !== platform) return false;
 
+    // A brand is usually its own Facebook Page; a product its own form
+    const pageId = (config.pageId as string | undefined)?.trim();
+    if (pageId && payload.pageId !== pageId) return false;
+
     const formId = (config.formId as string | undefined)?.trim();
     if (formId && payload.formId !== formId) return false;
 

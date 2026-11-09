@@ -271,7 +271,7 @@ export interface ContactCreatedEvent {
   source: string;
   createdById: string;
   /** Set when the contact came from a Meta lead form */
-  leadAd?: { platform: string; formId: string | null };
+  leadAd?: { platform: string; pageId?: string; formId: string | null };
 }
 
 export interface ContactAutoCreatedEvent {

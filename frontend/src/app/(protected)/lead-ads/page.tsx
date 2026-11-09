@@ -16,6 +16,8 @@ import { LeadAdsTopCampaigns } from "@/components/lead-ads/lead-ads-top-campaign
 import { LeadAdsDailyChart } from "@/components/lead-ads/lead-ads-daily-chart";
 import { LeadAdsEntryTable } from "@/components/lead-ads/lead-ads-entry-table";
 import { LeadAdsWebhookCard } from "@/components/lead-ads/lead-ads-webhook-card";
+import { SimulateLeadDialog } from "@/components/lead-ads/simulate-lead-dialog";
+import { Button } from "@/components/ui/button";
 import {
   useLeadAdEntries,
   useLeadAdAnalytics,
@@ -31,8 +33,8 @@ import { PAGE_SIZE } from "@/lib/constants";
 
 type StatusTab = "all" | "COMPLETED" | "FAILED" | "PENDING";
 
-function periodToDateRange(period: AnalyticsPeriod): { startDate: string; endDate: string } {
-  const end = new Date();
+/** No end date: "up to now", so leads arriving while the page is open still show */
+function periodToDateRange(period: AnalyticsPeriod): { startDate: string } {
   const start = new Date();
   switch (period) {
     case "day":
@@ -46,7 +48,7 @@ function periodToDateRange(period: AnalyticsPeriod): { startDate: string; endDat
       start.setDate(start.getDate() - 30);
       break;
   }
-  return { startDate: start.toISOString(), endDate: end.toISOString() };
+  return { startDate: start.toISOString() };
 }
 
 export default function LeadAdsPage() {
@@ -55,6 +57,9 @@ export default function LeadAdsPage() {
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "ADMIN";
+  // Test leads without Meta: local/dev builds only (the API refuses them in production too)
+  const canSimulate = isAdmin && process.env.NODE_ENV !== "production";
+  const [simulateOpen, setSimulateOpen] = useState(false);
 
   const [period, setPeriod] = useState<AnalyticsPeriod>("month");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
@@ -110,11 +115,26 @@ export default function LeadAdsPage() {
           className="max-lg:hidden"
           title="Lead ads"
           count={analytics?.totalLeads}
-          actions={<PeriodSelector value={period} onChange={setPeriod} />}
+          actions={
+            <div className="flex items-center gap-2">
+              {canSimulate && (
+                <Button variant="secondary" size="sm" onClick={() => setSimulateOpen(true)}>
+                  Send test lead
+                </Button>
+              )}
+              <PeriodSelector value={period} onChange={setPeriod} />
+            </div>
+          }
         />
-        <div className="lg:hidden">
+        <div className="lg:hidden flex items-center justify-between gap-2">
           <PeriodSelector value={period} onChange={setPeriod} />
+          {canSimulate && (
+            <Button variant="secondary" size="sm" onClick={() => setSimulateOpen(true)}>
+              Test lead
+            </Button>
+          )}
         </div>
+        {canSimulate && <SimulateLeadDialog open={simulateOpen} onClose={() => setSimulateOpen(false)} />}
       </div>
 
       {/* ─── Content ─── */}

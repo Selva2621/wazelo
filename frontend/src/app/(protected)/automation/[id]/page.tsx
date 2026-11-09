@@ -22,7 +22,9 @@ import {
   CheckCircle2,
   Workflow,
   Mail,
+  Package,
 } from "lucide-react";
+import { ProductSelectField } from "@/components/ui/product-select-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +74,7 @@ const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.El
   { value: "SEND_EMAIL",     label: "Send email",     icon: Mail,          color: "#8b5cf6" },
   { value: "ASSIGN_CONTACT", label: "Assign Contact", icon: UserCheck,     color: "#22c55e" },
   { value: "ADD_TAG",        label: "Add Tag",         icon: Tag,           color: "#ec4899" },
+  { value: "ADD_TO_PRODUCT", label: "Add to Product",  icon: Package,       color: "#14b8a6" },
   { value: "UPDATE_STATUS",  label: "Update Status",   icon: RefreshCcw,    color: "#f59e0b" },
   { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence", icon: Workflow,  color: "#0ea5e9" },
   { value: "STOP_SEQUENCE",  label: "Stop Sequence",  icon: Workflow,      color: "#64748b" },
@@ -242,6 +245,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
       <LeadAdTriggerFields
         value={{
           platform: triggerConfig.platform as string | undefined,
+          pageId: triggerConfig.pageId as string | undefined,
           formId: triggerConfig.formId as string | undefined,
           newContactsOnly: triggerConfig.newContactsOnly as boolean | undefined,
         }}
@@ -522,6 +526,20 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             value={String(row.actionConfig.tagName ?? "")}
             onChange={(e) => setConfig("tagName", e.target.value)}
           />
+        </div>
+      )}
+
+      {row.actionType === "ADD_TO_PRODUCT" && (
+        <div className="pl-8">
+          <ProductSelectField
+            label="Add the contact to"
+            optional={false}
+            value={String(row.actionConfig.productId ?? "")}
+            onChange={(v) => setConfig("productId", v)}
+          />
+          <p className="text-caption text-on-surface-variant/50 mt-1">
+            They keep their other products. Campaigns can target everyone in it.
+          </p>
         </div>
       )}
 

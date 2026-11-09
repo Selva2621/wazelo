@@ -13,6 +13,7 @@ import { LeadAssignmentService } from './domain/services/lead-assignment.service
 // Use Cases
 import { ProcessLeadAdUseCase } from './application/use-cases/process-lead-ad.use-case';
 import { GetLeadAdAnalyticsUseCase } from './application/use-cases/get-lead-ad-analytics.use-case';
+import { SimulateLeadAdUseCase } from './application/use-cases/simulate-lead-ad.use-case';
 
 // Controllers
 import { LeadAdsController } from './interfaces/controllers/lead-ads.controller';
@@ -32,6 +33,7 @@ import { ChannelsModule } from '@/modules/channels/channels.module';
     LeadAssignmentService,
     ProcessLeadAdUseCase,
     GetLeadAdAnalyticsUseCase,
+    SimulateLeadAdUseCase,
   ],
   exports: [
     LeadAdRepository,

@@ -101,6 +101,33 @@ export class LeadAdRepository {
     });
   }
 
+  /** Pages + forms that have sent leads, newest first, with the latest campaign seen on each form */
+  async listForms(orgId: string) {
+    const groups = await this.prisma.leadAdEntry.groupBy({
+      by: ['pageId', 'formId', 'platform'],
+      where: { orgId, formId: { not: null } },
+      _count: { id: true },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } },
+      take: 100,
+    });
+    const latest = await this.prisma.leadAdEntry.findMany({
+      where: { orgId, formId: { in: groups.map((g) => g.formId as string) } },
+      distinct: ['formId'],
+      orderBy: { createdAt: 'desc' },
+      select: { formId: true, campaignName: true },
+    });
+    const campaignByForm = new Map(latest.map((l) => [l.formId, l.campaignName]));
+    return groups.map((g) => ({
+      pageId: g.pageId,
+      formId: g.formId as string,
+      platform: g.platform,
+      campaignName: campaignByForm.get(g.formId) ?? null,
+      leads: g._count.id,
+      lastLeadAt: g._max.createdAt,
+    }));
+  }
+
   async countTotal(orgId: string, startDate?: Date, endDate?: Date) {
     return this.prisma.leadAdEntry.count({
       where: {

@@ -63,6 +63,12 @@ export class TriggerConfigDto {
   @MaxLength(64)
   formId?: string;
 
+  /** LEAD_AD_RECEIVED: only leads from this Facebook Page ID (empty → any page) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  pageId?: string;
+
   /** LEAD_AD_RECEIVED: skip repeat leads from numbers that are already contacts */
   @IsOptional()
   @IsBoolean()

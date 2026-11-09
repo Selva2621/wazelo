@@ -79,6 +79,8 @@ export class ActionExecutorService {
         return this.executeAssignConversation(input);
       case AutomationActionType.SEND_EMAIL:
         return this.executeSendEmail(input);
+      case AutomationActionType.ADD_TO_PRODUCT:
+        return this.executeAddToProduct(input);
       default:
         return {
           actionType: input.actionType,
@@ -302,6 +304,39 @@ export class ActionExecutorService {
       return { actionType: AutomationActionType.ASSIGN_CONTACT, success: true, result: { assignToUserId } };
     } catch (error) {
       return { actionType: AutomationActionType.ASSIGN_CONTACT, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── ADD_TO_PRODUCT ───────────────────────────────────────────────────────
+
+  /** Links the contact to a product; a contact can be in many products, and linking twice is a no-op. */
+  private async executeAddToProduct(input: ActionExecutionInput): Promise<ActionResult> {
+    const actionType = AutomationActionType.ADD_TO_PRODUCT;
+    const { productId } = input.actionConfig as { productId?: string };
+    if (!productId) return { actionType, success: false, error: 'Missing productId in action config' };
+
+    try {
+      const product = await this.prisma.product.findFirst({
+        where: { id: productId, orgId: input.orgId, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (!product) return { actionType, success: false, error: 'Product not found' };
+
+      const existing = await this.prisma.contactProduct.findUnique({
+        where: { contactId_productId: { contactId: input.contactId, productId } },
+        select: { id: true },
+      });
+      if (!existing) {
+        await this.prisma.contactProduct.create({ data: { contactId: input.contactId, productId, orgId: input.orgId } });
+        this.events.emit(EVENT_NAMES.CONTACT_PRODUCT_ASSIGNED, { contactId: input.contactId, productId, orgId: input.orgId });
+      }
+      return { actionType, success: true, result: { productName: product.name, alreadyLinked: !!existing } };
+    } catch (error) {
+      // Two leads at once can race on the unique link; the contact is in the product either way
+      if ((error as { code?: string }).code === 'P2002') {
+        return { actionType, success: true, result: { alreadyLinked: true } };
+      }
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

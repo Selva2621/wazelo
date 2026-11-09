@@ -141,14 +141,14 @@ export class AutomationEventsHandler {
   /** Which channels an active "Lead Ad Received" rule already welcomes this (new) lead on */
   private async leadAdRuleWelcomes(
     orgId: string,
-    leadAd: { platform: string; formId: string | null },
+    leadAd: { platform: string; pageId?: string; formId: string | null },
   ): Promise<typeof NO_LEAD_WELCOME> {
     const rules = await this.automationRepo.findActiveRulesByTriggerType(orgId, AutomationTriggerType.LEAD_AD_RECEIVED);
     const matching = rules.filter((rule) =>
       this.triggerMatcher.matches({
         triggerType: AutomationTriggerType.LEAD_AD_RECEIVED,
         triggerConfig: (rule.triggerConfig ?? {}) as Record<string, unknown>,
-        eventPayload: { platform: leadAd.platform, formId: leadAd.formId, isNewContact: true },
+        eventPayload: { platform: leadAd.platform, pageId: leadAd.pageId, formId: leadAd.formId, isNewContact: true },
       }),
     );
     const sends = (type: AutomationActionType) => matching.some((r) => r.actions.some((a) => a.actionType === type));
@@ -170,6 +170,7 @@ export class AutomationEventsHandler {
           eventId: payload.leadgenId,
           leadgenId: payload.leadgenId,
           platform: payload.platform,
+          pageId: payload.pageId,
           formId: payload.formId,
           isNewContact: payload.isNewContact,
           leadVars: buildLeadVars(payload),

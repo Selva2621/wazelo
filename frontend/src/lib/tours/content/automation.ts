@@ -226,7 +226,7 @@ export const automationTours: TourDef[] = [
 
   {
     id: "automation-rule",
-    version: 3,
+    version: 4,
     title: "Rule editor",
     summary: "Set the trigger, conditions and actions of one rule.",
     section: "Automation",
@@ -250,7 +250,8 @@ export const automationTours: TourDef[] = [
         target: "rule-lead-filters",
         ifMissing: "skip",
         title: "Lead ad filters",
-        body: "Pick the platform or one lead form, and turn on “New contacts only” so repeat leads aren't welcomed twice. Form answers go into messages as {{lead.city}}, {{lead.campaign}}…",
+        body: "One rule per brand or product: pick its Facebook Page or lead form, then add “Add to product” and its own welcome. Form answers go into messages as {{lead.city}}, {{lead.campaign}}…",
+        example: { kind: "chips", items: ["Page: Brand A", "Form: Villa plots", "Add to product", "Send welcome"] },
       },
       {
         target: "rule-conditions",
