@@ -19,17 +19,17 @@ const TRIGGER_CONFIG: Record<
   AutomationTriggerType,
   { label: string; icon: typeof MessageSquare }
 > = {
-  MESSAGE_RECEIVED:        { label: "Message Received",        icon: MessageSquare },
-  CONTACT_CREATED:         { label: "Contact Created",          icon: UserPlus },
-  LEAD_STATUS_CHANGED:     { label: "Status Changed",           icon: ArrowRightLeft },
-  TIME_BASED:              { label: "Time-Based",               icon: Timer },
-  NO_REPLY:                { label: "No Reply",                 icon: MessageCircleOff },
-  LEAD_AD_RECEIVED:        { label: "Lead Ad Received",         icon: Megaphone },
-  SHOPIFY_ORDER_CREATED:   { label: "Shopify Order Created",    icon: ShoppingBag },
-  SHOPIFY_ORDER_FULFILLED: { label: "Shopify Order Fulfilled",  icon: ShoppingBag },
-  SHOPIFY_CART_ABANDONED:  { label: "Shopify Cart Abandoned",   icon: ShoppingCart },
-  WIDGET_MESSAGE_RECEIVED: { label: "Widget Message",            icon: Globe },
-  DEAL_STAGE_CHANGED:      { label: "Deal Stage Changed",        icon: Kanban },
+  MESSAGE_RECEIVED:        { label: "Message received",        icon: MessageSquare },
+  CONTACT_CREATED:         { label: "Contact created",          icon: UserPlus },
+  LEAD_STATUS_CHANGED:     { label: "Status changed",           icon: ArrowRightLeft },
+  TIME_BASED:              { label: "Time-based",               icon: Timer },
+  NO_REPLY:                { label: "No reply",                 icon: MessageCircleOff },
+  LEAD_AD_RECEIVED:        { label: "Lead ad received",         icon: Megaphone },
+  SHOPIFY_ORDER_CREATED:   { label: "Shopify order created",    icon: ShoppingBag },
+  SHOPIFY_ORDER_FULFILLED: { label: "Shopify order fulfilled",  icon: ShoppingBag },
+  SHOPIFY_CART_ABANDONED:  { label: "Shopify cart abandoned",   icon: ShoppingCart },
+  WIDGET_MESSAGE_RECEIVED: { label: "Widget message",            icon: Globe },
+  DEAL_STAGE_CHANGED:      { label: "Deal stage changed",        icon: Kanban },
 };
 
 interface TriggerTypeLabelProps {

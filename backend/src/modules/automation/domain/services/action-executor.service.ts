@@ -21,6 +21,7 @@ import { AddTagUseCase } from '@/modules/contacts/application/use-cases/manage-t
 import { ChangeLeadStatusUseCase } from '@/modules/contacts/application/use-cases/change-lead-status.use-case';
 import { QUEUE_NAMES, MESSAGING_CONFIG, CAMPAIGN_CONFIG, EVENT_NAMES } from '@/common/constants';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
 import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 
 export interface ActionExecutionInput {
@@ -79,6 +80,8 @@ export class ActionExecutorService {
         return this.executeAssignConversation(input);
       case AutomationActionType.SEND_EMAIL:
         return this.executeSendEmail(input);
+      case AutomationActionType.ADD_TO_PRODUCT:
+        return this.executeAddToProduct(input);
       default:
         return {
           actionType: input.actionType,
@@ -109,6 +112,12 @@ export class ActionExecutorService {
       if (eventPayload.recoveryUrl)      vars['shopify.recovery_url']     = String(eventPayload.recoveryUrl);
       if (eventPayload.cartTotal)        vars['shopify.cart_total']       = String(eventPayload.cartTotal);
 
+      // Meta lead form answers + ad info: {{lead.city}}, {{lead.campaign}}…
+      const leadVars = eventPayload.leadVars as Record<string, string> | undefined;
+      if (leadVars && typeof leadVars === 'object') {
+        for (const [key, value] of Object.entries(leadVars)) vars[`lead.${key}`] = String(value);
+      }
+
       const items = (eventPayload.items ?? eventPayload.lineItems) as Array<{ quantity: number; title: string }> | undefined;
       if (Array.isArray(items)) {
         vars['shopify.items'] = items.map((i) => `${i.quantity}x ${i.title}`).join(', ');
@@ -130,6 +139,10 @@ export class ActionExecutorService {
     if (!subject?.trim() || !body?.trim()) {
       return { actionType: AutomationActionType.SEND_EMAIL, success: false, error: 'The email needs a subject and a message' };
     }
+    // A Meta lead already emailed by its "Lead ad received" rule — one welcome email, not two
+    if (input.eventPayload?.emailByLeadAdRule === true) {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { skipped: true, reason: 'A "Lead ad received" rule emails this lead' } };
+    }
     const extra = this.buildVarMap(null, input.eventPayload);
     const result = await this.orgEmail.queue({
       orgId: input.orgId,
@@ -149,10 +162,18 @@ export class ActionExecutorService {
   // ─── SEND_MESSAGE ─────────────────────────────────────────────────────────
 
   private async executeSendMessage(input: ActionExecutionInput): Promise<ActionResult> {
-    const { messageBody, messageType, sessionId: configSessionId } =
-      input.actionConfig as { messageBody?: string; messageType?: string; sessionId?: string };
+    const { messageBody, messageType, sessionId: configSessionId, templateId, templateParams, headerImageUrl } =
+      input.actionConfig as {
+        messageBody?: string;
+        messageType?: string;
+        sessionId?: string;
+        /** A Meta-approved template (official numbers); its {{1}}… slots come from templateParams */
+        templateId?: string;
+        templateParams?: string[];
+        headerImageUrl?: string;
+      };
 
-    if (!messageBody) {
+    if (!messageBody && !templateId) {
       return { actionType: AutomationActionType.SEND_MESSAGE, success: false, error: 'Missing messageBody in action config' };
     }
 
@@ -183,6 +204,8 @@ export class ActionExecutorService {
     if (contact.deletedAt || contact.mergedIntoId) return skip('Contact deleted or merged');
     // A new contact who wrote first is greeted by the chatbot — one welcome, not two
     if (input.eventPayload?.welcomeByChatbot === true) return skip('The chatbot greets new chats');
+    // A Meta lead is greeted by its "Lead ad received" rule — one welcome, not two
+    if (input.eventPayload?.welcomeByLeadAdRule === true) return skip('A "Lead ad received" rule greets this lead');
     // Opted out: no messages we start. A reply to something they just wrote is still fine.
     if (contact.optedOut && !inbound) return skip('Contact opted out');
 
@@ -207,7 +230,21 @@ export class ActionExecutorService {
 
     // Interpolate variables
     const varMap = this.buildVarMap(contact, input.eventPayload);
-    const resolvedBody = this.interpolate(fillContactPlaceholders(messageBody, contact), varMap);
+    const fill = (text: string) => this.interpolate(fillContactPlaceholders(text, contact), varMap);
+    let resolvedBody = messageBody ? fill(messageBody) : '';
+    let cloudTemplate: CloudTemplateRef | undefined;
+    if (templateId) {
+      const template = await this.prisma.messageTemplate.findFirst({
+        where: { id: templateId, orgId: input.orgId, deletedAt: null },
+        select: { name: true, language: true, components: true, status: true },
+      });
+      if (!template || template.status !== 'APPROVED') {
+        return { actionType: AutomationActionType.SEND_MESSAGE, success: false, error: 'The chosen WhatsApp template is missing or not approved' };
+      }
+      const rendered = renderCloudTemplate(template, templateParams, fill, headerImageUrl);
+      resolvedBody = rendered.body;
+      cloudTemplate = rendered.cloudTemplate;
+    }
     const idempotencyKey = `auto-msg-${input.executionId}-${input.actionType}`;
 
     // Idempotency: skip if already created
@@ -241,7 +278,12 @@ export class ActionExecutorService {
         // Replies stay in the direct lane so the contact isn't kept waiting.
         priority: inbound ? 0 : CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
         maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
-        metadata: { automationRuleId: input.ruleId, automationExecutionId: input.executionId },
+        metadata: {
+          automationRuleId: input.ruleId,
+          automationExecutionId: input.executionId,
+          // Official numbers send this as the approved template; QR numbers send the text
+          ...(cloudTemplate && { cloudTemplate }),
+        } as any,
       });
 
       // Record QUEUED event
@@ -251,6 +293,9 @@ export class ActionExecutorService {
         status: MessageStatus.QUEUED,
         metadata: { automationRuleId: input.ruleId },
       });
+
+      // Bring the chat to the top of the inbox with this message as its preview
+      await this.conversationRepo.updateLastMessage(conversation.id, resolvedBody, false);
 
       // Queue for sending — correct shape: {messageId, sessionId, orgId}
       await this.queueService.publishOnce(
@@ -290,6 +335,55 @@ export class ActionExecutorService {
       return { actionType: AutomationActionType.ASSIGN_CONTACT, success: true, result: { assignToUserId } };
     } catch (error) {
       return { actionType: AutomationActionType.ASSIGN_CONTACT, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── ADD_TO_PRODUCT ───────────────────────────────────────────────────────
+
+  /** Links the contact to a product; a contact can be in many products, and linking twice is a no-op. */
+  /** Only for leads (Meta lead forms): hand them to the product's team */
+  private emitLeadInterest(input: ActionExecutionInput, productId: string) {
+    const leadgenId = input.eventPayload?.leadgenId;
+    if (typeof leadgenId !== 'string' || !leadgenId) return;
+    this.events.emit(EVENT_NAMES.LEAD_PRODUCT_INTEREST, {
+      orgId: input.orgId,
+      contactId: input.contactId,
+      productId,
+      leadgenId,
+      isNewContact: input.eventPayload?.isNewContact === true,
+    });
+  }
+
+  private async executeAddToProduct(input: ActionExecutionInput): Promise<ActionResult> {
+    const actionType = AutomationActionType.ADD_TO_PRODUCT;
+    const { productId } = input.actionConfig as { productId?: string };
+    if (!productId) return { actionType, success: false, error: 'Missing productId in action config' };
+
+    try {
+      const product = await this.prisma.product.findFirst({
+        where: { id: productId, orgId: input.orgId, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (!product) return { actionType, success: false, error: 'Product not found' };
+
+      const existing = await this.prisma.contactProduct.findUnique({
+        where: { contactId_productId: { contactId: input.contactId, productId } },
+        select: { id: true },
+      });
+      if (!existing) {
+        await this.prisma.contactProduct.create({ data: { contactId: input.contactId, productId, orgId: input.orgId } });
+        this.events.emit(EVENT_NAMES.CONTACT_PRODUCT_ASSIGNED, { contactId: input.contactId, productId, orgId: input.orgId });
+      }
+      // A lead form (new or repeat) for this product: its team must contact them
+      this.emitLeadInterest(input, productId);
+      return { actionType, success: true, result: { productName: product.name, alreadyLinked: !!existing } };
+    } catch (error) {
+      // Two leads at once can race on the unique link; the contact is in the product either way
+      if ((error as { code?: string }).code === 'P2002') {
+        this.emitLeadInterest(input, productId);
+        return { actionType, success: true, result: { alreadyLinked: true } };
+      }
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

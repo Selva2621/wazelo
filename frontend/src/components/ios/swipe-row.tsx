@@ -68,7 +68,7 @@ export function SwipeRow({
               action.onAction();
             }}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 text-[13px] font-medium text-white",
+              "flex flex-col items-center justify-center gap-1 text-native-footnote font-medium text-white",
               action.className,
             )}
             style={{ width: ACTION_WIDTH }}

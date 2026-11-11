@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { WhatsAppApiService } from '@/infrastructure/external/whatsapp/whatsapp-api.service';
+import { CloudApiError } from '@/infrastructure/external/whatsapp/cloud-api.client';
+import { cloudTemplateFromMetadata } from '@/shared/utils/cloud-template';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
@@ -25,6 +27,8 @@ import { AuditAction, CampaignRecipientStatus, MessageStatus, MessageType, Usage
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
 import { pauseCampaignSystem } from '@/jobs/campaign/kill-switch-pause';
 import { maskPhone, sentBy } from './send-log';
+import { isConnectionFailure } from '@/shared/utils/connection-failure';
+import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
 const KILL_SWITCH_DEFER_SECONDS = 300;
@@ -216,7 +220,30 @@ export class SendMessageWorker implements OnModuleInit {
       return;
     }
 
+    // Uploaded media lives on local disk, which a restart/deploy can wipe. Sending
+    // would fail the same way for every recipient, so a campaign pauses instead
+    // (recipients back to PENDING) until the media is replaced and it is resumed.
+    if (message.type !== 'TEXT' && message.type !== 'INTERACTIVE' && isLocalMediaMissing(message.mediaUrl)) {
+      if (typeof campaignId === 'string') {
+        await pauseCampaignSystem(this.campaignRepo, campaignId, orgId, MEDIA_MISSING_REASON, 'media-missing', this.eventEmitter);
+        await this.accountSafety.dropBulkMessage(messageId, MEDIA_MISSING_REASON, CampaignRecipientStatus.PENDING);
+        await this.messageEventRepo.record({
+          messageId,
+          orgId,
+          status: MessageStatus.FAILED,
+          error: MEDIA_MISSING_REASON,
+          metadata: { jobId, mediaMissing: true, campaignPaused: true },
+        });
+        this.logger.warn(`Campaign ${campaignId} paused: media file missing for message ${messageId}`);
+        return;
+      }
+      await this.handleFailure(message, jobId, MEDIA_MISSING_REASON, false);
+      return;
+    }
+
     const lane = this.pacer.laneFor(message.priority);
+    // Official (Cloud API) numbers: Meta enforces its own limits, so no warm-up caps or human pacing
+    const official = this.whatsappApi.isCloudSession(sessionId);
 
     if (lane === 'bulk') {
       // Paced/held bulk messages can wait hours: drop them if the campaign was
@@ -244,7 +271,7 @@ export class SendMessageWorker implements OnModuleInit {
       // paced message comes back for its slot, so a batch can't overshoot a cap.
       // Skipped in WhatsApp test mode: everything goes to a test number, and a
       // campaign tested at night shouldn't sit held until morning.
-      if (!isTestModeOn()) {
+      if (!isTestModeOn() && !official) {
         const decision = await this.accountSafety.checkBulkSend(
           orgId,
           sessionId,
@@ -266,7 +293,9 @@ export class SendMessageWorker implements OnModuleInit {
     const holdsSlot =
       data.slotAt !== undefined &&
       Math.abs(Date.now() - data.slotAt) <= SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS;
-    if (holdsSlot) {
+    if (official) {
+      // No pacing: send now
+    } else if (holdsSlot) {
       const remaining = data.slotAt! - Date.now();
       if (remaining > 0) await sleep(remaining);
     } else {
@@ -345,7 +374,11 @@ export class SendMessageWorker implements OnModuleInit {
       // A short drop is retried automatically: wait for it instead of failing the
       // message for good. If reconnecting gives up, the session-lost handler pauses
       // the campaign and puts its recipients back, so nothing is lost.
-      if (session?.status === 'RECONNECTING') {
+      // CONNECTED with no live socket = the server just restarted (or woke from
+      // sleep) and the socket is still being restored. The health check notices
+      // within ~2 minutes and reconnects or marks it disconnected, so this wait
+      // is bounded. Treat it like reconnecting instead of failing the message.
+      if (session?.status === 'RECONNECTING' || session?.status === 'CONNECTED') {
         // A one-to-one reply retries quickly but gives up after a few minutes, so
         // the agent sees it failed instead of it sitting queued for hours.
         // Bulk messages keep waiting: if reconnecting gives up, the session-lost
@@ -362,15 +395,13 @@ export class SendMessageWorker implements OnModuleInit {
         await this.holdMessage(data, new Date(Date.now() + 60_000), 'Waiting for WhatsApp to reconnect');
         return;
       }
-      if (!session || session.status !== 'CONNECTED') {
-        await this.handleFailure(
-          message,
-          jobId,
-          'Session not connected',
-          false, // not retryable — session must be reconnected first
-        );
-        return;
-      }
+      await this.handleFailure(
+        message,
+        jobId,
+        'Session not connected',
+        false, // not retryable — session must be reconnected first
+      );
+      return;
     }
 
     // 6. Send via WhatsApp API
@@ -386,7 +417,18 @@ export class SendMessageWorker implements OnModuleInit {
         );
       }
 
-      if (message.type === 'TEXT') {
+      // Official numbers send a chosen Meta template as a template (works outside the 24h window).
+      // A QR number sends the same message as its filled-in text below.
+      const cloudTemplate = official ? cloudTemplateFromMetadata(message.metadata) : null;
+
+      if (cloudTemplate) {
+        result = await this.whatsappApi.sendTemplateMessage(sessionId, message.contactPhone, {
+          name: cloudTemplate.name,
+          language: cloudTemplate.language,
+          bodyParams: cloudTemplate.params,
+          ...(cloudTemplate.headerImageUrl && { headerMedia: { type: 'image' as const, link: cloudTemplate.headerImageUrl } }),
+        });
+      } else if (message.type === 'TEXT') {
         result = await this.whatsappApi.sendTextMessage(
           sessionId,
           message.contactPhone,
@@ -469,7 +511,17 @@ export class SendMessageWorker implements OnModuleInit {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to send message ${messageId}: ${reason}`);
 
-      await this.handleFailure(message, jobId, reason, isRetryableError(reason));
+      // The socket dropped under a campaign/sequence message: nothing was sent, so
+      // wait for the number instead of burning the 3 quick retries and failing it.
+      // If the number never comes back, the session-lost handler releases it.
+      if (lane === 'bulk' && isConnectionFailure(reason)) {
+        await this.holdMessage(data, new Date(Date.now() + 60_000), `Connection dropped: ${reason}`);
+        return;
+      }
+
+      // Meta tells us itself whether a retry can work (closed 24h window, bad number… can't)
+      const retryable = error instanceof CloudApiError ? error.retryable : isRetryableError(reason);
+      await this.handleFailure(message, jobId, reason, retryable);
     }
   }
 

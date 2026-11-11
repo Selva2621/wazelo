@@ -93,17 +93,17 @@ function InstallRow() {
         onClick={install}
       />
       <BottomSheet open={howTo} onClose={() => setHowTo(false)} title="Install Wazelo">
-        <ol className="space-y-4 px-5 pb-2 pt-1 text-[16px] text-on-surface">
+        <ol className="space-y-4 px-5 pb-2 pt-1 text-native-callout text-on-surface">
           <li className="flex gap-3">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-[14px] font-semibold">1</span>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-native-subhead-sm font-semibold">1</span>
             <span>Tap the <strong>Share</strong> button in the browser toolbar.</span>
           </li>
           <li className="flex gap-3">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-[14px] font-semibold">2</span>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-native-subhead-sm font-semibold">2</span>
             <span>Choose <strong>Add to Home Screen</strong>.</span>
           </li>
           <li className="flex gap-3">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-[14px] font-semibold">3</span>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high text-native-subhead-sm font-semibold">3</span>
             <span>Open Wazelo from your Home Screen.</span>
           </li>
         </ol>
@@ -137,7 +137,7 @@ function AppearanceRow() {
               subtitle={t.mode === "light" ? "Light" : "Dark"}
               chevron={false}
               detail={
-                <span className={cn("text-[17px] font-semibold text-primary", t.id !== theme && "invisible")} aria-hidden>
+                <span className={cn("text-native-body font-semibold text-primary", t.id !== theme && "invisible")} aria-hidden>
                   ✓
                 </span>
               }
@@ -177,7 +177,7 @@ export default function MorePage() {
             className="ios-row-profile"
             icon={<Avatar name={userName} size="md" />}
             iconClassName="bg-transparent"
-            title={<span className="text-[19px] font-semibold">{userName}</span>}
+            title={<span className="text-native-title3 font-semibold">{userName}</span>}
             subtitle={[user?.email, role, plan].filter(Boolean).join(" · ")}
           />
         </GroupedSection>

@@ -165,6 +165,32 @@ export function useResumeCampaign() {
   });
 }
 
+export function useReplaceCampaignMedia() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ campaignId, ...data }: { campaignId: string; mediaUrl: string; mediaMimeType?: string }) =>
+      campaignsApi.replaceMedia(campaignId, data),
+    onSuccess: (_data, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
+      toast.success("Media replaced");
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't replace the media"),
+  });
+}
+
+export function useRetryFailedRecipients() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => campaignsApi.retryFailed(campaignId),
+    onSuccess: ({ retried }, campaignId) => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.all });
+      queryClient.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
+      toast.success(`Sending again to ${retried} recipient${retried === 1 ? "" : "s"}`);
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't retry the failed messages"),
+  });
+}
+
 export function useCancelCampaign() {
   const queryClient = useQueryClient();
   return useMutation({

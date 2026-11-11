@@ -16,6 +16,7 @@ import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, UsageMetricType, WhatsAppSessionStatus } from '@prisma/client';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
 
 @Injectable()
 export class ResumeCampaignUseCase {
@@ -56,6 +57,11 @@ export class ResumeCampaignUseCase {
       );
     }
 
+    // Uploaded media can be wiped by a server restart: replace it before resuming
+    if (isLocalMediaMissing(campaign.mediaUrl)) {
+      throw new BadRequestException(MEDIA_MISSING_REASON);
+    }
+
     // If the campaign's WhatsApp number was logged out or banned, continue on a connected one
     // (email campaigns send from the workspace's mailbox: no number)
     let sessionId: string | null = null;
@@ -64,7 +70,18 @@ export class ResumeCampaignUseCase {
     }
 
     // Reset SKIPPED recipients back to PENDING for re-processing
-    const resetCount = await this.recipientRepo.resetSkippedToPending(campaignId);
+    const skippedReset = await this.recipientRepo.resetSkippedToPending(campaignId);
+
+    // Recipients that failed only because the number's connection was down get
+    // another go now that it's back (nothing reached WhatsApp for them)
+    const connectionReset =
+      campaign.channel === 'EMAIL'
+        ? 0
+        : await this.recipientRepo.resetConnectionFailuresToPending(campaignId);
+    if (connectionReset > 0) {
+      await this.campaignRepo.incrementCounter(campaignId, 'failedCount', -connectionReset);
+    }
+    const resetCount = skippedReset + connectionReset;
 
     const updated = await this.campaignRepo.transitionStatus(
       campaignId,

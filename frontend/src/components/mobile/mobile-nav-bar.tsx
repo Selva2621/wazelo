@@ -31,7 +31,7 @@ function AlertsBell({ count, className, iconClassName }: { count: number; classN
       {count > 0 && (
         <span
           aria-hidden
-          className="absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-error px-1 text-[10.5px] font-semibold leading-none tabular-nums text-on-error ring-2 ring-surface"
+          className="absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-error px-1 text-native-badge font-semibold leading-none tabular-nums text-on-error ring-2 ring-surface"
         >
           {count > 99 ? "99+" : count}
         </span>
@@ -148,7 +148,7 @@ export function MobileNavBar() {
             )}
             <h1
               className={cn(
-                "min-w-0 flex-1 truncate text-[22px] font-normal leading-7 text-on-surface",
+                "min-w-0 flex-1 truncate text-native-title2 font-normal leading-7 text-on-surface",
                 root ? "pl-3" : "pl-1",
               )}
             >
@@ -193,7 +193,7 @@ export function MobileNavBar() {
                 aria-label={`Back to ${backLabel}`}
               >
                 <ChevronLeft className="h-7 w-7 shrink-0" strokeWidth={2.2} aria-hidden />
-                <span className="-ml-0.5 truncate text-[17px] leading-none">{backLabel}</span>
+                <span className="-ml-0.5 truncate text-native-body leading-none">{backLabel}</span>
               </button>
             )}
           </div>
@@ -205,7 +205,7 @@ export function MobileNavBar() {
             tabIndex={-1}
             aria-hidden={!showCompactTitle}
             className={cn(
-              "min-w-0 max-w-[60vw] truncate text-center text-[17px] font-semibold text-on-surface",
+              "min-w-0 max-w-[60vw] truncate text-center text-native-body font-semibold text-on-surface",
               "transition-opacity duration-200 ease-standard",
               showCompactTitle ? "opacity-100" : "pointer-events-none opacity-0",
             )}

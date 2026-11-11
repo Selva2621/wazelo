@@ -82,7 +82,7 @@ export function ConversationItem({
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
-              "text-body truncate text-on-surface max-lg:text-[16px]",
+              "text-body truncate text-on-surface max-lg:text-native-callout",
               hasUnread ? "font-semibold" : "font-medium",
             )}
           >
@@ -95,7 +95,7 @@ export function ConversationItem({
         <div className="flex items-center justify-between gap-2 mt-0.5">
           <p
             className={cn(
-              "text-body truncate max-lg:text-[15px]",
+              "text-body truncate max-lg:text-native-subhead",
               hasUnread ? "text-on-surface" : "text-on-surface-variant",
             )}
           >

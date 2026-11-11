@@ -7,6 +7,8 @@ import {
   IsUrl,
   MaxLength,
   ValidateNested,
+  IsArray,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CampaignAudienceType } from '@prisma/client';
@@ -62,4 +64,21 @@ export class UpdateCampaignDto {
   @IsString()
   @MaxLength(100)
   timezone?: string;
+
+  /** Official numbers: switch the draft to this Meta-approved template */
+  @IsOptional()
+  @IsUUID()
+  cloudTemplateId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  cloudTemplateParams?: string[];
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  cloudTemplateHeaderImageUrl?: string;
 }

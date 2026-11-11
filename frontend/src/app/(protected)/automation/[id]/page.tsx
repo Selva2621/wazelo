@@ -22,7 +22,9 @@ import {
   CheckCircle2,
   Workflow,
   Mail,
+  Package,
 } from "lucide-react";
+import { ProductSelectField } from "@/components/ui/product-select-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,31 +50,36 @@ import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
+import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { OfficialTemplateToggle } from "@/components/automation/official-template-toggle";
+import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
 import { SendEmailFields, validateSendEmail, type SendEmailErrors } from "@/components/automation/send-email-fields";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
-  { value: "MESSAGE_RECEIVED",        label: "Message Received" },
-  { value: "CONTACT_CREATED",         label: "Contact Created" },
-  { value: "LEAD_STATUS_CHANGED",     label: "Lead Status Changed" },
-  { value: "NO_REPLY",                label: "No Reply Follow-Up" },
-  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
-  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
-  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
-  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
-  { value: "DEAL_STAGE_CHANGED",      label: "Deal Stage Changed" },
+  { value: "MESSAGE_RECEIVED",        label: "Message received" },
+  { value: "CONTACT_CREATED",         label: "Contact created" },
+  { value: "LEAD_AD_RECEIVED",        label: "Lead ad received" },
+  { value: "LEAD_STATUS_CHANGED",     label: "Lead status changed" },
+  { value: "NO_REPLY",                label: "No reply follow-up" },
+  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — order created",   group: "shopify" },
+  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — order fulfilled",  group: "shopify" },
+  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — cart abandoned",   group: "shopify" },
+  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget message received" },
+  { value: "DEAL_STAGE_CHANGED",      label: "Deal stage changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.ElementType; color: string }[] = [
-  { value: "SEND_MESSAGE",   label: "Send Message",   icon: MessageSquare, color: "#6366f1" },
+  { value: "SEND_MESSAGE",   label: "Send message",   icon: MessageSquare, color: "#6366f1" },
   { value: "SEND_EMAIL",     label: "Send email",     icon: Mail,          color: "#8b5cf6" },
-  { value: "ASSIGN_CONTACT", label: "Assign Contact", icon: UserCheck,     color: "#22c55e" },
-  { value: "ADD_TAG",        label: "Add Tag",         icon: Tag,           color: "#ec4899" },
-  { value: "UPDATE_STATUS",  label: "Update Status",   icon: RefreshCcw,    color: "#f59e0b" },
-  { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence", icon: Workflow,  color: "#0ea5e9" },
-  { value: "STOP_SEQUENCE",  label: "Stop Sequence",  icon: Workflow,      color: "#64748b" },
-  { value: "ASSIGN_CONVERSATION", label: "Assign Chat", icon: UserCheck,   color: "#22c55e" },
+  { value: "ASSIGN_CONTACT", label: "Assign contact", icon: UserCheck,     color: "#22c55e" },
+  { value: "ADD_TAG",        label: "Add tag",         icon: Tag,           color: "#ec4899" },
+  { value: "ADD_TO_PRODUCT", label: "Add to product",  icon: Package,       color: "#14b8a6" },
+  { value: "UPDATE_STATUS",  label: "Update status",   icon: RefreshCcw,    color: "#f59e0b" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to sequence", icon: Workflow,  color: "#0ea5e9" },
+  { value: "STOP_SEQUENCE",  label: "Stop sequence",  icon: Workflow,      color: "#64748b" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign chat", icon: UserCheck,   color: "#22c55e" },
 ];
 
 const CONDITION_FIELDS = [
@@ -95,14 +102,6 @@ const CONDITION_OPERATORS: { value: AutomationConditionOperator; label: string }
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
 
-const VAR_CHIPS = [
-  { label: "Name",       value: "{{contact.name}}" },
-  { label: "Phone",      value: "{{contact.phone}}" },
-  { label: "Order #",    value: "{{shopify.order_name}}" },
-  { label: "Total",      value: "{{shopify.total_price}}" },
-  { label: "Items",      value: "{{shopify.items}}" },
-  { label: "Cart Total", value: "{{shopify.cart_total}}" },
-];
 
 const TAKE = 20;
 
@@ -138,7 +137,7 @@ interface TriggerConfigProps {
 }
 
 function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerConfigProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   if (triggerType === "MESSAGE_RECEIVED" || triggerType === "WIDGET_MESSAGE_RECEIVED") {
     return (
@@ -161,7 +160,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
     return (
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>From Status</Label>
+          <Label>From status</Label>
           <input
             className={inputCls}
             placeholder="e.g. NEW"
@@ -170,7 +169,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           />
         </div>
         <div>
-          <Label>To Status</Label>
+          <Label>To status</Label>
           <input
             className={inputCls}
             placeholder="e.g. QUALIFIED"
@@ -185,7 +184,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
   if (triggerType === "TIME_BASED") {
     return (
       <div>
-        <Label>Cron Expression</Label>
+        <Label>Cron expression</Label>
         <input
           className={inputCls}
           placeholder="e.g. 0 9 * * 1 (every Monday at 9 AM)"
@@ -239,6 +238,21 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           onChange={(e) => onChange("minCartValue", parseFloat(e.target.value) || undefined)}
         />
       </div>
+    );
+  }
+
+  if (triggerType === "LEAD_AD_RECEIVED") {
+    return (
+      <LeadAdTriggerFields
+        value={{
+          platform: triggerConfig.platform as string | undefined,
+          pageId: triggerConfig.pageId as string | undefined,
+          formId: triggerConfig.formId as string | undefined,
+          newContactsOnly: triggerConfig.newContactsOnly as boolean | undefined,
+        }}
+        onChange={onChange}
+        inputClassName={inputCls}
+      />
     );
   }
 
@@ -444,8 +458,14 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       {/* Config */}
       {row.actionType === "SEND_MESSAGE" && (
         <div className="space-y-2 pl-8">
-          <div>
-            <Label className="text-caption">Message Body</Label>
+          <OfficialTemplateToggle
+            config={row.actionConfig}
+            chips={[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)]}
+            onChange={(patch) => onUpdate(row.id, { actionConfig: { ...row.actionConfig, ...patch } })}
+          />
+          {/* Message body (not used when an approved template is picked) */}
+          <div className={row.actionConfig.templateId ? "hidden" : undefined}>
+            <Label className="text-caption">Message body</Label>
             <textarea
               rows={3}
               value={String(row.actionConfig.messageBody ?? "")}
@@ -454,7 +474,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
               className={`${inputCls} resize-none mt-1`}
             />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {VAR_CHIPS.map((chip) => (
+              {[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)].map((chip) => (
                 <button
                   key={chip.value}
                   type="button"
@@ -484,7 +504,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
             subject={String(row.actionConfig.subject ?? "")}
             body={String(row.actionConfig.body ?? "")}
             onChange={(patch) => onUpdate(row.id, { actionConfig: { ...row.actionConfig, ...patch } })}
-            extraChips={triggerType.startsWith("SHOPIFY_") ? VAR_CHIPS.filter((c) => c.value.startsWith("{{shopify.")) : []}
+            extraChips={triggerVarChips(triggerType)}
             errors={emailErrors}
             inputClassName={inputCls}
             labelClassName="text-caption"
@@ -506,7 +526,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "ADD_TAG" && (
         <div className="pl-8">
-          <Label className="text-caption">Tag Name</Label>
+          <Label className="text-caption">Tag name</Label>
           <input
             className={`${inputCls} mt-1`}
             placeholder="e.g. hot-lead"
@@ -516,9 +536,23 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
         </div>
       )}
 
+      {row.actionType === "ADD_TO_PRODUCT" && (
+        <div className="pl-8">
+          <ProductSelectField
+            label="Add the contact to"
+            optional={false}
+            value={String(row.actionConfig.productId ?? "")}
+            onChange={(v) => setConfig("productId", v)}
+          />
+          <p className="mt-1 text-caption text-on-surface-variant">
+            They keep their other products. Campaigns can target everyone in it.
+          </p>
+        </div>
+      )}
+
       {row.actionType === "UPDATE_STATUS" && (
         <div className="pl-8">
-          <Label className="text-caption">New Status</Label>
+          <Label className="text-caption">New status</Label>
           <Select
             value={String(row.actionConfig.newStatus ?? "")}
             onChange={(e) => setConfig("newStatus", e.target.value)}
@@ -918,7 +952,7 @@ export default function AutomationRuleEditorPage() {
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); markDirty(); }}
                 placeholder="Optional description for this rule..."
-                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
             </Section>
 
@@ -926,7 +960,7 @@ export default function AutomationRuleEditorPage() {
             <Section tour="rule-trigger" title="Trigger — When this happens…">
               <div className="space-y-3">
                 <div>
-                  <Label>Event Type</Label>
+                  <Label>Event type</Label>
                   <Select
                     value={triggerType}
                     onChange={(e) => {

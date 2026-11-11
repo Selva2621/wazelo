@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BaileysConnectionManager } from './baileys-connection-manager.service';
 import { interactiveToText } from './interactive-to-text';
 import { documentMimeType } from './document-mime';
+import { CloudApiClient, type CloudCredentials, type CloudTemplateParams } from './cloud-api.client';
 import {
   resolveTestRecipient,
   testRecipientOrThrow,
@@ -15,10 +16,56 @@ export interface WhatsAppSendResult {
 @Injectable()
 export class WhatsAppApiService {
   private readonly logger = new Logger(WhatsAppApiService.name);
+  /** Official numbers that can send, by session ID (filled on boot and on connect) */
+  private readonly cloudSessions = new Map<string, CloudCredentials>();
 
   constructor(
     private readonly connectionManager: BaileysConnectionManager,
+    private readonly cloudApi: CloudApiClient,
   ) {}
+
+  // ───── Official numbers ─────
+
+  registerCloudSession(sessionId: string, creds: CloudCredentials): void {
+    this.cloudSessions.set(sessionId, creds);
+  }
+
+  unregisterCloudSession(sessionId: string): void {
+    this.cloudSessions.delete(sessionId);
+  }
+
+  /** True for an official (Cloud API) number: no socket, no warm-up, no typing */
+  isCloudSession(sessionId: string): boolean {
+    return this.cloudSessions.has(sessionId);
+  }
+
+  /** Send an approved template (official numbers only) */
+  async sendTemplateMessage(
+    sessionId: string,
+    recipientPhone: string,
+    template: CloudTemplateParams,
+  ): Promise<WhatsAppSendResult> {
+    recipientPhone = testRecipientOrThrow(recipientPhone);
+    const creds = this.cloudSessions.get(sessionId);
+    if (!creds) throw new Error('Templates can only be sent from an official WhatsApp number');
+    return this.cloudResult(await this.cloudApi.sendTemplate(creds, recipientPhone, template));
+  }
+
+  async markCloudRead(sessionId: string, whatsappMessageId: string): Promise<void> {
+    const creds = this.cloudSessions.get(sessionId);
+    if (!creds) return;
+    try {
+      await this.cloudApi.markRead(creds, whatsappMessageId);
+    } catch (error) {
+      this.logger.debug(`Mark read failed for ${whatsappMessageId}: ${(error as Error).message}`);
+    }
+  }
+
+  private cloudResult(whatsappMessageId: string): WhatsAppSendResult {
+    return { whatsappMessageId, timestamp: Date.now() };
+  }
+
+  // ───── Sending (both kinds of number) ─────
 
   async sendTextMessage(
     sessionId: string,
@@ -26,6 +73,9 @@ export class WhatsAppApiService {
     text: string,
   ): Promise<WhatsAppSendResult> {
     recipientPhone = testRecipientOrThrow(recipientPhone);
+    const cloud = this.cloudSessions.get(sessionId);
+    if (cloud) return this.cloudResult(await this.cloudApi.sendText(cloud, recipientPhone, text));
+
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -48,6 +98,15 @@ export class WhatsAppApiService {
     caption?: string,
   ): Promise<WhatsAppSendResult> {
     recipientPhone = testRecipientOrThrow(recipientPhone);
+    const cloud = this.cloudSessions.get(sessionId);
+    if (cloud) {
+      const kind = type.toLowerCase();
+      if (kind !== 'image' && kind !== 'video' && kind !== 'audio' && kind !== 'document') {
+        throw new Error(`Unsupported media type: ${type}`);
+      }
+      return this.cloudResult(await this.cloudApi.sendMedia(cloud, recipientPhone, kind, mediaUrl, caption));
+    }
+
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -101,6 +160,14 @@ export class WhatsAppApiService {
       throw new Error(`Unsupported interactive type: ${interactiveType}`);
     }
 
+    // Official numbers show real buttons and lists
+    const cloud = this.cloudSessions.get(sessionId);
+    if (cloud) {
+      return this.cloudResult(
+        await this.cloudApi.sendInteractive(cloud, testRecipientOrThrow(recipientPhone), interactivePayload),
+      );
+    }
+
     return this.sendTextMessage(
       sessionId,
       recipientPhone,
@@ -118,6 +185,9 @@ export class WhatsAppApiService {
     poll: { name: string; options: string[]; messageSecret: Uint8Array },
   ): Promise<WhatsAppSendResult> {
     recipientPhone = testRecipientOrThrow(recipientPhone);
+    if (this.cloudSessions.has(sessionId)) {
+      throw new Error('Polls are not supported on official WhatsApp numbers');
+    }
     const sock = this.connectionManager.getConnection(sessionId);
     if (!sock) {
       throw new Error(`No active connection for session ${sessionId}`);
@@ -144,6 +214,8 @@ export class WhatsAppApiService {
     recipientPhone: string,
     durationMs: number,
   ): Promise<void> {
+    // Official numbers aren't human-paced: no fake typing
+    if (this.cloudSessions.has(sessionId)) return;
     const sock = this.connectionManager.getConnection(sessionId);
     const to = resolveTestRecipient(recipientPhone);
     if (!sock || !to) return;
@@ -159,7 +231,7 @@ export class WhatsAppApiService {
   }
 
   isSessionConnected(sessionId: string): boolean {
-    return this.connectionManager.isConnected(sessionId);
+    return this.cloudSessions.has(sessionId) || this.connectionManager.isConnected(sessionId);
   }
 
   private phoneToJid(phone: string): string {

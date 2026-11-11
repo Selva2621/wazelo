@@ -82,6 +82,7 @@ export class ProductRepository {
     sku?: string;
     imageUrl?: string;
     categoryId?: string;
+    brandId?: string;
   }) {
     return this.prisma.product.create({
       data: {
@@ -93,15 +94,16 @@ export class ProductRepository {
         sku: data.sku ?? null,
         imageUrl: data.imageUrl ?? null,
         categoryId: data.categoryId ?? null,
+        brandId: data.brandId ?? null,
       },
-      include: { category: true },
+      include: { category: true, brand: true },
     });
   }
 
   async findByOrg(orgId: string) {
     return this.prisma.product.findMany({
       where: { orgId, deletedAt: null },
-      include: { category: true },
+      include: { category: true, brand: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -109,7 +111,7 @@ export class ProductRepository {
   async findByIdAndOrg(id: string, orgId: string) {
     return this.prisma.product.findFirst({
       where: { id, orgId, deletedAt: null },
-      include: { category: true },
+      include: { category: true, brand: true },
     });
   }
 
@@ -122,12 +124,71 @@ export class ProductRepository {
     imageUrl?: string;
     categoryId?: string;
     status?: any;
+    brandId?: string | null;
+    leadHandlerIds?: string[];
+    leadReminderMinutes?: number;
   }) {
     return this.prisma.product.update({
       where: { id },
       data,
-      include: { category: true },
+      include: { category: true, brand: true },
     });
+  }
+
+  /** Of these user IDs, the ones that are active members of the org */
+  async findActiveUserIds(orgId: string, userIds: string[]): Promise<string[]> {
+    if (userIds.length === 0) return [];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, orgId, status: 'ACTIVE', deletedAt: null },
+      select: { id: true },
+    });
+    return users.map((u) => u.id);
+  }
+
+  // ─── Brand ───────────────────────────────────────────────────────────────
+
+  async findBrandByIdAndOrg(id: string, orgId: string) {
+    return this.prisma.brand.findFirst({ where: { id, orgId, deletedAt: null } });
+  }
+
+  async findBrandsByOrg(orgId: string) {
+    return this.prisma.brand.findMany({
+      where: { orgId, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async findBrandByName(orgId: string, name: string) {
+    return this.prisma.brand.findFirst({
+      where: { orgId, deletedAt: null, name: { equals: name.trim(), mode: 'insensitive' } },
+    });
+  }
+
+  async createBrand(data: { orgId: string; name: string; managerId?: string; sessionId?: string }) {
+    return this.prisma.brand.create({
+      data: {
+        orgId: data.orgId,
+        name: data.name.trim(),
+        managerId: data.managerId ?? null,
+        sessionId: data.sessionId ?? null,
+      },
+    });
+  }
+
+  async updateBrand(
+    id: string,
+    data: { name?: string; managerId?: string | null; sessionId?: string | null; sortOrder?: number },
+  ) {
+    return this.prisma.brand.update({
+      where: { id },
+      data: { ...data, ...(data.name !== undefined && { name: data.name.trim() }) },
+    });
+  }
+
+  /** Remove a brand; its products stay, without a brand */
+  async softDeleteBrand(id: string) {
+    await this.prisma.product.updateMany({ where: { brandId: id }, data: { brandId: null } });
+    return this.prisma.brand.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
   async softDelete(id: string) {

@@ -170,7 +170,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
               animate={still ? { opacity: 1, x: 0 } : { opacity: [0, 1, 1, 0], x: [-14, 0, 0, 0] }}
               transition={{ ...loop(3.6, i * 0.25), times: [0, 0.18, 0.85, 1] }}
             >
-              <span className="grid size-5 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+              <span className="grid size-5 place-items-center rounded-full bg-primary/15 text-micro font-semibold text-primary">
                 {name[0]}
               </span>
               <span className="text-caption text-on-surface">{name}</span>
@@ -201,7 +201,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
             <span className="block h-1.5 w-14 rounded bg-outline-variant/40" />
           </div>
           <motion.span
-            className="absolute bottom-7 right-2 rounded-xl rounded-br-sm bg-primary px-2 py-1 text-[10px] text-on-primary"
+            className="absolute bottom-7 right-2 rounded-xl rounded-br-sm bg-primary px-2 py-1 text-micro text-on-primary"
             animate={still ? { opacity: 1, y: 0 } : { opacity: [0, 0, 1, 1, 0], y: [6, 6, 0, 0, 0] }}
             transition={{ ...loop(3.4), times: [0, 0.3, 0.4, 0.88, 1] }}
           >
@@ -272,7 +272,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
           />
           <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-on-surface" />
         </div>
-        <span className="rounded-xl bg-surface px-2 py-1 text-[10px] text-on-surface-variant ring-1 ring-outline-variant/40">
+        <span className="rounded-xl bg-surface px-2 py-1 text-micro text-on-surface-variant ring-1 ring-outline-variant/40">
           Back at 10 am
         </span>
       </div>

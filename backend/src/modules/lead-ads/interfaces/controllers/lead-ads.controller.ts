@@ -9,7 +9,10 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  NotFoundException,
 } from '@nestjs/common';
+import { SimulateLeadAdUseCase } from '../../application/use-cases/simulate-lead-ad.use-case';
+import { SimulateLeadAdDto } from '../../application/dto/simulate-lead-ad.dto';
 import { ConfigService } from '@nestjs/config';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -29,6 +32,7 @@ export class LeadAdsController {
     private readonly analyticsUseCase: GetLeadAdAnalyticsUseCase,
     private readonly processUseCase: ProcessLeadAdUseCase,
     private readonly configService: ConfigService,
+    private readonly simulateUseCase: SimulateLeadAdUseCase,
   ) {}
 
   @Get('entries')
@@ -84,6 +88,32 @@ export class LeadAdsController {
     await this.processUseCase.execute(id);
 
     return { success: true };
+  }
+
+  /** Dev only (404 in production): a test lead without Meta, to try automations locally */
+  @Post('dev/simulate')
+  @Permissions(PERMISSIONS.LEAD_ADS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  async simulateLead(
+    @CurrentUser('orgId') orgId: string,
+    @Body() dto: SimulateLeadAdDto,
+  ) {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new NotFoundException();
+    }
+    return this.simulateUseCase.execute(orgId, dto);
+  }
+
+  /** Pages + forms seen so far, for picking them in Lead ad received rules */
+  @Get('forms')
+  @Permissions(PERMISSIONS.LEAD_ADS_READ)
+  async listForms(@CurrentUser('orgId') orgId: string) {
+    const [forms, channels] = await Promise.all([
+      this.leadAdRepo.listForms(orgId),
+      this.leadAdRepo.findChannelsByOrg(orgId),
+    ]);
+    const pageNames = new Map(channels.map((ch) => [ch.externalId, ch.externalHandle || ch.name]));
+    return forms.map((f) => ({ ...f, pageName: pageNames.get(f.pageId) ?? null }));
   }
 
   @Get('analytics')

@@ -9,6 +9,11 @@ import {
   Min,
   IsUrl,
   Matches,
+  IsArray,
+  ArrayMaxSize,
+  IsInt,
+  Max,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -108,6 +113,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  brandId?: string;
 }
 
 export class UpdateProductDto {
@@ -149,6 +158,70 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(['ACTIVE', 'INACTIVE'])
   status?: string;
+
+  /** null removes the product from its brand */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  brandId?: string | null;
+
+  /** People who handle this product's leads (round-robin) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
+  leadHandlerIds?: string[];
+
+  /** Remind the lead's owner after this many minutes without contact */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(1440)
+  leadReminderMinutes?: number;
+}
+
+// ─── Brand DTOs ──────────────────────────────────────────────────────────────
+
+export class CreateBrandDto {
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(120)
+  name: string;
+
+  /** Gets the brand's end-of-day lead summary */
+  @IsOptional()
+  @IsUUID()
+  managerId?: string;
+
+  /** Default WhatsApp number for this brand */
+  @IsOptional()
+  @IsUUID()
+  sessionId?: string;
+}
+
+export class UpdateBrandDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  managerId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  sessionId?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 }
 
 export class AssignProductDto {

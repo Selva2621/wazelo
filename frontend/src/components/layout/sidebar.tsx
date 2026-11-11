@@ -57,7 +57,7 @@ function NavSection({ label, items, counts }: NavSectionDef & { counts: Counts }
   }
   return (
     <div className="pt-4 first:pt-1">
-      <p className="side-label truncate px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--side-faint)]">
+      <p className="side-label truncate px-3 pb-1.5 text-overline font-semibold uppercase tracking-[0.08em] text-[var(--side-faint)]">
         {label}
       </p>
       <div aria-hidden className="side-divider" />
@@ -84,7 +84,7 @@ function AiCreditsWidget() {
       aria-label={`AI credits:${available === null ? "unlimited" : `${available.toLocaleString("en-IN")} left`}`}
       className="side-label mx-3 mb-3 block rounded-2xl border border-[var(--side-line)] bg-[var(--side-card)] p-3.5 outline-none transition-colors duration-200 hover:bg-[var(--side-hover)] focus-visible:ring-2 focus-visible:ring-focus"
     >
-      <span className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--side-faint)]">
+      <span className="flex items-center justify-between text-overline font-semibold uppercase tracking-[0.08em] text-[var(--side-faint)]">
         AI credits
         {!plan.unlimited && <span className="tabular-nums">{Math.round(pct)}%</span>}
       </span>

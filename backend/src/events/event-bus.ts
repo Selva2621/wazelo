@@ -270,6 +270,8 @@ export interface ContactCreatedEvent {
   ownerId: string;
   source: string;
   createdById: string;
+  /** Set when the contact came from a Meta lead form */
+  leadAd?: { platform: string; pageId?: string; formId: string | null };
 }
 
 export interface ContactAutoCreatedEvent {
@@ -299,6 +301,52 @@ export interface ContactMergedEvent {
   mergedContactId: string;
   orgId: string;
   mergedById: string;
+}
+
+/** A lead asked about a product (fired for every lead, new or repeat) */
+export interface LeadProductInterestEvent {
+  orgId: string;
+  contactId: string;
+  productId: string;
+  /** Meta lead ID: one follow-up per lead and product */
+  leadgenId?: string;
+  /** The lead created this contact (then the contact's owner moves to the assignee) */
+  isNewContact: boolean;
+}
+
+/** A lead was given to a team member to contact */
+export interface LeadAssignedEvent {
+  orgId: string;
+  followUpId: string;
+  contactId: string;
+  assigneeId: string;
+  contactName: string | null;
+  contactPhone: string;
+  productName: string | null;
+  reminderMinutes: number;
+}
+
+/** A brand manager's day-end lead summary, ready to send */
+export interface LeadDailySummaryEvent {
+  orgId: string;
+  brandId: string;
+  managerId: string;
+  /** Local date (YYYY-MM-DD) it covers */
+  date: string;
+  title: string;
+  body: string;
+}
+
+/** A lead's reminder time passed without anyone contacting it */
+export interface LeadFollowUpDueEvent {
+  orgId: string;
+  followUpId: string;
+  contactId: string;
+  assigneeId: string;
+  contactName: string | null;
+  contactPhone: string;
+  productName: string | null;
+  waitingMinutes: number;
 }
 
 export interface ContactAssignedEvent {
@@ -365,6 +413,8 @@ export interface LeadAdReceivedEvent {
   campaignName: string | null;
   formId: string | null;
   leadData: Record<string, unknown>;
+  /** false when the number was already a contact (a repeat lead) */
+  isNewContact: boolean;
 }
 
 export interface LeadAdProcessedEvent {

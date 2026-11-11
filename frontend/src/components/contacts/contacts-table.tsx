@@ -159,9 +159,9 @@ function ContactMobileRow({ contact: c, onOpen }: { contact: Contact; onOpen: ()
       >
         <Avatar name={displayName(c)} src={c.avatarUrl} size="md" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-semibold leading-[22px] text-on-surface">{displayName(c)}</p>
+          <p className="truncate text-native-callout font-semibold leading-[22px] text-on-surface">{displayName(c)}</p>
           {secondary && (
-            <p className="truncate text-[14px] leading-5 text-on-surface-variant">{secondary}</p>
+            <p className="truncate text-native-subhead-sm leading-5 text-on-surface-variant">{secondary}</p>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

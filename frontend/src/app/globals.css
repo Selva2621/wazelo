@@ -274,6 +274,23 @@
   --text-hero--line-height: 1.1;
   --text-hero--letter-spacing: -0.025em;
 
+  /* Size-only tokens (no line-height on purpose: they replace arbitrary px sizes 1:1,
+     so existing leading-* and inherited line heights are unchanged). */
+  --text-micro: 0.625rem; /* 10px: numerals inside tiny step circles (setup checklist) */
+  --text-overline: 0.6875rem; /* 11px: uppercase sidebar section labels */
+
+  /* Native mobile scale (<1024px shell only): iOS / Material sizes */
+  --text-native-badge: 0.65625rem; /* 10.5px: nav-bar count badge */
+  --text-native-caption2: 0.6875rem; /* 11px: tab-bar badge, app-icon badge */
+  --text-native-caption: 0.75rem; /* 12px: tab labels, icon captions */
+  --text-native-footnote: 0.8125rem; /* 13px: footnotes, segmented control, swipe actions */
+  --text-native-subhead-sm: 0.875rem; /* 14px: row subtitles */
+  --text-native-subhead: 0.9375rem; /* 15px: secondary row text, banners */
+  --text-native-callout: 1rem; /* 16px: list-row titles */
+  --text-native-body: 1.0625rem; /* 17px: iOS body, nav-bar titles */
+  --text-native-title3: 1.1875rem; /* 19px: section titles */
+  --text-native-title2: 1.375rem; /* 22px: collapsing large-title row */
+
   /* Elevation: floating layers only (DESIGN.md §5.3) */
   --shadow-popover: 0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant);
   --shadow-modal: 0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant);

@@ -22,6 +22,8 @@ import { RerunCampaignUseCase } from './application/use-cases/rerun-campaign.use
 import { ScheduleCampaignUseCase } from './application/use-cases/schedule-campaign.use-case';
 import { PauseCampaignUseCase } from './application/use-cases/pause-campaign.use-case';
 import { ResumeCampaignUseCase } from './application/use-cases/resume-campaign.use-case';
+import { RetryFailedRecipientsUseCase } from './application/use-cases/retry-failed-recipients.use-case';
+import { ReplaceCampaignMediaUseCase } from './application/use-cases/replace-campaign-media.use-case';
 import { CancelCampaignUseCase } from './application/use-cases/cancel-campaign.use-case';
 import { GetCampaignUseCase } from './application/use-cases/get-campaign.use-case';
 import { ListCampaignsUseCase } from './application/use-cases/list-campaigns.use-case';
@@ -67,6 +69,8 @@ import { CampaignBatchDispatcher } from './application/services/campaign-batch-d
     ScheduleCampaignUseCase,
     PauseCampaignUseCase,
     ResumeCampaignUseCase,
+    RetryFailedRecipientsUseCase,
+    ReplaceCampaignMediaUseCase,
     CancelCampaignUseCase,
     GetCampaignUseCase,
     ListCampaignsUseCase,

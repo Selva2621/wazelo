@@ -137,7 +137,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search contacts, conversations, campaigns..."
-            className="flex-1 bg-transparent text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none"
+            className="flex-1 bg-transparent text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none"
           />
           {isLoading && <Spinner size="sm" />}
           <button aria-label="Close"

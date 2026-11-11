@@ -61,6 +61,8 @@ import { TrialPlanEventsHandler } from './handlers/trial-plan-events.handler';
 import { OrgModule } from '@/modules/org/org.module';
 // AI credits for purchase intent detection
 import { BillingModule } from '@/modules/billing/billing.module';
+import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.module';
+import { LeadFollowUpEventsHandler } from './handlers/lead-follow-up-events.handler';
 
 @Module({
   imports: [
@@ -83,8 +85,11 @@ import { BillingModule } from '@/modules/billing/billing.module';
     DealsModule,
     AiModule,
     OrgModule,
+    LeadFollowUpsModule,
   ],
   providers: [
+    // Lead routing: product team gets the lead; manual message / status = contacted
+    LeadFollowUpEventsHandler,
     AuthEventsHandler,
     OrgUserEventsHandler,
     WhatsAppEventsHandler,

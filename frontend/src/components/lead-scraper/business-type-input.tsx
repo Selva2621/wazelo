@@ -224,7 +224,7 @@ export function SuggestionChips({ groups, recent, onPickRecent, suggested, exclu
 }
 
 const fieldClass =
-  "w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary";
+  "w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary";
 
 interface SuggestProps {
   groups: SuggestionGroup[];
@@ -376,7 +376,7 @@ export function SuggestMulti({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          className={`flex-1 min-w-[100px] bg-transparent px-1 py-0.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none ${
+          className={`flex-1 min-w-[100px] bg-transparent px-1 py-0.5 text-on-surface placeholder:text-placeholder focus:outline-none ${
             large ? "text-body-lg" : "text-label"
           }`}
         />

@@ -140,7 +140,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         placeholder="Message body..."
         rows={2}
         maxLength={1024}
-        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none mb-2"
+        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none mb-2"
       />
 
       {/* Footer */}
@@ -149,7 +149,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
         onChange={(e) => setFooter(e.target.value)}
         placeholder="Footer text (optional)"
         maxLength={60}
-        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-3"
+        className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-3"
       />
 
       {/* Button builder */}
@@ -165,7 +165,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                 onChange={(e) => updateButton(i, e.target.value)}
                 placeholder={`Button ${i + 1} label`}
                 maxLength={20}
-                className="flex-1 rounded-lg border border-outline-variant/30 bg-surface px-2.5 py-1.5 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                className="flex-1 rounded-lg border border-outline-variant/30 bg-surface px-2.5 py-1.5 text-label text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none"
               />
               {buttons.length > 1 && (
                 <IconButton size="xs" variant="danger" onClick={() => removeButton(i)} aria-label="Delete">
@@ -193,7 +193,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
             onChange={(e) => setButtonText(e.target.value)}
             placeholder="Menu button text"
             maxLength={20}
-            className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-2"
+            className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-label text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary mb-2"
           />
           <p className="text-caption font-medium text-on-surface-variant mb-1.5">
             Sections &middot; {totalRows}/10 rows
@@ -208,7 +208,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                   }
                   placeholder="Section title (optional)"
                   maxLength={24}
-                  className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                  className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-placeholder focus:border-primary focus:outline-none"
                 />
                 {sections.length > 1 && (
                   <IconButton size="xs" variant="danger" onClick={() => removeSection(si)} aria-label="Delete">
@@ -232,7 +232,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                       }
                       placeholder="Row title"
                       maxLength={24}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-placeholder focus:border-primary focus:outline-none"
                     />
                     <input
                       value={row.description || ""}
@@ -247,7 +247,7 @@ export function InteractiveMessageBuilder({ onSend, onClose }: InteractiveMessag
                       }
                       placeholder="Description (optional)"
                       maxLength={72}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container px-2 py-1 text-caption placeholder:text-placeholder focus:border-primary focus:outline-none"
                     />
                   </div>
                   {section.rows.length > 1 && (

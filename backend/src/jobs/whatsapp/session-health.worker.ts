@@ -70,6 +70,10 @@ export class SessionHealthWorker implements OnModuleInit {
     if (!session || session.status === 'DISCONNECTED') {
       return;
     }
+    // Official (Cloud API) numbers have no socket to check or reconnect
+    if (session.provider === 'CLOUD_API') {
+      return;
+    }
 
     if (action === 'reconnect') {
       await this.handleReconnect(session, attempt || 1);

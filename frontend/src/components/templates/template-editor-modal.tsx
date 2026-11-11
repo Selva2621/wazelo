@@ -8,7 +8,7 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 
 /** Field styles shared with the campaign create modal */
 export const TEXTAREA_CLASS =
-  "w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 placeholder:text-on-surface-variant/40";
+  "w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 placeholder:text-placeholder";
 export const LABEL_CLASS = "mb-1.5 block";
 
 /**

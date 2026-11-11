@@ -70,7 +70,7 @@ export default function NotificationsPage() {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          className="h-11 px-2 text-[17px] text-primary active:opacity-50"
+          className="h-11 px-2 text-native-body text-primary active:opacity-50"
         >
           Edit
         </button>
@@ -125,10 +125,10 @@ export default function NotificationsPage() {
           <span className="mb-4 grid size-16 place-items-center rounded-full bg-surface-container">
             <Bell className="h-7 w-7 text-on-surface-variant" aria-hidden />
           </span>
-          <p className="text-[17px] font-semibold text-on-surface">
+          <p className="text-native-body font-semibold text-on-surface">
             {filter === "unread" ? "You're all caught up" : "No notifications yet"}
           </p>
-          <p className="mt-1 text-[15px] text-on-surface-variant">We&apos;ll let you know when something happens.</p>
+          <p className="mt-1 text-native-subhead text-on-surface-variant">We&apos;ll let you know when something happens.</p>
         </div>
       ) : (
         <ul data-tour="notif-list" className="ios-group-body mx-4 lg:mx-0">
@@ -168,7 +168,7 @@ export default function NotificationsPage() {
                           {!n.isRead && <span className="size-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
                           <span
                             className={cn(
-                              "truncate text-[16px] leading-[21px]",
+                              "truncate text-native-callout leading-[21px]",
                               n.isRead ? "text-on-surface" : "font-semibold text-on-surface",
                             )}
                           >
@@ -178,9 +178,9 @@ export default function NotificationsPage() {
                             <span className={cn("size-1.5 shrink-0 rounded-full", PRIORITY_DOT[n.priority])} aria-hidden />
                           )}
                         </span>
-                        <span className="mt-0.5 line-clamp-2 text-[14px] leading-[19px] text-on-surface-variant">{n.body}</span>
+                        <span className="mt-0.5 line-clamp-2 text-native-subhead-sm leading-[19px] text-on-surface-variant">{n.body}</span>
                       </span>
-                      <span className="ml-2 shrink-0 text-[13px] text-on-surface-variant">{timeAgo(n.createdAt)}</span>
+                      <span className="ml-2 shrink-0 text-native-footnote text-on-surface-variant">{timeAgo(n.createdAt)}</span>
                     </span>
                   </button>
                 </SwipeRow>

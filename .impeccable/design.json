@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-09T00:00:00Z",
+  "title": "Design System: Wazelo",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Counter Amber", "canonical": "#b45309", "tonalRamp": ["#3b1a03", "#5e2a05", "#843b07", "#b45309", "#d97706", "#f59e0b", "#fcd38a", "#fef3dc"] },
+      "primary-container": { "role": "primary", "displayName": "Deep Amber", "canonical": "#92400e" },
+      "surface": { "role": "neutral", "displayName": "Canvas", "canonical": "#eef1f6", "tonalRamp": ["#1d2330", "#555e70", "#7f889b", "#d6dce5", "#e0e5ec", "#e9edf3", "#f5f7fa", "#fdfdfe"] },
+      "surface-container-lowest": { "role": "neutral", "displayName": "Paper" },
+      "surface-container-low": { "role": "neutral", "displayName": "Mist 1" },
+      "surface-container": { "role": "neutral", "displayName": "Mist 2" },
+      "surface-container-high": { "role": "neutral", "displayName": "Mist 3" },
+      "surface-container-highest": { "role": "neutral", "displayName": "Mist 4" },
+      "on-surface": { "role": "neutral", "displayName": "Ink" },
+      "on-surface-variant": { "role": "neutral", "displayName": "Slate" },
+      "placeholder": { "role": "neutral", "displayName": "Placeholder" },
+      "outline-variant": { "role": "neutral", "displayName": "Hairline" },
+      "outline": { "role": "neutral", "displayName": "Outline" },
+      "sidebar-ink": { "role": "neutral", "displayName": "Counter Edge", "canonical": "#15171c" },
+      "sidebar-accent": { "role": "primary", "displayName": "Edge Amber", "canonical": "#f59e0b" },
+      "bubble-out": { "role": "secondary", "displayName": "Sent Bubble" },
+      "success": { "role": "status", "displayName": "Success" },
+      "warning": { "role": "status", "displayName": "Warning" },
+      "error": { "role": "status", "displayName": "Error" },
+      "info": { "role": "status", "displayName": "Info" }
+    },
+    "themes": [
+      { "id": "daylight", "label": "Light", "mode": "light", "default": true },
+      { "id": "midnight-ember", "label": "Dark", "mode": "dark" },
+      { "id": "emerald-night", "label": "Emerald", "mode": "dark" },
+      { "id": "ember-glass", "label": "Glass", "mode": "dark" }
+    ],
+    "typographyMeta": {
+      "hero": { "displayName": "Hero", "purpose": "Auth and onboarding headlines only." },
+      "display": { "displayName": "Display", "purpose": "KPI values and auth headings." },
+      "headline": { "displayName": "Headline", "purpose": "The one page title, from PageHeader." },
+      "title": { "displayName": "Title", "purpose": "Modal and section titles." },
+      "title-sm": { "displayName": "Title small", "purpose": "Card, panel and drawer titles." },
+      "body-lg": { "displayName": "Body large", "purpose": "Inputs, message text, md/lg buttons." },
+      "body": { "displayName": "Body", "purpose": "Default UI text: lists, tables, nav." },
+      "label": { "displayName": "Label", "purpose": "Form labels and table headers, sentence case." },
+      "caption": { "displayName": "Caption", "purpose": "Timestamps, badges, helper and error text." }
+    },
+    "shadows": [
+      { "name": "popover", "value": "0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant)", "purpose": "Menus, dropdowns, tooltips." },
+      { "name": "modal", "value": "0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant)", "purpose": "Dialogs and drawers over the scrim." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.2, 0, 0, 1)", "purpose": "Hover, press and state transitions (120ms)." },
+      { "name": "ease-exit", "value": "cubic-bezier(0.4, 0, 1, 1)", "purpose": "Exits." },
+      { "name": "ease-emphasized", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Page entrance stagger (640ms, 70ms steps), row cascade, title letters." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px", "note": "Desktop starts here; everything below is the adaptive PWA shell." },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a view.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Send campaign</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; font: 500 0.875rem/1.375rem Inter, ui-sans-serif, system-ui, sans-serif; border: 1px solid transparent; cursor: pointer; transition: background-color 120ms cubic-bezier(0.2,0,0,1), color 120ms, border-color 120ms, transform 120ms; } .ds-btn:active { transform: scale(0.98); } .ds-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface, #eef1f6), 0 0 0 4px var(--focus, #b45309); } .ds-btn-primary { background: var(--primary, #b45309); color: var(--on-primary, #fffaf2); } .ds-btn-primary:hover { background: var(--primary-container, #92400e); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral companion action.",
+      "html": "<button class=\"ds-btn2\">Cancel</button>",
+      "css": ".ds-btn2 { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 8px; font: 500 0.875rem/1.375rem Inter, ui-sans-serif, system-ui, sans-serif; background: transparent; color: var(--on-surface, #1d2330); border: 1px solid var(--outline-variant, #d9dfe8); cursor: pointer; transition: background-color 120ms cubic-bezier(0.2,0,0,1), transform 120ms; } .ds-btn2:hover { background: var(--surface-container-low, #f5f7fa); } .ds-btn2:active { transform: scale(0.98); } .ds-btn2:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface, #eef1f6), 0 0 0 4px var(--focus, #b45309); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis toolbar action.",
+      "html": "<button class=\"ds-btn3\">Export</button>",
+      "css": ".ds-btn3 { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 8px; font: 500 0.875rem/1.375rem Inter, ui-sans-serif, system-ui, sans-serif; background: transparent; color: var(--on-surface-variant, #555e70); border: none; cursor: pointer; transition: background-color 120ms cubic-bezier(0.2,0,0,1), color 120ms; } .ds-btn3:hover { background: var(--surface-container-low, #f5f7fa); color: var(--on-surface, #1d2330); } .ds-btn3:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface, #eef1f6), 0 0 0 4px var(--focus, #b45309); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard 40px field with leading search icon.",
+      "html": "<label class=\"ds-field\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input class=\"ds-input\" placeholder=\"Search contacts\"/></label>",
+      "css": ".ds-field { position: relative; display: block; width: 280px; color: var(--on-surface-variant, #555e70); } .ds-field svg { position: absolute; left: 12px; top: 12px; pointer-events: none; } .ds-input { width: 100%; height: 40px; padding: 0 12px 0 40px; border-radius: 8px; border: 1px solid var(--outline-variant, #d9dfe8); background: var(--surface-container-low, #f5f7fa); color: var(--on-surface, #1d2330); font: 400 0.875rem/1.375rem Inter, ui-sans-serif, system-ui, sans-serif; outline: none; transition: border-color 120ms cubic-bezier(0.2,0,0,1), box-shadow 120ms; } .ds-input::placeholder { color: var(--placeholder, #646d7f); } .ds-input:hover { border-color: var(--outline, #7f889b); } .ds-input:focus { border-color: var(--primary, #b45309); box-shadow: 0 0 0 2px rgb(180 83 9 / 0.3); }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge-success",
+      "description": "Tinted status pills; dot variant for live states.",
+      "html": "<span class=\"ds-badge ds-b-success\"><i></i>Delivered</span> <span class=\"ds-badge ds-b-info\">New</span> <span class=\"ds-badge ds-b-warn\">Interested</span> <span class=\"ds-count\">12</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 9999px; font: 500 0.6875rem/1rem Inter, ui-sans-serif, system-ui, sans-serif; } .ds-badge i { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; } .ds-b-success { background: var(--success-container, #dff3ea); color: var(--success, #047857); } .ds-b-info { background: var(--info-container, #e3ebfd); color: var(--info, #1d4ed8); } .ds-b-warn { background: var(--warning-container, #fcf1cf); color: var(--warning, #8a5a06); } .ds-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9999px; background: var(--primary, #b45309); color: var(--on-primary, #fffaf2); font: 600 0.6875rem/1 Inter, ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Page Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The single card level: paper on canvas, hairline, no shadow.",
+      "html": "<div class=\"ds-canvas\"><div class=\"ds-card\"><h2>Campaign results</h2><p>Last 30 days</p><div class=\"ds-kpi\">4,200</div><span class=\"ds-kpi-l\">Delivered</span></div></div>",
+      "css": ".ds-canvas { background: var(--surface, #eef1f6); padding: 24px; } .ds-card { width: 280px; background: var(--surface-container-lowest, #fdfdfe); border: 1px solid var(--outline-variant, #d9dfe8); border-radius: 16px; padding: 20px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-card h2 { margin: 0; font-size: 1rem; line-height: 1.5rem; font-weight: 600; color: var(--on-surface, #1d2330); } .ds-card p { margin: 2px 0 16px; font-size: 0.8125rem; line-height: 1.25rem; color: var(--on-surface-variant, #555e70); } .ds-kpi { font-size: 1.75rem; line-height: 2.125rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--on-surface, #1d2330); } .ds-kpi-l { font-size: 0.75rem; font-weight: 500; color: var(--on-surface-variant, #555e70); }"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "Dark counter edge in every theme; amber accent bar on the active row.",
+      "html": "<nav class=\"ds-side\"><div class=\"ds-sec\">WORKSPACE</div><a class=\"ds-row ds-active\">Inbox <span>8</span></a><a class=\"ds-row\">Contacts</a><a class=\"ds-row\">Campaigns</a></nav>",
+      "css": ".ds-side { width: 220px; background: #15171c; padding: 12px 10px; border-radius: 12px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-sec { color: #80858f; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.06em; padding: 8px 10px 4px; } .ds-row { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; color: #aeb2bb; font-size: 0.8125rem; text-decoration: none; cursor: pointer; transition: background-color 120ms cubic-bezier(0.2,0,0,1), color 120ms; } .ds-row:hover { background: rgb(255 255 255 / 0.05); color: #f2f3f5; } .ds-active { background: rgb(255 255 255 / 0.09); color: #f2f3f5; } .ds-active::before { content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: #f59e0b; } .ds-row span { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px; background: #f59e0b; color: #1a1d27; font-size: 0.6875rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Message Bubbles",
+      "kind": "custom",
+      "refersTo": "bubble-outgoing",
+      "description": "Incoming on mist, outgoing on the tinted sent fill; never gradients.",
+      "html": "<div class=\"ds-thread\"><div class=\"ds-in\">Hi, what's the price for the premium plan?<small>10:42</small></div><div class=\"ds-out\">It's ₹2,999/month. Want a quick demo?<small>10:43 ✓✓</small></div></div>",
+      "css": ".ds-thread { display: flex; flex-direction: column; gap: 12px; width: 320px; padding: 16px; background: var(--surface, #eef1f6); font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-in, .ds-out { max-width: 70%; padding: 8px 14px; border-radius: 16px; font-size: 0.875rem; line-height: 1.375rem; } .ds-in { align-self: flex-start; background: var(--surface-container, #e9edf3); color: var(--on-surface, #1d2330); } .ds-out { align-self: flex-end; background: var(--bubble-out, #fbe7c3); color: var(--on-bubble-out, #2b2006); } .ds-in small, .ds-out small { display: block; text-align: right; font-size: 0.6875rem; opacity: 0.7; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Shared Counter",
+    "overview": "Wazelo is the counter a whole team works from: an agent, a rep and a manager all stand at it, serving the same customers from the same WhatsApp number. Like a good shop counter it is practical, legible and plain. Everything on it is a tool for a job, nothing is there for show, and the surface stays clear so the work (a conversation, a lead, a campaign result) is what you see. The conversation is the product; the chrome around it recedes.\n\nThe system is dense on purpose. Body text is 13px, buttons are 36px, and filters sit on one row, because people spend whole shifts in it and need to see a lot at once. Calm comes from restraint, not from empty space: neutral surfaces, one warm amber accent kept for the action or state that matters, a single level of cards, and shadows only on things that float. The one strong element is the dark sidebar, which looks the same in every theme. It's the counter's edge, and it never changes.\n\nComponents are refined and restrained. They sit flat with thin borders, give a small physical press on click (scale(0.98)), and get their life from motion rather than ornament. Each page assembles with a short rising stagger and the title letters settle into place, but nothing loops or demands attention once the page has loaded.",
+    "keyCharacteristics": [
+      "Dense, task-first layouts: 13px body and 36px controls.",
+      "One warm amber accent on a neutral canvas.",
+      "A dark sidebar panel in all four themes.",
+      "One card level, tone and hairline before shadow.",
+      "Entrance motion on a single emphasized curve; still at rest.",
+      "Four equal themes: Light (default), Dark, Emerald, Glass."
+    ],
+    "rules": [
+      { "name": "The One Amber Rule", "body": "Amber appears only on the primary button, the active nav row, links, the focus ring, unread and count badges, the sent-bubble tint and progress fills. Never on headings, decorative icons or card borders. If two things compete in amber on one screen, one of them is wrong.", "section": "colors" },
+      { "name": "The Token-Only Rule", "body": "No bg-[#…], text-[13px] or bg-gray-* in feature code; if a value is missing, add a token. npm run lint:tokens enforces this.", "section": "colors" },
+      { "name": "The Status-Is-Status Rule", "body": "Success, warning, error and info appear only when the UI is reporting a state, and always with a label or icon, so meaning never depends on hue alone.", "section": "colors" },
+      { "name": "The Quiet Chip Rule", "body": "The header status chip (AI credits, WhatsApp health) stays neutral until something needs attention.", "section": "colors" },
+      { "name": "The Three Weights Rule", "body": "Use 400, 500 and 600 only.", "section": "typography" },
+      { "name": "The One Title Rule", "body": "Each page has exactly one <h1>, from PageHeader. The header bar repeats it only after it scrolls away.", "section": "typography" },
+      { "name": "The Sentence Case Rule", "body": "Labels, buttons, table headers and menu items use sentence case; the sidebar's section labels are the only uppercase. Button labels are at most three words and never wrap.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Numbers in tables, KPIs and timestamps use tabular-nums, and counts and money are grouped en-IN (1,00,000).", "section": "typography" },
+      { "name": "The Desktop Is Frozen Rule", "body": "Mobile work lives only under max-lg: / lg:hidden / max-width: 1023.98px. A mobile change that moves even one pixel at ≥1024px is a bug, and so is a mobile change that alters a flow, route or action.", "section": "layout" },
+      { "name": "The One Row Rule", "body": "All of a list's filters share one row. Never stack filter rows.", "section": "layout" },
+      { "name": "The Floating-Only Shadow Rule", "body": "If it doesn't float, it has no shadow. Cards, tables and stat tiles sit flat with a hairline.", "section": "elevation" },
+      { "name": "The No-Nesting Rule", "body": "Never put a card inside a card. Group content inside a card with divide-y divide-outline-variant, spacing, or the stat tile's inset variant.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do build every page as PageHeader → one FilterBar row → cards or DataTable.",
+      "Do use role tokens only, and check every new screen in all four themes: Light, Dark, Emerald and Glass.",
+      "Do keep amber for the one primary action or active state per view.",
+      "Do use the type tokens (text-body, text-label, text-headline) and register any new --text-*, --shadow-* or --ease-* token in extendTailwindMerge (src/lib/utils.ts) so cn() doesn't drop it.",
+      "Do use the shared entrance motion (.page-stagger, .rise-in, .stagger-rows, .grow-x/.grow-y) on --ease-emphasized cubic-bezier(0.22, 1, 0.36, 1). Animate transform and opacity only, and honour prefers-reduced-motion.",
+      "Do give every interactive element a visible focus-visible ring, keep body text at 4.5:1 or better on every surface step it can sit on, and keep targets at 32px or larger.",
+      "Do add data-tour anchors and a tour definition to any new or changed screen.",
+      "Do keep mobile changes under max-lg: so desktop renders identically."
+    ],
+    "donts": [
+      "Don't put cards inside cards or add coloured icon tiles to desktop stat cards.",
+      "Don't stack filter rows or show a second page title in the header bar.",
+      "Don't give flat surfaces (cards, tables, stat tiles) a shadow, or use gradients and glows on buttons and bubbles.",
+      "Don't use raw hex, arbitrary text-[Npx] or Tailwind palette colours outside the documented exceptions.",
+      "Don't colour the header status chip when nothing is wrong.",
+      "Don't use title case or all caps for labels, buttons or table headers, or any text smaller than 11px.",
+      "Don't add a global * { transition } or ambient looping motion (the typing indicator is the only loop).",
+      "Don't restyle colours or fonts toward the Kerfa demo theme; only its motion was kept."
+    ]
+  }
+}

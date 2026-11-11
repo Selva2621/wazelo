@@ -21,6 +21,11 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
     sequenceRecipient: { findMany: jest.fn(async () => [{ id: 'sr1', sequenceId: 'seq1' }, { id: 'sr2', sequenceId: 'seq2' }]) },
     user: { findFirst: jest.fn(async () => ({ id: 'u2' })) },
     conversation: { findFirst: jest.fn(async () => ({ id: 'conv1' })) },
+    product: { findFirst: jest.fn(async (): Promise<{ id: string; name: string } | null> => ({ id: 'p1', name: 'Villa plots' })) },
+    contactProduct: {
+      findUnique: jest.fn(async (): Promise<{ id: string } | null> => null),
+      create: jest.fn(async () => ({ id: 'cp1' })),
+    },
   };
   const sequenceRepo = { exitRecipient: jest.fn(async () => ({})), updateSequenceCounters: jest.fn(async () => ({})) };
   const events = { emit: jest.fn() };
@@ -32,7 +37,11 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
     findByIdempotencyKey: jest.fn(async () => null),
     create: jest.fn(async (data: Record<string, unknown>) => ({ id: 'm1', ...data })),
   };
-  const conversationRepo = { findOrCreate: jest.fn(async () => ({ id: 'c1' })), assignTo: jest.fn(async () => ({})) };
+  const conversationRepo = {
+    findOrCreate: jest.fn(async () => ({ id: 'c1' })),
+    assignTo: jest.fn(async () => ({})),
+    updateLastMessage: jest.fn(async () => ({})),
+  };
   const messageEventRepo = { record: jest.fn(async () => undefined) };
   const sessionRepo = { findAnyActiveByOrgId: jest.fn(async () => ({ id: 'any-session' })) };
   const orgEmail = { queue: jest.fn(async (): Promise<Record<string, unknown>> => ({ emailMessageId: 'em1', status: 'QUEUED' })) };
@@ -82,6 +91,31 @@ describe('ActionExecutorService contact actions (run now, as the rule creator)',
     await service.execute(action(AutomationActionType.ADD_TAG, { tagId: 't1' }));
     expect(addTag.execute).toHaveBeenNthCalledWith(1, 'ct1', 'o1', 'creator', { name: 'qualified-lead' });
     expect(addTag.execute).toHaveBeenNthCalledWith(2, 'ct1', 'o1', 'creator', { name: 'vip' });
+  });
+
+  it('adds the contact to a product once, keeping their other products', async () => {
+    const { service, prisma, events } = setup();
+    const r = await service.execute(action(AutomationActionType.ADD_TO_PRODUCT, { productId: 'p1' }));
+    expect(r).toMatchObject({ success: true, result: { productName: 'Villa plots', alreadyLinked: false } });
+    expect(prisma.product.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'p1', orgId: 'o1', deletedAt: null } }));
+    expect(prisma.contactProduct.create).toHaveBeenCalledWith({ data: { contactId: 'ct1', productId: 'p1', orgId: 'o1' } });
+    expect(events.emit).toHaveBeenCalledWith('product.contact_assigned', { contactId: 'ct1', productId: 'p1', orgId: 'o1' });
+
+    prisma.contactProduct.findUnique.mockResolvedValueOnce({ id: 'cp1' });
+    prisma.contactProduct.create.mockClear();
+    const again = await service.execute(action(AutomationActionType.ADD_TO_PRODUCT, { productId: 'p1' }));
+    expect(again).toMatchObject({ success: true, result: { alreadyLinked: true } });
+    expect(prisma.contactProduct.create).not.toHaveBeenCalled();
+  });
+
+  it('fails on a missing or other-org product', async () => {
+    const { service, prisma } = setup();
+    expect((await service.execute(action(AutomationActionType.ADD_TO_PRODUCT, {}))).success).toBe(false);
+    prisma.product.findFirst.mockResolvedValueOnce(null);
+    expect(await service.execute(action(AutomationActionType.ADD_TO_PRODUCT, { productId: 'p9' }))).toMatchObject({
+      success: false,
+      error: 'Product not found',
+    });
   });
 
   it('stops every running sequence for the contact (or just one when given)', async () => {
@@ -157,6 +191,13 @@ describe('ActionExecutorService SEND_EMAIL', () => {
     expect(r.success).toBe(false);
     expect(orgEmail.queue).not.toHaveBeenCalled();
   });
+
+  it('sends no second welcome email when a "Lead ad received" rule emails the lead', async () => {
+    const { service, orgEmail } = setup();
+    const r = await service.execute({ ...input({ subject: 'Hi', body: 'Hello' }), eventPayload: { emailByLeadAdRule: true } });
+    expect(r).toMatchObject({ success: true, result: { skipped: true } });
+    expect(orgEmail.queue).not.toHaveBeenCalled();
+  });
 });
 
 describe('ActionExecutorService SEND_MESSAGE', () => {
@@ -199,6 +240,13 @@ describe('ActionExecutorService SEND_MESSAGE', () => {
   it('sends no second welcome when the chatbot greets a contact who wrote first', async () => {
     const { service, messageRepo } = setup();
     const result = await service.execute(send({ contactId: 'ct1', welcomeByChatbot: true }));
+    expect(result).toEqual(expect.objectContaining({ success: true, result: expect.objectContaining({ skipped: true }) }));
+    expect(messageRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('sends no second welcome when a "Lead ad received" rule greets the lead', async () => {
+    const { service, messageRepo } = setup();
+    const result = await service.execute(send({ contactId: 'ct1', welcomeByLeadAdRule: true }));
     expect(result).toEqual(expect.objectContaining({ success: true, result: expect.objectContaining({ skipped: true }) }));
     expect(messageRepo.create).not.toHaveBeenCalled();
   });

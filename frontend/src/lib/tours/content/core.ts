@@ -123,14 +123,21 @@ export const coreTours: TourDef[] = [
 
   {
     id: "dashboard",
-    version: 1,
+    version: 2,
     title: "Dashboard",
-    summary: "Setup checklist, key numbers and charts for your team.",
+    summary: "Leads waiting for you, setup checklist, key numbers and charts.",
     section: "Getting started",
     startHref: "/dashboard",
     orgType: "TEAM",
     match: exact("/dashboard"),
     steps: [
+      {
+        target: "dash-leads-waiting",
+        ifMissing: "skip",
+        title: "Leads waiting for you",
+        body: "Leads given to you that nobody has contacted yet, late ones first. Call or WhatsApp them, then tap Called. A message from the inbox or a status change also clears them.",
+        example: { kind: "chips", items: ["Call", "WhatsApp", "Called"] },
+      },
       {
         target: "page-actions",
         title: "Pick a period",

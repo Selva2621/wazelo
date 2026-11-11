@@ -222,7 +222,7 @@ export function PitchTemplateModal({ open, onClose, selectedResults }: PitchTemp
                           value={vars[slot] ?? ""}
                           onChange={(e) => setVars((p) => ({ ...p, [slot]: e.target.value }))}
                           placeholder={SLOT_LABELS[slot] ?? `Value for {{${slot}}}`}
-                          className="flex-1 rounded-lg border border-outline-variant bg-surface-container px-3 py-1.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary"
+                          className="flex-1 rounded-lg border border-outline-variant bg-surface-container px-3 py-1.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary"
                         />
                       </div>
                     ))}

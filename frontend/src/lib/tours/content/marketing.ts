@@ -53,7 +53,7 @@ function sequencesTour(o: {
 export const marketingTours: TourDef[] = [
   {
     id: "campaigns",
-    version: 2,
+    version: 3,
     title: "Campaigns",
     summary: "Send one WhatsApp message or email to many contacts, now or on a schedule.",
     section: "Marketing",
@@ -77,8 +77,8 @@ export const marketingTours: TourDef[] = [
       },
       {
         title: "WhatsApp or email",
-        body: "Choose the channel at the top of the message. Email campaigns send from your business email (Settings → Email) to contacts who have an email and haven't unsubscribed.",
-        example: { kind: "chips", items: ["WhatsApp", "Email"] },
+        body: "Choose the channel at the top of the message. Email campaigns send from your business email (Settings → Email) to contacts who have an email and haven't unsubscribed. Pick an official WhatsApp number and the message becomes a Meta-approved template.",
+        example: { kind: "chips", items: ["WhatsApp", "Email", "Official number → template"] },
       },
       {
         title: "Personalised for each person",
@@ -106,8 +106,32 @@ export const marketingTours: TourDef[] = [
   },
 
   {
+    id: "lead-ads",
+    version: 1,
+    title: "Lead ads",
+    summary: "Facebook and Instagram lead forms, and the product each one feeds.",
+    section: "Marketing",
+    startHref: "/lead-ads",
+    navHref: "/lead-ads",
+    match: exact("/lead-ads"),
+    steps: [
+      {
+        title: "Leads from Meta",
+        body: "Every Facebook or Instagram lead form submission lands here and becomes a contact. The same person from two forms stays one contact.",
+        example: { kind: "flow", nodes: ["Lead form", "Contact", "Product", "Welcome"] },
+      },
+      {
+        target: "lead-forms",
+        title: "Link each form to a product",
+        body: "Use “Link to product” on a form: its leads join that product and get that product's own welcome. Later, run campaigns to everyone in the product.",
+        example: { kind: "chips", items: ["Villa plots form → Villa plots", "Apartments form → Apartments"] },
+      },
+    ],
+  },
+
+  {
     id: "campaign-detail",
-    version: 4,
+    version: 5,
     title: "Campaign report",
     summary: "Run, pause and measure one campaign.",
     section: "Marketing",
@@ -133,6 +157,18 @@ export const marketingTours: TourDef[] = [
             ["Failed", "12"],
           ],
         },
+      },
+      {
+        target: "campaign-media-missing",
+        ifMissing: "skip",
+        title: "Media missing",
+        body: "If the campaign's file is cleared from the server, sending pauses. Upload it again here, then resume.",
+      },
+      {
+        target: "campaign-retry-failed",
+        ifMissing: "skip",
+        title: "Retry failed",
+        body: "Messages that failed because WhatsApp was disconnected can be sent again. Wrong numbers and blocks aren't retried.",
       },
       {
         target: "campaign-sections",

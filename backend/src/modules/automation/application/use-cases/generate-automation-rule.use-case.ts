@@ -29,6 +29,7 @@ const TRIGGER_TYPES = [
   'LEAD_STATUS_CHANGED',
   'TIME_BASED',
   'NO_REPLY',
+  'LEAD_AD_RECEIVED',
   'SHOPIFY_ORDER_CREATED',
   'SHOPIFY_ORDER_FULFILLED',
   'SHOPIFY_CART_ABANDONED',
@@ -48,7 +49,7 @@ function workspaceGuide(voice: WorkspaceVoice): string {
   }
   return `Workspace: a business with a team. Contacts are customers (enquiries, bookings, orders).
 - ${voiceRule(voice)}
-- Good fits: MESSAGE_RECEIVED keyword replies, CONTACT_CREATED welcomes, ASSIGN_CONTACT to route enquiries to the team, LEAD_STATUS_CHANGED follow-ups, DEAL_STAGE_CHANGED as a booking or order moves along, Shopify triggers if they sell online.`;
+- Good fits: MESSAGE_RECEIVED keyword replies, CONTACT_CREATED welcomes, LEAD_AD_RECEIVED welcomes for Facebook/Instagram ad leads, ASSIGN_CONTACT to route enquiries to the team, LEAD_STATUS_CHANGED follow-ups, DEAL_STAGE_CHANGED as a booking or order moves along, Shopify triggers if they sell online.`;
 }
 
 const SYSTEM_PROMPT = `You are an automation rule generator for a WhatsApp CRM platform.
@@ -61,6 +62,7 @@ Available trigger types:
 - LEAD_STATUS_CHANGED: triggerConfig can have { fromStatus?: string, toStatus?: string } where statuses are NEW|CONTACTED|INTERESTED|CONVERTED|CLOSED
 - TIME_BASED: triggerConfig must have { cronExpression: string } (standard 5-field cron)
 - NO_REPLY: triggerConfig must have { delaySeconds: number } (seconds to wait, min 60)
+- LEAD_AD_RECEIVED: someone filled a Facebook/Instagram lead form. Use this (not CONTACT_CREATED) for anything about ad leads. triggerConfig can have { platform?: "facebook"|"instagram", newContactsOnly?: boolean } — set newContactsOnly: true for welcomes; never invent a formId. Messages can use {{lead.campaign}}, {{lead.ad}} and form answers like {{lead.city}}.
 - SHOPIFY_ORDER_CREATED: triggerConfig can have { minOrderValue?: number }
 - SHOPIFY_ORDER_FULFILLED: triggerConfig can have { minOrderValue?: number }
 - SHOPIFY_CART_ABANDONED: triggerConfig can have { minCartValue?: number }
@@ -135,6 +137,12 @@ export class GenerateAutomationRuleUseCase {
         // The AI can't know stage ids: the draft means "any stage" until the user picks one
         if (parsed.rule.triggerType === 'DEAL_STAGE_CHANGED') {
           delete parsed.rule.triggerConfig.stageId;
+        }
+        // Same for lead form ids; and a platform we don't know would fail validation on save
+        if (parsed.rule.triggerType === 'LEAD_AD_RECEIVED') {
+          delete parsed.rule.triggerConfig.formId;
+          const p = parsed.rule.triggerConfig.platform;
+          if (p !== 'facebook' && p !== 'instagram') delete parsed.rule.triggerConfig.platform;
         }
 
         // Validate action types

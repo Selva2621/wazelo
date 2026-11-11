@@ -93,7 +93,7 @@ export function InboxUserSelector({ role, onSelectUser }: InboxUserSelectorProps
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface text-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50"
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-outline-variant/20 bg-surface-container text-on-surface text-body placeholder:text-placeholder focus:outline-none focus:border-primary/50"
           />
         </div>
 

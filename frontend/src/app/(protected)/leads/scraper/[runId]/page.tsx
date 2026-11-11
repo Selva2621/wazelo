@@ -189,7 +189,7 @@ function FilterBar({
           onChange={(e) => onChange({ search: e.target.value })}
           placeholder="Search name, company, category, skills"
           aria-label="Search results"
-          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 max-lg:h-10 max-lg:rounded-xltext-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 max-lg:h-10 max-lg:rounded-xl text-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
 
         {/* Showing count */}

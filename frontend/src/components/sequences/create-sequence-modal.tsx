@@ -132,7 +132,7 @@ export function CreateSequenceModal({ open = true, ...props }: CreateSequenceMod
 /** Form field styles, shared so every label/input in the dialog matches. */
 const FIELD_LABEL = "text-label font-medium text-on-surface";
 const FIELD_INPUT =
-  "mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
+  "mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 /** Inline compact select/input (wait times, conditions) */
 const FIELD_SMALL =
   "rounded-lg border border-outline-variant bg-surface-container-lowest px-2 py-1 text-caption text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
@@ -212,7 +212,7 @@ function AiDraftCard({
             ? "e.g. Follow up with clients who asked for a quote and offer a quick call to go through it"
             : "e.g. Follow up with customers who enquired but didn't book, and remind them we're here to help"
         }
-        className="mt-2 w-full resize-none rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        className="mt-2 w-full resize-none rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <fieldset className="mt-4" disabled={generate.isPending}>
         <legend className="text-label font-medium text-on-surface">How many messages should it send?</legend>

@@ -7,7 +7,10 @@ import {
   Trash2,
   Pencil,
   Tag,
+  Building2,
 } from "lucide-react";
+import { BrandFormModal } from "@/components/products/brand-form-modal";
+import { useOrgMembers } from "@/hooks/use-contacts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs } from "@/components/ui/tabs";
@@ -25,10 +28,12 @@ import {
   useDeleteProduct,
   useProductCategories,
   useDeleteProductCategory,
+  useBrands,
+  useDeleteBrand,
 } from "@/hooks/use-products";
 import { ProductFormModal } from "@/components/products/product-form-modal";
 import { CategoryFormModal } from "@/components/products/category-form-modal";
-import type { Product, ProductCategory } from "@/lib/types/products";
+import type { Brand, Product, ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useProductTerms } from "@/lib/product-terms";
@@ -70,6 +75,18 @@ export default function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [deleteCatTarget, setDeleteCatTarget] = useState<ProductCategory | null>(null);
 
+  // Brands group the products; each product names who handles its leads
+  const { data: brands } = useBrands();
+  const { data: members } = useOrgMembers();
+  const deleteBrand = useDeleteBrand();
+  const [brandModal, setBrandModal] = useState<{ open: boolean; brand?: Brand }>({ open: false });
+  const [deleteBrandTarget, setDeleteBrandTarget] = useState<Brand | null>(null);
+  const [newProductBrandId, setNewProductBrandId] = useState<string | undefined>(undefined);
+  const memberName = (id: string | null | undefined) => {
+    const m = (members ?? []).find((x) => x.id === id);
+    return m ? (`${m.firstName} ${m.lastName}`.trim() || m.email) : null;
+  };
+
   const filtered = useMemo(() => {
     if (!products) return [];
     let list = products;
@@ -95,8 +112,9 @@ export default function ProductsPage() {
     [products]
   );
 
-  function openCreate() {
+  function openCreate(brandId?: string) {
     setEditProduct(undefined);
+    setNewProductBrandId(brandId);
     setModalOpen(true);
   }
 
@@ -159,6 +177,27 @@ export default function ProductsPage() {
         ) : (
           <span className="text-label text-on-surface-variant/40">—</span>
         ),
+    },
+    {
+      id: "leads",
+      header: "Lead team",
+      skeleton: "short",
+      cell: (product) => {
+        const names = (product.leadHandlerIds ?? []).map(memberName).filter(Boolean) as string[];
+        if (names.length === 0) {
+          return (
+            <button type="button" onClick={() => openEdit(product)} className="text-label text-primary hover:underline">
+              Set team
+            </button>
+          );
+        }
+        return (
+          <span className="text-label text-on-surface-variant" title={names.join(", ")}>
+            {names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", ")}
+            <span className="text-on-surface-variant/60"> · {product.leadReminderMinutes ?? 30} min</span>
+          </span>
+        );
+      },
     },
     {
       id: "price",
@@ -229,8 +268,9 @@ export default function ProductsPage() {
     // Desktop: room around the page, like the other list pages
     <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
       <MobilePageActions
-        primary={{ label: `New ${terms.singular}`, onClick: openCreate }}
+        primary={{ label: `New ${terms.singular}`, onClick: () => openCreate() }}
         more={[
+          { label: "New brand", onSelect: () => setBrandModal({ open: true }) },
           { label: "New Category", onSelect: () => { setEditCategory(undefined); setCategoryModalOpen(true); } },
           activeCategory && { label: `Edit "${activeCategory.name}"`, onSelect: () => { setEditCategory(activeCategory); setCategoryModalOpen(true); } },
           activeCategory && { label: `Delete "${activeCategory.name}"`, destructive: true, onSelect: () => setDeleteCatTarget(activeCategory) },
@@ -252,10 +292,13 @@ export default function ProductsPage() {
                 className="w-64"
               />
             )}
+            <Button variant="secondary" onClick={() => setBrandModal({ open: true })} data-tour="products-new-brand">
+              <Building2 className="h-4 w-4 mr-1" /> New brand
+            </Button>
             <Button variant="secondary" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
               <Tag className="h-4 w-4 mr-1" /> New category
             </Button>
-            <Button onClick={openCreate}>
+            <Button onClick={() => openCreate()}>
               <Plus className="h-4 w-4 mr-1" /> New {terms.singular}
             </Button>
           </>
@@ -312,8 +355,53 @@ export default function ProductsPage() {
         </FilterBar>
       )}
 
-      {/* Table */}
-      {filtered.length > 0 ? (
+      {/* Table: one group per brand when there are brands */}
+      {(brands ?? []).length > 0 && (products ?? []).length > 0 ? (
+        <div className="space-y-6" data-tour="products-brands">
+          {[...(brands ?? []), null].map((brand) => {
+            const rows = filtered.filter((p) => (brand ? p.brandId === brand.id : !p.brandId));
+            if (!brand && rows.length === 0) return null;
+            const manager = brand ? memberName(brand.managerId) : null;
+            return (
+              <section key={brand?.id ?? "none"} className="space-y-2">
+                <div className="flex items-center gap-2 max-sm:flex-wrap">
+                  <h2 className="text-title-sm font-semibold text-on-surface">{brand?.name ?? "No brand"}</h2>
+                  <span className="text-caption text-on-surface-variant">
+                    {rows.length} {rows.length === 1 ? terms.singular : terms.plural}
+                    {manager ? ` · Manager: ${manager}` : ""}
+                  </span>
+                  {brand && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openCreate(brand.id)}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> {terms.Singular}
+                      </Button>
+                      <IconButton size="xs" onClick={() => setBrandModal({ open: true, brand })} title={`Edit ${brand.name}`} aria-label={`Edit brand ${brand.name}`}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </IconButton>
+                      <IconButton size="xs" variant="danger" onClick={() => setDeleteBrandTarget(brand)} title={`Remove ${brand.name}`} aria-label={`Remove brand ${brand.name}`}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </IconButton>
+                    </div>
+                  )}
+                </div>
+                {rows.length > 0 ? (
+                  <DataTable
+                    label={brand?.name ?? terms.Plural}
+                    columns={columns}
+                    rows={rows}
+                    rowKey={(product) => product.id}
+                    rowLabel={(product) => product.name}
+                  />
+                ) : (
+                  <p className="rounded-xl border border-dashed border-outline-variant/30 px-4 py-3 text-body text-on-surface-variant">
+                    No {terms.plural} in this brand yet.
+                  </p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      ) : filtered.length > 0 ? (
         <DataTable
           label={terms.Plural}
           columns={columns}
@@ -331,7 +419,7 @@ export default function ProductsPage() {
           title={`No ${terms.plural} yet`}
           description={`Create ${terms.plural} to assign to contacts, deals, chatbot flows, and sequences`}
           actionLabel={`New ${terms.singular}`}
-          onAction={openCreate}
+          onAction={() => openCreate()}
         />
       )}
 
@@ -340,6 +428,26 @@ export default function ProductsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         product={editProduct}
+        defaultBrandId={newProductBrandId}
+      />
+
+      <BrandFormModal
+        open={brandModal.open}
+        brand={brandModal.brand}
+        onClose={() => setBrandModal({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={!!deleteBrandTarget}
+        title="Remove brand"
+        message={`Remove "${deleteBrandTarget?.name}"? Its ${terms.plural} stay, without a brand.`}
+        confirmLabel="Remove"
+        variant="danger"
+        loading={deleteBrand.isPending}
+        onConfirm={() => {
+          if (deleteBrandTarget) deleteBrand.mutate(deleteBrandTarget.id, { onSuccess: () => setDeleteBrandTarget(null) });
+        }}
+        onCancel={() => setDeleteBrandTarget(null)}
       />
 
       {/* Category form modal */}

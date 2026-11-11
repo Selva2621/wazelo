@@ -336,6 +336,16 @@ export const EVENT_NAMES = {
   PRODUCT_UPDATED: 'product.updated',
   PRODUCT_DELETED: 'product.deleted',
 
+  // Lead follow-up events
+  /** A lead (e.g. Meta lead form) asked about a product: someone on its team must contact them */
+  LEAD_PRODUCT_INTEREST: 'lead.product_interest',
+  /** A lead was given to a team member to contact */
+  LEAD_ASSIGNED: 'lead.assigned',
+  /** A lead's reminder time passed and nobody has contacted it */
+  LEAD_FOLLOW_UP_DUE: 'lead.follow_up_due',
+  /** A brand manager's day-end lead summary */
+  LEAD_DAILY_SUMMARY: 'lead.daily_summary',
+
   // Knowledge Base events
   KB_ARTICLE_PUBLISHED: 'kb.article.published',
   KB_ARTICLE_DELETED: 'kb.article.deleted',

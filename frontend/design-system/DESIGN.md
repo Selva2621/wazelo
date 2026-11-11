@@ -1,5 +1,7 @@
 # Wazelo Design System
 
+> **Superseded (2026-11-09):** the current design system is [/DESIGN.md](../../DESIGN.md). This file is kept for the original audit (§2) and migration log (§11).
+
 Version 1.0 · 2026-10-04 · Source of truth for tokens: [design-tokens.json](design-tokens.json) · Visual reference: [design-preview.html](design-preview.html)
 
 ## 1. Design read

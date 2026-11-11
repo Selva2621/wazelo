@@ -67,6 +67,10 @@ export interface Campaign {
   readCount: number;
   /** Recipients who wrote back within a week of the campaign */
   repliedCount?: number;
+  /** Detail only: failed recipients a retry would send again (connection was down) */
+  retryableFailedCount?: number;
+  /** Detail only: the uploaded media was cleared from the server and must be replaced */
+  mediaMissing?: boolean;
   createdById: string;
   idempotencyKey: string | null;
   metadata: Record<string, unknown> | null;
@@ -257,6 +261,11 @@ export interface CreateCampaignRequest {
   timezone?: string;
   idempotencyKey?: string;
   productId?: string;
+  /** Official numbers: the Meta-approved template (required when one is selected) */
+  cloudTemplateId?: string;
+  /** Values for its {{1}}, {{2}}… slots ({{name}} etc. allowed) */
+  cloudTemplateParams?: string[];
+  cloudTemplateHeaderImageUrl?: string;
 }
 
 export interface UpdateCampaignRequest {
