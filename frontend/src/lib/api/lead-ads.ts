@@ -19,7 +19,7 @@ export interface SimulateLeadPayload {
   fields?: Record<string, string>;
 }
 
-/** A Page + form that has sent leads (for picking them in Lead Ad Received rules) */
+/** A Page + form that has sent leads (for picking them in Lead ad received rules) */
 export interface LeadAdForm {
   pageId: string;
   pageName: string | null;

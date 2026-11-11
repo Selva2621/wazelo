@@ -84,7 +84,7 @@ function RuleForm({ initial, onSave, onClose, isPending }: RuleFormProps) {
               required
               maxLength={255}
               placeholder="e.g. First message received"
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
@@ -99,7 +99,7 @@ function RuleForm({ initial, onSave, onClose, isPending }: RuleFormProps) {
               maxLength={1000}
               rows={2}
               placeholder="Optional — explain when this rule fires"
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/20 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 

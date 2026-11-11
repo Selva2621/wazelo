@@ -84,7 +84,7 @@ export function SendMessageModal({
             placeholder="Type your message..."
             rows={4}
             autoFocus
-            className="w-full rounded-xl bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15 resize-none"
+            className="w-full rounded-lg bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-1 focus:ring-primary/40 border border-outline-variant/15 resize-none"
           />
           <div className="flex items-center justify-between mt-1">
             <p className="text-caption text-on-surface-variant/40">Ctrl+Enter to send</p>

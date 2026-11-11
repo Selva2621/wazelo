@@ -104,7 +104,7 @@ export class LeadAdsController {
     return this.simulateUseCase.execute(orgId, dto);
   }
 
-  /** Pages + forms seen so far, for picking them in Lead Ad Received rules */
+  /** Pages + forms seen so far, for picking them in Lead ad received rules */
   @Get('forms')
   @Permissions(PERMISSIONS.LEAD_ADS_READ)
   async listForms(@CurrentUser('orgId') orgId: string) {

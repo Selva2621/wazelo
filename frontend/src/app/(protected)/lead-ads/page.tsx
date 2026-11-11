@@ -17,6 +17,7 @@ import { LeadAdsDailyChart } from "@/components/lead-ads/lead-ads-daily-chart";
 import { LeadAdsEntryTable } from "@/components/lead-ads/lead-ads-entry-table";
 import { LeadAdsWebhookCard } from "@/components/lead-ads/lead-ads-webhook-card";
 import { SimulateLeadDialog } from "@/components/lead-ads/simulate-lead-dialog";
+import { LeadAdsFormsCard } from "@/components/lead-ads/lead-ads-forms-card";
 import { Button } from "@/components/ui/button";
 import {
   useLeadAdEntries,
@@ -116,14 +117,14 @@ export default function LeadAdsPage() {
           title="Lead ads"
           count={analytics?.totalLeads}
           actions={
-            <div className="flex items-center gap-2">
+            <>
               {canSimulate && (
                 <Button variant="secondary" size="sm" onClick={() => setSimulateOpen(true)}>
                   Send test lead
                 </Button>
               )}
               <PeriodSelector value={period} onChange={setPeriod} />
-            </div>
+            </>
           }
         />
         <div className="lg:hidden flex items-center justify-between gap-2">
@@ -185,6 +186,9 @@ export default function LeadAdsPage() {
             {analytics.byDay.length > 0 && (
               <LeadAdsDailyChart analytics={analytics} />
             )}
+
+            {/* ─── Lead forms → product + welcome ─── */}
+            <LeadAdsFormsCard canLink={isAdmin} />
 
             {/* ─── Filters Toolbar ─── */}
             <div className="flex items-center gap-3 flex-wrap max-lg:gap-2">

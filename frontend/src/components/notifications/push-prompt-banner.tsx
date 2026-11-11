@@ -28,7 +28,7 @@ export function PushPromptBanner() {
         <BellRing className="h-4.5 w-4.5 shrink-0 text-primary" aria-hidden />
         <p className="min-w-0 flex-1 text-body">
           <span className="max-lg:hidden">Get alerts on this device when WhatsApp disconnects, even with Wazelo closed.</span>
-          <span className="text-[15px] leading-5 lg:hidden">Get alerts if WhatsApp disconnects</span>
+          <span className="text-native-subhead leading-5 lg:hidden">Get alerts if WhatsApp disconnects</span>
         </p>
         <Button size="sm" onClick={enable} loading={isPending}>
           Enable

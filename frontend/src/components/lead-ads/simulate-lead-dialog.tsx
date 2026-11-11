@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { useSimulateLeadAd } from "@/hooks/use-lead-ads";
 
 const inputCls =
-  "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  "mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
 interface SimulateLeadDialogProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface SimulateLeadDialogProps {
 
 /**
  * Dev only: send a lead as if a Meta lead form was submitted — runs the real contact
- * and automation flow (Lead Ad Received / Contact Created rules) without Meta.
+ * and automation flow (Lead ad received / Contact created rules) without Meta.
  */
 export function SimulateLeadDialog({ open, onClose }: SimulateLeadDialogProps) {
   const simulate = useSimulateLeadAd();
@@ -57,8 +57,8 @@ export function SimulateLeadDialog({ open, onClose }: SimulateLeadDialogProps) {
       {() => (
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <h2 id="simulate-lead-title" className="text-title text-on-surface">Send a test lead</h2>
-            <p className="text-caption text-on-surface-variant/60 mt-1">
+            <h2 id="simulate-lead-title" className="text-title font-semibold text-on-surface">Send a test lead</h2>
+            <p className="mt-1 text-body text-on-surface-variant">
               Dev only. Runs your lead automations without Meta. Use your own number to get the welcome.
             </p>
           </div>
@@ -97,8 +97,8 @@ export function SimulateLeadDialog({ open, onClose }: SimulateLeadDialogProps) {
             <Button type="button" variant="ghost" onClick={onClose} disabled={simulate.isPending} className="max-lg:flex-1">
               Cancel
             </Button>
-            <Button type="submit" disabled={simulate.isPending || !phone.trim() || !name.trim()} className="max-lg:flex-1">
-              {simulate.isPending ? "Sending…" : "Send test lead"}
+            <Button type="submit" loading={simulate.isPending} disabled={!phone.trim() || !name.trim()} className="max-lg:flex-1">
+              Send test lead
             </Button>
           </ModalFooter>
         </form>

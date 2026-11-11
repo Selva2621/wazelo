@@ -26,7 +26,7 @@ const WAITS = [
 
 const LABEL = "text-label font-medium text-on-surface";
 const INPUT =
-  "mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
+  "mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
 type DraftStep = {
   key: string;

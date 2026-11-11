@@ -18,6 +18,7 @@ import { PeakHoursChart } from "@/components/analytics/peak-hours-chart";
 import { TeamPerformanceTable } from "@/components/analytics/team-performance-table";
 import { CampaignSummaryCards } from "@/components/analytics/campaign-summary-cards";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { LeadsWaitingCard } from "@/components/dashboard/leads-waiting-card";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 const PERIOD_COPY: Record<AnalyticsPeriod, string> = {
@@ -95,6 +96,9 @@ function TeamDashboard() {
           </>
         }
       />
+
+      {/* Leads given to me that nobody has contacted yet (hidden when none) */}
+      <LeadsWaitingCard />
 
       <SetupChecklist />
 

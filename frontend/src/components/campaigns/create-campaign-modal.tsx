@@ -31,6 +31,9 @@ import {
 } from "@/lib/validations/campaigns";
 import type { MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import { useTemplates } from "@/hooks/use-templates";
+import { useCloudTemplates } from "@/hooks/use-cloud-numbers";
+import { CloudTemplateFields } from "@/components/whatsapp/cloud-template-fields";
+import type { CloudTemplateChoice } from "@/lib/api/whatsapp";
 import {
   useCreateSavedContactGroups,
   useCheckSavedGroupMove,
@@ -203,7 +206,7 @@ function EmailFields({
           rows={8}
           aria-invalid={!!bodyError}
           aria-describedby={bodyError ? "messageBody-error" : undefined}
-          className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-y placeholder:text-on-surface-variant/40"
+          className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-y placeholder:text-placeholder"
           {...registerBody}
         />
         <div className="flex items-start justify-between gap-2">
@@ -225,7 +228,8 @@ function EmailFields({
 interface CreateCampaignModalProps {
   open: boolean;
   onClose: () => void;
-  sessions: { id: string; name: string; status: string }[];
+  /** `official`: a Meta Cloud API number (needs an approved template) */
+  sessions: { id: string; name: string; status: string; official?: boolean }[];
   /** Opens with a filtered audience, e.g. a contact source group */
   initialAudienceFilters?: CreateCampaignFormData["audienceFilters"];
 }
@@ -311,6 +315,25 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     [selectedSessionIds, sessions],
   );
   const sessionName = (id: string) => sessions.find((s) => s.id === id)?.name ?? "Disconnected number";
+
+  // Official numbers can only start a chat with a Meta-approved template
+  const officialSelected = !isEmail && activeSessionIds.some((id) => sessions.find((s) => s.id === id)?.official);
+  const [cloudChoice, setCloudChoice] = useState<CloudTemplateChoice | null>(null);
+  const [cloudTemplateError, setCloudTemplateError] = useState<string | null>(null);
+  const { data: cloudTemplates } = useCloudTemplates(undefined, officialSelected);
+
+  /** Keep the text version (shown in the preview, sent by any QR number in the pool) in step */
+  function chooseCloudTemplate(choice: CloudTemplateChoice | null) {
+    setCloudChoice(choice);
+    setCloudTemplateError(null);
+    const tpl = cloudTemplates?.find((t) => t.id === choice?.templateId);
+    setValue("messageType", "TEXT");
+    setValue(
+      "messageBody",
+      tpl ? tpl.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (_w, n: string) => choice?.params[Number(n) - 1]?.trim() || "-") : "",
+      { shouldValidate: !!errors.messageBody },
+    );
+  }
 
   // A preview count is only an estimate: the audience is resolved again at send time
   const preview = previewAudience.data;
@@ -403,6 +426,17 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
       setAudienceError("Select at least one connected WhatsApp number.");
       return;
     }
+    if (officialSelected) {
+      const tpl = cloudTemplates?.find((t) => t.id === cloudChoice?.templateId);
+      if (!cloudChoice || !tpl) {
+        setCloudTemplateError("Pick an approved template for the official number");
+        return;
+      }
+      if (tpl.needsHeaderImage && !cloudChoice.headerImageUrl) {
+        setCloudTemplateError("This template has an image header: add the image link");
+        return;
+      }
+    }
 
     // "Groups" / "Custom" with nothing picked would otherwise reach everyone
     if (data.audienceType === "FILTERED" && !hasAnyAudienceFilter(data.audienceFilters)) {
@@ -468,6 +502,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             ...(sendAnyTime && { sendAnyTime: true }),
             mediaUrl: data.mediaUrl || undefined,
             mediaMimeType: data.mediaMimeType || undefined,
+            ...(officialSelected && cloudChoice && {
+              cloudTemplateId: cloudChoice.templateId,
+              cloudTemplateParams: cloudChoice.params,
+              ...(cloudChoice.headerImageUrl && { cloudTemplateHeaderImageUrl: cloudChoice.headerImageUrl }),
+            }),
           },
       {
         onSuccess: ({ campaign: created }) => {
@@ -480,6 +519,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           setTemplateSearch("");
           setShowTemplatePicker(false);
           setPlaceholderValues({});
+          setCloudChoice(null);
           setPendingSend(null);
           setAudienceError(null);
           handleClose();
@@ -648,7 +688,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   id="description"
                   placeholder="Brief description…"
                   rows={2}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-placeholder"
                   {...register("description")}
                 />
               </div>
@@ -682,6 +722,22 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 />
               ) : (
               <>
+              {officialSelected && (
+                <div className="space-y-2 rounded-xl border border-outline-variant/15 p-3">
+                  <p className="text-body text-on-surface-variant">
+                    You picked an official number: campaigns go out as a Meta-approved template.
+                    Any QR number in the list sends the same text.
+                  </p>
+                  <CloudTemplateFields
+                    value={cloudChoice}
+                    onChange={chooseCloudTemplate}
+                    chips={[{ label: "{{name}}", value: "{{name}}" }, { label: "{{phone}}", value: "{{phone}}" }]}
+                    error={cloudTemplateError ?? undefined}
+                  />
+                </div>
+              )}
+              {/* Text / media message (an approved template replaces it for official numbers) */}
+              <div className={officialSelected ? "hidden" : "contents"}>
               {/* Type pills */}
               <fieldset>
                 <legend className="text-body font-medium text-on-surface-variant">Type</legend>
@@ -760,7 +816,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                         }}
                         placeholder="Search templates…"
                         aria-label="Search templates"
-                        className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
+                        className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-placeholder"
                       />
                     </div>
                     <div
@@ -841,7 +897,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   rows={5}
                   aria-invalid={!!errors.messageBody}
                   aria-describedby={errors.messageBody ? "messageBody-error" : undefined}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-placeholder"
                   {...register("messageBody")}
                 />
                 <div className="flex justify-between mt-1">
@@ -851,6 +907,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 {errors.messageBody && (
                   <p id="messageBody-error" role="alert" className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
+              </div>
               </div>
               </>
               )}

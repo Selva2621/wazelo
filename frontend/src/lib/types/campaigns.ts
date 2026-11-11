@@ -261,6 +261,11 @@ export interface CreateCampaignRequest {
   timezone?: string;
   idempotencyKey?: string;
   productId?: string;
+  /** Official numbers: the Meta-approved template (required when one is selected) */
+  cloudTemplateId?: string;
+  /** Values for its {{1}}, {{2}}… slots ({{name}} etc. allowed) */
+  cloudTemplateParams?: string[];
+  cloudTemplateHeaderImageUrl?: string;
 }
 
 export interface UpdateCampaignRequest {

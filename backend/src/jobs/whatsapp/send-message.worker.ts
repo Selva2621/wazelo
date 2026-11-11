@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { WhatsAppApiService } from '@/infrastructure/external/whatsapp/whatsapp-api.service';
+import { CloudApiError } from '@/infrastructure/external/whatsapp/cloud-api.client';
+import { cloudTemplateFromMetadata } from '@/shared/utils/cloud-template';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
@@ -240,6 +242,8 @@ export class SendMessageWorker implements OnModuleInit {
     }
 
     const lane = this.pacer.laneFor(message.priority);
+    // Official (Cloud API) numbers: Meta enforces its own limits, so no warm-up caps or human pacing
+    const official = this.whatsappApi.isCloudSession(sessionId);
 
     if (lane === 'bulk') {
       // Paced/held bulk messages can wait hours: drop them if the campaign was
@@ -267,7 +271,7 @@ export class SendMessageWorker implements OnModuleInit {
       // paced message comes back for its slot, so a batch can't overshoot a cap.
       // Skipped in WhatsApp test mode: everything goes to a test number, and a
       // campaign tested at night shouldn't sit held until morning.
-      if (!isTestModeOn()) {
+      if (!isTestModeOn() && !official) {
         const decision = await this.accountSafety.checkBulkSend(
           orgId,
           sessionId,
@@ -289,7 +293,9 @@ export class SendMessageWorker implements OnModuleInit {
     const holdsSlot =
       data.slotAt !== undefined &&
       Math.abs(Date.now() - data.slotAt) <= SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS;
-    if (holdsSlot) {
+    if (official) {
+      // No pacing: send now
+    } else if (holdsSlot) {
       const remaining = data.slotAt! - Date.now();
       if (remaining > 0) await sleep(remaining);
     } else {
@@ -411,7 +417,18 @@ export class SendMessageWorker implements OnModuleInit {
         );
       }
 
-      if (message.type === 'TEXT') {
+      // Official numbers send a chosen Meta template as a template (works outside the 24h window).
+      // A QR number sends the same message as its filled-in text below.
+      const cloudTemplate = official ? cloudTemplateFromMetadata(message.metadata) : null;
+
+      if (cloudTemplate) {
+        result = await this.whatsappApi.sendTemplateMessage(sessionId, message.contactPhone, {
+          name: cloudTemplate.name,
+          language: cloudTemplate.language,
+          bodyParams: cloudTemplate.params,
+          ...(cloudTemplate.headerImageUrl && { headerMedia: { type: 'image' as const, link: cloudTemplate.headerImageUrl } }),
+        });
+      } else if (message.type === 'TEXT') {
         result = await this.whatsappApi.sendTextMessage(
           sessionId,
           message.contactPhone,
@@ -502,7 +519,9 @@ export class SendMessageWorker implements OnModuleInit {
         return;
       }
 
-      await this.handleFailure(message, jobId, reason, isRetryableError(reason));
+      // Meta tells us itself whether a retry can work (closed 24h window, bad number… can't)
+      const retryable = error instanceof CloudApiError ? error.retryable : isRetryableError(reason);
+      await this.handleFailure(message, jobId, reason, retryable);
     }
   }
 

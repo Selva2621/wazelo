@@ -89,6 +89,9 @@ import { WidgetModule } from '@/modules/widget/widget.module';
 // Email from each workspace's own mailbox
 import { SendOrgEmailWorker } from './email/send-org-email.worker';
 import { EmailModule } from '@/modules/email/email.module';
+// Lead routing reminders
+import { LeadFollowUpReminderWorker } from './lead/lead-follow-up-reminder.worker';
+import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.module';
 
 @Module({
   imports: [
@@ -122,9 +125,12 @@ import { EmailModule } from '@/modules/email/email.module';
     DealsModule,
     WidgetModule,
     EmailModule,
+    LeadFollowUpsModule,
   ],
   providers: [
     DealFollowUpWorker,
+    // Reminds people about leads not contacted in time
+    LeadFollowUpReminderWorker,
     SendEmailWorker,
     SendInviteEmailWorker,
     SessionCleanupWorker,

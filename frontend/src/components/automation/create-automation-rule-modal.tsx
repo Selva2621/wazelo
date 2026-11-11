@@ -26,6 +26,7 @@ import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/comp
 import type { AutomationPreset } from "@/lib/constants/automation-presets";
 import { SendEmailFields, type SendEmailErrors } from "@/components/automation/send-email-fields";
 import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { OfficialTemplateToggle } from "@/components/automation/official-template-toggle";
 import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@/stores/auth-store";
@@ -52,28 +53,28 @@ const EMPTY_RULE: Partial<CreateAutomationRuleFormData> = {
 };
 
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
-  { value: "MESSAGE_RECEIVED",      label: "Message Received" },
-  { value: "CONTACT_CREATED",       label: "Contact Created" },
-  { value: "LEAD_AD_RECEIVED",      label: "Lead Ad Received" },
-  { value: "LEAD_STATUS_CHANGED",   label: "Lead Status Changed" },
-  { value: "NO_REPLY",              label: "No Reply Follow-Up" },
-  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
-  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
-  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
-  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
-  { value: "DEAL_STAGE_CHANGED",    label: "Deal Stage Changed" },
+  { value: "MESSAGE_RECEIVED",      label: "Message received" },
+  { value: "CONTACT_CREATED",       label: "Contact created" },
+  { value: "LEAD_AD_RECEIVED",      label: "Lead ad received" },
+  { value: "LEAD_STATUS_CHANGED",   label: "Lead status changed" },
+  { value: "NO_REPLY",              label: "No reply follow-up" },
+  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — order created",   group: "shopify" },
+  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — order fulfilled",  group: "shopify" },
+  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — cart abandoned",   group: "shopify" },
+  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget message received" },
+  { value: "DEAL_STAGE_CHANGED",    label: "Deal stage changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
-  { value: "SEND_MESSAGE",   label: "Send WhatsApp Message" },
+  { value: "SEND_MESSAGE",   label: "Send WhatsApp message" },
   { value: "SEND_EMAIL",     label: "Send email" },
-  { value: "ASSIGN_CONTACT", label: "Assign Contact" },
-  { value: "ADD_TAG",        label: "Add Tag" },
-  { value: "ADD_TO_PRODUCT", label: "Add to Product" },
-  { value: "UPDATE_STATUS",  label: "Update Lead Status" },
-  { value: "ENROLL_IN_SEQUENCE", label: "Add to Sequence" },
-  { value: "STOP_SEQUENCE", label: "Stop Sequence" },
-  { value: "ASSIGN_CONVERSATION", label: "Assign Chat to a Person" },
+  { value: "ASSIGN_CONTACT", label: "Assign contact" },
+  { value: "ADD_TAG",        label: "Add tag" },
+  { value: "ADD_TO_PRODUCT", label: "Add to product" },
+  { value: "UPDATE_STATUS",  label: "Update lead status" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to sequence" },
+  { value: "STOP_SEQUENCE", label: "Stop sequence" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign chat to a person" },
 ];
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
@@ -97,7 +98,7 @@ const TEAM_EXAMPLES = {
 };
 
 // Variable hint chips for message body textarea
-const FIELD_INPUT_CLS = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+const FIELD_INPUT_CLS = "mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
 // ─── Action config sub-form ───────────────────────────────────────────────────
 
@@ -152,8 +153,14 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
           />
         </div>
 
-        {/* Message Body */}
-        <div>
+        <OfficialTemplateToggle
+          config={config}
+          chips={[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)]}
+          onChange={(patch) => setValue(`actions.${idx}.actionConfig`, { ...config, ...patch }, { shouldDirty: true })}
+        />
+
+        {/* Message Body (not used when an approved template is picked) */}
+        <div className={config.templateId ? "hidden" : undefined}>
           <Label>Message Body <span className="text-error">*</span></Label>
           <textarea
             {...register(`actions.${idx}.actionConfig.messageBody`)}
@@ -226,7 +233,7 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues, co
         {productError ? (
           <p className="text-caption text-error mt-1">{productError}</p>
         ) : (
-          <p className="text-caption text-on-surface-variant/50 mt-1">
+          <p className="mt-1 text-caption text-on-surface-variant">
             They keep their other products. Campaigns can target everyone in it.
           </p>
         )}
@@ -481,7 +488,7 @@ export function CreateAutomationRuleModal({
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate();
                   }}
                   placeholder={examples.prompts.map((p) => `e.g. ${p}`).join("\n")}
-                  className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
                 <p className="text-caption text-on-surface-variant/50 mt-1">
                   Press ⌘Enter to generate. The form will be filled automatically — you can review and edit before saving.
@@ -513,7 +520,7 @@ export function CreateAutomationRuleModal({
 
           {/* Rule Name */}
           <div>
-            <Label htmlFor="name">Rule Name</Label>
+            <Label htmlFor="name">Rule name</Label>
             <Input
               id="name"
               placeholder={`e.g. ${examples.name}`}
@@ -530,7 +537,7 @@ export function CreateAutomationRuleModal({
               rows={2}
               placeholder="Optional description..."
               {...register("description")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -576,7 +583,7 @@ export function CreateAutomationRuleModal({
             {triggerType === "LEAD_STATUS_CHANGED" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="triggerConfig.fromStatus">From Status</Label>
+                  <Label htmlFor="triggerConfig.fromStatus">From status</Label>
                   <Input
                     id="triggerConfig.fromStatus"
                     placeholder="e.g. NEW"
@@ -584,7 +591,7 @@ export function CreateAutomationRuleModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="triggerConfig.toStatus">To Status</Label>
+                  <Label htmlFor="triggerConfig.toStatus">To status</Label>
                   <Input
                     id="triggerConfig.toStatus"
                     placeholder="e.g. QUALIFIED"
@@ -596,7 +603,7 @@ export function CreateAutomationRuleModal({
 
             {triggerType === "TIME_BASED" && (
               <div>
-                <Label htmlFor="triggerConfig.cronExpression">Cron Expression</Label>
+                <Label htmlFor="triggerConfig.cronExpression">Cron expression</Label>
                 <Input
                   id="triggerConfig.cronExpression"
                   placeholder="e.g. 0 9 * * 1 (every Monday at 9AM)"
@@ -739,7 +746,7 @@ export function CreateAutomationRuleModal({
                   </div>
 
                   <div>
-                    <Label>Action Type</Label>
+                    <Label>Action type</Label>
                     <Select
                       value={currentActionType}
                       onValueChange={(v) => setValue(`actions.${idx}.actionType`, v as AutomationActionType, { shouldValidate: true, shouldDirty: true })}

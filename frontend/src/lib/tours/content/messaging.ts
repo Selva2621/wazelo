@@ -50,7 +50,7 @@ export const messagingTours: TourDef[] = [
   },
   {
     id: "inbox",
-    version: 1,
+    version: 2,
     title: "Inbox",
     summary: "Reply to WhatsApp and website chats with AI help, quick replies and the contact panel.",
     section: "Messaging",
@@ -103,7 +103,7 @@ export const messagingTours: TourDef[] = [
         target: "chat-composer",
         ifMissing: "center",
         title: "Reply",
-        body: "Type and press Enter to send. Attach photos, PDFs or voice notes with the paperclip, and add emoji. Shift+Enter adds a new line.",
+        body: "Type and press Enter to send. Attach photos, PDFs or voice notes with the paperclip, and add emoji. Shift+Enter adds a new line. On an official number, use the template button when the customer hasn't written in 24 hours.",
         example: {
           kind: "chat",
           messages: [

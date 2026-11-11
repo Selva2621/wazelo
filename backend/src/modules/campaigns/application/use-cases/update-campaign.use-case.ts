@@ -11,7 +11,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { EVENT_NAMES } from '@/common/constants';
 import { AuditAction } from '@prisma/client';
-import { assertNoUnknownPlaceholders } from './create-campaign.use-case';
+import { assertNoUnknownPlaceholders, resolveCampaignTemplate } from './create-campaign.use-case';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
 
 @Injectable()
 export class UpdateCampaignUseCase {
@@ -22,6 +23,7 @@ export class UpdateCampaignUseCase {
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -53,6 +55,26 @@ export class UpdateCampaignUseCase {
       }
     }
 
+    // Official numbers send an approved template: switching to one (or a new one) on a draft
+    const currentMeta = (campaign.metadata as Record<string, unknown> | null) ?? {};
+    let metadata: Record<string, unknown> | undefined;
+    if (dto.cloudTemplateId) {
+      const resolved = await resolveCampaignTemplate(this.prisma, orgId, {
+        cloudTemplateId: dto.cloudTemplateId,
+        cloudTemplateParams: dto.cloudTemplateParams,
+        cloudTemplateHeaderImageUrl: dto.cloudTemplateHeaderImageUrl,
+      });
+      dto.messageType = 'TEXT';
+      dto.messageBody = resolved.messageBody;
+      metadata = { ...currentMeta, cloudTemplate: resolved.cloudTemplate };
+    } else if (dto.sessionId && !currentMeta.cloudTemplate) {
+      // Moving a plain-text draft to an official number needs a template too
+      const [official] = await this.sessionRepo.findCloudIdsAmong([dto.sessionId], orgId);
+      if (official) {
+        throw new BadRequestException('Official WhatsApp numbers need an approved template. Pick one too.');
+      }
+    }
+
     // 4. Validate message content consistency
     const messageType = dto.messageType || campaign.messageType;
     const messageBody = dto.messageBody !== undefined ? dto.messageBody : campaign.messageBody;
@@ -79,6 +101,7 @@ export class UpdateCampaignUseCase {
       sessionId: dto.sessionId,
       scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
       timezone: dto.timezone,
+      ...(metadata && { metadata }),
     });
 
     if (!updated) {

@@ -85,6 +85,7 @@ import { TemplatesController } from './interfaces/controllers/templates.controll
     OutboundMessageService,
   ],
   exports: [
+    TemplateRepository,
     MessageRepository,
     ConversationRepository,
     MessageEventRepository,

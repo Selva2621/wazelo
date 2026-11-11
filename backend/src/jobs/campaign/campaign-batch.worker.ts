@@ -10,6 +10,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import { pauseCampaignForKillSwitch } from './kill-switch-pause';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
 import { isConnectionFailure } from '@/shared/utils/connection-failure';
 import {
   QUEUE_NAMES,
@@ -180,6 +181,21 @@ export class CampaignBatchWorker implements OnModuleInit {
     return true;
   }
 
+  /** Templates used by running campaigns, kept for a minute so a batch reads each once */
+  private readonly templateCache = new Map<string, { at: number; tpl: { name: string; language: string; components: unknown } | null }>();
+
+  private async loadTemplate(id: string, orgId: string) {
+    const key = `${orgId}:${id}`;
+    const hit = this.templateCache.get(key);
+    if (hit && Date.now() - hit.at < 60_000) return hit.tpl;
+    const tpl = await this.prisma.messageTemplate.findFirst({
+      where: { id, orgId, deletedAt: null },
+      select: { name: true, language: true, components: true },
+    });
+    this.templateCache.set(key, { at: Date.now(), tpl });
+    return tpl;
+  }
+
   private async processRecipient(
     recipient: Record<string, any>,
     campaign: Record<string, any>,
@@ -279,7 +295,24 @@ export class CampaignBatchWorker implements OnModuleInit {
     }
 
     // Fill contact details, the same way as sequences and automations (no saved name → "there")
-    const resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
+    let resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
+
+    // Official numbers: send the campaign's approved template, filled for this contact
+    const templatePlan = (campaign.metadata as Record<string, any> | null)?.cloudTemplate;
+    let cloudTemplate: CloudTemplateRef | undefined;
+    if (templatePlan?.templateId) {
+      const template = await this.loadTemplate(templatePlan.templateId, orgId);
+      if (template) {
+        const rendered = renderCloudTemplate(
+          template,
+          templatePlan.params,
+          (s) => fillContactPlaceholders(s, contact),
+          templatePlan.headerImageUrl,
+        );
+        resolvedBody = rendered.body;
+        cloudTemplate = rendered.cloudTemplate;
+      }
+    }
 
     // Create new message record
     const message = await this.messageRepo.create({
@@ -295,7 +328,11 @@ export class CampaignBatchWorker implements OnModuleInit {
       idempotencyKey,
       priority: CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
       maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
-      metadata: { campaignId: campaign.id, batchNumber: recipient.batchNumber },
+      metadata: {
+        campaignId: campaign.id,
+        batchNumber: recipient.batchNumber,
+        ...(cloudTemplate && { cloudTemplate }),
+      } as any,
     });
 
     // Record message event

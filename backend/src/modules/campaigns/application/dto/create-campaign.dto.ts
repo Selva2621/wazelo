@@ -184,4 +184,23 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsUUID('4')
   productId?: string;
+
+  /** Official (Cloud API) numbers: the Meta-approved template to send. Required when one is in the pool. */
+  @IsOptional()
+  @IsUUID()
+  cloudTemplateId?: string;
+
+  /** Values for the template's {{1}}, {{2}}… slots; may use {{name}} and other contact fields */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  cloudTemplateParams?: string[];
+
+  /** Image link for a template whose header is an image */
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  cloudTemplateHeaderImageUrl?: string;
 }

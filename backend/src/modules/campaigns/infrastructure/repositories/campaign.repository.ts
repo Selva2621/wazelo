@@ -41,6 +41,8 @@ export interface UpdateCampaignInput {
   sessionId?: string;
   scheduledAt?: Date;
   timezone?: string;
+  /** Replaces the campaign's metadata (callers merge the current value first) */
+  metadata?: Record<string, unknown>;
 }
 
 export interface ListCampaignsOptions {
@@ -162,6 +164,7 @@ export class CampaignRepository {
         ...(data.sessionId !== undefined && { sessionId: data.sessionId }),
         ...(data.scheduledAt !== undefined && { scheduledAt: data.scheduledAt }),
         ...(data.timezone !== undefined && { timezone: data.timezone }),
+        ...(data.metadata !== undefined && { metadata: data.metadata as Prisma.InputJsonValue }),
       },
     });
 

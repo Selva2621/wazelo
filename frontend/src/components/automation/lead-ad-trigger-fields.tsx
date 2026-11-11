@@ -33,7 +33,7 @@ function formLabel(f: LeadAdForm) {
 }
 
 /**
- * Filters for "Lead Ad Received": platform, Facebook Page (a brand) and form (a product),
+ * Filters for "Lead ad received": platform, Facebook Page (a brand) and form (a product),
  * and whether repeat leads count. Pages and forms are picked from leads already received;
  * an ID can still be typed for a form that hasn't sent a lead yet.
  */
@@ -124,7 +124,7 @@ export function LeadAdTriggerFields({ value, onChange, inputClassName }: LeadAdT
             <option value={CUSTOM}>Enter a form ID…</option>
           </Select>
         )}
-        <p className="text-caption text-on-surface-variant/60 mt-1">
+        <p className="mt-1 text-caption text-on-surface-variant">
           {forms.length === 0 && !isLoading
             ? "Pages and forms show up here after their first lead."
             : "One brand = one Page, one product = one form."}

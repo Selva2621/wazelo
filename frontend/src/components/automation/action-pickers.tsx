@@ -18,9 +18,11 @@ export function SessionSelect(props: SelectProps) {
       <option value="">Automatic (the number the contact last chatted with)</option>
       {sessions.map((s) => {
         const owner = (s as { user?: { firstName?: string } }).user?.firstName;
+        // Official numbers belong to the workspace, not the person who added them
+        const tag = s.provider === "CLOUD_API" ? "Official" : owner;
         return (
           <option key={s.id} value={s.id}>
-            {s.phoneNumber || "Unknown number"}{owner ? ` (${owner})` : ""}
+            {s.phoneNumber || "Unknown number"}{tag ? ` (${tag})` : ""}
           </option>
         );
       })}

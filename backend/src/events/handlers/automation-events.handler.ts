@@ -81,7 +81,7 @@ export class AutomationEventsHandler {
           phoneNumber: payload.phoneNumber,
           source: payload.source,
           ownerId: payload.ownerId,
-          // One welcome per channel: a "Lead Ad Received" rule that messages / emails this
+          // One welcome per channel: a "Lead ad received" rule that messages / emails this
           // lead wins, so this rule's matching send steps skip (tags, assignment etc. still run)
           ...(payload.leadAd &&
             (await this.leadAdRuleWelcomes(payload.orgId, payload.leadAd).catch(() => NO_LEAD_WELCOME))),
@@ -138,7 +138,7 @@ export class AutomationEventsHandler {
     }
   }
 
-  /** Which channels an active "Lead Ad Received" rule already welcomes this (new) lead on */
+  /** Which channels an active "Lead ad received" rule already welcomes this (new) lead on */
   private async leadAdRuleWelcomes(
     orgId: string,
     leadAd: { platform: string; pageId?: string; formId: string | null },

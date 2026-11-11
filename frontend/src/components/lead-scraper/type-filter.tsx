@@ -55,7 +55,7 @@ export function TypeFilter({ options, value, onChange }: {
         onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
         placeholder="Search types…"
         aria-label="Search types"
-        className="flex-1 bg-transparent text-label text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
+        className="flex-1 bg-transparent text-label text-on-surface placeholder:text-placeholder focus:outline-none"
       />
       {query && (
         <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="text-on-surface-variant hover:text-on-surface">

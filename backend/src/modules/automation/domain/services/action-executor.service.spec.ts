@@ -37,7 +37,11 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
     findByIdempotencyKey: jest.fn(async () => null),
     create: jest.fn(async (data: Record<string, unknown>) => ({ id: 'm1', ...data })),
   };
-  const conversationRepo = { findOrCreate: jest.fn(async () => ({ id: 'c1' })), assignTo: jest.fn(async () => ({})) };
+  const conversationRepo = {
+    findOrCreate: jest.fn(async () => ({ id: 'c1' })),
+    assignTo: jest.fn(async () => ({})),
+    updateLastMessage: jest.fn(async () => ({})),
+  };
   const messageEventRepo = { record: jest.fn(async () => undefined) };
   const sessionRepo = { findAnyActiveByOrgId: jest.fn(async () => ({ id: 'any-session' })) };
   const orgEmail = { queue: jest.fn(async (): Promise<Record<string, unknown>> => ({ emailMessageId: 'em1', status: 'QUEUED' })) };
@@ -188,7 +192,7 @@ describe('ActionExecutorService SEND_EMAIL', () => {
     expect(orgEmail.queue).not.toHaveBeenCalled();
   });
 
-  it('sends no second welcome email when a "Lead Ad Received" rule emails the lead', async () => {
+  it('sends no second welcome email when a "Lead ad received" rule emails the lead', async () => {
     const { service, orgEmail } = setup();
     const r = await service.execute({ ...input({ subject: 'Hi', body: 'Hello' }), eventPayload: { emailByLeadAdRule: true } });
     expect(r).toMatchObject({ success: true, result: { skipped: true } });
@@ -240,7 +244,7 @@ describe('ActionExecutorService SEND_MESSAGE', () => {
     expect(messageRepo.create).not.toHaveBeenCalled();
   });
 
-  it('sends no second welcome when a "Lead Ad Received" rule greets the lead', async () => {
+  it('sends no second welcome when a "Lead ad received" rule greets the lead', async () => {
     const { service, messageRepo } = setup();
     const result = await service.execute(send({ contactId: 'ct1', welcomeByLeadAdRule: true }));
     expect(result).toEqual(expect.objectContaining({ success: true, result: expect.objectContaining({ skipped: true }) }));

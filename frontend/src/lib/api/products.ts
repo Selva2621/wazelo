@@ -6,6 +6,8 @@ import type {
   UpdateProductRequest,
   CreateProductCategoryRequest,
   UpdateProductCategoryRequest,
+  Brand,
+  BrandRequest,
 } from "@/lib/types/products";
 
 export const productsApi = {
@@ -43,4 +45,15 @@ export const productsApi = {
 
   deleteCategory: (id: string) =>
     apiClient.delete(`/products/categories/${id}`).then((r) => r.data),
+
+  // ─── Brands ──────────────────────────────────────────────────────────────
+  listBrands: () => apiClient.get<Brand[]>("/products/brands").then((r) => r.data),
+
+  createBrand: (data: BrandRequest & { name: string }) =>
+    apiClient.post<Brand>("/products/brands", data).then((r) => r.data),
+
+  updateBrand: (id: string, data: BrandRequest) =>
+    apiClient.patch<Brand>(`/products/brands/${id}`, data).then((r) => r.data),
+
+  deleteBrand: (id: string) => apiClient.delete(`/products/brands/${id}`).then((r) => r.data),
 };

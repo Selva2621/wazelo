@@ -43,6 +43,12 @@ enum WhatsAppSessionStatus {
   RECONNECTING
 }
 
+/// How a WhatsApp number is connected
+enum WhatsAppProvider {
+  QR
+  CLOUD_API
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -574,6 +580,7 @@ model Organization {
   kbDocuments              KbDocument[]
   sequenceTemplates        SequenceTemplate[]
   products                 Product[]
+  brands                   Brand[]
   productCategories        ProductCategory[]
   helpTickets              HelpTicket[]
   aiMemory                 OrgAiMemory?
@@ -882,6 +889,22 @@ model WhatsAppSession {
   /// Last sign the primary phone was online (a fresh link, or a message sent from it).
   /// WhatsApp unlinks companion devices after 14 days without the phone.
   lastPhoneActivityAt DateTime?         @map("last_phone_activity_at")
+  /// QR = linked device (Baileys), one per user. CLOUD_API = official Meta number, shared by the org.
+  provider            WhatsAppProvider  @default(QR)
+  /// CLOUD_API only: Meta phone number ID (webhooks are matched on it)
+  cloudPhoneNumberId  String?           @map("cloud_phone_number_id") @db.VarChar(64)
+  /// CLOUD_API only: WhatsApp Business Account ID (templates live here)
+  cloudWabaId         String?           @map("cloud_waba_id") @db.VarChar(64)
+  /// CLOUD_API only: encrypted permanent access token
+  encryptedCloudToken String?           @map("encrypted_cloud_token") @db.Text
+  /// CLOUD_API only: encrypted Meta App Secret, to check webhook signatures
+  encryptedCloudAppSecret String?       @map("encrypted_cloud_app_secret") @db.Text
+  /// CLOUD_API only: token Meta echoes back when the webhook is verified
+  cloudVerifyToken    String?           @map("cloud_verify_token") @db.VarChar(100)
+  /// CLOUD_API only: business name Meta shows, quality rating (GREEN/YELLOW/RED) and daily tier
+  cloudVerifiedName   String?           @map("cloud_verified_name") @db.VarChar(255)
+  cloudQualityRating  String?           @map("cloud_quality_rating") @db.VarChar(20)
+  cloudMessagingTier  String?           @map("cloud_messaging_tier") @db.VarChar(40)
   createdAt       DateTime              @default(now()) @map("created_at")
   updatedAt       DateTime              @updatedAt @map("updated_at")
   deletedAt       DateTime?             @map("deleted_at")
@@ -894,7 +917,9 @@ model WhatsAppSession {
   campaignRecipients CampaignRecipient[]
   sequences    CampaignSequence[]
 
-  @@unique([userId, deletedAt], name: "unique_active_session_per_user")
+  /// One QR number per user; the admin who adds an official number can still have their own QR one
+  @@unique([userId, provider, deletedAt], name: "unique_active_session_per_user")
+  @@index([cloudPhoneNumberId])
   @@index([orgId])
   @@index([userId])
   @@index([status])
@@ -1124,6 +1149,7 @@ model Contact {
   consentRecords     ConsentRecord[]
   dataRequests       DataRequest[]
   contactProducts    ContactProduct[]
+  leadFollowUps      LeadFollowUp[]
 
   // Partial unique index managed via raw SQL migration:
   // CREATE UNIQUE INDEX contacts_org_phone_active_unique ON contacts (org_id, phone_number) WHERE deleted_at IS NULL
@@ -2125,6 +2151,12 @@ enum NotificationType {
   WHATSAPP_PHONE_INACTIVE
   /// A website visitor asked to talk to a person
   WEBSITE_HANDOFF
+  /// A lead (e.g. Meta lead form) was given to you to contact
+  LEAD_ASSIGNED
+  /// A lead you were given still hasn't been contacted
+  LEAD_FOLLOW_UP_DUE
+  /// Brand manager's day-end summary of the brand's leads
+  LEAD_DAILY_SUMMARY
 }
 
 enum TicketStatus {
@@ -2535,6 +2567,8 @@ model MessageTemplate {
   id                  String   @id @default(uuid()) @db.Uuid
   orgId               String   @map("org_id") @db.Uuid
   channelId           String?  @map("channel_id") @db.Uuid
+  /// Synced from this official (Cloud API) number's WhatsApp Business Account
+  cloudSessionId      String?  @map("cloud_session_id") @db.Uuid
   name                String   @db.VarChar(255)
   language            String   @default("en") @db.VarChar(10)
   category            String?  @db.VarChar(50)
@@ -2553,6 +2587,7 @@ model MessageTemplate {
   @@index([orgId])
   @@index([orgId, status])
   @@index([channelId])
+  @@index([cloudSessionId])
   @@index([deletedAt])
   @@map("message_templates")
 }
@@ -3293,12 +3328,20 @@ model Product {
   imageUrl    String?       @map("image_url") @db.VarChar(2048)
   categoryId  String?       @map("category_id") @db.Uuid
   status      ProductStatus @default(ACTIVE)
+  /// The brand this product belongs to (null = no brand)
+  brandId     String?       @map("brand_id") @db.Uuid
+  /// People who handle this product's leads; new leads are shared round-robin between them
+  leadHandlerIds      String[] @default([]) @map("lead_handler_ids") @db.Uuid
+  /// Remind the lead's owner when nobody has contacted it after this many minutes
+  leadReminderMinutes Int      @default(30) @map("lead_reminder_minutes")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
   deletedAt   DateTime?     @map("deleted_at")
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   category          ProductCategory?   @relation(fields: [categoryId], references: [id])
+  brand             Brand?             @relation(fields: [brandId], references: [id])
+  leadFollowUps     LeadFollowUp[]
   contactProducts   ContactProduct[]
   deals             Deal[]
   csatSurveys       CsatSurvey[]
@@ -3309,7 +3352,64 @@ model Product {
 
   @@unique([orgId, name, deletedAt])
   @@index([orgId])
+  @@index([brandId])
   @@map("products")
+}
+
+/// A brand groups products, e.g. one builder with four projects
+model Brand {
+  id        String    @id @default(uuid()) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  name      String    @db.VarChar(120)
+  /// Gets the brand's end-of-day lead summary
+  managerId String?   @map("manager_id") @db.Uuid
+  /// Default WhatsApp number for the brand's welcomes (official or QR)
+  sessionId String?   @map("session_id") @db.Uuid
+  /// Local date (YYYY-MM-DD, org time zone) the manager last got the day-end summary
+  lastSummaryDate String? @map("last_summary_date") @db.VarChar(10)
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  products     Product[]
+
+  @@unique([orgId, name, deletedAt])
+  @@index([orgId])
+  @@map("brands")
+}
+
+/// One lead someone must contact: who has it, by when, and whether they did
+model LeadFollowUp {
+  id           String    @id @default(uuid()) @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  contactId    String    @map("contact_id") @db.Uuid
+  productId    String?   @map("product_id") @db.Uuid
+  /// The team member who must contact the lead
+  assigneeId   String    @map("assignee_id") @db.Uuid
+  /// LEAD_AD for Meta lead forms
+  source       String    @default("LEAD_AD") @db.VarChar(30)
+  leadgenId    String?   @map("leadgen_id") @db.VarChar(100)
+  /// Remind the assignee at this time if still not contacted
+  dueAt        DateTime  @map("due_at")
+  /// First time anyone contacted the lead (message, status change, or "Called")
+  touchedAt    DateTime? @map("touched_at")
+  touchedById  String?   @map("touched_by_id") @db.Uuid
+  /// MESSAGE | STATUS | CALLED
+  touchedVia   String?   @map("touched_via") @db.VarChar(20)
+  remindedAt   DateTime? @map("reminded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  contact Contact  @relation(fields: [contactId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@unique([orgId, leadgenId, productId])
+  @@index([orgId, assigneeId, touchedAt])
+  @@index([contactId, touchedAt])
+  @@index([dueAt])
+  @@map("lead_follow_ups")
 }
 
 model ContactProduct {

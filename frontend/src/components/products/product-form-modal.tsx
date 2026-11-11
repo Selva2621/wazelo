@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { useCreateProduct, useUpdateProduct, useProductCategories } from "@/hooks/use-products";
+import { useCreateProduct, useUpdateProduct, useProductCategories, useBrands } from "@/hooks/use-products";
+import { useOrgMembers } from "@/hooks/use-contacts";
 import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
@@ -19,14 +20,16 @@ interface ProductFormModalProps {
   onClose: () => void;
   /** Pass existing product to edit mode */
   product?: Product;
+  /** New product: preselect this brand (e.g. "Add product" inside a brand group) */
+  defaultBrandId?: string;
 }
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD"];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
-export function ProductFormModal({ open, onClose, product }: ProductFormModalProps) {
+export function ProductFormModal({ open, onClose, product, defaultBrandId }: ProductFormModalProps) {
   const isEditing = !!product;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -44,7 +47,12 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
   const [sku, setSku] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
+  const [leadHandlerIds, setLeadHandlerIds] = useState<string[]>([]);
+  const [leadReminderMinutes, setLeadReminderMinutes] = useState(30);
   const [error, setError] = useState<string | null>(null);
+  const { data: brands } = useBrands();
+  const { data: members } = useOrgMembers();
 
   // Populate form when editing
   useEffect(() => {
@@ -56,12 +64,20 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
       setSku(product.sku ?? "");
       setImageUrl(product.imageUrl ?? "");
       setCategoryId(product.categoryId ?? "");
+      setBrandId(product.brandId ?? "");
+      setLeadHandlerIds(product.leadHandlerIds ?? []);
+      setLeadReminderMinutes(product.leadReminderMinutes ?? 30);
     } else {
       setName(""); setDescription(""); setPrice(""); setCurrency(orgCurrency);
       setSku(""); setImageUrl(""); setCategoryId("");
+      setBrandId(defaultBrandId ?? ""); setLeadHandlerIds([]); setLeadReminderMinutes(30);
     }
     setError(null);
-  }, [product, open, orgCurrency]);
+  }, [product, open, orgCurrency, defaultBrandId]);
+
+  function toggleHandler(id: string) {
+    setLeadHandlerIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
 
   const isPending = createProduct.isPending || updateProduct.isPending;
 
@@ -96,13 +112,22 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
 
     if (isEditing && product) {
       updateProduct.mutate(
-        { id: product.id, ...payload },
+        { id: product.id, ...payload, brandId: brandId || null, leadHandlerIds, leadReminderMinutes },
         { onSuccess: onClose, onError: (err) => setError((err as Error).message) },
       );
     } else {
       createProduct.mutate(
-        payload,
-        { onSuccess: onClose, onError: (err) => setError((err as Error).message) },
+        { ...payload, brandId: brandId || undefined },
+        {
+          // The lead team is saved right after, on the new product
+          onSuccess: (created) => {
+            if (leadHandlerIds.length > 0 || leadReminderMinutes !== 30) {
+              updateProduct.mutate({ id: created.id, leadHandlerIds, leadReminderMinutes });
+            }
+            onClose();
+          },
+          onError: (err) => setError((err as Error).message),
+        },
       );
     }
   }
@@ -190,7 +215,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
-                className="flex-1 px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 bg-transparent outline-none"
+                className="flex-1 px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder bg-transparent outline-none"
               />
             </div>
           </div>
@@ -227,6 +252,70 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
               </Select>
             </div>
           </div>
+
+          {/* Brand */}
+          {(brands ?? []).length > 0 && (
+            <div>
+              <Label htmlFor="pf-brand">
+                Brand <span className="font-normal text-on-surface-variant/50">(optional)</span>
+              </Label>
+              <Select id="pf-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="mt-1">
+                <option value="">No brand</option>
+                {(brands ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {/* Lead team: who handles this product's leads, and how soon */}
+          <fieldset className="space-y-3 rounded-xl border border-outline-variant/15 p-4" data-tour="product-lead-team">
+            <legend className="px-1 text-label font-medium text-on-surface">Leads for this {terms.singular}</legend>
+            <div>
+              <p className="text-label text-on-surface-variant">Handled by</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {(members ?? []).map((m) => {
+                  const on = leadHandlerIds.includes(m.id);
+                  const label = `${m.firstName} ${m.lastName}`.trim() || m.email;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleHandler(m.id)}
+                      className={`rounded-full border px-3 py-1 text-label transition-colors ${
+                        on
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-outline-variant/30 text-on-surface-variant hover:border-outline"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-caption text-on-surface-variant">
+                {leadHandlerIds.length > 1
+                  ? "New leads are shared between them, fewest waiting first."
+                  : leadHandlerIds.length === 1
+                    ? "Every new lead goes to this person."
+                    : "Nobody picked: leads stay with the contact's owner."}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="pf-remind">Remind if not contacted in</Label>
+              <Select
+                id="pf-remind"
+                value={String(leadReminderMinutes)}
+                onChange={(e) => setLeadReminderMinutes(Number(e.target.value))}
+                className="mt-1"
+              >
+                {[15, 30, 60, 120, 240].map((m) => (
+                  <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} hour${m > 60 ? "s" : ""}`}</option>
+                ))}
+              </Select>
+            </div>
+          </fieldset>
 
           {/* Image */}
           <div>

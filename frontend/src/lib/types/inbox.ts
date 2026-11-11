@@ -131,6 +131,10 @@ export interface SendMessageRequest {
   channelId?: string;
   contactIdentifier?: string;
   channelPayload?: Record<string, unknown>;
+  /** Official numbers: send this Meta-approved template */
+  cloudTemplateId?: string;
+  cloudTemplateParams?: string[];
+  cloudTemplateHeaderImageUrl?: string;
 }
 
 // Query params matching backend DTOs

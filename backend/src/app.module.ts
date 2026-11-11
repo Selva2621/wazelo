@@ -60,6 +60,7 @@ import { CsatModule } from './modules/csat/csat.module';
 import { DealsModule } from './modules/deals/deals.module';
 import { ProposalsModule } from './modules/proposals/proposals.module';
 import { ProductsModule } from './modules/products/products.module';
+import { LeadFollowUpsModule } from './modules/lead-follow-ups/lead-follow-ups.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { DeveloperApiModule } from './modules/developer-api/developer-api.module';
@@ -157,6 +158,8 @@ import { EventsModule } from './events/events.module';
     DealsModule,
     ProposalsModule,
     ProductsModule,
+    // Who must contact each lead, by when (lead routing + reminders)
+    LeadFollowUpsModule,
     AiModule,
     ChatbotModule,
     DeveloperApiModule,

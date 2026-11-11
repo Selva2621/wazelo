@@ -8,7 +8,12 @@ import type { OrgType } from "@/lib/types/auth";
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["caption", "label", "body", "body-lg", "title-sm", "title", "headline", "display", "hero"],
+      text: [
+        "caption", "label", "body", "body-lg", "title-sm", "title", "headline", "display", "hero",
+        "micro", "overline",
+        "native-badge", "native-caption2", "native-caption", "native-footnote", "native-subhead-sm",
+        "native-subhead", "native-callout", "native-body", "native-title3", "native-title2",
+      ],
       shadow: ["popover", "modal"],
       ease: ["standard", "exit"],
     },

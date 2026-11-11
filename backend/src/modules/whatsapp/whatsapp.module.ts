@@ -34,10 +34,12 @@ import { WhatsAppLinkUseCase } from './application/use-cases/whatsapp-link.use-c
 // Controllers
 import { WhatsAppSessionController } from './interfaces/controllers/whatsapp-session.controller';
 import { WhatsAppLinkController } from './interfaces/controllers/whatsapp-link.controller';
+import { CloudNumberController, WhatsAppCloudWebhookController } from './interfaces/controllers/cloud-number.controller';
+import { CloudNumberUseCase } from './application/use-cases/cloud-number.use-case';
 
 @Module({
   imports: [AuditModule, BillingModule, JwtModule.register({}), forwardRef(() => MessagesModule)],
-  controllers: [WhatsAppSessionController, WhatsAppLinkController],
+  controllers: [WhatsAppSessionController, WhatsAppLinkController, CloudNumberController, WhatsAppCloudWebhookController],
   providers: [
     // Domain
     WhatsAppSessionService,
@@ -62,6 +64,7 @@ import { WhatsAppLinkController } from './interfaces/controllers/whatsapp-link.c
     HandleIncomingMessageUseCase,
     HandleStatusUpdateUseCase,
     SendHealthUseCase,
+    CloudNumberUseCase,
   ],
   exports: [
     WhatsAppSessionRepository,

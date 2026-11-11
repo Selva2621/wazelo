@@ -226,7 +226,7 @@ export const automationTours: TourDef[] = [
 
   {
     id: "automation-rule",
-    version: 4,
+    version: 5,
     title: "Rule editor",
     summary: "Set the trigger, conditions and actions of one rule.",
     section: "Automation",
@@ -261,7 +261,7 @@ export const automationTours: TourDef[] = [
       {
         target: "rule-actions",
         title: "Actions",
-        body: "One or more things to do, in order: send a WhatsApp message or an email, add a tag, change status, assign, start or stop a sequence.",
+        body: "One or more things to do, in order: send a WhatsApp message or an email, add a tag, add to a product, change status, assign, start or stop a sequence. Official numbers send a Meta-approved template.",
         example: { kind: "flow", nodes: ["Send template “price_list”", "Send email “Welcome”", "Add tag “pricing”"] },
       },
       {
