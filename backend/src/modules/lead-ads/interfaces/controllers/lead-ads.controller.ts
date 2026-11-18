@@ -23,6 +23,7 @@ import { GetLeadAdAnalyticsUseCase } from '../../application/use-cases/get-lead-
 import { ProcessLeadAdUseCase } from '../../application/use-cases/process-lead-ad.use-case';
 import { ListLeadAdsQueryDto, LeadAdAnalyticsQueryDto } from '../../application/dto/list-lead-ads-query.dto';
 import { SaveLeadAdsConfigDto } from '../../application/dto/save-lead-ads-config.dto';
+import { publicApiUrl } from '@/config/public-urls';
 
 @Controller('lead-ads')
 export class LeadAdsController {
@@ -135,7 +136,7 @@ export class LeadAdsController {
   async getConfig(@CurrentUser('orgId') orgId: string) {
     const channels = await this.leadAdRepo.findChannelsByOrg(orgId);
     const leadAdsConfig = await this.leadAdsConfigRepo.findByOrgId(orgId);
-    const apiBaseUrl = this.configService.get<string>('API_BASE_URL', '');
+    const apiBaseUrl = publicApiUrl();
 
     return {
       configured: channels.length > 0,

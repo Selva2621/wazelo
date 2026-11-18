@@ -242,7 +242,7 @@ export class SendMessageWorker implements OnModuleInit {
     }
 
     const lane = this.pacer.laneFor(message.priority);
-    // Official (Cloud API) numbers: Meta enforces its own limits, so no warm-up caps or human pacing
+    // Official (Cloud API) numbers: Meta enforces its own limits, so no daily caps or human pacing
     const official = this.whatsappApi.isCloudSession(sessionId);
 
     if (lane === 'bulk') {
@@ -267,7 +267,7 @@ export class SendMessageWorker implements OnModuleInit {
       }
 
       // Safety governor (bulk only — inbox replies are never held): auto-pause,
-      // sending hours and warm-up daily caps for this number. Re-checked when a
+      // sending hours and admin-set daily caps for this number. Re-checked when a
       // paced message comes back for its slot, so a batch can't overshoot a cap.
       // Skipped in WhatsApp test mode: everything goes to a test number, and a
       // campaign tested at night shouldn't sit held until morning.

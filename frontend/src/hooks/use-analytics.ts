@@ -25,9 +25,67 @@ export const analyticsKeys = {
     ["analytics", "team-performance", params] as const,
   campaigns: (params?: AnalyticsQueryParams) =>
     ["analytics", "campaigns", params] as const,
+  liveChannels: () => ["analytics", "live-channels"] as const,
+  liveWaiting: () => ["analytics", "live-waiting"] as const,
+  liveRevenue: () => ["analytics", "live-revenue"] as const,
+  liveLeads: () => ["analytics", "live-leads"] as const,
+  cityInsights: () => ["analytics", "city-insights"] as const,
 };
 
+/** Message City: messages per hour (today vs yesterday) and reply speed per channel */
+export function useCityInsights() {
+  return useQuery({
+    queryKey: analyticsKeys.cityInsights(),
+    queryFn: () => analyticsApi.getCityInsights({ timezoneOffsetMinutes: -new Date().getTimezoneOffset() }),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
+
+const localOffsetMinutes = () => -new Date().getTimezoneOffset();
+
+/** Chats waiting 15+ minutes for a reply. Refetches each minute: waiting times grow on their own. */
+export function useWaitingChats() {
+  return useQuery({
+    queryKey: analyticsKeys.liveWaiting(),
+    queryFn: () => analyticsApi.getWaiting({ minMinutes: 15 }),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
+
+/** Pipeline value, deals won and proposals (last 7 days) */
+export function useRevenueSnapshot() {
+  return useQuery({
+    queryKey: analyticsKeys.liveRevenue(),
+    queryFn: () => analyticsApi.getRevenue(),
+    staleTime: 30_000,
+  });
+}
+
+/** Leads created today (Message City's dock) */
+export function useLeadsToday() {
+  return useQuery({
+    queryKey: analyticsKeys.liveLeads(),
+    queryFn: () => analyticsApi.getLeadsToday({ timezoneOffsetMinutes: localOffsetMinutes() }),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
+
 // ─── Query Hooks ───
+
+/** Messages today per channel. The socket bumps it live; this refetch is the fallback. */
+export function useLiveChannelStats() {
+  return useQuery({
+    queryKey: analyticsKeys.liveChannels(),
+    queryFn: () =>
+      // Exact minutes, so half-hour zones (India +5:30) start "today" at real midnight
+      analyticsApi.getLiveChannels({ timezoneOffsetMinutes: -new Date().getTimezoneOffset() }),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
 
 export function useDashboardAnalytics(params?: AnalyticsQueryParams) {
   return useQuery({

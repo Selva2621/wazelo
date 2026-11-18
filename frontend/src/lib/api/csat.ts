@@ -1,9 +1,9 @@
-import apiClient from "./client";
+import apiClient, { API_BASE_URL } from "./client";
 import axios from "axios";
 import type { CsatStats, CsatListResponse, CsatStatsParams } from "@/lib/types/csat";
 
 const publicClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1",
+  baseURL: API_BASE_URL,
 });
 
 export const csatApi = {

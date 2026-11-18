@@ -274,7 +274,7 @@ export class ActionExecutorService {
         body: resolvedBody,
         idempotencyKey,
         // Messages we start go through the bulk lane: opt-out re-check at send time,
-        // sending hours and warm-up caps (same protection as campaigns and sequences).
+        // sending hours and daily caps (same protection as campaigns and sequences).
         // Replies stay in the direct lane so the contact isn't kept waiting.
         priority: inbound ? 0 : CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
         maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,

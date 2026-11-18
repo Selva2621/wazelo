@@ -89,11 +89,16 @@ describe('OrgEmailService', () => {
   });
 
   it('sends with an unsubscribe link, marks it SENT and tells campaigns', async () => {
+    const prevApi = process.env.API_BASE_URL;
+    process.env.API_BASE_URL = 'https://api.wazelo.in/api/v1';
     const { service, repo, mailer, events } = setup();
     await service.queue(input);
     await service.deliver({ emailMessageId: 'm1' });
+    if (prevApi === undefined) delete process.env.API_BASE_URL;
+    else process.env.API_BASE_URL = prevApi;
     const mail = (mailer.send.mock.calls[0] as unknown[])[1] as { unsubscribeUrl: string; from: unknown };
-    expect(mail.unsubscribeUrl).toMatch(/^https:\/\/app\.wazelo\.in\/api\/v1\/email\/unsubscribe\?t=/);
+    // On the API's public URL, so it works without the frontend proxying /api/v1
+    expect(mail.unsubscribeUrl).toMatch(/^https:\/\/api\.wazelo\.in\/api\/v1\/email\/unsubscribe\?t=/);
     expect(mail.from).toEqual({ name: 'Kavya Boutique', address: 'hello@kavya.in' });
     expect(repo.finishMessage).toHaveBeenCalledWith('m1', 'SENT', { providerMessageId: '<abc@gmail>' });
     expect(events.emit).toHaveBeenCalledWith('email.sent', expect.objectContaining({ emailMessageId: 'm1', source: 'CAMPAIGN', sourceId: 'c1' }));

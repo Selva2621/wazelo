@@ -5,11 +5,7 @@ import { SEND_SAFETY_CONFIG, SENDING_LIMIT_BOUNDS } from '@/common/constants';
  * Baileys number. No I/O — AccountSafetyService feeds in the counts.
  */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export interface WarmupTier {
-  /** Warm-up stage by link age (or the chosen stage); informational unless warm-up is on */
-  stage: number;
+export interface DailyCaps {
   /** Cold messages (to people who never wrote first) allowed per day; null = no daily cap */
   coldCap: number | null;
   /** All bulk messages allowed per day; null = no daily cap (only the plan's message limit) */
@@ -17,12 +13,9 @@ export interface WarmupTier {
   /**
    * What decides daily volume on this number:
    * - plan:   no daily cap; the org's plan message limit is the only volume limit (default)
-   * - warmup: Wazelo's warm-up tiers, opted into per number
    * - custom: admin-set daily caps
    */
-  mode: 'plan' | 'warmup' | 'custom';
-  /** True when an admin's per-number setting decided the stage or a cap */
-  customized: boolean;
+  mode: 'plan' | 'custom';
 }
 
 /**
@@ -31,10 +24,6 @@ export interface WarmupTier {
  * limited only by the org's plan (monthly message limit).
  */
 export interface SendingLimits {
-  /** Opt into Wazelo's warm-up daily caps (by link age, or from `warmupStage`) */
-  warmupEnabled?: boolean;
-  /** Start at this warm-up stage (1–4) instead of the one the link age gives */
-  warmupStage?: number;
   /** Bulk messages per day on this number */
   dailyBulkCap?: number;
   /** Of those, messages to people who never messaged first */
@@ -51,9 +40,8 @@ const intIn = (value: unknown, min: number, max: number): number | undefined =>
 export function readSendingLimits(raw: unknown): SendingLimits {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const r = raw as Record<string, unknown>;
+  // Older rows may still hold warm-up fields (warmupEnabled, warmupStage): ignored
   const limits: SendingLimits = {
-    warmupEnabled: typeof r.warmupEnabled === 'boolean' ? r.warmupEnabled : undefined,
-    warmupStage: intIn(r.warmupStage, SENDING_LIMIT_BOUNDS.WARMUP_STAGE_MIN, SENDING_LIMIT_BOUNDS.WARMUP_STAGE_MAX),
     dailyBulkCap: intIn(r.dailyBulkCap, 0, SENDING_LIMIT_BOUNDS.DAILY_BULK_MAX),
     dailyColdCap: intIn(r.dailyColdCap, 0, SENDING_LIMIT_BOUNDS.DAILY_COLD_MAX),
     bulkGapMinMs: intIn(r.bulkGapMinMs, SENDING_LIMIT_BOUNDS.BULK_GAP_MIN_MS, SENDING_LIMIT_BOUNDS.BULK_GAP_MAX_MS),
@@ -65,27 +53,13 @@ export function readSendingLimits(raw: unknown): SendingLimits {
   return limits;
 }
 
-export function warmupTier(linkedAt: Date | null, now: Date, limits: SendingLimits = {}): WarmupTier {
-  const ageDays = linkedAt ? (now.getTime() - linkedAt.getTime()) / DAY_MS : 0;
-  const ageIndex = SEND_SAFETY_CONFIG.WARMUP_TIERS.findIndex((t) => ageDays < t.maxAgeDays);
-  // A chosen stage can only move a number forward: it never drops a number
-  // that has aged into a later stage back to an earlier one.
-  const index = limits.warmupStage !== undefined ? Math.max(ageIndex, limits.warmupStage - 1) : ageIndex;
-  const tier = SEND_SAFETY_CONFIG.WARMUP_TIERS[index];
-  const warmup = limits.warmupEnabled === true;
-  const hasCustomCap = limits.dailyBulkCap !== undefined || limits.dailyColdCap !== undefined;
-  // Explicit caps win; warm-up fills any cap not set; otherwise no daily cap
-  const bulkCap = limits.dailyBulkCap ?? (warmup ? tier.bulk : null);
-  const rawCold = limits.dailyColdCap ?? (warmup ? tier.cold : null);
+/** Daily caps on a number: only what an admin set; otherwise none (plan limit only). */
+export function dailyCaps(limits: SendingLimits = {}): DailyCaps {
+  const bulkCap = limits.dailyBulkCap ?? null;
+  const rawCold = limits.dailyColdCap ?? null;
   // New-contact messages are a subset of bulk messages
   const coldCap = rawCold === null ? null : bulkCap === null ? rawCold : Math.min(rawCold, bulkCap);
-  return {
-    stage: index + 1,
-    coldCap,
-    bulkCap,
-    mode: hasCustomCap ? 'custom' : warmup ? 'warmup' : 'plan',
-    customized: index !== ageIndex || hasCustomCap,
-  };
+  return { coldCap, bulkCap, mode: bulkCap !== null || coldCap !== null ? 'custom' : 'plan' };
 }
 
 /** Random-gap bounds between bulk sends for a number (custom or default). */
@@ -176,7 +150,6 @@ export function isWithinSendWindow(
 export interface BulkSendInput {
   now: Date;
   timeZone: string;
-  linkedAt: Date | null;
   pausedUntil: Date | null;
   pausedReason: string | null;
   /** Bulk messages sent today (local day) on this number */
@@ -235,21 +208,20 @@ export function decideBulkSend(input: BulkSendInput): BulkSendDecision {
     };
   }
 
-  const tier = warmupTier(input.linkedAt, now, input.limits);
+  const caps = dailyCaps(input.limits);
   const capResetAt = () => nextCapResetAt(now, timeZone, input.budgetTimeZone ?? timeZone, sendWindow);
-  const source = tier.mode === 'warmup' && !tier.customized ? `warm-up stage ${tier.stage}` : 'number setting';
-  if (tier.bulkCap !== null && input.bulkSentToday >= tier.bulkCap) {
+  if (caps.bulkCap !== null && input.bulkSentToday >= caps.bulkCap) {
     return {
       allowed: false,
       retryAt: capResetAt(),
-      reason: `Daily limit reached (${tier.bulkCap} bulk messages, ${source})`,
+      reason: `Daily limit reached (${caps.bulkCap} bulk messages, number setting)`,
     };
   }
-  if (input.recipientIsCold && tier.coldCap !== null && input.coldSentToday >= tier.coldCap) {
+  if (input.recipientIsCold && caps.coldCap !== null && input.coldSentToday >= caps.coldCap) {
     return {
       allowed: false,
       retryAt: capResetAt(),
-      reason: `Daily limit reached for new contacts (${tier.coldCap}, ${source})`,
+      reason: `Daily limit reached for new contacts (${caps.coldCap}, number setting)`,
     };
   }
 

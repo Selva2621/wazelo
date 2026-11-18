@@ -180,10 +180,8 @@ export interface CampaignAnalytics {
 
 export interface CampaignSendingAllowance {
   sessionId: string;
-  warmupStage: number;
-  customized: boolean;
-  /** plan = no daily cap on this number */
-  limitMode: "plan" | "warmup" | "custom";
+  /** plan = no daily cap on this number; custom = admin-set daily caps */
+  limitMode: "plan" | "custom";
   dailyBulkCap: number | null;
   dailyColdCap: number | null;
   bulkSentToday: number;

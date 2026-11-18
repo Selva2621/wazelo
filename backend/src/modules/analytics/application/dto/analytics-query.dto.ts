@@ -41,6 +41,33 @@ export class AnalyticsQueryDto {
   timezoneOffsetHours?: number;
 }
 
+export class LiveChannelsQueryDto {
+  /** Exact offset (local minus UTC) in minutes, e.g. 330 for India. Wins over the hours field. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-720)
+  @Max(840)
+  timezoneOffsetMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-12)
+  @Max(14)
+  timezoneOffsetHours?: number;
+}
+
+export class LiveWaitingQueryDto {
+  /** Show chats waiting at least this long (minutes). Default 15. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  minMinutes?: number;
+}
+
 export class BackfillDto {
   @IsDateString()
   startDate: string;

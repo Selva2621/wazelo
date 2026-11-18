@@ -123,7 +123,7 @@ export const coreTours: TourDef[] = [
 
   {
     id: "dashboard",
-    version: 2,
+    version: 4,
     title: "Dashboard",
     summary: "Leads waiting for you, setup checklist, key numbers and charts.",
     section: "Getting started",
@@ -131,6 +131,19 @@ export const coreTours: TourDef[] = [
     orgType: "TEAM",
     match: exact("/dashboard"),
     steps: [
+      {
+        target: "dash-revenue",
+        ifMissing: "skip",
+        title: "Money at a glance",
+        body: "Open pipeline value, deals won and proposals sent in the last 7 days. Tap any number to open it.",
+        example: { kind: "chips", items: ["Pipeline", "Won · 7 days", "Proposals", "Viewed"] },
+      },
+      {
+        target: "dash-waiting",
+        ifMissing: "skip",
+        title: "Waiting for reply",
+        body: "Customers who wrote 15+ minutes ago and haven't heard back, oldest first. Red means over an hour.",
+      },
       {
         target: "dash-leads-waiting",
         ifMissing: "skip",
@@ -178,12 +191,75 @@ export const coreTours: TourDef[] = [
         body: "Track how many leads move from New to Converted, when customers message most, and how each agent is doing.",
         example: { kind: "flow", nodes: ["New 120", "Contacted 80", "Interested 34", "Converted 18"] },
       },
+      {
+        target: "dash-city-link",
+        only: "desktop",
+        ifMissing: "skip",
+        title: "3D view",
+        body: "See today's messages as a live miniature town: one shop per channel.",
+      },
+    ],
+  },
+
+  {
+    id: "message-city",
+    version: 3,
+    title: "Message City",
+    summary: "Today's messages as a live miniature town, one shop per channel.",
+    section: "Getting started",
+    startHref: "/dashboard/city",
+    match: exact("/dashboard/city"),
+    steps: [
+      {
+        only: "mobile",
+        title: "Message City",
+        body: "A live 3D view of today's messages, one building per channel. Open it on a computer to explore.",
+      },
+      {
+        target: "city-canvas",
+        only: "desktop",
+        title: "Your channels",
+        body: "Each channel is a shop that grows taller with today's messages. Vans bring new messages to the Inbox; trucks take replies out.",
+        example: { kind: "chips", items: ["WhatsApp", "Instagram", "Messenger", "Website chat", "Email"] },
+      },
+      {
+        target: "city-building",
+        only: "desktop",
+        ifMissing: "skip",
+        title: "Click a building",
+        body: "Opens that channel's numbers for today. The traffic light beside it shows reply speed: green under 5 min, amber under 30, red slower.",
+      },
+      {
+        target: "city-hud",
+        only: "desktop",
+        title: "Live numbers",
+        body: "Messages today against the same time yesterday, average first reply, chats waiting 15+ min and leads today. New activity appears in the feed at the bottom.",
+      },
+      {
+        target: "city-canvas",
+        only: "desktop",
+        title: "24-hour timeline",
+        body: "The bars along the front edge are messages per hour: solid for today, faded for yesterday. Point at one for its numbers.",
+      },
+      {
+        target: "city-dock",
+        only: "desktop",
+        ifMissing: "skip",
+        title: "Leads dock",
+        body: "Every new lead today arrives by truck and stacks up as a parcel. Click the dock to see who came in.",
+      },
+      {
+        target: "city-panel",
+        only: "desktop",
+        title: "Today's numbers",
+        body: "Received, sent, delivered, read and failed. Open the channel's chats from here.",
+      },
     ],
   },
 
   {
     id: "dashboard-freelancer",
-    version: 1,
+    version: 2,
     title: "Home",
     summary: "What needs you today, your lead numbers and this week's activity.",
     section: "Getting started",
@@ -196,6 +272,13 @@ export const coreTours: TourDef[] = [
         only: "desktop",
         title: "Quick actions",
         body: "Jump straight to the inbox, find new leads, start a campaign or set up a follow-up sequence.",
+      },
+      {
+        target: "dash-city-link",
+        only: "desktop",
+        ifMissing: "skip",
+        title: "3D view",
+        body: "See today's messages as a live miniature town: one shop per channel.",
       },
       {
         target: ["page-actions", "m-primary"],

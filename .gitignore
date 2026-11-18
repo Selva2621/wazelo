@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Local dev tools (cloudflared)
 .tools/
+
+# Scratch downloads (asset packs etc.)
+/tmp/

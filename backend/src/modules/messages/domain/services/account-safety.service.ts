@@ -23,7 +23,7 @@ import {
   localDayStart,
   nextSendWindowStart,
   readSendingLimits,
-  warmupTier,
+  dailyCaps,
 } from './send-safety.policy';
 
 const TZ_CACHE_MS = 10 * 60 * 1000;
@@ -40,7 +40,8 @@ export type BulkRelevance =
 
 export interface SendHealth {
   sessionId: string;
-  warmup: { stage: number; linkedDays: number; coldCap: number | null; bulkCap: number | null; customized: boolean };
+  /** Admin-set daily caps on this number (null = no daily cap) */
+  caps: { coldCap: number | null; bulkCap: number | null };
   today: { bulkSent: number; coldSent: number };
   /** What is left of today's caps on this number */
   /** What is left of today's per-number caps (null = no daily cap on this number) */
@@ -49,8 +50,8 @@ export interface SendHealth {
   resetsAt: string;
   /** Admin-set limits for this number (empty = no daily cap, plan limit only) */
   limits: SendingLimits;
-  /** plan | warmup | custom: what decides daily volume on this number */
-  limitMode: 'plan' | 'warmup' | 'custom';
+  /** plan | custom: what decides daily volume on this number */
+  limitMode: 'plan' | 'custom';
   /**
    * The org's plan message allowance this billing period (shared by all numbers and
    * channels). limit null = unlimited plan. This is the volume limit by default.
@@ -71,7 +72,7 @@ export interface SendHealth {
 
 /**
  * Feeds the pure send-safety policy with real counts for one WhatsApp number:
- * warm-up caps, sending hours, delivery health and auto-pause.
+ * daily caps, sending hours, delivery health and auto-pause.
  */
 /** "Send any time" campaigns store `{ sendAnyTime: true }` in campaign.metadata. */
 export function readSendAnyTime(metadata: unknown): boolean {
@@ -114,8 +115,6 @@ export class AccountSafetyService {
     const session = await this.prisma.whatsAppSession.findUnique({
       where: { id: sessionId },
       select: {
-        linkedAt: true,
-        createdAt: true,
         sendingPausedUntil: true,
         sendingPausedReason: true,
         sendingLimits: true,
@@ -139,7 +138,6 @@ export class AccountSafetyService {
     const decision = decideBulkSend({
       now,
       timeZone,
-      linkedAt: session.linkedAt ?? session.createdAt,
       pausedUntil: session.sendingPausedUntil,
       pausedReason: session.sendingPausedReason,
       bulkSentToday,
@@ -348,7 +346,7 @@ export class AccountSafetyService {
     return gap;
   }
 
-  /** Replace this number's sending limits ({} = back to the warm-up defaults). */
+  /** Replace this number's sending limits ({} = no daily cap, plan limit only). */
   async setSendingLimits(sessionId: string, limits: SendingLimits): Promise<SendingLimits> {
     const clean = readSendingLimits(limits);
     await this.prisma.whatsAppSession.update({
@@ -381,8 +379,6 @@ export class AccountSafetyService {
       where: { id: sessionId, orgId, deletedAt: null },
       select: {
         id: true,
-        linkedAt: true,
-        createdAt: true,
         sendingPausedUntil: true,
         sendingPausedReason: true,
         sendingLimits: true,
@@ -391,9 +387,8 @@ export class AccountSafetyService {
     if (!session) return null;
 
     const timeZone = await this.orgTimeZone(orgId);
-    const linkedAt = session.linkedAt ?? session.createdAt;
     const limits = readSendingLimits(session.sendingLimits);
-    const tier = warmupTier(linkedAt, now, limits);
+    const tier = dailyCaps(limits);
     const dayStart = localDayStart(now, timeZone);
 
     const [bulkSent, coldSent, health] = await Promise.all([
@@ -422,13 +417,7 @@ export class AccountSafetyService {
 
     return {
       sessionId: session.id,
-      warmup: {
-        stage: tier.stage,
-        linkedDays: Math.floor((now.getTime() - linkedAt.getTime()) / (24 * 60 * 60 * 1000)),
-        coldCap: tier.coldCap,
-        bulkCap: tier.bulkCap,
-        customized: tier.customized,
-      },
+      caps: { coldCap: tier.coldCap, bulkCap: tier.bulkCap },
       today: { bulkSent, coldSent },
       remaining: (() => {
         const bulk = tier.bulkCap === null ? null : Math.max(0, tier.bulkCap - bulkSent);

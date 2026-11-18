@@ -25,8 +25,6 @@ export interface WhatsAppSession {
 /** Send-safety snapshot for the user's own WhatsApp number */
 /** Per-number limits an admin can set. Empty = no daily cap (plan limit only). */
 export interface SendingLimits {
-  warmupEnabled?: boolean;
-  warmupStage?: number;
   dailyBulkCap?: number;
   dailyColdCap?: number;
   bulkGapMinMs?: number;
@@ -36,13 +34,13 @@ export interface SendingLimits {
 export interface SendHealth {
   sessionId: string;
   /** Caps are null when the number has no daily cap */
-  warmup: { stage: number; linkedDays: number; coldCap: number | null; bulkCap: number | null; customized?: boolean };
+  caps: { coldCap: number | null; bulkCap: number | null };
   today: { bulkSent: number; coldSent: number };
   /** Older backends omit the fields below */
   remaining?: { bulk: number | null; cold: number | null };
   resetsAt?: string;
   limits?: SendingLimits;
-  limitMode?: "plan" | "warmup" | "custom";
+  limitMode?: "plan" | "custom";
   bulkGapMs?: { min: number; max: number };
   /** Org plan messages this billing period; limit null = unlimited */
   plan?: { used: number; limit: number | null; remaining: number | null };

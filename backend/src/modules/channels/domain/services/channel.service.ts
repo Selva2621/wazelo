@@ -11,6 +11,7 @@ import { ChannelRepository, ChannelFilters } from '../../infrastructure/reposito
 import { ChannelAdapterRegistry } from './channel-adapter-registry';
 import { EncryptionService } from './channel-encryption.service';
 import { EVENT_NAMES, CHANNEL_CONFIG } from '@/common/constants';
+import { publicApiUrl } from '@/config/public-urls';
 
 @Injectable()
 export class ChannelService {
@@ -327,7 +328,7 @@ export class ChannelService {
   ): Promise<void> {
     try {
       const adapter = this.adapterRegistry.getAdapter(type);
-      const callbackUrl = `${process.env.API_BASE_URL}/webhooks/channels/${channelId}`;
+      const callbackUrl = `${publicApiUrl()}/webhooks/channels/${channelId}`;
       const webhook = await adapter.registerWebhook(
         config,
         callbackUrl,

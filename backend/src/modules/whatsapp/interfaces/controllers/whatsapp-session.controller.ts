@@ -165,7 +165,7 @@ export class WhatsAppSessionController {
     return this.sendHealthUseCase.resumeForUser(user.sub, user.orgId);
   }
 
-  /** Admins tune their own number's sending limits (warm-up stage, daily caps, gap). */
+  /** Admins tune their own number's sending limits (daily caps, gap). */
   @Put('sessions/me/sending-limits')
   @Roles('ADMIN')
   @Permissions(PERMISSIONS.WHATSAPP_SESSION_ADMIN)

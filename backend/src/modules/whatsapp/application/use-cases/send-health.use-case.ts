@@ -51,8 +51,7 @@ export class SendHealthUseCase {
     const before = await this.getForSession(sessionId, orgId);
 
     const next: SendingLimits = {};
-    if (typeof dto.warmupEnabled === 'boolean') next.warmupEnabled = dto.warmupEnabled;
-    for (const key of ['warmupStage', 'dailyBulkCap', 'dailyColdCap', 'bulkGapMinMs', 'bulkGapMaxMs'] as const) {
+    for (const key of ['dailyBulkCap', 'dailyColdCap', 'bulkGapMinMs', 'bulkGapMaxMs'] as const) {
       const value = dto[key];
       if (typeof value === 'number') next[key] = value;
     }

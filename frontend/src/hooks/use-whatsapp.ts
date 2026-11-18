@@ -7,7 +7,7 @@ import { whatsappApi, type SendingLimits, type WhatsAppSession } from "@/lib/api
 import { useWhatsAppStore } from "@/stores/whatsapp-store";
 import { useAuthStore } from "@/stores/auth-store";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws";
+import { WS_URL } from "@/lib/env-urls";
 
 // ─── Session Query ───────────────────────────────────────
 export function useWhatsAppSession() {

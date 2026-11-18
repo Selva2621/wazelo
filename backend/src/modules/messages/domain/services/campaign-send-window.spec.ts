@@ -7,8 +7,6 @@ describe('campaign send window', () => {
   const base = {
     now: twoAmIst,
     timeZone: 'Asia/Kolkata',
-    // Linked long ago: highest warm-up tier
-    linkedAt: new Date('2026-01-01T00:00:00.000Z'),
     pausedUntil: null,
     pausedReason: null,
     bulkSentToday: 0,
@@ -30,11 +28,11 @@ describe('campaign send window', () => {
     expect(decideBulkSend({ ...base, sendWindow: campaignSendWindow(true) }).allowed).toBe(true);
   });
 
-  it('still stops at a daily cold cap when warm-up is on for the number, and resumes the next day', () => {
+  it('still stops at a daily cold cap set on the number, and resumes the next day', () => {
     const decision = decideBulkSend({
       ...base,
       coldSentToday: 10_000,
-      limits: { warmupEnabled: true },
+      limits: { dailyColdCap: 200 },
       bulkSentToday: 10_000,
       sendWindow: campaignSendWindow(true),
     });

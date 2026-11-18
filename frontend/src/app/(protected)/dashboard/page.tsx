@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Box } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -19,6 +21,9 @@ import { TeamPerformanceTable } from "@/components/analytics/team-performance-ta
 import { CampaignSummaryCards } from "@/components/analytics/campaign-summary-cards";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { LeadsWaitingCard } from "@/components/dashboard/leads-waiting-card";
+import { RevenueStrip } from "@/components/dashboard/revenue-strip";
+import { WaitingChatsCard } from "@/components/dashboard/waiting-chats-card";
+import { useDashboardLive } from "@/hooks/use-dashboard-live";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 const PERIOD_COPY: Record<AnalyticsPeriod, string> = {
@@ -81,6 +86,8 @@ function TeamDashboard() {
   );
 
   const { data, isLoading, isError, refetch } = useDashboardAnalytics(params);
+  // Numbers update as messages, leads and deals happen
+  useDashboardLive();
   const { data: teamData } = useTeamPerformance(isManager ? params : undefined);
 
   return (
@@ -93,12 +100,27 @@ function TeamDashboard() {
           <>
             <PeriodSelector value={period} onChange={setPeriod} />
             <ProductFilterSelect value="" onChange={() => {}} />
+            {/* Message City: live 3D view of today's messages (desktop only) */}
+            <Link
+              href="/dashboard/city"
+              data-tour="dash-city-link"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-variant px-3 text-body text-on-surface hover:bg-surface-container-low max-lg:hidden"
+            >
+              <Box className="size-4" />
+              3D view
+            </Link>
           </>
         }
       />
 
-      {/* Leads given to me that nobody has contacted yet (hidden when none) */}
-      <LeadsWaitingCard />
+      {/* Money at a glance: pipeline, deals won, proposals */}
+      <RevenueStrip />
+
+      {/* Urgent row: customers waiting for a reply + leads nobody has contacted (each hidden when none) */}
+      <div className="flex flex-col gap-4 empty:hidden lg:flex-row lg:items-start [&>*]:lg:min-w-0 [&>*]:lg:flex-1">
+        <WaitingChatsCard />
+        <LeadsWaitingCard />
+      </div>
 
       <SetupChecklist />
 

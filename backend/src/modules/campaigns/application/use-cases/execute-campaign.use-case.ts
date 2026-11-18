@@ -15,6 +15,8 @@ import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, UsageMetricType } from '@prisma/client';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { campaignTemplateProblem } from '../services/campaign-template-guard';
 
 @Injectable()
 export class ExecuteCampaignUseCase {
@@ -28,6 +30,7 @@ export class ExecuteCampaignUseCase {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly usageTracking: UsageTrackingService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -61,6 +64,12 @@ export class ExecuteCampaignUseCase {
     // Uploaded media can be wiped by a server restart; every send would fail
     if (isLocalMediaMissing(campaign.mediaUrl)) {
       throw new BadRequestException(MEDIA_MISSING_REASON);
+    }
+
+    // Official numbers can't send without their approved template
+    const templateProblem = await campaignTemplateProblem(this.prisma, campaign, orgId);
+    if (templateProblem) {
+      throw new BadRequestException(templateProblem);
     }
 
     // 4. If scheduled in the future, don't execute now

@@ -17,6 +17,8 @@ import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, UsageMetricType, WhatsAppSessionStatus } from '@prisma/client';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { campaignTemplateProblem } from '../services/campaign-template-guard';
 
 @Injectable()
 export class ResumeCampaignUseCase {
@@ -32,6 +34,7 @@ export class ResumeCampaignUseCase {
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly messageRepo: MessageRepository,
     private readonly usageTracking: UsageTrackingService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -60,6 +63,12 @@ export class ResumeCampaignUseCase {
     // Uploaded media can be wiped by a server restart: replace it before resuming
     if (isLocalMediaMissing(campaign.mediaUrl)) {
       throw new BadRequestException(MEDIA_MISSING_REASON);
+    }
+
+    // Official numbers can't send without their approved template: sync it back first
+    const templateProblem = await campaignTemplateProblem(this.prisma, campaign, orgId);
+    if (templateProblem) {
+      throw new BadRequestException(templateProblem);
     }
 
     // If the campaign's WhatsApp number was logged out or banned, continue on a connected one

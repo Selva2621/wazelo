@@ -426,18 +426,6 @@ export const SEND_SAFETY_CONFIG = {
   WA_CHECK_PER_DAY: 150,
   WA_CHECK_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   /**
-   * Optional warm-up (opt-in per number via sending_limits.warmupEnabled): daily bulk
-   * caps by how long the number has been linked. Off by default: without it a number
-   * has no daily cap and only the org plan message limit limits volume.
-   * `cold` = messages to people who never messaged first.
-   */
-  WARMUP_TIERS: [
-    { maxAgeDays: 7, cold: 20, bulk: 50 },
-    { maxAgeDays: 14, cold: 50, bulk: 150 },
-    { maxAgeDays: 21, cold: 100, bulk: 300 },
-    { maxAgeDays: Infinity, cold: 200, bulk: 500 },
-  ],
-  /**
    * Messages a contact can get per rolling 24h from campaigns, sequences and
    * automations together (replies to their own messages don't count). Extra ones wait.
    */
@@ -464,9 +452,8 @@ export const SEND_SAFETY_CONFIG = {
 
 /**
  * Bounds for the per-number sending limits an admin can set (whatsapp_sessions.sending_limits).
- * The warm-up tiers above are Wazelo defaults, not WhatsApp rules: a number that was
- * already in use before it was linked can start at a later stage, and caps can be
- * tuned. These ceilings stop a typo (e.g. 50000/day) from getting a number banned.
+ * Without any daily cap set, a number is limited only by the org's plan message limit.
+ * These ceilings stop a typo (e.g. 50000/day) from getting a number banned.
  */
 export const SENDING_LIMIT_BOUNDS = {
   DAILY_BULK_MAX: 1_000,
@@ -474,8 +461,6 @@ export const SENDING_LIMIT_BOUNDS = {
   /** Shortest allowed gap between two bulk messages on one number */
   BULK_GAP_MIN_MS: 5_000,
   BULK_GAP_MAX_MS: 10 * 60 * 1000,
-  WARMUP_STAGE_MIN: 1,
-  WARMUP_STAGE_MAX: 4,
 } as const;
 
 export const CAMPAIGN_CONFIG = {
@@ -691,6 +676,14 @@ export const SLA_CONFIG = {
   MAX_ESCALATION_LEVELS: 5,
 } as const;
 
+/**
+ * One Meta Graph API version for every call (WhatsApp Cloud API, Messenger, Instagram,
+ * templates, lead ads). Meta retires each version about two years after release and
+ * silently upgrades calls to retired ones, so bump this in one place and retest.
+ */
+export const META_GRAPH_API_VERSION = 'v23.0';
+export const META_GRAPH_API_BASE = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
+
 export const LEAD_ADS_CONFIG = {
   /** Worker concurrency for lead ad processing */
   WORKER_CONCURRENCY: 5,
@@ -699,7 +692,7 @@ export const LEAD_ADS_CONFIG = {
   /** Retry base delay (seconds) for exponential backoff */
   RETRY_BASE_DELAY_SECONDS: 10,
   /** Meta Graph API version */
-  GRAPH_API_VERSION: 'v19.0',
+  GRAPH_API_VERSION: META_GRAPH_API_VERSION,
   /** Meta Graph API base URL */
   GRAPH_API_BASE_URL: 'https://graph.facebook.com',
   /** Timeout for fetching lead data from Meta (ms) */

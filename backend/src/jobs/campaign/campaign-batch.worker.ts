@@ -8,9 +8,15 @@ import { MessageEventRepository } from '@/modules/messages/infrastructure/reposi
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
-import { pauseCampaignForKillSwitch } from './kill-switch-pause';
+import { pauseCampaignForKillSwitch, pauseCampaignSystem } from './kill-switch-pause';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
 import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
+import {
+  CAMPAIGN_TEMPLATE_MISSING_REASON,
+  findSendableTemplate,
+  isCloudSession,
+  readCampaignTemplatePlan,
+} from '@/modules/campaigns/application/services/campaign-template-guard';
 import { isConnectionFailure } from '@/shared/utils/connection-failure';
 import {
   QUEUE_NAMES,
@@ -188,11 +194,11 @@ export class CampaignBatchWorker implements OnModuleInit {
     const key = `${orgId}:${id}`;
     const hit = this.templateCache.get(key);
     if (hit && Date.now() - hit.at < 60_000) return hit.tpl;
-    const tpl = await this.prisma.messageTemplate.findFirst({
-      where: { id, orgId, deletedAt: null },
-      select: { name: true, language: true, components: true },
-    });
-    this.templateCache.set(key, { at: Date.now(), tpl });
+    // Only a template Meta can still send; a missing one isn't cached, so a resume
+    // right after the template is synced back sees it straight away
+    const tpl = await findSendableTemplate(this.prisma, orgId, id);
+    if (tpl) this.templateCache.set(key, { at: Date.now(), tpl });
+    else this.templateCache.delete(key);
     return tpl;
   }
 
@@ -234,6 +240,26 @@ export class CampaignBatchWorker implements OnModuleInit {
         },
       );
       return false;
+    }
+
+    // Official numbers send the campaign's approved template. If it was deleted or
+    // lost approval, the plain text would be rejected by Meta for every recipient:
+    // pause the campaign with this recipient back in line instead of failing them all.
+    // QR numbers send the text version and carry on.
+    const templatePlan = readCampaignTemplatePlan(campaign.metadata);
+    const template = templatePlan ? await this.loadTemplate(templatePlan.templateId, orgId) : null;
+    if (templatePlan && !template && (await isCloudSession(this.prisma, sessionId))) {
+      await pauseCampaignSystem(
+        this.campaignRepo,
+        campaign.id,
+        orgId,
+        CAMPAIGN_TEMPLATE_MISSING_REASON,
+        'template-missing',
+        this.eventEmitter,
+      );
+      await this.recipientRepo.requeueStuck(recipient.id);
+      this.logger.warn(`Campaign ${campaign.id} paused: template ${templatePlan.templateId} missing or not approved`);
+      return true;
     }
 
     // Find or create conversation
@@ -298,20 +324,16 @@ export class CampaignBatchWorker implements OnModuleInit {
     let resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
 
     // Official numbers: send the campaign's approved template, filled for this contact
-    const templatePlan = (campaign.metadata as Record<string, any> | null)?.cloudTemplate;
     let cloudTemplate: CloudTemplateRef | undefined;
-    if (templatePlan?.templateId) {
-      const template = await this.loadTemplate(templatePlan.templateId, orgId);
-      if (template) {
-        const rendered = renderCloudTemplate(
-          template,
-          templatePlan.params,
-          (s) => fillContactPlaceholders(s, contact),
-          templatePlan.headerImageUrl,
-        );
-        resolvedBody = rendered.body;
-        cloudTemplate = rendered.cloudTemplate;
-      }
+    if (templatePlan && template) {
+      const rendered = renderCloudTemplate(
+        template,
+        templatePlan.params,
+        (s) => fillContactPlaceholders(s, contact),
+        templatePlan.headerImageUrl,
+      );
+      resolvedBody = rendered.body;
+      cloudTemplate = rendered.cloudTemplate;
     }
 
     // Create new message record

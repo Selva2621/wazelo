@@ -70,9 +70,7 @@ export function CampaignSendingStatusPanel({
                 <span>No daily cap · {n.bulkSentToday} sent today</span>
               ) : (
                 <>
-                  <span>
-                    {n.limitMode === "warmup" ? `Warm-up stage ${n.warmupStage}` : "Custom daily limits"}
-                  </span>
+                  <span>Custom daily limits</span>
                   {n.dailyBulkCap !== null && (
                     <span className="tabular-nums">
                       Daily allowance {n.dailyBulkCap} · {n.remainingBulk ?? 0} left

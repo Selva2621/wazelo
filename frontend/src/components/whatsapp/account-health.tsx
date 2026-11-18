@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { statusChipSegment, statusChipTone } from "@/components/ui/status-chip";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { useResumeSending, useSendHealth, useUpdateSendingLimits } from "@/hooks/use-whatsapp";
 import { useAuthStore } from "@/stores/auth-store";
 import type { SendHealth } from "@/lib/api/whatsapp";
@@ -89,26 +88,6 @@ export function AccountHealthDetails({ health }: { health: SendHealth }) {
         </div>
       )}
 
-      {health.limitMode !== "plan" && (
-      <Row label="Warm-up">
-        <div className="flex items-center gap-2">
-          <span className="flex gap-1" aria-hidden>
-            {[1, 2, 3, 4].map((s) => (
-              <span
-                key={s}
-                className={cn("h-1.5 w-5 rounded-full", s <= health.warmup.stage ? "bg-primary" : "bg-surface-container-high")}
-              />
-            ))}
-          </span>
-          <span className="text-label text-on-surface-variant">
-            {health.limitMode === "custom"
-              ? "Custom daily limits"
-              : `${health.warmup.stage === 4 ? "Complete" : `Stage ${health.warmup.stage}`} · day ${health.warmup.linkedDays + 1}`}
-          </span>
-        </div>
-      </Row>
-      )}
-
       {health.plan && (
         <Row label="Plan">
           {health.plan.limit === null ? (
@@ -130,8 +109,8 @@ export function AccountHealthDetails({ health }: { health: SendHealth }) {
 
       <Row label="Today">
         <div className="space-y-2">
-          <CapRow label="Bulk messages" sent={health.today.bulkSent} cap={health.warmup.bulkCap} />
-          <CapRow label="New contacts" sent={health.today.coldSent} cap={health.warmup.coldCap} />
+          <CapRow label="Bulk messages" sent={health.today.bulkSent} cap={health.caps.bulkCap} />
+          <CapRow label="New contacts" sent={health.today.coldSent} cap={health.caps.coldCap} />
         </div>
       </Row>
 
@@ -201,8 +180,6 @@ const numOrUndef = (v: string) => {
 function SendingLimitsForm({ health }: { health: SendHealth }) {
   const update = useUpdateSendingLimits();
   const limits = health.limits ?? {};
-  const [warmup, setWarmup] = useState(limits.warmupEnabled === true);
-  const [stage, setStage] = useState(limits.warmupStage ? String(limits.warmupStage) : "");
   const [bulkCap, setBulkCap] = useState(limits.dailyBulkCap !== undefined ? String(limits.dailyBulkCap) : "");
   const [coldCap, setColdCap] = useState(limits.dailyColdCap !== undefined ? String(limits.dailyColdCap) : "");
   const [gapSec, setGapSec] = useState(
@@ -212,8 +189,6 @@ function SendingLimitsForm({ health }: { health: SendHealth }) {
   const save = () => {
     const gap = numOrUndef(gapSec);
     update.mutate({
-      ...(warmup && { warmupEnabled: true }),
-      ...(warmup && numOrUndef(stage) !== undefined && { warmupStage: numOrUndef(stage) }),
       ...(numOrUndef(bulkCap) !== undefined && { dailyBulkCap: numOrUndef(bulkCap) }),
       ...(numOrUndef(coldCap) !== undefined && { dailyColdCap: numOrUndef(coldCap) }),
       // One number: the gap varies ±50% around it so sends don't look scripted
@@ -231,17 +206,7 @@ function SendingLimitsForm({ health }: { health: SendHealth }) {
           Optional, for this number. Leave empty for no daily cap: your plan&apos;s message limit applies.
         </p>
       </div>
-      <label className="flex items-center justify-between gap-3 text-label text-on-surface">
-        <span>
-          Warm-up for a new number
-          <span className="block text-caption text-on-surface-variant">Starts at 20 new contacts a day and grows weekly</span>
-        </span>
-        <Switch checked={warmup} onChange={setWarmup} aria-label="Warm-up for a new number" />
-      </label>
       <div className="grid grid-cols-2 gap-3">
-        {warmup && (
-          <LimitField label="Start at stage (1–4)" value={stage} onChange={setStage} placeholder="By age" min={1} max={4} />
-        )}
         <LimitField label="Bulk messages / day" value={bulkCap} onChange={setBulkCap} placeholder="No cap" min={0} max={1000} />
         <LimitField label="New contacts / day" value={coldCap} onChange={setColdCap} placeholder="No cap" min={0} max={1000} />
         <LimitField
@@ -371,7 +336,7 @@ export function CampaignCapacityNotice({ className }: { className?: string }) {
   // Smallest of today's per-number cap and the plan's remaining messages (null = no limit)
   const dailyLeft =
     health.remaining?.bulk ??
-    (health.warmup.bulkCap === null ? null : Math.max(0, health.warmup.bulkCap - health.today.bulkSent));
+    (health.caps.bulkCap === null ? null : Math.max(0, health.caps.bulkCap - health.today.bulkSent));
   const planLeft = health.plan?.remaining ?? null;
   const remaining =
     dailyLeft === null ? planLeft : planLeft === null ? dailyLeft : Math.min(dailyLeft, planLeft);

@@ -210,7 +210,7 @@ describe('ActionExecutorService SEND_MESSAGE', () => {
     );
   });
 
-  it('sends messages we start through the bulk lane (hours, warm-up, opt-out re-check)', async () => {
+  it('sends messages we start through the bulk lane (hours, daily caps, opt-out re-check)', async () => {
     const { service, messageRepo, queueService } = setup();
     await service.execute(send({ contactId: 'ct1' }));
     expect(messageRepo.create).toHaveBeenCalledWith(

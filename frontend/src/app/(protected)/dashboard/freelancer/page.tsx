@@ -17,6 +17,7 @@ import {
   Star,
   BadgeCheck,
   Plus,
+  Box,
   ArrowRight,
   ChevronRight,
   Megaphone,
@@ -30,6 +31,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { usePageTitle } from "@/hooks/use-page-title";
+import { useDashboardLive } from "@/hooks/use-dashboard-live";
 import { SplitText } from "@/components/ui/split-text";
 
 // Bento layout from the Stitch "Wazelo - Bento Grid Layout" screen, built on the shared
@@ -219,6 +222,9 @@ function ThisWeek() {
 }
 
 export default function FreelancerDashboard() {
+  usePageTitle("Home");
+  // Numbers update as messages, leads and deals happen
+  useDashboardLive();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: orgSettings } = useOrgSettings();
@@ -273,13 +279,24 @@ export default function FreelancerDashboard() {
         <h1 className="text-headline font-semibold text-on-surface max-lg:text-title">
           <SplitText text={`Hey, ${firstName}`} />
         </h1>
-        <Link
-          href="/contacts?action=new"
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-body font-semibold text-on-primary outline-none transition-[opacity,transform] duration-120 ease-standard hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98] max-lg:hidden"
-        >
-          <Plus className="h-4 w-4" />
-          Add lead
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Message City: live 3D miniature of today's messages */}
+          <Link
+            href="/dashboard/city"
+            data-tour="dash-city-link"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-outline-variant px-4 text-body font-medium text-on-surface outline-none transition-colors duration-120 ease-standard hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Box className="h-4 w-4" />
+            3D view
+          </Link>
+          <Link
+            href="/contacts?action=new"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-body font-semibold text-on-primary outline-none transition-[opacity,transform] duration-120 ease-standard hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98] max-lg:hidden"
+          >
+            <Plus className="h-4 w-4" />
+            Add lead
+          </Link>
+        </div>
       </div>
 
       {/* Row 1: everyday shortcuts (desktop); phones open every page from the tab bar's + */}

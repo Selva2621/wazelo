@@ -17,6 +17,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '@/modules/auth/interfaces/guards/jwt-auth.guard';
 import { validateMagicBytes } from '@/common/utils/magic-bytes.util';
 import { MediaCompressionService } from './media-compression.service';
+import { isProduction, publicApiUrl } from '@/config/public-urls';
 
 const ALLOWED_MIME_TYPES = [
   // Images
@@ -115,10 +116,13 @@ export class UploadController {
       );
     }
 
-    // Build the authenticated file URL (served via FileServeController)
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers.host || 'localhost:8080';
-    const url = `${protocol}://${host}/api/v1/files/${stored.filename}`;
+    // Build the authenticated file URL (served via FileServeController). Production uses the
+    // configured public API URL (checked at boot), so a proxy that drops X-Forwarded-Proto
+    // can't turn it into http://. Development keeps the request's own host (LAN/phone testing).
+    const prefix = (process.env.API_PREFIX || 'api/v1').replace(/^\/+|\/+$/g, '');
+    const url = isProduction()
+      ? `${publicApiUrl()}/files/${stored.filename}`
+      : `${req.headers['x-forwarded-proto'] || req.protocol}://${req.headers.host}/${prefix}/files/${stored.filename}`;
 
     return {
       url,

@@ -34,7 +34,7 @@ export class WhatsAppApiService {
     this.cloudSessions.delete(sessionId);
   }
 
-  /** True for an official (Cloud API) number: no socket, no warm-up, no typing */
+  /** True for an official (Cloud API) number: no socket, no daily caps, no typing */
   isCloudSession(sessionId: string): boolean {
     return this.cloudSessions.has(sessionId);
   }

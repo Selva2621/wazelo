@@ -82,7 +82,7 @@ export class DevSendBulkMessageUseCase {
       }
 
       // Through the repository so body/media are encrypted at rest. Bulk priority
-      // puts it in the send worker's bulk lane: warm-up daily caps, sending hours,
+      // puts it in the send worker's bulk lane: daily caps, sending hours,
       // auto-pause, 10–40s human pacing and "typing…" — same as campaigns.
       const message = await this.messageRepo.create({
         orgId,

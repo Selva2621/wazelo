@@ -876,15 +876,15 @@ model WhatsAppSession {
   disconnectCode   Int?                 @map("disconnect_code")
   /// Why the session stopped: LOGGED_OUT | BANNED | REPLACED | BAD_SESSION | NETWORK
   disconnectReason String?              @map("disconnect_reason") @db.VarChar(30)
-  /// First time this number connected — drives send warm-up
-  linkedAt         DateTime?            @map("linked_at")
+  /// First time this number connected
+  linkedAt        DateTime?            @map("linked_at")
   /// Bulk sending (campaigns, sequences) held until this time by the safety governor
   sendingPausedUntil  DateTime?         @map("sending_paused_until")
   sendingPausedReason String?           @map("sending_paused_reason") @db.VarChar(300)
   /// Set when the user resumes early — health is judged only on data after this
   healthResetAt       DateTime?         @map("health_reset_at")
-  /// Admin-set sending limits for this number: { warmupStage, dailyBulkCap, dailyColdCap,
-  /// bulkGapMinMs, bulkGapMaxMs } — any field missing uses the warm-up default. Null = defaults.
+  /// Admin-set sending limits for this number: { dailyBulkCap, dailyColdCap,
+  /// bulkGapMinMs, bulkGapMaxMs }. A missing cap = no daily cap (plan limit only). Null = defaults.
   sendingLimits       Json?             @map("sending_limits") @db.JsonB
   /// Last sign the primary phone was online (a fresh link, or a message sent from it).
   /// WhatsApp unlinks companion devices after 14 days without the phone.

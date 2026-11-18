@@ -115,11 +115,8 @@ export function summarizeBatches(
 
 export interface CampaignSendingAllowance {
   sessionId: string;
-  warmupStage: number;
-  /** True when an admin's per-number setting decided the stage or a cap */
-  customized: boolean;
-  /** plan = no daily cap on this number (the plan's message limit governs) */
-  limitMode: 'plan' | 'warmup' | 'custom';
+  /** plan = no daily cap on this number (the plan's message limit governs); custom = admin-set caps */
+  limitMode: 'plan' | 'custom';
   dailyBulkCap: number | null;
   dailyColdCap: number | null;
   bulkSentToday: number;
@@ -152,11 +149,9 @@ export class GetCampaignAnalyticsUseCase {
       h
         ? [{
             sessionId: h.sessionId,
-            warmupStage: h.warmup.stage,
-            customized: h.warmup.customized,
             limitMode: h.limitMode,
-            dailyBulkCap: h.warmup.bulkCap,
-            dailyColdCap: h.warmup.coldCap,
+            dailyBulkCap: h.caps.bulkCap,
+            dailyColdCap: h.caps.coldCap,
             bulkSentToday: h.today.bulkSent,
             coldSentToday: h.today.coldSent,
             remainingBulk: h.remaining.bulk,

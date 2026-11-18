@@ -8,6 +8,7 @@ import { SmtpMailer, isPermanentSmtpError } from '@/infrastructure/external/emai
 import { EmailRepository, EmailSource } from '../../infrastructure/repositories/email.repository';
 import { fillFields, isEmail, toEmailHtml, toEmailText } from '../../domain/services/email-render';
 import { signUnsubscribe } from '../../domain/services/unsubscribe-token';
+import { publicApiUrl, publicFrontendUrl } from '@/config/public-urls';
 
 export interface QueueEmailInput {
   orgId: string;
@@ -179,10 +180,9 @@ export class OrgEmailService {
 
   /** A link that unsubscribes this contact from the workspace's emails */
   unsubscribeUrl(orgId: string, contactId: string | null): string {
-    const base = (this.config.get<string>('app.frontendUrl') || 'http://localhost:3001').replace(/\/$/, '');
-    const prefix = this.config.get<string>('app.apiPrefix') || 'api/v1';
-    if (!contactId) return `${base}/`;
-    return `${base}/${prefix}/email/unsubscribe?t=${encodeURIComponent(signUnsubscribe(orgId, contactId, this.secret()))}`;
+    if (!contactId) return `${(this.config.get<string>('app.frontendUrl') || publicFrontendUrl()).replace(/\/$/, '')}/`;
+    // The API's own public URL: works whether or not the frontend proxies /api/v1
+    return `${publicApiUrl()}/email/unsubscribe?t=${encodeURIComponent(signUnsubscribe(orgId, contactId, this.secret()))}`;
   }
 
   secret(): string {

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { META_GRAPH_API_BASE } from '@/common/constants';
 
-/** Graph API version for every WhatsApp Cloud API call */
-export const CLOUD_API_BASE = 'https://graph.facebook.com/v21.0';
+/** Graph API base for every WhatsApp Cloud API call (version set once in common/constants) */
+export const CLOUD_API_BASE = META_GRAPH_API_BASE;
 const TIMEOUT_MS = 15_000;
 
 export interface CloudCredentials {
