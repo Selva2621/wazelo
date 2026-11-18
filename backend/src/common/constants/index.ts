@@ -433,9 +433,13 @@ export const SEND_SAFETY_CONFIG = {
   /** Bulk messages only go out between these local hours (org time zone) */
   BULK_SEND_START_HOUR: 9,
   BULK_SEND_END_HOUR: 20,
-  /** Campaign messages use the campaign time zone and can send from midnight to 10 PM */
-  CAMPAIGN_SEND_START_HOUR: 0,
-  CAMPAIGN_SEND_END_HOUR: 22,
+  /**
+   * Campaign messages go out 9 AM – 9 PM in the campaign's time zone (office-friendly:
+   * nobody gets a promo at midnight). Held messages resume at 9 AM.
+   * The frontend mirrors these in lib/campaign-time.ts (CAMPAIGN_SEND_HOURS).
+   */
+  CAMPAIGN_SEND_START_HOUR: 9,
+  CAMPAIGN_SEND_END_HOUR: 21,
   /** Spread the morning restart so held messages don't all fire at 9:00 */
   BULK_RESUME_JITTER_MS: 20 * 60 * 1000,
   /** Auto-pause: judge delivery only once this many bulk messages are old enough */

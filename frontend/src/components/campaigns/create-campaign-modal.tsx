@@ -15,6 +15,14 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import {
+  CAMPAIGN_SEND_HOURS,
+  CAMPAIGN_SEND_HOURS_LABEL,
+  hourLabel,
+  hourNowIn,
+  isInsideCampaignHours,
+  wallClockHour,
+} from "@/lib/campaign-time";
 import type { EmailAccount, EmailTemplate } from "@/lib/api/email";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -392,8 +400,23 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const [savedGroupName, setSavedGroupName] = useState("");
-  // WhatsApp only: run round the clock instead of 12 AM – 10 PM
+  // WhatsApp only: run round the clock instead of the campaign sending hours
   const [sendAnyTime, setSendAnyTime] = useState(false);
+
+  // Picked (or current) time is outside sending hours: say when it really starts
+  const scheduledAtValue = watch("scheduledAt");
+  const timezoneValue = watch("timezone");
+  const outsideHoursNote = (() => {
+    if (isEmail || sendAnyTime || scheduleMode === "draft") return null;
+    const hour =
+      scheduleMode === "scheduled" ? wallClockHour(scheduledAtValue) : hourNowIn(timezoneValue);
+    if (hour === null || isInsideCampaignHours(hour)) return null;
+    const nextDay = hour >= CAMPAIGN_SEND_HOURS.endHour;
+    const start = hourLabel(CAMPAIGN_SEND_HOURS.startHour);
+    return scheduleMode === "scheduled"
+      ? `This time is outside sending hours. The first message goes out at ${start} ${nextDay ? "the next day" : "that day"}.`
+      : `It's outside sending hours now. Sending starts at ${start} ${nextDay ? "tomorrow" : "today"}.`;
+  })();
   const checkGroupMove = useCheckSavedGroupMove();
   const [pendingGroupMove, setPendingGroupMove] = useState<SavedGroupMoveImpact | null>(null);
   const [pendingSend, setPendingSend] = useState<{
@@ -1149,7 +1172,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     <p id="sendAnyTime-hint" className="text-caption text-on-surface-variant">
                       {sendAnyTime
                         ? "Keeps sending day and night until everyone gets it. Daily limits per number still apply."
-                        : "Off: sends 12 AM – 10 PM in the campaign's time zone."}
+                        : `Off: sends ${CAMPAIGN_SEND_HOURS_LABEL} in the campaign's time zone.`}
                     </p>
                   </div>
                   <Switch
@@ -1171,6 +1194,12 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     <Input id="timezone" placeholder="UTC" {...register("timezone")} />
                   </div>
                 </div>
+              )}
+              {outsideHoursNote && (
+                <p role="status" className="mt-2 flex items-start gap-1.5 text-label text-warning">
+                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {outsideHoursNote}
+                </p>
               )}
             </div>
           </div>

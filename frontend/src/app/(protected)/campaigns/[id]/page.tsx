@@ -11,6 +11,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatInZone } from "@/lib/campaign-time";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import {
@@ -140,9 +141,9 @@ export default function CampaignDetailPage() {
         ? "batches"
         : "recipients";
 
+  /** In the campaign's own time zone, with the zone shown */
   function formatDate(dateStr: string | null) {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleString();
+    return formatInZone(dateStr, campaign?.timezone, { withYear: true });
   }
 
   function handleRecipientTabChange(tabId: string) {
@@ -424,6 +425,10 @@ export default function CampaignDetailPage() {
                       <dd className="text-body text-on-surface">{formatDate(campaign.scheduledAt)}</dd>
                     </div>
                   )}
+                  <div>
+                    <dt className="text-caption text-on-surface-variant">Started</dt>
+                    <dd className="text-body text-on-surface">{formatDate(campaign.startedAt)}</dd>
+                  </div>
                   <div>
                     <dt className="text-caption text-on-surface-variant">Completed</dt>
                     <dd className="text-body text-on-surface">{formatDate(campaign.completedAt)}</dd>
