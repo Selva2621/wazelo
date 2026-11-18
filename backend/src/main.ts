@@ -7,6 +7,8 @@ import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CustomValidationPipe } from './common/pipes/validation.pipe';
 import { StructuredLogger } from './infrastructure/logger/structured-logger.service';
+import { productionEnvProblems, publicFrontendUrl } from './config/public-urls';
+import { isTestModeOn } from './common/utils/test-recipient-guard.util';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -23,13 +25,26 @@ async function bootstrap() {
   const structuredLogger = app.get(StructuredLogger);
   app.useLogger(structuredLogger);
 
+  // Production must be configured explicitly: stop here rather than run with localhost
+  // links in emails, CORS locked to localhost, or Meta webhooks pointing nowhere.
+  const { errors, warnings } = productionEnvProblems();
+  for (const w of warnings) structuredLogger.warn(`Config: ${w}`, 'Bootstrap');
+  if (errors.length > 0) {
+    for (const e of errors) structuredLogger.error(`Config: ${e}`, undefined, 'Bootstrap');
+    await app.close();
+    process.exit(1);
+  }
+  if (isTestModeOn()) {
+    structuredLogger.warn(
+      'WhatsApp TEST MODE is on — sends go only to WHATSAPP_TEST_NUMBERS (set NODE_ENV=production or WHATSAPP_TEST_MODE=false for live)',
+      'Bootstrap',
+    );
+  }
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 8080);
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api/v1');
-  const frontendUrl = configService.get<string>(
-    'app.frontendUrl',
-    'http://localhost:3000',
-  );
+  const frontendUrl = configService.get<string>('app.frontendUrl') || publicFrontendUrl();
 
   // Behind Nginx, req.ip is the proxy's address unless Express trusts it. Without this,
   // every user shares one rate-limit bucket (refresh/login limits trip for everyone).

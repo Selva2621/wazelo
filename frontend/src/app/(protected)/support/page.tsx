@@ -214,7 +214,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
               required
               maxLength={255}
               placeholder="Briefly describe the issue"
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
             />
           </div>
 
@@ -251,7 +251,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
               required
               rows={4}
               placeholder="Explain the issue in detail..."
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
             />
           </div>
 
@@ -444,7 +444,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                   onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
                   rows={3}
                   placeholder="Write a reply… (Ctrl+Enter to send)"
-                  className="w-full bg-transparent px-4 pt-3 pb-1 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none resize-none"
+                  className="w-full bg-transparent px-4 pt-3 pb-1 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none resize-none"
                 />
                 <div className="flex items-center justify-end px-3 py-2">
                   <Button

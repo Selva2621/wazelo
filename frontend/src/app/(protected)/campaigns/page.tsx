@@ -169,8 +169,10 @@ export default function CampaignsPage() {
         .filter((s) => s.status === "CONNECTED")
         .map((s) => ({
           id: s.id,
-          name: `${s.phoneNumber || "Unknown"} (${(s as { user?: { firstName?: string; lastName?: string } }).user?.firstName ?? "User"})`,
+          // Official numbers are the workspace's, not the admin's who added them
+          name: `${s.phoneNumber || "Unknown"} (${s.provider === "CLOUD_API" ? "Official" : (s as { user?: { firstName?: string; lastName?: string } }).user?.firstName ?? "User"})`,
           status: s.status,
+          official: s.provider === "CLOUD_API",
         }));
     }
     return session?.status === "CONNECTED"

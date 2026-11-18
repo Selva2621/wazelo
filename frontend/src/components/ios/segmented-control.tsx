@@ -30,7 +30,7 @@ export function SegmentedControl<T extends string>({ value, onChange, options, l
               onChange(option.value);
             }}
             className={cn(
-              "relative z-[1] flex-1 truncate px-3 text-[13px] leading-[28px] transition-colors duration-150",
+              "relative z-[1] flex-1 truncate px-3 text-native-footnote leading-[28px] transition-colors duration-150",
               selected ? "font-semibold text-on-surface" : "font-medium text-on-surface-variant",
             )}
           >

@@ -41,7 +41,7 @@ export function SuspendChannelDialog({
           onChange={(e) => setReason(e.target.value)}
           placeholder="Why is this channel being suspended?"
           rows={3}
-          className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+          className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body-lg text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
         />
 
         <div className="flex justify-end gap-2 mt-4">

@@ -147,3 +147,9 @@ vite.config.ts.timestamp-*
 
 # Playwright MCP test screenshots, snapshots and logs (local only)
 .playwright-mcp/
+
+# Local dev tools (cloudflared)
+.tools/
+
+# Scratch downloads (asset packs etc.)
+/tmp/

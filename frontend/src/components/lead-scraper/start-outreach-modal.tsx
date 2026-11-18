@@ -49,7 +49,7 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
   const canStart = name.trim() && steps.every((s) => s.messageBody.trim()) && !blanks;
 
   // New-contact cap per day for this number → rough number of days to reach everyone
-  const perDay = health?.warmup.coldCap;
+  const perDay = health?.caps.coldCap;
   const days = perDay ? Math.ceil(run.importedCount / perDay) : null;
 
   const handleStart = () => {

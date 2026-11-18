@@ -3,11 +3,11 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
-import { whatsappApi, type WhatsAppSession } from "@/lib/api/whatsapp";
+import { whatsappApi, type SendingLimits, type WhatsAppSession } from "@/lib/api/whatsapp";
 import { useWhatsAppStore } from "@/stores/whatsapp-store";
 import { useAuthStore } from "@/stores/auth-store";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws";
+import { WS_URL } from "@/lib/env-urls";
 
 // ─── Session Query ───────────────────────────────────────
 export function useWhatsAppSession() {
@@ -149,6 +149,16 @@ export function useResumeSending() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => whatsappApi.resumeMySending(),
+    onSuccess: (health) => {
+      queryClient.setQueryData(["whatsapp", "send-health"], health);
+    },
+  });
+}
+
+export function useUpdateSendingLimits() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (limits: SendingLimits) => whatsappApi.updateMySendingLimits(limits),
     onSuccess: (health) => {
       queryClient.setQueryData(["whatsapp", "send-health"], health);
     },

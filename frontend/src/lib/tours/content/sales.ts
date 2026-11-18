@@ -373,7 +373,7 @@ export const salesTours: TourDef[] = [
 
   {
     id: "products",
-    version: 1,
+    version: 2,
     title: "Products and services",
     summary: "Your catalogue for contacts, deals, proposals, chatbots and sequences.",
     section: "Sales",
@@ -395,14 +395,23 @@ export const salesTours: TourDef[] = [
         },
       },
       {
+        target: "products-new-brand",
+        ifMissing: "skip",
+        title: "Brands",
+        body: "Selling for more than one brand? Create each brand and put its products under it. The brand's manager gets a day-end summary of its leads.",
+        example: { kind: "chips", items: ["Kavya Homes → Villa plots, Apartments", "Sunrise Realty → Farm land"] },
+      },
+      {
         target: "filter-bar",
+        ifMissing: "skip",
         title: "Categories",
         body: "Group items so they're easier to find, e.g. Design, Development, Marketing.",
       },
       {
         target: listOrEmpty,
         title: "Your catalogue",
-        body: "Switch an item off to hide it without deleting it; edit or delete from its row.",
+        body: "Switch an item off to hide it without deleting it; edit or delete from its row. Lead team: who gets this product's Meta leads, shared round-robin, with a reminder if nobody contacts them in time.",
+        example: { kind: "flow", nodes: ["Lead form", "Product team", "Reminder after 30 min"] },
       },
     ],
   },

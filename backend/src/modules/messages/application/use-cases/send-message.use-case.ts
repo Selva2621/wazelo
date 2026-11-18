@@ -16,6 +16,9 @@ import { RateLimiterService } from '../../domain/services/rate-limiter.service';
 import { QUEUE_NAMES, EVENT_NAMES, MESSAGING_CONFIG } from '@/common/constants';
 import { AuditAction, MessageDirection, MessageStatus, MessageType } from '@prisma/client';
 import { SendMessageDto } from '../dto';
+import { TemplateRepository } from '../../infrastructure/repositories/template.repository';
+import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { renderCloudTemplate, templateNeedsHeaderImage, type CloudTemplateRef } from '@/shared/utils/cloud-template';
 
 @Injectable()
 export class SendMessageUseCase {
@@ -30,6 +33,7 @@ export class SendMessageUseCase {
     private readonly auditService: AuditService,
     private readonly rateLimiter: RateLimiterService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly templateRepo: TemplateRepository,
   ) {}
 
   async execute(
@@ -76,6 +80,31 @@ export class SendMessageUseCase {
       throw new BadRequestException(
         'No connected WhatsApp session available to send this message.',
       );
+    }
+
+    // Approved template (official numbers): its filled-in text becomes the body
+    let cloudTemplate: CloudTemplateRef | undefined;
+    if (dto.cloudTemplateId) {
+      if (session.provider !== 'CLOUD_API') {
+        throw new BadRequestException('Templates are sent from official WhatsApp numbers only');
+      }
+      const template = await this.templateRepo.findById(dto.cloudTemplateId, orgId);
+      if (!template || template.status !== 'APPROVED' || !template.whatsappTemplateId) {
+        throw new BadRequestException('The chosen template is missing or not approved by Meta');
+      }
+      if (templateNeedsHeaderImage(template) && !dto.cloudTemplateHeaderImageUrl) {
+        throw new BadRequestException('This template has an image header: add the image link');
+      }
+      const contact = { name: dto.contactName ?? null, phoneNumber: dto.contactPhone, email: null };
+      const rendered = renderCloudTemplate(
+        template,
+        dto.cloudTemplateParams,
+        (s) => fillContactPlaceholders(s, contact),
+        dto.cloudTemplateHeaderImageUrl,
+      );
+      dto.type = 'TEXT';
+      dto.body = rendered.body;
+      cloudTemplate = rendered.cloudTemplate;
     }
 
     // 3. Validate message content
@@ -163,7 +192,11 @@ export class SendMessageUseCase {
       body: dto.type === 'INTERACTIVE' ? (dto.interactive?.body ?? dto.body) : dto.body,
       mediaUrl: dto.mediaUrl,
       mediaMimeType: dto.mediaMimeType,
-      metadata: dto.interactive ? { interactive: dto.interactive } as any : undefined,
+      metadata: dto.interactive
+        ? ({ interactive: dto.interactive } as any)
+        : cloudTemplate
+          ? ({ cloudTemplate } as any)
+          : undefined,
       idempotencyKey: dto.idempotencyKey,
       priority: dto.priority,
       maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,

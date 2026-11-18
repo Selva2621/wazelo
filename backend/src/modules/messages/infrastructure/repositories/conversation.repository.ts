@@ -177,16 +177,26 @@ export class ConversationRepository {
       assignedToId?: string;
       sessionId?: string;
       sessionIds?: string[];
+      /** Also chats on these (shared, official) numbers that are assigned to `sharedAssignee` */
+      sharedSessionIds?: string[];
+      sharedAssignee?: string;
       contactPhone?: string;
     },
   ) {
+    const shared = !!(options.sharedSessionIds?.length && options.sharedAssignee);
     const where: Prisma.ConversationWhereInput = {
       orgId,
       deletedAt: null,
       ...(options.status && { status: options.status }),
       ...(options.assignedToId && { assignedToId: options.assignedToId }),
       ...(options.sessionId && { sessionId: options.sessionId }),
-      ...(options.sessionIds && { sessionId: { in: options.sessionIds } }),
+      ...(options.sessionIds && !shared && { sessionId: { in: options.sessionIds } }),
+      ...(shared && {
+        OR: [
+          { sessionId: { in: options.sessionIds ?? [] } },
+          { sessionId: { in: options.sharedSessionIds }, assignedToId: options.sharedAssignee },
+        ],
+      }),
       ...(options.contactPhone && { contactPhone: normalizeContactPhone(options.contactPhone) }),
     };
 

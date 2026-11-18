@@ -69,7 +69,7 @@ function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () =
 }
 
 const inputCls =
-  "w-full mt-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
+  "w-full mt-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
 
 // ── Build the inline widget HTML injected into the preview iframe ─────────────
 

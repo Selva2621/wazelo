@@ -21,7 +21,7 @@ function countMoreFilters(f: LeadFilters) {
 }
 
 const inputClass =
-  "rounded-lg border border-outline-variant bg-surface-container px-2 py-1.5 text-label text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary";
+  "rounded-lg border border-outline-variant bg-surface-container px-2 py-1.5 text-label text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary";
 
 const WEBSITE_ISSUES: { value: WebsiteIssue; label: string }[] = [
   { value: "noSsl", label: "No SSL (http)" },

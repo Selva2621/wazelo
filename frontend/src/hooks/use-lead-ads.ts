@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { leadAdsApi } from "@/lib/api/lead-ads";
+import { leadAdsApi, type SimulateLeadPayload } from "@/lib/api/lead-ads";
 import type { LeadAdListParams, LeadAdAnalyticsParams, SaveLeadAdsConfigPayload } from "@/lib/types/lead-ads";
 
 // ─── Query Key Factory ───
@@ -43,6 +43,16 @@ export function useLeadAdAnalytics(params?: LeadAdAnalyticsParams) {
   });
 }
 
+/** Pages + forms seen so far; `enabled` lets rule editors only load it for the lead trigger */
+export function useLeadAdForms(enabled = true) {
+  return useQuery({
+    queryKey: [...leadAdKeys.all, "forms"] as const,
+    queryFn: () => leadAdsApi.listForms(),
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
 export function useLeadAdConfig() {
   return useQuery({
     queryKey: leadAdKeys.config(),
@@ -57,6 +67,17 @@ export function useRetryLeadAd() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => leadAdsApi.retryEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: leadAdKeys.all });
+    },
+  });
+}
+
+/** Dev only: a test lead without Meta */
+export function useSimulateLeadAd() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SimulateLeadPayload) => leadAdsApi.simulateLead(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leadAdKeys.all });
     },

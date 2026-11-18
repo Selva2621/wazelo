@@ -170,7 +170,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
               animate={still ? { opacity: 1, x: 0 } : { opacity: [0, 1, 1, 0], x: [-14, 0, 0, 0] }}
               transition={{ ...loop(3.6, i * 0.25), times: [0, 0.18, 0.85, 1] }}
             >
-              <span className="grid size-5 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+              <span className="grid size-5 place-items-center rounded-full bg-primary/15 text-micro font-semibold text-primary">
                 {name[0]}
               </span>
               <span className="text-caption text-on-surface">{name}</span>
@@ -201,7 +201,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
             <span className="block h-1.5 w-14 rounded bg-outline-variant/40" />
           </div>
           <motion.span
-            className="absolute bottom-7 right-2 rounded-xl rounded-br-sm bg-primary px-2 py-1 text-[10px] text-on-primary"
+            className="absolute bottom-7 right-2 rounded-xl rounded-br-sm bg-primary px-2 py-1 text-micro text-on-primary"
             animate={still ? { opacity: 1, y: 0 } : { opacity: [0, 0, 1, 1, 0], y: [6, 6, 0, 0, 0] }}
             transition={{ ...loop(3.4), times: [0, 0.3, 0.4, 0.88, 1] }}
           >
@@ -272,7 +272,7 @@ function Scene({ id, still }: { id: string; still: boolean }) {
           />
           <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-on-surface" />
         </div>
-        <span className="rounded-xl bg-surface px-2 py-1 text-[10px] text-on-surface-variant ring-1 ring-outline-variant/40">
+        <span className="rounded-xl bg-surface px-2 py-1 text-micro text-on-surface-variant ring-1 ring-outline-variant/40">
           Back at 10 am
         </span>
       </div>
@@ -650,7 +650,9 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
       <section
         aria-labelledby="setup-title"
         data-tour="setup-checklist"
-        className={cn("rounded-3xl border border-outline-variant bg-surface-container-lowest p-5", className)}
+        // @container: the two-column layout follows the card's own width, not the screen's
+        // (on the freelancer home it sits in a narrow column)
+        className={cn("@container rounded-3xl border border-outline-variant bg-surface-container-lowest p-5", className)}
       >
         {/* Header */}
         <div className={cn("flex items-center justify-between gap-3", !folded && "mb-4")}>
@@ -674,7 +676,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
               onClick={() => setStepsOpen((open) => !open)}
               aria-expanded={stepsOpen}
               aria-controls="setup-steps"
-              className="ml-auto min-h-11 px-2 text-label font-semibold text-primary lg:hidden"
+              className="ml-auto min-h-11 px-2 text-label font-semibold text-primary"
             >
               {stepsOpen ? "Hide steps" : "Show steps"}
             </button>
@@ -687,10 +689,14 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
 
         <div
           id="setup-steps"
-          className={cn("lg:grid lg:grid-cols-[minmax(240px,300px)_1fr] lg:items-stretch lg:gap-5", folded && "max-lg:hidden")}
+          // All done: folded to the header + assistant switch; "Show steps" opens the list again
+          className={cn(
+            !folded &&
+              "lg:@min-[720px]:grid lg:@min-[720px]:grid-cols-[minmax(240px,300px)_1fr] lg:@min-[720px]:items-stretch lg:@min-[720px]:gap-5",
+          )}
         >
           {/* Desktop: every step listed on the left */}
-          <div className="max-lg:hidden">
+          <div className={folded ? "hidden" : "hidden lg:@min-[720px]:block"}>
             <StepList
               groups={[
                 { label: "Main steps", steps: main, offset: 0 },
@@ -708,7 +714,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
             <div
               aria-live="polite"
               className={cn(
-                "overflow-hidden rounded-2xl border bg-surface-container-low lg:flex-1",
+                "overflow-hidden rounded-2xl border bg-surface-container-low lg:@min-[720px]:flex-1",
                 shown.optional ? "border-dashed border-outline-variant" : "border-outline-variant/50",
               )}
             >
@@ -719,12 +725,12 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
                   transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                  className="grid items-center gap-4 p-4 sm:grid-cols-[200px_1fr] sm:p-5 lg:h-full lg:grid-cols-1 lg:content-center lg:justify-items-center lg:gap-6 lg:p-8 lg:text-center"
+                  className="grid items-center gap-4 p-4 sm:grid-cols-[200px_1fr] sm:p-5 lg:@min-[720px]:h-full lg:@min-[720px]:grid-cols-1 lg:@min-[720px]:content-center lg:@min-[720px]:justify-items-center lg:@min-[720px]:gap-6 lg:@min-[720px]:p-8 lg:@min-[720px]:text-center"
                 >
-                  <div aria-hidden className="h-32 rounded-xl bg-primary/5 ring-1 ring-primary/10 max-sm:h-28 lg:h-48 lg:w-full lg:max-w-md">
+                  <div aria-hidden className="h-32 rounded-xl bg-primary/5 ring-1 ring-primary/10 max-sm:h-28 lg:@min-[720px]:h-48 lg:@min-[720px]:w-full lg:@min-[720px]:max-w-md">
                     <Scene id={shown.id} still={reduceMotion} />
                   </div>
-                  <div className="min-w-0 lg:max-w-md">
+                  <div className="min-w-0 lg:@min-[720px]:max-w-md">
                     <p
                       className={cn(
                         "text-caption font-semibold uppercase tracking-widest",
@@ -735,7 +741,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                     </p>
                     <h3 className="mt-1 text-title-sm font-semibold text-on-surface">{shown.title}</h3>
                     <p className="mt-1 text-body text-on-surface-variant">{shown.done ? shown.doneDetail : shown.description}</p>
-                    <div className="mt-4 flex flex-wrap items-center gap-2 lg:justify-center">
+                    <div className="mt-4 flex flex-wrap items-center gap-2 lg:@min-[720px]:justify-center">
                       {shown.done ? (
                         currentId && (
                           <Button size="lg" variant="secondary" onClick={() => setFocus(null)}>
@@ -764,7 +770,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
           )}
 
           {/* Phones/tablets: every step as a row of dots under the spotlight */}
-          <div className="mt-5 flex gap-3 max-md:flex-col max-md:gap-4 lg:hidden">
+          <div className={cn("mt-5 flex gap-3 max-md:flex-col max-md:gap-4 lg:@min-[720px]:hidden", folded && "hidden")}>
             <StepPath
               label="Main steps"
               steps={main}
@@ -794,7 +800,13 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
 
           {/* Assistant on/off once it's set up */}
           {assistant.applicable && assistantDone && controls.exists && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-container-low px-4 py-3">
+            <div
+              className={cn(
+                "mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-container-low px-4 py-3",
+                // Folded: phones keep the card to its header (as before); desktop keeps the switch
+                folded && "max-lg:hidden",
+              )}
+            >
               <p className="text-label text-on-surface-variant">
                 <span className="font-semibold text-on-surface">Assistant: </span>
                 {controls.isOn

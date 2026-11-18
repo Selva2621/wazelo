@@ -1,47 +1,9 @@
 "use client";
 
 import { Clock3 } from "lucide-react";
+import { hourLabel, isInsideSendWindow, nextSendWindowOpening, type SendWindow } from "@/lib/campaign-time";
 
-export interface SendWindow {
-  startHour: number;
-  endHour: number;
-  timeZone: string;
-}
-
-function localHour(date: Date, timeZone: string): number | null {
-  try {
-    const hour = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hourCycle: "h23" })
-      .formatToParts(date)
-      .find((p) => p.type === "hour")?.value;
-    return hour === undefined ? null : Number(hour) % 24;
-  } catch {
-    return null;
-  }
-}
-
-function hourLabel(hour: number) {
-  const d = new Date(Date.UTC(2000, 0, 1, hour));
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", timeZone: "UTC" }).format(d);
-}
-
-/**
- * Next time the window opens: walk forward hour by hour (≤ 25 steps) in the
- * campaign's time zone, which also handles DST changes.
- */
-export function nextSendWindowOpening(from: Date, window: SendWindow): Date | null {
-  const start = new Date(from);
-  start.setUTCMinutes(0, 0, 0);
-  for (let i = 1; i <= 25; i++) {
-    const candidate = new Date(start.getTime() + i * 3_600_000);
-    if (localHour(candidate, window.timeZone) === window.startHour) return candidate;
-  }
-  return null;
-}
-
-export function isInsideSendWindow(date: Date, window: SendWindow): boolean {
-  const hour = localHour(date, window.timeZone);
-  return hour !== null && hour >= window.startHour && hour < window.endHour;
-}
+export type { SendWindow };
 
 function formatAt(date: Date, timeZone: string) {
   try {

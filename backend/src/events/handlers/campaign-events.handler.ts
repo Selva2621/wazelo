@@ -132,15 +132,18 @@ export class CampaignEventsHandler {
     const recipient = await this.recipientRepo.findByMessageId(payload.messageId);
     if (!recipient) return;
 
-    // Only mark as FAILED if this is a permanent failure (dead-lettered)
-    // Retries are handled by SendMessageWorker without changing recipient status
-    if (payload.retryCount >= 3) {
-      const failed = await this.recipientRepo.markFailedIfActive(recipient.id, payload.reason);
-      if (!failed) return;
-      await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
-      await this.emitProgressAndCheckCompletion(recipient.campaignId);
-      await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
-    }
+    // Close the recipient only when the message is FAILED for good (dead-lettered,
+    // plan limit, org suspended, WhatsApp rejected it). A message QUEUED for a
+    // retry keeps its recipient waiting. This used to be gated on retryCount >= 3,
+    // which left non-retryable failures (retryCount 0) holding up every recipient
+    // behind them in the batch until the 15-minute repair ran.
+    // Only PENDING/QUEUED recipients change, so a SENT one is never marked failed.
+    if (!(await this.recipientRepo.isMessageFinallyFailed(payload.messageId))) return;
+    const failed = await this.recipientRepo.markFailedIfActive(recipient.id, payload.reason);
+    if (!failed) return;
+    await this.campaignRepo.incrementCounter(recipient.campaignId, 'failedCount', 1);
+    await this.emitProgressAndCheckCompletion(recipient.campaignId);
+    await this.dispatchNextRecipient(recipient.campaignId, recipient.batchNumber, recipient.id);
   }
 
   @OnEvent(EVENT_NAMES.MESSAGE_DEAD_LETTERED)

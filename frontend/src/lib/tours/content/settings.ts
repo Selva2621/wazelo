@@ -52,14 +52,21 @@ export const settingsTours: TourDef[] = [
 
   {
     id: "whatsapp",
-    version: 1,
+    version: 2,
     title: "Connect WhatsApp",
-    summary: "Link your WhatsApp number to send and receive messages.",
+    summary: "Add an official business number, or link your own WhatsApp with a QR.",
     section: "Settings",
     startHref: "/settings/whatsapp",
     navHref: "/settings/whatsapp",
     match: exact("/settings/whatsapp"),
     steps: [
+      {
+        target: "whatsapp-official",
+        ifMissing: "skip",
+        title: "Official business number",
+        body: "Meta's official API: no QR, no phone online, no ban risk. The whole team sends from it. First messages and replies after 24 hours use approved templates.",
+        example: { kind: "chips", items: ["Phone number ID", "Business Account ID", "Permanent token", "App Secret"] },
+      },
       {
         target: "wa-panel",
         title: "Your own number",

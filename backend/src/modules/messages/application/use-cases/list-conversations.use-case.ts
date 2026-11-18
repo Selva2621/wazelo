@@ -21,11 +21,15 @@ export class ListConversationsUseCase {
   ) {
     let sessionId = query.sessionId;
     let sessionIds: string[] | undefined;
+    // Official numbers are shared: a person sees the chats on them that are assigned to them
+    let sharedSessionIds: string[] | undefined;
+    const officialIds = async () => (await this.sessionRepo.findCloudByOrg(orgId)).map((s) => s.id);
 
     if (role === 'EMPLOYEE') {
       // Employee: show conversations from ALL their sessions (current + past)
       const allIds = await this.sessionRepo.findAllSessionIdsByUserId(userId, orgId);
-      if (allIds.length === 0) {
+      sharedSessionIds = await officialIds();
+      if (allIds.length === 0 && sharedSessionIds.length === 0) {
         return { data: [], total: 0, page: query.page, limit: query.limit };
       }
       sessionIds = allIds;
@@ -48,7 +52,8 @@ export class ListConversationsUseCase {
       } else {
         // Default: own sessions (all history)
         const allIds = await this.sessionRepo.findAllSessionIdsByUserId(userId, orgId);
-        if (allIds.length === 0) {
+        sharedSessionIds = await officialIds();
+        if (allIds.length === 0 && sharedSessionIds.length === 0) {
           return { data: [], total: 0, page: query.page, limit: query.limit };
         }
         sessionIds = allIds;
@@ -72,6 +77,7 @@ export class ListConversationsUseCase {
       assignedToId: query.assignedToId,
       sessionId,
       sessionIds,
+      ...(sharedSessionIds?.length && { sharedSessionIds, sharedAssignee: userId }),
       contactPhone: query.contactPhone,
     });
   }

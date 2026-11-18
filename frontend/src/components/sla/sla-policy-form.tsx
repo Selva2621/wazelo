@@ -88,7 +88,7 @@ export function SlaPolicyForm({ policy, onSubmit, onCancel, isSubmitting }: SlaP
   };
 
   const sectionLabel = "text-caption font-semibold text-on-surface-variant/50 uppercase tracking-widest";
-  const inputCls = "w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15 transition-colors";
+  const inputCls = "w-full rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/15 transition-colors";
 
   return (
     <form

@@ -99,7 +99,7 @@ export function BottomSheet({
               <div className="mx-auto h-[5px] w-9 rounded-full bg-outline/50" aria-hidden />
               {showHeader && (
                 <div className="relative flex h-11 items-center justify-center px-4">
-                  <p className="truncate text-[17px] font-semibold text-on-surface">{title}</p>
+                  <p className="truncate text-native-body font-semibold text-on-surface">{title}</p>
                   <div className="absolute right-3">{headerAction}</div>
                 </div>
               )}

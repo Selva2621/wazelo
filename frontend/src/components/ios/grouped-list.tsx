@@ -65,15 +65,15 @@ export function ListRow({
       {icon && <span className={cn("ios-row-icon", iconClassName ?? "bg-primary")}>{icon}</span>}
       <span className="ios-row-main">
         <span className="min-w-0 flex-1">
-          <span className={cn("block truncate text-[16px] leading-[21px]", destructive ? "text-error" : "text-on-surface")}>
+          <span className={cn("block truncate text-native-callout leading-[21px]", destructive ? "text-error" : "text-on-surface")}>
             {title}
           </span>
           {subtitle && (
-            <span className="mt-0.5 block truncate text-[13px] leading-[18px] text-on-surface-variant">{subtitle}</span>
+            <span className="mt-0.5 block truncate text-native-footnote leading-[18px] text-on-surface-variant">{subtitle}</span>
           )}
         </span>
         {detail !== undefined && (
-          <span className="ml-2 flex shrink-0 items-center text-[15px] text-on-surface-variant">{detail}</span>
+          <span className="ml-2 flex shrink-0 items-center text-native-subhead text-on-surface-variant">{detail}</span>
         )}
         {showChevron && <ChevronRight className="ios-row-chevron ml-1 h-[18px] w-[18px] shrink-0 text-outline" aria-hidden />}
       </span>

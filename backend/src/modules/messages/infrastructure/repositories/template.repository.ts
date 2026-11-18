@@ -64,6 +64,48 @@ export class TemplateRepository {
     });
   }
 
+  /** A template synced from an official number's business account (Meta is the source of truth) */
+  async upsertCloud(data: {
+    orgId: string;
+    cloudSessionId: string;
+    name: string;
+    language: string;
+    category?: string;
+    status: string;
+    whatsappTemplateId: string;
+    components: unknown;
+  }) {
+    const fields = {
+      cloudSessionId: data.cloudSessionId,
+      category: data.category ?? null,
+      status: data.status,
+      whatsappTemplateId: data.whatsappTemplateId,
+      components: data.components as any,
+      lastSyncedAt: new Date(),
+    };
+    const existing = await this.findByName(data.orgId, data.name, data.language);
+    if (existing) {
+      return this.prisma.messageTemplate.update({ where: { id: existing.id }, data: fields });
+    }
+    return this.prisma.messageTemplate.create({
+      data: { orgId: data.orgId, name: data.name, language: data.language, ...fields },
+    });
+  }
+
+  /** Approved Meta templates an official number can send (all official numbers when no session given) */
+  async listCloudApproved(orgId: string, cloudSessionId?: string) {
+    return this.prisma.messageTemplate.findMany({
+      where: {
+        orgId,
+        deletedAt: null,
+        status: 'APPROVED',
+        whatsappTemplateId: { not: null },
+        ...(cloudSessionId ? { cloudSessionId } : { cloudSessionId: { not: null } }),
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async list(orgId: string, status?: string) {
     return this.prisma.messageTemplate.findMany({
       where: {

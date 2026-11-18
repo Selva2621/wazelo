@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
+import { readCampaignTemplatePlan } from '../services/campaign-template-guard';
 import { readSendAnyTime } from '@/modules/messages/domain/services/account-safety.service';
 import { CampaignStatus } from '@prisma/client';
 import { CampaignRepository } from '../../infrastructure/repositories/campaign.repository';
@@ -42,6 +43,7 @@ export class RerunCampaignUseCase {
     // Same numbers and send-time choice as the original (email has neither)
     const isEmail = source.channel === 'EMAIL';
     const { pool } = readBatchPlanMetadata(source.metadata, source.sessionId);
+    const templatePlan = isEmail ? null : readCampaignTemplatePlan(source.metadata);
     const dto = {
       name: rerunName(source.name),
       description: source.description ?? undefined,
@@ -58,6 +60,12 @@ export class RerunCampaignUseCase {
       audienceFilters: (source.audienceFilters as Record<string, unknown> | null) ?? undefined,
       timezone: source.timezone ?? undefined,
       productId: source.productId ?? undefined,
+      // Official numbers send the same approved template (re-checked by create)
+      ...(templatePlan && {
+        cloudTemplateId: templatePlan.templateId,
+        cloudTemplateParams: templatePlan.params,
+        cloudTemplateHeaderImageUrl: templatePlan.headerImageUrl,
+      }),
     } as CreateCampaignDto;
 
     const { campaign } = await this.createCampaign.execute(orgId, userId, dto, ipAddress, userAgent);

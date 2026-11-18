@@ -8,6 +8,7 @@ import { htmlToPdf } from '@/infrastructure/external/pdf/html-to-pdf';
 import { ProposalRepository, ProposalWithPeople } from '../../infrastructure/repositories/proposal.repository';
 import { cleanItems, cleanScope, computeTotals, proposalNumber } from '../../domain/services/proposal-math';
 import { renderProposalHtml } from '../../domain/services/proposal-html';
+import { publicApiUrl } from '@/config/public-urls';
 
 export interface ProposalPdf {
   pdf: Buffer;
@@ -52,10 +53,8 @@ export class ProposalPdfUseCase {
     await mkdir(dir, { recursive: true });
     const stored = `${randomUUID()}.pdf`;
     await writeFile(join(dir, stored), pdf);
-    const apiBase =
-      this.config.get<string>('API_PUBLIC_URL') ||
-      `http://localhost:${this.config.get<string>('PORT', '3000')}/${this.config.get<string>('API_PREFIX', 'api/v1')}`;
-    return { url: `${apiBase.replace(/\/$/, '')}/files/${stored}`, fileName };
+    // Meta fetches this link, so it must be the public API URL (checked at boot in production)
+    return { url: `${publicApiUrl()}/files/${stored}`, fileName };
   }
 
   private async render(

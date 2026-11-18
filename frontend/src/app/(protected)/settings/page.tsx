@@ -2480,7 +2480,7 @@ function DeveloperApiSection() {
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
                       placeholder="e.g., Production API Key"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                   <div>
@@ -2515,7 +2515,7 @@ function DeveloperApiSection() {
                       onChange={(e) => setNewKeyExpiry(e.target.value)}
                       type="number"
                       placeholder="Leave empty for no expiry"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                   <div className="flex gap-2 justify-end">
@@ -3011,7 +3011,7 @@ function ShopifyIntegrationForm({ existing, onSuccess, onCancel }: { existing?: 
     }
   }
 
-  const inputCls = "w-full px-3 py-2.5 rounded-lg bg-surface-container border border-outline-variant/15 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "w-full px-3 py-2.5 rounded-lg bg-surface-container border border-outline-variant/15 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

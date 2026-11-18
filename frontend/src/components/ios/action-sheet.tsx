@@ -62,8 +62,8 @@ export function ActionSheet({ open, onClose, title, message, actions, cancelLabe
             <div className="ios-action-group">
               {(title || message) && (
                 <div className="px-4 py-3 text-center">
-                  {title && <p className="text-[13px] font-semibold text-on-surface-variant">{title}</p>}
-                  {message && <p className="mt-0.5 text-[13px] text-on-surface-variant">{message}</p>}
+                  {title && <p className="text-native-footnote font-semibold text-on-surface-variant">{title}</p>}
+                  {message && <p className="mt-0.5 text-native-footnote text-on-surface-variant">{message}</p>}
                 </div>
               )}
               {actions.map((action) => (

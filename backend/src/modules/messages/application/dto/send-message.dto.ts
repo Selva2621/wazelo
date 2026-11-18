@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsEnum,
   IsInt,
@@ -152,4 +153,22 @@ export class SendMessageDto {
   @ValidateNested()
   @Type(() => InteractivePayloadDto)
   interactive?: InteractivePayloadDto;
+
+  /** Official numbers: send this Meta-approved template (works after the 24-hour window) */
+  @IsOptional()
+  @IsUUID()
+  cloudTemplateId?: string;
+
+  /** Values for the template's {{1}}, {{2}}… slots ({{name}} etc. allowed) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  cloudTemplateParams?: string[];
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  cloudTemplateHeaderImageUrl?: string;
 }

@@ -1,10 +1,11 @@
 import { registerAs } from '@nestjs/config';
+import { publicFrontendUrl } from './public-urls';
 
 export const appConfig = registerAs('app', () => ({
   nodeEnv: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '8080', 10),
   apiPrefix: process.env.API_PREFIX || 'api/v1',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001',
+  frontendUrl: publicFrontendUrl(),
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({

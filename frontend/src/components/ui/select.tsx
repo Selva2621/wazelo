@@ -128,7 +128,7 @@ function readOptions(children: ReactNode, group?: string): { items: Item[]; plac
 
 const TRIGGER: Record<Variant, Record<"sm" | "md", string>> = {
   field: {
-    md: "h-10 w-full rounded-xl bg-surface-container-low px-4 text-body max-lg:min-h-11",
+    md: "h-10 w-full rounded-lg bg-surface-container-low px-4 text-body max-lg:min-h-11",
     sm: "h-8 w-full rounded-lg bg-surface-container-low px-3 text-label",
   },
   filter: {
@@ -405,7 +405,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
         aria-autocomplete="list"
         aria-activedescendant={activeId}
         className={cn(
-          "w-full rounded-xl bg-surface-container-low pl-9 pr-3 text-body text-on-surface outline-none placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/30",
+          "w-full rounded-xl bg-surface-container-low pl-9 pr-3 text-body text-on-surface outline-none placeholder:text-placeholder focus:ring-2 focus:ring-primary/30",
           isMobile ? "h-11" : "h-9",
         )}
       />

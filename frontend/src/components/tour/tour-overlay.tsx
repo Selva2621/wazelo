@@ -140,6 +140,8 @@ export function TourOverlay({ tour, onClose }: TourOverlayProps) {
   const [index, setIndex] = useState(0);
   /** Steps whose element never showed: left out of the "2 of 6" count and the dots */
   const [skipped, setSkipped] = useState<ReadonlySet<number>>(() => new Set());
+  /** Later steps whose element isn't on screen right now: counted out up front, so "2 of 7" doesn't turn into "3 of 6" */
+  const [absentAhead, setAbsentAhead] = useState<ReadonlySet<number>>(() => new Set());
   const [found, setFound] = useState(false);
   const [rect, setRect] = useState<Rect | null>(null);
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
@@ -246,6 +248,21 @@ export function TourOverlay({ tour, onClose }: TourOverlayProps) {
     // Runs per step; the other values are read fresh inside
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, safeIndex]);
+
+  // Once a step is showing (the screen has loaded), see which later steps have nothing to point at
+  useEffect(() => {
+    if (!found) return;
+    const timer = window.setTimeout(() => {
+      const ahead = new Set<number>();
+      steps.forEach((s, i) => {
+        if (i > safeIndex && s.target && s.ifMissing !== "center" && !findTarget(s.target)) ahead.add(i);
+      });
+      setAbsentAhead((prev) =>
+        prev.size === ahead.size && [...ahead].every((i) => prev.has(i)) ? prev : ahead,
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [found, safeIndex, steps]);
 
   // Follow the element while it moves (scrolling, animations, layout changes)
   useEffect(() => {
@@ -358,8 +375,11 @@ export function TourOverlay({ tour, onClose }: TourOverlayProps) {
     : { duration: motionTokens.duration.slow, ease: motionTokens.easing.standard };
 
   // Count only steps that can be shown
-  const shownTotal = steps.length - skipped.size;
-  const shownIndex = safeIndex - [...skipped].filter((i) => i < safeIndex).length;
+  // Steps left out of the count: ones already skipped, plus later ones with nothing on screen
+  const hidden = new Set([...skipped, ...absentAhead]);
+  hidden.delete(safeIndex);
+  const shownTotal = steps.length - hidden.size;
+  const shownIndex = safeIndex - [...hidden].filter((i) => i < safeIndex).length;
 
   return createPortal(
     <div data-tour-active="">
@@ -448,7 +468,7 @@ export function TourOverlay({ tour, onClose }: TourOverlayProps) {
                 aria-valuenow={shownIndex + 1}
               >
                 {shownTotal <= 8 ? (
-                  steps.map((_, i) => skipped.has(i) ? null : (
+                  steps.map((_, i) => hidden.has(i) ? null : (
                     <span
                       key={i}
                       aria-hidden

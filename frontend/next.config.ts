@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // Dev-only badge; bottom-left sat on top of the floating sidebar's account avatar.
   devIndicators: { position: "bottom-right" },
+  // Dev only: open the app through a cloudflared tunnel (scripts/dev-tunnel.ps1), which
+  // Instagram login and Meta webhooks need (they require a public https address)
+  allowedDevOrigins: ["*.trycloudflare.com"],
   experimental: {
     // Turbopack's dev disk cache (on by default since 16.1) restored stale CSS on this
     // Windows setup: globals.css edits made while the server was down never showed, and

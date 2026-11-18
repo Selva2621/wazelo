@@ -14,7 +14,11 @@ import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
-import { AuditAction, CampaignStatus, WhatsAppSessionStatus } from '@prisma/client';
+import { AuditAction, CampaignStatus, UsageMetricType, WhatsAppSessionStatus } from '@prisma/client';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { campaignTemplateProblem } from '../services/campaign-template-guard';
 
 @Injectable()
 export class ResumeCampaignUseCase {
@@ -29,6 +33,8 @@ export class ResumeCampaignUseCase {
     private readonly eventEmitter: EventEmitter2,
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly messageRepo: MessageRepository,
+    private readonly usageTracking: UsageTrackingService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -45,6 +51,26 @@ export class ResumeCampaignUseCase {
 
     this.stateMachine.assertTransition(campaign.status, CampaignStatus.RUNNING);
 
+    // The plan's message limit is the campaign volume limit: resuming with none
+    // left would only pause again on the first message.
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    if (!usage.allowed && usage.limitValue > 0) {
+      throw new BadRequestException(
+        `Your plan's monthly message limit is used up (${usage.currentValue}/${usage.limitValue}). Upgrade your plan or wait for the next billing period, then resume.`,
+      );
+    }
+
+    // Uploaded media can be wiped by a server restart: replace it before resuming
+    if (isLocalMediaMissing(campaign.mediaUrl)) {
+      throw new BadRequestException(MEDIA_MISSING_REASON);
+    }
+
+    // Official numbers can't send without their approved template: sync it back first
+    const templateProblem = await campaignTemplateProblem(this.prisma, campaign, orgId);
+    if (templateProblem) {
+      throw new BadRequestException(templateProblem);
+    }
+
     // If the campaign's WhatsApp number was logged out or banned, continue on a connected one
     // (email campaigns send from the workspace's mailbox: no number)
     let sessionId: string | null = null;
@@ -53,7 +79,18 @@ export class ResumeCampaignUseCase {
     }
 
     // Reset SKIPPED recipients back to PENDING for re-processing
-    const resetCount = await this.recipientRepo.resetSkippedToPending(campaignId);
+    const skippedReset = await this.recipientRepo.resetSkippedToPending(campaignId);
+
+    // Recipients that failed only because the number's connection was down get
+    // another go now that it's back (nothing reached WhatsApp for them)
+    const connectionReset =
+      campaign.channel === 'EMAIL'
+        ? 0
+        : await this.recipientRepo.resetConnectionFailuresToPending(campaignId);
+    if (connectionReset > 0) {
+      await this.campaignRepo.incrementCounter(campaignId, 'failedCount', -connectionReset);
+    }
+    const resetCount = skippedReset + connectionReset;
 
     const updated = await this.campaignRepo.transitionStatus(
       campaignId,

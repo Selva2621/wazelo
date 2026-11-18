@@ -60,6 +60,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { Conversation } from "@/components/chat/conversation-item";
 import type { Message } from "@/components/chat/message-bubble";
 import type { InteractivePayload } from "@/lib/types/inbox";
+import type { CloudTemplateChoice } from "@/lib/api/whatsapp";
 import type {
   ConversationResponse,
   MessageResponse,
@@ -419,6 +420,25 @@ export function InboxView({
     [selectedConversation, selectedId, sendMessage, targetUserId],
   );
 
+  /** Official number: send a Meta-approved template (the way back in after 24 hours) */
+  const handleSendTemplate = useCallback(
+    (choice: CloudTemplateChoice) => {
+      if (!selectedConversation) return;
+      sendMessage.mutate({
+        contactPhone: selectedConversation.contactPhone,
+        contactName: selectedConversation.contactName,
+        type: "TEXT",
+        idempotencyKey: `${selectedConversation.id}-tpl-${Date.now()}`,
+        conversationId: selectedId || undefined,
+        cloudTemplateId: choice.templateId,
+        cloudTemplateParams: choice.params,
+        ...(choice.headerImageUrl && { cloudTemplateHeaderImageUrl: choice.headerImageUrl }),
+        ...(targetUserId && { viaSessionUserId: targetUserId }),
+      });
+    },
+    [selectedConversation, selectedId, sendMessage, targetUserId],
+  );
+
   // Rendered in the desktop side panel and the mobile bottom sheet
   const renderContactPanel = (onClose: () => void) =>
     selectedConversation && selectedId ? (
@@ -598,7 +618,7 @@ export function InboxView({
                   ) : (
                     <>
                       <ChevronLeft className="h-7 w-7" strokeWidth={2.2} aria-hidden />
-                      <span className="-ml-0.5 text-[17px]">Inbox</span>
+                      <span className="-ml-0.5 text-native-body">Inbox</span>
                     </>
                   )}
                 </button>
@@ -613,10 +633,10 @@ export function InboxView({
                 >
                   <Avatar name={selectedConversation.contactName} size="sm" />
                   <span className="min-w-0 text-left">
-                    <span className="block truncate text-[16px] font-semibold leading-5 text-on-surface">
+                    <span className="block truncate text-native-callout font-semibold leading-5 text-on-surface">
                       {selectedConversation.contactName}
                     </span>
-                    <span className="block truncate text-[12px] leading-4 text-on-surface-variant">
+                    <span className="block truncate text-native-caption leading-4 text-on-surface-variant">
                       {selectedConversation.contactName !== selectedConversation.contactPhone
                         ? selectedConversation.contactPhone
                         : CHANNEL_TYPE_LABELS[selectedChannelType ?? "WHATSAPP"]}
@@ -811,6 +831,8 @@ export function InboxView({
               <ChatInput
                 onSend={handleSend}
                 onSendInteractive={handleSendInteractive}
+                templateSessionId={selectedChannelType === "WHATSAPP" || !selectedChannelType ? selectedRawConv?.sessionId ?? undefined : undefined}
+                onSendTemplate={handleSendTemplate}
                 uploading={uploading}
                 channelType={selectedChannelType}
                 emailSubject={emailSubject}

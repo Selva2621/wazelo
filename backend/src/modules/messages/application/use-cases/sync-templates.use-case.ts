@@ -2,8 +2,9 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ChannelService } from '@/modules/channels/domain/services/channel.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { TemplateRepository } from '../../infrastructure/repositories/template.repository';
+import { META_GRAPH_API_BASE } from '@/common/constants';
 
-const META_GRAPH_API = 'https://graph.facebook.com/v19.0';
+const META_GRAPH_API = META_GRAPH_API_BASE;
 
 @Injectable()
 export class SyncTemplatesUseCase {

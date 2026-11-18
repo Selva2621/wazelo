@@ -226,7 +226,7 @@ export const automationTours: TourDef[] = [
 
   {
     id: "automation-rule",
-    version: 2,
+    version: 5,
     title: "Rule editor",
     summary: "Set the trigger, conditions and actions of one rule.",
     section: "Automation",
@@ -243,8 +243,15 @@ export const automationTours: TourDef[] = [
       {
         target: "rule-trigger",
         title: "Trigger",
-        body: "What starts the rule: a new message, a keyword, a new contact, a status or tag change, and more.",
-        example: { kind: "chips", items: ["Message received", "Keyword: price", "Contact created", "Tag added"] },
+        body: "What starts the rule: a new message, a keyword, a new contact, a Facebook or Instagram lead form, a status change, and more.",
+        example: { kind: "chips", items: ["Message received", "Keyword: price", "Contact created", "Lead ad received"] },
+      },
+      {
+        target: "rule-lead-filters",
+        ifMissing: "skip",
+        title: "Lead ad filters",
+        body: "One rule per brand or product: pick its Facebook Page or lead form, then add “Add to product” and its own welcome. Form answers go into messages as {{lead.city}}, {{lead.campaign}}…",
+        example: { kind: "chips", items: ["Page: Brand A", "Form: Villa plots", "Add to product", "Send welcome"] },
       },
       {
         target: "rule-conditions",
@@ -254,7 +261,7 @@ export const automationTours: TourDef[] = [
       {
         target: "rule-actions",
         title: "Actions",
-        body: "One or more things to do, in order: send a WhatsApp message or an email, add a tag, change status, assign, start or stop a sequence.",
+        body: "One or more things to do, in order: send a WhatsApp message or an email, add a tag, add to a product, change status, assign, start or stop a sequence. Official numbers send a Meta-approved template.",
         example: { kind: "flow", nodes: ["Send template “price_list”", "Send email “Welcome”", "Add tag “pricing”"] },
       },
       {

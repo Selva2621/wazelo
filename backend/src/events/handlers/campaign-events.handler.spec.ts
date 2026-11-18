@@ -6,6 +6,7 @@ describe('CampaignEventsHandler', () => {
     const recipient = { id: 'recipient-1', campaignId: 'campaign-1' };
     const recipientRepo = {
       findByMessageId: jest.fn().mockResolvedValue(recipient),
+      isMessageFinallyFailed: jest.fn().mockResolvedValue(true),
       markFailedIfActive: jest.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false),
     };
     const campaignRepo = {
@@ -41,8 +42,48 @@ describe('CampaignEventsHandler', () => {
     expect(campaignRepo.incrementCounter).toHaveBeenCalledWith('campaign-1', 'failedCount', 1);
   });
 
+  it('closes the recipient and moves the batch on for a non-retryable failure (retryCount 0)', async () => {
+    const recipientRepo = {
+      findByMessageId: jest.fn().mockResolvedValue({ id: 'recipient-1', campaignId: 'campaign-1', batchNumber: 1 }),
+      isMessageFinallyFailed: jest.fn().mockResolvedValue(true),
+      markFailedIfActive: jest.fn().mockResolvedValue(true),
+      countByStatus: jest.fn().mockResolvedValue({ pending: 5, queued: 0 }),
+      hasQueuedRecipients: jest.fn().mockResolvedValue(false),
+    };
+    const campaignRepo = {
+      incrementCounter: jest.fn(),
+      findById: jest.fn().mockResolvedValue({ id: 'campaign-1', orgId: 'org-1', status: 'RUNNING' }),
+    };
+    const queueService = { publishOnce: jest.fn() };
+    const handler = new CampaignEventsHandler(
+      campaignRepo as never,
+      recipientRepo as never,
+      { emit: jest.fn() } as never,
+      { emitToOrg: jest.fn() } as never,
+      queueService as never,
+      { dispatch: jest.fn() } as never,
+    );
+
+    await handler.handleMessageFailed({
+      messageId: 'message-1',
+      orgId: 'org-1',
+      sessionId: 'session-1',
+      reason: 'Monthly message limit reached',
+      retryCount: 0,
+    });
+
+    expect(recipientRepo.markFailedIfActive).toHaveBeenCalledWith('recipient-1', 'Monthly message limit reached');
+    expect(campaignRepo.incrementCounter).toHaveBeenCalledWith('campaign-1', 'failedCount', 1);
+    expect(queueService.publishOnce).toHaveBeenCalledTimes(1);
+  });
+
   it('does not advance a campaign while a WhatsApp send is retrying', async () => {
-    const recipientRepo = { findByMessageId: jest.fn().mockResolvedValue({ id: 'recipient-1', campaignId: 'campaign-1' }) };
+    const recipientRepo = {
+      findByMessageId: jest.fn().mockResolvedValue({ id: 'recipient-1', campaignId: 'campaign-1' }),
+      // Message went back to QUEUED for a retry
+      isMessageFinallyFailed: jest.fn().mockResolvedValue(false),
+      markFailedIfActive: jest.fn(),
+    };
     const queueService = { publishOnce: jest.fn() };
     const handler = new CampaignEventsHandler(
       { incrementCounter: jest.fn(), findById: jest.fn() } as never,

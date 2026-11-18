@@ -59,13 +59,13 @@ export function ShortcutGrid({
                   {badge > 0 && (
                     <span
                       aria-hidden
-                      className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-[11px] font-semibold tabular-nums text-on-error ring-2 ring-surface-container-lowest"
+                      className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-native-caption2 font-semibold tabular-nums text-on-error ring-2 ring-surface-container-lowest"
                     >
                       {badge > 99 ? "99+" : badge}
                     </span>
                   )}
                 </span>
-                <span className="line-clamp-2 w-full text-center text-[12px] font-medium leading-[15px] text-on-surface">
+                <span className="line-clamp-2 w-full text-center text-native-caption font-medium leading-[15px] text-on-surface">
                   {s.label}
                   {badge > 0 && <span className="sr-only">, {badge} unread</span>}
                 </span>

@@ -336,6 +336,16 @@ export const EVENT_NAMES = {
   PRODUCT_UPDATED: 'product.updated',
   PRODUCT_DELETED: 'product.deleted',
 
+  // Lead follow-up events
+  /** A lead (e.g. Meta lead form) asked about a product: someone on its team must contact them */
+  LEAD_PRODUCT_INTEREST: 'lead.product_interest',
+  /** A lead was given to a team member to contact */
+  LEAD_ASSIGNED: 'lead.assigned',
+  /** A lead's reminder time passed and nobody has contacted it */
+  LEAD_FOLLOW_UP_DUE: 'lead.follow_up_due',
+  /** A brand manager's day-end lead summary */
+  LEAD_DAILY_SUMMARY: 'lead.daily_summary',
+
   // Knowledge Base events
   KB_ARTICLE_PUBLISHED: 'kb.article.published',
   KB_ARTICLE_DELETED: 'kb.article.deleted',
@@ -416,16 +426,6 @@ export const SEND_SAFETY_CONFIG = {
   WA_CHECK_PER_DAY: 150,
   WA_CHECK_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   /**
-   * Warm-up: daily bulk caps by how long the number has been linked.
-   * `cold` = messages to people who never messaged first.
-   */
-  WARMUP_TIERS: [
-    { maxAgeDays: 7, cold: 20, bulk: 50 },
-    { maxAgeDays: 14, cold: 50, bulk: 150 },
-    { maxAgeDays: 21, cold: 100, bulk: 300 },
-    { maxAgeDays: Infinity, cold: 200, bulk: 500 },
-  ],
-  /**
    * Messages a contact can get per rolling 24h from campaigns, sequences and
    * automations together (replies to their own messages don't count). Extra ones wait.
    */
@@ -433,9 +433,13 @@ export const SEND_SAFETY_CONFIG = {
   /** Bulk messages only go out between these local hours (org time zone) */
   BULK_SEND_START_HOUR: 9,
   BULK_SEND_END_HOUR: 20,
-  /** Campaign messages use the campaign time zone and can send from midnight to 10 PM */
-  CAMPAIGN_SEND_START_HOUR: 0,
-  CAMPAIGN_SEND_END_HOUR: 22,
+  /**
+   * Campaign messages go out 9 AM – 9 PM in the campaign's time zone (office-friendly:
+   * nobody gets a promo at midnight). Held messages resume at 9 AM.
+   * The frontend mirrors these in lib/campaign-time.ts (CAMPAIGN_SEND_HOURS).
+   */
+  CAMPAIGN_SEND_START_HOUR: 9,
+  CAMPAIGN_SEND_END_HOUR: 21,
   /** Spread the morning restart so held messages don't all fire at 9:00 */
   BULK_RESUME_JITTER_MS: 20 * 60 * 1000,
   /** Auto-pause: judge delivery only once this many bulk messages are old enough */
@@ -450,14 +454,27 @@ export const SEND_SAFETY_CONFIG = {
   OPT_OUT_KEYWORDS: ['stop', 'unsubscribe', 'stop all', 'opt out', 'optout', 'remove me', 'spam'],
 } as const;
 
+/**
+ * Bounds for the per-number sending limits an admin can set (whatsapp_sessions.sending_limits).
+ * Without any daily cap set, a number is limited only by the org's plan message limit.
+ * These ceilings stop a typo (e.g. 50000/day) from getting a number banned.
+ */
+export const SENDING_LIMIT_BOUNDS = {
+  DAILY_BULK_MAX: 1_000,
+  DAILY_COLD_MAX: 1_000,
+  /** Shortest allowed gap between two bulk messages on one number */
+  BULK_GAP_MIN_MS: 5_000,
+  BULK_GAP_MAX_MS: 10 * 60 * 1000,
+} as const;
+
 export const CAMPAIGN_CONFIG = {
   /** Recipient grouping; batches are dealt round-robin across the selected numbers and
    *  each number sends its batches one after another (numbers run in parallel) */
   BATCH_SIZE: Math.max(1, Number.parseInt(process.env.CAMPAIGN_BATCH_SIZE ?? '100', 10) || 100),
   /** Maximum recipients resolved for one campaign; override with CAMPAIGN_MAX_RECIPIENTS */
   MAX_RECIPIENTS: Math.max(1, Number.parseInt(process.env.CAMPAIGN_MAX_RECIPIENTS ?? '10000', 10) || 10000),
-  /** Concurrent campaigns are allowed; recipient claims serialize each individual campaign */
-  WORKER_CONCURRENCY: 3,
+  /** Concurrent campaign batches across all campaigns; override with CAMPAIGN_WORKER_CONCURRENCY */
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.CAMPAIGN_WORKER_CONCURRENCY ?? '3', 10) || 3),
   /** Campaign messages get lower priority than direct messages */
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
@@ -520,7 +537,7 @@ export const MESSAGING_CONFIG = {
   /** How long a message can stay in QUEUED before recovery picks it up (ms) */
   QUEUED_STALE_THRESHOLD_MS: 300_000,
   /** Worker concurrency (jobs processed in parallel) */
-  WORKER_CONCURRENCY: 5,
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.SEND_WORKER_CONCURRENCY ?? '5', 10) || 5),
   /** Incoming message processing timeout (ms) */
   INCOMING_PROCESS_TIMEOUT_MS: 30_000,
 } as const;
@@ -663,6 +680,14 @@ export const SLA_CONFIG = {
   MAX_ESCALATION_LEVELS: 5,
 } as const;
 
+/**
+ * One Meta Graph API version for every call (WhatsApp Cloud API, Messenger, Instagram,
+ * templates, lead ads). Meta retires each version about two years after release and
+ * silently upgrades calls to retired ones, so bump this in one place and retest.
+ */
+export const META_GRAPH_API_VERSION = 'v23.0';
+export const META_GRAPH_API_BASE = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
+
 export const LEAD_ADS_CONFIG = {
   /** Worker concurrency for lead ad processing */
   WORKER_CONCURRENCY: 5,
@@ -671,7 +696,7 @@ export const LEAD_ADS_CONFIG = {
   /** Retry base delay (seconds) for exponential backoff */
   RETRY_BASE_DELAY_SECONDS: 10,
   /** Meta Graph API version */
-  GRAPH_API_VERSION: 'v19.0',
+  GRAPH_API_VERSION: META_GRAPH_API_VERSION,
   /** Meta Graph API base URL */
   GRAPH_API_BASE_URL: 'https://graph.facebook.com',
   /** Timeout for fetching lead data from Meta (ms) */

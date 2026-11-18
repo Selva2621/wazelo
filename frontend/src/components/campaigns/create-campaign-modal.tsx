@@ -15,6 +15,14 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import {
+  CAMPAIGN_SEND_HOURS,
+  CAMPAIGN_SEND_HOURS_LABEL,
+  hourLabel,
+  hourNowIn,
+  isInsideCampaignHours,
+  wallClockHour,
+} from "@/lib/campaign-time";
 import type { EmailAccount, EmailTemplate } from "@/lib/api/email";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -31,6 +39,9 @@ import {
 } from "@/lib/validations/campaigns";
 import type { MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
 import { useTemplates } from "@/hooks/use-templates";
+import { useCloudTemplates } from "@/hooks/use-cloud-numbers";
+import { CloudTemplateFields } from "@/components/whatsapp/cloud-template-fields";
+import type { CloudTemplateChoice } from "@/lib/api/whatsapp";
 import {
   useCreateSavedContactGroups,
   useCheckSavedGroupMove,
@@ -203,7 +214,7 @@ function EmailFields({
           rows={8}
           aria-invalid={!!bodyError}
           aria-describedby={bodyError ? "messageBody-error" : undefined}
-          className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-y placeholder:text-on-surface-variant/40"
+          className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-y placeholder:text-placeholder"
           {...registerBody}
         />
         <div className="flex items-start justify-between gap-2">
@@ -225,7 +236,8 @@ function EmailFields({
 interface CreateCampaignModalProps {
   open: boolean;
   onClose: () => void;
-  sessions: { id: string; name: string; status: string }[];
+  /** `official`: a Meta Cloud API number (needs an approved template) */
+  sessions: { id: string; name: string; status: string; official?: boolean }[];
   /** Opens with a filtered audience, e.g. a contact source group */
   initialAudienceFilters?: CreateCampaignFormData["audienceFilters"];
 }
@@ -312,6 +324,25 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
   );
   const sessionName = (id: string) => sessions.find((s) => s.id === id)?.name ?? "Disconnected number";
 
+  // Official numbers can only start a chat with a Meta-approved template
+  const officialSelected = !isEmail && activeSessionIds.some((id) => sessions.find((s) => s.id === id)?.official);
+  const [cloudChoice, setCloudChoice] = useState<CloudTemplateChoice | null>(null);
+  const [cloudTemplateError, setCloudTemplateError] = useState<string | null>(null);
+  const { data: cloudTemplates } = useCloudTemplates(undefined, officialSelected);
+
+  /** Keep the text version (shown in the preview, sent by any QR number in the pool) in step */
+  function chooseCloudTemplate(choice: CloudTemplateChoice | null) {
+    setCloudChoice(choice);
+    setCloudTemplateError(null);
+    const tpl = cloudTemplates?.find((t) => t.id === choice?.templateId);
+    setValue("messageType", "TEXT");
+    setValue(
+      "messageBody",
+      tpl ? tpl.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (_w, n: string) => choice?.params[Number(n) - 1]?.trim() || "-") : "",
+      { shouldValidate: !!errors.messageBody },
+    );
+  }
+
   // A preview count is only an estimate: the audience is resolved again at send time
   const preview = previewAudience.data;
   const previewBatchSize = preview?.batchSize ?? DEFAULT_BATCH_SIZE;
@@ -369,8 +400,23 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
 
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const [savedGroupName, setSavedGroupName] = useState("");
-  // WhatsApp only: run round the clock instead of 12 AM – 10 PM
+  // WhatsApp only: run round the clock instead of the campaign sending hours
   const [sendAnyTime, setSendAnyTime] = useState(false);
+
+  // Picked (or current) time is outside sending hours: say when it really starts
+  const scheduledAtValue = watch("scheduledAt");
+  const timezoneValue = watch("timezone");
+  const outsideHoursNote = (() => {
+    if (isEmail || sendAnyTime || scheduleMode === "draft") return null;
+    const hour =
+      scheduleMode === "scheduled" ? wallClockHour(scheduledAtValue) : hourNowIn(timezoneValue);
+    if (hour === null || isInsideCampaignHours(hour)) return null;
+    const nextDay = hour >= CAMPAIGN_SEND_HOURS.endHour;
+    const start = hourLabel(CAMPAIGN_SEND_HOURS.startHour);
+    return scheduleMode === "scheduled"
+      ? `This time is outside sending hours. The first message goes out at ${start} ${nextDay ? "the next day" : "that day"}.`
+      : `It's outside sending hours now. Sending starts at ${start} ${nextDay ? "tomorrow" : "today"}.`;
+  })();
   const checkGroupMove = useCheckSavedGroupMove();
   const [pendingGroupMove, setPendingGroupMove] = useState<SavedGroupMoveImpact | null>(null);
   const [pendingSend, setPendingSend] = useState<{
@@ -402,6 +448,17 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
     if (!emailCampaign && sessionIds.length === 0) {
       setAudienceError("Select at least one connected WhatsApp number.");
       return;
+    }
+    if (officialSelected) {
+      const tpl = cloudTemplates?.find((t) => t.id === cloudChoice?.templateId);
+      if (!cloudChoice || !tpl) {
+        setCloudTemplateError("Pick an approved template for the official number");
+        return;
+      }
+      if (tpl.needsHeaderImage && !cloudChoice.headerImageUrl) {
+        setCloudTemplateError("This template has an image header: add the image link");
+        return;
+      }
     }
 
     // "Groups" / "Custom" with nothing picked would otherwise reach everyone
@@ -468,6 +525,11 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
             ...(sendAnyTime && { sendAnyTime: true }),
             mediaUrl: data.mediaUrl || undefined,
             mediaMimeType: data.mediaMimeType || undefined,
+            ...(officialSelected && cloudChoice && {
+              cloudTemplateId: cloudChoice.templateId,
+              cloudTemplateParams: cloudChoice.params,
+              ...(cloudChoice.headerImageUrl && { cloudTemplateHeaderImageUrl: cloudChoice.headerImageUrl }),
+            }),
           },
       {
         onSuccess: ({ campaign: created }) => {
@@ -480,6 +542,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
           setTemplateSearch("");
           setShowTemplatePicker(false);
           setPlaceholderValues({});
+          setCloudChoice(null);
           setPendingSend(null);
           setAudienceError(null);
           handleClose();
@@ -648,7 +711,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   id="description"
                   placeholder="Brief description…"
                   rows={2}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-placeholder"
                   {...register("description")}
                 />
               </div>
@@ -682,6 +745,22 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 />
               ) : (
               <>
+              {officialSelected && (
+                <div className="space-y-2 rounded-xl border border-outline-variant/15 p-3">
+                  <p className="text-body text-on-surface-variant">
+                    You picked an official number: campaigns go out as a Meta-approved template.
+                    Any QR number in the list sends the same text.
+                  </p>
+                  <CloudTemplateFields
+                    value={cloudChoice}
+                    onChange={chooseCloudTemplate}
+                    chips={[{ label: "{{name}}", value: "{{name}}" }, { label: "{{phone}}", value: "{{phone}}" }]}
+                    error={cloudTemplateError ?? undefined}
+                  />
+                </div>
+              )}
+              {/* Text / media message (an approved template replaces it for official numbers) */}
+              <div className={officialSelected ? "hidden" : "contents"}>
               {/* Type pills */}
               <fieldset>
                 <legend className="text-body font-medium text-on-surface-variant">Type</legend>
@@ -760,7 +839,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                         }}
                         placeholder="Search templates…"
                         aria-label="Search templates"
-                        className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
+                        className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-placeholder"
                       />
                     </div>
                     <div
@@ -841,7 +920,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   rows={5}
                   aria-invalid={!!errors.messageBody}
                   aria-describedby={errors.messageBody ? "messageBody-error" : undefined}
-                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-on-surface-variant/40"
+                  className="w-full rounded-xl bg-surface-container-low px-4 py-3 text-body text-on-surface outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/40 resize-none placeholder:text-placeholder"
                   {...register("messageBody")}
                 />
                 <div className="flex justify-between mt-1">
@@ -851,6 +930,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                 {errors.messageBody && (
                   <p id="messageBody-error" role="alert" className="text-label text-error mt-1">{errors.messageBody.message}</p>
                 )}
+              </div>
               </div>
               </>
               )}
@@ -1092,7 +1172,7 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     <p id="sendAnyTime-hint" className="text-caption text-on-surface-variant">
                       {sendAnyTime
                         ? "Keeps sending day and night until everyone gets it. Daily limits per number still apply."
-                        : "Off: sends 12 AM – 10 PM in the campaign's time zone."}
+                        : `Off: sends ${CAMPAIGN_SEND_HOURS_LABEL} in the campaign's time zone.`}
                     </p>
                   </div>
                   <Switch
@@ -1114,6 +1194,12 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                     <Input id="timezone" placeholder="UTC" {...register("timezone")} />
                   </div>
                 </div>
+              )}
+              {outsideHoursNote && (
+                <p role="status" className="mt-2 flex items-start gap-1.5 text-label text-warning">
+                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {outsideHoursNote}
+                </p>
               )}
             </div>
           </div>

@@ -1,6 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
-import { WhatsAppSessionStatus } from '@prisma/client';
+import { WhatsAppProvider, WhatsAppSessionStatus } from '@prisma/client';
+
+export interface CreateCloudSessionInput {
+  orgId: string;
+  userId: string;
+  phoneNumber: string;
+  phoneNumberId: string;
+  wabaId: string;
+  encryptedToken: string;
+  encryptedAppSecret: string;
+  verifyToken: string;
+  verifiedName?: string | null;
+  qualityRating?: string | null;
+  messagingTier?: string | null;
+}
 
 export interface CreateSessionInput {
   orgId: string;
@@ -62,9 +76,10 @@ export class WhatsAppSessionRepository {
     });
   }
 
+  /** The user's own QR-linked number (official numbers are the org's, not "theirs") */
   async findAnyByUserId(userId: string, orgId: string) {
     return this.prisma.whatsAppSession.findFirst({
-      where: { userId, orgId, deletedAt: null },
+      where: { userId, orgId, deletedAt: null, provider: WhatsAppProvider.QR },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -86,6 +101,7 @@ export class WhatsAppSessionRepository {
         userId,
         orgId,
         deletedAt: null,
+        provider: WhatsAppProvider.QR,
         OR: [
           { status: WhatsAppSessionStatus.CONNECTED },
           { status: WhatsAppSessionStatus.RECONNECTING, phoneNumber: { not: null } },
@@ -147,6 +163,7 @@ export class WhatsAppSessionRepository {
     return this.prisma.whatsAppSession.findMany({
       where: {
         deletedAt: null,
+        provider: WhatsAppProvider.QR,
         status: WhatsAppSessionStatus.CONNECTED,
         lastPhoneActivityAt: { lt: before },
       },
@@ -276,7 +293,14 @@ export class WhatsAppSessionRepository {
       this.prisma.whatsAppSession.count({ where }),
     ]);
 
-    const mapped = data.map(({ encryptedCreds, ...rest }) => ({
+    // Never send credentials to the client
+    const mapped = data.map(({
+      encryptedCreds,
+      encryptedCloudToken: _token,
+      encryptedCloudAppSecret: _secret,
+      cloudVerifyToken: _verify,
+      ...rest
+    }) => ({
       ...rest,
       hasCreds: encryptedCreds !== null,
     }));
@@ -288,6 +312,8 @@ export class WhatsAppSessionRepository {
     return this.prisma.whatsAppSession.findMany({
       where: {
         deletedAt: null,
+        // Official numbers have no socket to heal
+        provider: WhatsAppProvider.QR,
         OR: [
           {
             status: WhatsAppSessionStatus.CONNECTED,
@@ -329,10 +355,141 @@ export class WhatsAppSessionRepository {
     });
   }
 
+  // ───── Official numbers (Meta Cloud API) ─────
+
+  /** An official number is connected as soon as Meta accepts its token */
+  async createCloud(input: CreateCloudSessionInput) {
+    const now = new Date();
+    return this.prisma.whatsAppSession.create({
+      data: {
+        orgId: input.orgId,
+        userId: input.userId,
+        provider: WhatsAppProvider.CLOUD_API,
+        status: WhatsAppSessionStatus.CONNECTED,
+        phoneNumber: input.phoneNumber,
+        cloudPhoneNumberId: input.phoneNumberId,
+        cloudWabaId: input.wabaId,
+        encryptedCloudToken: input.encryptedToken,
+        encryptedCloudAppSecret: input.encryptedAppSecret,
+        cloudVerifyToken: input.verifyToken,
+        cloudVerifiedName: input.verifiedName ?? null,
+        cloudQualityRating: input.qualityRating ?? null,
+        cloudMessagingTier: input.messagingTier ?? null,
+        linkedAt: now,
+        lastActiveAt: now,
+        lastHeartbeatAt: now,
+      },
+    });
+  }
+
+  /** Which of these sessions are official numbers */
+  async findCloudIdsAmong(ids: string[], orgId: string): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.whatsAppSession.findMany({
+      where: { id: { in: ids }, orgId, provider: WhatsAppProvider.CLOUD_API, deletedAt: null },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  }
+
+  /** The org's official numbers that aren't removed */
+  async findCloudByOrg(orgId: string) {
+    return this.prisma.whatsAppSession.findMany({
+      where: { orgId, provider: WhatsAppProvider.CLOUD_API, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /** Any org: the official number a Meta webhook is about */
+  async findCloudByPhoneNumberId(phoneNumberId: string) {
+    return this.prisma.whatsAppSession.findFirst({
+      where: { cloudPhoneNumberId: phoneNumberId, provider: WhatsAppProvider.CLOUD_API, deletedAt: null },
+    });
+  }
+
+  async findCloudByIdAndOrg(id: string, orgId: string) {
+    return this.prisma.whatsAppSession.findFirst({
+      where: { id, orgId, provider: WhatsAppProvider.CLOUD_API, deletedAt: null },
+    });
+  }
+
+  /** Swap in a new token / app secret (e.g. the old one expired) */
+  async updateCloudCredentials(id: string, data: { encryptedToken?: string; encryptedAppSecret?: string }) {
+    return this.prisma.whatsAppSession.update({
+      where: { id },
+      data: {
+        ...(data.encryptedToken && { encryptedCloudToken: data.encryptedToken }),
+        ...(data.encryptedAppSecret && { encryptedCloudAppSecret: data.encryptedAppSecret }),
+        status: WhatsAppSessionStatus.CONNECTED,
+        disconnectedAt: null,
+        disconnectReason: null,
+      },
+    });
+  }
+
+  /** Official numbers with a token are connected; QR-only states (RECONNECTING…) don't apply to them */
+  async healCloudStatuses(): Promise<number> {
+    const result = await this.prisma.whatsAppSession.updateMany({
+      where: {
+        provider: WhatsAppProvider.CLOUD_API,
+        deletedAt: null,
+        encryptedCloudToken: { not: null },
+        status: { in: [WhatsAppSessionStatus.RECONNECTING, WhatsAppSessionStatus.CONNECTING] },
+      },
+      data: { status: WhatsAppSessionStatus.CONNECTED, reconnectCount: 0, disconnectedAt: null },
+    });
+    return result.count;
+  }
+
+  /** Official numbers that can send right now (loaded into the sender on boot) */
+  async findConnectedCloud() {
+    return this.prisma.whatsAppSession.findMany({
+      where: {
+        provider: WhatsAppProvider.CLOUD_API,
+        status: WhatsAppSessionStatus.CONNECTED,
+        deletedAt: null,
+        encryptedCloudToken: { not: null },
+      },
+      select: { id: true, orgId: true, cloudPhoneNumberId: true, encryptedCloudToken: true },
+    });
+  }
+
+  async updateCloudInfo(
+    id: string,
+    data: { verifiedName?: string | null; qualityRating?: string | null; messagingTier?: string | null; phoneNumber?: string },
+  ) {
+    return this.prisma.whatsAppSession.update({
+      where: { id },
+      data: {
+        ...(data.verifiedName !== undefined && { cloudVerifiedName: data.verifiedName }),
+        ...(data.qualityRating !== undefined && { cloudQualityRating: data.qualityRating }),
+        ...(data.messagingTier !== undefined && { cloudMessagingTier: data.messagingTier }),
+        ...(data.phoneNumber !== undefined && { phoneNumber: data.phoneNumber }),
+        lastHeartbeatAt: new Date(),
+      },
+    });
+  }
+
+  /** Remove an official number: the token is wiped, its chats and history stay */
+  async removeCloud(id: string) {
+    return this.prisma.whatsAppSession.update({
+      where: { id },
+      data: {
+        status: WhatsAppSessionStatus.DISCONNECTED,
+        disconnectedAt: new Date(),
+        deletedAt: new Date(),
+        encryptedCloudToken: null,
+        encryptedCloudAppSecret: null,
+      },
+    });
+  }
+
+  /** QR sessions to restore sockets for on boot */
   async findAllActive() {
     return this.prisma.whatsAppSession.findMany({
       where: {
         deletedAt: null,
+        provider: WhatsAppProvider.QR,
         status: {
           in: [WhatsAppSessionStatus.CONNECTED, WhatsAppSessionStatus.RECONNECTING],
         },

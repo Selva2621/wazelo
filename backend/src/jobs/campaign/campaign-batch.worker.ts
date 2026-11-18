@@ -8,8 +8,16 @@ import { MessageEventRepository } from '@/modules/messages/infrastructure/reposi
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
-import { pauseCampaignForKillSwitch } from './kill-switch-pause';
+import { pauseCampaignForKillSwitch, pauseCampaignSystem } from './kill-switch-pause';
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
+import {
+  CAMPAIGN_TEMPLATE_MISSING_REASON,
+  findSendableTemplate,
+  isCloudSession,
+  readCampaignTemplatePlan,
+} from '@/modules/campaigns/application/services/campaign-template-guard';
+import { isConnectionFailure } from '@/shared/utils/connection-failure';
 import {
   QUEUE_NAMES,
   CAMPAIGN_CONFIG,
@@ -179,6 +187,21 @@ export class CampaignBatchWorker implements OnModuleInit {
     return true;
   }
 
+  /** Templates used by running campaigns, kept for a minute so a batch reads each once */
+  private readonly templateCache = new Map<string, { at: number; tpl: { name: string; language: string; components: unknown } | null }>();
+
+  private async loadTemplate(id: string, orgId: string) {
+    const key = `${orgId}:${id}`;
+    const hit = this.templateCache.get(key);
+    if (hit && Date.now() - hit.at < 60_000) return hit.tpl;
+    // Only a template Meta can still send; a missing one isn't cached, so a resume
+    // right after the template is synced back sees it straight away
+    const tpl = await findSendableTemplate(this.prisma, orgId, id);
+    if (tpl) this.templateCache.set(key, { at: Date.now(), tpl });
+    else this.templateCache.delete(key);
+    return tpl;
+  }
+
   private async processRecipient(
     recipient: Record<string, any>,
     campaign: Record<string, any>,
@@ -219,6 +242,26 @@ export class CampaignBatchWorker implements OnModuleInit {
       return false;
     }
 
+    // Official numbers send the campaign's approved template. If it was deleted or
+    // lost approval, the plain text would be rejected by Meta for every recipient:
+    // pause the campaign with this recipient back in line instead of failing them all.
+    // QR numbers send the text version and carry on.
+    const templatePlan = readCampaignTemplatePlan(campaign.metadata);
+    const template = templatePlan ? await this.loadTemplate(templatePlan.templateId, orgId) : null;
+    if (templatePlan && !template && (await isCloudSession(this.prisma, sessionId))) {
+      await pauseCampaignSystem(
+        this.campaignRepo,
+        campaign.id,
+        orgId,
+        CAMPAIGN_TEMPLATE_MISSING_REASON,
+        'template-missing',
+        this.eventEmitter,
+      );
+      await this.recipientRepo.requeueStuck(recipient.id);
+      this.logger.warn(`Campaign ${campaign.id} paused: template ${templatePlan.templateId} missing or not approved`);
+      return true;
+    }
+
     // Find or create conversation
     const conversation = await this.conversationRepo.findOrCreate({
       orgId,
@@ -249,7 +292,12 @@ export class CampaignBatchWorker implements OnModuleInit {
         return false;
       }
 
-      if (existingMessage.status === MessageStatus.FAILED) {
+      const failedOnConnection =
+        existingMessage.status === MessageStatus.FAILED &&
+        !existingMessage.whatsappMessageId &&
+        isConnectionFailure(existingMessage.failedReason);
+
+      if (existingMessage.status === MessageStatus.FAILED && !failedOnConnection) {
         const reason = existingMessage.failedReason ?? 'Message previously failed';
         if (await this.recipientRepo.markFailedIfActive(recipient.id, reason)) {
           await this.campaignRepo.incrementCounter(campaign.id, 'failedCount', 1);
@@ -257,14 +305,36 @@ export class CampaignBatchWorker implements OnModuleInit {
         return false;
       }
 
-      await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.QUEUED, {
-        messageId: existingMessage.id,
+      if (!failedOnConnection) {
+        await this.recipientRepo.updateStatus(recipient.id, CampaignRecipientStatus.QUEUED, {
+          messageId: existingMessage.id,
+        });
+        return true;
+      }
+
+      // The earlier attempt never reached WhatsApp (the number's connection was
+      // down). Free its key and send a fresh message below.
+      await this.prisma.message.updateMany({
+        where: { id: existingMessage.id, status: MessageStatus.FAILED, whatsappMessageId: null },
+        data: { idempotencyKey: null },
       });
-      return true;
     }
 
     // Fill contact details, the same way as sequences and automations (no saved name → "there")
-    const resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
+    let resolvedBody = campaign.messageBody ? fillContactPlaceholders(campaign.messageBody, contact) : null;
+
+    // Official numbers: send the campaign's approved template, filled for this contact
+    let cloudTemplate: CloudTemplateRef | undefined;
+    if (templatePlan && template) {
+      const rendered = renderCloudTemplate(
+        template,
+        templatePlan.params,
+        (s) => fillContactPlaceholders(s, contact),
+        templatePlan.headerImageUrl,
+      );
+      resolvedBody = rendered.body;
+      cloudTemplate = rendered.cloudTemplate;
+    }
 
     // Create new message record
     const message = await this.messageRepo.create({
@@ -280,7 +350,11 @@ export class CampaignBatchWorker implements OnModuleInit {
       idempotencyKey,
       priority: CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
       maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
-      metadata: { campaignId: campaign.id, batchNumber: recipient.batchNumber },
+      metadata: {
+        campaignId: campaign.id,
+        batchNumber: recipient.batchNumber,
+        ...(cloudTemplate && { cloudTemplate }),
+      } as any,
     });
 
     // Record message event

@@ -11,6 +11,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatInZone } from "@/lib/campaign-time";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useMobileTitle } from "@/hooks/use-mobile-chrome";
 import {
@@ -22,6 +23,7 @@ import {
   useResumeCampaign,
   useCancelCampaign,
   useRerunCampaign,
+  useRetryFailedRecipients,
 } from "@/hooks/use-campaigns";
 import { useCampaignSocket } from "@/hooks/use-campaign-socket";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,8 @@ import { ChannelIcon } from "@/components/campaigns/email-channel";
 import { CampaignBatchTable } from "@/components/campaigns/campaign-batch-table";
 import { CampaignElapsedTimer } from "@/components/campaigns/campaign-elapsed-timer";
 import { CampaignSendWindowNote } from "@/components/campaigns/campaign-send-window-note";
+import { CampaignSendingStatusPanel } from "@/components/campaigns/campaign-sending-status";
+import { CampaignMediaMissing } from "@/components/campaigns/campaign-media-missing";
 import type {
   CampaignRecipientStatus,
   ListRecipientsParams,
@@ -85,6 +89,8 @@ export default function CampaignDetailPage() {
   const cancelMut = useCancelCampaign();
   const rerunMut = useRerunCampaign();
   const [confirmRerun, setConfirmRerun] = useState(false);
+  const retryMut = useRetryFailedRecipients();
+  const [confirmRetry, setConfirmRetry] = useState(false);
 
   if (isLoading) {
     return (
@@ -114,6 +120,12 @@ export default function CampaignDetailPage() {
   const isTerminal = ["COMPLETED", "FAILED", "CANCELLED"].includes(
     campaign.status,
   );
+  // Failed only because WhatsApp was disconnected: these can be sent again
+  const retryableFailed = campaign.retryableFailedCount ?? 0;
+  const canRetryFailed =
+    isWhatsAppCampaign &&
+    retryableFailed > 0 &&
+    ["COMPLETED", "FAILED", "PAUSED"].includes(campaign.status);
   const batchCount = analytics?.batches.length ?? 0;
   const showBatches = isWhatsAppCampaign && batchCount > 0;
   const sectionTabs = [
@@ -129,9 +141,9 @@ export default function CampaignDetailPage() {
         ? "batches"
         : "recipients";
 
+  /** In the campaign's own time zone, with the zone shown */
   function formatDate(dateStr: string | null) {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleString();
+    return formatInZone(dateStr, campaign?.timezone, { withYear: true });
   }
 
   function handleRecipientTabChange(tabId: string) {
@@ -288,9 +300,22 @@ export default function CampaignDetailPage() {
           showProgress={isRunning || isPaused}
         />
 
-        {campaign.status === "COMPLETED" && campaign.failedCount > 0 && (
-          <p className="text-label text-on-surface-variant">
-            Finished with {campaign.failedCount} failed recipient{campaign.failedCount === 1 ? "" : "s"}.{" "}
+        {campaign.mediaMissing && !isTerminal && !isDraft && (
+          <CampaignMediaMissing
+            campaignId={campaignId}
+            messageType={campaign.messageType}
+            canReplace={isPaused || campaign.status === "SCHEDULED"}
+          />
+        )}
+
+        {isWhatsAppCampaign && analytics?.sending && (isRunning || isPaused) && (
+          <CampaignSendingStatusPanel analytics={analytics} sending={analytics.sending} />
+        )}
+
+        {(campaign.status === "COMPLETED" || canRetryFailed) && campaign.failedCount > 0 && (
+          <p data-tour="campaign-retry-failed" className="text-label text-on-surface-variant">
+            {campaign.status === "COMPLETED" ? "Finished with" : "Has"} {campaign.failedCount} failed recipient
+            {campaign.failedCount === 1 ? "" : "s"}.{" "}
             <button
               type="button"
               onClick={() => {
@@ -301,8 +326,30 @@ export default function CampaignDetailPage() {
             >
               See why
             </button>
+            {canRetryFailed && (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setConfirmRetry(true)}
+                  disabled={retryMut.isPending}
+                  className="rounded font-medium text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
+                >
+                  Retry {retryableFailed}
+                </button>
+              </>
+            )}
           </p>
         )}
+        <ConfirmDialog
+          open={confirmRetry}
+          title={`Send again to ${retryableFailed} recipient${retryableFailed === 1 ? "" : "s"}?`}
+          message="These failed because WhatsApp was disconnected, so they never got the message. Failures like a wrong number or a block aren't retried."
+          confirmLabel="Send again"
+          loading={retryMut.isPending}
+          onCancel={() => setConfirmRetry(false)}
+          onConfirm={() => retryMut.mutate(campaignId, { onSettled: () => setConfirmRetry(false) })}
+        />
 
         {/* Batches · Recipients · Details */}
         <section data-tour="campaign-sections" className="min-w-0">
@@ -378,6 +425,10 @@ export default function CampaignDetailPage() {
                       <dd className="text-body text-on-surface">{formatDate(campaign.scheduledAt)}</dd>
                     </div>
                   )}
+                  <div>
+                    <dt className="text-caption text-on-surface-variant">Started</dt>
+                    <dd className="text-body text-on-surface">{formatDate(campaign.startedAt)}</dd>
+                  </div>
                   <div>
                     <dt className="text-caption text-on-surface-variant">Completed</dt>
                     <dd className="text-body text-on-surface">{formatDate(campaign.completedAt)}</dd>

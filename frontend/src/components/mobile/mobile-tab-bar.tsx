@@ -25,7 +25,7 @@ interface TabDef {
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="absolute -right-2.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[11px] font-semibold leading-none tabular-nums text-on-error">
+    <span className="absolute -right-2.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-native-caption2 font-semibold leading-none tabular-nums text-on-error">
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -106,7 +106,7 @@ export function MobileTabBar() {
           )}
           <span
             className={cn(
-              android ? "text-[13px] leading-4 tracking-[0.02em]" : "text-[12px] leading-none tracking-[0.01em]",
+              android ? "text-native-footnote leading-4 tracking-[0.02em]" : "text-native-caption leading-none tracking-[0.01em]",
               isActive ? (android ? "font-bold" : "font-semibold") : "font-medium",
             )}
           >
@@ -144,7 +144,7 @@ export function MobileTabBar() {
               <span
                 className={cn(
                   "font-semibold text-primary",
-                  android ? "pb-4 text-[13px] leading-4 tracking-[0.02em]" : "pb-[9px] text-[12px] leading-none tracking-[0.01em]",
+                  android ? "pb-4 text-native-footnote leading-4 tracking-[0.02em]" : "pb-[9px] text-native-caption leading-none tracking-[0.01em]",
                 )}
               >
                 Apps

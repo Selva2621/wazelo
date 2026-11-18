@@ -17,6 +17,13 @@ import { GetTeamPerformanceUseCase } from './application/use-cases/get-team-perf
 import { GetCampaignSummaryUseCase } from './application/use-cases/get-campaign-summary.use-case';
 import { GetDashboardOverviewUseCase } from './application/use-cases/get-dashboard-overview.use-case';
 import { ExportAnalyticsUseCase } from './application/use-cases/export-analytics.use-case';
+import { GetLiveChannelStatsUseCase } from './application/use-cases/get-live-channel-stats.use-case';
+import {
+  GetCityInsightsUseCase,
+  GetLeadsTodayUseCase,
+  GetRevenueSnapshotUseCase,
+  GetWaitingChatsUseCase,
+} from './application/use-cases/get-live-dashboard.use-cases';
 
 // Controller
 import { AnalyticsController } from './interfaces/controllers/analytics.controller';
@@ -41,6 +48,11 @@ import { AnalyticsController } from './interfaces/controllers/analytics.controll
     GetCampaignSummaryUseCase,
     GetDashboardOverviewUseCase,
     ExportAnalyticsUseCase,
+    GetLiveChannelStatsUseCase,
+    GetWaitingChatsUseCase,
+    GetRevenueSnapshotUseCase,
+    GetLeadsTodayUseCase,
+    GetCityInsightsUseCase,
   ],
   exports: [AnalyticsRepository, AnalyticsAggregationRepository, AnalyticsScopeService],
 })

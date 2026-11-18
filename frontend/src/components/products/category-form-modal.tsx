@@ -26,7 +26,7 @@ const PRESET_COLORS = [
 ];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
 export function CategoryFormModal({ open, onClose, category }: CategoryFormModalProps) {
   const isEditing = !!category;

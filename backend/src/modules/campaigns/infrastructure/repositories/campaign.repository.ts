@@ -41,6 +41,8 @@ export interface UpdateCampaignInput {
   sessionId?: string;
   scheduledAt?: Date;
   timezone?: string;
+  /** Replaces the campaign's metadata (callers merge the current value first) */
+  metadata?: Record<string, unknown>;
 }
 
 export interface ListCampaignsOptions {
@@ -125,6 +127,22 @@ export class CampaignRepository {
     return { campaigns, total };
   }
 
+  /** Swap the media of a campaign that hasn't finished (paused or scheduled). */
+  async replaceMedia(
+    id: string,
+    orgId: string,
+    statuses: CampaignStatus[],
+    mediaUrl: string,
+    mediaMimeType: string | null,
+  ): Promise<Campaign | null> {
+    const result = await this.prisma.campaign.updateMany({
+      where: { id, orgId, status: { in: statuses }, deletedAt: null },
+      data: { mediaUrl, mediaMimeType },
+    });
+    if (result.count === 0) return null;
+    return this.findById(id);
+  }
+
   async updateDraft(
     id: string,
     orgId: string,
@@ -146,6 +164,7 @@ export class CampaignRepository {
         ...(data.sessionId !== undefined && { sessionId: data.sessionId }),
         ...(data.scheduledAt !== undefined && { scheduledAt: data.scheduledAt }),
         ...(data.timezone !== undefined && { timezone: data.timezone }),
+        ...(data.metadata !== undefined && { metadata: data.metadata as Prisma.InputJsonValue }),
       },
     });
 

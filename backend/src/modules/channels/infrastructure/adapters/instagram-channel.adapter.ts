@@ -11,9 +11,9 @@ import {
   WebhookRegistrationResult,
   ChannelCapabilities,
 } from '../../domain/interfaces/channel-adapter.interface';
-import { CHANNEL_CONFIG } from '@/common/constants';
+import { CHANNEL_CONFIG, META_GRAPH_API_BASE } from '@/common/constants';
 
-const META_API_BASE = 'https://graph.facebook.com/v19.0';
+const META_API_BASE = META_GRAPH_API_BASE;
 
 const INSTAGRAM_CAPABILITIES: ChannelCapabilities = {
   supportedMessageTypes: [MessageType.TEXT, MessageType.IMAGE, MessageType.VIDEO, MessageType.AUDIO],

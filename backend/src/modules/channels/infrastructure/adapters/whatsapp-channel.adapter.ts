@@ -11,13 +11,13 @@ import {
   WebhookRegistrationResult,
   ChannelCapabilities,
 } from '../../domain/interfaces/channel-adapter.interface';
-import { CHANNEL_CONFIG } from '@/common/constants';
+import { CHANNEL_CONFIG, META_GRAPH_API_BASE } from '@/common/constants';
 import {
   resolveTestRecipient,
   TEST_RECIPIENT_BLOCKED_ERROR,
 } from '@/common/utils/test-recipient-guard.util';
 
-const META_API_BASE = 'https://graph.facebook.com/v19.0';
+const META_API_BASE = META_GRAPH_API_BASE;
 
 const NON_RETRYABLE_ERRORS = [
   'invalid_phone_number',

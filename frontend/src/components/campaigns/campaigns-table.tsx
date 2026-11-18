@@ -7,6 +7,7 @@ import { CampaignStatusBadge } from "./campaign-status-badge";
 import { CampaignProgressBar } from "./campaign-progress-bar";
 import type { Campaign } from "@/lib/types/campaigns";
 import { ChannelIcon } from "./email-channel";
+import { actualStartAt, campaignWhen, formatInZone } from "@/lib/campaign-time";
 
 interface CampaignsTableProps {
   campaigns: Campaign[];
@@ -17,18 +18,6 @@ interface CampaignsTableProps {
   onRowClick: (id: string) => void;
   onPageChange: (page: number) => void;
   onCreateClick: () => void;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
 }
 
 function deliveryRate(campaign: Campaign): string {
@@ -89,12 +78,29 @@ const columns: DataTableColumn<Campaign>[] = [
     ),
   },
   {
-    id: "created",
-    header: "Created",
-    className: "w-24",
+    id: "when",
+    header: "When",
+    className: "w-44",
     skeleton: "short",
     cellClassName: "text-caption text-on-surface-variant",
-    cell: (c) => timeAgo(c.createdAt),
+    cell: (c) => {
+      const when = campaignWhen(c);
+      const startsAt = actualStartAt(c);
+      return (
+        <span className="block leading-tight">
+          <span className="block text-on-surface-variant/70">{when.label}</span>
+          <span className="tabular-nums">{when.value}</span>
+          {startsAt && (
+            <span
+              className="mt-0.5 block font-medium text-warning tabular-nums"
+              title="Set outside sending hours: the first message goes out when they open"
+            >
+              Starts {formatInZone(startsAt.toISOString(), c.timezone)}
+            </span>
+          )}
+        </span>
+      );
+    },
   },
 ];
 
@@ -153,7 +159,16 @@ export function CampaignsTable({
                 </>
               )}
               {" · "}
-              {timeAgo(c.createdAt)}
+              {(() => {
+                const when = campaignWhen(c);
+                return when.label === "Created" ? when.value : `${when.label} ${when.value}`;
+              })()}
+              {(() => {
+                const startsAt = actualStartAt(c);
+                return startsAt ? (
+                  <span className="font-medium text-warning"> · starts {formatInZone(startsAt.toISOString(), c.timezone)}</span>
+                ) : null;
+              })()}
             </p>
           </div>
           <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant/50" aria-hidden />

@@ -12,6 +12,8 @@ import {
   Max,
   MaxLength,
   IsObject,
+  IsIn,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -49,6 +51,28 @@ export class TriggerConfigDto {
   @IsString()
   @MaxLength(64)
   stageId?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this platform (empty → any) */
+  @IsOptional()
+  @IsIn(['facebook', 'instagram', 'whatsapp'])
+  platform?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this Meta lead form ID (empty → any form) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  formId?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this Facebook Page ID (empty → any page) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  pageId?: string;
+
+  /** LEAD_AD_RECEIVED: skip repeat leads from numbers that are already contacts */
+  @IsOptional()
+  @IsBoolean()
+  newContactsOnly?: boolean;
 
   /** SHOPIFY_ORDER_CREATED / SHOPIFY_ORDER_FULFILLED */
   @IsOptional()

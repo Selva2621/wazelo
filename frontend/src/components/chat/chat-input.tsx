@@ -8,6 +8,9 @@ import { QuickReplyList, recordQuickReplyUse, useQuickReplyPicker } from "./cann
 import { QuickReplyManager } from "./quick-reply-manager";
 import type { CannedResponse } from "@/lib/types/canned-responses";
 import { InteractiveMessageBuilder } from "./interactive-message-builder";
+import { TemplateSendPanel } from "./template-send-panel";
+import { useCloudTemplates } from "@/hooks/use-cloud-numbers";
+import type { CloudTemplateChoice } from "@/lib/api/whatsapp";
 import { EmojiPicker } from "./emoji-picker";
 import type { InteractivePayload } from "@/lib/types/inbox";
 import { IconButton } from "@/components/ui/icon-button";
@@ -30,6 +33,9 @@ interface ChatInputProps {
   maxTextLength?: number;
   prefillText?: string;
   onPrefillApplied?: () => void;
+  /** The chat's WhatsApp number: an official one with approved templates gets a "Template" button */
+  templateSessionId?: string;
+  onSendTemplate?: (choice: CloudTemplateChoice) => void;
 }
 
 function detectMediaType(mimeType: string): MediaAttachment["type"] {
@@ -58,7 +64,11 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function ChatInput({ onSend, onSendInteractive, disabled, uploading, channelType, emailSubject, onSubjectChange, maxTextLength, prefillText, onPrefillApplied }: ChatInputProps) {
+export function ChatInput({ onSend, onSendInteractive, disabled, uploading, channelType, emailSubject, onSubjectChange, maxTextLength, prefillText, onPrefillApplied, templateSessionId, onSendTemplate }: ChatInputProps) {
+  // Approved templates exist only for official numbers; none → no Template button
+  const { data: chatTemplates } = useCloudTemplates(templateSessionId, !!templateSessionId && !!onSendTemplate);
+  const canSendTemplate = !!templateSessionId && !!onSendTemplate && (chatTemplates?.length ?? 0) > 0;
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
   const [value, setValue] = useState("");
   const [attachment, setAttachment] = useState<MediaAttachment | null>(null);
 
@@ -184,6 +194,18 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
         />
       )}
 
+      {/* Approved template (official numbers) */}
+      {showTemplatePanel && canSendTemplate && (
+        <TemplateSendPanel
+          sessionId={templateSessionId!}
+          onSend={(choice) => {
+            onSendTemplate!(choice);
+            setShowTemplatePanel(false);
+          }}
+          onClose={() => setShowTemplatePanel(false)}
+        />
+      )}
+
       {/* Email subject line */}
       {isEmail && onSubjectChange && (
         <div className="mb-2">
@@ -287,6 +309,20 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
                   Interactive message
                 </button>
               )}
+              {canSendTemplate && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setShowTemplatePanel((v) => !v);
+                  }}
+                  className="flex min-h-11 w-full items-center gap-3 px-4 text-left text-body-lg text-on-surface active:bg-surface-container"
+                >
+                  <FileText className="h-5 w-5 text-on-surface-variant" aria-hidden />
+                  Approved template
+                </button>
+              )}
             </div>
           </>
         )}
@@ -375,6 +411,22 @@ export function ChatInput({ onSend, onSendInteractive, disabled, uploading, chan
             aria-pressed={showInteractiveBuilder}
           >
             <MousePointerClick className="h-5 w-5" aria-hidden />
+          </button>
+        )}
+        {canSendTemplate && (
+          <button
+            type="button"
+            onClick={() => setShowTemplatePanel((v) => !v)}
+            disabled={disabled || uploading}
+            className={cn(
+              "shrink-0 p-1.5 transition-colors rounded-lg max-lg:hidden",
+              showTemplatePanel ? "text-primary-container bg-primary/10" : "text-on-surface-variant hover:text-on-surface",
+            )}
+            title="Approved template (needed after 24 hours)"
+            aria-label="Approved template"
+            aria-pressed={showTemplatePanel}
+          >
+            <FileText className="h-5 w-5" aria-hidden />
           </button>
         )}
         <textarea

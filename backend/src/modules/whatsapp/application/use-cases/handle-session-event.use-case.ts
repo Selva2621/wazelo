@@ -87,7 +87,7 @@ export class HandleSessionEventUseCase {
       reconnectCount: 0,
       disconnectCode: null,
       disconnectReason: null,
-      // First successful link starts the send warm-up clock
+      // When the number was first linked
       ...(!session.linkedAt && { linkedAt: new Date() }),
       // Linking needs the phone online; a plain reconnect doesn't prove that
       ...((payload.newLogin || !session.lastPhoneActivityAt) && { lastPhoneActivityAt: new Date() }),

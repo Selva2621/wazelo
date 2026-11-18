@@ -3,7 +3,19 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ContactSource } from '@prisma/client';
 import { LeadAdRepository } from '../../infrastructure/repositories/lead-ad.repository';
-import { MetaGraphApiService } from '../../domain/services/meta-graph-api.service';
+import { ConfigService } from '@nestjs/config';
+import { MetaGraphApiService, type MetaLeadData } from '../../domain/services/meta-graph-api.service';
+
+/** A dev test lead (lead-ads/dev/simulate) keeps its form answers in rawWebhookData */
+export interface SimulatedLeadPayload {
+  simulated: true;
+  fieldData: { name: string; values: string[] }[];
+}
+
+export function readSimulatedLead(raw: unknown): SimulatedLeadPayload | null {
+  const r = raw as Partial<SimulatedLeadPayload> | null;
+  return r?.simulated === true && Array.isArray(r.fieldData) ? (r as SimulatedLeadPayload) : null;
+}
 import { LeadAssignmentService } from '../../domain/services/lead-assignment.service';
 import { ChannelService } from '@/modules/channels/domain/services/channel.service';
 import { EVENT_NAMES } from '@/common/constants';
@@ -21,6 +33,7 @@ export class ProcessLeadAdUseCase {
     private readonly channelService: ChannelService,
     private readonly eventEmitter: EventEmitter2,
     private readonly orgLocale: OrgLocaleService,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(leadAdEntryId: string): Promise<void> {
@@ -41,20 +54,28 @@ export class ProcessLeadAdUseCase {
     await this.leadAdRepo.update(leadAdEntryId, { status: 'PROCESSING' });
 
     try {
-      // 3. Get access token from channel
-      let accessToken: string;
-      if (entry.channelId) {
-        const config = await this.channelService.getDecryptedConfig(entry.channelId);
-        accessToken = config.accessToken as string;
+      // 3–4. Full lead data: from Meta, or the stored answers of a dev test lead
+      const simulated = readSimulatedLead(entry.rawWebhookData);
+      let leadData: MetaLeadData;
+      if (simulated) {
+        if (this.config.get<string>('NODE_ENV') === 'production') {
+          throw new Error('Test leads are disabled in production');
+        }
+        leadData = {
+          id: entry.leadgenId,
+          createdTime: entry.createdAt.toISOString(),
+          fieldData: simulated.fieldData,
+          adName: entry.adName ?? undefined,
+          campaignName: entry.campaignName ?? undefined,
+          formId: entry.formId ?? undefined,
+        };
       } else {
-        throw new Error('No channel linked to this lead — cannot fetch lead data');
+        if (!entry.channelId) {
+          throw new Error('No channel linked to this lead — cannot fetch lead data');
+        }
+        const config = await this.channelService.getDecryptedConfig(entry.channelId);
+        leadData = await this.metaGraphApi.fetchLeadData(entry.leadgenId, config.accessToken as string);
       }
-
-      // 4. Fetch full lead data from Meta Graph API
-      const leadData = await this.metaGraphApi.fetchLeadData(
-        entry.leadgenId,
-        accessToken,
-      );
 
       // 5. Parse lead fields
       const fields = this.metaGraphApi.parseLeadFields(leadData.fieldData);
@@ -86,10 +107,14 @@ export class ProcessLeadAdUseCase {
         fields.email ||
         entry.leadgenId;
 
+      // A repeat lead from a known number enriches that contact; only a new one is "created"
+      const existingContactId = await this.findExistingContactId(entry.orgId, phoneNumber);
+      const isNewContact = !existingContactId;
+
       const contact = await this.prisma.contact.upsert({
         where: {
           // Use the partial unique index simulation
-          id: await this.findExistingContactId(entry.orgId, phoneNumber),
+          id: existingContactId ?? crypto.randomUUID(),
         },
         create: {
           orgId: entry.orgId,
@@ -161,19 +186,24 @@ export class ProcessLeadAdUseCase {
         contactEmail: fields.email,
         adName: leadData.adName || entry.adName,
         campaignName: leadData.campaignName || entry.campaignName,
-        formId: entry.formId,
+        formId: leadData.formId || entry.formId,
         leadData: fields.customFields,
+        isNewContact,
       });
 
-      // Also emit CONTACT_CREATED for existing automation triggers
-      this.eventEmitter.emit(EVENT_NAMES.CONTACT_CREATED, {
-        contactId: contact.id,
-        orgId: entry.orgId,
-        phoneNumber,
-        ownerId,
-        source,
-        createdById: ownerId,
-      });
+      // CONTACT_CREATED only for a new contact — a repeat lead must not re-run
+      // "new contact" automations, scoring or sequences
+      if (isNewContact) {
+        this.eventEmitter.emit(EVENT_NAMES.CONTACT_CREATED, {
+          contactId: contact.id,
+          orgId: entry.orgId,
+          phoneNumber,
+          ownerId,
+          source,
+          createdById: ownerId,
+          leadAd: { platform: entry.platform, pageId: entry.pageId, formId: leadData.formId || entry.formId },
+        });
+      }
 
       this.logger.log(
         `Lead ${entry.leadgenId} processed → Contact ${contact.id} (${entry.platform})`,
@@ -201,12 +231,11 @@ export class ProcessLeadAdUseCase {
   private async findExistingContactId(
     orgId: string,
     phoneNumber: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const existing = await this.prisma.contact.findFirst({
       where: { orgId, phoneNumber, deletedAt: null },
       select: { id: true },
     });
-    // Return existing ID or a new UUID for creation
-    return existing?.id || crypto.randomUUID();
+    return existing?.id ?? null;
   }
 }

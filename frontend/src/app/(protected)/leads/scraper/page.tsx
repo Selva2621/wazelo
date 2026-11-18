@@ -181,7 +181,7 @@ function NoteEditor({ runId, initial, onClose }: { runId: string; initial: strin
         onChange={(e) => setVal(e.target.value)}
         placeholder="Add a note about this run…"
         rows={2}
-        className="w-full text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+        className="w-full text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary resize-none"
         autoFocus
       />
       <div className="flex gap-2">
@@ -609,7 +609,7 @@ export default function LeadScraperPage() {
                   onChange={(e) => setLocation(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRun()}
                   placeholder={selectedScraper.locationPlaceholder}
-                  className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                  className="w-full rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary"
                 />
               </div>
             )}
@@ -723,7 +723,7 @@ export default function LeadScraperPage() {
                             onKeyDown={(e) => e.key === "Enter" && handleRun()}
                             placeholder={selectedScraper.locationPlaceholder}
                             enterKeyHint="go"
-                            className="h-11 w-full rounded-xl border border-outline-variant bg-surface-container px-3 text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                            className="h-11 w-full rounded-xl border border-outline-variant bg-surface-container px-3 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:border-primary"
                           />
                         </div>
                       )}

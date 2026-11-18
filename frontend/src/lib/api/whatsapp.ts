@@ -10,6 +10,9 @@ export interface WhatsAppSession {
   hasCreds?: boolean;
   /** Why the number stopped: NETWORK | LOGGED_OUT | BANNED | REPLACED | BAD_SESSION */
   disconnectReason?: string | null;
+  /** QR = linked device, CLOUD_API = official Meta number (older backends omit it) */
+  provider?: "QR" | "CLOUD_API";
+  cloudVerifiedName?: string | null;
   user?: {
     id: string;
     firstName: string;
@@ -20,10 +23,27 @@ export interface WhatsAppSession {
 }
 
 /** Send-safety snapshot for the user's own WhatsApp number */
+/** Per-number limits an admin can set. Empty = no daily cap (plan limit only). */
+export interface SendingLimits {
+  dailyBulkCap?: number;
+  dailyColdCap?: number;
+  bulkGapMinMs?: number;
+  bulkGapMaxMs?: number;
+}
+
 export interface SendHealth {
   sessionId: string;
-  warmup: { stage: number; linkedDays: number; coldCap: number; bulkCap: number };
+  /** Caps are null when the number has no daily cap */
+  caps: { coldCap: number | null; bulkCap: number | null };
   today: { bulkSent: number; coldSent: number };
+  /** Older backends omit the fields below */
+  remaining?: { bulk: number | null; cold: number | null };
+  resetsAt?: string;
+  limits?: SendingLimits;
+  limitMode?: "plan" | "custom";
+  bulkGapMs?: { min: number; max: number };
+  /** Org plan messages this billing period; limit null = unlimited */
+  plan?: { used: number; limit: number | null; remaining: number | null };
   delivery: { sampled: number; delivered: number; rate: number | null };
   optOuts24h: number;
   withinSendingHours: boolean;
@@ -45,6 +65,79 @@ export interface PairingCodeResponse extends InitiateSessionResponse {
   phoneNumber: string;
 }
 
+/** An official WhatsApp number (Meta Cloud API), shared by the whole workspace */
+export interface CloudNumber {
+  id: string;
+  provider: "CLOUD_API";
+  phoneNumber: string | null;
+  status: WhatsAppSession["status"];
+  phoneNumberId: string | null;
+  wabaId: string | null;
+  verifiedName: string | null;
+  /** GREEN | YELLOW | RED | UNKNOWN */
+  qualityRating: string | null;
+  /** e.g. TIER_250, TIER_1K, TIER_UNLIMITED */
+  messagingTier: string | null;
+  webhookUrl: string;
+  verifyToken: string | null;
+  hasAppSecret: boolean;
+  connectedAt: string;
+  lastCheckedAt: string | null;
+  /** Only on connect: false when Meta didn't let us subscribe the app to the account */
+  webhookSubscribed?: boolean;
+}
+
+export interface ConnectCloudNumberPayload {
+  phoneNumberId: string;
+  wabaId: string;
+  accessToken: string;
+  appSecret: string;
+}
+
+/** These wait on Meta, which can be slow: allow longer than the default timeout */
+const META_TIMEOUT = { timeout: 45_000 };
+
+export const cloudNumbersApi = {
+  list: () => apiClient.get<CloudNumber[]>("/whatsapp/cloud-numbers").then((r) => r.data),
+  connect: (payload: ConnectCloudNumberPayload) =>
+    apiClient.post<CloudNumber>("/whatsapp/cloud-numbers", payload, META_TIMEOUT).then((r) => r.data),
+  refresh: (id: string) =>
+    apiClient.post<CloudNumber>(`/whatsapp/cloud-numbers/${id}/refresh`, undefined, META_TIMEOUT).then((r) => r.data),
+  updateCredentials: (id: string, payload: { accessToken?: string; appSecret?: string }) =>
+    apiClient.patch<CloudNumber>(`/whatsapp/cloud-numbers/${id}/credentials`, payload, META_TIMEOUT).then((r) => r.data),
+  remove: (id: string) => apiClient.delete(`/whatsapp/cloud-numbers/${id}`).then((r) => r.data),
+  /** Pull the number's templates from Meta */
+  syncTemplates: (id: string) =>
+    apiClient
+      .post<{ synced: number; approved: number }>(`/whatsapp/cloud-numbers/${id}/sync-templates`, undefined, META_TIMEOUT)
+      .then((r) => r.data),
+  /** Approved templates (one official number, or all of them) */
+  listTemplates: (sessionId?: string) =>
+    apiClient
+      .get<CloudTemplate[]>("/whatsapp/cloud-numbers/templates", { params: sessionId ? { sessionId } : undefined })
+      .then((r) => r.data),
+};
+
+/** A Meta-approved template an official number can send */
+export interface CloudTemplate {
+  id: string;
+  cloudSessionId: string | null;
+  name: string;
+  language: string;
+  category: string | null;
+  /** Body text with {{1}}, {{2}}… slots */
+  body: string;
+  paramCount: number;
+  needsHeaderImage: boolean;
+}
+
+/** A chosen template and what fills its slots (saved on automations and campaigns) */
+export interface CloudTemplateChoice {
+  templateId: string;
+  params: string[];
+  headerImageUrl?: string;
+}
+
 export const whatsappApi = {
   initiateSession: async (idempotencyKey?: string) => {
     const r = await apiClient.post<InitiateSessionResponse>(
@@ -61,6 +154,12 @@ export const whatsappApi = {
 
   getMySendHealth: async () => {
     const r = await apiClient.get<SendHealth | null>("/whatsapp/sessions/me/health");
+    return r.data;
+  },
+
+  /** Admin only. Send {} to clear every override. */
+  updateMySendingLimits: async (limits: SendingLimits) => {
+    const r = await apiClient.put<SendHealth>("/whatsapp/sessions/me/sending-limits", limits);
     return r.data;
   },
 
