@@ -29,6 +29,9 @@ const columns: DataTableColumn<Campaign>[] = [
   {
     id: "campaign",
     header: "Campaign",
+    // A share of the width, so the spare room spreads over the other columns instead of
+    // leaving a wide gap between the name and Status
+    className: "w-[32%]",
     cell: (c) => (
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">

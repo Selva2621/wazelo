@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LifeBuoy, Plus, X, Loader2, ChevronRight, ArrowLeft, Send,
   ImageIcon, MessageSquare, Tag, AlertCircle, Clock,
-  Paperclip,
+  Paperclip, Compass, Smartphone, CreditCard, Mail,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import apiClient from "@/lib/api/client";
 import { Spinner } from "@/components/ui/spinner";
@@ -19,6 +20,7 @@ import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { useHideTabBar } from "@/hooks/use-mobile-chrome";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { StartHint } from "@/components/ui/start-hint";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -558,12 +560,62 @@ const ticketColumns: DataTableColumn<Ticket>[] = [
   },
 ];
 
-function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
+const HELP_LINKS = [
+  { href: "/tours", icon: Compass, title: "Product tours", body: "Short walkthroughs of every screen" },
+  { href: "/settings/whatsapp", icon: Smartphone, title: "WhatsApp setup", body: "Connect or check your number" },
+  { href: "/settings/billing", icon: CreditCard, title: "Billing", body: "Plan, invoices and payments" },
+] as const;
+
+/** Zero-ticket view: start strip + quick help, so the page is never a lone empty card. */
+function SupportStart({ onNew }: { onNew: () => void }) {
+  return (
+    <div className="space-y-4">
+      <StartHint
+        icon={<LifeBuoy />}
+        title="No tickets yet"
+        description="Open a ticket and we'll reply here."
+        action={
+          <Button size="sm" onClick={onNew}>
+            <Plus className="h-4 w-4" /> New ticket
+          </Button>
+        }
+      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {HELP_LINKS.map(({ href, icon: Icon, title, body }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 outline-none transition-colors duration-120 ease-standard hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant group-hover:text-primary" />
+            <span className="min-w-0">
+              <span className="block text-body font-medium text-on-surface">{title}</span>
+              <span className="block text-label text-on-surface-variant">{body}</span>
+            </span>
+          </Link>
+        ))}
+        <div className="flex items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant" />
+          <span className="min-w-0">
+            <span className="block text-body font-medium text-on-surface">Email us</span>
+            <span className="block select-all text-label text-on-surface-variant">support@wazelo.in</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TicketTable({ onSelect, onNew }: { onSelect: (id: string) => void; onNew: () => void }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useTickets(page);
 
   const tickets: Ticket[] = data?.tickets ?? [];
   const total: number = data?.total ?? 0;
+
+  if (!isLoading && data && total === 0 && tickets.length === 0) {
+    return <SupportStart onNew={onNew} />;
+  }
 
   return (
     <div className="border border-outline-variant rounded-2xl overflow-hidden bg-surface-container-lowest">
@@ -617,7 +669,7 @@ export default function SupportPage() {
 
       {/* DataTable — fills remaining height */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <TicketTable onSelect={setSelectedId} />
+        <TicketTable onSelect={setSelectedId} onNew={() => setShowModal(true)} />
       </div>
 
       <NewTicketModal open={showModal} onClose={() => setShowModal(false)} />

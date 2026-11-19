@@ -156,10 +156,10 @@ export function SlaBreachTable({
   }, [policies, onAcknowledge, isAcknowledging]);
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
+    <div className="flex-1 rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-body font-medium text-on-surface-variant">
-          SLA Breaches
+          SLA breaches
         </h3>
         <span className="text-caption text-on-surface-variant/50">
           {breaches.length} breach{breaches.length !== 1 ? "es" : ""}

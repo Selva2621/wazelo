@@ -5,11 +5,12 @@ import { Users, MessageSquare } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useTeams } from "@/hooks/use-teams";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
+import { useAuthStore } from "@/stores/auth-store";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { EmptyState } from "@/components/ui/empty-state";
+import { StartHint, ZeroNote } from "@/components/ui/start-hint";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Team } from "@/lib/types/teams";
 
@@ -18,6 +19,8 @@ type MemberRow = Team["members"][number] & { teamName: string };
 export default function ManagerTeamPage() {
   usePageTitle("My team");
   const router = useRouter();
+  const role = useAuthStore((s) => s.user?.role);
+  const isAdmin = role === "ADMIN";
   const { data: teams, isLoading } = useTeams();
   const { data: sessionsData } = useAdminSessions();
 
@@ -37,17 +40,16 @@ export default function ManagerTeamPage() {
       })),
     ) ?? [];
 
-  if (!isLoading && allMembers.length === 0) {
-    return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <EmptyState
-          icon={<Users className="h-16 w-16" />}
-          title="No team members"
-          description="Your team has no members yet. Ask an admin to assign members to your team."
-        />
-      </div>
-    );
-  }
+  const isEmpty = !isLoading && allMembers.length === 0;
+  const connectedCount = allMembers.filter(
+    (m) => (sessionByUser.get(m.user.id) as { status: string } | undefined)?.status === "CONNECTED",
+  ).length;
+
+  const stats = [
+    { label: "Teams", value: isLoading ? "—" : (teams?.length ?? 0).toString() },
+    { label: "Members", value: isLoading ? "—" : allMembers.length.toString() },
+    { label: "WhatsApp connected", value: isLoading ? "—" : connectedCount.toString() },
+  ];
 
   const columns: DataTableColumn<MemberRow>[] = [
     {
@@ -124,7 +126,42 @@ export default function ManagerTeamPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <PageHeader className="max-lg:hidden" title="My team" count={allMembers.length} />
+      <PageHeader
+        className="max-lg:hidden"
+        title="My team"
+        count={isLoading ? undefined : allMembers.length}
+      />
+
+      {isEmpty && (
+        <StartHint
+          icon={<Users />}
+          title="No team members yet"
+          description={
+            isAdmin
+              ? "Add people to a team to see them here."
+              : "Ask an admin to add members to your team."
+          }
+          action={
+            isAdmin ? (
+              <Button size="sm" onClick={() => router.push("/admin/teams")}>
+                Manage teams
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 max-lg:rounded-xl max-lg:p-3"
+          >
+            <p className="text-label text-on-surface-variant max-lg:text-caption">{s.label}</p>
+            <p className="text-headline font-semibold tabular-nums text-on-surface">{s.value}</p>
+          </div>
+        ))}
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
         <DataTable
@@ -136,6 +173,7 @@ export default function ManagerTeamPage() {
           loading={isLoading}
           skeletonRows={6}
         />
+        {isEmpty && <ZeroNote>Members appear here</ZeroNote>}
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/widget";
 import { InboxChannelTabs } from "@/components/inbox/inbox-channel-tabs";
 import { WebsiteChatPanel } from "@/components/inbox/website-chat-panel";
+import { InboxOverview } from "@/components/chat/inbox-overview";
 import { useWebsiteChatSocket } from "@/hooks/use-website-chat-socket";
 import { useAuthStore } from "@/stores/auth-store";
 import { Avatar } from "@/components/ui/avatar";
@@ -94,6 +95,14 @@ export function WebsiteInbox() {
   const chats = site === "all" ? allChats : allChats.filter((c) => siteOf(c.pageUrl) === site);
   const waiting = chats.filter((c) => c.state === "WAITING");
   const others = chats.filter((c) => c.state !== "WAITING");
+
+  // Desktop overview when no chat is open
+  const myId = useAuthStore((s) => s.user?.id);
+  const needsReply = chats.filter((c) => c.waiting);
+  const oldestChat = needsReply.reduce<WebsiteChatSummary | null>((acc, c) => {
+    const at = c.lastMessage?.createdAt ?? c.updatedAt;
+    return !acc || at < (acc.lastMessage?.createdAt ?? acc.updatedAt) ? c : acc;
+  }, null);
 
   const row = (c: WebsiteChatSummary) => (
     <ChatRow
@@ -191,9 +200,26 @@ export function WebsiteInbox() {
         {selectedId ? (
           <ChatThread key={selectedId} id={selectedId} onBack={() => setSelectedId(null)} />
         ) : (
-          <div className="flex flex-1 items-center justify-center p-6 text-center">
-            <p className="text-body text-on-surface-variant">Pick a website chat to read and reply.</p>
-          </div>
+          <InboxOverview
+            stats={[
+              { label: "Waiting for a person", value: waiting.length },
+              { label: "Waiting for reply", value: needsReply.length },
+              { label: "Assigned to me", value: chats.filter((c) => !!myId && c.assignedTo?.id === myId).length },
+            ]}
+            oldest={
+              oldestChat
+                ? {
+                    id: oldestChat.id,
+                    name: visitorLabel(oldestChat),
+                    detail: oldestChat.visitorPhone || oldestChat.visitorEmail,
+                    since: oldestChat.lastMessage?.createdAt ?? oldestChat.updatedAt,
+                  }
+                : null
+            }
+            onOpen={setSelectedId}
+            empty={!list.isLoading && status === "open" && allChats.length === 0}
+            channel="website"
+          />
         )}
       </div>
     </div>

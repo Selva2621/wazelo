@@ -4,6 +4,7 @@ import {
   ContactWithRelations,
   ContactOwnerScope,
   ContactGroups,
+  PipelineMetaRow,
 } from '../../infrastructure/repositories/contact.repository';
 import { TeamRepository } from '@/modules/teams/infrastructure/repositories/team.repository';
 import { ListContactsQueryDto } from '../dto/list-contacts-query.dto';
@@ -60,6 +61,15 @@ export class ListContactsUseCase {
   async groups(orgId: string, userId: string, role: string): Promise<ContactGroups> {
     const scope = await this.resolveOwnerScope(orgId, userId, role);
     return this.contactRepository.countGroups(orgId, scope);
+  }
+
+  /**
+   * Lead pipeline card extras (last message, days in stage, open follow-up) for the given
+   * contacts. Contacts outside the caller's scope are silently left out.
+   */
+  async pipelineMeta(orgId: string, userId: string, role: string, ids: string[]): Promise<PipelineMetaRow[]> {
+    const scope = await this.resolveOwnerScope(orgId, userId, role);
+    return this.contactRepository.getPipelineMeta(orgId, ids, scope);
   }
 
   /** Which contacts the caller may see: employee = own, manager = team, admin = all. */

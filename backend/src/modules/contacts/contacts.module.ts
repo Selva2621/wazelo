@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { EncryptionService } from '@/common/services';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 // Repository
 import { ContactRepository } from './infrastructure/repositories/contact.repository';
@@ -41,6 +43,9 @@ import { TeamsModule } from '../teams/teams.module';
     // Repository
     ContactRepository,
     SavedContactGroupRepository,
+    // Decrypts message bodies for the pipeline cards' last message
+    EncryptionService,
+    MessageEncryptionService,
 
     // Use cases
     CreateContactUseCase,

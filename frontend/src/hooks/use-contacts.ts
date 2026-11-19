@@ -119,6 +119,17 @@ export function useStatusHistory(contactId: string | null) {
   });
 }
 
+/** Last message / days in stage / follow-up for a pipeline column's cards */
+export function usePipelineMeta(ids: string[]) {
+  return useQuery({
+    // Under "contacts", so moving a lead (which invalidates contactKeys.all) refreshes it
+    queryKey: ["contacts", "pipeline-meta", ids] as const,
+    queryFn: () => contactsApi.pipelineMeta(ids),
+    enabled: ids.length > 0,
+    staleTime: 30_000,
+  });
+}
+
 export function useOwnerHistory(contactId: string | null) {
   return useQuery({
     queryKey: contactKeys.ownerHistory(contactId!),

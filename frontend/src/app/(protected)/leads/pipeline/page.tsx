@@ -3,15 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Briefcase } from "lucide-react";
 import { usePipelines, useCreateDeal } from "@/hooks/use-deals";
+import { useAuthStore } from "@/stores/auth-store";
+import { SearchInput } from "@/components/ui/search-input";
+import { PipelineCard } from "@/components/leads/pipeline-card";
+import { useNow } from "@/components/super-admin/ticket-sla";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
-import { contactKeys, useContactGroups, useContacts } from "@/hooks/use-contacts";
+import { contactKeys, useBulkContactAction, useContactGroups, useContacts, usePipelineMeta } from "@/hooks/use-contacts";
+import { CloseReasonDialog } from "@/components/leads/close-reason-dialog";
+import { Button } from "@/components/ui/button";
 import { contactsApi } from "@/lib/api/contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import { CONTACT_SOURCE_LABELS, SCRAPE_SOURCE_LABELS } from "@/lib/constants/contact-sources";
@@ -61,8 +67,8 @@ function canConvertLead(contact: Contact) {
 function useMoveLead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ contact, to }: { contact: Contact; to: LeadStatus }) =>
-      contactsApi.changeStatus(contact.id, { status: to }),
+    mutationFn: ({ contact, to, reason }: { contact: Contact; to: LeadStatus; reason?: string }) =>
+      contactsApi.changeStatus(contact.id, { status: to, ...(reason ? { reason } : {}) }),
     onMutate: async ({ contact, to }) => {
       await qc.cancelQueries({ queryKey: ["contacts", "list"] });
       const snapshot = qc.getQueriesData<ContactListResponse>({ queryKey: ["contacts", "list"] });
@@ -99,72 +105,6 @@ function useMoveLead() {
   });
 }
 
-// ─── Contact Card ─────────────────────────────────────────────────────────────
-
-function PipelineCard({
-  contact,
-  onDragStart,
-  onOpen,
-  onConvert,
-  converting,
-}: {
-  contact: Contact;
-  onDragStart: (e: React.DragEvent, contact: Contact) => void;
-  onOpen: (id: string) => void;
-  onConvert?: (contact: Contact) => void;
-  converting: boolean;
-}) {
-  const rating = ratingOf(contact);
-  const name = contact.name || "Unknown";
-  const sourceLabel = sourceLabelOf(contact);
-  const canConvert = !!onConvert && canConvertLead(contact);
-
-  return (
-    <li
-      draggable
-      onDragStart={(e) => onDragStart(e, contact)}
-      className="list-none cursor-grab active:cursor-grabbing bg-surface-container-lowest rounded-xl p-3 border border-outline-variant hover:border-outline transition-colors space-y-2"
-    >
-      {/* Avatar + name: opens the lead */}
-      <button
-        type="button"
-        onClick={() => onOpen(contact.id)}
-        className="flex w-full min-w-0 items-center gap-2.5 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      >
-        <Avatar name={contact.name || contact.phoneNumber} src={contact.avatarUrl} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-body font-medium text-on-surface">{name}</span>
-          <span className="block truncate text-caption text-on-surface-variant">{contact.phoneNumber}</span>
-        </span>
-      </button>
-
-      {/* Where it came from */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sourceLabel && (
-          <span className="rounded-full bg-surface-container px-1.5 py-0.5 text-caption text-on-surface-variant">
-            {sourceLabel}
-          </span>
-        )}
-        {rating != null && (
-          <span className="text-caption font-medium text-on-surface-variant">Rating {rating.toFixed(1)}</span>
-        )}
-      </div>
-
-      {canConvert && (
-        <button
-          type="button"
-          disabled={converting}
-          onClick={() => onConvert?.(contact)}
-          className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-outline-variant/40 text-caption font-medium text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-        >
-          {converting ? <Spinner size="sm" /> : <Briefcase className="h-3 w-3" aria-hidden />}
-          {converting ? "Converting…" : "Convert to deal"}
-        </button>
-      )}
-    </li>
-  );
-}
-
 // ─── Kanban Column (desktop) ──────────────────────────────────────────────────
 
 function PipelineColumn({
@@ -180,7 +120,18 @@ function PipelineColumn({
   onTotal,
   limit,
   onShowMore,
+  next,
+  onMove,
+  selected,
+  onToggleSelect,
+  dragging,
+  onDragEnd,
 }: {
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
+  /** A card is being dragged: empty columns open up so they can take it */
+  dragging: boolean;
+  onDragEnd: () => void;
   status: LeadStatus;
   label: string;
   color: string;
@@ -188,6 +139,9 @@ function PipelineColumn({
   onDragStart: (e: React.DragEvent, contact: Contact) => void;
   onDrop: (status: LeadStatus) => void;
   onOpen: (id: string) => void;
+  /** The column to the right, for the card's "move on" button */
+  next?: { status: LeadStatus; label: string };
+  onMove: (contact: Contact, to: LeadStatus) => void;
   onConvert?: (contact: Contact) => void;
   convertingId: string | null;
   /** Reports the column's lead count (for the phone stage tabs) */
@@ -201,17 +155,29 @@ function PipelineColumn({
   const contacts = data?.contacts ?? [];
   const total = data?.total ?? 0;
   const headingId = `col-${status}`;
+  // Last message / days here / follow-up for the cards on screen (max 100 per request)
+  const ids = contacts.slice(0, 100).map((c) => c.id);
+  const { data: metaRows } = usePipelineMeta(ids);
+  const now = useNow();
+  const metaById = new Map((metaRows ?? []).map((m) => [m.contactId, m]));
+  const waitingCount = (metaRows ?? []).filter((m) => m.lastMessage?.direction === "INBOUND").length;
   const shownTotal = isLoading ? null : total;
   useEffect(() => {
     onTotal(status, shownTotal);
   }, [onTotal, status, shownTotal]);
 
+  // Empty column: a thin labelled strip, so busy columns get the room (opens up during a drag)
+  const collapsed = !isLoading && !isError && total === 0 && !dragging && !isDragOver;
+
   return (
     <section
       aria-labelledby={headingId}
-      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors ${
-        isDragOver ? "border-primary/40 bg-primary/5" : "border-outline-variant/10 bg-surface-container/40"
-      }`}
+      // Columns share the width so all five fit on a laptop screen; narrower windows scroll the board
+      className={cn(
+        "flex flex-col rounded-xl border transition-[flex-basis,background-color,border-color] duration-200 ease-standard",
+        collapsed ? "w-12 flex-none" : "min-w-[220px] flex-1 basis-0",
+        isDragOver ? "border-primary/40 bg-primary/5" : "border-outline-variant/10 bg-surface-container/40",
+      )}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
@@ -224,13 +190,30 @@ function PipelineColumn({
         onDrop(status);
       }}
     >
+      {collapsed ? (
+        <div className="flex flex-1 flex-col items-center gap-3 py-3" title={`${label}: no leads`}>
+          <div aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+          <Badge variant="muted" className="text-caption">
+            <span className="sr-only">Leads: </span>0
+          </Badge>
+          <h2 id={headingId} className="text-body font-semibold text-on-surface-variant [writing-mode:vertical-rl]">
+            {label}
+          </h2>
+        </div>
+      ) : (
+      <>
       {/* Column header */}
       <div className="flex shrink-0 items-center gap-2 border-b border-outline-variant/10 px-3.5 py-3">
         <div aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
         <h2 id={headingId} className="text-body font-semibold text-on-surface">
           {label}
         </h2>
-        <Badge variant="muted" className="ml-auto text-caption">
+        {waitingCount > 0 && (
+          <span className="ml-auto text-caption font-medium text-primary" title="Last message is from the lead">
+            {waitingCount} waiting
+          </span>
+        )}
+        <Badge variant="muted" className={waitingCount > 0 ? "text-caption" : "ml-auto text-caption"}>
           <span className="sr-only">Leads: </span>
           {isLoading ? "…" : total}
         </Badge>
@@ -250,14 +233,24 @@ function PipelineColumn({
           <p className="py-8 text-center text-label text-on-surface-variant">No leads</p>
         ) : (
           <>
-            <ul className="space-y-2">
+            {/* Grid: a column widened by collapsed neighbours shows cards side by side */}
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] items-start gap-2">
               {contacts.map((c) => (
                 <PipelineCard
                   key={c.id}
                   contact={c}
+                  meta={metaById.get(c.id)}
+                  now={now}
+                  sourceLabel={sourceLabelOf(c)}
+                  nextLabel={next?.label}
+                  onNext={next ? () => onMove(c, next.status) : undefined}
                   onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  selected={selected.has(c.id)}
+                  selectMode={selected.size > 0}
+                  onToggleSelect={() => onToggleSelect(c.id)}
                   onOpen={onOpen}
-                  onConvert={onConvert}
+                  onConvert={onConvert && canConvertLead(c) ? () => onConvert(c) : undefined}
                   converting={convertingId === c.id}
                 />
               ))}
@@ -275,6 +268,8 @@ function PipelineColumn({
           </>
         )}
       </div>
+      </>
+      )}
     </section>
   );
 }
@@ -380,15 +375,44 @@ export default function LeadPipelinePage() {
   const selectedContactId = useContactsStore((s) => s.selectedContactId);
   const detailDrawerOpen = useContactsStore((s) => s.detailDrawerOpen);
 
+  // Closing a lead first asks why (saved on the status change); every other move is instant
+  const [closing, setClosing] = useState<Contact | null>(null);
   const move = (contact: Contact, to: LeadStatus) => {
     if (contact.leadStatus === to) return;
+    if (to === "CLOSED") {
+      setClosing(contact);
+      return;
+    }
     moveLead.mutate({ contact, to });
   };
+
+  // Bulk select (desktop board): tick cards, then move them all at once
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+  useEffect(() => {
+    if (selected.size === 0) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && clearSelection();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected.size, clearSelection]);
+  const bulk = useBulkContactAction();
+  const bulkMove = (to: LeadStatus) =>
+    bulk.mutate({ action: "status", contactIds: [...selected], status: to }, { onSuccess: clearSelection });
 
   const handleDragStart = (e: React.DragEvent, contact: Contact) => {
     setDragged(contact);
     e.dataTransfer.effectAllowed = "move";
   };
+
+  const handleDragEnd = () => setDragged(null);
 
   const handleDrop = (target: LeadStatus) => {
     if (dragged) move(dragged, target);
@@ -420,8 +444,26 @@ export default function LeadPipelinePage() {
     }
   };
 
-  // All leads by default, like the dashboard; narrow by where they came from
-  const baseFilter: ListContactsParams = source ? { source } : {};
+  // Board search (name or phone, debounced) and "Mine" (leads I own); admins/managers only,
+  // employees already see just their own
+  const userId = useAuthStore((s) => s.user?.id);
+  const role = useAuthStore((s) => s.user?.role);
+  const [searchText, setSearchText] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearch(searchText.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [searchText]);
+  const [mine, setMine] = useState(false);
+  const canFilterMine = role === "ADMIN" || role === "MANAGER";
+
+  // All leads by default, like the dashboard; narrow by source, search or owner
+  const baseFilter: ListContactsParams = {
+    ...(source ? { source } : {}),
+    ...(search ? { search } : {}),
+    ...(mine && canFilterMine && userId ? { ownerId: userId } : {}),
+  };
+  const filterKey = `${source}|${search}|${mine}`;
   const sourceOptions = (groups?.sources ?? []).filter((g) => g.count > 0);
   const moved = moveLead.isSuccess ? moveLead.variables : undefined;
 
@@ -453,7 +495,8 @@ export default function LeadPipelinePage() {
     : [];
 
   return (
-    <div className="flex h-full flex-col max-lg:h-[calc(100dvh-var(--header-height))] max-lg:min-w-0 max-lg:overflow-hidden">
+    // One screen tall on every size: each column scrolls its own cards, headers stay in view
+    <div className="flex h-[calc(100dvh-var(--header-height))] min-w-0 flex-col overflow-hidden">
       {/* The iOS nav bar shows the title on mobile */}
       <PageHeader
         className="shrink-0 px-6 pt-5 pb-1 max-lg:hidden"
@@ -462,6 +505,34 @@ export default function LeadPipelinePage() {
       />
 
       <FilterBar className="shrink-0 px-6 pt-2 max-lg:px-4 max-lg:pb-1">
+        <SearchInput
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setLimits({});
+          }}
+          placeholder="Search name or phone"
+          aria-label="Search leads"
+          className="w-64 max-lg:w-full"
+        />
+        {canFilterMine && (
+          <button
+            type="button"
+            aria-pressed={mine}
+            onClick={() => {
+              setMine((v) => !v);
+              setLimits({});
+            }}
+            className={cn(
+              "inline-flex h-9 items-center rounded-lg border px-3 text-label font-medium outline-none transition-colors duration-120 ease-standard focus-visible:ring-2 focus-visible:ring-focus",
+              mine
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+            )}
+          >
+            Mine
+          </button>
+        )}
         <FilterSelect
           label="Lead source"
           active={!!source}
@@ -502,7 +573,7 @@ export default function LeadPipelinePage() {
       />
       <StagePanel idBase="lead-status" tabId={phoneStatus}>
         <PhoneLeadList
-          key={`${phoneStatus}-${source}`}
+          key={`${phoneStatus}-${filterKey}`}
           status={phoneStatus}
           baseFilter={baseFilter}
           limit={limits[phoneStatus] ?? PAGE}
@@ -514,16 +585,22 @@ export default function LeadPipelinePage() {
       </StagePanel>
 
       {/* Kanban board (desktop; phones use the list above) */}
-      <div data-tour="pipeline-board" className="flex-1 overflow-x-auto max-lg:hidden">
+      <div data-tour="pipeline-board" className="min-h-0 flex-1 overflow-x-auto max-lg:hidden">
         <div className="flex h-full min-h-0 gap-4 p-6">
-          {COLUMNS.map((col) => (
+          {COLUMNS.map((col, i) => (
             <PipelineColumn
-              // A new source filter starts each column afresh
-              key={`${col.status}-${source}`}
+              // A new filter (source, search, mine) starts each column afresh
+              key={`${col.status}-${filterKey}`}
               status={col.status}
               label={col.label}
               color={col.color}
               baseFilter={baseFilter}
+              next={COLUMNS[i + 1] && { status: COLUMNS[i + 1].status, label: COLUMNS[i + 1].label }}
+              onMove={move}
+              selected={selected}
+              onToggleSelect={toggleSelect}
+              dragging={dragged !== null}
+              onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
               onDrop={handleDrop}
               onOpen={openContactDetail}
@@ -536,6 +613,43 @@ export default function LeadPipelinePage() {
           ))}
         </div>
       </div>
+
+      {/* Bulk bar: shows while cards are ticked (desktop board only) */}
+      {selected.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Selected leads"
+          className="rise-in fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-wrap items-center gap-2 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 shadow-lg max-lg:hidden"
+        >
+          <span className="text-body font-semibold text-on-surface tabular-nums">{selected.size} selected</span>
+          <span aria-hidden className="mx-1 h-5 w-px bg-outline-variant" />
+          <span className="text-label text-on-surface-variant">Move to</span>
+          {COLUMNS.map((c) => (
+            <button
+              key={c.status}
+              type="button"
+              disabled={bulk.isPending}
+              onClick={() => bulkMove(c.status)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-variant px-2.5 text-label font-medium text-on-surface outline-none hover:bg-surface-container-low disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
+              {c.label}
+            </button>
+          ))}
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={bulk.isPending}>
+            Clear
+          </Button>
+        </div>
+      )}
+
+      <CloseReasonDialog
+        leadName={closing ? closing.name || closing.phoneNumber : null}
+        onCancel={() => setClosing(null)}
+        onConfirm={(reason) => {
+          if (closing) moveLead.mutate({ contact: closing, to: "CLOSED", reason });
+          setClosing(null);
+        }}
+      />
 
       <ActionSheet
         open={!!menuFor}

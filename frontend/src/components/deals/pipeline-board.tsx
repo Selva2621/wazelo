@@ -126,12 +126,24 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
             <span className="font-semibold tabular-nums text-on-surface">{formatCurrency(Number(analytics.totalValue))}</span>
           </div>
           {analytics.byStatus.find((s) => s.status === "WON") && (
-            <div className="flex items-baseline gap-1.5 text-body">
+            // Desktop: jumps the board to the Won column, which is often off to the right
+            <button
+              type="button"
+              onClick={() => {
+                const won = pipeline.stages.find((s) => s.isWonStage);
+                if (!won) return;
+                document
+                  .getElementById(`deal-stage-col-${won.id}`)
+                  ?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+              }}
+              className="flex items-baseline gap-1.5 rounded-md text-body outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus max-lg:pointer-events-none"
+              title="Show the Won column"
+            >
               <span className="text-on-surface-variant">Won</span>
               <span className="font-semibold tabular-nums text-success">
                 {analytics.byStatus.find((s) => s.status === "WON")!.count}
               </span>
-            </div>
+            </button>
           )}
           <div className="ml-auto max-lg:hidden">
             <Button size="sm" onClick={() => setShowCreateModal(true)}>
@@ -209,7 +221,7 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
 
       {/* Kanban board (desktop; phones use the list above) */}
       <div data-tour="deals-board" className="flex-1 overflow-x-auto max-lg:hidden">
-        <div className="flex gap-4 p-6 min-h-0 h-full">
+        <div className="flex gap-3 p-6 min-h-0 h-full">
           {pipeline.stages.map((stage) => {
             const stageDeals = dealsByStage.get(stage.id) || [];
             const stageAnalytics = analytics?.byStage.find((s) => s.stageId === stage.id);
@@ -217,7 +229,9 @@ export function PipelineBoard({ pipeline, mobileMore }: PipelineBoardProps) {
             return (
               <div
                 key={stage.id}
-                className="flex flex-col w-[280px] shrink-0 rounded-xl bg-surface-container/40 border border-outline-variant/10"
+                id={`deal-stage-col-${stage.id}`}
+                // Narrow columns so more stages fit; they grow to fill a wide screen
+                className="flex flex-col w-[240px] min-w-[240px] max-w-[300px] flex-1 rounded-xl bg-surface-container/40 border border-outline-variant/10"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage)}
               >

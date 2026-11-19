@@ -6,7 +6,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useCsatStats, useCsatSurveys } from "@/hooks/use-csat";
 import { useUsers } from "@/hooks/use-users";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { StartHint, ZeroNote } from "@/components/ui/start-hint";
 import { Badge } from "@/components/ui/badge";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { ProductFilterSelect } from "@/components/ui/product-filter-select";
@@ -135,14 +135,14 @@ export default function CsatPage() {
         )}
 
         {isEmpty && !statsLoading && (
-          <EmptyState
-            icon={<Star className="h-12 w-12" />}
+          <StartHint
+            icon={<Star />}
             title="No survey responses yet"
-            description="Send CSAT surveys after conversations close to start collecting customer feedback."
+            description="Surveys go out after a chat closes."
           />
         )}
 
-        {stats && !isEmpty && (
+        {stats && (
           <>
             {/* KPI Cards */}
             <div data-tour="csat-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -154,7 +154,9 @@ export default function CsatPage() {
                   </span>
                 </div>
                 <p className="text-headline font-semibold text-on-surface tabular-nums">
-                  {stats.avgRating.toFixed(1)}
+                  {stats.totalResponses > 0 && Number.isFinite(stats.avgRating)
+                    ? stats.avgRating.toFixed(1)
+                    : "—"}
                 </p>
                 <p className="text-label text-on-surface-variant/60">out of 5.0</p>
               </div>
@@ -238,9 +240,7 @@ export default function CsatPage() {
                   By agent
                 </h2>
                 {stats.byAgent.length === 0 ? (
-                  <p className="text-body text-on-surface-variant/40 text-center py-4">
-                    No agent data yet
-                  </p>
+                  <ZeroNote>No agent data yet</ZeroNote>
                 ) : (
                   <div className="space-y-3">
                     {stats.byAgent.map((a) => (
@@ -252,7 +252,7 @@ export default function CsatPage() {
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 text-warning fill-warning" />
                             <span className="text-body font-semibold text-on-surface tabular-nums">
-                              {a._avg.rating.toFixed(1)}
+                              {Number.isFinite(a._avg.rating) ? a._avg.rating.toFixed(1) : "—"}
                             </span>
                           </div>
                           <span className="text-caption text-on-surface-variant/50 tabular-nums">

@@ -100,6 +100,11 @@ export const messagingTours: TourDef[] = [
         },
       },
       {
+        target: "inbox-overview",
+        title: "Inbox overview",
+        body: "With no chat open you see unread and open counts, plus the customer who has waited longest. Open chat jumps straight to them.",
+      },
+      {
         target: "chat-composer",
         ifMissing: "center",
         title: "Reply",

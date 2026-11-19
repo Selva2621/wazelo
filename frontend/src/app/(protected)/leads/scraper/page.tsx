@@ -542,7 +542,7 @@ export default function LeadScraperPage() {
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8 max-lg:space-y-6">
+    <div className="p-6 space-y-8 max-lg:space-y-6">
       {/* Header (the iOS nav bar shows the title on mobile) */}
       <PageHeader className="max-lg:hidden" title="Lead scraper" description="Search a source, review, then import" />
 

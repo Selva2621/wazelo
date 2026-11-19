@@ -1,6 +1,7 @@
 "use client";
 
 import type { SlaPolicy, SlaPerformanceResponse } from "@/lib/types/sla";
+import { ZeroNote } from "@/components/ui/start-hint";
 
 function formatMs(ms: number): string {
   if (ms < 1000) return "<1s";
@@ -36,24 +37,22 @@ export function SlaResponseChart({
     return (
       <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
         <h3 className="text-body font-medium text-on-surface-variant mb-4">
-          Response Time vs SLA
+          Response time vs SLA
         </h3>
-        <div className="h-40 flex items-center justify-center text-body text-on-surface-variant/40">
-          No response data for this period
-        </div>
+        <ZeroNote className="h-40">No response data yet</ZeroNote>
       </div>
     );
   }
 
   const maxMs = Math.max(
-    ...avgResponseByUser.map((u) => u.avgMs),
+    ...avgResponseByUser.map((u) => u.avgMs || 0),
     thresholdMs ?? 0,
   );
 
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
       <h3 className="text-body font-medium text-on-surface-variant mb-4">
-        Response Time vs SLA
+        Response time vs SLA
       </h3>
 
       <div className="relative flex items-end gap-2 h-40">
@@ -61,7 +60,7 @@ export function SlaResponseChart({
         {thresholdMs && (
           <div
             className="absolute left-0 right-0 border-t-2 border-dashed border-error/40 z-10"
-            style={{ bottom: `${(thresholdMs / maxMs) * 100}%` }}
+            style={{ bottom: `${maxMs > 0 ? (thresholdMs / maxMs) * 100 : 0}%` }}
           >
             <span className="absolute -top-4 right-0 text-caption text-error/60">
               SLA: {formatMs(thresholdMs)}
@@ -73,7 +72,7 @@ export function SlaResponseChart({
         {warningMs && (
           <div
             className="absolute left-0 right-0 border-t border-dashed border-warning/30 z-10"
-            style={{ bottom: `${(warningMs / maxMs) * 100}%` }}
+            style={{ bottom: `${maxMs > 0 ? Math.min(100, (warningMs / maxMs) * 100) : 0}%` }}
           >
             <span className="absolute -top-4 right-0 text-caption text-warning/50">
               Warn: {formatMs(warningMs)}

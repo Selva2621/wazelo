@@ -143,7 +143,7 @@ export function SlaTeamTable({ performance, users }: SlaTeamTableProps) {
   return (
     <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
       <h3 className="text-body font-medium text-on-surface-variant mb-4">
-        Team SLA Performance
+        Team SLA performance
       </h3>
 
       <DataTable

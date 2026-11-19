@@ -137,6 +137,8 @@ import {
 import type { SlaPolicy, CreateSlaPolicyRequest, UpdateSlaPolicyRequest } from "@/lib/types/sla";
 import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/layout/page-header";
+import { FormWithRail } from "@/components/layout/form-with-rail";
+import { WorkspaceRail } from "@/components/settings/workspace-rail";
 import { useProductTerms } from "@/lib/product-terms";
 
 type SettingsTab =
@@ -157,7 +159,7 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
     label: "Workspace",
     tabs: [
       { id: "organization", label: "Organization", icon: Building2 },
-      { id: "working-hours", label: "Working Hours", icon: Clock },
+      { id: "working-hours", label: "Working hours", icon: Clock },
       { id: "notifications", label: "Notifications", icon: Bell },
     ],
   },
@@ -172,23 +174,26 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
     label: "AI",
     tabs: [
       { id: "features", label: "Features & AI", icon: ToggleLeft },
-      { id: "ai-memory", label: "Business Knowledge", icon: Zap },
+      { id: "ai-memory", label: "Business knowledge", icon: Zap },
     ],
   },
   {
     label: "Service",
     tabs: [
-      { id: "sla", label: "SLA Policies", icon: Shield },
+      { id: "sla", label: "SLA policies", icon: Shield },
     ],
   },
   {
     label: "Developers",
     tabs: [
-      { id: "developer-api", label: "API Keys & Docs", icon: Code },
+      { id: "developer-api", label: "API keys & docs", icon: Code },
       { id: "webhooks", label: "Webhooks", icon: Webhook },
     ],
   },
 ];
+
+// Tabs with tables and logs that use the whole content column (no side panel)
+const FULL_WIDTH_TABS: SettingsTab[] = ["developer-api", "webhooks", "sla"];
 
 // Icon tile colours for the mobile section list
 const MOBILE_TAB_TILE: Record<SettingsTab, string> = {
@@ -321,29 +326,33 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        {/* Forms read best at a fixed width; tabs with tables and logs keep the full column */}
-        <div
-          className={cn(
-            "flex-1 min-w-0",
-            !["developer-api", "webhooks", "sla"].includes(activeTab) && "max-w-3xl",
-            !tabParam && "max-lg:hidden",
-          )}
-        >
-          {activeTab === "organization" && <OrganizationSection />}
-          {activeTab === "ai-memory" && <AiMemorySection />}
-          {activeTab === "whatsapp" && <WhatsAppSection />}
-          {activeTab === "working-hours" && <WorkingHoursSection />}
-          {activeTab === "features" && (
+        {/* Forms keep a readable width with a workspace panel beside them; tabs with tables and logs keep the full column */}
+        <div className={cn("flex-1 min-w-0", !tabParam && "max-lg:hidden")}>
+          {FULL_WIDTH_TABS.includes(activeTab) ? (
             <>
-              <FeatureFlagsSection />
-              <AiSettingsSection />
+              {activeTab === "webhooks" && <WebhooksSection />}
+              {activeTab === "developer-api" && <DeveloperApiSection />}
+              {activeTab === "sla" && <SlaSection />}
             </>
+          ) : (
+            <FormWithRail
+              className="max-w-3xl xl:max-w-[68rem] max-lg:[&>aside]:hidden"
+              rail={<WorkspaceRail />}
+            >
+              {activeTab === "organization" && <OrganizationSection />}
+              {activeTab === "ai-memory" && <AiMemorySection />}
+              {activeTab === "whatsapp" && <WhatsAppSection />}
+              {activeTab === "working-hours" && <WorkingHoursSection />}
+              {activeTab === "features" && (
+                <div>
+                  <FeatureFlagsSection />
+                  <AiSettingsSection />
+                </div>
+              )}
+              {activeTab === "notifications" && <NotificationsSection />}
+              {activeTab === "shopify" && <ShopifySection />}
+            </FormWithRail>
           )}
-          {activeTab === "notifications" && <NotificationsSection />}
-          {activeTab === "webhooks" && <WebhooksSection />}
-          {activeTab === "developer-api" && <DeveloperApiSection />}
-          {activeTab === "sla" && <SlaSection />}
-          {activeTab === "shopify" && <ShopifySection />}
         </div>
       </div>
     </div>
@@ -422,14 +431,14 @@ function OrganizationSection() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
           <Building2 className="h-5 w-5" />
-          Organization Settings
+          Organization
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Org Name */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Organization Name
+          <label className="text-label font-medium text-on-surface-variant">
+            Organization name
           </label>
           <input
             type="text"
@@ -445,7 +454,7 @@ function OrganizationSection() {
           <div className="space-y-1.5">
             <label
               htmlFor="org-country"
-              className="text-label font-medium text-on-surface-variant uppercase tracking-wider"
+              className="text-label font-medium text-on-surface-variant"
             >
               Country
             </label>
@@ -467,7 +476,7 @@ function OrganizationSection() {
           <div className="space-y-1.5">
             <label
               htmlFor="org-currency"
-              className="text-label font-medium text-on-surface-variant uppercase tracking-wider"
+              className="text-label font-medium text-on-surface-variant"
             >
               Currency
             </label>
@@ -484,7 +493,7 @@ function OrganizationSection() {
 
         {/* Timezone */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-label font-medium text-on-surface-variant flex items-center gap-1.5">
             <Globe className="h-3.5 w-3.5" />
             Timezone
           </label>
@@ -499,7 +508,7 @@ function OrganizationSection() {
 
         {/* Language */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+          <label className="text-label font-medium text-on-surface-variant">
             Language
           </label>
           <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
@@ -513,8 +522,8 @@ function OrganizationSection() {
 
         {/* Business Profile */}
         <div className="border-t border-outline-variant/20 pt-5 mt-2">
-          <p className="text-label font-semibold text-on-surface-variant uppercase tracking-wider mb-4">
-            Business Profile
+          <p className="text-label font-semibold text-on-surface-variant mb-4">
+            Business profile
           </p>
           <div className="space-y-4">
             {isFreelancer && (
@@ -899,9 +908,9 @@ function WhatsAppSection() {
 
         {/* Message Delay */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-label font-medium text-on-surface-variant flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
-            Message Delay (ms)
+            Message delay (ms)
           </label>
           <input
             type="number"
@@ -919,8 +928,8 @@ function WhatsAppSection() {
 
         {/* Retry Limit */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Retry Limit
+          <label className="text-label font-medium text-on-surface-variant">
+            Retry limit
           </label>
           <input
             type="number"
@@ -961,8 +970,8 @@ function WhatsAppSection() {
 
         {/* Session Timeout */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Session Timeout (seconds)
+          <label className="text-label font-medium text-on-surface-variant">
+            Session timeout (seconds)
           </label>
           <input
             type="number"
@@ -1596,7 +1605,7 @@ function WebhooksSection() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Endpoint URL
               </label>
               <input
@@ -1609,7 +1618,7 @@ function WebhooksSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Description (optional)
               </label>
               <input
@@ -1622,7 +1631,7 @@ function WebhooksSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Events
               </label>
               <div className="flex flex-wrap gap-2">
@@ -1894,8 +1903,8 @@ function WebhookCard({
         <div className="border-t border-outline-variant/10 px-4 py-3 space-y-4">
           {/* Signing Secret */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-              Signing Secret
+            <label className="text-label font-medium text-on-surface-variant">
+              Signing secret
             </label>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-label font-mono bg-surface-container-lowest border border-outline-variant/20 rounded px-3 py-2 text-on-surface">
@@ -1924,13 +1933,13 @@ function WebhookCard({
           {/* Config details */}
           <div className="grid grid-cols-3 gap-4 text-label">
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
-                Max Retries
+              <p className="text-on-surface-variant/60 text-caption">
+                Max retries
               </p>
               <p className="text-on-surface font-medium">{webhook.maxRetries}</p>
             </div>
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
+              <p className="text-on-surface-variant/60 text-caption">
                 Timeout
               </p>
               <p className="text-on-surface font-medium">
@@ -1938,8 +1947,8 @@ function WebhookCard({
               </p>
             </div>
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
-                Failure Count
+              <p className="text-on-surface-variant/60 text-caption">
+                Failure count
               </p>
               <p
                 className={`font-medium ${webhook.failureCount > 0 ? "text-error" : "text-on-surface"}`}
@@ -1994,8 +2003,8 @@ function WebhookDeliveryLogs({ webhookId }: { webhookId: string }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-        Recent Deliveries
+      <p className="text-label font-medium text-on-surface-variant">
+        Recent deliveries
       </p>
       <DataTable
         label="Webhook deliveries"
@@ -2361,7 +2370,7 @@ function DeveloperApiSection() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-sm:grid-cols-2 max-sm:gap-3">
                 <Card>
                   <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Messages Used</p>
+                    <p className="text-label font-medium text-on-surface-variant">Messages used</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">
                       {(stats.messagesUsed ?? 0).toLocaleString()}
                       <span className="text-body font-normal text-on-surface-variant">
@@ -2382,21 +2391,21 @@ function DeveloperApiSection() {
                 </Card>
                 <Card>
                   <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Active Sessions</p>
+                    <p className="text-label font-medium text-on-surface-variant">Active sessions</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeSessions}</p>
                     <p className="text-label text-on-surface-variant mt-1">WhatsApp connected</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">API Keys</p>
+                    <p className="text-label font-medium text-on-surface-variant">API Keys</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeApiKeys}</p>
                     <p className="text-label text-on-surface-variant mt-1">Active keys</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Contacts</p>
+                    <p className="text-label font-medium text-on-surface-variant">Contacts</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{(stats.totalContacts ?? 0).toLocaleString()}</p>
                     <p className="text-label text-on-surface-variant mt-1">Total contacts</p>
                   </CardContent>
@@ -2958,8 +2967,8 @@ function ShopifyWebhookUrlCard({ orgId }: { orgId: string }) {
 
   return (
     <div className="rounded-xl bg-surface-container border border-outline-variant/10 p-4 space-y-2">
-      <p className="text-label font-semibold text-on-surface-variant uppercase tracking-wider">
-        Your Shopify Webhook URL
+      <p className="text-label font-semibold text-on-surface-variant">
+        Your Shopify webhook URL
       </p>
       <p className="text-caption text-on-surface-variant/60 leading-relaxed">
         Register this URL in Shopify Admin → Settings → Notifications → Webhooks.
@@ -3031,7 +3040,7 @@ function ShopifyIntegrationForm({ existing, onSuccess, onCancel }: { existing?: 
         <p className="text-caption text-on-surface-variant/50">Shopify Admin → Apps → Develop apps → Admin API access token. Requires: <code className="text-primary">read_orders</code>, <code className="text-primary">read_customers</code>.</p>
       </div>
       <div className="space-y-1.5">
-        <label className="text-label font-medium text-on-surface-variant">Webhook Signing Secret {!isEditing && <span className="text-error">*</span>}</label>
+        <label className="text-label font-medium text-on-surface-variant">Webhook signing secret {!isEditing && <span className="text-error">*</span>}</label>
         <div className="relative">
           <input type={showSecret ? "text" : "password"} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} required={!isEditing} placeholder={isEditing ? "Leave blank to keep existing" : "Your webhook signing secret"} className={`${inputCls} pr-10`} />
           <button aria-label={showSecret ? "Hide secret" : "Show secret"} type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
@@ -3148,7 +3157,7 @@ function ShopifySection() {
             </Badge>
           </div>
           <div className="px-4 py-3 space-y-2.5 border-b border-outline-variant/8">
-            <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">Listening For</p>
+            <p className="text-caption font-semibold text-on-surface-variant/60">Listening for</p>
             {SHOPIFY_EVENTS.map((ev) => {
               const Icon = ev.icon;
               return (
@@ -3230,7 +3239,7 @@ function ShopifySection() {
 
       {/* Setup guide */}
       <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-4 space-y-2">
-        <p className="text-label font-semibold text-on-surface-variant/60 uppercase tracking-wider">Setup Guide</p>
+        <p className="text-label font-semibold text-on-surface-variant/60">Setup guide</p>
         <ol className="space-y-2 text-label text-on-surface-variant leading-relaxed list-decimal list-inside">
           <li>Go to Shopify Admin → Apps → Develop apps → Create an app</li>
           <li>Under Admin API, add scopes: <code className="text-primary bg-primary/8 px-1 rounded">read_orders</code> <code className="text-primary bg-primary/8 px-1 rounded">read_customers</code></li>

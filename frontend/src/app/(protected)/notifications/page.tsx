@@ -65,7 +65,8 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="ios-page mx-auto w-full max-w-2xl pb-6 lg:px-6 lg:py-6">
+    // Phones: centred column; desktop: full width like every other list page
+    <div className="ios-page mx-auto w-full max-w-2xl pb-6 lg:mx-0 lg:max-w-none lg:px-6 lg:py-6">
       <MobileNavActions>
         <button
           type="button"

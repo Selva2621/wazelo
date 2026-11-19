@@ -224,7 +224,7 @@ export default function RolesPermissionsPage() {
                         {role === "ADMIN" && (
                           <Lock className="h-3 w-3 text-on-surface-variant/60" />
                         )}
-                        {role}
+                        {role.charAt(0) + role.slice(1).toLowerCase()}
                       </div>
                     </th>
                   ))}
