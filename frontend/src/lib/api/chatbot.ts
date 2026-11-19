@@ -9,7 +9,75 @@ import type {
   SimulateFlowResponse,
 } from "@/lib/types/chatbot";
 
+/** How the AI bot hands chats over to the team, and the team's opening hours. */
+export interface BotBehavior {
+  handoffMessage: string;
+  hoursEnabled: boolean;
+  /** Minutes from midnight, in `timezone` */
+  openMinute: number;
+  closeMinute: number;
+  /** 0 = Sunday … 6 = Saturday */
+  openDays: number[];
+  afterHoursMessage: string;
+  pauseHours: number;
+  /** Website chat: MANUAL = everyone online is alerted, first to accept takes it; AUTO = one member at a time */
+  handoffMode: "MANUAL" | "AUTO";
+  /** Auto-assign: seconds a member has to accept before the next one is asked */
+  acceptTimeoutSec: number;
+  /** Minutes before a visitor nobody took is offered a follow-up */
+  waitTimeoutMin: number;
+  timezone: string;
+  openNow: boolean;
+}
+
+export type BotBehaviorInput = Partial<Omit<BotBehavior, "timezone" | "openNow">>;
+
+/** Bot health for the last N days, from the AI reply trail (no message text) */
+export interface BotInsights {
+  days: number;
+  total: number;
+  answered: number;
+  notFound: number;
+  handedOff: number;
+  blocked: number;
+  limited: number;
+  noCredits: number;
+  failed: number;
+  /** answered ÷ times the bot tried; null when it didn't try */
+  answerRate: number | null;
+  tokens: number;
+  credits: number;
+  suspicious: {
+    id: string;
+    channel: "WHATSAPP" | "WIDGET" | string;
+    outcome: "BLOCKED" | "LIMITED";
+    reason: string | null;
+    conversationId: string | null;
+    contactPhone: string | null;
+    repeats: number;
+    at: string;
+  }[];
+}
+
+export interface ChatBotState {
+  pausedUntil: string | null;
+}
+
 export const chatbotApi = {
+  getInsights: (days = 7) => apiClient.get<BotInsights>("/chatbot/insights", { params: { days } }).then((r) => r.data),
+
+  getBehavior: () => apiClient.get<BotBehavior>("/chatbot/behavior").then((r) => r.data),
+
+  /** Auto-replies in one chat: paused while a person handles it (null = bots may answer) */
+  getChatBot: (conversationId: string) =>
+    apiClient.get<ChatBotState>(`/chatbot/conversations/${conversationId}/bot`).then((r) => r.data),
+  pauseChatBot: (conversationId: string) =>
+    apiClient.post<ChatBotState>(`/chatbot/conversations/${conversationId}/bot/pause`).then((r) => r.data),
+  resumeChatBot: (conversationId: string) =>
+    apiClient.post<ChatBotState>(`/chatbot/conversations/${conversationId}/bot/resume`).then((r) => r.data),
+
+  saveBehavior: (data: BotBehaviorInput) => apiClient.put<BotBehavior>("/chatbot/behavior", data).then((r) => r.data),
+
   listFlows: () =>
     apiClient.get<ChatbotFlow[]>("/chatbot/flows").then((r) => r.data),
 

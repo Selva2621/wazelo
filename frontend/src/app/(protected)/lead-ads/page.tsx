@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs } from "@/components/ui/tabs";
 import { SearchInput } from "@/components/ui/search-input";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { LeadAdsStatsCards } from "@/components/lead-ads/lead-ads-stats-cards";
 import { LeadAdsPlatformBreakdown } from "@/components/lead-ads/lead-ads-platform-breakdown";
@@ -14,6 +16,9 @@ import { LeadAdsTopCampaigns } from "@/components/lead-ads/lead-ads-top-campaign
 import { LeadAdsDailyChart } from "@/components/lead-ads/lead-ads-daily-chart";
 import { LeadAdsEntryTable } from "@/components/lead-ads/lead-ads-entry-table";
 import { LeadAdsWebhookCard } from "@/components/lead-ads/lead-ads-webhook-card";
+import { SimulateLeadDialog } from "@/components/lead-ads/simulate-lead-dialog";
+import { LeadAdsFormsCard } from "@/components/lead-ads/lead-ads-forms-card";
+import { Button } from "@/components/ui/button";
 import {
   useLeadAdEntries,
   useLeadAdAnalytics,
@@ -29,8 +34,8 @@ import { PAGE_SIZE } from "@/lib/constants";
 
 type StatusTab = "all" | "COMPLETED" | "FAILED" | "PENDING";
 
-function periodToDateRange(period: AnalyticsPeriod): { startDate: string; endDate: string } {
-  const end = new Date();
+/** No end date: "up to now", so leads arriving while the page is open still show */
+function periodToDateRange(period: AnalyticsPeriod): { startDate: string } {
   const start = new Date();
   switch (period) {
     case "day":
@@ -44,7 +49,7 @@ function periodToDateRange(period: AnalyticsPeriod): { startDate: string; endDat
       start.setDate(start.getDate() - 30);
       break;
   }
-  return { startDate: start.toISOString(), endDate: end.toISOString() };
+  return { startDate: start.toISOString() };
 }
 
 export default function LeadAdsPage() {
@@ -53,6 +58,9 @@ export default function LeadAdsPage() {
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "ADMIN";
+  // Test leads without Meta: local/dev builds only (the API refuses them in production too)
+  const canSimulate = isAdmin && process.env.NODE_ENV !== "production";
+  const [simulateOpen, setSimulateOpen] = useState(false);
 
   const [period, setPeriod] = useState<AnalyticsPeriod>("month");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
@@ -91,7 +99,7 @@ export default function LeadAdsPage() {
   ], []);
 
   const platformTabs = useMemo(() => [
-    { id: "all", label: "All Platforms" },
+    { id: "all", label: "All platforms" },
     { id: "facebook", label: "Facebook" },
     { id: "instagram", label: "Instagram" },
     { id: "whatsapp", label: "WhatsApp" },
@@ -102,18 +110,36 @@ export default function LeadAdsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* ─── Header ─── */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">
-            Lead Ads
-          </h1>
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:px-4 max-lg:pt-1 max-lg:pb-3">
+        {/* Title: the iOS nav bar shows it on mobile */}
+        <PageHeader
+          className="max-lg:hidden"
+          title="Lead ads"
+          count={analytics?.totalLeads}
+          actions={
+            <>
+              {canSimulate && (
+                <Button variant="secondary" size="sm" onClick={() => setSimulateOpen(true)}>
+                  Send test lead
+                </Button>
+              )}
+              <PeriodSelector value={period} onChange={setPeriod} />
+            </>
+          }
+        />
+        <div className="lg:hidden flex items-center justify-between gap-2">
+          <PeriodSelector value={period} onChange={setPeriod} />
+          {canSimulate && (
+            <Button variant="secondary" size="sm" onClick={() => setSimulateOpen(true)}>
+              Test lead
+            </Button>
+          )}
         </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
+        {canSimulate && <SimulateLeadDialog open={simulateOpen} onClose={() => setSimulateOpen(false)} />}
       </div>
 
       {/* ─── Content ─── */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 max-lg:px-4">
         {/* Loading */}
         {analyticsLoading && !analytics && (
           <div className="flex items-center justify-center py-20">
@@ -123,7 +149,7 @@ export default function LeadAdsPage() {
 
         {/* Error */}
         {isError && (
-          <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
+          <div className="rounded-2xl bg-error-container p-4 text-center">
             <p className="text-body text-error mb-2">
               Failed to load lead ads data
             </p>
@@ -161,25 +187,31 @@ export default function LeadAdsPage() {
               <LeadAdsDailyChart analytics={analytics} />
             )}
 
+            {/* ─── Lead forms → product + welcome ─── */}
+            <LeadAdsFormsCard canLink={isAdmin} />
+
             {/* ─── Filters Toolbar ─── */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex-1 min-w-[200px] max-w-xs">
+            <div className="flex items-center gap-3 flex-wrap max-lg:gap-2">
+              <div className="flex-1 min-w-[200px] max-w-xs max-lg:max-w-none max-lg:basis-full">
                 <SearchInput
-                  placeholder="Search by name, campaign..."
+                  placeholder="Search by name or campaign"
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
-              <Tabs
-                tabs={platformTabs}
-                activeTab={platformFilter}
-                onTabChange={(val) => { setPlatformFilter(val as LeadAdPlatform | "all"); setPage(1); }}
-              />
-              <Tabs
-                tabs={statusTabs}
-                activeTab={statusTab}
-                onTabChange={(val) => { setStatusTab(val as StatusTab); setPage(1); }}
-              />
+              <FilterBar className="mobile-scroll-x">
+                <Tabs
+                  tabs={platformTabs}
+                  activeTab={platformFilter}
+                  onTabChange={(val) => { setPlatformFilter(val as LeadAdPlatform | "all"); setPage(1); }}
+                />
+                <FilterBarDivider />
+                <Tabs
+                  tabs={statusTabs}
+                  activeTab={statusTab}
+                  onTabChange={(val) => { setStatusTab(val as StatusTab); setPage(1); }}
+                />
+              </FilterBar>
             </div>
 
             {/* ─── Entries Table ─── */}
@@ -188,7 +220,7 @@ export default function LeadAdsPage() {
                 <Spinner size="lg" />
               </div>
             ) : entriesData ? (
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
                 <LeadAdsEntryTable
                   entries={entriesData.data}
                   onRetry={isAdmin ? (id) => retryLead.mutate(id) : undefined}

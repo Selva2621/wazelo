@@ -257,7 +257,12 @@ export interface PlatformSettings {
     /** The backend's own callback URL, to paste into Google Cloud Console */
     suggestedRedirectUri: string;
   };
+  /** Per org type: may new workspaces pick it, and how many live orgs have it */
+  orgTypes: Record<SetupOrgType, { setupEnabled: boolean; orgCount: number }>;
 }
+
+/** Org types offered on the "How will you use Wazelo?" setup screen */
+export type SetupOrgType = "TEAM" | "FREELANCER";
 
 export interface UpdatePlatformSettingsBody {
   googleSignupEnabled?: boolean;
@@ -265,6 +270,8 @@ export interface UpdatePlatformSettingsBody {
   /** Write-only: "" keeps the stored secret, null removes it */
   googleClientSecret?: string | null;
   googleRedirectUri?: string;
+  teamSetupEnabled?: boolean;
+  freelancerSetupEnabled?: boolean;
 }
 
 export const superAdminApi = {
@@ -648,7 +655,52 @@ export const superAdminApi = {
 
   deactivateCoupon: (id: string) =>
     superAdminClient.post<{ data: Coupon }>(`/super-admin/coupons/${id}/deactivate`).then((r) => r.data.data),
+
+  listFreelancerTypes: () =>
+    superAdminClient.get<{ data: FreelancerTypeList }>("/super-admin/freelancer-types").then((r) => r.data.data),
+
+  /** 400 when the name clashes with a built-in or existing type */
+  createFreelancerType: (body: FreelancerTypeBody) =>
+    superAdminClient.post<{ data: FreelancerTypeEntry }>("/super-admin/freelancer-types", body).then((r) => r.data.data),
+
+  updateFreelancerType: (id: string, body: Partial<FreelancerTypeBody> & { isActive?: boolean }) =>
+    superAdminClient.patch<{ data: FreelancerTypeEntry }>(`/super-admin/freelancer-types/${id}`, body).then((r) => r.data.data),
+
+  deleteFreelancerType: (id: string) => superAdminClient.delete(`/super-admin/freelancer-types/${id}`).then(() => undefined),
 };
+
+export interface FreelancerPitch {
+  intro: string;
+  portfolio: string;
+  followup: string;
+  packages: string;
+}
+
+/** A freelancer line of work a super admin added */
+export interface FreelancerTypeEntry {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  serviceLabel: string;
+  keywords: string[];
+  pitch: FreelancerPitch;
+  isActive: boolean;
+  usageCount: number;
+}
+
+export interface FreelancerTypeBody {
+  label: string;
+  description: string;
+  serviceLabel: string;
+  keywords: string[];
+  pitch: FreelancerPitch;
+}
+
+export interface FreelancerTypeList {
+  builtIn: { key: string; label: string; description: string; keywords: string[]; popular: boolean }[];
+  custom: FreelancerTypeEntry[];
+}
 
 export type CreditEntryKind = "GRANT" | "APPLIED" | "REVOKED";
 

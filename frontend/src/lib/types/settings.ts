@@ -8,6 +8,10 @@ export interface OrgSettings {
   name: string;
   logo?: string;
   timezone: string;
+  /** ISO country code — numbers without a country code are read as this country's */
+  country: string;
+  /** ISO currency code — default for deals and products */
+  currency: string;
   language: string;
   industry?: string;
   description?: string;
@@ -17,17 +21,35 @@ export interface OrgSettings {
   freelancerTypes?: string[];
   /** Their own description of the service, when freelancerTypes includes OTHER */
   freelancerService?: string | null;
+  /** Saved cards' services plus the OTHER text, in words, for intro/outreach copy (null when all built in) */
+  freelancerServiceLabel?: string | null;
   brandColors?: {
     primary?: string;
     secondary?: string;
   };
+  /** Which org types a super admin has left open to new setups */
+  orgTypeSetup?: { TEAM: boolean; FREELANCER: boolean };
   updatedAt: string;
+}
+
+/** A freelancer line of work offered in setup (built in, or added by a super admin) */
+export interface FreelancerCard {
+  key: string;
+  label: string;
+  description: string;
+  /** Search words */
+  keywords: string[];
+  /** Shown before "Show all" */
+  popular: boolean;
+  builtIn: boolean;
 }
 
 export interface UpdateOrgSettingsRequest {
   name?: string;
   logo?: string;
   timezone?: string;
+  country?: string;
+  currency?: string;
   language?: string;
   industry?: string;
   description?: string;
@@ -152,6 +174,14 @@ export const WEBHOOK_EVENT_TYPES = [
   'MESSAGE_FAILED',
   'CONTACT_CREATED',
   'CONTACT_UPDATED',
+  'CONTACT_ASSIGNED',
+  'LEAD_STATUS_CHANGED',
+  'CONTACT_TAG_ADDED',
+  'CONTACT_TAG_REMOVED',
+  'CONTACT_NOTE_ADDED',
+  'CONVERSATION_ASSIGNED',
+  'CONVERSATION_CLOSED',
+  'DEAL_STAGE_CHANGED',
   'CAMPAIGN_COMPLETED',
   'CAMPAIGN_FAILED',
   'PAYMENT_SUCCEEDED',

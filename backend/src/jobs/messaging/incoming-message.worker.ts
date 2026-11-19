@@ -7,6 +7,7 @@ import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/rep
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { isOptOutReply } from '@/modules/messages/domain/services/send-safety.policy';
+import { AutoCreateContactUseCase } from '@/modules/contacts/application/use-cases/auto-create-contact.use-case';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import {
@@ -27,6 +28,7 @@ export interface IncomingMessageJobData {
   mediaMimeType?: string;
   mediaSize?: number;
   timestamp: number;
+  fromMe?: boolean;
 }
 
 /**
@@ -56,6 +58,7 @@ export class IncomingMessageWorker implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
+    private readonly autoCreateContact: AutoCreateContactUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -68,6 +71,10 @@ export class IncomingMessageWorker implements OnModuleInit {
 
   private async handle(data: IncomingMessageJobData, jobId: string): Promise<void> {
     const { sessionId, whatsappMessageId, contactPhone } = data;
+    const isOutbound = data.fromMe === true;
+    const direction = isOutbound
+      ? MessageDirection.OUTBOUND
+      : MessageDirection.INBOUND;
 
     // 1. Deduplication by whatsappMessageId (AC2 — idempotency)
     const existing = await this.messageRepo.findByWhatsAppMessageId(whatsappMessageId);
@@ -105,7 +112,7 @@ export class IncomingMessageWorker implements OnModuleInit {
       orgId,
       sessionId,
       conversationId: conversation.id,
-      direction: MessageDirection.INBOUND,
+      direction,
       type: data.type as MessageType,
       contactPhone,
       contactName: data.contactName,
@@ -122,7 +129,7 @@ export class IncomingMessageWorker implements OnModuleInit {
     await this.messageEventRepo.record({
       messageId: message.id,
       orgId,
-      status: MessageStatus.DELIVERED,
+      status: isOutbound ? MessageStatus.SENT : MessageStatus.DELIVERED,
       metadata: {
         whatsappMessageId,
         jobId,
@@ -135,12 +142,12 @@ export class IncomingMessageWorker implements OnModuleInit {
     await this.conversationRepo.updateLastMessage(
       conversation.id,
       data.body || null,
-      true, // isInbound → increments unreadCount
+      !isOutbound,
     );
 
     // 7b. "STOP" / "unsubscribe" opts the contact out of bulk messages. Ignoring
     // these is how numbers get reported — and opt-outs feed the send-health check.
-    if (data.type === 'TEXT' && isOptOutReply(data.body)) {
+    if (!isOutbound && data.type === 'TEXT' && isOptOutReply(data.body)) {
       const digits = contactPhone.replace(/^\+/, '');
       const { count } = await this.prisma.contact.updateMany({
         where: {
@@ -154,30 +161,55 @@ export class IncomingMessageWorker implements OnModuleInit {
       if (count > 0) this.logger.log(`Contact ${contactPhone} opted out by reply`);
     }
 
-    // 8. Emit events for real-time WebSocket push + contact auto-creation
-    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED, {
+    // 8. Resolve the contact first: the chatbot, automations and purchase-intent
+    // handlers all need its id, and creating it in a parallel listener raced them
+    let contactId: string | undefined;
+    try {
+      ({ contactId } = await this.autoCreateContact.execute({
+        orgId,
+        phoneNumber: contactPhone,
+        ownerId: session.userId,
+        sessionId,
+        messageId: message.id,
+      }));
+    } catch (err) {
+      this.logger.error(`Contact lookup failed for ${contactPhone}: ${(err as Error).message}`);
+    }
+
+    // 9. Emit events for real-time WebSocket push, chatbot / automation pipeline, etc.
+    this.eventEmitter.emit(
+      isOutbound
+        ? EVENT_NAMES.WHATSAPP_MESSAGE_SYNCED
+        : EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED,
+      {
       messageId: message.id,
       sessionId,
       orgId,
       userId: session.userId,
+      contactId,
       contactPhone,
+      // Plain text for listeners (the stored body is encrypted)
+      body: data.body,
       type: data.type,
       conversationId: conversation.id,
-    });
+      },
+    );
 
     // 9. Enqueue SLA evaluation for inbound message
-    await this.queueService.publishOnce(
-      QUEUE_NAMES.SLA_EVALUATE,
-      {
-        type: 'inbound_message',
-        orgId,
-        conversationId: conversation.id,
-        sessionId,
-        assignedUserId: conversation.assignedToId ?? null,
-        messageCreatedAt: new Date().toISOString(),
-      },
-      `sla:inbound:${message.id}`,
-    );
+    if (!isOutbound) {
+      await this.queueService.publishOnce(
+        QUEUE_NAMES.SLA_EVALUATE,
+        {
+          type: 'inbound_message',
+          orgId,
+          conversationId: conversation.id,
+          sessionId,
+          assignedUserId: conversation.assignedToId ?? null,
+          messageCreatedAt: new Date().toISOString(),
+        },
+        `sla:inbound:${message.id}`,
+      );
+    }
 
     // 10. Emit conversation update
     this.eventEmitter.emit(EVENT_NAMES.CONVERSATION_UPDATED, {
@@ -191,7 +223,9 @@ export class IncomingMessageWorker implements OnModuleInit {
     // 11. Audit log
     await this.auditService.log({
       orgId,
-      action: AuditAction.INCOMING_MESSAGE_RECEIVED,
+      action: isOutbound
+        ? AuditAction.WHATSAPP_MESSAGE_SENT
+        : AuditAction.INCOMING_MESSAGE_RECEIVED,
       targetType: 'Message',
       targetId: message.id,
       metadata: {
@@ -207,7 +241,7 @@ export class IncomingMessageWorker implements OnModuleInit {
     await this.sessionRepo.updateHeartbeat(sessionId);
 
     this.logger.log(
-      `Incoming message ${message.id} processed (wa=${whatsappMessageId}, conv=${conversation.id})`,
+      `${isOutbound ? 'Phone-sent' : 'Incoming'} message ${message.id} processed (wa=${whatsappMessageId}, conv=${conversation.id})`,
     );
   }
 }

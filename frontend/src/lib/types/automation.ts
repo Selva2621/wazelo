@@ -10,7 +10,8 @@ export type AutomationTriggerType =
   | "SHOPIFY_ORDER_CREATED"
   | "SHOPIFY_ORDER_FULFILLED"
   | "SHOPIFY_CART_ABANDONED"
-  | "WIDGET_MESSAGE_RECEIVED";
+  | "WIDGET_MESSAGE_RECEIVED"
+  | "DEAL_STAGE_CHANGED";
 
 export type AutomationConditionOperator =
   | "EQUALS"
@@ -21,9 +22,14 @@ export type AutomationConditionOperator =
 
 export type AutomationActionType =
   | "SEND_MESSAGE"
+  | "SEND_EMAIL"
   | "ASSIGN_CONTACT"
   | "ADD_TAG"
-  | "UPDATE_STATUS";
+  | "UPDATE_STATUS"
+  | "ENROLL_IN_SEQUENCE"
+  | "STOP_SEQUENCE"
+  | "ASSIGN_CONVERSATION"
+  | "ADD_TO_PRODUCT";
 
 export type AutomationRuleStatus = "ACTIVE" | "INACTIVE";
 
@@ -42,6 +48,16 @@ export interface TriggerConfig {
   toStatus?: string;
   cronExpression?: string;
   delaySeconds?: number;
+  /** DEAL_STAGE_CHANGED: empty → any stage */
+  stageId?: string;
+  /** LEAD_AD_RECEIVED: facebook | instagram (empty → any) */
+  platform?: string;
+  /** LEAD_AD_RECEIVED: one Meta lead form (empty → any) */
+  formId?: string;
+  /** LEAD_AD_RECEIVED: one Facebook Page, i.e. one brand (empty → any) */
+  pageId?: string;
+  /** LEAD_AD_RECEIVED: skip repeat leads from existing contacts */
+  newContactsOnly?: boolean;
 }
 
 // ─── Condition ───

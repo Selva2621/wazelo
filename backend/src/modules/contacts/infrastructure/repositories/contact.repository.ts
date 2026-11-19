@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 import {
   Contact,
   ContactSource,
@@ -34,6 +35,16 @@ export interface UpdateContactInput {
   metadata?: Record<string, unknown>;
 }
 
+/** Lead pipeline card extras for one contact (see ContactRepository.getPipelineMeta) */
+export interface PipelineMetaRow {
+  contactId: string;
+  lastMessage: { body: string | null; type: string; direction: 'INBOUND' | 'OUTBOUND'; at: Date } | null;
+  /** When the contact entered its current lead status (created date if it never moved) */
+  stageSince: Date;
+  /** Earliest follow-up nobody has acted on yet */
+  followUpDueAt: Date | null;
+}
+
 export interface ListContactsOptions {
   take?: number;
   skip?: number;
@@ -41,11 +52,29 @@ export interface ListContactsOptions {
   ownerId?: string;
   ownerIds?: string[];
   source?: ContactSource;
+  scrapeRunId?: string;
   tagIds?: string[];
   productIds?: string[];
   search?: string;
   sortBy?: 'createdAt' | 'updatedAt' | 'name';
   sortOrder?: 'asc' | 'desc';
+}
+
+export interface ContactOwnerScope {
+  ownerId?: string;
+  ownerIds?: string[];
+}
+
+export interface ContactGroups {
+  sources: { source: ContactSource; count: number }[];
+  scrapeRuns: {
+    id: string;
+    source: string;
+    keywords: string;
+    location: string | null;
+    createdAt: Date;
+    count: number;
+  }[];
 }
 
 export type ContactWithRelations = Contact & {
@@ -60,7 +89,11 @@ export type ContactWithRelations = Contact & {
 
 @Injectable()
 export class ContactRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Message bodies are encrypted at rest (pipeline cards show the last one)
+    private readonly messageEncryption: MessageEncryptionService,
+  ) {}
 
   // ───── Contact CRUD ─────
 
@@ -157,7 +190,9 @@ export class ContactRepository {
             previousStatus: null,
             newStatus: LeadStatus.NEW,
             changedById: createdById,
-            reason: 'Auto-created from incoming message',
+            reason: data.source === ContactSource.WEB_SCRAPE
+              ? 'Imported from Lead Scraper'
+              : 'Auto-created from incoming message',
           },
         });
 
@@ -168,13 +203,22 @@ export class ContactRepository {
             previousOwnerId: null,
             newOwnerId: data.ownerId,
             assignedById: createdById,
-            reason: 'Auto-assigned to session owner',
+            reason: data.source === ContactSource.WEB_SCRAPE
+              ? 'Assigned to the user who imported it'
+              : 'Auto-assigned to session owner',
           },
         });
 
-        const contact = await tx.contact.findUniqueOrThrow({
-          where: { id: contactId },
-        });
+        // The raw insert only covers the conflict-checked columns; add the rest
+        const contact = data.email || data.metadata
+          ? await tx.contact.update({
+              where: { id: contactId },
+              data: {
+                ...(data.email && { email: data.email }),
+                ...(data.metadata && { metadata: data.metadata as Prisma.InputJsonObject }),
+              },
+            })
+          : await tx.contact.findUniqueOrThrow({ where: { id: contactId } });
 
         return { contact, created: true };
       }
@@ -259,6 +303,16 @@ export class ContactRepository {
     orgId: string,
     options: ListContactsOptions = {},
   ): Promise<{ contacts: ContactWithRelations[]; total: number }> {
+    // Contacts link to a scrape run only through scrape_results.contact_id
+    const scrapeRunContactIds = options.scrapeRunId
+      ? (
+          await this.prisma.scrapeResult.findMany({
+            where: { orgId, scrapeRunId: options.scrapeRunId, contactId: { not: null } },
+            select: { contactId: true },
+          })
+        ).map((r) => r.contactId as string)
+      : undefined;
+
     const where: Prisma.ContactWhereInput = {
       orgId,
       deletedAt: null,
@@ -267,6 +321,7 @@ export class ContactRepository {
       ...(options.ownerId && { ownerId: options.ownerId }),
       ...(options.ownerIds && { ownerId: { in: options.ownerIds } }),
       ...(options.source && { source: options.source }),
+      ...(scrapeRunContactIds && { id: { in: scrapeRunContactIds } }),
       ...(options.tagIds &&
         options.tagIds.length > 0 && {
           contactTags: {
@@ -335,6 +390,50 @@ export class ContactRepository {
     return { contacts: contacts as ContactWithRelations[], total };
   }
 
+  /** Contact counts per source and per scrape run, within the caller's owner scope */
+  async countGroups(orgId: string, scope: ContactOwnerScope): Promise<ContactGroups> {
+    const ownerIds = scope.ownerId ? [scope.ownerId] : scope.ownerIds;
+
+    const [bySource, byRun] = await Promise.all([
+      this.prisma.contact.groupBy({
+        by: ['source'],
+        where: {
+          orgId,
+          deletedAt: null,
+          mergedIntoId: null,
+          ...(ownerIds && { ownerId: { in: ownerIds } }),
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.$queryRaw<{ scrape_run_id: string; count: bigint }[]>`
+        SELECT sr.scrape_run_id, COUNT(DISTINCT c.id) AS count
+        FROM scrape_results sr
+        JOIN contacts c ON c.id = sr.contact_id
+        WHERE sr.org_id = ${orgId}::uuid
+          AND c.deleted_at IS NULL
+          AND c.merged_into_id IS NULL
+          ${ownerIds ? Prisma.sql`AND c.owner_id = ANY(${ownerIds}::uuid[])` : Prisma.empty}
+        GROUP BY sr.scrape_run_id
+      `,
+    ]);
+
+    const runCounts = new Map(byRun.map((r) => [r.scrape_run_id, Number(r.count)]));
+    const runs = runCounts.size
+      ? await this.prisma.scrapeRun.findMany({
+          where: { orgId, id: { in: [...runCounts.keys()] } },
+          select: { id: true, source: true, keywords: true, location: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
+    return {
+      sources: bySource
+        .map((g) => ({ source: g.source, count: g._count._all }))
+        .sort((a, b) => b.count - a.count),
+      scrapeRuns: runs.map((r) => ({ ...r, count: runCounts.get(r.id) ?? 0 })),
+    };
+  }
+
   // ───── Lead Status ─────
 
   async updateLeadStatus(
@@ -378,6 +477,77 @@ export class ContactRepository {
     return this.prisma.contactStatusHistory.findMany({
       where: { contactId, orgId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ───── Pipeline card extras ─────
+
+  /**
+   * Extras for lead pipeline cards, for a page of contacts at once: their last WhatsApp
+   * message (and who sent it), when they entered their current stage, and their earliest
+   * open follow-up. Only contacts in the org and inside the caller's owner scope are returned.
+   */
+  async getPipelineMeta(
+    orgId: string,
+    ids: string[],
+    scope: { ownerId?: string; ownerIds?: string[] },
+  ): Promise<PipelineMetaRow[]> {
+    if (ids.length === 0) return [];
+    const contacts = await this.prisma.contact.findMany({
+      where: {
+        orgId,
+        id: { in: ids },
+        deletedAt: null,
+        ...(scope.ownerId ? { ownerId: scope.ownerId } : {}),
+        ...(scope.ownerIds ? { ownerId: { in: scope.ownerIds } } : {}),
+      },
+      select: { id: true, phoneNumber: true, createdAt: true },
+    });
+    if (contacts.length === 0) return [];
+    const contactIds = contacts.map((c) => c.id);
+
+    // Messages store the phone with or without "+": match on digits
+    const digitsOf = (p: string) => p.replace(/\D/g, '');
+    const phoneVariants = [...new Set(contacts.flatMap((c) => [c.phoneNumber, digitsOf(c.phoneNumber), `+${digitsOf(c.phoneNumber)}`]))];
+
+    const [lastMessages, stageChanges, followUps] = await Promise.all([
+      this.prisma.$queryRaw<{ contact_phone: string; body: string | null; type: string; direction: string; created_at: Date }[]>`
+        SELECT DISTINCT ON (contact_phone) contact_phone, body, type::text AS type, direction::text AS direction, created_at
+        FROM messages
+        WHERE org_id = ${orgId}::uuid AND deleted_at IS NULL AND contact_phone IN (${Prisma.join(phoneVariants)})
+        ORDER BY contact_phone, created_at DESC`,
+      this.prisma.contactStatusHistory.groupBy({
+        by: ['contactId'],
+        where: { orgId, contactId: { in: contactIds } },
+        _max: { createdAt: true },
+      }),
+      this.prisma.leadFollowUp.groupBy({
+        by: ['contactId'],
+        where: { orgId, contactId: { in: contactIds }, touchedAt: null },
+        _min: { dueAt: true },
+      }),
+    ]);
+
+    // Latest message per contact across phone spellings
+    const lastByDigits = new Map<string, (typeof lastMessages)[number]>();
+    for (const m of lastMessages) {
+      const key = digitsOf(m.contact_phone);
+      const prev = lastByDigits.get(key);
+      if (!prev || prev.created_at < m.created_at) lastByDigits.set(key, m);
+    }
+    const stageSince = new Map(stageChanges.map((s) => [s.contactId, s._max.createdAt]));
+    const followUpDue = new Map(followUps.map((f) => [f.contactId, f._min.dueAt]));
+
+    return contacts.map((c) => {
+      const m = lastByDigits.get(digitsOf(c.phoneNumber));
+      return {
+        contactId: c.id,
+        lastMessage: m
+          ? { body: this.messageEncryption.decryptIfEncrypted(m.body), type: m.type, direction: m.direction as 'INBOUND' | 'OUTBOUND', at: m.created_at }
+          : null,
+        stageSince: stageSince.get(c.id) ?? c.createdAt,
+        followUpDueAt: followUpDue.get(c.id) ?? null,
+      };
     });
   }
 

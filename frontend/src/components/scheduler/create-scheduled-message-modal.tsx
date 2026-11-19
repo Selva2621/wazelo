@@ -7,8 +7,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateScheduledMessage } from "@/hooks/use-scheduler";
 import { ProductSelectField } from "@/components/ui/product-select-field";
+import { MediaPicker, mediaKindFor } from "@/components/ui/media-picker";
 import {
   createScheduledMessageSchema,
   type CreateScheduledMessageFormData,
@@ -43,6 +45,7 @@ export function CreateScheduledMessageModal({
     register,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<CreateScheduledMessageFormData>({
@@ -54,6 +57,14 @@ export function CreateScheduledMessageModal({
   });
 
   const messageType = watch("messageType") as MessageType;
+  const mediaUrl = watch("mediaUrl");
+
+  // A file picked for one type doesn't fit another
+  const onTypeChange = (v: string) => {
+    setValue("mediaUrl", "");
+    setValue("mediaMimeType", "");
+    setValue("messageType", v as MessageType, { shouldValidate: true, shouldDirty: true });
+  };
 
   function onSubmit(data: CreateScheduledMessageFormData) {
     createMessage.mutate({ ...data, productId: productId || undefined }, {
@@ -96,10 +107,12 @@ export function CreateScheduledMessageModal({
           {/* Session */}
           <div>
             <Label htmlFor="sessionId">WhatsApp Session</Label>
-            <select
+            <Select
               id="sessionId"
-              {...register("sessionId")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={watch("sessionId") ?? ""}
+              onValueChange={(v) => setValue("sessionId", v, { shouldValidate: true, shouldDirty: true })}
+              aria-invalid={!!errors.sessionId}
+              className="mt-1"
             >
               <option value="">Select session...</option>
               {sessions.map((s) => (
@@ -107,7 +120,7 @@ export function CreateScheduledMessageModal({
                   {s.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.sessionId && (
               <p className="mt-1 text-label text-error">
                 {errors.sessionId.message}
@@ -129,17 +142,18 @@ export function CreateScheduledMessageModal({
           {/* Message Type */}
           <div>
             <Label htmlFor="messageType">Message Type</Label>
-            <select
+            <Select
               id="messageType"
-              {...register("messageType")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={watch("messageType") ?? ""}
+              onValueChange={onTypeChange}
+              className="mt-1"
             >
               {MESSAGE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Message Body (for TEXT) */}
@@ -151,7 +165,7 @@ export function CreateScheduledMessageModal({
                 rows={3}
                 placeholder="Type your message..."
                 {...register("messageBody")}
-                className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
               {errors.messageBody && (
                 <p className="mt-1 text-label text-error">
@@ -161,28 +175,21 @@ export function CreateScheduledMessageModal({
             </div>
           )}
 
-          {/* Media URL (for non-TEXT) */}
+          {/* Media (for non-TEXT): the file's type comes from the upload */}
           {messageType !== "TEXT" && (
-            <>
-              <div>
-                <Label htmlFor="mediaUrl">Media URL</Label>
-                <Input
-                  id="mediaUrl"
-                  placeholder="https://example.com/file.png"
-                  error={errors.mediaUrl?.message}
-                  {...register("mediaUrl")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="mediaMimeType">MIME Type</Label>
-                <Input
-                  id="mediaMimeType"
-                  placeholder="image/png"
-                  error={errors.mediaMimeType?.message}
-                  {...register("mediaMimeType")}
-                />
-              </div>
-            </>
+            <div>
+              <Label htmlFor="mediaUrl">Media</Label>
+              <MediaPicker
+                id="mediaUrl"
+                kind={mediaKindFor(messageType)}
+                value={mediaUrl ?? ""}
+                error={errors.mediaUrl?.message}
+                onChange={(url, media) => {
+                  setValue("mediaUrl", url, { shouldValidate: true });
+                  setValue("mediaMimeType", media?.mimeType ?? "");
+                }}
+              />
+            </div>
           )}
 
           {/* Scheduled At */}
@@ -204,7 +211,7 @@ export function CreateScheduledMessageModal({
           />
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>

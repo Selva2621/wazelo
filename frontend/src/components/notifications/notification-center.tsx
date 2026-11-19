@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Bell,
   X,
@@ -17,7 +18,9 @@ import {
   Smartphone,
   UserPlus,
   BarChart3,
+  Hand,
 } from "lucide-react";
+import Link from "next/link";
 import {
   useNotifications,
   useUnreadCount,
@@ -32,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, type TabItem } from "@/components/ui/tabs";
 import type {
   Notification,
   NotificationType,
@@ -39,7 +43,7 @@ import type {
 } from "@/lib/types/notifications";
 import { IconButton } from "@/components/ui/icon-button";
 
-const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
+export const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
   MESSAGE_RECEIVED: MessageSquare,
   CONTACT_ASSIGNED: UserPlus,
   CONTACT_REASSIGNED: UserPlus,
@@ -50,6 +54,7 @@ const TYPE_ICONS: Record<NotificationType, typeof MessageSquare> = {
   WHATSAPP_SESSION_DISCONNECTED: WifiOff,
   WHATSAPP_SESSION_UNSTABLE: WifiOff,
   WHATSAPP_PHONE_INACTIVE: Smartphone,
+  WEBSITE_HANDOFF: Hand,
   PAYMENT_FAILED: CreditCard,
   USAGE_LIMIT_WARNING: BarChart3,
   USAGE_LIMIT_REACHED: BarChart3,
@@ -65,6 +70,11 @@ const PRIORITY_COLORS: Record<NotificationPriority, string> = {
 };
 
 type FilterTab = "all" | "unread";
+
+const FILTER_TABS: TabItem[] = [
+  { id: "all", label: "All" },
+  { id: "unread", label: "Unread" },
+];
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
@@ -158,6 +168,11 @@ export function NotificationCenter() {
         )}
       </button>
 
+      {/* Rendered on <body>: the header's backdrop-blur would otherwise become the containing
+          block for these fixed layers and squeeze them into the 72px header strip */}
+      {typeof document !== "undefined" &&
+        createPortal(
+      <>
       {/* Backdrop */}
       {/* Fades with the panel's slide instead of popping */}
       <div
@@ -206,20 +221,12 @@ export function NotificationCenter() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-1 px-5 py-2 border-b border-outline-variant/10">
-          {(["all", "unread"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1 rounded-md text-label font-medium transition-colors ${
-                filter === tab
-                  ? "bg-primary/10 text-primary"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {tab === "all" ? "All" : "Unread"}
-            </button>
-          ))}
+        <div className="px-5 py-1.5 border-b border-outline-variant/10">
+          <Tabs
+            tabs={FILTER_TABS}
+            activeTab={filter}
+            onTabChange={(id) => setFilter(id as FilterTab)}
+          />
         </div>
 
         {/* Notification List */}
@@ -248,6 +255,7 @@ export function NotificationCenter() {
                   notification={notif}
                   onMarkRead={() => markAsRead.mutate([notif.id])}
                   onDelete={() => deleteNotification.mutate([notif.id])}
+                  onNavigate={() => setIsOpen(false)}
                 />
               ))}
             </div>
@@ -255,6 +263,9 @@ export function NotificationCenter() {
         </div>
       </div>
       </div>
+      </>,
+          document.body,
+        )}
     </>
   );
 }
@@ -265,10 +276,13 @@ function NotificationItem({
   notification,
   onMarkRead,
   onDelete,
+  onNavigate,
 }: {
   notification: Notification;
   onMarkRead: () => void;
   onDelete: () => void;
+  /** Closes the panel when the alert opens what it's about */
+  onNavigate: () => void;
 }) {
   const Icon = TYPE_ICONS[notification.type] ?? Info;
   const priorityColor =
@@ -301,7 +315,20 @@ function NotificationItem({
                 : "text-on-surface font-medium"
             }`}
           >
-            {notification.title}
+            {/* Some alerts open what they're about (e.g. the website chat waiting for a person) */}
+            {typeof notification.data?.link === "string" ? (
+              <Link
+                href={notification.data.link}
+                onClick={() => {
+                  onMarkRead();
+                  onNavigate();
+                }}
+                className="outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus rounded">
+                {notification.title}
+              </Link>
+            ) : (
+              notification.title
+            )}
           </p>
           <p className="text-label text-on-surface-variant/60 mt-0.5 line-clamp-2">
             {notification.body}
@@ -341,7 +368,7 @@ function NotificationItem({
 
 // ─── Helpers ────────────────────────────────────
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const secs = Math.floor(diff / 1000);
   if (secs < 60) return "just now";

@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsApi } from "@/lib/api/settings";
 import { useAuthStore } from "@/stores/auth-store";
+import { billingKeys } from "@/hooks/use-billing";
 import type {
   UpdateOrgSettingsRequest,
   UpdateWhatsAppConfigRequest,
@@ -41,6 +42,17 @@ export function useOrgSettings() {
     queryKey: settingsKeys.org(),
     queryFn: () => settingsApi.getOrgSettings(),
     enabled: isAuthenticated,
+  });
+}
+
+/** Saved freelancer lines of work, shown as extra cards in setup and settings */
+export function useFreelancerProfiles(enabled = true) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return useQuery({
+    queryKey: [...settingsKeys.org(), "freelancer-profiles"],
+    queryFn: () => settingsApi.getFreelancerProfiles(),
+    enabled: isAuthenticated && enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -112,6 +124,8 @@ export function useUpdateOrgSettings() {
       // update it now instead of waiting for the next token refresh
       if (variables.orgType) {
         const orgType = variables.orgType;
+        // The server moves a running free trial to the solo/team trial plan for this type
+        queryClient.invalidateQueries({ queryKey: billingKeys.all });
         useAuthStore.setState((state) =>
           state.user ? { user: { ...state.user, orgType } } : state,
         );

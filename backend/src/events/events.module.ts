@@ -48,6 +48,7 @@ import { MessagePipelineService } from '@/modules/messages/application/services/
 import { ChatbotModule } from '@/modules/chatbot/chatbot.module';
 // Drip Sequence events
 import { SequenceEventsHandler } from './handlers/sequence-events.handler';
+import { SequenceTriggerHandler } from './handlers/sequence-trigger.handler';
 import { SequencesModule } from '@/modules/sequences/sequences.module';
 // Purchase Intent detection
 import { PurchaseIntentHandler } from './handlers/purchase-intent.handler';
@@ -55,10 +56,17 @@ import { DealsModule } from '@/modules/deals/deals.module';
 import { AiModule } from '@/modules/ai/ai.module';
 // Org AI Memory events
 import { OrgMemoryEventsHandler } from './handlers/org-memory-events.handler';
+// Free trial follows the org type (freelancer / team)
+import { TrialPlanEventsHandler } from './handlers/trial-plan-events.handler';
 import { OrgModule } from '@/modules/org/org.module';
+// AI credits for purchase intent detection
+import { BillingModule } from '@/modules/billing/billing.module';
+import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.module';
+import { LeadFollowUpEventsHandler } from './handlers/lead-follow-up-events.handler';
 
 @Module({
   imports: [
+    BillingModule,
     WhatsAppModule,
     AuditModule,
     ContactsModule,
@@ -77,8 +85,11 @@ import { OrgModule } from '@/modules/org/org.module';
     DealsModule,
     AiModule,
     OrgModule,
+    LeadFollowUpsModule,
   ],
   providers: [
+    // Lead routing: product team gets the lead; manual message / status = contacted
+    LeadFollowUpEventsHandler,
     AuthEventsHandler,
     OrgUserEventsHandler,
     WhatsAppEventsHandler,
@@ -111,6 +122,7 @@ import { OrgModule } from '@/modules/org/org.module';
     LeadScoringEventsHandler,
     // Drip Sequence events
     SequenceEventsHandler,
+    SequenceTriggerHandler,
     // Developer API webhook events
     // Message pipeline (chatbot-first → automation, prevents race condition)
     MessagePipelineService,
@@ -119,6 +131,7 @@ import { OrgModule } from '@/modules/org/org.module';
     PurchaseIntentHandler,
     // Org AI Memory rebuild events
     OrgMemoryEventsHandler,
+    TrialPlanEventsHandler,
   ],
 })
 export class EventsModule {}

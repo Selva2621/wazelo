@@ -1,12 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AutomationActionType, MessageDirection, MessageStatus, MessageType } from '@prisma/client';
+import {
+  AutomationActionType,
+  LeadStatus,
+  MessageDirection,
+  MessageStatus,
+  MessageType,
+  SequenceRecipientStatus,
+} from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SequenceRepository } from '@/modules/sequences/infrastructure/repositories/sequence.repository';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
-import { QUEUE_NAMES, MESSAGING_CONFIG } from '@/common/constants';
+import { EnrollContactUseCase } from '@/modules/sequences/application/use-cases/enroll-contact.use-case';
+import { AssignContactUseCase } from '@/modules/contacts/application/use-cases/assign-contact.use-case';
+import { AddTagUseCase } from '@/modules/contacts/application/use-cases/manage-tags.use-case';
+import { ChangeLeadStatusUseCase } from '@/modules/contacts/application/use-cases/change-lead-status.use-case';
+import { QUEUE_NAMES, MESSAGING_CONFIG, CAMPAIGN_CONFIG, EVENT_NAMES } from '@/common/constants';
+import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
+import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 
 export interface ActionExecutionInput {
   orgId: string;
@@ -37,6 +53,13 @@ export class ActionExecutorService {
     private readonly conversationRepo: ConversationRepository,
     private readonly messageEventRepo: MessageEventRepository,
     private readonly sessionRepo: WhatsAppSessionRepository,
+    private readonly enrollContact: EnrollContactUseCase,
+    private readonly assignContact: AssignContactUseCase,
+    private readonly addTag: AddTagUseCase,
+    private readonly changeLeadStatus: ChangeLeadStatusUseCase,
+    private readonly sequenceRepo: SequenceRepository,
+    private readonly events: EventEmitter2,
+    private readonly orgEmail: OrgEmailService,
   ) {}
 
   async execute(input: ActionExecutionInput): Promise<ActionResult> {
@@ -49,6 +72,16 @@ export class ActionExecutorService {
         return this.executeAddTag(input);
       case AutomationActionType.UPDATE_STATUS:
         return this.executeUpdateStatus(input);
+      case AutomationActionType.ENROLL_IN_SEQUENCE:
+        return this.executeEnrollInSequence(input);
+      case AutomationActionType.STOP_SEQUENCE:
+        return this.executeStopSequence(input);
+      case AutomationActionType.ASSIGN_CONVERSATION:
+        return this.executeAssignConversation(input);
+      case AutomationActionType.SEND_EMAIL:
+        return this.executeSendEmail(input);
+      case AutomationActionType.ADD_TO_PRODUCT:
+        return this.executeAddToProduct(input);
       default:
         return {
           actionType: input.actionType,
@@ -61,7 +94,7 @@ export class ActionExecutorService {
   // ─── Variable interpolation ───────────────────────────────────────────────
 
   private interpolate(template: string, vars: Record<string, string>): string {
-    return template.replace(/\{\{([\w.]+)\}\}/g, (match, key: string) => vars[key] ?? match);
+    return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => vars[key] ?? match);
   }
 
   private buildVarMap(
@@ -70,13 +103,7 @@ export class ActionExecutorService {
   ): Record<string, string> {
     const vars: Record<string, string> = {};
 
-    if (contact) {
-      vars['contact.name']       = contact.name ?? '';
-      vars['contact.phone']      = contact.phoneNumber;
-      vars['contact.email']      = contact.email ?? '';
-      vars['contact.leadStatus'] = contact.leadStatus ?? '';
-    }
-
+    // Contact fields ({{name}}, {{contact.name}}…) are filled by the shared helper; these are the extras
     if (eventPayload) {
       if (eventPayload.orderName)        vars['shopify.order_name']       = String(eventPayload.orderName);
       if (eventPayload.totalPrice)       vars['shopify.total_price']      = String(eventPayload.totalPrice);
@@ -84,6 +111,12 @@ export class ActionExecutorService {
       if (eventPayload.financialStatus)  vars['shopify.financial_status'] = String(eventPayload.financialStatus);
       if (eventPayload.recoveryUrl)      vars['shopify.recovery_url']     = String(eventPayload.recoveryUrl);
       if (eventPayload.cartTotal)        vars['shopify.cart_total']       = String(eventPayload.cartTotal);
+
+      // Meta lead form answers + ad info: {{lead.city}}, {{lead.campaign}}…
+      const leadVars = eventPayload.leadVars as Record<string, string> | undefined;
+      if (leadVars && typeof leadVars === 'object') {
+        for (const [key, value] of Object.entries(leadVars)) vars[`lead.${key}`] = String(value);
+      }
 
       const items = (eventPayload.items ?? eventPayload.lineItems) as Array<{ quantity: number; title: string }> | undefined;
       if (Array.isArray(items)) {
@@ -94,28 +127,92 @@ export class ActionExecutorService {
     return vars;
   }
 
+  // ─── SEND_EMAIL ───────────────────────────────────────────────────────────
+
+  /**
+   * Emails the contact from the workspace's mailbox. Skipped (not failed) when it
+   * can't go: no email account, no address, unsubscribed — the reason is in the
+   * rule's log and on the email's log row.
+   */
+  private async executeSendEmail(input: ActionExecutionInput): Promise<ActionResult> {
+    const { subject, body } = input.actionConfig as { subject?: string; body?: string };
+    if (!subject?.trim() || !body?.trim()) {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: false, error: 'The email needs a subject and a message' };
+    }
+    // A Meta lead already emailed by its "Lead ad received" rule — one welcome email, not two
+    if (input.eventPayload?.emailByLeadAdRule === true) {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { skipped: true, reason: 'A "Lead ad received" rule emails this lead' } };
+    }
+    const extra = this.buildVarMap(null, input.eventPayload);
+    const result = await this.orgEmail.queue({
+      orgId: input.orgId,
+      contactId: input.contactId,
+      subject: this.interpolate(subject, extra),
+      body: this.interpolate(body, extra),
+      source: 'AUTOMATION',
+      sourceId: input.ruleId,
+      idempotencyKey: `auto-email-${input.executionId}-${input.ruleId}-${input.contactId}`,
+    });
+    if (result.status === 'SKIPPED') {
+      return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { skipped: true, reason: result.reason, emailMessageId: result.emailMessageId } };
+    }
+    return { actionType: AutomationActionType.SEND_EMAIL, success: true, result: { emailMessageId: result.emailMessageId, status: result.status } };
+  }
+
   // ─── SEND_MESSAGE ─────────────────────────────────────────────────────────
 
   private async executeSendMessage(input: ActionExecutionInput): Promise<ActionResult> {
-    const { messageBody, messageType, sessionId: configSessionId } =
-      input.actionConfig as { messageBody?: string; messageType?: string; sessionId?: string };
+    const { messageBody, messageType, sessionId: configSessionId, templateId, templateParams, headerImageUrl } =
+      input.actionConfig as {
+        messageBody?: string;
+        messageType?: string;
+        sessionId?: string;
+        /** A Meta-approved template (official numbers); its {{1}}… slots come from templateParams */
+        templateId?: string;
+        templateParams?: string[];
+        headerImageUrl?: string;
+      };
 
-    if (!messageBody) {
+    if (!messageBody && !templateId) {
       return { actionType: AutomationActionType.SEND_MESSAGE, success: false, error: 'Missing messageBody in action config' };
     }
 
     // Load contact — need phone number + name for conversation creation
-    const contact = await this.prisma.contact.findUnique({
-      where: { id: input.contactId },
-      select: { phoneNumber: true, name: true, email: true, leadStatus: true, sessionId: true },
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: input.contactId, orgId: input.orgId },
+      select: {
+        phoneNumber: true, name: true, email: true, leadStatus: true, sessionId: true,
+        optedOut: true, deletedAt: true, mergedIntoId: true,
+      },
     });
 
     if (!contact) {
       return { actionType: AutomationActionType.SEND_MESSAGE, success: false, error: `Contact not found: ${input.contactId}` };
     }
 
-    // Resolve sessionId: actionConfig → input → contact's session → any org session
-    let resolvedSessionId = configSessionId || input.sessionId || contact.sessionId || undefined;
+    // A reply to the contact's own message (MESSAGE_RECEIVED) vs a message we start
+    // ourselves (contact created, deal stage, no-reply, Shopify…)
+    const inbound = input.eventPayload?.inbound === true;
+    const inboundSessionId =
+      inbound && typeof input.eventPayload?.sessionId === 'string' ? input.eventPayload.sessionId : undefined;
+
+    // Skipped, not failed: later actions in the rule (tag, assign…) still run
+    const skip = (reason: string): ActionResult => {
+      this.logger.debug(`SEND_MESSAGE skipped (${reason}): execution=${input.executionId}`);
+      return { actionType: AutomationActionType.SEND_MESSAGE, success: true, result: { skipped: true, reason } };
+    };
+    if (contact.deletedAt || contact.mergedIntoId) return skip('Contact deleted or merged');
+    // A new contact who wrote first is greeted by the chatbot — one welcome, not two
+    if (input.eventPayload?.welcomeByChatbot === true) return skip('The chatbot greets new chats');
+    // A Meta lead is greeted by its "Lead ad received" rule — one welcome, not two
+    if (input.eventPayload?.welcomeByLeadAdRule === true) return skip('A "Lead ad received" rule greets this lead');
+    // Opted out: no messages we start. A reply to something they just wrote is still fine.
+    if (contact.optedOut && !inbound) return skip('Contact opted out');
+
+    // Resolve sessionId: replies go out on the number the contact wrote to;
+    // otherwise actionConfig → input → contact's session → any org session
+    let resolvedSessionId =
+      inboundSessionId || configSessionId || input.sessionId || contact.sessionId || undefined;
 
     if (!resolvedSessionId) {
       // Fallback: use any active connected session in the org
@@ -133,7 +230,21 @@ export class ActionExecutorService {
 
     // Interpolate variables
     const varMap = this.buildVarMap(contact, input.eventPayload);
-    const resolvedBody = this.interpolate(messageBody, varMap);
+    const fill = (text: string) => this.interpolate(fillContactPlaceholders(text, contact), varMap);
+    let resolvedBody = messageBody ? fill(messageBody) : '';
+    let cloudTemplate: CloudTemplateRef | undefined;
+    if (templateId) {
+      const template = await this.prisma.messageTemplate.findFirst({
+        where: { id: templateId, orgId: input.orgId, deletedAt: null },
+        select: { name: true, language: true, components: true, status: true },
+      });
+      if (!template || template.status !== 'APPROVED') {
+        return { actionType: AutomationActionType.SEND_MESSAGE, success: false, error: 'The chosen WhatsApp template is missing or not approved' };
+      }
+      const rendered = renderCloudTemplate(template, templateParams, fill, headerImageUrl);
+      resolvedBody = rendered.body;
+      cloudTemplate = rendered.cloudTemplate;
+    }
     const idempotencyKey = `auto-msg-${input.executionId}-${input.actionType}`;
 
     // Idempotency: skip if already created
@@ -162,8 +273,17 @@ export class ActionExecutorService {
         contactName: contact.name ?? undefined,
         body: resolvedBody,
         idempotencyKey,
+        // Messages we start go through the bulk lane: opt-out re-check at send time,
+        // sending hours and daily caps (same protection as campaigns and sequences).
+        // Replies stay in the direct lane so the contact isn't kept waiting.
+        priority: inbound ? 0 : CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY,
         maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
-        metadata: { automationRuleId: input.ruleId, automationExecutionId: input.executionId },
+        metadata: {
+          automationRuleId: input.ruleId,
+          automationExecutionId: input.executionId,
+          // Official numbers send this as the approved template; QR numbers send the text
+          ...(cloudTemplate && { cloudTemplate }),
+        } as any,
       });
 
       // Record QUEUED event
@@ -174,12 +294,20 @@ export class ActionExecutorService {
         metadata: { automationRuleId: input.ruleId },
       });
 
+      // Bring the chat to the top of the inbox with this message as its preview
+      await this.conversationRepo.updateLastMessage(conversation.id, resolvedBody, false);
+
       // Queue for sending — correct shape: {messageId, sessionId, orgId}
       await this.queueService.publishOnce(
         QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
         { messageId: message.id, sessionId: resolvedSessionId, orgId: input.orgId },
         `msg-${message.id}`,
-        { retryLimit: MESSAGING_CONFIG.MAX_RETRY_COUNT, retryDelay: MESSAGING_CONFIG.RETRY_BASE_DELAY_SECONDS, retryBackoff: true },
+        {
+          retryLimit: MESSAGING_CONFIG.MAX_RETRY_COUNT,
+          retryDelay: MESSAGING_CONFIG.RETRY_BASE_DELAY_SECONDS,
+          retryBackoff: true,
+          ...(inbound ? {} : { priority: CAMPAIGN_CONFIG.CAMPAIGN_MESSAGE_PRIORITY }),
+        },
       );
 
       return { actionType: AutomationActionType.SEND_MESSAGE, success: true, result: { messageId: message.id, queued: true } };
@@ -199,14 +327,63 @@ export class ActionExecutorService {
     }
 
     try {
-      await this.queueService.publishOnce(
-        QUEUE_NAMES.AUTOMATION_EXECUTE_ACTION,
-        { type: 'ASSIGN_CONTACT', orgId: input.orgId, contactId: input.contactId, assignToUserId, executionId: input.executionId, ruleId: input.ruleId },
-        `auto-assign-${input.executionId}-${input.contactId}`,
-      );
-      return { actionType: AutomationActionType.ASSIGN_CONTACT, success: true, result: { assignToUserId, queued: true } };
+      const actor = await this.ruleActor(input);
+      await this.assignContact.execute(input.contactId, input.orgId, actor, {
+        ownerId: assignToUserId,
+        reason: 'Automation rule',
+      });
+      return { actionType: AutomationActionType.ASSIGN_CONTACT, success: true, result: { assignToUserId } };
     } catch (error) {
       return { actionType: AutomationActionType.ASSIGN_CONTACT, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── ADD_TO_PRODUCT ───────────────────────────────────────────────────────
+
+  /** Links the contact to a product; a contact can be in many products, and linking twice is a no-op. */
+  /** Only for leads (Meta lead forms): hand them to the product's team */
+  private emitLeadInterest(input: ActionExecutionInput, productId: string) {
+    const leadgenId = input.eventPayload?.leadgenId;
+    if (typeof leadgenId !== 'string' || !leadgenId) return;
+    this.events.emit(EVENT_NAMES.LEAD_PRODUCT_INTEREST, {
+      orgId: input.orgId,
+      contactId: input.contactId,
+      productId,
+      leadgenId,
+      isNewContact: input.eventPayload?.isNewContact === true,
+    });
+  }
+
+  private async executeAddToProduct(input: ActionExecutionInput): Promise<ActionResult> {
+    const actionType = AutomationActionType.ADD_TO_PRODUCT;
+    const { productId } = input.actionConfig as { productId?: string };
+    if (!productId) return { actionType, success: false, error: 'Missing productId in action config' };
+
+    try {
+      const product = await this.prisma.product.findFirst({
+        where: { id: productId, orgId: input.orgId, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (!product) return { actionType, success: false, error: 'Product not found' };
+
+      const existing = await this.prisma.contactProduct.findUnique({
+        where: { contactId_productId: { contactId: input.contactId, productId } },
+        select: { id: true },
+      });
+      if (!existing) {
+        await this.prisma.contactProduct.create({ data: { contactId: input.contactId, productId, orgId: input.orgId } });
+        this.events.emit(EVENT_NAMES.CONTACT_PRODUCT_ASSIGNED, { contactId: input.contactId, productId, orgId: input.orgId });
+      }
+      // A lead form (new or repeat) for this product: its team must contact them
+      this.emitLeadInterest(input, productId);
+      return { actionType, success: true, result: { productName: product.name, alreadyLinked: !!existing } };
+    } catch (error) {
+      // Two leads at once can race on the unique link; the contact is in the product either way
+      if ((error as { code?: string }).code === 'P2002') {
+        this.emitLeadInterest(input, productId);
+        return { actionType, success: true, result: { alreadyLinked: true } };
+      }
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -220,12 +397,16 @@ export class ActionExecutorService {
     }
 
     try {
-      await this.queueService.publishOnce(
-        QUEUE_NAMES.AUTOMATION_EXECUTE_ACTION,
-        { type: 'ADD_TAG', orgId: input.orgId, contactId: input.contactId, tagId, tagName, executionId: input.executionId, ruleId: input.ruleId },
-        `auto-tag-${input.executionId}-${input.contactId}-${tagId || tagName}`,
-      );
-      return { actionType: AutomationActionType.ADD_TAG, success: true, result: { tagId, tagName, queued: true } };
+      // Rules store the tag by name; older ones may only have its id
+      const name =
+        tagName ||
+        (await this.prisma.tag.findFirst({ where: { id: tagId, orgId: input.orgId, deletedAt: null }, select: { name: true } }))?.name;
+      if (!name) {
+        return { actionType: AutomationActionType.ADD_TAG, success: false, error: 'Tag not found' };
+      }
+      const actor = await this.ruleActor(input);
+      await this.addTag.execute(input.contactId, input.orgId, actor, { name });
+      return { actionType: AutomationActionType.ADD_TAG, success: true, result: { tagName: name } };
     } catch (error) {
       return { actionType: AutomationActionType.ADD_TAG, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -240,15 +421,129 @@ export class ActionExecutorService {
       return { actionType: AutomationActionType.UPDATE_STATUS, success: false, error: 'Missing newStatus in action config' };
     }
 
+    if (!(Object.values(LeadStatus) as string[]).includes(newStatus)) {
+      return { actionType: AutomationActionType.UPDATE_STATUS, success: false, error: `Unknown lead status: ${newStatus}` };
+    }
+
     try {
-      await this.queueService.publishOnce(
-        QUEUE_NAMES.AUTOMATION_EXECUTE_ACTION,
-        { type: 'UPDATE_STATUS', orgId: input.orgId, contactId: input.contactId, newStatus, executionId: input.executionId, ruleId: input.ruleId },
-        `auto-status-${input.executionId}-${input.contactId}`,
-      );
-      return { actionType: AutomationActionType.UPDATE_STATUS, success: true, result: { newStatus, queued: true } };
+      // Goes through the normal status change, so "lead status changed" sequences and rules
+      // fire too (the automation loop guard stops a rule re-triggering itself)
+      const actor = await this.ruleActor(input);
+      await this.changeLeadStatus.execute(input.contactId, input.orgId, actor, {
+        status: newStatus as LeadStatus,
+        reason: 'Automation rule',
+      });
+      return { actionType: AutomationActionType.UPDATE_STATUS, success: true, result: { newStatus } };
     } catch (error) {
       return { actionType: AutomationActionType.UPDATE_STATUS, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── STOP_SEQUENCE ────────────────────────────────────────────────────────
+
+  /** Take the contact out of one sequence (sequenceId) or every sequence they're in. */
+  private async executeStopSequence(input: ActionExecutionInput): Promise<ActionResult> {
+    const { sequenceId } = input.actionConfig as { sequenceId?: string };
+    const actionType = AutomationActionType.STOP_SEQUENCE;
+    try {
+      const running = await this.prisma.sequenceRecipient.findMany({
+        where: {
+          orgId: input.orgId,
+          contactId: input.contactId,
+          status: { in: [SequenceRecipientStatus.ACTIVE, SequenceRecipientStatus.PAUSED] },
+          ...(sequenceId && { sequenceId }),
+        },
+        select: { id: true, sequenceId: true },
+      });
+      for (const r of running) {
+        // Steps already queued are dropped at send time (the recipient has exited)
+        await this.sequenceRepo.exitRecipient(r.id, 'Stopped by automation');
+        await this.sequenceRepo.updateSequenceCounters(r.sequenceId);
+      }
+      return { actionType, success: true, result: { stopped: running.length } };
+    } catch (error) {
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // ─── ASSIGN_CONVERSATION ──────────────────────────────────────────────────
+
+  /**
+   * Give the contact's chat to a person. Same effect as assigning it in the inbox:
+   * the chatbot and automation replies pause there (CONVERSATION_ASSIGNED).
+   */
+  private async executeAssignConversation(input: ActionExecutionInput): Promise<ActionResult> {
+    const { assignToUserId } = input.actionConfig as { assignToUserId?: string };
+    const actionType = AutomationActionType.ASSIGN_CONVERSATION;
+    if (!assignToUserId) return { actionType, success: false, error: 'Missing assignToUserId in action config' };
+
+    try {
+      const user = await this.prisma.user.findFirst({
+        where: { id: assignToUserId, orgId: input.orgId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!user) return { actionType, success: false, error: 'That team member is no longer in the workspace' };
+
+      // The chat the trigger came from, else the contact's most recent one
+      const fromEvent = input.eventPayload?.conversationId;
+      const conversation =
+        typeof fromEvent === 'string'
+          ? await this.prisma.conversation.findFirst({ where: { id: fromEvent, orgId: input.orgId }, select: { id: true } })
+          : await this.latestConversation(input.orgId, input.contactId);
+      if (!conversation) return { actionType, success: true, result: { skipped: true, reason: 'No chat with this contact yet' } };
+
+      await this.conversationRepo.assignTo(conversation.id, assignToUserId);
+      this.events.emit(EVENT_NAMES.CONVERSATION_ASSIGNED, {
+        conversationId: conversation.id,
+        orgId: input.orgId,
+        assignedToId: assignToUserId,
+        assignedById: await this.ruleActor(input),
+      });
+      return { actionType, success: true, result: { conversationId: conversation.id, assignToUserId } };
+    } catch (error) {
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  private async latestConversation(orgId: string, contactId: string) {
+    const contact = await this.prisma.contact.findFirst({ where: { id: contactId, orgId }, select: { phoneNumber: true } });
+    if (!contact) return null;
+    const digits = contact.phoneNumber.replace(/^\+/, '');
+    return this.prisma.conversation.findFirst({
+      where: { orgId, deletedAt: null, contactPhone: { in: [digits, `+${digits}`] } },
+      orderBy: { lastMessageAt: 'desc' },
+      select: { id: true },
+    });
+  }
+
+  /** Contact changes made by a rule are recorded as done by the person who created the rule. */
+  private async ruleActor(input: ActionExecutionInput): Promise<string> {
+    const rule = await this.prisma.automationRule.findFirst({
+      where: { id: input.ruleId, orgId: input.orgId },
+      select: { createdById: true },
+    });
+    if (!rule) throw new Error(`Automation rule not found: ${input.ruleId}`);
+    return rule.createdById;
+  }
+
+  // ─── ENROLL_IN_SEQUENCE ───────────────────────────────────────────────────
+
+  private async executeEnrollInSequence(input: ActionExecutionInput): Promise<ActionResult> {
+    const { sequenceId } = input.actionConfig as { sequenceId?: string };
+    const actionType = AutomationActionType.ENROLL_IN_SEQUENCE;
+
+    if (!sequenceId) {
+      return { actionType, success: false, error: 'Missing sequenceId in action config' };
+    }
+
+    try {
+      const result = await this.enrollContact.execute(input.orgId, sequenceId, input.contactId);
+      if (result.enrolled) return { actionType, success: true, result: { sequenceId, recipientId: result.recipientId } };
+      // Already in the sequence is the outcome the rule wanted, not a failure
+      if (result.reason === 'ALREADY_ACTIVE') return { actionType, success: true, result: { sequenceId, skipped: result.reason } };
+      return { actionType, success: false, error: `Not added to sequence: ${result.reason}` };
+    } catch (error) {
+      return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }

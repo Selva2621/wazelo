@@ -18,10 +18,11 @@ export const userKeys = {
   invitations: () => ["users", "invitations"] as const,
 };
 
-export function useUsers(params?: { role?: string; status?: string }) {
+export function useUsers(params?: { role?: string; status?: string }, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: userKeys.list(params),
     queryFn: () => usersApi.list(params),
+    enabled: options.enabled ?? true,
   });
 }
 

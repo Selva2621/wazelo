@@ -73,7 +73,8 @@ export interface CreateDealRequest {
 
 export interface UpdateDealRequest {
   title?: string;
-  value?: number;
+  /** null clears the value */
+  value?: number | null;
   currency?: string;
   assignedToId?: string;
   expectedClose?: string;

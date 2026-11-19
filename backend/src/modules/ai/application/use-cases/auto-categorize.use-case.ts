@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
 import { OrgContextService } from '../../domain/services/org-context.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 export interface CategorizationResult {
   suggestedLabels: string[];
@@ -18,6 +19,7 @@ export class AutoCategorizeUseCase {
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
     private readonly orgContext: OrgContextService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   /**
@@ -25,12 +27,15 @@ export class AutoCategorizeUseCase {
    * Can be triggered automatically on new conversations or manually by agents.
    */
   async execute(conversationId: string, orgId: string): Promise<CategorizationResult> {
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'asc' },
-      take: 15,
-      select: { direction: true, body: true, type: true },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'asc' },
+        take: 15,
+        select: { direction: true, body: true, type: true },
+      }),
+    );
 
     if (messages.length === 0) {
       return { suggestedLabels: [], intent: 'unknown', priority: 'MEDIUM', language: 'en' };
@@ -76,58 +81,70 @@ export class AutoCategorizeUseCase {
   }
 
   /**
-   * Auto-apply categorization: create tags and update conversation metadata.
+   * Saves the tags the agent was shown onto the chat's contact, plus the language,
+   * intent and priority read alongside them. No AI call (so no credit): it stores
+   * exactly what's on screen. Reuses an existing tag whatever its letter case.
    */
-  async applyToConversation(conversationId: string, orgId: string): Promise<CategorizationResult> {
-    const result = await this.execute(conversationId, orgId);
-
-    // Get conversation to find contactId
+  async saveToContact(
+    conversationId: string,
+    orgId: string,
+    userId: string,
+    input: { labels: string[]; language?: string; intent?: string; priority?: CategorizationResult['priority'] },
+  ): Promise<{ added: string[]; alreadyHad: string[] }> {
     const conversation = await this.prisma.conversation.findFirst({
       where: { id: conversationId, orgId },
-      select: { id: true, contactId: true, assignedToId: true },
+      select: { contactId: true, contactPhone: true },
     });
-
-    if (!conversation || !conversation.contactId) return result;
-
-    // Auto-apply labels as tags on the contact
-    for (const label of result.suggestedLabels) {
-      let tag = await this.prisma.tag.findFirst({
-        where: { orgId, name: label, deletedAt: null },
-      });
-      if (!tag) {
-        tag = await this.prisma.tag.create({ data: { orgId, name: label } });
-      }
-
-      const existing = await this.prisma.contactTag.findFirst({
-        where: { contactId: conversation.contactId, tagId: tag.id },
-      });
-      if (!existing && conversation.assignedToId) {
-        await this.prisma.contactTag.create({
-          data: { contactId: conversation.contactId, tagId: tag.id, orgId, addedById: conversation.assignedToId },
-        });
-      }
+    // WhatsApp chats often carry only the phone number; match the contact by it,
+    // the same way the inbox's contact panel does
+    const contactId =
+      conversation?.contactId ??
+      (conversation?.contactPhone
+        ? (
+            await this.prisma.contact.findFirst({
+              where: { orgId, phoneNumber: conversation.contactPhone, deletedAt: null },
+              select: { id: true },
+            })
+          )?.id
+        : undefined);
+    if (!contactId) {
+      throw new NotFoundException('Add this person as a contact first, then save the tag.');
     }
 
-    // Enrich contact metadata with detected language and latest intent
-    if (result.language || result.intent) {
-      const contact = await this.prisma.contact.findUnique({
-        where: { id: conversation.contactId },
-        select: { metadata: true },
-      });
+    const labels = [...new Set(input.labels.map((l) => l.trim()).filter(Boolean))];
+    const added: string[] = [];
+    const alreadyHad: string[] = [];
+    for (const label of labels) {
+      const tag =
+        (await this.prisma.tag.findFirst({
+          where: { orgId, name: { equals: label, mode: 'insensitive' }, deletedAt: null },
+        })) ?? (await this.prisma.tag.create({ data: { orgId, name: label } }));
+
+      const existing = await this.prisma.contactTag.findFirst({ where: { contactId, tagId: tag.id } });
+      if (existing) {
+        alreadyHad.push(tag.name);
+        continue;
+      }
+      await this.prisma.contactTag.create({ data: { contactId, tagId: tag.id, orgId, addedById: userId } });
+      added.push(tag.name);
+    }
+
+    if (input.language || input.intent || input.priority) {
+      const contact = await this.prisma.contact.findUnique({ where: { id: contactId }, select: { metadata: true } });
       const existingMeta = (contact?.metadata as Record<string, unknown>) ?? {};
       await this.prisma.contact.update({
-        where: { id: conversation.contactId },
+        where: { id: contactId },
         data: {
           metadata: {
             ...existingMeta,
-            ...(result.language ? { preferredLanguage: result.language } : {}),
-            ...(result.intent ? { lastAiIntent: result.intent } : {}),
-            ...(result.priority ? { lastAiPriority: result.priority } : {}),
+            ...(input.language ? { preferredLanguage: input.language } : {}),
+            ...(input.intent ? { lastAiIntent: input.intent } : {}),
+            ...(input.priority ? { lastAiPriority: input.priority } : {}),
           },
         },
       });
     }
 
-    return result;
+    return { added, alreadyHad };
   }
 }

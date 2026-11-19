@@ -155,6 +155,32 @@ export class ChatbotRepository {
     });
   }
 
+  /** Does an active chatbot greet people who message first? Then other features don't send a welcome too. */
+  async hasGreetingFlow(orgId: string): Promise<boolean> {
+    const flows = await this.prisma.chatbotFlow.findMany({
+      where: { orgId, isActive: true, deletedAt: null },
+      select: { trigger: true },
+    });
+    return flows.some((f) => (f.trigger as { type?: string })?.type === 'FIRST_MESSAGE');
+  }
+
+  /**
+   * The "first message" flow for this chat. Step-by-step flows (lead questions)
+   * only start a new chat; the AI assistant answers any message. Oldest flow
+   * first, so the pick doesn't change from one message to the next.
+   */
+  async findFirstMessageFlow(orgId: string, newChat: boolean) {
+    const flows = await this.prisma.chatbotFlow.findMany({
+      where: { orgId, isActive: true, deletedAt: null },
+      include: { nodes: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const firstMessage = flows.filter((f) => (f.trigger as { type?: string })?.type === 'FIRST_MESSAGE');
+    const ai = firstMessage.find((f) => f.aiEnabled);
+    if (!newChat) return ai;
+    return firstMessage.find((f) => !f.aiEnabled) ?? ai;
+  }
+
   async getFlowAnalytics(flowId: string, orgId: string) {
     const [total, completed, abandoned, handedOff] = await Promise.all([
       this.prisma.chatbotSession.count({ where: { flowId, orgId } }),

@@ -65,6 +65,8 @@ export function useCampaignSocket() {
         failedCount: payload.failedCount,
         readCount: payload.readCount,
       });
+      // The list under the counters shows each person's status: keep it in step
+      queryClient.invalidateQueries({ queryKey: ["campaigns", payload.campaignId, "recipients"] });
     };
 
     const onStatusChange = (payload: {
@@ -79,6 +81,7 @@ export function useCampaignSocket() {
         queryKey: campaignKeys.analytics(payload.campaignId),
       });
       queryClient.invalidateQueries({ queryKey: ["campaigns", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["campaigns", payload.campaignId, "recipients"] });
     };
 
     socket.on("campaign:progress", onProgress);

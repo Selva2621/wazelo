@@ -1,8 +1,9 @@
 "use client";
 
+import { PICKED_FROM_SESSION, takePickedContacts } from "@/lib/campaigns/picked-contacts";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Megaphone, ChevronDown, X, Filter } from "lucide-react";
+import { Plus, Megaphone, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useCampaigns } from "@/hooks/use-campaigns";
@@ -12,11 +13,18 @@ import { useWhatsAppSession, useAdminSessions } from "@/hooks/use-whatsapp";
 import { useAuthStore } from "@/stores/auth-store";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
+import { PageHeader } from "@/components/layout/page-header";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { CreateCampaignModal } from "@/components/campaigns/create-campaign-modal";
 import { useSubscription } from "@/hooks/use-billing";
 import { LoadError } from "@/components/ui/empty-state";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { CampaignStatus, ListCampaignsParams, MessageType, CampaignAudienceType } from "@/lib/types/campaigns";
+import type { CreateCampaignFormData } from "@/lib/validations/campaigns";
+
+type AudienceFilters = NonNullable<CreateCampaignFormData["audienceFilters"]>;
 
 const TAKE = 20;
 
@@ -34,30 +42,6 @@ function getDateRangeCutoff(range: "" | "this_week" | "this_month" | "last_30"):
     return d;
   }
   return null;
-}
-
-// ─── Filter select (matches lead scraper [runId] page pattern) ────────────────
-function CampaignFilterSelect({
-  value, onChange, options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
-    </div>
-  );
 }
 
 const STATUS_TABS: { id: string; label: string }[] = [
@@ -79,15 +63,31 @@ export default function CampaignsPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [statusTab, setStatusTab] = useState("ALL");
+  const [initialAudience, setInitialAudience] = useState<AudienceFilters | undefined>();
 
   // "New Campaign" shortcuts land here with ?action=new — open the create
-  // form, then drop the param so a refresh doesn't reopen it
+  // form, then drop the params so a refresh doesn't reopen it. Contact
+  // source groups also pass ?source= or ?scrapeRunId= to target that group.
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("action") !== "new") return;
-    url.searchParams.delete("action");
+    const source = url.searchParams.get("source");
+    const scrapeRunId = url.searchParams.get("scrapeRunId");
+    // From the Contacts page selection (sessionStorage); a plain id list still works
+    const contactIdsParam = url.searchParams.get("contactIds") ?? "";
+    const contactIds = contactIdsParam === PICKED_FROM_SESSION
+      ? takePickedContacts()
+      : contactIdsParam.split(",").filter(Boolean);
+    for (const key of ["action", "source", "scrapeRunId", "contactIds"]) url.searchParams.delete(key);
     window.history.replaceState(null, "", url.pathname + url.search);
-    const frame = requestAnimationFrame(() => setShowCreate(true));
+    const frame = requestAnimationFrame(() => {
+      const filters = {
+        ...(contactIds.length ? { contactIds } : {}),
+        ...(scrapeRunId ? { scrapeRunId } : source ? { sources: [source] } : {}),
+      };
+      setInitialAudience(Object.keys(filters).length ? filters : undefined);
+      setShowCreate(true);
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
 
@@ -102,7 +102,7 @@ export default function CampaignsPage() {
 
   const userRole = useAuthStore((s) => s.user?.role);
   const { data: session } = useWhatsAppSession();
-  const { data: adminSessionsData } = useAdminSessions();
+  const { data: adminSessionsData } = useAdminSessions({ status: "CONNECTED", limit: 100 });
 
   const effectiveStatus: CampaignStatus | undefined =
     statusTab !== "ALL" ? (statusTab as CampaignStatus) : undefined;
@@ -169,20 +169,22 @@ export default function CampaignsPage() {
         .filter((s) => s.status === "CONNECTED")
         .map((s) => ({
           id: s.id,
-          name: `${s.phoneNumber || "Unknown"} (${(s as { user?: { firstName?: string; lastName?: string } }).user?.firstName ?? "User"})`,
+          // Official numbers are the workspace's, not the admin's who added them
+          name: `${s.phoneNumber || "Unknown"} (${s.provider === "CLOUD_API" ? "Official" : (s as { user?: { firstName?: string; lastName?: string } }).user?.firstName ?? "User"})`,
           status: s.status,
+          official: s.provider === "CLOUD_API",
         }));
     }
-    return session
+    return session?.status === "CONNECTED"
       ? [{ id: session.id, name: session.phoneNumber || "WhatsApp Session", status: session.status }]
       : [];
   }, [userRole, adminSessionsData, session]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="flex flex-col h-[calc(100dvh-var(--header-height))]">
       {/* Upgrade banner */}
       {!campaignsEnabled && (
-        <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
+        <div className="shrink-0 mx-6 mt-4 max-lg:mx-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
           <Megaphone className="h-4 w-4 shrink-0 text-warning" />
           <span>
             <strong>Campaigns</strong> are not included in your current plan.{" "}
@@ -194,120 +196,104 @@ export default function CampaignsPage() {
         </div>
       )}
 
+      <MobilePageActions primary={{ label: "New campaign", onClick: () => setShowCreate(true) }} />
+
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Megaphone className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">Campaigns</h1>
-            {data && (
-              <span className="text-body text-on-surface-variant/60">{data.total} total</span>
-            )}
-          </div>
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            New Campaign
-          </Button>
-        </div>
-
-        {/* ─── Filter bar (lead scraper style) ──────────────────────────── */}
-        <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
-          {/* Top row: label + search + count + clear */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
-              <Filter className="w-3.5 h-3.5" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="bg-primary text-on-primary text-caption font-semibold w-4 h-4 rounded-full flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </div>
-
-            <input
-              type="text"
-              value={filterSearch}
-              onChange={(e) => setFilterSearch(e.target.value)}
-              placeholder="Search campaigns…"
-              className="flex-1 min-w-[180px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
-            />
-
-            <span className="text-label text-on-surface-variant ml-auto shrink-0">
-              {filteredCampaigns.length} of {data?.data?.length ?? 0}
-            </span>
-
-            {activeFilterCount > 0 && (
-              <button
-                onClick={handleClearFilters}
-                className="flex items-center gap-1 text-label text-error hover:underline shrink-0"
-              >
-                <X className="w-3 h-3" /> Clear all
-              </button>
-            )}
-          </div>
-
-          {/* Filter chip row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <CampaignFilterSelect
-              value={filterMessageType}
-              onChange={(v) => { setFilterMessageType(v as MessageType | ""); setPage(0); }}
-              options={[
-                { value: "", label: "Type: All" },
-                { value: "TEXT", label: "Text" },
-                { value: "IMAGE", label: "Image" },
-                { value: "VIDEO", label: "Video" },
-                { value: "DOCUMENT", label: "Document" },
-                { value: "AUDIO", label: "Audio" },
-              ]}
-            />
-
-            <CampaignFilterSelect
-              value={filterAudienceType}
-              onChange={(v) => { setFilterAudienceType(v as CampaignAudienceType | ""); setPage(0); }}
-              options={[
-                { value: "", label: "Audience: All" },
-                { value: "ALL", label: "All Contacts" },
-                { value: "FILTERED", label: "Filtered Segment" },
-              ]}
-            />
-
-            <CampaignFilterSelect
-              value={filterDateRange}
-              onChange={(v) => { setFilterDateRange(v as typeof filterDateRange); setPage(0); }}
-              options={[
-                { value: "", label: "Date: All" },
-                { value: "this_week", label: "This Week" },
-                { value: "this_month", label: "This Month" },
-                { value: "last_30", label: "Last 30 Days" },
-              ]}
-            />
-
-            <CampaignFilterSelect
-              value={`${sortBy}:${sortOrder}`}
-              onChange={(v) => {
-                const [by, order] = v.split(":") as [typeof sortBy, typeof sortOrder];
-                setSortBy(by); setSortOrder(order); setPage(0);
-              }}
-              options={[
-                { value: "createdAt:desc", label: "Newest First" },
-                { value: "createdAt:asc",  label: "Oldest First" },
-                { value: "scheduledAt:asc",  label: "Scheduled (soonest)" },
-                { value: "scheduledAt:desc", label: "Scheduled (latest)" },
-              ]}
-            />
-          </div>
-        </div>
-
-        {/* Status tabs */}
-        <Tabs
-          tabs={tabsWithCounts}
-          activeTab={statusTab}
-          onTabChange={handleStatusTabChange}
+      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4 max-lg:px-4 max-lg:pt-2 max-lg:space-y-3">
+        {/* Phones/tablets: the iOS nav bar shows the title and "+" */}
+        <SearchInput
+          value={filterSearch}
+          onChange={(e) => setFilterSearch(e.target.value)}
+          placeholder="Search campaigns"
+          className="w-full lg:hidden"
         />
+        <PageHeader
+          className="max-lg:hidden"
+          title="Campaigns"
+          count={data?.total}
+          actions={
+            <>
+              <SearchInput
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                placeholder="Search campaigns"
+                className="w-64"
+              />
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                New campaign
+              </Button>
+            </>
+          }
+        />
+
+        {/* Every filter on one row: status, then type / audience / date / sort */}
+        <FilterBar className="mobile-scroll-x">
+          <Tabs tabs={tabsWithCounts} activeTab={statusTab} onTabChange={handleStatusTabChange} />
+          <FilterBarDivider />
+          <FilterSelect
+            label="Message type"
+            active={filterMessageType !== ""}
+            value={filterMessageType}
+            onChange={(e) => { setFilterMessageType(e.target.value as MessageType | ""); setPage(0); }}
+          >
+            <option value="">All types</option>
+            <option value="TEXT">Text</option>
+            <option value="IMAGE">Image</option>
+            <option value="VIDEO">Video</option>
+            <option value="DOCUMENT">Document</option>
+            <option value="AUDIO">Audio</option>
+          </FilterSelect>
+          <FilterSelect
+            label="Audience"
+            active={filterAudienceType !== ""}
+            value={filterAudienceType}
+            onChange={(e) => { setFilterAudienceType(e.target.value as CampaignAudienceType | ""); setPage(0); }}
+          >
+            <option value="">All audiences</option>
+            <option value="ALL">All contacts</option>
+            <option value="FILTERED">Filtered segment</option>
+          </FilterSelect>
+          <FilterSelect
+            label="Created"
+            active={filterDateRange !== ""}
+            value={filterDateRange}
+            onChange={(e) => { setFilterDateRange(e.target.value as typeof filterDateRange); setPage(0); }}
+          >
+            <option value="">Any date</option>
+            <option value="this_week">This week</option>
+            <option value="this_month">This month</option>
+            <option value="last_30">Last 30 days</option>
+          </FilterSelect>
+          <FilterSelect
+            label="Sort"
+            value={`${sortBy}:${sortOrder}`}
+            onChange={(e) => {
+              const [by, order] = e.target.value.split(":") as [typeof sortBy, typeof sortOrder];
+              setSortBy(by); setSortOrder(order); setPage(0);
+            }}
+          >
+            <option value="createdAt:desc">Newest first</option>
+            <option value="createdAt:asc">Oldest first</option>
+            <option value="scheduledAt:asc">Scheduled (soonest)</option>
+            <option value="scheduledAt:desc">Scheduled (latest)</option>
+          </FilterSelect>
+          {activeFilterCount > 0 && (
+            <>
+              <span className="shrink-0 text-label tabular-nums text-on-surface-variant">
+                {filteredCampaigns.length} of {data?.data?.length ?? 0}
+              </span>
+              <Button variant="ghost" size="sm" onClick={handleClearFilters} className="shrink-0">
+                <X className="h-3.5 w-3.5" /> Clear
+              </Button>
+            </>
+          )}
+        </FilterBar>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card */}
+      <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         {isError ? (
           <LoadError what="campaigns" onRetry={() => refetch()} className="m-6" />
         ) : (
@@ -327,8 +313,9 @@ export default function CampaignsPage() {
       {/* Create Modal */}
       <CreateCampaignModal
         open={showCreate}
-        onClose={() => setShowCreate(false)}
+        onClose={() => { setShowCreate(false); setInitialAudience(undefined); }}
         sessions={sessions}
+        initialAudienceFilters={initialAudience}
       />
     </div>
   );

@@ -11,6 +11,21 @@ import {
   UpdatePlatformSettingsUseCase,
 } from './application/use-cases/platform-settings.use-cases';
 import { SuperAdminSettingsController } from './interfaces/controllers/super-admin-settings.controller';
+import { AiModule } from '@/modules/ai/ai.module';
+import {
+  CreateAiCreditPackUseCase,
+  GetAiCreditPackUseCase,
+  GetAiSettingsUseCase,
+  GetAiUsageUseCase,
+  ListAiModelsUseCase,
+  TestAiConnectionUseCase,
+  UpdateAiCreditPackUseCase,
+  UpdateAiSettingsUseCase,
+} from './application/use-cases/ai-settings.use-cases';
+import { SuperAdminAiController } from './interfaces/controllers/super-admin-ai.controller';
+import { OrgModule } from '@/modules/org/org.module';
+import { FreelancerTypesUseCases } from './application/use-cases/freelancer-types.use-cases';
+import { SuperAdminFreelancerTypesController } from './interfaces/controllers/super-admin-freelancer-types.controller';
 
 // Repositories
 import { SuperAdminRepository } from './infrastructure/repositories/super-admin.repository';
@@ -155,7 +170,8 @@ import { ManualInvoiceRepository } from './infrastructure/repositories/manual-in
 import { SuperAdminBillingOpsController } from './interfaces/controllers/super-admin-billing-ops.controller';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule],
+  // OrgModule: the freelancer type catalog
+  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule, AiModule, OrgModule],
   controllers: [
     SuperAdminAuthController,
     SuperAdminAccountsController,
@@ -171,8 +187,11 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     AnnouncementsController,
     SuperAdminNotificationsController,
     SuperAdminSettingsController,
+    SuperAdminAiController,
+    SuperAdminFreelancerTypesController,
   ],
   providers: [
+    FreelancerTypesUseCases,
     // Repositories
     SuperAdminRepository,
     SuperAdminSessionRepository,
@@ -278,6 +297,14 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     MarkAllSuperAdminNotificationsReadUseCase,
     GetPlatformSettingsUseCase,
     UpdatePlatformSettingsUseCase,
+    GetAiSettingsUseCase,
+    UpdateAiSettingsUseCase,
+    TestAiConnectionUseCase,
+    ListAiModelsUseCase,
+    GetAiUsageUseCase,
+    CreateAiCreditPackUseCase,
+    GetAiCreditPackUseCase,
+    UpdateAiCreditPackUseCase,
     // Guards
     SuperAdminGuard,
   ],

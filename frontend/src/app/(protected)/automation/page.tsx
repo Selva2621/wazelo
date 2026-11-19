@@ -1,8 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { Plus, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Zap, MessageCircle, Tag, Clock, FileText, Trophy, Globe } from "lucide-react";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { RecipeCards } from "@/components/ui/recipe-cards";
+import { useChatbotFlows } from "@/hooks/use-chatbot";
+import { useAuthStore } from "@/stores/auth-store";
+import { DEFAULT_PRESET_PROFILE } from "@/lib/constants/preset-profile";
+import { isGreetingFlow } from "@/lib/greeting-overlap";
+import {
+  getAutomationPresets,
+  type AutomationPreset,
+  type AutomationPresetIcon,
+} from "@/lib/constants/automation-presets";
+
+const PRESET_ICONS: Record<AutomationPresetIcon, typeof Zap> = {
+  welcome: MessageCircle,
+  pricing: Tag,
+  "follow-up": Clock,
+  proposal: FileText,
+  won: Trophy,
+  website: Globe,
+};
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useAutomationRules,
@@ -15,9 +35,14 @@ import { useAutomationSocket } from "@/hooks/use-automation-socket";
 import { useAutomationStore } from "@/stores/automation-store";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { AutomationRulesTable } from "@/components/automation/automation-rules-table";
 import { ExecutionLogsTable } from "@/components/automation/execution-logs-table";
 import { CreateAutomationRuleModal } from "@/components/automation/create-automation-rule-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import { useSubscription } from "@/hooks/use-billing";
 import type {
   AutomationRuleStatus,
@@ -29,7 +54,7 @@ const TAKE = 20;
 
 const MAIN_TABS = [
   { id: "rules", label: "Rules" },
-  { id: "logs", label: "Execution Logs" },
+  { id: "logs", label: "Execution logs" },
 ];
 
 const RULE_STATUS_TABS = [
@@ -59,9 +84,39 @@ export default function AutomationPage() {
     setShowCreateModal,
   } = useAutomationStore();
 
+  // Recipes written for the org's kind of work (freelancer vs team)
+  const { data: orgSettings } = useOrgSettings();
+  const firstName = useAuthStore((s) => s.user?.firstName);
+  const presets = getAutomationPresets(orgSettings?.orgType, {
+    ...DEFAULT_PRESET_PROFILE,
+    introDetails: { name: firstName, freelancerTypes: orgSettings?.freelancerTypes, service: orgSettings?.freelancerServiceLabel ?? orgSettings?.freelancerService },
+  });
+  const [preset, setPreset] = useState<AutomationPreset | null>(null);
+  // An active chatbot already answers first messages — a welcome rule would be a second reply
+  const { data: chatbotFlows } = useChatbotFlows();
+  const greetingBot = chatbotFlows?.find(isGreetingFlow);
+
   const enableRule = useEnableAutomationRule();
   const disableRule = useDisableAutomationRule();
   const deleteRule = useDeleteAutomationRule();
+  // Ask first. A rule that's on must be turned off before the server will delete it,
+  // so confirming does both (it used to fail with no message)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; active: boolean } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.active) await disableRule.mutateAsync(deleteTarget.id);
+      await deleteRule.mutateAsync(deleteTarget.id);
+      toast.success("Rule deleted");
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error((err as Error)?.message || "Couldn't delete the rule. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // Rules query
   const effectiveRuleStatus: AutomationRuleStatus | undefined =
@@ -108,7 +163,8 @@ export default function AutomationPage() {
   }));
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    // Phones: the page itself scrolls instead of an inner scroll box
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Upgrade banner */}
       {!automationEnabled && (
         <div className="shrink-0 mx-6 mt-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
@@ -124,42 +180,65 @@ export default function AutomationPage() {
       )}
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Zap className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">
-              Automation
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeTab === "rules" && (
+        {/* Mobile: the nav bar shows the title and the "+" */}
+        {activeTab === "rules" && (
+          <MobilePageActions primary={{ label: "New rule", onClick: () => setShowCreateModal(true) }} />
+        )}
+        <PageHeader
+          className="max-lg:hidden"
+          title="Automation"
+          actions={
+            activeTab === "rules" ? (
               <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Rule
+                <Plus className="mr-1 h-4 w-4" />
+                New rule
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Main tabs: Rules | Logs */}
-        <Tabs
-          tabs={MAIN_TABS}
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
+            ) : undefined
+          }
         />
 
-        {/* Sub-tabs for Rules: All | Active | Inactive */}
-        {activeTab === "rules" && (
-          <Tabs
-            tabs={ruleStatusTabsWithCounts}
-            activeTab={ruleStatusTabId}
-            onTabChange={handleRuleStatusTabChange}
-          />
-        )}
+        {/* One row: Rules | Logs, then the rule status filter */}
+        <FilterBar className="mobile-scroll-x">
+          <div data-tour="automation-tabs">
+            <Tabs
+              tabs={MAIN_TABS}
+              activeTab={activeTab}
+              onTabChange={(id) => setActiveTab(id as "rules" | "logs")}
+            />
+          </div>
+          {activeTab === "rules" && (
+            <>
+              <FilterBarDivider />
+              <Tabs
+                tabs={ruleStatusTabsWithCounts}
+                activeTab={ruleStatusTabId}
+                onTabChange={handleRuleStatusTabChange}
+              />
+            </>
+          )}
+        </FilterBar>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card (like Contacts) */}
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4 max-lg:flex-none max-lg:overflow-visible">
+        {activeTab === "rules" && automationEnabled && (
+          <RecipeCards
+            className="px-6 pt-4 lg:px-0 lg:pt-0 lg:pb-4"
+            items={presets.map((p) => {
+              const Icon = PRESET_ICONS[p.icon];
+              const needs =
+                p.icon === "welcome" && greetingBot
+                  ? `Chatbot "${greetingBot.name}" already greets new contacts — this would send a second welcome`
+                  : p.needs;
+              return { id: p.id, icon: <Icon className="h-4 w-4" />, title: p.title, summary: p.summary, needs };
+            })}
+            onPick={(id) => {
+              setPreset(presets.find((p) => p.id === id) ?? null);
+              setShowCreateModal(true);
+            }}
+          />
+        )}
         {activeTab === "rules" ? (
           <AutomationRulesTable
             rules={rulesData?.data ?? []}
@@ -169,7 +248,10 @@ export default function AutomationPage() {
             isLoading={rulesLoading}
             onEnable={(id) => enableRule.mutate(id)}
             onDisable={(id) => disableRule.mutate(id)}
-            onDelete={(id) => deleteRule.mutate(id)}
+            onDelete={(id) => {
+              const rule = rulesData?.data?.find((r) => r.id === id);
+              setDeleteTarget({ id, name: rule?.name ?? "this rule", active: rule?.status !== "INACTIVE" });
+            }}
             onPageChange={setRulesPage}
             onCreateClick={() => setShowCreateModal(true)}
           />
@@ -185,10 +267,29 @@ export default function AutomationPage() {
         )}
       </div>
 
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete this rule?"
+        message={
+          deleteTarget?.active
+            ? `"${deleteTarget.name}" is on. It will be turned off and deleted. This can't be undone.`
+            : `"${deleteTarget?.name}" will be deleted. This can't be undone.`
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+      />
+
       {/* Create Modal */}
       <CreateAutomationRuleModal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        preset={preset}
+        onClose={() => {
+          setShowCreateModal(false);
+          setPreset(null);
+        }}
       />
     </div>
   );

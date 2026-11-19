@@ -16,19 +16,7 @@ import {
 import { Type, Transform } from 'class-transformer';
 import { WebhookDeliveryStatus } from '@prisma/client';
 
-const VALID_WEBHOOK_EVENTS = [
-  'MESSAGE_RECEIVED',
-  'MESSAGE_SENT',
-  'MESSAGE_DELIVERED',
-  'MESSAGE_FAILED',
-  'CONTACT_CREATED',
-  'CONTACT_UPDATED',
-  'CAMPAIGN_COMPLETED',
-  'CAMPAIGN_FAILED',
-  'PAYMENT_SUCCEEDED',
-  'PAYMENT_FAILED',
-  'SUBSCRIPTION_CHANGED',
-] as const;
+// Allowed event names are checked in ManageWebhooksUseCase.validateEvents
 
 export class CreateWebhookDto {
   @IsUrl({ require_tld: false }) // Allow localhost for testing
@@ -42,7 +30,7 @@ export class CreateWebhookDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   events: string[];
 
@@ -77,7 +65,7 @@ export class UpdateWebhookDto {
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   events?: string[];
 

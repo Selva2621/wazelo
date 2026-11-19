@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import LenisProvider from "./lenis-provider";
+
+const WIDGET_SRC = process.env.NEXT_PUBLIC_WAZELO_WIDGET_SRC;
 
 // ── Structured Data Schemas ────────────────────────────────────────────────────
 
@@ -420,6 +423,9 @@ export default function RootLayout({
         <LenisProvider>
           {children}
         </LenisProvider>
+        {/* Wazelo's own website chat (set NEXT_PUBLIC_WAZELO_WIDGET_SRC to the embed.js link
+            from Settings → Chat widget in the Wazelo workspace; unset = no widget) */}
+        {WIDGET_SRC && <Script src={WIDGET_SRC} strategy="lazyOnload" />}
       </body>
     </html>
   );

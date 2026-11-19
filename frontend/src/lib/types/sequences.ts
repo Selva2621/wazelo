@@ -1,5 +1,20 @@
+import type { LeadStatus } from "./contacts";
+
 export type SequenceStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
 export type SequenceRecipientStatus = "ACTIVE" | "COMPLETED" | "EXITED" | "PAUSED";
+export type SequenceTriggerType = "DEAL_STAGE_CHANGED" | "LEAD_STATUS_CHANGED" | "CONTACT_CREATED";
+
+/** What adds a contact to an always-on sequence */
+export interface SequenceTrigger {
+  type: SequenceTriggerType;
+  /** DEAL_STAGE_CHANGED */
+  stageId?: string;
+  /** LEAD_STATUS_CHANGED */
+  toStatus?: LeadStatus;
+}
+
+/** How a step reaches the contact; email steps send from the workspace email */
+export type SequenceStepChannel = "WHATSAPP" | "EMAIL";
 
 export interface StepCondition {
   keyword: string;
@@ -12,6 +27,9 @@ export interface SequenceStep {
   orgId: string;
   stepOrder: number;
   name: string | null;
+  /** Older steps predate channels and are WhatsApp */
+  channel?: SequenceStepChannel;
+  emailSubject?: string | null;
   messageType: string;
   messageBody: string | null;
   mediaUrl: string | null;
@@ -36,6 +54,9 @@ export interface CampaignSequence {
   status: SequenceStatus;
   audienceType: "ALL" | "FILTERED";
   audienceFilters: Record<string, unknown> | null;
+  /** Set → always-on; contacts join one at a time */
+  triggerType: SequenceTriggerType | null;
+  triggerConfig: { stageId?: string; toStatus?: LeadStatus } | null;
   exitOnReply: boolean;
   createdById: string;
   startedAt: string | null;
@@ -75,6 +96,8 @@ export interface SequenceRecipientsResponse {
 
 export interface CreateSequenceStepRequest {
   name?: string;
+  channel?: SequenceStepChannel;
+  emailSubject?: string;
   messageType?: string;
   messageBody?: string;
   mediaUrl?: string;
@@ -89,6 +112,7 @@ export interface CreateSequenceRequest {
   sessionId: string;
   audienceType: "ALL" | "FILTERED";
   audienceFilters?: Record<string, unknown>;
+  trigger?: SequenceTrigger;
   exitOnReply?: boolean;
   steps: CreateSequenceStepRequest[];
 }

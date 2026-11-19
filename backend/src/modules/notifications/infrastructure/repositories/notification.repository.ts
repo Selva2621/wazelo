@@ -69,7 +69,8 @@ export class NotificationRepository {
   async findByIdempotencyKey(
     idempotencyKey: string,
   ): Promise<Notification | null> {
-    return this.prisma.notification.findUnique({
+    // findFirst: the key's unique index is named, so findUnique won't take it bare
+    return this.prisma.notification.findFirst({
       where: { idempotencyKey },
     });
   }

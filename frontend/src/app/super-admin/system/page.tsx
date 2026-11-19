@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, useState } from "react";
+import { useId, useState } from "react";
 import {
   Activity,
   Database,
@@ -11,14 +11,12 @@ import {
   Bug,
   Check,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Pencil,
   Plus,
   Power,
   RefreshCw,
   RotateCcw,
-  Gauge,
   Server,
   ServerCrash,
   ToggleLeft,
@@ -44,6 +42,7 @@ import {
 } from "@/hooks/use-observability";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -56,10 +55,16 @@ import type {
   AlertCondition,
   CreateAlertRuleRequest,
   FailedJob,
+  MetricSnapshot,
+  AlertEvent,
+  ErrorGroup,
 } from "@/lib/types/observability";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 
 type ObsTab = "overview" | "queues" | "failed-jobs" | "alerts" | "errors" | "kill-switches";
 
@@ -77,6 +82,90 @@ const STATUS_TEXT: Record<HealthStatus, string> = {
   unhealthy: "text-error",
 };
 
+const metricColumns: DataTableColumn<MetricSnapshot>[] = [
+  {
+    id: "metric",
+    header: "Metric",
+    cell: (m) => <span className="text-body text-on-surface font-mono">{m.metric}</span>,
+  },
+  {
+    id: "value",
+    header: "Value",
+    align: "right",
+    cell: (m) => <span className="text-body font-semibold text-on-surface">{formatMetricValue(m.value)}</span>,
+  },
+  {
+    id: "recordedAt",
+    header: "Recorded at",
+    align: "right",
+    cell: (m) => <span className="text-label text-on-surface-variant">{timeAgo(m.createdAt)}</span>,
+  },
+];
+
+const alertHistoryColumns: DataTableColumn<AlertEvent>[] = [
+  {
+    id: "time",
+    header: "Time",
+    cellClassName: "text-label text-on-surface-variant font-mono whitespace-nowrap",
+    cell: (event) => formatTimestamp(event.createdAt),
+  },
+  { id: "metric", header: "Metric", cellClassName: "text-label text-on-surface font-mono", cell: (event) => event.metric },
+  {
+    id: "value",
+    header: "Value / threshold",
+    cellClassName: "text-label",
+    cell: (event) => (
+      <>
+        <span className="text-error font-medium">{formatMetricValue(event.value)}</span>
+        <span className="text-on-surface-variant"> / </span>
+        <span className="text-on-surface-variant">{formatMetricValue(event.threshold)}</span>
+      </>
+    ),
+  },
+  {
+    id: "message",
+    header: "Message",
+    cellClassName: "text-label text-on-surface-variant max-w-[300px] truncate",
+    cell: (event) => event.message,
+  },
+];
+
+const errorColumns: DataTableColumn<ErrorGroup>[] = [
+  {
+    id: "error",
+    header: "Error",
+    cellClassName: "max-w-[300px]",
+    cell: (err) => (
+      <>
+        <p className="text-body text-on-surface truncate">{err.message}</p>
+        <p className="text-caption text-on-surface-variant/50 font-mono mt-0.5 truncate">{err.fingerprint}</p>
+      </>
+    ),
+  },
+  {
+    id: "count",
+    header: "Count",
+    align: "right",
+    skeleton: "short",
+    cell: (err) => (
+      <span className={`text-body-lg font-semibold ${err.count > 10 ? "text-error" : "text-on-surface"}`}>{err.count}</span>
+    ),
+  },
+  { id: "context", header: "Context", cellClassName: "text-label text-on-surface-variant", cell: (err) => err.context ?? "—" },
+  {
+    id: "firstSeen",
+    header: "First seen",
+    cellClassName: "text-label text-on-surface-variant whitespace-nowrap",
+    cell: (err) => timeAgo(err.firstSeen),
+  },
+  {
+    id: "lastSeen",
+    header: "Last seen",
+    cellClassName: "text-label text-on-surface-variant whitespace-nowrap",
+    cell: (err) => timeAgo(err.lastSeen),
+  },
+];
+
 // Platform-wide data: access is enforced by the super admin layout + API guard.
 export default function SystemHealthPage() {
   // ?tab=kill-switches deep-links from the dashboard banner
@@ -86,17 +175,11 @@ export default function SystemHealthPage() {
   );
 
   return (
-    <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">System Health</h1>
-        <p className="text-body-lg text-on-surface-variant mt-1">
-          Platform-wide health, queues, alerts, errors and kill switches across all organizations
-        </p>
-      </div>
+    <div className="flex-1 p-4 lg:p-6 space-y-6">
+      <PageHeader title="System health" />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-container/30 p-1 rounded-lg w-fit">
+      <div role="tablist" aria-label="System health sections" className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-outline-variant p-0.5 w-fit">
         {(
           [
             { id: "overview", label: "Overview", icon: Activity },
@@ -109,14 +192,18 @@ export default function SystemHealthPage() {
         ).map((tab) => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-body font-medium transition-colors ${
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-md text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
               activeTab === tab.id
-                ? "bg-surface-container text-on-surface shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-on-surface-variant hover:text-on-surface",
+            )}
           >
-            <tab.icon className="h-3.5 w-3.5" />
+            <tab.icon className="h-3.5 w-3.5" aria-hidden />
             {tab.label}
           </button>
         ))}
@@ -211,51 +298,17 @@ function OverviewSection() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-title-sm">
-              <Gauge className="h-5 w-5" />
-              Latest Metrics
+              Latest metrics
             </CardTitle>
           </CardHeader>
           <CardContent className="!p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Metric
-                    </th>
-                    <th className="px-5 py-3 text-right text-label text-on-surface-variant">
-                      Value
-                    </th>
-                    <th className="px-5 py-3 text-right text-label text-on-surface-variant">
-                      Recorded at
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.map((m, idx) => (
-                    <tr
-                      key={`${m.metric}-${idx}`}
-                      className="border-b border-outline-variant/10 last:border-0"
-                    >
-                      <td className="px-5 py-3">
-                        <span className="text-body text-on-surface font-mono">
-                          {m.metric}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <span className="text-body font-semibold text-on-surface">
-                          {formatMetricValue(m.value)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <span className="text-label text-on-surface-variant">
-                          {timeAgo(m.createdAt)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                label="Latest metrics"
+                columns={metricColumns}
+                rows={metrics}
+                rowKey={(m) => `${m.metric}-${metrics.indexOf(m)}`}
+              />
             </div>
           </CardContent>
         </Card>
@@ -281,7 +334,7 @@ function QueuesSection() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-body font-semibold text-on-surface">
-          Queue Status
+          Queue status
         </h3>
         <Button variant="ghost" size="sm" onClick={() => refetch()}>
           <RefreshCw className="h-3.5 w-3.5" />
@@ -325,11 +378,11 @@ function QueueCard({ queue }: { queue: QueueHealth }) {
           </span>
         </div>
         {queue.status !== "healthy" ? (
-          <Badge variant={queue.status === "critical" ? "error" : "warning"}>
+          <Badge dot variant={queue.status === "critical" ? "error" : "warning"}>
             {queue.status === "critical" ? "Backlog critical" : "Backlog building"}
           </Badge>
         ) : queue.failed > 0 ? (
-          <Badge variant="error">{queue.failed} failed</Badge>
+          <Badge dot variant="error">{queue.failed} failed</Badge>
         ) : null}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -412,22 +465,97 @@ function FailedJobsSection() {
 
   const queueNames = (queues ?? []).map((q) => q.name).sort();
 
+  const failedJobColumns: DataTableColumn<FailedJob>[] = [
+    {
+      id: "queue",
+      header: "Queue",
+      cellClassName: "text-label text-on-surface font-mono whitespace-nowrap",
+      cell: (job) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="shrink-0 text-on-surface-variant/50" aria-hidden>
+            {open === job.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </span>
+          {job.queue}
+        </span>
+      ),
+    },
+    {
+      id: "state",
+      header: "State",
+      skeleton: "badge",
+      cell: (job) => (
+        <Badge dot variant={job.state === "failed" ? "error" : "warning"}>
+          {job.state === "failed" ? "Failed" : "Expired"}
+        </Badge>
+      ),
+    },
+    {
+      id: "attempts",
+      header: "Attempts",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant tabular-nums",
+      cell: (job) => job.attempts,
+    },
+    {
+      id: "failedAt",
+      header: "Failed at",
+      cellClassName: "text-label text-on-surface-variant whitespace-nowrap",
+      cell: (job) => (
+        <time dateTime={job.failedAt} title={new Date(job.failedAt).toLocaleString()}>
+          {timeAgo(job.failedAt)}
+        </time>
+      ),
+    },
+    {
+      id: "error",
+      header: "Error",
+      cellClassName: "text-label text-on-surface-variant max-w-[320px]",
+      cell: (job) => (
+        <p className="truncate" title={job.error ?? undefined}>
+          {job.error ?? "—"}
+        </p>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (job) =>
+        job.retried ? (
+          <Badge dot variant="muted">Retried</Badge>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRetrying(job);
+            }}
+            aria-label={`Retry job ${job.id}`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+            Retry
+          </Button>
+        ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <label htmlFor="failed-jobs-queue" className={labelClass}>
-            Queue
-          </label>
-          <select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterBar>
+          <FilterSelect
             id="failed-jobs-queue"
+            label="Filter by queue"
+            active={!!queue}
             value={queue}
             onChange={(e) => {
               setQueue(e.target.value);
               setPage(1);
               setOpen(null);
             }}
-            className={inputClass}
           >
             <option value="">All queues</option>
             {queueNames.map((name) => (
@@ -435,8 +563,8 @@ function FailedJobsSection() {
                 {name}
               </option>
             ))}
-          </select>
-        </div>
+          </FilterSelect>
+        </FilterBar>
         <div className="flex items-center gap-3">
           {isFetching && !isLoading && (
             <span role="status" className="text-label text-on-surface-variant">
@@ -451,187 +579,54 @@ function FailedJobsSection() {
       </div>
 
       <Card className="!p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <caption className="sr-only">Failed and expired jobs, newest first</caption>
-            <thead>
-              <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                <th scope="col" className="w-10">
-                  <span className="sr-only">Details</span>
-                </th>
-                {["Queue", "State", "Attempts", "Failed at", "Error"].map((h) => (
-                  <th
-                    key={h}
-                    scope="col"
-                    className="px-5 py-3 text-left text-label text-on-surface-variant"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <th scope="col" className="px-5 py-3 text-right text-label text-on-surface-variant">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center" role="status">
-                    <Spinner size="lg" className="mx-auto text-primary" />
-                    <span className="sr-only">Loading failed jobs…</span>
-                  </td>
-                </tr>
-              ) : isError ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-body text-error" role="alert">
-                    Could not load failed jobs.{" "}
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      className="underline hover:no-underline"
-                    >
-                      Try again
-                    </button>
-                  </td>
-                </tr>
-              ) : !data?.jobs.length ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center">
-                    <ServerCrash
-                      className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3"
-                      aria-hidden
-                    />
-                    <p className="text-body text-on-surface-variant">No failed jobs</p>
-                  </td>
-                </tr>
-              ) : (
-                data.jobs.map((job) => {
-                  const expanded = open === job.id;
-                  return (
-                    <Fragment key={job.id}>
-                      <tr className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors">
-                        <td className="pl-2">
-                          <IconButton
-                            size="sm"
-                            aria-expanded={expanded}
-                            aria-controls={`job-details-${job.id}`}
-                            aria-label={`${expanded ? "Hide" : "Show"} job details`}
-                            onClick={() => setOpen(expanded ? null : job.id)}
-                          >
-                            <ChevronDown
-                              className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")}
-                              aria-hidden
-                            />
-                          </IconButton>
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface font-mono whitespace-nowrap">
-                          {job.queue}
-                        </td>
-                        <td className="px-5 py-3">
-                          <Badge variant={job.state === "failed" ? "error" : "warning"}>
-                            {job.state === "failed" ? "Failed" : "Expired"}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface-variant tabular-nums">
-                          {job.attempts}
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface-variant whitespace-nowrap">
-                          <time dateTime={job.failedAt} title={new Date(job.failedAt).toLocaleString()}>
-                            {timeAgo(job.failedAt)}
-                          </time>
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface-variant max-w-[320px]">
-                          <p className="truncate" title={job.error ?? undefined}>
-                            {job.error ?? "—"}
-                          </p>
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          {job.retried ? (
-                            <Badge variant="muted">Retried</Badge>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setRetrying(job)}
-                              aria-label={`Retry job ${job.id}`}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                              Retry
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                      {expanded && (
-                        <tr id={`job-details-${job.id}`} className="border-b border-outline-variant/10">
-                          <td />
-                          <td colSpan={6} className="px-5 pb-4 pt-1 space-y-3">
-                            <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-label">
-                              <div>
-                                <dt className="text-on-surface-variant">Job ID</dt>
-                                <dd className="text-on-surface font-mono break-all">{job.id}</dd>
-                              </div>
-                              <div>
-                                <dt className="text-on-surface-variant">Created</dt>
-                                <dd className="text-on-surface">{new Date(job.createdAt).toLocaleString()}</dd>
-                              </div>
-                              <div>
-                                <dt className="text-on-surface-variant">Failed</dt>
-                                <dd className="text-on-surface">{new Date(job.failedAt).toLocaleString()}</dd>
-                              </div>
-                            </dl>
-                            {job.error && (
-                              <div>
-                                <p className="text-label text-on-surface-variant mb-1">Error</p>
-                                <pre className="text-caption font-mono text-error whitespace-pre-wrap break-words bg-surface-container/40 rounded-lg p-3 max-h-48 overflow-auto">
-                                  {job.error}
-                                </pre>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-label text-on-surface-variant mb-1">
-                                Data <span className="text-on-surface-variant/60">(secrets redacted)</span>
-                              </p>
-                              <pre className="text-caption font-mono text-on-surface whitespace-pre-wrap break-words bg-surface-container/40 rounded-lg p-3 max-h-80 overflow-auto">
-                                {formatJson(job.data)}
-                              </pre>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })
+        <DataTable
+          label="Failed and expired jobs, newest first"
+          columns={failedJobColumns}
+          rows={data?.jobs ?? []}
+          rowKey={(job) => job.id}
+          rowActionLabel={(job) => `${open === job.id ? "Hide" : "Show"} details for job ${job.id}`}
+          loading={isLoading}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{ icon: <ServerCrash className="h-12 w-12" />, title: "No failed jobs", compact: true }}
+          onRowClick={(job) => setOpen(open === job.id ? null : job.id)}
+          renderExpandedRow={(job) => (
+            <div className="space-y-3">
+              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-label">
+                <div>
+                  <dt className="text-on-surface-variant">Job ID</dt>
+                  <dd className="text-on-surface font-mono break-all">{job.id}</dd>
+                </div>
+                <div>
+                  <dt className="text-on-surface-variant">Created</dt>
+                  <dd className="text-on-surface">{new Date(job.createdAt).toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt className="text-on-surface-variant">Failed</dt>
+                  <dd className="text-on-surface">{new Date(job.failedAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+              {job.error && (
+                <div>
+                  <p className="text-label text-on-surface-variant mb-1">Error</p>
+                  <pre className="text-caption font-mono text-error whitespace-pre-wrap break-words bg-surface-container/40 rounded-lg p-3 max-h-48 overflow-auto">
+                    {job.error}
+                  </pre>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/15">
-            <span className="text-label text-on-surface-variant">{data.total} total</span>
-            <div className="flex items-center gap-2">
-              <IconButton
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-              </IconButton>
-              <span className="text-label text-on-surface-variant">
-                {page} / {data.totalPages}
-              </span>
-              <IconButton
-                size="sm"
-                onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                disabled={page >= data.totalPages}
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </IconButton>
+              <div>
+                <p className="text-label text-on-surface-variant mb-1">
+                  Data <span className="text-on-surface-variant/60">(secrets redacted)</span>
+                </p>
+                <pre className="text-caption font-mono text-on-surface whitespace-pre-wrap break-words bg-surface-container/40 rounded-lg p-3 max-h-80 overflow-auto">
+                  {formatJson(job.data)}
+                </pre>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          isRowExpanded={(job) => open === job.id}
+          pagination={data ? { page: page - 1, pageSize: PAGE_SIZE, total: data.total, onPageChange: (p) => setPage(p + 1) } : undefined}
+        />
       </Card>
 
       <ConfirmDialog
@@ -844,9 +839,8 @@ function AlertRuleFormBody({
           <label htmlFor={fid("condition")} className={labelClass}>
             Condition
           </label>
-          <select
+          <Select
             id={fid("condition")}
-            className={inputClass}
             value={form.condition}
             onChange={(e) => set("condition", e.target.value as AlertCondition)}
           >
@@ -855,7 +849,7 @@ function AlertRuleFormBody({
                 {c.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor={fid("threshold")} className={labelClass}>
@@ -1073,18 +1067,83 @@ function AlertsSection() {
     return <SectionLoader />;
   }
 
+  const ruleColumns: DataTableColumn<AlertRule>[] = [
+    { id: "name", header: "Name", cellClassName: "text-body text-on-surface font-medium", cell: (rule) => rule.name },
+    { id: "metric", header: "Metric", cellClassName: "text-label text-on-surface-variant font-mono", cell: (rule) => rule.metric },
+    {
+      id: "condition",
+      header: "Condition",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (rule) => (
+        <>
+          {CONDITION_SYMBOL[rule.condition] ?? rule.condition} {rule.threshold} (
+          {rule.windowSeconds}s window)
+        </>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (rule) => (
+        <Badge dot variant={rule.enabled ? "success" : "muted"}>
+          {rule.enabled ? "Active" : "Disabled"}
+        </Badge>
+      ),
+    },
+    {
+      id: "lastTriggered",
+      header: "Last triggered",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (rule) => (rule.lastTriggeredAt ? timeAgo(rule.lastTriggeredAt) : "Never"),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (rule) => (
+        <div className="flex items-center justify-end gap-1">
+          <IconButton
+            size="sm"
+            role="switch"
+            aria-checked={rule.enabled}
+            aria-label={`${rule.name} enabled`}
+            disabled={togglingId === rule.id}
+            onClick={() => handleToggle(rule)}
+          >
+            {rule.enabled ? (
+              <ToggleRight className="h-4 w-4 text-success" aria-hidden />
+            ) : (
+              <ToggleLeft className="h-4 w-4" aria-hidden />
+            )}
+          </IconButton>
+          <IconButton size="sm" onClick={() => openEdit(rule)} aria-label={`Edit ${rule.name}`}>
+            <Pencil className="h-4 w-4" aria-hidden />
+          </IconButton>
+          <IconButton
+            size="sm"
+            onClick={() => setDeleting(rule)}
+            className="hover:text-error hover:bg-error/10"
+            aria-label={`Delete ${rule.name}`}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Alert Rules */}
       <Card>
         <CardHeader className="flex items-center justify-between gap-3 space-y-0">
-          <CardTitle className="flex items-center gap-2 text-title-sm">
-            <Bell className="h-5 w-5" />
-            Alert Rules
+          <CardTitle className="flex items-baseline gap-2 text-title-sm">
+            Alert rules
             {rules && (
-              <Badge variant="default" className="ml-2">
-                {rules.length}
-              </Badge>
+              <span className="text-body font-normal tabular-nums text-on-surface-variant">{rules.length}</span>
             )}
           </CardTitle>
           <Button size="sm" onClick={openCreate}>
@@ -1093,114 +1152,20 @@ function AlertsSection() {
           </Button>
         </CardHeader>
         <CardContent className="!p-0">
-          {rulesError ? (
-            <div className="py-12 text-center text-body text-error" role="alert">
-              Could not load alert rules.{" "}
-              <button
-                type="button"
-                onClick={() => refetchRules()}
-                className="underline hover:no-underline"
-              >
-                Try again
-              </button>
-            </div>
-          ) : !rules || rules.length === 0 ? (
-            <div className="text-center py-12">
-              <Bell className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-              <p className="text-body text-on-surface-variant">
-                No alert rules configured
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Name
-                    </th>
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Metric
-                    </th>
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Condition
-                    </th>
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Status
-                    </th>
-                    <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                      Last triggered
-                    </th>
-                    <th className="px-5 py-3 text-right text-label text-on-surface-variant">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rules.map((rule) => (
-                    <tr
-                      key={rule.id}
-                      className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors"
-                    >
-                      <td className="px-5 py-3 text-body text-on-surface font-medium">
-                        {rule.name}
-                      </td>
-                      <td className="px-5 py-3 text-label text-on-surface-variant font-mono">
-                        {rule.metric}
-                      </td>
-                      <td className="px-5 py-3 text-label text-on-surface-variant">
-                        {CONDITION_SYMBOL[rule.condition] ?? rule.condition} {rule.threshold} (
-                        {rule.windowSeconds}s window)
-                      </td>
-                      <td className="px-5 py-3">
-                        <Badge variant={rule.enabled ? "primary" : "default"}>
-                          {rule.enabled ? "Active" : "Disabled"}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-label text-on-surface-variant">
-                        {rule.lastTriggeredAt
-                          ? timeAgo(rule.lastTriggeredAt)
-                          : "Never"}
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <IconButton
-                            size="sm"
-                            role="switch"
-                            aria-checked={rule.enabled}
-                            aria-label={`${rule.name} enabled`}
-                            disabled={togglingId === rule.id}
-                            onClick={() => handleToggle(rule)}
-                          >
-                            {rule.enabled ? (
-                              <ToggleRight className="h-4 w-4 text-success" aria-hidden />
-                            ) : (
-                              <ToggleLeft className="h-4 w-4" aria-hidden />
-                            )}
-                          </IconButton>
-                          <IconButton
-                            size="sm"
-                            onClick={() => openEdit(rule)}
-                            aria-label={`Edit ${rule.name}`}
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden />
-                          </IconButton>
-                          <IconButton
-                            size="sm"
-                            onClick={() => setDeleting(rule)}
-                            className="hover:text-error hover:bg-error/10"
-                            aria-label={`Delete ${rule.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden />
-                          </IconButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            label="Alert rules"
+            columns={ruleColumns}
+            rows={rules ?? []}
+            rowKey={(rule) => rule.id}
+            rowLabel={(rule) => rule.name}
+            error={rulesError}
+            onRetry={() => refetchRules()}
+            empty={{
+              icon: <Bell className="h-10 w-10" />,
+              title: "No alert rules configured",
+              compact: true,
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -1240,100 +1205,28 @@ function AlertsSection() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-title-sm">
-            <AlertTriangle className="h-5 w-5" />
-            Alert History
+            Alert history
           </CardTitle>
         </CardHeader>
         <CardContent className="!p-0">
-          {historyLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Spinner size="lg" className="text-primary" />
-            </div>
-          ) : !history?.data?.length ? (
-            <div className="text-center py-12">
-              <AlertTriangle className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-              <p className="text-body text-on-surface-variant">
-                No alerts triggered yet
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                      <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                        Time
-                      </th>
-                      <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                        Metric
-                      </th>
-                      <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                        Value / threshold
-                      </th>
-                      <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                        Message
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.data.map((event) => (
-                      <tr
-                        key={event.id}
-                        className="border-b border-outline-variant/10 last:border-0"
-                      >
-                        <td className="px-5 py-3 text-label text-on-surface-variant font-mono whitespace-nowrap">
-                          {formatTimestamp(event.createdAt)}
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface font-mono">
-                          {event.metric}
-                        </td>
-                        <td className="px-5 py-3 text-label">
-                          <span className="text-error font-medium">
-                            {formatMetricValue(event.value)}
-                          </span>
-                          <span className="text-on-surface-variant"> / </span>
-                          <span className="text-on-surface-variant">
-                            {formatMetricValue(event.threshold)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-label text-on-surface-variant max-w-[300px] truncate">
-                          {event.message}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {history.total > PAGE_SIZE && (
-                <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/15">
-                  <span className="text-label text-on-surface-variant">
-                    Page {historyPage} of {Math.ceil(history.total / PAGE_SIZE)}
-                    <span className="text-on-surface-variant/50 ml-1">
-                      ({history.total} total)
-                    </span>
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <IconButton size="sm"
-                      onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                      disabled={historyPage <= 1} aria-label="Previous page">
-                      <ChevronLeft className="h-4 w-4" />
-                    </IconButton>
-                    <IconButton size="sm"
-                      onClick={() =>
-                        setHistoryPage((p) =>
-                          Math.min(Math.ceil(history.total / PAGE_SIZE), p + 1),
-                        )
-                      }
-                      disabled={historyPage >= Math.ceil(history.total / PAGE_SIZE)} aria-label="Next page">
-                      <ChevronRight className="h-4 w-4" />
-                    </IconButton>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+          <DataTable
+            label="Alert history"
+            columns={alertHistoryColumns}
+            rows={history?.data ?? []}
+            rowKey={(event) => event.id}
+            loading={historyLoading}
+            skeletonRows={5}
+            empty={{
+              icon: <AlertTriangle className="h-10 w-10" />,
+              title: "No alerts triggered yet",
+              compact: true,
+            }}
+            pagination={
+              history
+                ? { page: historyPage - 1, pageSize: PAGE_SIZE, total: history.total, onPageChange: (p) => setHistoryPage(p + 1) }
+                : undefined
+            }
+          />
         </CardContent>
       </Card>
     </div>
@@ -1353,79 +1246,21 @@ function ErrorsSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
-          <Bug className="h-5 w-5" />
-          Error Groups
+          Error groups
         </CardTitle>
       </CardHeader>
       <CardContent className="!p-0">
-        {!errors || errors.length === 0 ? (
-          <div className="text-center py-12">
-            <Bug className="h-10 w-10 text-on-surface-variant/40 mx-auto mb-3" />
-            <p className="text-body text-on-surface-variant">
-              No errors tracked
-            </p>
-            <p className="text-caption text-on-surface-variant/60 mt-1">
-              Errors will appear here when they occur
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-                  <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                    Error
-                  </th>
-                  <th className="px-5 py-3 text-right text-label text-on-surface-variant">
-                    Count
-                  </th>
-                  <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                    Context
-                  </th>
-                  <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                    First seen
-                  </th>
-                  <th className="px-5 py-3 text-left text-label text-on-surface-variant">
-                    Last seen
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {errors.map((err) => (
-                  <tr
-                    key={err.fingerprint}
-                    className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container/15 transition-colors"
-                  >
-                    <td className="px-5 py-3 max-w-[300px]">
-                      <p className="text-body text-on-surface truncate">
-                        {err.message}
-                      </p>
-                      <p className="text-caption text-on-surface-variant/50 font-mono mt-0.5 truncate">
-                        {err.fingerprint}
-                      </p>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <span
-                        className={`text-body-lg font-semibold ${err.count > 10 ? "text-error" : "text-on-surface"}`}
-                      >
-                        {err.count}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-label text-on-surface-variant">
-                      {err.context ?? "—"}
-                    </td>
-                    <td className="px-5 py-3 text-label text-on-surface-variant whitespace-nowrap">
-                      {timeAgo(err.firstSeen)}
-                    </td>
-                    <td className="px-5 py-3 text-label text-on-surface-variant whitespace-nowrap">
-                      {timeAgo(err.lastSeen)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          label="Error groups"
+          columns={errorColumns}
+          rows={errors ?? []}
+          rowKey={(err) => err.fingerprint}
+          empty={{
+            icon: <Bug className="h-10 w-10" />,
+            title: "No errors tracked",
+            description: "Errors will appear here when they occur",
+          }}
+        />
       </CardContent>
     </Card>
   );

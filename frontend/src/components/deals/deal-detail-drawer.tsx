@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/modal";
-import { useUpdateDeal, useDeleteDeal } from "@/hooks/use-deals";
+import { useUpdateDeal, useDeleteDeal, useMoveDeal } from "@/hooks/use-deals";
 import type { Deal, PipelineStage } from "@/lib/types/deals";
+import { DealProposals } from "@/components/proposals/deal-proposals";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface DealDetailDrawerProps {
   deal: Deal;
@@ -26,6 +28,9 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
 
   const updateDeal = useUpdateDeal();
   const deleteDeal = useDeleteDeal();
+  // Phones can't drag cards between columns, so the drawer offers "Move to" there
+  const moveDeal = useMoveDeal();
+  const terms = useProductTerms();
 
   const hasChanges =
     title !== deal.title ||
@@ -39,8 +44,9 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         pipelineId,
         dealId: deal.id,
         title: title.trim(),
-        value: value ? parseFloat(value) : undefined,
-        notes: notes || undefined,
+        // Emptied fields are cleared, not left as they were
+        value: value ? parseFloat(value) : null,
+        notes,
         expectedClose: expectedClose || undefined,
       },
       { onSuccess: onClose },
@@ -61,7 +67,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
           <div className="flex items-center gap-2">
             <h2 className="text-title-sm font-semibold text-on-surface">Deal Details</h2>
-            <Badge variant={statusColor}>{deal.status}</Badge>
+            <Badge dot variant={statusColor}>{deal.status.charAt(0) + deal.status.slice(1).toLowerCase()}</Badge>
           </div>
           <button aria-label="Close" onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <X className="h-4 w-4" />
@@ -69,7 +75,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 max-lg:min-h-0 max-lg:min-w-0 max-lg:overflow-x-hidden max-lg:overscroll-contain">
           {/* Contact info */}
           <div className="rounded-xl bg-surface-container/50 p-3.5 space-y-1">
             <p className="text-label font-medium text-on-surface-variant">Contact</p>
@@ -85,7 +91,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
           {/* Product */}
           {deal.product && (
             <div className="rounded-xl bg-surface-container/50 p-3.5 space-y-1">
-              <p className="text-label font-medium text-on-surface-variant">Product</p>
+              <p className="text-label font-medium text-on-surface-variant">{terms.Singular}</p>
               <Badge variant="info">{deal.product.name}</Badge>
             </div>
           )}
@@ -100,7 +106,28 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
               />
               <p className="text-body-lg font-semibold text-on-surface">{deal.stage.name}</p>
             </div>
+            <div className="lg:hidden pt-2">
+              <p className="mb-1.5 text-label text-on-surface-variant">Move to</p>
+              <div className="flex gap-2 mobile-scroll-x">
+                {stages
+                  .filter((st) => st.id !== deal.stageId)
+                  .map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      disabled={moveDeal.isPending}
+                      onClick={() => moveDeal.mutate({ pipelineId, dealId: deal.id, stageId: st.id })}
+                      className="flex min-h-9 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label font-medium text-on-surface active:bg-surface-container disabled:opacity-50"
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: st.color || "#6b7280" }} />
+                      {st.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
+
+          <DealProposals dealId={deal.id} contactId={deal.contactId} open={deal.status === "OPEN"} />
 
           {/* Editable fields */}
           <div className="space-y-1.5">
@@ -142,7 +169,7 @@ export function DealDetailDrawer({ deal, pipelineId, stages, onClose }: DealDeta
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body text-on-surface placeholder:text-on-surface-variant/40 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
+              className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/10 text-body text-on-surface placeholder:text-placeholder resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
               placeholder="Add notes about this deal..."
             />
           </div>

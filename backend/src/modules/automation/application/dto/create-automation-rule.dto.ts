@@ -6,11 +6,14 @@ import {
   IsArray,
   ValidateNested,
   IsInt,
+  IsNumber,
   IsUUID,
   Min,
   Max,
   MaxLength,
   IsObject,
+  IsIn,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -42,6 +45,46 @@ export class TriggerConfigDto {
   @Min(60)
   @Max(2592000) // max 30 days
   delaySeconds?: number;
+
+  /** DEAL_STAGE_CHANGED: the stage a deal is created in or moved to (empty → any stage) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  stageId?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this platform (empty → any) */
+  @IsOptional()
+  @IsIn(['facebook', 'instagram', 'whatsapp'])
+  platform?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this Meta lead form ID (empty → any form) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  formId?: string;
+
+  /** LEAD_AD_RECEIVED: only leads from this Facebook Page ID (empty → any page) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  pageId?: string;
+
+  /** LEAD_AD_RECEIVED: skip repeat leads from numbers that are already contacts */
+  @IsOptional()
+  @IsBoolean()
+  newContactsOnly?: boolean;
+
+  /** SHOPIFY_ORDER_CREATED / SHOPIFY_ORDER_FULFILLED */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minOrderValue?: number;
+
+  /** SHOPIFY_CART_ABANDONED */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minCartValue?: number;
 }
 
 export class ConditionDto {

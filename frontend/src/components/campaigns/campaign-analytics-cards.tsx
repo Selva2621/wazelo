@@ -1,6 +1,6 @@
 "use client";
 
-import { Send, CheckCheck, Eye, AlertTriangle } from "lucide-react";
+import { Send, CheckCheck, Eye, AlertTriangle, MessageCircleReply } from "lucide-react";
 
 interface AnalyticsCardsProps {
   totalRecipients: number;
@@ -8,15 +8,20 @@ interface AnalyticsCardsProps {
   deliveredCount: number;
   readCount: number;
   failedCount: number;
+  /** Recipients who wrote back within a week */
+  repliedCount?: number;
 }
 
 export function CampaignAnalyticsCards({
   totalRecipients,
   sentCount,
-  deliveredCount,
+  deliveredCount: deliveredReceipts,
   readCount,
   failedCount,
+  repliedCount = 0,
 }: AnalyticsCardsProps) {
+  // A read message was delivered even when WhatsApp skipped the delivered receipt
+  const deliveredCount = Math.max(deliveredReceipts, readCount);
   const deliveryRate =
     sentCount > 0 ? ((deliveredCount / sentCount) * 100).toFixed(1) : "0.0";
   const readRate =
@@ -26,7 +31,7 @@ export function CampaignAnalyticsCards({
 
   const cards = [
     {
-      label: "Total Recipients",
+      label: "Recipients",
       value: totalRecipients.toLocaleString(),
       rate: null,
       icon: Send,
@@ -50,6 +55,14 @@ export function CampaignAnalyticsCards({
       rateColor: "text-primary",
     },
     {
+      label: "Replied",
+      value: repliedCount.toLocaleString(),
+      rate: `${deliveredCount > 0 ? ((repliedCount / deliveredCount) * 100).toFixed(1) : "0.0"}%`,
+      icon: MessageCircleReply,
+      accent: "border-l-success",
+      rateColor: "text-success",
+    },
+    {
       label: "Failed",
       value: failedCount.toLocaleString(),
       rate: `${failRate}%`,
@@ -60,15 +73,15 @@ export function CampaignAnalyticsCards({
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-5 gap-3 max-lg:grid-cols-2">
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 ${card.accent} p-4`}
+          className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4"
         >
           <div className="flex items-center gap-2 mb-2">
-            <card.icon className="h-4 w-4 text-on-surface-variant/60" />
-            <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
+            <card.icon className="h-4 w-4 text-on-surface-variant" />
+            <span className="text-label text-on-surface-variant">
               {card.label}
             </span>
           </div>

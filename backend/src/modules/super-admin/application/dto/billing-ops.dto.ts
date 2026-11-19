@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -18,6 +19,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { BILLING_CURRENCIES } from '@/shared/constants/billing-currencies';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const upper = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toUpperCase() : value);
@@ -29,7 +31,7 @@ export class CreditAdjustmentDto {
   @IsInt() @Min(1) @Max(2_000_000_000)
   amountInCents: number;
 
-  @Transform(upper) @IsString() @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter code' })
+  @Transform(upper) @IsIn(BILLING_CURRENCIES, { message: 'currency must be INR or USD' })
   currency: string;
 
   @Transform(trim) @IsString() @MinLength(3) @MaxLength(500)
@@ -54,7 +56,7 @@ export class CreateManualInvoiceDto {
   @IsUUID()
   orgId: string;
 
-  @Transform(upper) @IsString() @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter code' })
+  @Transform(upper) @IsIn(BILLING_CURRENCIES, { message: 'currency must be INR or USD' })
   currency: string;
 
   @IsDateString()
@@ -101,7 +103,7 @@ export class CreateCouponDto {
   amountOffInCents?: number;
 
   /** Required for FIXED */
-  @IsOptional() @Transform(upper) @IsString() @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter code' })
+  @IsOptional() @Transform(upper) @IsIn(BILLING_CURRENCIES, { message: 'currency must be INR or USD' })
   currency?: string;
 
   @IsOptional() @IsInt() @Min(1) @Max(10_000_000)

@@ -32,6 +32,8 @@ export const QUEUE_NAMES = {
   SCHEDULED_MESSAGE_CHECK: 'scheduled-message-check',
   AUTOMATION_EVALUATE: 'automation-evaluate',
   AUTOMATION_EXECUTE_ACTION: 'automation-execute-action',
+  /** Delayed check behind NO_REPLY rules: did the contact answer our message in time? */
+  AUTOMATION_NO_REPLY: 'automation-no-reply',
   FOLLOW_UP_CHECK: 'follow-up-check',
   // EPIC 9 — Subscription & Billing queues
   BILLING_PAYMENT_RETRY: 'billing-payment-retry',
@@ -84,8 +86,20 @@ export const QUEUE_NAMES = {
   SCRAPE_LEADS: 'scrape-leads',
   // One "is this number on WhatsApp?" lookup per job; each job queues the next
   SCRAPE_WA_CHECK: 'scrape-wa-check',
+  /** "Check numbers on WhatsApp" for a saved contact group */
+  GROUP_WA_CHECK: 'group-wa-check',
+  // Knowledge base — read an org's website into KB documents + searchable passages
+  CRAWL_WEBSITE: 'crawl-website',
   // Org onboarding — seeds default master data for a new org (keep in sync with prisma/backfill-org-onboarding.js)
   ORG_ONBOARDING: 'org-onboarding',
+  // Website chat handover: an offer to one member ran out (auto-assign → next member)
+  WIDGET_OFFER_TIMEOUT: 'widget-offer-timeout',
+  // Website chat handover: nobody took the chat in time → offer the visitor a follow-up
+  WIDGET_WAIT_TIMEOUT: 'widget-wait-timeout',
+  // Website chat: no message for 30 min → the chat ends (and a pending welcome goes out)
+  WIDGET_IDLE_CHECK: 'widget-idle-check',
+  // Email from the workspace's own mailbox: one job per email (retries with backoff)
+  SEND_ORG_EMAIL: 'send-org-email',
 } as const;
 
 export const EVENT_NAMES = {
@@ -125,6 +139,11 @@ export const EVENT_NAMES = {
   DEAL_FOLLOW_UP_DUE: 'deal.follow_up_due',
   /** Client answered a deal's scope-approval poll */
   DEAL_SCOPE_RESPONDED: 'deal.scope_responded',
+  // Proposals: the client opened the link / accepted or asked for changes
+  PROPOSAL_VIEWED: 'proposal.viewed',
+  PROPOSAL_RESPONDED: 'proposal.responded',
+  /** A deal was created in, or moved to, a stage */
+  DEAL_STAGE_CHANGED: 'deal.stage_changed',
   /** A decrypted vote on a WhatsApp poll we sent */
   BAILEYS_POLL_VOTE: 'baileys.poll_vote',
   WHATSAPP_SESSION_RECONNECTING: 'whatsapp.session_reconnecting',
@@ -134,6 +153,7 @@ export const EVENT_NAMES = {
 
   // WhatsApp message events (EPIC 3)
   WHATSAPP_MESSAGE_RECEIVED: 'whatsapp.message_received',
+  WHATSAPP_MESSAGE_SYNCED: 'whatsapp.message_synced',
   WHATSAPP_MESSAGE_SENT: 'whatsapp.message_sent',
   WHATSAPP_MESSAGE_DELIVERED: 'whatsapp.message_delivered',
   WHATSAPP_MESSAGE_READ: 'whatsapp.message_read',
@@ -284,6 +304,12 @@ export const EVENT_NAMES = {
   CHATBOT_AI_REPLY_SENT: 'chatbot.ai_reply_sent',
   CHATBOT_SESSION_COMPLETED: 'chatbot.session_completed',
   CHATBOT_SESSION_HANDED_OFF: 'chatbot.session_handed_off',
+  // A person on the team sent a message in a conversation (the AI bot pauses there)
+  CONVERSATION_AGENT_REPLIED: 'conversation.agent_replied',
+  // The org's AI memory (profile, rules, document) changed: cached AI context is dropped
+  AI_MEMORY_UPDATED: 'ai_memory.updated',
+  // Someone typed a reply on the WhatsApp phone itself (not in the app): bots pause there too
+  WHATSAPP_PHONE_REPLY: 'whatsapp.phone_reply',
 
   // Developer API events
   DEVELOPER_MESSAGE_SENT: 'developer.message_sent',
@@ -292,6 +318,12 @@ export const EVENT_NAMES = {
   // Chat Widget events (Phase 4)
   WIDGET_CONFIG_UPDATED: 'widget.config_updated',
   WIDGET_MESSAGE_RECEIVED: 'widget.message_received',
+
+  // Email (the workspace's own mailbox): one per email, after the send was tried
+  EMAIL_SENT: 'email.sent',
+  EMAIL_FAILED: 'email.failed',
+  /** A campaign batch finished handing out its recipients: check whether the campaign is done */
+  CAMPAIGN_BATCH_SETTLED: 'campaign.batch_settled',
 
   // Deal events
   DEAL_AUTO_CREATED: 'deals.auto_created',
@@ -303,6 +335,16 @@ export const EVENT_NAMES = {
   PRODUCT_CREATED: 'product.created',
   PRODUCT_UPDATED: 'product.updated',
   PRODUCT_DELETED: 'product.deleted',
+
+  // Lead follow-up events
+  /** A lead (e.g. Meta lead form) asked about a product: someone on its team must contact them */
+  LEAD_PRODUCT_INTEREST: 'lead.product_interest',
+  /** A lead was given to a team member to contact */
+  LEAD_ASSIGNED: 'lead.assigned',
+  /** A lead's reminder time passed and nobody has contacted it */
+  LEAD_FOLLOW_UP_DUE: 'lead.follow_up_due',
+  /** A brand manager's day-end lead summary */
+  LEAD_DAILY_SUMMARY: 'lead.daily_summary',
 
   // Knowledge Base events
   KB_ARTICLE_PUBLISHED: 'kb.article.published',
@@ -326,7 +368,12 @@ export const EVENT_NAMES = {
 } as const;
 
 export const WHATSAPP_CONFIG = {
-  QR_REFRESH_INTERVAL_MS: 25_000,
+  /** How long each QR code lives (passed to Baileys so the UI countdown matches) */
+  QR_REFRESH_INTERVAL_MS: 30_000,
+  /** Stop making new QR codes after this long without a scan (e.g. the modal was closed) */
+  QR_LINK_WINDOW_MS: 5 * 60_000,
+  /** After a scan, refresh-QR is refused this long so it can't break the login in progress */
+  QR_SCAN_FINISH_MS: 60_000,
   /** How long the HTTP request waits for WhatsApp to issue a pairing code */
   PAIRING_CODE_TIMEOUT_MS: 20_000,
   /** "Reconnect from your phone" link in disconnect emails — read hours later, so not short */
@@ -344,6 +391,13 @@ export const WHATSAPP_CONFIG = {
   DISCONNECT_DETECTION_TIMEOUT_MS: 120_000, // 2 min — phone must miss 4 heartbeats before stale
   MAX_RECONNECT_ATTEMPTS: 15,               // ~46h total window with exponential backoff
   RECONNECT_DELAY_MS: 5_000,
+  /**
+   * "Opened in another session" (440) is often our own overlapping socket (a restart,
+   * a duplicate connect), so try again a few times. Capped per window so a number
+   * really in use elsewhere isn't kicked off over and over.
+   */
+  REPLACED_RECONNECT_DELAYS_S: [10, 30, 60],
+  REPLACED_RECONNECT_WINDOW_MS: 30 * 60_000,
   MAX_MESSAGE_RETRY_COUNT: 3,
   MESSAGE_RETRY_DELAY_SECONDS: 5,
   SESSION_ENCRYPTION_ALGORITHM: 'aes-256-gcm',
@@ -372,18 +426,20 @@ export const SEND_SAFETY_CONFIG = {
   WA_CHECK_PER_DAY: 150,
   WA_CHECK_CACHE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   /**
-   * Warm-up: daily bulk caps by how long the number has been linked.
-   * `cold` = messages to people who never messaged first.
+   * Messages a contact can get per rolling 24h from campaigns, sequences and
+   * automations together (replies to their own messages don't count). Extra ones wait.
    */
-  WARMUP_TIERS: [
-    { maxAgeDays: 7, cold: 20, bulk: 50 },
-    { maxAgeDays: 14, cold: 50, bulk: 150 },
-    { maxAgeDays: 21, cold: 100, bulk: 300 },
-    { maxAgeDays: Infinity, cold: 200, bulk: 500 },
-  ],
+  MAX_BULK_PER_CONTACT_PER_DAY: 2,
   /** Bulk messages only go out between these local hours (org time zone) */
   BULK_SEND_START_HOUR: 9,
   BULK_SEND_END_HOUR: 20,
+  /**
+   * Campaign messages go out 9 AM – 9 PM in the campaign's time zone (office-friendly:
+   * nobody gets a promo at midnight). Held messages resume at 9 AM.
+   * The frontend mirrors these in lib/campaign-time.ts (CAMPAIGN_SEND_HOURS).
+   */
+  CAMPAIGN_SEND_START_HOUR: 9,
+  CAMPAIGN_SEND_END_HOUR: 21,
   /** Spread the morning restart so held messages don't all fire at 9:00 */
   BULK_RESUME_JITTER_MS: 20 * 60 * 1000,
   /** Auto-pause: judge delivery only once this many bulk messages are old enough */
@@ -398,21 +454,33 @@ export const SEND_SAFETY_CONFIG = {
   OPT_OUT_KEYWORDS: ['stop', 'unsubscribe', 'stop all', 'opt out', 'optout', 'remove me', 'spam'],
 } as const;
 
+/**
+ * Bounds for the per-number sending limits an admin can set (whatsapp_sessions.sending_limits).
+ * Without any daily cap set, a number is limited only by the org's plan message limit.
+ * These ceilings stop a typo (e.g. 50000/day) from getting a number banned.
+ */
+export const SENDING_LIMIT_BOUNDS = {
+  DAILY_BULK_MAX: 1_000,
+  DAILY_COLD_MAX: 1_000,
+  /** Shortest allowed gap between two bulk messages on one number */
+  BULK_GAP_MIN_MS: 5_000,
+  BULK_GAP_MAX_MS: 10 * 60 * 1000,
+} as const;
+
 export const CAMPAIGN_CONFIG = {
-  /** Number of recipients per batch job */
-  BATCH_SIZE: 50,
-  /** Delay in seconds between batch dispatches — roughly how long the send pacer needs for one batch */
-  BATCH_DELAY_SECONDS: 50 * 25,
-  /** Concurrent campaign batch workers */
-  WORKER_CONCURRENCY: 3,
-  /** Maximum recipients per campaign (unofficial WhatsApp numbers can't safely send more) */
-  MAX_RECIPIENTS: 500,
-  /** Baileys campaigns only go to contacts who have messaged this org before */
-  WARM_CONTACTS_ONLY: true,
+  /** Recipient grouping; batches are dealt round-robin across the selected numbers and
+   *  each number sends its batches one after another (numbers run in parallel) */
+  BATCH_SIZE: Math.max(1, Number.parseInt(process.env.CAMPAIGN_BATCH_SIZE ?? '100', 10) || 100),
+  /** Maximum recipients resolved for one campaign; override with CAMPAIGN_MAX_RECIPIENTS */
+  MAX_RECIPIENTS: Math.max(1, Number.parseInt(process.env.CAMPAIGN_MAX_RECIPIENTS ?? '10000', 10) || 10000),
+  /** Concurrent campaign batches across all campaigns; override with CAMPAIGN_WORKER_CONCURRENCY */
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.CAMPAIGN_WORKER_CONCURRENCY ?? '3', 10) || 3),
   /** Campaign messages get lower priority than direct messages */
   CAMPAIGN_MESSAGE_PRIORITY: -1,
   /** How often the scheduler checks for due campaigns (seconds) */
   SCHEDULE_CHECK_INTERVAL_SECONDS: 30,
+  /** A recipient QUEUED this long is checked against its message (missed event / crash) */
+  STALE_QUEUED_RECIPIENT_MS: 15 * 60 * 1000,
 } as const;
 
 export const AUTOMATION_CONFIG = {
@@ -452,6 +520,8 @@ export const SCHEDULER_CONFIG = {
 export const MESSAGING_CONFIG = {
   /** Max retries before dead-lettering */
   MAX_RETRY_COUNT: 3,
+  /** How long a one-to-one reply waits for a reconnecting number before it fails */
+  DIRECT_RECONNECT_WAIT_MS: 5 * 60 * 1000,
   /** Base delay in seconds for exponential backoff (delay = base * 2^attempt) */
   RETRY_BASE_DELAY_SECONDS: 5,
   /** Maximum backoff delay cap in seconds */
@@ -467,7 +537,7 @@ export const MESSAGING_CONFIG = {
   /** How long a message can stay in QUEUED before recovery picks it up (ms) */
   QUEUED_STALE_THRESHOLD_MS: 300_000,
   /** Worker concurrency (jobs processed in parallel) */
-  WORKER_CONCURRENCY: 5,
+  WORKER_CONCURRENCY: Math.max(1, Number.parseInt(process.env.SEND_WORKER_CONCURRENCY ?? '5', 10) || 5),
   /** Incoming message processing timeout (ms) */
   INCOMING_PROCESS_TIMEOUT_MS: 30_000,
 } as const;
@@ -610,6 +680,14 @@ export const SLA_CONFIG = {
   MAX_ESCALATION_LEVELS: 5,
 } as const;
 
+/**
+ * One Meta Graph API version for every call (WhatsApp Cloud API, Messenger, Instagram,
+ * templates, lead ads). Meta retires each version about two years after release and
+ * silently upgrades calls to retired ones, so bump this in one place and retest.
+ */
+export const META_GRAPH_API_VERSION = 'v23.0';
+export const META_GRAPH_API_BASE = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
+
 export const LEAD_ADS_CONFIG = {
   /** Worker concurrency for lead ad processing */
   WORKER_CONCURRENCY: 5,
@@ -618,7 +696,7 @@ export const LEAD_ADS_CONFIG = {
   /** Retry base delay (seconds) for exponential backoff */
   RETRY_BASE_DELAY_SECONDS: 10,
   /** Meta Graph API version */
-  GRAPH_API_VERSION: 'v19.0',
+  GRAPH_API_VERSION: META_GRAPH_API_VERSION,
   /** Meta Graph API base URL */
   GRAPH_API_BASE_URL: 'https://graph.facebook.com',
   /** Timeout for fetching lead data from Meta (ms) */

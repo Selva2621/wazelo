@@ -4,16 +4,20 @@ import { useId, useState } from "react";
 import { MinusCircle, PlusCircle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useSAOrgCredits } from "@/hooks/use-super-admin";
-import type { CreditEntryKind } from "@/lib/api/super-admin";
+import type { CreditEntry, CreditEntryKind } from "@/lib/api/super-admin";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { formatMoney, parseMoneyInput } from "@/lib/utils";
+import { sentenceCase } from "@/components/super-admin/list-styles";
 
-export const CURRENCIES = ["INR", "USD", "EUR", "GBP"];
+/** Billing currencies — Razorpay checkout takes INR and USD only */
+export const CURRENCIES = ["INR", "USD"];
 
 const KIND_BADGE: Record<CreditEntryKind, { label: string; variant: "success" | "info" | "error" }> = {
   GRANT: { label: "Grant", variant: "success" },
@@ -34,6 +38,36 @@ function errorMessage(err: unknown, fallback: string): string {
 function signed(minor: number, currency: string) {
   return `${minor > 0 ? "+" : minor < 0 ? "−" : ""}${formatMoney(Math.abs(minor), currency)}`;
 }
+
+const ledgerColumns: DataTableColumn<CreditEntry>[] = [
+  {
+    id: "date",
+    header: "Date",
+    cellClassName: "text-body-lg text-on-surface-variant whitespace-nowrap",
+    cell: (e) => new Date(e.createdAt).toLocaleDateString(),
+  },
+  {
+    id: "type",
+    header: "Type",
+    skeleton: "badge",
+    cell: (e) => <Badge variant={KIND_BADGE[e.kind]?.variant ?? "muted"}>{KIND_BADGE[e.kind]?.label ?? sentenceCase(e.kind)}</Badge>,
+  },
+  {
+    id: "amount",
+    header: "Amount",
+    cellClassName: "text-body-lg tabular-nums whitespace-nowrap",
+    cell: (e) => (
+      <span className={e.amountInCents < 0 ? "text-on-surface-variant" : "text-on-surface"}>{signed(e.amountInCents, e.currency)}</span>
+    ),
+  },
+  {
+    id: "reason",
+    header: "Reason",
+    cellClassName: "text-body-lg text-on-surface-variant max-w-xs truncate",
+    cell: (e) => <span title={e.reason}>{e.reason}</span>,
+  },
+  { id: "invoice", header: "Invoice", cellClassName: "text-on-surface-variant font-mono text-body", cell: (e) => e.invoiceNumber ?? "—" },
+];
 
 /** Account credit for one org: balance per currency, ledger, grant and revoke. */
 export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; defaultCurrency?: string }) {
@@ -99,7 +133,7 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
   return (
     <section
       aria-labelledby={`${titleId}-panel`}
-      className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4"
+      className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 space-y-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={`${titleId}-panel`} className="flex items-center gap-2 text-body-lg font-medium text-on-surface">
@@ -137,7 +171,7 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
           <div className="flex flex-wrap gap-3">
             {balances.length ? (
               balances.map((b) => (
-                <div key={b.currency} className="bg-surface-container rounded-lg px-4 py-3 min-w-[140px]">
+                <div key={b.currency} className="rounded-xl py-1 pr-4 min-w-[140px]">
                   <div className="text-title font-semibold text-on-surface tabular-nums">
                     {formatMoney(b.balanceInCents, b.currency)}
                   </div>
@@ -151,37 +185,7 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
 
           {entries.length > 0 && (
             <div className="border border-outline-variant rounded-lg overflow-x-auto">
-              <table className="w-full text-body-lg">
-                <caption className="sr-only">Credit ledger</caption>
-                <thead>
-                  <tr className="border-b border-outline-variant text-left">
-                    {["Date", "Type", "Amount", "Reason", "Invoice"].map((h) => (
-                      <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/40">
-                  {entries.map((e) => (
-                    <tr key={e.id}>
-                      <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                        {new Date(e.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={KIND_BADGE[e.kind]?.variant ?? "muted"}>{KIND_BADGE[e.kind]?.label ?? e.kind}</Badge>
-                      </td>
-                      <td
-                        className={`px-4 py-3 tabular-nums whitespace-nowrap ${e.amountInCents < 0 ? "text-on-surface-variant" : "text-on-surface"}`}
-                      >
-                        {signed(e.amountInCents, e.currency)}
-                      </td>
-                      <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate" title={e.reason}>{e.reason}</td>
-                      <td className="px-4 py-3 text-on-surface-variant font-mono text-body">{e.invoiceNumber ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable label="Credit ledger" columns={ledgerColumns} rows={entries} rowKey={(e) => e.id} />
             </div>
           )}
         </>
@@ -215,17 +219,16 @@ export function OrgCreditsPanel({ orgId, defaultCurrency }: { orgId: string; def
               </div>
               <div>
                 <label htmlFor={`${fieldId}-currency`} className={labelClass}>Currency</label>
-                <select
+                <Select
                   id={`${fieldId}-currency`}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className={`${inputClass} h-10 py-0`}
                   disabled={pending}
                 >
                   {currencyOptions.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             {mode === "revoke" && (

@@ -20,7 +20,14 @@ export interface TemplateComponent {
   type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
   text?: string;
   format?: string;
+  /** HEADER with format IMAGE: the image link */
+  url?: string;
   example?: { body_text?: string[][] };
+}
+
+/** The image sent above the message, if the template has one */
+export function templateImageUrl(tpl: Pick<MessageTemplate, "components">): string {
+  return tpl.components.find((c) => c.type === "HEADER" && c.format === "IMAGE")?.url ?? "";
 }
 
 export interface SendTemplateRequest {
@@ -38,6 +45,7 @@ export interface CreateTemplateRequest {
   category?: string;
   language?: string;
   productId?: string;
+  imageUrl?: string;
 }
 
 export interface UpdateTemplateRequest {
@@ -46,6 +54,8 @@ export interface UpdateTemplateRequest {
   category?: string;
   language?: string;
   productId?: string | null;
+  /** null removes the image */
+  imageUrl?: string | null;
 }
 
 export const TEMPLATE_STATUS_LABELS: Record<TemplateStatus, string> = {

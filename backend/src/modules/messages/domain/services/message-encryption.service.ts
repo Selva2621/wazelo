@@ -27,6 +27,11 @@ export class MessageEncryptionService {
     }
   }
 
+  /** Rows read straight from Prisma, with `body` decrypted (e.g. before sending a chat to AI). */
+  decryptBodies<T extends { body?: string | null }>(rows: T[]): T[] {
+    return rows.map((row) => (row.body ? { ...row, body: this.decryptIfEncrypted(row.body) } : row));
+  }
+
   /**
    * Detects whether a string is an AES-256-GCM ciphertext in the format
    * base64(12-byte-IV):base64(16-byte-authTag):base64(ciphertext).

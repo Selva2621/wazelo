@@ -244,6 +244,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  /* Secondary accent (product chips, sequence branches, deal value). Was used but never defined. */
+  --color-tertiary: var(--chart-5);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
@@ -272,6 +274,23 @@
   --text-hero--line-height: 1.1;
   --text-hero--letter-spacing: -0.025em;
 
+  /* Size-only tokens (no line-height on purpose: they replace arbitrary px sizes 1:1,
+     so existing leading-* and inherited line heights are unchanged). */
+  --text-micro: 0.625rem; /* 10px: numerals inside tiny step circles (setup checklist) */
+  --text-overline: 0.6875rem; /* 11px: uppercase sidebar section labels */
+
+  /* Native mobile scale (<1024px shell only): iOS / Material sizes */
+  --text-native-badge: 0.65625rem; /* 10.5px: nav-bar count badge */
+  --text-native-caption2: 0.6875rem; /* 11px: tab-bar badge, app-icon badge */
+  --text-native-caption: 0.75rem; /* 12px: tab labels, icon captions */
+  --text-native-footnote: 0.8125rem; /* 13px: footnotes, segmented control, swipe actions */
+  --text-native-subhead-sm: 0.875rem; /* 14px: row subtitles */
+  --text-native-subhead: 0.9375rem; /* 15px: secondary row text, banners */
+  --text-native-callout: 1rem; /* 16px: list-row titles */
+  --text-native-body: 1.0625rem; /* 17px: iOS body, nav-bar titles */
+  --text-native-title3: 1.1875rem; /* 19px: section titles */
+  --text-native-title2: 1.375rem; /* 22px: collapsing large-title row */
+
   /* Elevation: floating layers only (DESIGN.md §5.3) */
   --shadow-popover: 0 8px 24px -6px var(--shadow-color), 0 0 0 1px var(--outline-variant);
   --shadow-modal: 0 24px 64px -12px var(--shadow-color), 0 0 0 1px var(--outline-variant);
@@ -279,9 +298,9 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  --sidebar-width: 256px;
-  /* Floating rail: 52px pill + 12px gutters (see "Floating sidebar") */
-  --sidebar-collapsed: 76px;
+  --sidebar-width: 264px;
+  /* Floating rail: 64px panel + 12px gutters (see "Floating sidebar") */
+  --sidebar-collapsed: 88px;
   --header-height: 64px;
 }
 
@@ -303,29 +322,132 @@
   }
 }
 
-/* ─── Entrance cascade (app pages) ───
+/* ─── Entrance motion (app pages) ───
+   One soft, decelerating curve for every entrance. Content rises a little, grows from
+   98.5% and fades in, in a short cascade, so a page assembles instead of popping in.
+
    `.page-stagger`: wrapper set by PageTransition; each top-level section of the page
-   fades up in turn. `.stagger`: opt-in for a grid or list whose items should cascade.
+   rises in turn. `.stagger`: opt-in for a grid or list whose items should cascade.
+   Table rows on a page cascade too (first 12 rows; later rows just appear).
    fill-mode `backwards` only holds the start frame during the delay and keeps nothing
    afterwards, so no transform lingers to break `position: fixed` modals inside. */
+:root {
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --enter-duration: 640ms;
+  --enter-step: 70ms;
+}
 @keyframes enter-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(26px) scale(0.985);
   }
 }
-.page-stagger > * > *,
-.stagger > * {
-  animation: enter-up 280ms var(--ease-standard) backwards;
+@keyframes enter-row {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
-.page-stagger > * > :nth-child(2), .stagger > :nth-child(2) { animation-delay: 50ms; }
-.page-stagger > * > :nth-child(3), .stagger > :nth-child(3) { animation-delay: 100ms; }
-.page-stagger > * > :nth-child(4), .stagger > :nth-child(4) { animation-delay: 150ms; }
-.page-stagger > * > :nth-child(5), .stagger > :nth-child(5) { animation-delay: 200ms; }
-.page-stagger > * > :nth-child(n + 6), .stagger > :nth-child(n + 6) { animation-delay: 250ms; }
+/* :not([class*="animate-"]): an element with its own animation (a loading spinner, a
+   skeleton pulse) keeps it; an entrance would replace it for good, not just at the start */
+.page-stagger > * > :not([class*="animate-"]),
+.stagger > :not([class*="animate-"]) {
+  animation: enter-up var(--enter-duration) var(--ease-emphasized) backwards;
+  animation-delay: calc(var(--enter-step) * var(--enter-i, 0));
+}
+.page-stagger > * > :nth-child(2), .stagger > :nth-child(2) { --enter-i: 1; }
+.page-stagger > * > :nth-child(3), .stagger > :nth-child(3) { --enter-i: 2; }
+.page-stagger > * > :nth-child(4), .stagger > :nth-child(4) { --enter-i: 3; }
+.page-stagger > * > :nth-child(5), .stagger > :nth-child(5) { --enter-i: 4; }
+.page-stagger > * > :nth-child(6), .stagger > :nth-child(6) { --enter-i: 5; }
+.page-stagger > * > :nth-child(n + 7), .stagger > :nth-child(n + 7) { --enter-i: 6; }
+
+/* Rows: smaller rise, quicker steps, after the sections have started */
+.page-stagger tbody > tr:nth-child(-n + 12):not([class*="animate-"]),
+.stagger-rows > :nth-child(-n + 12):not([class*="animate-"]) {
+  animation: enter-row 520ms var(--ease-emphasized) backwards;
+  animation-delay: calc(160ms + 35ms * var(--row-i, 0));
+}
+.page-stagger tbody > tr:nth-child(2), .stagger-rows > :nth-child(2) { --row-i: 1; }
+.page-stagger tbody > tr:nth-child(3), .stagger-rows > :nth-child(3) { --row-i: 2; }
+.page-stagger tbody > tr:nth-child(4), .stagger-rows > :nth-child(4) { --row-i: 3; }
+.page-stagger tbody > tr:nth-child(5), .stagger-rows > :nth-child(5) { --row-i: 4; }
+.page-stagger tbody > tr:nth-child(6), .stagger-rows > :nth-child(6) { --row-i: 5; }
+.page-stagger tbody > tr:nth-child(7), .stagger-rows > :nth-child(7) { --row-i: 6; }
+.page-stagger tbody > tr:nth-child(8), .stagger-rows > :nth-child(8) { --row-i: 7; }
+.page-stagger tbody > tr:nth-child(n + 9), .stagger-rows > :nth-child(n + 9) { --row-i: 8; }
+
+/* Page title: letters rise and untilt one after another (SplitText sets --char-i) */
+@keyframes char-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em) rotate(6deg);
+  }
+}
+.split-char {
+  display: inline-block;
+  white-space: pre;
+  transform-origin: 0 100%;
+  animation: char-in 720ms var(--ease-emphasized) backwards;
+  animation-delay: calc(40ms + 22ms * var(--char-i, 0));
+}
+/* Eyebrow / description under a title: a small fade-up just after the letters start */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.rise-in {
+  animation: rise-in 600ms var(--ease-emphasized) 120ms backwards;
+}
+
+/* Bars and meters grow from zero: add .grow-x (left to right) or .grow-y (bottom up) to
+   the filled part; --grow-i staggers a set of bars */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.grow-x,
+.grow-y,
+/* Every progress fill on a page (rounded full-height bar with an inline width) grows too */
+.page-stagger :is(.rounded-full, .rounded).h-full[style*="width"]:not([class*="animate-"]) {
+  animation: grow-x 900ms var(--ease-emphasized) backwards;
+  animation-delay: calc(220ms + 45ms * var(--grow-i, 0));
+}
+.grow-x,
+.page-stagger :is(.rounded-full, .rounded).h-full[style*="width"] {
+  transform-origin: left center;
+}
+.grow-y {
+  transform-origin: center bottom;
+  animation-name: grow-y;
+}
+
+/* Theme switch: the new theme spreads in a circle from the button (View Transitions;
+   theme-store runs the clip-path animation). Without this the default crossfade plays. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-stagger > * > *,
-  .stagger > * {
+  .page-stagger > * > :not([class*="animate-"]),
+  .stagger > :not([class*="animate-"]),
+  .page-stagger tbody > tr:not([class*="animate-"]),
+  .stagger-rows > :not([class*="animate-"]),
+  .split-char,
+  .rise-in,
+  .grow-x,
+  .grow-y,
+  .page-stagger :is(.rounded-full, .rounded).h-full[style*="width"] {
     animation: none;
   }
 }
@@ -592,16 +714,6 @@ body {
   }
 }
 
-/* Rail items in Glass: soft pill with an orange icon circle */
-[data-theme="ember-glass"] .side-tab[data-active="true"] a {
-  background-color: rgb(255 255 255 / 0.06);
-}
-[data-theme="ember-glass"] .side-tab a > span:first-child {
-  border-radius: 9999px;
-}
-[data-theme="ember-glass"] .side-tab[data-active="true"] a > span:first-child {
-  box-shadow: 0 0 20px -4px rgb(245 158 11 / 0.55);
-}
 
 /* ─── Floating sidebar (desktop, all themes) ───
    The rail floats 12px off the viewport edges as a rounded panel; --sidebar-width and
@@ -620,27 +732,6 @@ body {
   }
   .app-sidebar[data-collapsed="true"] {
     width: calc(var(--sidebar-collapsed) - 24px);
-  }
-  /* Centre the logo in the 52px rail */
-  .app-sidebar[data-collapsed="true"] > a:first-child {
-    padding-inline: 12px;
-  }
-  /* Collapsed rail: 4px + 4px + 36px icon + 4px + 4px = 52px, so icons sit dead centre */
-  .app-sidebar[data-collapsed="true"] .side-tab a {
-    margin-inline: 4px;
-    padding-right: 0;
-  }
-  .app-sidebar[data-collapsed="true"] .side-tab a > span:first-child {
-    margin-inline: 4px;
-  }
-  /* NavSection's list carries pl-2.5 for the expanded layout; in the 52px rail it pushed
-     every icon ~10px right and clipped it against the rail edge */
-  .app-sidebar[data-collapsed="true"] nav ul {
-    padding-left: 0;
-  }
-  /* Account row: centre the avatar in the rail */
-  .app-sidebar[data-collapsed="true"] > div:last-child {
-    padding-inline: 4px;
   }
 }
 
@@ -669,7 +760,7 @@ body {
 }
 .app-sidebar .side-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background-color: var(--outline);
+  background-color: var(--side-line, var(--outline));
 }
 .app-sidebar .side-scroll::-webkit-scrollbar-track {
   background: transparent;
@@ -700,36 +791,928 @@ body {
   }
 }
 
-/* Expanded sidebar: the active row is a page-coloured tab that runs to the rail's edge and
-   fuses into the content through inverted corners. The rail's right border is dropped so
-   no hairline separates tab and page. Not in Glass: its canvas is a gradient, so a
-   solid page-coloured tab would read as a hole (Glass keeps the soft pill). */
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) {
-  border-right-color: transparent;
-  /* Otherwise the rail's own fill shows through the transparent border as a 1px line */
-  background-clip: padding-box;
+/* ─── Sidebar panel ───
+   A dark panel in every theme (light pages included), so navigation reads as its own
+   surface. Colours are local --side-* tokens; components use them through Tailwind
+   arbitrary values (text-[var(--side-dim)] …). */
+.app-sidebar {
+  --side-bg: #15171c;
+  --side-card: rgb(255 255 255 / 0.04);
+  --side-tile: rgb(255 255 255 / 0.08);
+  --side-text: #f2f3f5;
+  --side-dim: #aeb2bb;
+  --side-faint: #80858f;
+  --side-hover: rgb(255 255 255 / 0.05);
+  --side-active: rgb(255 255 255 / 0.09);
+  --side-line: rgb(255 255 255 / 0.09);
+  /* Bright accent that reads on the dark panel (the light theme's primary is too dark) */
+  --side-accent: #f59e0b;
+  --side-on-accent: #1a1d27;
+  color-scheme: dark;
+  background-color: var(--side-bg);
+  color: var(--side-text);
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before,
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
+[data-theme="emerald-night"] .app-sidebar {
+  --side-bg: #121a17;
+  --side-accent: #10b981;
+}
+[data-theme="ember-glass"] .app-sidebar {
+  --side-bg: rgb(14 15 20 / 0.74);
+}
+@media (min-width: 1024px) {
+  .app-sidebar {
+    border-color: rgb(255 255 255 / 0.06);
+  }
+}
+
+/* Active row: thin accent bar on the panel side (NavItem renders .side-bar) */
+.side-bar {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 9999px;
+  background: var(--side-accent);
+}
+/* Icon pop when a row becomes active */
+@keyframes side-pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+.side-icon-pop {
+  animation: side-pop 380ms var(--ease-emphasized, ease-out);
+}
+/* Count pill (expanded) and dot (collapsed rail) */
+.side-count {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--side-text);
+  background: var(--side-tile);
+}
+.side-count-hi {
+  color: var(--side-on-accent);
+  background: var(--side-accent);
+}
+.side-dot {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--side-text);
+  box-shadow: 0 0 0 2px var(--side-bg);
+}
+.side-dot-hi {
+  background: var(--side-accent);
+}
+/* Sub-items: a vertical line under the parent icon with a curved branch to each child */
+.side-tree > li {
+  position: relative;
+}
+.side-tree > li::before {
   content: "";
   position: absolute;
-  right: 0;
-  width: 32px;
-  height: 32px;
+  left: 22px;
+  top: 0;
+  width: 11px;
+  height: 50%;
+  border-left: 1.5px solid var(--side-line);
+  border-bottom: 1.5px solid var(--side-line);
+  border-bottom-left-radius: 9px;
+}
+.side-tree > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  bottom: 0;
+  border-left: 1.5px solid var(--side-line);
+}
+.side-divider {
+  display: none;
+}
+
+/* Collapsed rail: icons centred, counts become dots, section labels become dividers */
+@media (min-width: 1024px) {
+  .app-sidebar[data-collapsed="true"] .side-row {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .app-sidebar[data-collapsed="true"] .side-dot {
+    display: block;
+  }
+  .app-sidebar[data-collapsed="true"] .side-divider {
+    display: block;
+    height: 1px;
+    margin: 10px 10px;
+    background: var(--side-line);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-icon-pop {
+    animation: none;
+  }
+}
+
+/* ═══ Mobile / installed app (iOS style) ═══
+   Everything below applies under 1024px only, so the desktop layout is untouched.
+   viewport-fit=cover lets the page run under the notch and home bar; these safe-area
+   values are 0 on devices without them. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (max-width: 1023.98px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Native feel: no grey tap flash, no 300ms double-tap wait */
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :is(a, button, [role="button"], label, summary, input, select, textarea) {
+    touch-action: manipulation;
+  }
+  /* iOS zooms into any field under 16px; keep fields at 16px on touch screens */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) {
+    font-size: max(16px, 1em);
+  }
+
+  /* ─── iOS shell geometry ───
+     Nav bar (44) under the status bar, optional large title (52), tab bar (49) above the
+     home indicator. --header-height is what ~35 full-height pages subtract from the
+     viewport, so redefining it here makes all of them fit between the bars. */
+  :root {
+    --mobile-nav-h: 44px;
+    --mobile-large-title-h: 0px;
+    /* Tab bar's own height (fixed), and the space pages leave for it (0 while a screen hides it) */
+    --tabbar-item-h: 62px;
+    --mobile-tabbar-h: var(--tabbar-item-h);
+    --header-height: calc(
+      var(--mobile-nav-h) + var(--safe-top) + var(--mobile-large-title-h) + var(--mobile-tabbar-h) + var(--safe-bottom)
+    );
+  }
+  html[data-large-title] {
+    --mobile-large-title-h: 52px;
+  }
+  html[data-tabbar-hidden] {
+    --mobile-tabbar-h: 0px;
+  }
+
+  /* The desktop header stays mounted (it carries the live notification listener) but the
+     iOS nav bar replaces it on screen */
+  .app-header {
+    display: none;
+  }
+  .app-main {
+    padding-bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom));
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
+  .ios-page {
+    padding-top: 4px;
+  }
+
+  /* iOS margins: desktop pages use 24–32px gutters; phones use 16px */
+  .app-main :is(.p-6, .p-8) {
+    padding: 16px;
+  }
+  .app-main :is(.px-6, .px-8) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .app-main :is(.py-6, .py-8) {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .app-main :is(.pt-6, .pt-8) {
+    padding-top: 16px;
+  }
+
+  /* Rows of tabs/pills scroll sideways instead of overflowing the screen */
+  .mobile-scroll-x {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll-x > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Every Modal opens as a bottom sheet; every side Drawer as a tall sheet */
+  .ios-modal-sheet {
+    width: 100%;
+    max-width: 680px;
+    margin-inline: auto;
+    max-height: calc(100dvh - var(--safe-top) - 12px);
+    border: 0;
+    border-radius: 14px 14px 0 0;
+  }
+  .ios-drawer-sheet {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - var(--safe-top) - 10px);
+    max-height: none;
+    border: 0;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  /* ─── Tables as iOS cards ───
+     MobileTableLabels copies each column header onto its cells (data-label) and marks
+     the table; each row then reads as a card of "Label ........ value" lines. */
+  table[data-mobile-cards] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  table[data-mobile-cards] thead {
+    display: none;
+  }
+  table[data-mobile-cards] tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 12px 12px;
+  }
+  /* Fields with nothing in them are left out of the card */
+  table[data-mobile-cards] td[data-empty] {
+    display: none;
+  }
+  table[data-mobile-cards] tr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 0.5px solid var(--ios-hairline);
+    border-radius: 12px;
+    background-color: var(--ios-row-bg);
+  }
+  table[data-mobile-cards] tr:active {
+    background-color: var(--surface-container-low);
+  }
+  table[data-mobile-cards] td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+    white-space: normal;
+    word-break: break-word;
+  }
+  table[data-mobile-cards] td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--on-surface-variant);
+    text-align: left;
+  }
+  /* The row's main cell reads as its title */
+  table[data-mobile-cards] td[data-primary] {
+    /* Stack several pieces (name, subtitle, badges) instead of squeezing them in a row */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    justify-content: flex-start;
+    padding: 0 28px 6px 0;
+    text-align: left;
+    font-weight: 600;
+  }
+  table[data-mobile-cards] td[data-primary]::before,
+  table[data-mobile-cards] td[data-label=""]::before {
+    display: none;
+  }
+  /* Selection checkbox: top-right corner of the card */
+  table[data-mobile-cards] td[data-select] {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 0;
+  }
+  table[data-mobile-cards] td[data-select]::before {
+    display: none;
+  }
+  /* Unlabelled cell with buttons (row actions): a footer row */
+  table[data-mobile-cards] td[data-actions] {
+    justify-content: flex-end;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 0.5px solid var(--ios-hairline);
+  }
+  /* Full-width rows (empty states, loaders) */
+  table[data-mobile-cards] td[colspan] {
+    display: block;
+    text-align: center;
+  }
+  table[data-mobile-cards] td[colspan]::before {
+    display: none;
+  }
+  table[data-mobile-cards] tr:has(> td[colspan]:only-child) {
+    border: 0;
+    background: transparent;
+  }
+
+  /* Floating iOS card (install prompt and similar) */
+  .ios-floating-card {
+    padding: 14px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--surface-container-lowest) 86%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid color-mix(in srgb, var(--on-surface) 10%, transparent);
+    box-shadow: 0 18px 48px -12px var(--shadow-color);
+  }
+}
+
+/* ─── iOS components ───
+   New classes used only by the mobile shell and components/ios/*. Unscoped so pages that
+   use them (Notifications, More) also render cleanly on desktop. */
+:root {
+  --ios-row-bg: var(--surface-container-lowest);
+  --ios-hairline: color-mix(in srgb, var(--on-surface) 14%, transparent);
+  --ios-bar-bg: color-mix(in srgb, var(--surface-container-lowest) 80%, transparent);
+}
+
+/* Nav bar: clear at the top of the page, frosted with a hairline once content scrolls under */
+.ios-nav-bar {
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  border-bottom: 0.5px solid transparent;
+  background-color: var(--surface);
+  transition:
+    background-color 200ms var(--ease-standard),
+    border-color 200ms var(--ease-standard);
+}
+.ios-nav-bar[data-scrolled="true"] {
+  background-color: var(--ios-bar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom-color: var(--ios-hairline);
+}
+[data-theme="ember-glass"] .ios-nav-bar:not([data-scrolled="true"]) {
+  background-color: transparent;
+}
+.ios-large-title {
+  height: 52px;
+  padding: 0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
+}
+.ios-large-title h1 {
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--on-surface);
+}
+
+/* Tab bar */
+.ios-tab-bar {
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background-color: var(--ios-bar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 0.5px solid var(--ios-hairline);
+  transition: transform 260ms var(--ease-standard);
+}
+.ios-tab-bar[data-hidden="true"] {
+  /* Extra 24px: the raised centre button sits above the bar's top edge */
+  transform: translateY(calc(100% + 24px));
+}
+
+/* Inset grouped lists (Settings.app) */
+.ios-group {
+  margin: 0 16px 24px;
+}
+.ios-group-header {
+  padding: 0 16px 7px;
+  font-size: 13px;
+  line-height: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--on-surface-variant);
+}
+.ios-group-footer {
+  padding: 7px 16px 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--on-surface-variant);
+}
+.ios-group-body {
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: var(--ios-row-bg);
+}
+.ios-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding-left: 16px;
+  color: var(--on-surface);
+  background-color: var(--ios-row-bg);
+  transition: background-color 120ms var(--ease-standard);
+}
+.ios-row-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  align-self: stretch;
+  padding: 11px 16px 11px 0;
+  border-bottom: 0.5px solid var(--ios-hairline);
+}
+.ios-group-body > li:last-child .ios-row-main {
+  border-bottom: 0;
+}
+.ios-row-tappable {
+  cursor: pointer;
+}
+.ios-row-tappable:active {
+  background-color: var(--surface-container-high);
+}
+@media (hover: hover) {
+  .ios-row-tappable:hover {
+    background-color: var(--surface-container-low);
+  }
+}
+.ios-row-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 7px;
+  color: #fff;
+}
+.ios-row-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.ios-row-profile .ios-row-icon {
+  width: auto;
+  height: auto;
   border-radius: 9999px;
-  background: var(--sidebar);
+}
+.ios-row-profile .ios-row-main {
+  padding-block: 12px;
+}
+
+/* Sheets and action sheets */
+.ios-sheet {
+  border-radius: 14px 14px 0 0;
+  background-color: var(--surface);
+  box-shadow: 0 -10px 40px -12px var(--shadow-color);
+}
+.ios-action-group {
+  overflow: hidden;
+  border-radius: 14px;
+  background-color: color-mix(in srgb, var(--surface-container-lowest) 94%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.ios-action-button {
+  display: block;
+  width: 100%;
+  height: 57px;
+  font-size: 20px;
+  border-top: 0.5px solid var(--ios-hairline);
+}
+.ios-action-group > :first-child,
+button.ios-action-group {
+  border-top: 0;
+}
+.ios-action-button:active {
+  background-color: var(--surface-container-high);
+}
+/* Glass theme's dialog styling must not paint the transparent action-sheet wrapper */
+[data-theme="ember-glass"] .ios-action-sheet[role="dialog"] {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Segmented control */
+.ios-segmented {
+  position: relative;
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background-color: color-mix(in srgb, var(--on-surface) 9%, transparent);
+}
+.ios-segmented-thumb {
+  border-radius: 7px;
+  background-color: var(--surface-container-lowest);
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 0.12),
+    0 3px 1px rgb(0 0 0 / 0.04);
+}
+html:not([data-theme="daylight"]) .ios-segmented-thumb {
+  background-color: var(--surface-container-highest);
+}
+
+/* Installed app only: no rubber-band pull of the whole page, no text callouts on controls */
+@media (max-width: 1023.98px) {
+  html[data-standalone] {
+    overscroll-behavior-y: none;
+  }
+  html[data-standalone] :is(button, a, [role="button"]) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ─── Table card (DataTable, shared by every list page) ───
+   Desktop: a list sits in a white card with a faint border and a soft lift. A table that is
+   already inside a card (rounded + bordered or white container) stays flat, so there is never
+   a card inside a card. Phones keep their per-row cards (MobileTableLabels). */
+@media (min-width: 1024px) {
+  .data-table-card {
+    overflow: hidden;
+    border-radius: 20px;
+    border: 1px solid var(--outline-variant);
+    background-color: var(--surface-container-lowest);
+    box-shadow:
+      0 1px 2px rgb(20 28 45 / 0.05),
+      0 14px 32px -24px rgb(20 28 45 / 0.28);
+  }
+  :is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .bg-surface-container-lowest) .data-table-card {
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  /* …and the page's own card around it takes the same shape and lift, so every list matches */
+  :is(.rounded-xl, .rounded-2xl, .rounded-3xl):is(.border, .bg-surface-container-lowest):has(.data-table-card) {
+    /* Some pages wrap the table in a bordered box with no fill; give it the card's white */
+    background-color: var(--surface-container-lowest);
+    border-radius: 20px;
+    box-shadow:
+      0 1px 2px rgb(20 28 45 / 0.05),
+      0 14px 32px -24px rgb(20 28 45 / 0.28);
+  }
+}
+
+/* ─── Android: Material 3 look ───
+   html[data-platform="android"] is set before first paint (lib/platform.ts). The iOS
+   classes above stay the base; this block only reshapes them on Android phones and
+   tablets. Desktop (>=1024px) is never affected. */
+@media (max-width: 1023.98px) {
+  html[data-platform="android"] {
+    --mobile-nav-h: 64px;
+    --m3-indicator: color-mix(in srgb, var(--primary) 16%, transparent);
+    --m3-state-press: color-mix(in srgb, var(--on-surface) 10%, transparent);
+  }
+  html[data-platform="android"] {
+    --tabbar-item-h: 84px;
+  }
+
+  /* Top app bar: flat, no blur or hairline; tonal surface once content scrolls under */
+  html[data-platform="android"] .m3-top-app-bar {
+    border-bottom: 0;
+    transition: background-color 200ms var(--ease-standard);
+  }
+  html[data-platform="android"] .m3-top-app-bar[data-scrolled="true"] {
+    background-color: var(--surface-container);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html[data-platform="android"] .m3-icon-button {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+  }
+  /* Buttons pages put in the bar (+, ⋯) get the same 48px round target */
+  html[data-platform="android"] .m3-top-app-bar :is(button, a) {
+    border-radius: 9999px;
+  }
+
+  /* Navigation bar: tonal surface, pill indicator behind the active icon */
+  html[data-platform="android"] .ios-tab-bar {
+    background-color: var(--surface-container);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-top: 0;
+  }
+  html[data-platform="android"] .m3-nav-indicator {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 32px;
+    border-radius: 9999px;
+    transition: background-color 200ms var(--ease-standard);
+  }
+  html[data-platform="android"] .m3-nav-indicator[data-active="true"] {
+    background-color: var(--m3-indicator);
+  }
+  html[data-platform="android"] .m3-nav-item:active .m3-nav-indicator {
+    background-color: var(--m3-state-press);
+  }
+  /* Badge sits on the icon's top-right corner, not the pill's */
+  html[data-platform="android"] .m3-nav-indicator > span {
+    top: -2px;
+    right: 10px;
+  }
+
+  /* Lists: full-bleed rows, no rounded groups, no › chevrons, plain icons */
+  html[data-platform="android"] .ios-group {
+    margin: 0 0 8px;
+  }
+  html[data-platform="android"] .ios-group-header {
+    padding: 16px 16px 8px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--primary);
+  }
+  html[data-platform="android"] .ios-group-footer {
+    padding: 4px 16px 0;
+  }
+  html[data-platform="android"] .ios-group-body {
+    border-radius: 0;
+    background-color: transparent;
+  }
+  html[data-platform="android"] .ios-row {
+    min-height: 56px;
+    gap: 16px;
+    background-color: transparent;
+  }
+  html[data-platform="android"] .ios-row-main {
+    padding: 8px 24px 8px 0;
+    border-bottom: 0;
+  }
+  html[data-platform="android"] .ios-row-tappable:active {
+    background-color: var(--m3-state-press);
+  }
+  html[data-platform="android"] .ios-row-chevron {
+    display: none;
+  }
+  html[data-platform="android"] .ios-row-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 0;
+    background: transparent !important;
+    color: var(--on-surface-variant);
+  }
+  html[data-platform="android"] .ios-row-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  html[data-platform="android"] .ios-row-profile .ios-row-icon {
+    width: auto;
+    height: auto;
+    border-radius: 9999px;
+  }
+
+  /* Segmented control → Material segmented buttons (outlined pill) */
+  html[data-platform="android"] .ios-segmented {
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--outline);
+    border-radius: 9999px;
+    background-color: transparent;
+  }
+  html[data-platform="android"] .ios-segmented > button {
+    line-height: 38px;
+    font-size: 14px;
+  }
+  html[data-platform="android"] .ios-segmented > button + button {
+    border-left: 1px solid var(--outline);
+  }
+  html[data-platform="android"] .ios-segmented-thumb {
+    border-radius: 0;
+    background-color: var(--m3-indicator);
+    box-shadow: none;
+  }
+
+  /* Sheets: 28px top corners, tonal surface */
+  html[data-platform="android"] :is(.ios-sheet, .ios-modal-sheet, .ios-drawer-sheet) {
+    border-radius: 28px 28px 0 0;
+  }
+  html[data-platform="android"] .ios-sheet {
+    background-color: var(--surface-container-low);
+  }
+
+  /* Action sheet → Material bottom sheet with a list of actions */
+  html[data-platform="android"] .ios-action-sheet {
+    inset-inline: 0;
+    bottom: 0 !important;
+    max-width: none;
+    gap: 0;
+    padding: 12px 0 var(--safe-bottom);
+    border-radius: 28px 28px 0 0;
+    background-color: var(--surface-container-low);
+  }
+  html[data-platform="android"] .ios-action-sheet::before {
+    content: "";
+    align-self: center;
+    width: 32px;
+    height: 4px;
+    margin-bottom: 8px;
+    border-radius: 9999px;
+    background-color: var(--outline);
+    opacity: 0.6;
+  }
+  html[data-platform="android"] .ios-action-group {
+    border-radius: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html[data-platform="android"] .ios-action-group > div {
+    text-align: left;
+    padding-inline: 24px;
+  }
+  html[data-platform="android"] .ios-action-button {
+    height: 56px;
+    padding: 0 24px;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: left;
+    border-top: 0;
+  }
+  html[data-platform="android"] .ios-action-button.text-primary {
+    color: var(--on-surface);
+  }
+  html[data-platform="android"] .ios-action-button:active {
+    background-color: var(--m3-state-press);
+  }
+}
+
+/* Material ink ripple (components/mobile/touch-ripple.tsx draws these on Android) */
+.m3-ripple-clip {
+  position: fixed;
+  z-index: 9999;
+  overflow: hidden;
   pointer-events: none;
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::before {
-  top: -32px;
-  box-shadow: 16px 16px 0 0 var(--surface);
+.m3-ripple-ink {
+  position: absolute;
+  border-radius: 9999px;
+  background-color: currentColor;
+  opacity: 0.12;
+  transform: scale(0);
+  animation: m3-ripple-grow 450ms cubic-bezier(0.2, 0, 0, 1) forwards;
 }
-html:not([data-theme="ember-glass"]) .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"]::after {
-  bottom: -32px;
-  box-shadow: 16px -16px 0 0 var(--surface);
+.m3-ripple-out {
+  opacity: 0;
+  transition: opacity 250ms linear;
 }
-/* Glass, expanded: keep the soft pill shape for the active row */
-[data-theme="ember-glass"] .app-sidebar:not([data-collapsed="true"]) .side-tab[data-active="true"] a {
-  margin-right: 0.625rem;
-  border-radius: 0.75rem;
+@keyframes m3-ripple-grow {
+  to {
+    transform: scale(1);
+  }
+}
+
+/* ─── Tab bar centre button (opens the apps sheet) ───
+   Raised round button with a slow "breathing" halo; the + turns into × while open.
+   Markup: components/mobile/mobile-tab-bar.tsx */
+@media (max-width: 1023.98px) {
+  .tab-fab {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin-top: -18px;
+    border-radius: 9999px;
+    color: var(--on-primary);
+    background-image: linear-gradient(150deg, color-mix(in srgb, var(--primary) 78%, #fff), var(--primary));
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.15),
+      0 10px 22px -8px color-mix(in srgb, var(--primary) 70%, transparent);
+    transition: transform 160ms var(--ease-standard);
+    /* backwards: once it has landed, :active can still press it down */
+    animation: tab-fab-in 520ms var(--ease-emphasized) backwards;
+  }
+  .tab-fab-button:active .tab-fab {
+    transform: scale(0.9);
+  }
+  .tab-fab-button:focus-visible {
+    outline: none;
+  }
+  .tab-fab-button:focus-visible .tab-fab {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+  }
+  .tab-fab-icon {
+    width: 30px;
+    height: 30px;
+    transition: transform 320ms var(--ease-emphasized);
+  }
+  .tab-fab[data-open="true"] .tab-fab-icon {
+    transform: rotate(135deg);
+  }
+  .tab-fab-halo {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--primary);
+    opacity: 0;
+    animation: tab-fab-halo 3s cubic-bezier(0.22, 1, 0.36, 1) 1s infinite;
+  }
+  .tab-fab[data-open="true"] .tab-fab-halo {
+    animation: none;
+  }
+  /* Android: Material FAB shape (rounded square), sitting in the taller navigation bar */
+  .tab-fab-android {
+    width: 60px;
+    height: 60px;
+    margin-top: -8px;
+    border-radius: 18px;
+  }
+}
+@keyframes tab-fab-halo {
+  0% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  70%,
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@keyframes tab-fab-in {
+  from {
+    transform: scale(0.4) rotate(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-fab,
+  .tab-fab-halo,
+  .tab-fab-icon {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ─── Glass theme on phones: bars and sheets need a solid, frosted fill ───
+   Glass surfaces are mostly transparent (7% white etc.). The Android look drops blur and
+   uses those surfaces, so bars and sheets became see-through over content. */
+@media (max-width: 1023.98px) {
+  html[data-theme="ember-glass"] {
+    --ios-bar-bg: rgb(16 18 26 / 0.9);
+  }
+  html[data-theme="ember-glass"] :is(.ios-tab-bar, .ios-nav-bar[data-scrolled="true"]) {
+    background-color: var(--ios-bar-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  html[data-theme="ember-glass"] .ios-tab-bar {
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+  }
+  html[data-theme="ember-glass"][data-platform] :is(.ios-sheet, .ios-action-sheet) {
+    background-color: rgb(22 25 36 / 0.97);
+  }
 }

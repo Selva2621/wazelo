@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   Req,
@@ -13,6 +14,7 @@ import { RazorpayPaymentService } from '../../domain/services/razorpay-payment.s
 import { PaymentRepository } from '../../infrastructure/repositories/payment.repository';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { EVENT_NAMES } from '@/common/constants';
+import { FulfillAiCreditOrderUseCase } from '../../application/use-cases/ai-credits.use-cases';
 
 @Controller('webhooks/razorpay')
 @Public()
@@ -24,13 +26,16 @@ export class RazorpayWebhookController {
     private readonly paymentRepo: PaymentRepository,
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly fulfillAiCreditOrder: FulfillAiCreditOrderUseCase,
   ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Req() req: Request) {
     const signature = req.headers['x-razorpay-signature'] as string;
-    const body = JSON.stringify(req.body);
+    // Razorpay signs the exact bytes it sent; re-serialised JSON can differ (escaping)
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+    const body = rawBody ? rawBody.toString('utf8') : JSON.stringify(req.body);
 
     if (!signature) {
       return { status: 'error', message: 'Missing signature' };
@@ -69,6 +74,17 @@ export class RazorpayWebhookController {
           this.logger.log(
             `Razorpay payment captured: ${rpPayment.id} → ${payment.id}`,
           );
+        } else if (rpPayment.order_id) {
+          // An AI credit pack whose buyer closed the tab before verify ran
+          try {
+            await this.fulfillAiCreditOrder.execute({ orderId: rpPayment.order_id, razorpayPaymentId: rpPayment.id });
+          } catch (err) {
+            // 400 = not an AI-credit order (e.g. a plan checkout not yet verified): nothing to do.
+            // Anything else (gateway down, DB error) must fail the webhook so Razorpay retries,
+            // otherwise a paid pack is never credited.
+            if (!(err instanceof BadRequestException)) throw err;
+            this.logger.debug(`Captured payment ${rpPayment.id} is not an AI credit order: ${err.message}`);
+          }
         }
         break;
       }

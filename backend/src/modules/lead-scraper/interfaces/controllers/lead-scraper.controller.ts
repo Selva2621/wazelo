@@ -23,7 +23,7 @@ import { ScrapeRunRepository } from '../../infrastructure/repositories/scrape-ru
 import { TriggerScrapeDto, LeadFiltersDto } from '../../application/dto/trigger-scrape.dto';
 import { ListScrapeRunsQueryDto } from '../../application/dto/list-scrape-runs-query.dto';
 import { ImportScrapeResultsDto } from '../../application/dto/import-scrape-results.dto';
-import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { GetScrapeRunResultsUseCase } from '../../application/use-cases/get-scrape-run-results.use-case';
 import { ScrapeRunStatus } from '@prisma/client';
 
 @Controller('lead-scraper')
@@ -35,7 +35,7 @@ export class LeadScraperController {
     private readonly importScrapeResultsUseCase: ImportScrapeResultsUseCase,
     private readonly checkWhatsAppUseCase: CheckWhatsAppUseCase,
     private readonly whatsAppCheckRunUseCase: WhatsAppCheckRunUseCase,
-    private readonly prisma: PrismaService,
+    private readonly getScrapeRunResultsUseCase: GetScrapeRunResultsUseCase,
   ) {}
 
   @Post('runs')
@@ -129,21 +129,7 @@ export class LeadScraperController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ) {
-    const run = await this.scrapeRunRepository.findById(id);
-    if (!run || run.orgId !== user.orgId) throw new NotFoundException('Scrape run not found');
-
-    const [results, total] = await Promise.all([
-      this.prisma.scrapeResult.findMany({
-        where: { scrapeRunId: id },
-        skip: Math.max(Number(skip) || 0, 0),
-        // A run holds at most 200 results (TriggerScrapeDto.maxResults)
-        take: Math.min(Math.max(Number(take) || 200, 1), 200),
-        orderBy: { createdAt: 'asc' },
-      }),
-      this.prisma.scrapeResult.count({ where: { scrapeRunId: id } }),
-    ]);
-
-    return { results, total };
+    return this.getScrapeRunResultsUseCase.execute(user.orgId, id, Number(skip) || 0, Number(take) || undefined);
   }
 
   @Post('runs/:id/import')

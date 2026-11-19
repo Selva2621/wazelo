@@ -41,5 +41,5 @@ export function humanizeStatus(status: string): string {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={STATUS_VARIANT[status] ?? "muted"}>{humanizeStatus(status)}</Badge>;
+  return <Badge dot variant={STATUS_VARIANT[status] ?? "muted"}>{humanizeStatus(status)}</Badge>;
 }

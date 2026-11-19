@@ -7,23 +7,44 @@ import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CustomValidationPipe } from './common/pipes/validation.pipe';
 import { StructuredLogger } from './infrastructure/logger/structured-logger.service';
+import { productionEnvProblems, publicFrontendUrl } from './config/public-urls';
+import { isTestModeOn } from './common/utils/test-recipient-guard.util';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    // Keeps req.rawBody: webhook signatures (Razorpay, Stripe, Shopify, Meta) are
+    // computed over the exact bytes sent, not over re-serialised JSON
+    rawBody: true,
   });
+  // Campaigns and contact groups can carry up to 10,000 contact ids (~380 KB);
+  // Express's 100 KB default rejected those with 413. rawBody stays available.
+  app.useBodyParser('json', { limit: '1mb' });
 
   // Use structured logger as the application logger (EPIC 10)
   const structuredLogger = app.get(StructuredLogger);
   app.useLogger(structuredLogger);
 
+  // Production must be configured explicitly: stop here rather than run with localhost
+  // links in emails, CORS locked to localhost, or Meta webhooks pointing nowhere.
+  const { errors, warnings } = productionEnvProblems();
+  for (const w of warnings) structuredLogger.warn(`Config: ${w}`, 'Bootstrap');
+  if (errors.length > 0) {
+    for (const e of errors) structuredLogger.error(`Config: ${e}`, undefined, 'Bootstrap');
+    await app.close();
+    process.exit(1);
+  }
+  if (isTestModeOn()) {
+    structuredLogger.warn(
+      'WhatsApp TEST MODE is on — sends go only to WHATSAPP_TEST_NUMBERS (set NODE_ENV=production or WHATSAPP_TEST_MODE=false for live)',
+      'Bootstrap',
+    );
+  }
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 8080);
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api/v1');
-  const frontendUrl = configService.get<string>(
-    'app.frontendUrl',
-    'http://localhost:3000',
-  );
+  const frontendUrl = configService.get<string>('app.frontendUrl') || publicFrontendUrl();
 
   // Behind Nginx, req.ip is the proxy's address unless Express trusts it. Without this,
   // every user shares one rate-limit bucket (refresh/login limits trip for everyone).
@@ -51,7 +72,7 @@ async function bootstrap() {
   );
 
   // CORS — include x-trace-id header for client-side correlation
-  app.enableCors({
+  const appCors = {
     origin: frontendUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -59,7 +80,20 @@ async function bootstrap() {
     // Content-Disposition + X-Export-Truncated: CSV export downloads (super admin lists)
     // X-RateLimit-* / Retry-After: so API clients in the browser can read their limits
     exposedHeaders: ['x-trace-id', 'Content-Disposition', 'X-Export-Truncated', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'],
-  });
+  };
+  // The website chat widget runs on customers' own sites, so its public routes accept any
+  // origin (no cookies: visitors are identified by their session id, never by login).
+  // Everything else stays locked to the app.
+  const widgetPath = `/${apiPrefix.replace(/^\/|\/$/g, '')}/widgets/`;
+  const widgetCors = {
+    origin: '*',
+    credentials: false,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+  };
+  app.enableCors((req: { url?: string }, cb: (err: Error | null, options: object) => void) =>
+    cb(null, req.url?.startsWith(widgetPath) ? widgetCors : appCors),
+  );
 
   // Files are served through the authenticated FileServeController
   // Do NOT use app.useStaticAssets() for uploads — it bypasses auth guards

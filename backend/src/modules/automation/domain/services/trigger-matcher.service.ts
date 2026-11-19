@@ -27,8 +27,11 @@ export class TriggerMatcherService {
         return false;
 
       case AutomationTriggerType.NO_REPLY:
-        // No-reply triggers are evaluated by the follow-up worker
-        return false;
+        // Only raised by the no-reply worker, after it confirmed the contact stayed silent
+        return input.eventPayload.noReplyConfirmed === true;
+
+      case AutomationTriggerType.LEAD_AD_RECEIVED:
+        return this.matchLeadAd(input.triggerConfig, input.eventPayload);
 
       case AutomationTriggerType.SHOPIFY_ORDER_CREATED:
         return this.matchShopifyOrder(input.triggerConfig, input.eventPayload);
@@ -42,6 +45,10 @@ export class TriggerMatcherService {
 
       case AutomationTriggerType.WIDGET_MESSAGE_RECEIVED:
         return this.matchWidgetMessage(input.triggerConfig, input.eventPayload);
+
+      case AutomationTriggerType.DEAL_STAGE_CHANGED:
+        // No stage configured → any stage change
+        return !input.triggerConfig.stageId || input.triggerConfig.stageId === input.eventPayload.stageId;
 
       default:
         this.logger.warn(`Unknown trigger type: ${input.triggerType}`);
@@ -76,6 +83,26 @@ export class TriggerMatcherService {
     if (source && _payload.source !== source) {
       return false;
     }
+    return true;
+  }
+
+  /** Empty filters match every lead; set ones must all match */
+  private matchLeadAd(
+    config: Record<string, unknown>,
+    payload: Record<string, unknown>,
+  ): boolean {
+    const platform = config.platform as string | undefined;
+    if (platform && payload.platform !== platform) return false;
+
+    // A brand is usually its own Facebook Page; a product its own form
+    const pageId = (config.pageId as string | undefined)?.trim();
+    if (pageId && payload.pageId !== pageId) return false;
+
+    const formId = (config.formId as string | undefined)?.trim();
+    if (formId && payload.formId !== formId) return false;
+
+    if (config.newContactsOnly === true && payload.isNewContact !== true) return false;
+
     return true;
   }
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ChevronRight, Home } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Box } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useOrgSettings } from "@/hooks/use-settings";
@@ -19,6 +20,10 @@ import { PeakHoursChart } from "@/components/analytics/peak-hours-chart";
 import { TeamPerformanceTable } from "@/components/analytics/team-performance-table";
 import { CampaignSummaryCards } from "@/components/analytics/campaign-summary-cards";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { LeadsWaitingCard } from "@/components/dashboard/leads-waiting-card";
+import { RevenueStrip } from "@/components/dashboard/revenue-strip";
+import { WaitingChatsCard } from "@/components/dashboard/waiting-chats-card";
+import { useDashboardLive } from "@/hooks/use-dashboard-live";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 const PERIOD_COPY: Record<AnalyticsPeriod, string> = {
@@ -33,12 +38,12 @@ function DashboardSkeleton() {
     <div className="space-y-4" aria-busy="true" aria-label="Loading dashboard">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-[124px] animate-pulse rounded-xl bg-surface-container-lowest" />
+          <div key={i} className="h-[124px] animate-pulse rounded-2xl bg-surface-container-lowest" />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="h-72 animate-pulse rounded-xl bg-surface-container-lowest" />
-        <div className="h-72 animate-pulse rounded-xl bg-surface-container-lowest" />
+        <div className="h-72 animate-pulse rounded-2xl bg-surface-container-lowest" />
+        <div className="h-72 animate-pulse rounded-2xl bg-surface-container-lowest" />
       </div>
     </div>
   );
@@ -81,37 +86,40 @@ function TeamDashboard() {
   );
 
   const { data, isLoading, isError, refetch } = useDashboardAnalytics(params);
+  // Numbers update as messages, leads and deals happen
+  useDashboardLive();
   const { data: teamData } = useTeamPerformance(isManager ? params : undefined);
 
   return (
     <div className="space-y-5 px-4 pb-10 pt-4 lg:px-6">
       {/* Hero */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-label text-on-surface-variant">
+      <PageHeader
+        title={`Welcome back${user?.firstName ? `, ${user.firstName}` : ""}`}
+        description={`Performance ${PERIOD_COPY[period]}`}
+        actions={
+          <>
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <ProductFilterSelect value="" onChange={() => {}} />
+            {/* Message City: live 3D view of today's messages (desktop only) */}
             <Link
-              href="/dashboard"
-              aria-label="Home"
-              className="grid size-8 place-items-center rounded-full bg-surface-container-lowest text-primary-container transition-colors hover:bg-surface-container-low"
+              href="/dashboard/city"
+              data-tour="dash-city-link"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-variant px-3 text-body text-on-surface hover:bg-surface-container-low max-lg:hidden"
             >
-              <Home className="h-4 w-4" />
+              <Box className="size-4" />
+              3D view
             </Link>
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            <span aria-current="page" className="text-on-surface">
-              Dashboard
-            </span>
-          </nav>
-          <h2 className="mt-3 truncate text-headline font-semibold text-on-surface">
-            Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
-          </h2>
-          <p className="text-body text-on-surface-variant">
-            How your WhatsApp conversations are performing {PERIOD_COPY[period]}.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PeriodSelector value={period} onChange={setPeriod} />
-          <ProductFilterSelect value="" onChange={() => {}} />
-        </div>
+          </>
+        }
+      />
+
+      {/* Money at a glance: pipeline, deals won, proposals */}
+      <RevenueStrip />
+
+      {/* Urgent row: customers waiting for a reply + leads nobody has contacted (each hidden when none) */}
+      <div className="flex flex-col gap-4 empty:hidden lg:flex-row lg:items-start [&>*]:lg:min-w-0 [&>*]:lg:flex-1">
+        <WaitingChatsCard />
+        <LeadsWaitingCard />
       </div>
 
       <SetupChecklist />
@@ -119,7 +127,7 @@ function TeamDashboard() {
       {isLoading && <DashboardSkeleton />}
 
       {isError && (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-error-container p-6 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl bg-error-container p-6 text-center">
           <p className="text-body text-error">Analytics couldn&apos;t be loaded.</p>
           <Button variant="secondary" size="sm" onClick={() => refetch()}>
             Try again
@@ -131,14 +139,14 @@ function TeamDashboard() {
         <>
           <AnalyticsKpiCards data={data} isManager={isManager} />
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div data-tour="dash-charts" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <MessageVolumeChart series={data.messageVolume.series} period={period} />
             <ResponseTimeChart series={data.responseTime.series} period={period} />
           </div>
 
           {isManager && (
             <>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div data-tour="dash-manager" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {data.conversionFunnel && <ConversionFunnel data={data.conversionFunnel} />}
                 {data.peakHours && <PeakHoursChart data={data.peakHours} />}
               </div>

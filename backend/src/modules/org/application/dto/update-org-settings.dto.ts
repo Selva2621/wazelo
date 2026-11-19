@@ -9,23 +9,28 @@ import {
   IsIn,
   IsArray,
   ArrayMinSize,
+  ArrayMaxSize,
   ArrayUnique,
 } from 'class-validator';
 import { OrgType } from '@prisma/client';
-import { FREELANCER_TYPES, FreelancerType } from '@/shared/constants/freelancer-profiles';
+import { COUNTRY_CODES, CURRENCY_CODES } from '@/shared/constants/countries';
 
 export class UpdateOrgSettingsDto {
   @IsOptional()
   @IsEnum(OrgType)
   orgType?: OrgType;
 
-  /** For FREELANCER orgs: what they do, one or more — shapes the default templates */
+  /**
+   * For FREELANCER orgs: what they do, one or more — shapes the default templates.
+   * Built-in types (FREELANCER_TYPES) or a saved card's key; the use case checks saved keys exist.
+   */
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(10)
   @ArrayUnique()
-  @IsIn(FREELANCER_TYPES, { each: true })
-  freelancerTypes?: FreelancerType[];
+  @Matches(/^[A-Z0-9_]{2,30}$/, { each: true, message: 'Unknown line of work' })
+  freelancerTypes?: string[];
 
   /** Their service in their own words, when freelancerTypes includes OTHER */
   @IsOptional()
@@ -47,6 +52,15 @@ export class UpdateOrgSettingsDto {
       'Timezone must be a valid IANA timezone identifier (e.g. America/New_York)',
   })
   timezone?: string;
+
+  /** ISO country code — sets the default phone country code (and currency when none is sent) */
+  @IsOptional()
+  @IsIn(COUNTRY_CODES)
+  country?: string;
+
+  @IsOptional()
+  @IsIn(CURRENCY_CODES)
+  currency?: string;
 
   @IsOptional()
   @IsObject()

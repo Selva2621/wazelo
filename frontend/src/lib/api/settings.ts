@@ -1,6 +1,7 @@
 import apiClient from "./client";
 import type {
   OrgSettings,
+  FreelancerCard,
   UpdateOrgSettingsRequest,
   OrgAiMemory,
   WhatsAppConfig,
@@ -20,6 +21,7 @@ import type {
   UpdateIntegrationConfigRequest,
   IntegrationTestResult,
 } from "@/lib/types/settings";
+import { DEFAULT_COUNTRY_CODE } from "@/lib/constants/countries";
 
 export const settingsApi = {
   // ─── Organization ───
@@ -33,29 +35,45 @@ export const settingsApi = {
         orgId: d.id,
         name: d.name,
         timezone: d.timezone ?? "UTC",
+        country: d.country ?? DEFAULT_COUNTRY_CODE,
+        currency: d.currency ?? "INR",
         language: d.branding?.language ?? "en",
         industry: d.industry ?? "",
         description: d.description ?? "",
         website: d.website ?? "",
         orgType: d.orgType,
+        freelancerTypes: d.freelancerTypes,
+        freelancerService: d.freelancerService,
+        freelancerServiceLabel: d.freelancerServiceLabel ?? null,
         brandColors: d.branding?.brandColors,
+        orgTypeSetup: d.orgTypeSetup,
         updatedAt: d.updatedAt,
       } as OrgSettings;
     }),
+
+  /** Saved freelancer lines of work (extra setup cards) */
+  getFreelancerProfiles: () => apiClient.get<FreelancerCard[]>("/org/freelancer-profiles").then((r) => r.data ?? []),
 
   updateOrgSettings: (data: UpdateOrgSettingsRequest) =>
     apiClient
       .patch<OrgSettings>("/org/settings", {
         name: data.name,
         timezone: data.timezone,
+        country: data.country,
+        currency: data.currency,
         industry: data.industry,
         description: data.description,
         website: data.website,
         ...(data.orgType !== undefined && { orgType: data.orgType }),
-        branding: {
-          ...(data.language ? { language: data.language } : {}),
-          ...(data.brandColors ? { brandColors: data.brandColors } : {}),
-        },
+        ...(data.freelancerTypes !== undefined && { freelancerTypes: data.freelancerTypes }),
+        ...(data.freelancerService !== undefined && { freelancerService: data.freelancerService }),
+        // Sent only when changing — an empty object would wipe the saved branding
+        ...((data.language || data.brandColors) && {
+          branding: {
+            ...(data.language ? { language: data.language } : {}),
+            ...(data.brandColors ? { brandColors: data.brandColors } : {}),
+          },
+        }),
       })
       .then((r) => {
         const d = r.data as any;
@@ -64,6 +82,8 @@ export const settingsApi = {
           orgId: d.id,
           name: d.name,
           timezone: d.timezone ?? "UTC",
+          country: d.country ?? DEFAULT_COUNTRY_CODE,
+          currency: d.currency ?? "INR",
           language: d.branding?.language ?? "en",
           industry: d.industry ?? "",
           description: d.description ?? "",

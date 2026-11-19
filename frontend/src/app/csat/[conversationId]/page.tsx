@@ -8,7 +8,7 @@ function StarIcon({ filled, hovered }: { filled: boolean; hovered: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="w-10 h-10 transition-colors duration-100"
+      className="w-10 h-10 transition-colors duration-100 max-sm:h-12 max-sm:w-12"
       fill={filled || hovered ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth={1.5}
@@ -117,7 +117,7 @@ export default function CsatSurveyPage() {
         {/* Stars */}
         <div className="flex flex-col items-center gap-2">
           <div
-            className="flex gap-1"
+            className="flex gap-1 max-sm:gap-1.5"
             onMouseLeave={() => setHovered(0)}
           >
             {[1, 2, 3, 4, 5].map((star) => (
@@ -159,7 +159,7 @@ export default function CsatSurveyPage() {
         <button
           onClick={handleSubmit}
           disabled={!selected || submitMutation.isPending}
-          className="w-full rounded-lg bg-blue-600 text-white text-sm font-medium py-2.5 px-4 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full rounded-lg bg-blue-600 text-white text-sm font-medium py-2.5 px-4 max-sm:h-12 max-sm:rounded-xl max-sm:py-0 max-sm:text-base hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {submitMutation.isPending ? "Submitting…" : "Submit Feedback"}
         </button>
@@ -174,8 +174,9 @@ export default function CsatSurveyPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    // Phones: clear the notch and home indicator
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 max-lg:min-h-dvh max-lg:pt-[calc(16px+var(--safe-top))] max-lg:pb-[calc(16px+var(--safe-bottom))] max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-sm:px-5">
         {/* Header */}
         <div className="flex flex-col items-center gap-1 mb-6">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mb-2">

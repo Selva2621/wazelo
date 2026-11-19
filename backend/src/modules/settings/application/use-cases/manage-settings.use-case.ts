@@ -38,6 +38,22 @@ export class ManageSettingsUseCase {
       throw new ForbiddenException('Only system administrators can manage SYSTEM/PLAN settings');
     }
 
+    // Saving a key the org already has is an update (a second create hit the unique
+    // constraint, so a toggle could be turned on once and never off again)
+    const existing = (await this.settingsRepository.findByKey(dto.category, dto.key, orgId)).find(
+      (s) => s.orgId === orgId && s.scope === SettingScope.ORG,
+    );
+    if (existing) {
+      return this.update(
+        existing.id,
+        orgId,
+        userId,
+        { value: dto.value, valueType: dto.valueType, description: dto.description, version: existing.version },
+        ipAddress,
+        userAgent,
+      );
+    }
+
     // Check org limit
     const count = await this.settingsRepository.countSettingsByOrg(orgId);
     if (count >= SETTINGS_CONFIG.MAX_SETTINGS_PER_ORG) {

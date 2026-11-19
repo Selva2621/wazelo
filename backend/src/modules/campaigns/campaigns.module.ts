@@ -4,6 +4,7 @@ import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { AiModule } from '@/modules/ai/ai.module';
+import { EmailModule } from '@/modules/email/email.module';
 
 // Repositories
 import { CampaignRepository } from './infrastructure/repositories/campaign.repository';
@@ -17,9 +18,12 @@ import { CampaignStateMachineService } from './domain/services/campaign-state-ma
 import { CreateCampaignUseCase } from './application/use-cases/create-campaign.use-case';
 import { UpdateCampaignUseCase } from './application/use-cases/update-campaign.use-case';
 import { ExecuteCampaignUseCase } from './application/use-cases/execute-campaign.use-case';
+import { RerunCampaignUseCase } from './application/use-cases/rerun-campaign.use-case';
 import { ScheduleCampaignUseCase } from './application/use-cases/schedule-campaign.use-case';
 import { PauseCampaignUseCase } from './application/use-cases/pause-campaign.use-case';
 import { ResumeCampaignUseCase } from './application/use-cases/resume-campaign.use-case';
+import { RetryFailedRecipientsUseCase } from './application/use-cases/retry-failed-recipients.use-case';
+import { ReplaceCampaignMediaUseCase } from './application/use-cases/replace-campaign-media.use-case';
 import { CancelCampaignUseCase } from './application/use-cases/cancel-campaign.use-case';
 import { GetCampaignUseCase } from './application/use-cases/get-campaign.use-case';
 import { ListCampaignsUseCase } from './application/use-cases/list-campaigns.use-case';
@@ -30,11 +34,16 @@ import { GenerateCampaignCopyUseCase } from './application/use-cases/generate-ca
 // Controller
 import { CampaignController } from './interfaces/controllers/campaign.controller';
 
+import { CampaignRepliesService } from './application/services/campaign-replies.service';
+import { CampaignBatchDispatcher } from './application/services/campaign-batch-dispatcher.service';
+
 @Module({
   imports: [
     AuditModule,
     BillingModule,
     AiModule,
+    // Email campaigns send from the workspace's own mailbox
+    EmailModule,
     forwardRef(() => WhatsAppModule),
     forwardRef(() => MessagesModule),
   ],
@@ -47,14 +56,21 @@ import { CampaignController } from './interfaces/controllers/campaign.controller
     // Domain services
     AudienceResolverService,
     CampaignStateMachineService,
+    // Marks campaign recipients who write back ("Replied")
+    CampaignRepliesService,
+    // Starts batches per number in order; repairs stuck recipients
+    CampaignBatchDispatcher,
 
     // Use cases
     CreateCampaignUseCase,
     UpdateCampaignUseCase,
     ExecuteCampaignUseCase,
+    RerunCampaignUseCase,
     ScheduleCampaignUseCase,
     PauseCampaignUseCase,
     ResumeCampaignUseCase,
+    RetryFailedRecipientsUseCase,
+    ReplaceCampaignMediaUseCase,
     CancelCampaignUseCase,
     GetCampaignUseCase,
     ListCampaignsUseCase,
@@ -67,6 +83,7 @@ import { CampaignController } from './interfaces/controllers/campaign.controller
     CampaignRecipientRepository,
     AudienceResolverService,
     CampaignStateMachineService,
+    CampaignBatchDispatcher,
   ],
 })
 export class CampaignsModule {}

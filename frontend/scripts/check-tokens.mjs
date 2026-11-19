@@ -11,6 +11,8 @@ const ROOT = fileURLToPath(new URL("../src/", import.meta.url));
 const EXCLUDE = [
   /app[\\/]csat[\\/]/, // public customer survey, standalone light page
   /invoice-detail-modal/, // printable invoice rendered to PDF
+  /proposal-document/, // client-facing proposal "paper", printed / downloaded as PDF
+  /app[\\/]p[\\/]\[token\][\\/]/, // public proposal page shown to the client
 ];
 
 const RULES = [

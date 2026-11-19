@@ -115,6 +115,16 @@ export class WhatsAppEventsHandler {
     });
   }
 
+  @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_SYNCED)
+  handleMessageSynced(event: WhatsAppMessageReceivedEvent): void {
+    this.wsGateway.emitToOrg(event.orgId, 'whatsapp:message:received', {
+      messageId: event.messageId,
+      sessionId: event.sessionId,
+      contactPhone: event.contactPhone,
+      type: event.type,
+    });
+  }
+
   @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_SENT)
   handleMessageSent(event: WhatsAppMessageSentEvent): void {
     this.wsGateway.emitToOrg(event.orgId, 'whatsapp:message:status', {

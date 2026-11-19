@@ -12,6 +12,9 @@ import {
 } from '@/common/constants';
 import { NotificationCreatedEvent } from '@/events/event-bus';
 
+/** Each one matters on its own (one per website chat), so the anti-spam cooldown never drops them */
+const NO_COOLDOWN_TYPES: NotificationType[] = ['WEBSITE_HANDOFF'];
+
 /**
  * Core domain service: dispatches notifications across channels
  * (in-app + email) after checking user preferences and deduplication.
@@ -34,8 +37,9 @@ export class NotificationDispatchService {
    * Dispatch a notification to a single user, respecting preferences and cooldown.
    */
   async dispatch(target: NotificationTarget): Promise<void> {
-    // 1. Check cooldown (anti-spam)
-    if (this.isCooldownActive(target.userId, target.type)) {
+    // 1. Check cooldown (anti-spam). Alerts that each need an answer (a visitor
+    // waiting for a person) are never dropped: their idempotency key stops repeats.
+    if (!NO_COOLDOWN_TYPES.includes(target.type) && this.isCooldownActive(target.userId, target.type)) {
       this.logger.debug(
         `Notification cooldown active for user=${target.userId} type=${target.type}`,
       );
@@ -186,6 +190,8 @@ export class NotificationDispatchService {
       'CONTACT_ASSIGNED',
       'CONTACT_REASSIGNED',
       'AUTOMATION_EXECUTED',
+      // Needs an answer within minutes: in-app + push, not email
+      'WEBSITE_HANDOFF',
     ];
     return !emailDisabledByDefault.includes(type);
   }

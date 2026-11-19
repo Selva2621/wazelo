@@ -1,32 +1,44 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Package, Image as ImageIcon } from "lucide-react";
+import { X, Package } from "lucide-react";
+import { MediaPicker } from "@/components/ui/media-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCreateProduct, useUpdateProduct, useProductCategories } from "@/hooks/use-products";
+import { Select } from "@/components/ui/select";
+import { useCreateProduct, useUpdateProduct, useProductCategories, useBrands } from "@/hooks/use-products";
+import { useOrgMembers } from "@/hooks/use-contacts";
 import type { Product } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface ProductFormModalProps {
   open: boolean;
   onClose: () => void;
   /** Pass existing product to edit mode */
   product?: Product;
+  /** New product: preselect this brand (e.g. "Add product" inside a brand group) */
+  defaultBrandId?: string;
 }
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD"];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
-export function ProductFormModal({ open, onClose, product }: ProductFormModalProps) {
+export function ProductFormModal({ open, onClose, product, defaultBrandId }: ProductFormModalProps) {
   const isEditing = !!product;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const { data: categories } = useProductCategories();
+  // New products are priced in the org's currency
+  const { data: orgSettings } = useOrgSettings();
+  const orgCurrency = orgSettings?.currency ?? "INR";
+  const currencies = [...new Set([orgCurrency, ...CURRENCIES])];
+  const terms = useProductTerms();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -35,7 +47,12 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
   const [sku, setSku] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
+  const [leadHandlerIds, setLeadHandlerIds] = useState<string[]>([]);
+  const [leadReminderMinutes, setLeadReminderMinutes] = useState(30);
   const [error, setError] = useState<string | null>(null);
+  const { data: brands } = useBrands();
+  const { data: members } = useOrgMembers();
 
   // Populate form when editing
   useEffect(() => {
@@ -43,16 +60,24 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
       setName(product.name);
       setDescription(product.description ?? "");
       setPrice(product.price ? parseFloat(product.price).toString() : "");
-      setCurrency(product.currency ?? "INR");
+      setCurrency(product.currency ?? orgCurrency);
       setSku(product.sku ?? "");
       setImageUrl(product.imageUrl ?? "");
       setCategoryId(product.categoryId ?? "");
+      setBrandId(product.brandId ?? "");
+      setLeadHandlerIds(product.leadHandlerIds ?? []);
+      setLeadReminderMinutes(product.leadReminderMinutes ?? 30);
     } else {
-      setName(""); setDescription(""); setPrice(""); setCurrency("INR");
+      setName(""); setDescription(""); setPrice(""); setCurrency(orgCurrency);
       setSku(""); setImageUrl(""); setCategoryId("");
+      setBrandId(defaultBrandId ?? ""); setLeadHandlerIds([]); setLeadReminderMinutes(30);
     }
     setError(null);
-  }, [product, open]);
+  }, [product, open, orgCurrency, defaultBrandId]);
+
+  function toggleHandler(id: string) {
+    setLeadHandlerIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
 
   const isPending = createProduct.isPending || updateProduct.isPending;
 
@@ -60,8 +85,8 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) { setError("Product name is required."); return; }
-    if (name.trim().length > 255) { setError("Product name must be 255 characters or less."); return; }
+    if (!name.trim()) { setError(`${terms.Singular} name is required.`); return; }
+    if (name.trim().length > 255) { setError(`${terms.Singular} name must be 255 characters or less.`); return; }
     if (description.trim().length > 2000) { setError("Description must be 2000 characters or less."); return; }
     if (sku.trim().length > 100) { setError("SKU must be 100 characters or less."); return; }
     if (price) {
@@ -87,13 +112,22 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
 
     if (isEditing && product) {
       updateProduct.mutate(
-        { id: product.id, ...payload },
+        { id: product.id, ...payload, brandId: brandId || null, leadHandlerIds, leadReminderMinutes },
         { onSuccess: onClose, onError: (err) => setError((err as Error).message) },
       );
     } else {
       createProduct.mutate(
-        payload,
-        { onSuccess: onClose, onError: (err) => setError((err as Error).message) },
+        { ...payload, brandId: brandId || undefined },
+        {
+          // The lead team is saved right after, on the new product
+          onSuccess: (created) => {
+            if (leadHandlerIds.length > 0 || leadReminderMinutes !== 30) {
+              updateProduct.mutate({ id: created.id, leadHandlerIds, leadReminderMinutes });
+            }
+            onClose();
+          },
+          onError: (err) => setError((err as Error).message),
+        },
       );
     }
   }
@@ -109,10 +143,10 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-body-lg font-semibold text-on-surface">
-              {isEditing ? "Edit Product" : "New Product"}
+              {isEditing ? `Edit ${terms.singular}` : `New ${terms.singular}`}
             </h2>
             <p className="text-caption text-on-surface-variant/60">
-              {isEditing ? "Update product details" : "Add a product to your catalog"}
+              {isEditing ? `Update ${terms.singular} details` : `Add a ${terms.singular} to your catalog`}
             </p>
           </div>
           <IconButton size="sm"
@@ -128,13 +162,13 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           {/* Name */}
           <div>
             <Label htmlFor="pf-name">
-              Product Name <span className="text-error">*</span>
+              {terms.Singular} name <span className="text-error">*</span>
             </Label>
             <Input
               id="pf-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. WhatsApp Business Plan"
+              placeholder={terms.isService ? "e.g. Website redesign" : "e.g. WhatsApp Business Plan"}
               autoFocus
             />
           </div>
@@ -149,7 +183,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
               id="pf-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Briefly describe what this product offers"
+              placeholder={`Briefly describe what this ${terms.singular} offers`}
               rows={3}
               className={`mt-1 ${inputCls} resize-none`}
             />
@@ -163,15 +197,15 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
             </Label>
             <div className="flex mt-1 rounded-xl overflow-hidden border border-outline-variant/10 bg-surface-container-low focus-within:ring-2 focus-within:ring-primary/40">
               {/* Currency selector */}
-              <select
+              <Select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="shrink-0 border-r border-outline-variant/10 bg-surface-container px-3 py-2.5 text-body text-on-surface-variant font-medium outline-none"
+                className="w-auto shrink-0 rounded-none border-r border-outline-variant/10 bg-surface-container font-medium"
               >
-                {CURRENCIES.map((c) => (
+                {currencies.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
-              </select>
+              </Select>
               {/* Price input */}
               <input
                 id="pf-price"
@@ -181,7 +215,7 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
-                className="flex-1 px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 bg-transparent outline-none"
+                className="flex-1 px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder bg-transparent outline-none"
               />
             </div>
           </div>
@@ -205,51 +239,91 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
                 Category{" "}
                 <span className="font-normal text-on-surface-variant/50">(optional)</span>
               </Label>
-              <select
+              <Select
                 id="pf-cat"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className={`mt-1 ${inputCls}`}
+                className="mt-1"
               >
                 <option value="">No category</option>
                 {(categories ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
-          {/* Image URL */}
+          {/* Brand */}
+          {(brands ?? []).length > 0 && (
+            <div>
+              <Label htmlFor="pf-brand">
+                Brand <span className="font-normal text-on-surface-variant/50">(optional)</span>
+              </Label>
+              <Select id="pf-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="mt-1">
+                <option value="">No brand</option>
+                {(brands ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {/* Lead team: who handles this product's leads, and how soon */}
+          <fieldset className="space-y-3 rounded-xl border border-outline-variant/15 p-4" data-tour="product-lead-team">
+            <legend className="px-1 text-label font-medium text-on-surface">Leads for this {terms.singular}</legend>
+            <div>
+              <p className="text-label text-on-surface-variant">Handled by</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {(members ?? []).map((m) => {
+                  const on = leadHandlerIds.includes(m.id);
+                  const label = `${m.firstName} ${m.lastName}`.trim() || m.email;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleHandler(m.id)}
+                      className={`rounded-full border px-3 py-1 text-label transition-colors ${
+                        on
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-outline-variant/30 text-on-surface-variant hover:border-outline"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-caption text-on-surface-variant">
+                {leadHandlerIds.length > 1
+                  ? "New leads are shared between them, fewest waiting first."
+                  : leadHandlerIds.length === 1
+                    ? "Every new lead goes to this person."
+                    : "Nobody picked: leads stay with the contact's owner."}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="pf-remind">Remind if not contacted in</Label>
+              <Select
+                id="pf-remind"
+                value={String(leadReminderMinutes)}
+                onChange={(e) => setLeadReminderMinutes(Number(e.target.value))}
+                className="mt-1"
+              >
+                {[15, 30, 60, 120, 240].map((m) => (
+                  <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} hour${m > 60 ? "s" : ""}`}</option>
+                ))}
+              </Select>
+            </div>
+          </fieldset>
+
+          {/* Image */}
           <div>
             <Label htmlFor="pf-img">
-              Image URL{" "}
+              Image{" "}
               <span className="font-normal text-on-surface-variant/50">(optional)</span>
             </Label>
-            <div className="flex gap-3 items-start mt-1">
-              <div className="flex-1">
-                <input
-                  id="pf-img"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.png"
-                  className={inputCls}
-                />
-              </div>
-              {/* Preview */}
-              <div className="h-10 w-10 rounded-lg border border-outline-variant/15 bg-surface-container flex items-center justify-center shrink-0 overflow-hidden">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt="preview"
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : (
-                  <ImageIcon className="h-4 w-4 text-on-surface-variant/30" />
-                )}
-              </div>
-            </div>
+            <MediaPicker id="pf-img" kind="image" value={imageUrl} onChange={(url) => setImageUrl(url)} />
           </div>
 
           {/* Error */}
@@ -260,12 +334,12 @@ export function ProductFormModal({ open, onClose, product }: ProductFormModalPro
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 justify-end pt-1">
+          <div className="flex gap-2 justify-end pt-1 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" loading={isPending} disabled={!name.trim()}>
-              {isEditing ? "Save Changes" : "Create Product"}
+              {isEditing ? "Save changes" : `Create ${terms.singular}`}
             </Button>
           </div>
         </form>

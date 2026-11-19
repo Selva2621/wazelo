@@ -52,8 +52,11 @@ export class StructuredLogger implements LoggerService {
       ],
     });
 
-    // File transport in production for centralized log shipping
-    if (isProduction) {
+    // Log files (logs/error.log, logs/combined.log): always in production, and in dev
+    // too so "why did this message go out?" can be answered later. LOG_TO_FILE=false
+    // turns them off; dev keeps info and above in the file (debug stays on the console).
+    const writeFiles = isProduction || process.env.LOG_TO_FILE !== 'false';
+    if (writeFiles) {
       this.logger.add(
         new winston.transports.File({
           filename: 'logs/error.log',
@@ -69,6 +72,7 @@ export class StructuredLogger implements LoggerService {
       this.logger.add(
         new winston.transports.File({
           filename: 'logs/combined.log',
+          ...(isProduction ? {} : { level: 'info' }),
           maxsize: 100 * 1024 * 1024, // 100MB
           maxFiles: 20,
           format: winston.format.combine(

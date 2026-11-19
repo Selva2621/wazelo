@@ -14,6 +14,8 @@ export interface TriggerEvaluationInput {
   context: EvaluationContext;
   contactId?: string;
   depth?: number;
+  /** Evaluate just this rule (a NO_REPLY check is scheduled per rule) */
+  onlyRuleId?: string;
 }
 
 @Injectable()
@@ -32,10 +34,9 @@ export class EvaluateTriggerUseCase {
     const depth = input.depth ?? 0;
 
     // 1. Find all active rules for this trigger type in this org
-    const rules = await this.automationRepo.findActiveRulesByTriggerType(
-      input.orgId,
-      input.triggerType,
-    );
+    const rules = (
+      await this.automationRepo.findActiveRulesByTriggerType(input.orgId, input.triggerType)
+    ).filter((r) => !input.onlyRuleId || r.id === input.onlyRuleId);
 
     if (rules.length === 0) {
       return 0;

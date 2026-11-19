@@ -9,6 +9,7 @@ import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { StripePaymentService } from '@/modules/billing/domain/services/stripe-payment.service';
 import { ApplyRenewalCreditUseCase } from '@/modules/billing/application/use-cases/apply-renewal-credit.use-case';
 import { EVENT_NAMES } from '@/common/constants';
+import { isTrialPlanSlug } from '@/shared/constants/trial-plans';
 import {
   AuditAction,
   SubscriptionStatus,
@@ -340,8 +341,9 @@ export class BillingCycleWorker {
   private async handleTrialExpiry(subscription: any) {
     const plan = subscription.plan;
 
-    // If it's a free plan, transition to ACTIVE (still free — not a paying customer)
-    if (subscription.priceInCents === 0) {
+    // A genuinely free plan stays ACTIVE. The free *trial* plans don't: the trial ends,
+    // grace starts, then access stops until the org pays.
+    if (subscription.priceInCents === 0 && !isTrialPlanSlug(plan?.slug)) {
       const converted = await this.subscriptionRepo.transitionStatus(
         subscription.id,
         SubscriptionStatus.TRIAL,

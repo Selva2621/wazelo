@@ -7,14 +7,16 @@ import { useSACouponActions, useSACoupons, useSAPlans } from "@/hooks/use-super-
 import type { Coupon, CouponKind, CreateCouponBody } from "@/lib/api/super-admin";
 import type { Plan } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CURRENCIES } from "@/components/super-admin/org-credits-panel";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
 import { cn, formatMoney, parseMoneyInput } from "@/lib/utils";
 
 const CODE_PATTERN = /^[A-Z0-9_-]{3,40}$/;
@@ -178,7 +180,7 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
         />
       </div>
 
-      <div role="radiogroup" aria-label="Discount type" className="flex gap-1 rounded-lg bg-surface-container/30 p-1 w-fit">
+      <div role="radiogroup" aria-label="Discount type" className="inline-flex rounded-lg border border-outline-variant p-0.5">
         {(["PERCENT", "FIXED"] as const).map((k) => (
           <button
             key={k}
@@ -188,8 +190,8 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
             onClick={() => set("kind", k)}
             disabled={pending}
             className={cn(
-              "rounded-md px-3 py-1.5 text-body font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              form.kind === k ? "bg-surface-container text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface",
+              "rounded-md px-3 py-1.5 text-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              form.kind === k ? "bg-primary/10 text-primary font-medium" : "text-on-surface-variant hover:text-on-surface",
             )}
           >
             {k === "PERCENT" ? "Percentage" : "Fixed amount"}
@@ -226,15 +228,14 @@ function NewCouponForm({ titleId, onDone }: { titleId: string; onDone: () => voi
           </div>
           <div>
             <label htmlFor={`${fieldId}-cur`} className={labelClass}>Currency</label>
-            <select
+            <Select
               id={`${fieldId}-cur`}
               value={form.currency}
               onChange={(e) => set("currency", e.target.value)}
-              className={inputClass}
               disabled={pending}
             >
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
       )}
@@ -328,77 +329,83 @@ export default function SuperAdminCouponsPage() {
       onSettled: () => setDeactivating(null),
     });
 
-  return (
-    <div className="p-6 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Coupons</h1>
-          <p className="text-body-lg text-on-surface-variant">Discounts on a subscription&apos;s first payment.</p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" aria-hidden /> New coupon
-        </Button>
-      </div>
+  const columns: DataTableColumn<Coupon>[] = [
+    { id: "code", header: "Code", cellClassName: "font-mono text-body text-on-surface", cell: (c) => c.code },
+    { id: "discount", header: "Discount", skeleton: "short", cellClassName: "text-on-surface tabular-nums", cell: (c) => discountLabel(c) },
+    {
+      id: "plans",
+      header: "Plans",
+      cellClassName: "text-on-surface-variant max-w-xs truncate",
+      cell: (c) => (
+        <span title={c.plans.map((p) => p.name).join(", ")}>
+          {c.plans.length ? c.plans.map((p) => p.name).join(", ") : "All plans"}
+        </span>
+      ),
+    },
+    {
+      id: "redemptions",
+      header: "Redemptions",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant tabular-nums",
+      cell: (c) => <>{c.redemptionCount} / {c.maxRedemptions ?? "∞"}</>,
+    },
+    { id: "valid", header: "Valid", cellClassName: "text-on-surface-variant whitespace-nowrap", cell: (c) => validityLabel(c) },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (c) => {
+        const state = couponState(c);
+        return <Badge dot variant={STATE_VARIANT[state]}>{state}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (c) =>
+        c.active && (
+          <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeactivating(c)}>
+            Deactivate
+          </Button>
+        ),
+    },
+  ];
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        {isLoading ? (
-          <div className="py-12 flex justify-center" role="status">
-            <Spinner className="text-primary" />
-            <span className="sr-only">Loading…</span>
-          </div>
-        ) : isError ? (
-          <p className="py-12 text-center text-error" role="alert">
-            Could not load coupons.{" "}
-            <button type="button" onClick={() => refetch()} className="underline hover:no-underline">Try again</button>
-          </p>
-        ) : !rows.length ? (
-          <EmptyState
-            icon={<TicketPercent className="h-10 w-10" aria-hidden />}
-            title="No coupons yet"
-            description="Create a code to discount a first payment."
-            actionLabel="New coupon"
-            onAction={() => setCreating(true)}
-          />
-        ) : (
-          <table className="w-full text-body-lg">
-            <caption className="sr-only">Coupons</caption>
-            <thead>
-              <tr className="border-b border-outline-variant text-left">
-                {["Code", "Discount", "Plans", "Redemptions", "Valid", "Status", "Actions"].map((h) => (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
-                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/40">
-              {rows.map((c) => {
-                const state = couponState(c);
-                return (
-                  <tr key={c.id} className="hover:bg-surface-container transition-colors">
-                    <td className="px-4 py-3 font-mono text-body text-on-surface">{c.code}</td>
-                    <td className="px-4 py-3 text-on-surface tabular-nums">{discountLabel(c)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate" title={c.plans.map((p) => p.name).join(", ")}>
-                      {c.plans.length ? c.plans.map((p) => p.name).join(", ") : "All plans"}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant tabular-nums">
-                      {c.redemptionCount} / {c.maxRedemptions ?? "∞"}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{validityLabel(c)}</td>
-                    <td className="px-4 py-3"><Badge variant={STATE_VARIANT[state]}>{state}</Badge></td>
-                    <td className="px-4 py-3 text-right">
-                      {c.active && (
-                        <Button size="sm" variant="ghost" className="text-error" onClick={() => setDeactivating(c)}>
-                          Deactivate
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+  return (
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Coupons"
+        count={coupons?.length}
+        description="First payment only"
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" aria-hidden /> New coupon
+          </Button>
+        }
+      />
+
+      <div className={TABLE_CARD}>
+        <DataTable
+          label="Coupons"
+          columns={columns}
+          rows={rows}
+          rowKey={(c) => c.id}
+          rowLabel={(c) => c.code}
+          loading={isLoading}
+          skeletonRows={5}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <TicketPercent className="h-10 w-10" aria-hidden />,
+            title: "No coupons yet",
+            description: "Create a code to discount a first payment.",
+            actionLabel: "New coupon",
+            onAction: () => setCreating(true),
+          }}
+        />
       </div>
 
       <Modal

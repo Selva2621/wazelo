@@ -12,8 +12,9 @@ const publicPaths = [
 // (it creates the session, and must not be bounced to /dashboard by a stale hint).
 const sessionHandoffPaths = ["/auth/google/complete"];
 
-// Login-free pages opened from emails (e.g. /wa/<token> — reconnect WhatsApp from the phone)
-const openPrefixes = ["/wa/"];
+// Login-free token pages: /wa/<token> (reconnect WhatsApp from the phone), /p/<token> (a client's proposal),
+// /csat/<conversationId> (the satisfaction survey a customer opens from WhatsApp)
+const openPrefixes = ["/wa/", "/p/", "/csat/"];
 
 const superAdminPublicPaths = ["/super-admin/login"];
 
@@ -58,7 +59,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // sw.js: browsers refuse a redirected service worker script
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api|sw.js).*)",
+    // sw.js: browsers refuse a redirected service worker script.
+    // PWA files (manifest, icons, offline page) must load without a session so the
+    // app can be installed from the login screen.
+    // models: public CC0 3D assets (Message City), static files only
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo|api|sw.js|manifest.webmanifest|icons|offline.html|models).*)",
   ],
 };

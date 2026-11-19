@@ -10,6 +10,7 @@ interface ContactsState {
   filterStatus: LeadStatus | null;
   filterOwnerId: string | null;
   filterSource: ContactSource | null;
+  filterScrapeRunId: string | null;
   filterTagIds: string[];
   filterProductIds: string[];
   page: number;
@@ -22,6 +23,7 @@ interface ContactsState {
   setFilterStatus: (status: LeadStatus | null) => void;
   setFilterOwnerId: (ownerId: string | null) => void;
   setFilterSource: (source: ContactSource | null) => void;
+  setFilterScrapeRunId: (runId: string | null) => void;
   setFilterTagIds: (tagIds: string[]) => void;
   setFilterProductIds: (productIds: string[]) => void;
   clearFilters: () => void;
@@ -35,6 +37,7 @@ export const useContactsStore = create<ContactsState>()((set) => ({
   filterStatus: null,
   filterOwnerId: null,
   filterSource: null,
+  filterScrapeRunId: null,
   filterTagIds: [],
   filterProductIds: [],
   page: 0,
@@ -48,7 +51,10 @@ export const useContactsStore = create<ContactsState>()((set) => ({
   setSearchQuery: (query) => set({ searchQuery: query, page: 0 }),
   setFilterStatus: (status) => set({ filterStatus: status, page: 0 }),
   setFilterOwnerId: (ownerId) => set({ filterOwnerId: ownerId, page: 0 }),
-  setFilterSource: (source) => set({ filterSource: source, page: 0 }),
+  // A scrape run belongs to the Lead Scraper source, so switching source drops it
+  setFilterSource: (source) => set({ filterSource: source, filterScrapeRunId: null, page: 0 }),
+  setFilterScrapeRunId: (runId) =>
+    set({ filterScrapeRunId: runId, ...(runId && { filterSource: "WEB_SCRAPE" }), page: 0 }),
   setFilterTagIds: (tagIds) => set({ filterTagIds: tagIds, page: 0 }),
   setFilterProductIds: (productIds) => set({ filterProductIds: productIds, page: 0 }),
   clearFilters: () =>
@@ -56,6 +62,7 @@ export const useContactsStore = create<ContactsState>()((set) => ({
       filterStatus: null,
       filterOwnerId: null,
       filterSource: null,
+      filterScrapeRunId: null,
       filterTagIds: [],
       filterProductIds: [],
       searchQuery: "",

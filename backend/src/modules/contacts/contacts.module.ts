@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { EncryptionService } from '@/common/services';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 // Repository
 import { ContactRepository } from './infrastructure/repositories/contact.repository';
+import { SavedContactGroupRepository } from './infrastructure/repositories/saved-contact-group.repository';
 
 // Use cases
 import {
@@ -20,6 +23,7 @@ import {
   RemoveTagUseCase,
   GetContactHistoryUseCase,
   BulkContactsUseCase,
+  SavedContactGroupsUseCase,
 } from './application/use-cases';
 import { ExportContactsUseCase } from './application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from './application/use-cases/import-contacts.use-case';
@@ -38,6 +42,10 @@ import { TeamsModule } from '../teams/teams.module';
   providers: [
     // Repository
     ContactRepository,
+    SavedContactGroupRepository,
+    // Decrypts message bodies for the pipeline cards' last message
+    EncryptionService,
+    MessageEncryptionService,
 
     // Use cases
     CreateContactUseCase,
@@ -55,9 +63,19 @@ import { TeamsModule } from '../teams/teams.module';
     RemoveTagUseCase,
     GetContactHistoryUseCase,
     BulkContactsUseCase,
+    SavedContactGroupsUseCase,
     ExportContactsUseCase,
     ImportContactsUseCase,
   ],
-  exports: [ContactRepository, AutoCreateContactUseCase],
+  // The contact use-cases are also run by automation actions (assign, tag, lead status)
+  exports: [
+    ContactRepository,
+    AutoCreateContactUseCase,
+    AssignContactUseCase,
+    AddTagUseCase,
+    RemoveTagUseCase,
+    AddNoteUseCase,
+    ChangeLeadStatusUseCase,
+  ],
 })
 export class ContactsModule {}

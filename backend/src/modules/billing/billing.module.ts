@@ -11,6 +11,17 @@ import { EntitlementOverrideRepository } from './infrastructure/repositories/ent
 import { KillSwitchRepository } from './infrastructure/repositories/kill-switch.repository';
 import { CreditRepository } from './infrastructure/repositories/credit.repository';
 import { CouponRepository } from './infrastructure/repositories/coupon.repository';
+import { AiCreditRepository } from './infrastructure/repositories/ai-credit.repository';
+import { PlatformSettingsModule } from '@/modules/platform-settings/platform-settings.module';
+import { AiCreditsService } from './domain/services/ai-credits.service';
+import {
+  CreateAiCreditOrderUseCase,
+  FulfillAiCreditOrderUseCase,
+  GetAiCreditsUseCase,
+  ListAiCreditHistoryUseCase,
+} from './application/use-cases/ai-credits.use-cases';
+import { AiCreditGuard, AiCreditChargeInterceptor } from './interfaces/guards/ai-credit.guard';
+import { AiCreditsController } from './interfaces/controllers/ai-credits.controller';
 
 // Domain services
 import { UsageTrackingService } from './domain/services/usage-tracking.service';
@@ -34,12 +45,14 @@ import { ApplyRenewalCreditUseCase } from './application/use-cases/apply-renewal
 import { CreateCheckoutOrderUseCase, ResolveCheckoutOrderUseCase } from './application/use-cases/checkout-order.use-cases';
 import { ActivateTrialPaymentUseCase } from './application/use-cases/activate-trial-payment.use-case';
 import { ValidateCouponUseCase } from './application/use-cases/validate-coupon.use-case';
+import { AlignTrialPlanUseCase } from './application/use-cases/align-trial-plan.use-case';
 import { CouponCheckoutService } from './application/services/coupon-checkout.service';
 
 // Guards
 import { UsageLimitGuard } from './interfaces/guards/usage-limit.guard';
 import { FeatureFlagGuard } from './interfaces/guards/feature-flag.guard';
 import { PlatformFeatureGuard } from './interfaces/guards/platform-feature.guard';
+import { ApiCallLimitGuard } from './interfaces/guards/api-call-limit.guard';
 
 // Controllers
 import { BillingController } from './interfaces/controllers/billing.controller';
@@ -47,9 +60,19 @@ import { StripeWebhookController } from './interfaces/controllers/stripe-webhook
 import { RazorpayWebhookController } from './interfaces/controllers/razorpay-webhook.controller';
 
 @Module({
-  imports: [AuditModule, ConfigModule],
-  controllers: [BillingController, StripeWebhookController, RazorpayWebhookController],
+  imports: [AuditModule, ConfigModule, PlatformSettingsModule],
+  controllers: [BillingController, StripeWebhookController, RazorpayWebhookController, AiCreditsController],
   providers: [
+    // AI credits (plan allowance + purchased packs)
+    AiCreditRepository,
+    AiCreditsService,
+    AiCreditGuard,
+    AiCreditChargeInterceptor,
+    GetAiCreditsUseCase,
+    ListAiCreditHistoryUseCase,
+    CreateAiCreditOrderUseCase,
+    FulfillAiCreditOrderUseCase,
+
     // Repositories
     PlanRepository,
     SubscriptionRepository,
@@ -87,15 +110,22 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     ResolveCheckoutOrderUseCase,
     ActivateTrialPaymentUseCase,
     ValidateCouponUseCase,
+    AlignTrialPlanUseCase,
 
     // Guards
     UsageLimitGuard,
     FeatureFlagGuard,
     PlatformFeatureGuard,
+    ApiCallLimitGuard,
   ],
   exports: [
     // Export for use in other modules (guards, workers)
     UsageTrackingService,
+    // AI credit metering (@AiCredits routes, chatbot, event handlers) + packs (super-admin)
+    AiCreditsService,
+    AiCreditRepository,
+    AiCreditGuard,
+    AiCreditChargeInterceptor,
     // Super admin per-org overrides (written only by the super-admin module)
     EntitlementOverrideService,
     EntitlementOverrideRepository,
@@ -110,8 +140,11 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     UsageLimitGuard,
     FeatureFlagGuard,
     PlatformFeatureGuard,
+    ApiCallLimitGuard,
     StripePaymentService,
     RazorpayPaymentService,
+    // Moves a running trial to the freelancer/team trial (events: org type changed)
+    AlignTrialPlanUseCase,
     // Plan management — used by super-admin module
     ListPlansUseCase,
     CreatePlanUseCase,

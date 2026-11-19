@@ -4,24 +4,34 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ArrowLeft, CheckCircle2, Clock, Loader2, XCircle,
-  Phone, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, ChevronDown, Rocket, Ban,
+  ArrowLeft, Loader2,
+  Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
+  Filter, X, Rocket, Globe, ChevronRight,
 } from "lucide-react";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { BottomSheet } from "@/components/ios/bottom-sheet";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import {
+  FilterBar as SharedFilterBar,
+  FilterBarDivider,
+  FilterSelect as SharedFilterSelect,
+} from "@/components/ui/filter-bar";
 import { StartOutreachModal } from "@/components/lead-scraper/start-outreach-modal";
 import { useScrapeRunResults, useImportScrapeResults, useWhatsAppChecks } from "@/hooks/use-lead-scraper";
 import { useQuery } from "@tanstack/react-query";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead,
-  TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-modal";
+import { TypeFilter } from "@/components/lead-scraper/type-filter";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+
+/** Results per page on a run (a run holds up to 200) */
+const RESULTS_PAGE_SIZE = 25;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +44,8 @@ interface ActiveFilters {
   minRating: number; // 0 = any
   categories: string[]; // empty = all
   tier: "all" | ScoreTier;
+  /** new = not in contacts and not found before */
+  known: "all" | "new" | "in_contacts" | "seen";
   sortByScore: boolean;
 }
 
@@ -46,6 +58,7 @@ const DEFAULT_FILTERS: ActiveFilters = {
   minRating: 0,
   categories: [],
   tier: "all",
+  known: "all",
   sortByScore: false,
 };
 
@@ -85,31 +98,30 @@ const SOURCE_LABELS: Record<ScrapeSource, string> = {
   FREELANCER_IN: "Freelancer.in",
   TRUELANCER: "Truelancer",
   LINKEDIN_JOBS: "LinkedIn Jobs",
+  INDIAMART: "IndiaMART",
 };
 
 function StatusBadge({ status }: { status: ScrapeRunStatus }) {
-  const config: Record<ScrapeRunStatus, { label: string; className: string; icon: React.ReactNode }> = {
-    PENDING:   { label: "Pending",  className: "bg-surface-container text-on-surface-variant", icon: <Clock className="w-3 h-3" /> },
-    RUNNING:   { label: "Running",  className: "bg-primary/10 text-primary",                  icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-    COMPLETED: { label: "Done",     className: "bg-success/10 text-success",                  icon: <CheckCircle2 className="w-3 h-3" /> },
-    FAILED:    { label: "Failed",   className: "bg-error/10 text-error",                      icon: <XCircle className="w-3 h-3" /> },
-    CANCELLED: { label: "Cancelled", className: "bg-surface-container text-on-surface-variant", icon: <Ban className="w-3 h-3" /> },
+  const config: Record<ScrapeRunStatus, { label: string; variant: "muted" | "primary" | "success" | "error" }> = {
+    PENDING:   { label: "Pending",   variant: "muted" },
+    RUNNING:   { label: "Running",   variant: "primary" },
+    COMPLETED: { label: "Done",      variant: "success" },
+    FAILED:    { label: "Failed",    variant: "error" },
+    CANCELLED: { label: "Cancelled", variant: "muted" },
   };
-  const { label, className, icon } = config[status];
+  const { label, variant } = config[status];
   return (
-    <span className={`inline-flex items-center gap-1 text-label font-medium px-2 py-0.5 rounded-full ${className}`}>
-      {icon} {label}
-    </span>
+    <Badge variant={variant} dot pulse={status === "RUNNING"}>
+      {label}
+    </Badge>
   );
 }
 
 function WaBadge({ status }: { status: CheckWhatsAppResult | undefined }) {
   if (!status) return null;
-  if (status.exists === true)
-    return <span className="inline-flex items-center gap-1 text-caption text-success font-medium"><span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />WA Active</span>;
-  if (status.exists === false)
-    return <span className="inline-flex items-center gap-1 text-caption text-error font-medium"><span className="w-1.5 h-1.5 rounded-full bg-error inline-block" />Not on WA</span>;
-  return <span className="inline-flex items-center gap-1 text-caption text-on-surface-variant"><span className="w-1.5 h-1.5 rounded-full bg-outline-variant inline-block" />Unknown</span>;
+  if (status.exists === true) return <Badge variant="success" dot>WA active</Badge>;
+  if (status.exists === false) return <Badge variant="error" dot>Not on WA</Badge>;
+  return <Badge variant="muted" dot>Unknown</Badge>;
 }
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
@@ -123,19 +135,18 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-label bg-surface-container border border-outline-variant rounded-lg pl-3 pr-7 py-1.5 text-on-surface focus:outline-none focus:border-primary cursor-pointer"
-      >
-        <option value="" disabled>{label}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-on-surface-variant" />
-    </div>
+    <SharedFilterSelect
+      label={label}
+      // The first option is each filter's "all" value
+      active={value !== options[0]?.value}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="" disabled>{label}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </SharedFilterSelect>
   );
 }
 
@@ -150,7 +161,7 @@ function FilterBar({
 }: {
   filters: ActiveFilters;
   onChange: (f: Partial<ActiveFilters>) => void;
-  categories: string[];
+  categories: { name: string; count: number }[];
   waChecksLoaded: boolean;
   hasScores: boolean;
   resultCount: number;
@@ -165,49 +176,42 @@ function FilterBar({
     filters.minRating > 0,
     filters.categories.length > 0,
     filters.tier !== "all",
+    filters.known !== "all",
   ].filter(Boolean).length;
 
   return (
-    <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-4 space-y-3">
-      {/* Top row: search + active indicator */}
+    <div className="space-y-3">
+      {/* Top row: search + count */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-          {activeCount > 0 && (
-            <span className="bg-primary text-on-primary text-caption font-semibold w-4 h-4 rounded-full flex items-center justify-center">
-              {activeCount}
-            </span>
-          )}
-        </div>
-
         {/* Search */}
         <input
           type="text"
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
-          placeholder="Search name, company, category, skills…"
-          className="flex-1 min-w-[200px] text-label bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+          placeholder="Search name, company, category, skills"
+          aria-label="Search results"
+          className="flex-1 min-w-[200px] max-w-md max-lg:max-w-none max-lg:min-w-0 max-lg:basis-full max-lg:order-last h-8 max-lg:h-10 max-lg:rounded-xl text-label bg-surface-container-lowest border border-outline-variant rounded-lg px-3 text-on-surface placeholder:text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
 
         {/* Showing count */}
-        <span className="text-label text-on-surface-variant ml-auto shrink-0">
+        <span className="text-label tabular-nums text-on-surface-variant ml-auto shrink-0">
           {visibleCount} of {resultCount}
         </span>
 
         {/* Clear all */}
         {activeCount > 0 && (
           <button
+            type="button"
             onClick={() => onChange(DEFAULT_FILTERS)}
-            className="flex items-center gap-1 text-label text-error hover:underline shrink-0"
+            className="flex items-center gap-1 rounded-md px-1 text-label text-on-surface-variant outline-none hover:text-on-surface focus-visible:ring-2 focus-visible:ring-focus shrink-0"
           >
-            <X className="w-3 h-3" /> Clear all
+            <X className="w-3 h-3" /> Clear {activeCount}
           </button>
         )}
       </div>
 
-      {/* Filter chips row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Every filter on one row */}
+      <SharedFilterBar className="mobile-scroll-x">
         {/* Lead score */}
         {hasScores && (
           <>
@@ -223,18 +227,34 @@ function FilterBar({
               ]}
             />
             <button
+              type="button"
               onClick={() => onChange({ sortByScore: !filters.sortByScore })}
               aria-pressed={filters.sortByScore}
-              className={`text-label px-3 py-1.5 rounded-lg border transition-colors ${
+              // Same chip as the shared Tabs/FilterSelect: filled when on
+              className={`h-8 shrink-0 rounded-full border px-3 text-label font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 filters.sortByScore
-                  ? "bg-primary text-on-primary border-primary"
-                  : "bg-surface-container text-on-surface border-outline-variant hover:border-primary/50"
+                  ? "border-transparent bg-on-surface text-surface"
+                  : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-outline hover:text-on-surface"
               }`}
             >
               Best leads first
             </button>
+            <FilterBarDivider />
           </>
         )}
+
+        {/* New vs already known */}
+        <FilterSelect
+          label="Lead"
+          value={filters.known}
+          onChange={(v) => onChange({ known: v as ActiveFilters["known"] })}
+          options={[
+            { value: "all", label: "Leads: All" },
+            { value: "new", label: "New only" },
+            { value: "in_contacts", label: "Already in contacts" },
+            { value: "seen", label: "Found before" },
+          ]}
+        />
 
         {/* WA Status */}
         <FilterSelect
@@ -299,35 +319,13 @@ function FilterBar({
           ]}
         />
 
-        {/* Category chips — dynamic from data */}
+        {/* Type — dynamic from data */}
         {categories.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {categories.slice(0, 8).map((cat) => {
-              const active = filters.categories.includes(cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() =>
-                    onChange({
-                      categories: active
-                        ? filters.categories.filter((c) => c !== cat)
-                        : [...filters.categories, cat],
-                    })
-                  }
-                  className={`text-caption px-2 py-0.5 rounded-full border transition-colors ${
-                    active
-                      ? "bg-primary text-on-primary border-primary"
-                      : "bg-surface-container text-on-surface-variant border-outline-variant hover:border-primary/50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-            {categories.length > 8 && (
-              <span className="text-caption text-on-surface-variant">+{categories.length - 8} more</span>
-            )}
-          </div>
+          <TypeFilter
+            options={categories}
+            value={filters.categories}
+            onChange={(cats) => onChange({ categories: cats })}
+          />
         )}
 
         {/* Quick: Select all WA active */}
@@ -335,14 +333,15 @@ function FilterBar({
           <span className="ml-auto text-caption text-on-surface-variant">
             Quick:
             <button
+              type="button"
               onClick={() => onChange({ waStatus: "active", imported: "no", hasPhone: "yes" })}
-              className="ml-1.5 text-primary hover:underline font-medium"
+              className="ml-1.5 rounded text-primary hover:underline font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               WA active, not imported
             </button>
           </span>
         )}
-      </div>
+      </SharedFilterBar>
     </div>
   );
 }
@@ -370,6 +369,10 @@ function detailLines(result: ScrapeResult): [string, string][] {
   if (d.priceLevel) lines.push(["Price", "₹".repeat(d.priceLevel)]);
   if (d.photoCount != null) lines.push(["Photos", String(d.photoCount)]);
   if (d.lastReviewAt) lines.push(["Last review", timeAgo(d.lastReviewAt)]);
+  if (d.websiteWhatsapp) lines.push(["WhatsApp on site", d.websiteWhatsapp]);
+  if (d.product) lines.push(["Product", d.product]);
+  if (d.yearsListed != null) lines.push(["On IndiaMART", `${d.yearsListed} yrs${d.trustSeal ? " · TrustSEAL" : ""}`]);
+  if (d.responseRate != null) lines.push(["Responds", `${d.responseRate}%`]);
   return lines;
 }
 
@@ -381,49 +384,23 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ResultRow({
-  result, selected, onToggle, waStatus,
-}: {
-  result: ScrapeResult;
-  selected: boolean;
-  onToggle: () => void;
-  waStatus?: CheckWhatsAppResult;
-}) {
-  // Imported rows stay selectable so they can be pitched
-  return (
-    <TableRow
-      onClick={onToggle}
-      className={
-        selected
-          ? "bg-primary/5 cursor-pointer"
-          : "cursor-pointer hover:bg-surface-container-low"
-      }
-    >
-      {/* Checkbox */}
-      <TableCell>
-        <div
-          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-            selected
-              ? "border-primary bg-primary"
-              : "border-outline-variant"
-          }`}
-        >
-          {selected && (
-            <CheckCircle2 className="w-2.5 h-2.5 text-on-primary" />
-          )}
-        </div>
-      </TableCell>
-
-      {/* Name + category */}
-      <TableCell>
+/** Result table columns; the phone cell needs the WhatsApp check answers */
+function resultColumns(waStatusMap: Record<string, CheckWhatsAppResult>): DataTableColumn<ScrapeResult>[] {
+  return [
+    {
+      // Name + category (one block so the mobile card title stacks)
+      id: "name",
+      header: "Name",
+      cell: (result) => (
+        <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className="font-medium text-body text-on-surface truncate max-w-[200px]">
+          <p className="font-medium text-body text-on-surface truncate max-w-[200px] max-lg:max-w-none">
             {result.name ?? "—"}
           </p>
           {result.score != null && <ScoreBadge score={result.score} />}
         </div>
         {result.tags?.length > 0 && (
-          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px]">
+          <p className="text-caption text-on-surface-variant mt-0.5 truncate max-w-[240px] max-lg:max-w-none max-lg:font-normal">
             {result.tags.join(" · ")}
           </p>
         )}
@@ -443,43 +420,83 @@ function ResultRow({
               Imported
             </span>
           )}
-        </div>
-      </TableCell>
-
-      {/* Phone + WA */}
-      <TableCell>
-        {result.phone ? (
-          <div className="flex flex-col gap-0.5">
-            <a
-              href={`tel:${result.phone}`}
+          {!result.imported && result.existingContactId && (
+            <Link
+              href={`/contacts/${result.existingContactId}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-label text-on-surface hover:text-primary whitespace-nowrap"
+              title="This number is already saved — open the contact"
+              className="text-caption bg-warning/10 text-warning px-1.5 py-0.5 rounded-full hover:underline"
             >
-              <Phone className="w-3 h-3 shrink-0 text-on-surface-variant" />
-              {result.phone}
-            </a>
-            <WaBadge status={waStatus} />
+              In contacts
+            </Link>
+          )}
+          {result.seenBeforeAt && (
+            <span
+              title={`Also found in an earlier run on ${new Date(result.seenBeforeAt).toLocaleDateString()}`}
+              className="text-caption bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded-full"
+            >
+              Found {timeAgo(result.seenBeforeAt)}
+            </span>
+          )}
+        </div>
+        </div>
+      ),
+    },
+    {
+      // Phone + WA + Email
+      id: "phone",
+      header: "Phone",
+      cell: (result) => {
+        const waStatus = result.phone ? waStatusMap[result.phone] : undefined;
+        return result.phone || result.email ? (
+          <div className="flex flex-col gap-0.5">
+            {result.phone && (
+              <>
+                <a
+                  href={`tel:${result.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-label text-on-surface hover:text-primary whitespace-nowrap"
+                >
+                  <Phone className="w-3 h-3 shrink-0 text-on-surface-variant" />
+                  {result.phone}
+                </a>
+                <WaBadge status={waStatus} />
+              </>
+            )}
+            {result.email && (
+              <a
+                href={`mailto:${result.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-label text-on-surface-variant hover:text-primary max-w-[200px]"
+              >
+                <Mail className="w-3 h-3 shrink-0" />
+                <span className="truncate">{result.email}</span>
+              </a>
+            )}
           </div>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Address */}
-      <TableCell>
-        {result.address || result.location ? (
+        );
+      },
+    },
+    {
+      id: "address",
+      header: "Address",
+      cell: (result) =>
+        result.address || result.location ? (
           <span className="flex items-start gap-1 text-label text-on-surface-variant max-w-[220px]">
             <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
             <span className="line-clamp-2">{result.address || result.location}</span>
           </span>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Website */}
-      <TableCell>
-        {result.website ? (
+        ),
+    },
+    {
+      id: "website",
+      header: "Website",
+      cell: (result) =>
+        result.website ? (
           <a
             href={result.website}
             target="_blank"
@@ -492,12 +509,14 @@ function ResultRow({
           </a>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Rating */}
-      <TableCell>
-        {result.rating ? (
+        ),
+    },
+    {
+      id: "rating",
+      header: "Rating",
+      skeleton: "short",
+      cell: (result) =>
+        result.rating ? (
           <span className="flex items-center gap-1 text-label whitespace-nowrap">
             <Star className="w-3 h-3 fill-warning text-warning" />
             <span className="font-medium text-on-surface">{result.rating.toFixed(1)}</span>
@@ -507,11 +526,12 @@ function ResultRow({
           </span>
         ) : (
           <span className="text-label text-on-surface-variant">—</span>
-        )}
-      </TableCell>
-
-      {/* Details */}
-      <TableCell>
+        ),
+    },
+    {
+      id: "details",
+      header: "Details",
+      cell: (result) => (
         <div className="flex flex-col gap-1 max-w-[200px]">
           {result.description && (
             <p className="text-caption text-on-surface-variant line-clamp-2">{result.description}</p>
@@ -528,7 +548,7 @@ function ResultRow({
           {result.jobTitle && (
             <DetailLine label="Role" value={result.jobTitle} />
           )}
-          {result.company && (
+          {result.company && result.company !== result.name && (
             <DetailLine label="Company" value={result.company} />
           )}
           {detailLines(result).map(([label, value]) => (
@@ -560,10 +580,13 @@ function ResultRow({
             <span className="text-label text-on-surface-variant">—</span>
           )}
         </div>
-      </TableCell>
-
-      {/* Source link */}
-      <TableCell>
+      ),
+    },
+    {
+      id: "source",
+      header: "Source",
+      skeleton: "short",
+      cell: (result) => (
         <a
           href={result.sourceUrl}
           target="_blank"
@@ -573,8 +596,105 @@ function ResultRow({
         >
           View
         </a>
-      </TableCell>
-    </TableRow>
+      ),
+    },
+  ];
+}
+
+// ─── Phone list ───────────────────────────────────────────────────────────────
+
+function WaDot({ status }: { status: CheckWhatsAppResult | undefined }) {
+  if (!status) return null;
+  const [label, color] =
+    status.exists === true ? ["WA active", "bg-success"] : status.exists === false ? ["Not on WA", "bg-error"] : ["WA unknown", "bg-outline"];
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      <span aria-hidden className={`size-1.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  );
+}
+
+/** Compact phone row: name, rating/category, phone + WhatsApp, website mark. Tap opens the details sheet. */
+function ResultMobileRow({ result, wa, onOpen }: {
+  result: ScrapeResult;
+  wa: CheckWhatsAppResult | undefined;
+  onOpen: () => void;
+}) {
+  const kind = result.category ?? result.jobTitle;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${result.name ?? "Lead"} details`}
+      className="flex min-h-14 w-full items-center gap-2 py-2.5 pl-1 pr-3 text-left active:bg-surface-container"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-body font-medium text-on-surface">{result.name ?? "—"}</span>
+          {result.score != null && <ScoreBadge score={result.score} />}
+        </span>
+        {(result.rating || kind) && (
+          <span className="mt-0.5 flex items-center gap-1.5 text-caption text-on-surface-variant">
+            {result.rating ? (
+              <span className="inline-flex shrink-0 items-center gap-0.5">
+                <Star className="w-3 h-3 fill-warning text-warning" aria-hidden />
+                <span className="font-medium text-on-surface">{result.rating.toFixed(1)}</span>
+                {result.reviewCount ? <span>({result.reviewCount})</span> : null}
+              </span>
+            ) : null}
+            {kind && <span className="truncate">{kind}</span>}
+          </span>
+        )}
+        <span className="mt-0.5 flex items-center gap-2 overflow-hidden whitespace-nowrap text-caption text-on-surface-variant">
+          {result.phone ? (
+            <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
+              <Phone className="w-3 h-3" aria-hidden />
+              {result.phone}
+            </span>
+          ) : (
+            <span className="shrink-0">No phone</span>
+          )}
+          <WaDot status={wa} />
+          {result.website && (
+            <span className="inline-flex shrink-0 items-center gap-0.5">
+              <Globe className="w-3 h-3" aria-hidden />
+              <span className="sr-only">Has website</span>
+            </span>
+          )}
+          {result.imported ? (
+            <span className="shrink-0 text-success">Imported</span>
+          ) : result.existingContactId ? (
+            <span className="shrink-0 text-warning">In contacts</span>
+          ) : null}
+        </span>
+      </span>
+      <ChevronRight className="w-4 h-4 shrink-0 text-on-surface-variant/60" aria-hidden />
+    </button>
+  );
+}
+
+/** Every column of the desktop table, stacked, for one result (phones) */
+function ResultDetails({ result, columns, isSelected, onToggle }: {
+  result: ScrapeResult;
+  columns: DataTableColumn<ScrapeResult>[];
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="px-4">
+      <dl className="divide-y divide-outline-variant/40">
+        {columns.map((col) => (
+          <div key={col.id} className="flex gap-3 py-3">
+            <dt className="w-20 shrink-0 text-label text-on-surface-variant">{col.header}</dt>
+            <dd className="min-w-0 flex-1 [overflow-wrap:anywhere] [&_*]:max-w-none">{col.cell(result, 0)}</dd>
+          </div>
+        ))}
+      </dl>
+      <Button variant={isSelected ? "secondary" : "primary"} size="lg" onClick={onToggle} className="mt-3 w-full">
+        {isSelected ? "Deselect" : "Select"}
+      </Button>
+    </div>
   );
 }
 
@@ -587,9 +707,16 @@ export default function ScrapeRunResultsPage() {
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
+  // Phones: the result whose details sheet is open
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  const updateFilters = (patch: Partial<ActiveFilters>) =>
+  // Results page (1-based); any filter change goes back to the first page
+  const [page, setPage] = useState(1);
+  const updateFilters = (patch: Partial<ActiveFilters>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
 
   // Fetch run details
   const { data: run, isLoading: runLoading } = useQuery({
@@ -615,13 +742,13 @@ export default function ScrapeRunResultsPage() {
     stopChecking,
   } = useWhatsAppChecks(runId, run?.waCheck, results);
 
-  // Derive unique categories from results for dynamic filter chips
+  // Derive unique categories (with counts) from results for the Type filter
   const categories = useMemo(() => {
-    const seen = new Set<string>();
+    const counts = new Map<string, number>();
     results.forEach((r) => {
-      if (r.category) seen.add(r.category);
+      if (r.category) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
     });
-    return Array.from(seen).sort();
+    return Array.from(counts, ([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
   }, [results]);
 
   // Apply all filters
@@ -664,6 +791,12 @@ export default function ScrapeRunResultsPage() {
       // Category chips
       if (filters.categories.length > 0 && !filters.categories.includes(r.category ?? "")) return false;
 
+      // New vs already known (imported results count as in contacts)
+      const inContacts = r.imported || !!r.existingContactId;
+      if (filters.known === "new" && (inContacts || r.seenBeforeAt)) return false;
+      if (filters.known === "in_contacts" && !inContacts) return false;
+      if (filters.known === "seen" && !r.seenBeforeAt) return false;
+
       // Lead score tier
       if (filters.tier !== "all" && (r.score == null || scoreTier(r.score) !== filters.tier)) return false;
 
@@ -673,6 +806,11 @@ export default function ScrapeRunResultsPage() {
       ? [...matched].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
       : matched;
   }, [results, filters, waStatusMap]);
+
+  // Shown a page at a time; select-all, import and export still cover every filtered result
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / RESULTS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedResults = filteredResults.slice((currentPage - 1) * RESULTS_PAGE_SIZE, currentPage * RESULTS_PAGE_SIZE);
 
   const allSelected = filteredResults.length > 0 && filteredResults.every((r) => selected.has(r.id));
 
@@ -761,51 +899,48 @@ export default function ScrapeRunResultsPage() {
   const phoneCount = results.filter((r) => r.phone).length;
   const checkedCount = results.filter((r) => r.phone && r.waCheckedAt).length;
 
+  const columns = resultColumns(waStatusMap);
+  const detail = detailId ? results.find((r) => r.id === detailId) : undefined;
+  const exportLabel = `Export ${filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}`;
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-5">
-      {/* Back nav */}
+    <div className="p-6 max-w-6xl mx-auto space-y-5 max-lg:space-y-4">
+      {/* Back nav (the iOS nav bar has Back on mobile) */}
       <Link
         href="/leads/scraper"
-        className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors"
+        className="inline-flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors max-lg:hidden"
       >
         <ArrowLeft className="w-4 h-4" />
-        Lead Scraper
+        Lead scraper
       </Link>
 
       {/* Run header */}
-      <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-title font-semibold text-on-surface">{SOURCE_LABELS[run.source]}</h1>
-              <StatusBadge status={run.status} />
-            </div>
-            <p className="text-body-lg text-on-surface-variant mt-1">
-              <span className="font-medium">{run.keywords}</span>
+      <div className="space-y-3">
+        <PageHeader
+          title={SOURCE_LABELS[run.source]}
+          description={
+            <>
+              <span className="font-medium text-on-surface">{run.keywords}</span>
               {run.location && <> · {run.location}</>}
-            </p>
-          </div>
+            </>
+          }
+          actions={<StatusBadge status={run.status} />}
+        />
 
-          <div className="flex items-center gap-4 text-center">
-            <div>
-              <p className="text-title font-semibold text-on-surface">{run.resultCount}</p>
-              <p className="text-caption text-on-surface-variant">Found</p>
-            </div>
-            <div className="w-px h-8 bg-outline-variant" />
-            <div>
-              <p className="text-title font-semibold text-on-surface">{results.filter((r) => !r.imported).length}</p>
-              <p className="text-caption text-on-surface-variant">Not imported</p>
-            </div>
-            <div className="w-px h-8 bg-outline-variant" />
-            <div>
-              <p className="text-title font-semibold text-success">{importedCount}</p>
-              <p className="text-caption text-on-surface-variant">Imported</p>
-            </div>
-          </div>
+        <div data-tour="run-counts" className="flex items-baseline gap-6 text-body text-on-surface-variant max-lg:justify-between max-lg:gap-3">
+          <span>
+            <span className="font-semibold tabular-nums text-on-surface">{run.resultCount}</span> found
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums text-on-surface">{results.filter((r) => !r.imported).length}</span> not imported
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums text-success">{importedCount}</span> imported
+          </span>
         </div>
 
         {run.status === "FAILED" && run.errorMessage && (
-          <p className="mt-3 text-label text-error bg-error/5 rounded-lg px-3 py-2">{run.errorMessage}</p>
+          <p className="text-label text-error bg-error-container rounded-lg px-3 py-2">{run.errorMessage}</p>
         )}
       </div>
 
@@ -829,6 +964,26 @@ export default function ScrapeRunResultsPage() {
             </div>
           ) : (
             <>
+              {/* Phones: the toolbar buttons live in the top bar's ⋮ menu */}
+              <MobilePageActions
+                moreTitle="Results"
+                more={[
+                  (waChecking || waCheckTargets.length > 0) && {
+                    label: waChecking
+                      ? `Stop WhatsApp check (${checkedCount}/${phoneCount})`
+                      : `Check WhatsApp (${waCheckTargets.length})`,
+                    onSelect: () => (waChecking ? stopChecking() : checkPhones(waCheckTargets)),
+                  },
+                  run.importedCount > 0 && { label: "Message leads", onSelect: () => setMessageChoiceOpen(true) },
+                  { label: exportLabel, onSelect: exportCsv },
+                  unimportedSelectedIds.length > 0 && {
+                    label: `Import ${unimportedSelectedIds.length}`,
+                    onSelect: handleImport,
+                    disabled: importMutation.isPending,
+                  },
+                ]}
+              />
+
               {/* Filter bar */}
               <FilterBar
                 filters={filters}
@@ -842,7 +997,7 @@ export default function ScrapeRunResultsPage() {
 
               {/* Toolbar */}
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label className="flex items-center gap-2 cursor-pointer select-none max-lg:min-h-11">
                   <input
                     type="checkbox"
                     className="accent-primary w-4 h-4"
@@ -858,7 +1013,7 @@ export default function ScrapeRunResultsPage() {
                   </span>
                 </label>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div data-tour="run-toolbar" className="flex items-center gap-2 flex-wrap max-lg:hidden">
                   {(waChecking || waCheckTargets.length > 0) && (
                     <Button
                       variant="secondary"
@@ -884,7 +1039,7 @@ export default function ScrapeRunResultsPage() {
                    
                   >
                     <Download className="w-4 h-4" />
-                    Export {filteredResults.length !== results.length ? `${filteredResults.length} filtered` : "CSV"}
+                    {exportLabel}
                   </Button>
 
                   {unimportedSelectedIds.length > 0 && (
@@ -900,55 +1055,88 @@ export default function ScrapeRunResultsPage() {
                 </div>
               </div>
 
-              {/* No results after filtering */}
-              {filteredResults.length === 0 ? (
-                <div className="bg-surface-container-low rounded-2xl border border-outline-variant p-10 text-center">
-                  <Filter className="w-7 h-7 text-on-surface-variant mx-auto mb-2" />
-                  <p className="text-body-lg text-on-surface-variant">No results match the current filters.</p>
-                  <button
-                    onClick={() => setFilters(DEFAULT_FILTERS)}
-                    className="mt-2 text-label text-primary hover:underline"
-                  >
-                    Clear filters
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-outline-variant overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableHeaderRow>
-                        <TableHead>
-                          <input
-                            type="checkbox"
-                            className="accent-primary w-4 h-4"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            title="Select all visible"
-                          />
-                        </TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Address</TableHead>
-                        <TableHead>Website</TableHead>
-                        <TableHead>Rating</TableHead>
-                        <TableHead>Details</TableHead>
-                        <TableHead>Source</TableHead>
-                      </TableHeaderRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredResults.map((result) => (
-                        <ResultRow
-                          key={result.id}
-                          result={result}
-                          selected={selected.has(result.id)}
-                          onToggle={() => toggleOne(result.id)}
-                          waStatus={result.phone ? waStatusMap[result.phone] : undefined}
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              {/* Header checkbox and row clicks cover every filtered result, not just this page */}
+              <div className="rounded-2xl border border-outline-variant overflow-hidden max-lg:border-0 max-lg:rounded-none">
+                <DataTable
+                  label="Scrape results"
+                  columns={columns}
+                  // Phones: compact rows; the checkbox selects, a tap opens the details sheet
+                  renderMobileRow={(r) => (
+                    <ResultMobileRow
+                      result={r}
+                      wa={r.phone ? waStatusMap[r.phone] : undefined}
+                      onOpen={() => { setDetailId(r.id); setDetailOpen(true); }}
+                    />
+                  )}
+                  mobileListClassName="mx-0 mt-0 mb-3"
+                  rows={pagedResults}
+                  rowKey={(r) => r.id}
+                  rowLabel={(r) => r.name ?? "lead"}
+                  // Clicking a row selects it here (it doesn't open anything)
+                  rowActionLabel={(r) => `Select ${r.name ?? "lead"}`}
+                  // Imported rows stay selectable so they can be pitched
+                  onRowClick={(r) => toggleOne(r.id)}
+                  rowClassName={() => "cursor-pointer"}
+                  selection={{
+                    selected,
+                    onChange: setSelected,
+                    toggleAll,
+                    allChecked: allSelected,
+                    someChecked: false,
+                    toggleAllLabel: "Select all visible",
+                  }}
+                  pagination={{
+                    page: currentPage - 1,
+                    pageSize: RESULTS_PAGE_SIZE,
+                    total: filteredResults.length,
+                    onPageChange: (p) => setPage(p + 1),
+                  }}
+                  empty={{
+                    icon: <Filter className="w-7 h-7" />,
+                    title: "No results match the current filters.",
+                    actionLabel: "Clear filters",
+                    onAction: () => { setFilters(DEFAULT_FILTERS); setPage(1); },
+                    compact: true,
+                  }}
+                />
+              </div>
+
+              {/* Phones: bulk actions for the selection, pinned above the tab bar */}
+              {selected.size > 0 && (
+                <>
+                  <div className="lg:hidden h-16" aria-hidden />
+                  <div className="lg:hidden fixed inset-x-0 z-30 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] px-4 pb-3 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))]">
+                    <div className="ios-floating-card flex items-center gap-2 !p-2">
+                      <span className="min-w-0 flex-1 truncate pl-2 text-body font-medium tabular-nums text-on-surface">
+                        {selected.size} selected
+                      </span>
+                      {run.importedCount > 0 && (
+                        <Button variant="secondary" onClick={() => setMessageChoiceOpen(true)} className="h-11 shrink-0">
+                          <Send className="w-4 h-4" />
+                          Message
+                        </Button>
+                      )}
+                      {unimportedSelectedIds.length > 0 && (
+                        <Button onClick={handleImport} disabled={importMutation.isPending} className="h-11 shrink-0">
+                          {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+                          Import {unimportedSelectedIds.length}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
+
+              <BottomSheet open={detailOpen && !!detail} onClose={() => setDetailOpen(false)} title={detail?.name ?? "Lead"}>
+                {detail && (
+                  <ResultDetails
+                    result={detail}
+                    columns={columns}
+                    isSelected={selected.has(detail.id)}
+                    onToggle={() => toggleOne(detail.id)}
+                  />
+                )}
+              </BottomSheet>
             </>
           )}
         </>

@@ -14,6 +14,7 @@ export interface IncomingMessagePayload {
   mediaMimeType?: string;
   mediaSize?: number;
   timestamp: number;
+  fromMe?: boolean;
 }
 
 /**

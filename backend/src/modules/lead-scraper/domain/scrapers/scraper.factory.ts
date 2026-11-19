@@ -6,6 +6,7 @@ import { TruelancerScraper } from './truelancer.scraper';
 import { LinkedInJobsScraper } from './linkedin-jobs.scraper';
 import { UpworkJobsScraper } from './upwork-jobs.scraper';
 import { GoogleMapsScraper } from './google-maps.scraper';
+import { IndiaMartScraper } from './indiamart.scraper';
 
 @Injectable()
 export class ScraperFactory {
@@ -21,6 +22,8 @@ export class ScraperFactory {
         return new UpworkJobsScraper();
       case ScrapeSource.GOOGLE_MAPS:
         return new GoogleMapsScraper();
+      case ScrapeSource.INDIAMART:
+        return new IndiaMartScraper();
       default:
         throw new Error(`Unknown scrape source: ${source}`);
     }

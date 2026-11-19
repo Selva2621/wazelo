@@ -16,6 +16,23 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { LeadStatus, SequenceTriggerType } from '@prisma/client';
+
+/** What starts an always-on sequence for one contact */
+export class SequenceTriggerDto {
+  @IsEnum(SequenceTriggerType)
+  type: SequenceTriggerType;
+
+  /** DEAL_STAGE_CHANGED: the stage a deal is created in or moved to */
+  @IsOptional()
+  @IsUUID()
+  stageId?: string;
+
+  /** LEAD_STATUS_CHANGED: the status the lead changes to */
+  @IsOptional()
+  @IsEnum(LeadStatus)
+  toStatus?: LeadStatus;
+}
 
 export class OutreachStepDto {
   @IsString()
@@ -69,12 +86,24 @@ export class SequenceStepDto {
   @MaxLength(255)
   name?: string;
 
+  /** WHATSAPP (default) or EMAIL (from the workspace's email account) */
+  @IsOptional()
+  @IsEnum(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  /** Email steps: the subject line */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  emailSubject?: string;
+
   @IsEnum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO', 'INTERACTIVE'])
   messageType: string = 'TEXT';
 
+  /** Emails can be longer than WhatsApp messages (4096) */
   @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()
@@ -121,6 +150,12 @@ export class CreateSequenceDto {
   @IsOptional()
   audienceFilters?: Record<string, unknown>;
 
+  /** Set → contacts join one at a time when this happens; the audience is ignored */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SequenceTriggerDto)
+  trigger?: SequenceTriggerDto;
+
   @IsOptional()
   @IsBoolean()
   exitOnReply?: boolean;
@@ -160,8 +195,17 @@ export class UpdateSequenceStepDto {
   name?: string;
 
   @IsOptional()
+  @IsEnum(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(255)
+  emailSubject?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()

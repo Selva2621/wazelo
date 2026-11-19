@@ -19,6 +19,14 @@ import type {
   OrgMember,
   BulkContactAction,
   BulkContactsResult,
+  ContactGroups,
+  SavedContactGroup,
+  CreateSavedGroupsRequest,
+  CreateSavedGroupsResult,
+  SplitSavedGroupsRequest,
+  SplitSavedGroupsResult,
+  SavedGroupMoveImpact,
+  PipelineMeta,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -27,7 +35,13 @@ export const contactsApi = {
   create: (data: CreateContactRequest) =>
     apiClient.post<Contact>("/contacts", data).then((r) => r.data),
 
-  list: (params?: ListContactsParams) =>
+  /** Lead pipeline card extras for up to 100 contacts (one column's cards) */
+  pipelineMeta: (ids: string[]) =>
+    apiClient
+      .get<PipelineMeta[]>("/contacts/pipeline-meta", { params: { ids: ids.join(",") } })
+      .then((r) => r.data),
+
+  list:(params?: ListContactsParams) =>
     apiClient
       .get<ContactListResponse>("/contacts", {
         params: {
@@ -35,6 +49,56 @@ export const contactsApi = {
           tagIds: params?.tagIds?.join(","),
         },
       })
+      .then((r) => r.data),
+
+  groups: () =>
+    apiClient.get<ContactGroups>("/contacts/groups").then((r) => r.data),
+
+  savedGroups: () =>
+    apiClient.get<SavedContactGroup[]>("/contacts/saved-groups").then((r) => r.data),
+
+  createSavedGroups: (data: CreateSavedGroupsRequest) =>
+    apiClient
+      .post<CreateSavedGroupsResult>("/contacts/saved-groups", data)
+      .then((r) => r.data),
+
+  /** Visible, not opted-out contacts that aren't in any group */
+  ungroupedCount: () =>
+    apiClient
+      .get<{ count: number }>("/contacts/saved-groups/ungrouped-count")
+      .then((r) => r.data.count),
+
+  splitSavedGroups: (data: SplitSavedGroupsRequest) =>
+    apiClient
+      .post<SplitSavedGroupsResult>("/contacts/saved-groups/split", data)
+      .then((r) => r.data),
+
+  checkSavedGroupMove: (data: { contactIds: string[]; groupId?: string }) =>
+    apiClient
+      .post<SavedGroupMoveImpact>("/contacts/saved-groups/check-move", data)
+      .then((r) => r.data),
+
+  /** groupId null takes the contacts out of every group */
+  moveToSavedGroup: (data: { contactIds: string[]; groupId: string | null }) =>
+    apiClient
+      .post<{ moved: number }>("/contacts/saved-groups/move", data)
+      .then((r) => r.data),
+
+  renameSavedGroup: (groupId: string, name: string) =>
+    apiClient
+      .patch<SavedContactGroup>(`/contacts/saved-groups/${groupId}`, { name })
+      .then((r) => r.data),
+
+  /** Start the background "on WhatsApp?" check of a group's numbers */
+  startGroupWaCheck: (groupId: string) =>
+    apiClient
+      .post<{ state: string }>(`/contacts/saved-groups/${groupId}/wa-check`)
+      .then((r) => r.data),
+  stopGroupWaCheck: (groupId: string) =>
+    apiClient.post(`/contacts/saved-groups/${groupId}/wa-check/stop`).then(() => undefined),
+  deleteSavedGroup: (groupId: string) =>
+    apiClient
+      .delete<{ deleted: boolean }>(`/contacts/saved-groups/${groupId}`)
       .then((r) => r.data),
 
   get: (contactId: string) =>

@@ -4,6 +4,9 @@ import { BillingModule } from '@/modules/billing/billing.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { AiModule } from '@/modules/ai/ai.module';
+import { SequencesModule } from '@/modules/sequences/sequences.module';
+import { EmailModule } from '@/modules/email/email.module';
+import { ContactsModule } from '@/modules/contacts/contacts.module';
 
 // Repository
 import { AutomationRepository } from './infrastructure/repositories/automation.repository';
@@ -26,12 +29,15 @@ import {
   EvaluateTriggerUseCase,
 } from './application/use-cases';
 import { GenerateAutomationRuleUseCase } from './application/use-cases/generate-automation-rule.use-case';
+import { RunNoReplyCheckUseCase, ScheduleNoReplyChecksUseCase } from './application/use-cases/no-reply.use-cases';
 
 // Controller
 import { AutomationController } from './interfaces/controllers/automation.controller';
 
 @Module({
-  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule],
+  // ContactsModule: assign / tag / lead-status actions reuse the contact use-cases
+  // EmailModule: the "Send email" action sends from the workspace's mailbox
+  imports: [AuditModule, BillingModule, AiModule, MessagesModule, WhatsAppModule, SequencesModule, ContactsModule, EmailModule],
   controllers: [AutomationController],
   providers: [
     // Repository
@@ -51,6 +57,8 @@ import { AutomationController } from './interfaces/controllers/automation.contro
     ListExecutionLogsUseCase,
     EvaluateTriggerUseCase,
     GenerateAutomationRuleUseCase,
+    ScheduleNoReplyChecksUseCase,
+    RunNoReplyCheckUseCase,
   ],
   exports: [
     AutomationRepository,
@@ -59,6 +67,8 @@ import { AutomationController } from './interfaces/controllers/automation.contro
     LoopPreventionService,
     ActionExecutorService,
     EvaluateTriggerUseCase,
+    ScheduleNoReplyChecksUseCase,
+    RunNoReplyCheckUseCase,
   ],
 })
 export class AutomationModule {}

@@ -6,21 +6,14 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useCsatStats, useCsatSurveys } from "@/hooks/use-csat";
 import { useUsers } from "@/hooks/use-users";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
+import { StartHint, ZeroNote } from "@/components/ui/start-hint";
 import { Badge } from "@/components/ui/badge";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { ProductFilterSelect } from "@/components/ui/product-filter-select";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { PageHeader } from "@/components/layout/page-header";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { AnalyticsPeriod } from "@/lib/types/analytics";
+import type { CsatSurvey } from "@/lib/types/csat";
 import { PAGE_SIZE } from "@/lib/constants";
 
 function periodToDateRange(period: AnalyticsPeriod) {
@@ -49,7 +42,7 @@ function renderStars(rating: number | null) {
 }
 
 export default function CsatPage() {
-  usePageTitle("Customer Satisfaction");
+  usePageTitle("Customer satisfaction");
   const [period, setPeriod] = useState<AnalyticsPeriod>("month");
   const [page, setPage] = useState(1);
   const [productFilter, setProductFilter] = useState("");
@@ -73,18 +66,64 @@ export default function CsatPage() {
 
   const isEmpty = stats && stats.totalResponses === 0;
 
+  const surveyColumns: DataTableColumn<CsatSurvey>[] = [
+    {
+      id: "contact",
+      header: "Contact",
+      cellClassName: "text-body text-on-surface font-medium",
+      cell: (s) => s.contactPhone,
+    },
+    {
+      id: "agent",
+      header: "Agent",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (s) => userMap.get(s.agentId) ?? "—",
+    },
+    { id: "rating", header: "Rating", cell: (s) => renderStars(s.rating) },
+    {
+      id: "comment",
+      header: "Comment",
+      cellClassName: "text-label text-on-surface-variant truncate max-w-[200px]",
+      cell: (s) => s.comment || "—",
+    },
+    {
+      id: "sent",
+      header: "Sent",
+      skeleton: "short",
+      cellClassName: "text-caption text-on-surface-variant/60",
+      cell: (s) => new Date(s.sentAt).toLocaleDateString(),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (s) => (
+        <Badge variant={s.respondedAt ? "success" : "warning"} dot>
+          {s.respondedAt ? "Responded" : "Pending"}
+        </Badge>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Star className="h-5 w-5 text-warning" />
-          <h1 className="text-title font-semibold text-on-surface">
-            Customer Satisfaction
-          </h1>
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:pt-1">
+        <PageHeader
+          className="max-lg:hidden"
+          title="Customer satisfaction"
+          actions={
+            <>
+              <ProductFilterSelect value={productFilter} onChange={setProductFilter} />
+              <PeriodSelector value={period} onChange={setPeriod} />
+            </>
+          }
+        />
+        {/* Phones/tablets: title is in the nav bar; filters stack full width */}
+        <div data-tour="csat-filters" className="flex flex-col items-stretch gap-2 lg:hidden">
+          <PeriodSelector value={period} onChange={setPeriod} />
+          <ProductFilterSelect value={productFilter} onChange={setProductFilter} />
         </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
-        <ProductFilterSelect value={productFilter} onChange={setProductFilter} />
       </div>
 
       {/* Content */}
@@ -96,34 +135,36 @@ export default function CsatPage() {
         )}
 
         {isEmpty && !statsLoading && (
-          <EmptyState
-            icon={<Star className="h-12 w-12" />}
+          <StartHint
+            icon={<Star />}
             title="No survey responses yet"
-            description="Send CSAT surveys after conversations close to start collecting customer feedback."
+            description="Surveys go out after a chat closes."
           />
         )}
 
-        {stats && !isEmpty && (
+        {stats && (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-warning p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Star className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
-                    Avg Rating
+            <div data-tour="csat-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 max-lg:border-l-warning">
+                <div className="flex items-center gap-2 mb-2 lg:mb-1">
+                  <Star className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
+                  <span className="text-label text-on-surface-variant max-lg:text-caption max-lg:uppercase max-lg:tracking-wide max-lg:text-on-surface-variant/60">
+                    Avg rating
                   </span>
                 </div>
                 <p className="text-headline font-semibold text-on-surface tabular-nums">
-                  {stats.avgRating.toFixed(1)}
+                  {stats.totalResponses > 0 && Number.isFinite(stats.avgRating)
+                    ? stats.avgRating.toFixed(1)
+                    : "—"}
                 </p>
                 <p className="text-label text-on-surface-variant/60">out of 5.0</p>
               </div>
 
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-primary p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 max-lg:border-l-primary">
+                <div className="flex items-center gap-2 mb-2 lg:mb-1">
+                  <MessageSquare className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
+                  <span className="text-label text-on-surface-variant max-lg:text-caption max-lg:uppercase max-lg:tracking-wide max-lg:text-on-surface-variant/60">
                     Responses
                   </span>
                 </div>
@@ -132,10 +173,10 @@ export default function CsatPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-success p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 max-lg:border-l-success">
+                <div className="flex items-center gap-2 mb-2 lg:mb-1">
+                  <TrendingUp className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
+                  <span className="text-label text-on-surface-variant max-lg:text-caption max-lg:uppercase max-lg:tracking-wide max-lg:text-on-surface-variant/60">
                     Satisfied (4-5)
                   </span>
                 </div>
@@ -146,10 +187,10 @@ export default function CsatPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 border-l-2 border-l-error p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-4 w-4 text-on-surface-variant/60" />
-                  <span className="text-caption text-on-surface-variant/60 uppercase tracking-wide">
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-4 max-lg:rounded-xl max-lg:border-outline-variant/10 max-lg:border-l-2 max-lg:border-l-error">
+                <div className="flex items-center gap-2 mb-2 lg:mb-1">
+                  <Users className="h-4 w-4 text-on-surface-variant/60 lg:hidden" />
+                  <span className="text-label text-on-surface-variant max-lg:text-caption max-lg:uppercase max-lg:tracking-wide max-lg:text-on-surface-variant/60">
                     Dissatisfied (1-2)
                   </span>
                 </div>
@@ -164,10 +205,10 @@ export default function CsatPage() {
             {/* Rating Distribution + Agent Breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Distribution */}
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-                <h3 className="text-body font-medium text-on-surface-variant mb-4">
-                  Rating Distribution
-                </h3>
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5">
+                <h2 className="text-title-sm font-semibold text-on-surface mb-4">
+                  Rating distribution
+                </h2>
                 <div className="space-y-2.5">
                   {[5, 4, 3, 2, 1].map((r) => {
                     const count = stats.distribution.find((d) => d.rating === r)?.count ?? 0;
@@ -194,14 +235,12 @@ export default function CsatPage() {
               </div>
 
               {/* Agent Breakdown */}
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5">
-                <h3 className="text-body font-medium text-on-surface-variant mb-4">
-                  By Agent
-                </h3>
+              <div data-tour="csat-agents" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5">
+                <h2 className="text-title-sm font-semibold text-on-surface mb-4">
+                  By agent
+                </h2>
                 {stats.byAgent.length === 0 ? (
-                  <p className="text-body text-on-surface-variant/40 text-center py-4">
-                    No agent data yet
-                  </p>
+                  <ZeroNote>No agent data yet</ZeroNote>
                 ) : (
                   <div className="space-y-3">
                     {stats.byAgent.map((a) => (
@@ -213,7 +252,7 @@ export default function CsatPage() {
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 text-warning fill-warning" />
                             <span className="text-body font-semibold text-on-surface tabular-nums">
-                              {a._avg.rating.toFixed(1)}
+                              {Number.isFinite(a._avg.rating) ? a._avg.rating.toFixed(1) : "—"}
                             </span>
                           </div>
                           <span className="text-caption text-on-surface-variant/50 tabular-nums">
@@ -228,61 +267,30 @@ export default function CsatPage() {
             </div>
 
             {/* Recent Surveys Table */}
-            {surveysLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Spinner size="lg" />
-              </div>
-            ) : surveysData && surveysData.data.length > 0 ? (
-              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
-                <div className="px-5 py-3 border-b border-outline-variant/10">
-                  <h3 className="text-body font-medium text-on-surface-variant">
-                    Recent Responses
-                  </h3>
+            {(surveysLoading || (surveysData && surveysData.data.length > 0)) && (
+              <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant overflow-hidden">
+                <div className="px-5 py-3 border-b border-outline-variant">
+                  <h2 className="text-title-sm font-semibold text-on-surface">
+                    Recent responses
+                  </h2>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableHeaderRow>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Rating</TableHead>
-                      <TableHead>Comment</TableHead>
-                      <TableHead>Sent</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableHeaderRow>
-                  </TableHeader>
-                  <TableBody>
-                    {surveysData.data.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="text-body text-on-surface font-medium">
-                          {s.contactPhone}
-                        </TableCell>
-                        <TableCell className="text-label text-on-surface-variant">
-                          {userMap.get(s.agentId) ?? "—"}
-                        </TableCell>
-                        <TableCell>{renderStars(s.rating)}</TableCell>
-                        <TableCell className="text-label text-on-surface-variant truncate max-w-[200px]">
-                          {s.comment || "—"}
-                        </TableCell>
-                        <TableCell className="text-caption text-on-surface-variant/60">
-                          {new Date(s.sentAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={s.respondedAt ? "success" : "warning"}>
-                            {s.respondedAt ? "Responded" : "Pending"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  page={page}
-                  totalPages={Math.ceil(surveysData.total / PAGE_SIZE)}
-                  total={surveysData.total}
-                  onPageChange={setPage}
+                <DataTable
+                  label="Recent responses"
+                  columns={surveyColumns}
+                  rows={surveysData?.data ?? []}
+                  rowKey={(s) => s.id}
+                  rowLabel={(s) => s.contactPhone}
+                  loading={surveysLoading}
+                  skeletonRows={5}
+                  pagination={{
+                    page: page - 1,
+                    pageSize: PAGE_SIZE,
+                    total: surveysData?.total ?? 0,
+                    onPageChange: (p) => setPage(p + 1),
+                  }}
                 />
               </div>
-            ) : null}
+            )}
           </>
         )}
       </div>

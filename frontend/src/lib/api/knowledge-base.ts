@@ -105,6 +105,9 @@ export interface KbDocument {
   fileSize: number;
   status: "PROCESSING" | "READY" | "FAILED";
   flowId: string | null;
+  /** UPLOAD (file) or WEBSITE (a crawled page) */
+  sourceType?: "UPLOAD" | "WEBSITE" | "TEXT";
+  sourceUrl?: string | null;
   createdAt: string;
   uploadedBy: { id: string; firstName: string; lastName: string };
 }
@@ -129,4 +132,99 @@ export async function uploadDocument(file: File, title?: string, flowId?: string
 
 export async function deleteDocument(id: string): Promise<void> {
   await apiClient.delete(`/kb/documents/${id}`);
+}
+
+// Websites the bot learns from (crawled in the background)
+export interface KbWebsiteSource {
+  id: string;
+  url: string;
+  status: "QUEUED" | "CRAWLING" | "READY" | "FAILED";
+  pagesFound: number;
+  pagesDone: number;
+  /** Pages currently stored */
+  pages: number;
+  error: string | null;
+  lastSyncedAt: string | null;
+  /** Re-read every week */
+  autoResync: boolean;
+  createdAt: string;
+}
+
+export async function setWebsiteAutoResync(id: string, autoResync: boolean): Promise<KbWebsiteSource> {
+  const { data } = await apiClient.patch(`/kb/sources/${id}`, { autoResync });
+  return data;
+}
+
+// Questions the bot couldn't answer (WhatsApp chatbot + website widget)
+export interface KbUnanswered {
+  id: string;
+  question: string;
+  count: number;
+  channel: "WHATSAPP" | "WIDGET";
+  lastAskedAt: string;
+}
+
+export async function listUnanswered(): Promise<{ items: KbUnanswered[]; total: number }> {
+  const { data } = await apiClient.get("/kb/unanswered");
+  return data;
+}
+
+/** Publishes the answer as a FAQ and clears the question. */
+export async function answerUnanswered(id: string, item: { question: string; answer: string }): Promise<void> {
+  await apiClient.post(`/kb/unanswered/${id}/answer`, item);
+}
+
+export async function dismissUnanswered(id: string): Promise<void> {
+  await apiClient.delete(`/kb/unanswered/${id}`);
+}
+
+export async function listWebsiteSources(): Promise<KbWebsiteSource[]> {
+  const { data } = await apiClient.get("/kb/sources");
+  return data;
+}
+
+export async function addWebsiteSource(url: string): Promise<KbWebsiteSource> {
+  const { data } = await apiClient.post("/kb/sources", { url });
+  return data;
+}
+
+export async function resyncWebsiteSource(id: string): Promise<KbWebsiteSource> {
+  const { data } = await apiClient.post(`/kb/sources/${id}/resync`);
+  return data;
+}
+
+export async function removeWebsiteSource(id: string): Promise<void> {
+  await apiClient.delete(`/kb/sources/${id}`);
+}
+
+// FAQs: AI suggests them from the website/files; published ones are articles tagged "faq"
+export interface KbFaq {
+  id: string;
+  /** The question */
+  title: string;
+  /** The answer */
+  body: string;
+  isPublished: boolean;
+  updatedAt: string;
+}
+
+export interface FaqSuggestion {
+  question: string;
+  answer: string;
+}
+
+export async function listFaqs(): Promise<KbFaq[]> {
+  const { data } = await apiClient.get("/kb/faqs");
+  return data;
+}
+
+export async function suggestFaqs(): Promise<{ suggestions: FaqSuggestion[] }> {
+  // The AI reads the whole site here, which takes ~20s: past the client's default 15s
+  const { data } = await apiClient.post("/kb/faqs/generate", undefined, { timeout: 90_000 });
+  return data;
+}
+
+export async function publishFaqs(items: FaqSuggestion[]): Promise<{ published: number }> {
+  const { data } = await apiClient.post("/kb/faqs", { items });
+  return data;
 }

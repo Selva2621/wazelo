@@ -1,11 +1,27 @@
 "use client";
 
+import { useProductTerms } from "@/lib/product-terms";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Check, Globe, Code, Copy, Smartphone, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import {
+  Check,
+  Code,
+  Copy,
+  MessageSquare,
+  Smartphone,
+  RefreshCw,
+} from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { BottomSheet } from "@/components/ios/bottom-sheet";
+import { SegmentedControl } from "@/components/ios/segmented-control";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWidgetConfig, useUpdateWidgetConfig } from "@/hooks/use-widget";
 import { uploadApi } from "@/lib/api/messages";
+import { API_BASE_URL } from "@/lib/api/client";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useOrgSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 
 const POSITIONS = [
@@ -14,16 +30,31 @@ const POSITIONS = [
   { value: "bottom-center", label: "Bottom Center" },
 ];
 
+// Phone layout: one tab of fields under the live preview
+type PhoneTab = "look" | "messages" | "visitors" | "install";
+const PHONE_TABS: { value: PhoneTab; label: string }[] = [
+  { value: "look", label: "Look" },
+  { value: "messages", label: "Chat" },
+  { value: "visitors", label: "Visitors" },
+  { value: "install", label: "Install" },
+];
+/** Quick picks for the widget colour; any hex still works in the field below */
+const COLOR_PRESETS = ["#6366f1", "#2563eb", "#0891b2", "#059669", "#d97706", "#dc2626", "#db2777", "#111827"];
+
 function SkeletonBox({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-xl bg-surface-container-highest", className)} />;
 }
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
+function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) {
   return (
-    <div
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={label}
       onClick={onChange}
       className={cn(
-        "relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0",
+        "relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-focus",
         enabled ? "bg-primary" : "bg-surface-container-highest",
       )}
     >
@@ -33,12 +64,12 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void 
           enabled ? "translate-x-[22px]" : "translate-x-0.5",
         )}
       />
-    </div>
+    </button>
   );
 }
 
 const inputCls =
-  "w-full mt-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
+  "w-full mt-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors";
 
 // ── Build the inline widget HTML injected into the preview iframe ─────────────
 
@@ -181,25 +212,41 @@ function buildPreviewHtml(cfg: {
     preChatEl.className = 'pre-chat';
 
     var lbl = document.createElement('p');
-    lbl.textContent = 'Tell us about yourself';
+    lbl.textContent = 'Before we start';
 
     var nameInput = document.createElement('input');
     nameInput.type = 'text';
-    nameInput.placeholder = 'Your name *';
+    nameInput.placeholder = 'First name *';
 
     var phoneInput = document.createElement('input');
     phoneInput.type = 'tel';
-    phoneInput.placeholder = 'Phone number (optional)';
+    phoneInput.placeholder = 'Mobile number with country code *';
+
+    var emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.placeholder = 'Email *';
+
+    var consentRow = document.createElement('label');
+    consentRow.style.cssText = 'display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#334155;line-height:1.4;';
+    var consentBox = document.createElement('input');
+    consentBox.type = 'checkbox';
+    consentBox.style.cssText = 'width:auto;margin-top:2px;';
+    var consentText = document.createElement('span');
+    consentText.textContent = 'I agree to be contacted by ' + (cfg.companyName || 'us') + ' on WhatsApp and email.';
+    consentRow.appendChild(consentBox);
+    consentRow.appendChild(consentText);
 
     var errorEl = document.createElement('div');
     errorEl.className = 'error-msg';
 
     var submitBtn = document.createElement('button');
     submitBtn.className = 'submit-btn';
-    submitBtn.textContent = 'Start Chat';
+    submitBtn.textContent = 'Start chat';
 
     submitBtn.onclick = function () {
-      if (!nameInput.value.trim()) { errorEl.textContent = 'Please enter your name.'; return; }
+      if (!nameInput.value.trim()) { errorEl.textContent = 'Enter your first name.'; return; }
+      if (phoneInput.value.replace(/\\D/g, '').length < 8) { errorEl.textContent = 'Enter your mobile number.'; return; }
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(emailInput.value.trim())) { errorEl.textContent = 'Enter a valid email.'; return; }
       errorEl.textContent = '';
       panel.removeChild(preChatEl);
       appendBubble(chatArea, cfg.welcomeMessage, 'agent');
@@ -210,6 +257,8 @@ function buildPreviewHtml(cfg: {
     preChatEl.appendChild(lbl);
     preChatEl.appendChild(nameInput);
     preChatEl.appendChild(phoneInput);
+    preChatEl.appendChild(emailInput);
+    preChatEl.appendChild(consentRow);
     preChatEl.appendChild(errorEl);
     preChatEl.appendChild(submitBtn);
     panel.appendChild(preChatEl);
@@ -333,37 +382,46 @@ function buildPreviewHtml(cfg: {
 
 function WidgetPreview({ form }: { form: Parameters<typeof buildPreviewHtml>[0] }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const [key, setKey] = useState(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  const html = useMemo(() => buildPreviewHtml(form), [
-    form.primaryColor,
-    form.companyName,
-    form.welcomeMessage,
-    form.placeholder,
-    form.position,
-    form.preChatFormEnabled,
-    form.whatsappNumber,
-    form.aiAssistantEnabled,
-    form.avatarUrl,
-  ]);
+  // The start form is always on, and chats always stay on the website
+  const { primaryColor, companyName, welcomeMessage, placeholder, position, aiAssistantEnabled, avatarUrl } = form;
+  const html = useMemo(
+    () =>
+      buildPreviewHtml({
+        primaryColor,
+        companyName,
+        welcomeMessage,
+        placeholder,
+        position,
+        preChatFormEnabled: true,
+        whatsappNumber: "",
+        aiAssistantEnabled,
+        avatarUrl,
+      }),
+    [primaryColor, companyName, welcomeMessage, placeholder, position, aiAssistantEnabled, avatarUrl],
+  );
 
+  // A fresh blob URL per html; the old one is revoked when html changes or on unmount.
+  // The URL is handed to state from a microtask (not synchronously in the effect body).
   useEffect(() => {
-    // Revoke previous blob URL
-    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    const blob = new Blob([html], { type: "text/html" });
-    blobUrlRef.current = URL.createObjectURL(blob);
-    setKey((k) => k + 1);
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    let live = true;
+    queueMicrotask(() => {
+      if (live) setBlobUrl(url);
+    });
     return () => {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      live = false;
+      URL.revokeObjectURL(url);
     };
   }, [html]);
 
   return (
     <iframe
-      key={key}
+      // Remount on each new URL so the preview reloads without adding history entries
+      key={blobUrl ?? "blank"}
       ref={iframeRef}
-      src={blobUrlRef.current ?? "about:blank"}
+      src={blobUrl ?? "about:blank"}
       className="w-full h-full border-0 rounded-b-2xl"
       sandbox="allow-scripts allow-same-origin"
       title="Widget Preview"
@@ -371,10 +429,18 @@ function WidgetPreview({ form }: { form: Parameters<typeof buildPreviewHtml>[0] 
   );
 }
 
+/** Starting copy for a freelancer's widget, used until the widget is first saved */
+const FREELANCER_WIDGET_DEFAULTS = {
+  welcomeMessage: "Hi! Tell me about your project and I'll get back to you within a few hours.",
+  placeholder: "Describe your project...",
+  preChatFormEnabled: true,
+};
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ChatWidgetSettingsPage() {
   usePageTitle("Chat Widget");
+  const terms = useProductTerms();
 
   const { data: config, isLoading } = useWidgetConfig();
   const updateConfig = useUpdateWidgetConfig();
@@ -391,9 +457,15 @@ export default function ChatWidgetSettingsPage() {
     whatsappNumber: "",
     preChatFormEnabled: false,
     aiAssistantEnabled: false,
-    aiSystemPrompt: "",
   });
+  // Last saved values: phones show a Save bar only while the form differs from these
+  const [savedForm, setSavedForm] = useState(form);
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(savedForm), [form, savedForm]);
   const [copied, setCopied] = useState(false);
+  // Phones: live preview on top, one tab of fields at a time
+  const isPhone = useMediaQuery("(max-width: 1023px)");
+  const [tab, setTab] = useState<PhoneTab>("look");
+  const [sheet, setSheet] = useState<"preview" | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -410,23 +482,31 @@ export default function ChatWidgetSettingsPage() {
     }
   };
 
+  // A widget that was never saved starts from copy that fits the org: a freelancer
+  // talks about "your project" in first person and collects who is asking
+  const { data: orgSettings } = useOrgSettings();
+  const isFreelancer = orgSettings?.orgType === "FREELANCER";
+
   useEffect(() => {
     if (config) {
-      setForm({
+      const neverSaved = !("id" in config);
+      const starter = neverSaved && isFreelancer ? FREELANCER_WIDGET_DEFAULTS : null;
+      const next = {
         enabled: config.enabled,
         position: config.position || "bottom-right",
         primaryColor: config.primaryColor || "#6366f1",
-        welcomeMessage: config.welcomeMessage || "Hi! How can we help you?",
-        placeholder: config.placeholder || "Type a message...",
-        companyName: config.companyName || "",
+        welcomeMessage: starter?.welcomeMessage || config.welcomeMessage || "Hi! How can we help you?",
+        placeholder: starter?.placeholder || config.placeholder || "Type a message...",
+        companyName: config.companyName || (neverSaved ? orgSettings?.name ?? "" : ""),
         avatarUrl: config.avatarUrl || "",
         whatsappNumber: config.whatsappNumber || "",
-        preChatFormEnabled: config.preChatFormEnabled ?? false,
+        preChatFormEnabled: starter?.preChatFormEnabled ?? config.preChatFormEnabled ?? false,
         aiAssistantEnabled: config.aiAssistantEnabled ?? false,
-        aiSystemPrompt: config.aiSystemPrompt || "",
-      });
+      };
+      setForm(next);
+      setSavedForm(next);
     }
-  }, [config]);
+  }, [config, isFreelancer, orgSettings?.name]);
 
   const handleSave = () => {
     updateConfig.mutate({
@@ -434,11 +514,15 @@ export default function ChatWidgetSettingsPage() {
       companyName: form.companyName || null,
       avatarUrl: form.avatarUrl || null,
       whatsappNumber: form.whatsappNumber || null,
-      aiSystemPrompt: form.aiSystemPrompt || null,
     });
   };
 
-  const embedCode = `<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/widgets/${orgSlug}/embed.js" async></script>`;
+  // The API's public address: absolute when the API has its own domain, else this app's domain
+  // (same-origin proxy). The widget finds the API from this script's own link.
+  const apiBase = /^https?:\/\//.test(API_BASE_URL)
+    ? API_BASE_URL.replace(/\/$/, "")
+    : `${typeof window !== "undefined" ? window.location.origin : ""}${API_BASE_URL.replace(/\/$/, "")}`;
+  const embedCode = `<script src="${apiBase}/widgets/${orgSlug}/embed.js" async></script>`;
 
   const copyEmbed = () => {
     navigator.clipboard.writeText(embedCode);
@@ -446,216 +530,412 @@ export default function ChatWidgetSettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ── Field blocks, shared by the desktop form and the phone section sheets ──
+  const companyField = (
+    <div>
+      <label htmlFor="widget-company" className="text-label font-medium text-on-surface-variant">Company name</label>
+      <input id="widget-company" value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
+    </div>
+  );
+  const positionField = (
+    <div>
+      <label htmlFor="widget-position" className="text-label font-medium text-on-surface-variant">Position</label>
+      <Select id="widget-position" value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className="mt-1">
+        {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+      </Select>
+    </div>
+  );
+  const colorField = (
+    <div>
+      <label htmlFor="widget-color" className="text-label font-medium text-on-surface-variant">Primary color</label>
+      <div className="flex items-center gap-2 mt-1">
+        <input type="color" aria-label="Pick primary color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant cursor-pointer p-0.5 max-lg:h-11 max-lg:w-11" />
+        <input id="widget-color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
+      </div>
+    </div>
+  );
+  const welcomeField = (
+    <div>
+      <label htmlFor="widget-welcome" className="text-label font-medium text-on-surface-variant">Welcome message</label>
+      <textarea id="widget-welcome" value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
+    </div>
+  );
+  const placeholderField = (
+    <div>
+      <label htmlFor="widget-placeholder" className="text-label font-medium text-on-surface-variant">Input placeholder</label>
+      <input id="widget-placeholder" value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
+    </div>
+  );
+  const avatarField = (
+    <div>
+      <label htmlFor="widget-avatar" className="text-label font-medium text-on-surface-variant">Avatar / logo</label>
+      <div className="flex items-center gap-2 mt-1">
+        {/* Preview */}
+        {form.avatarUrl ? (
+          <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant flex-shrink-0" />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/60 border border-outline-variant">
+            Logo
+          </div>
+        )}
+        {/* URL input */}
+        <input
+          id="widget-avatar"
+          value={form.avatarUrl}
+          onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
+          placeholder="https://example.com/logo.png"
+          className={cn(inputCls, "mt-0 flex-1 max-lg:min-w-0")}
+        />
+        {/* Upload button */}
+        <Button variant="secondary"
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={avatarUploading}
+          className="flex-shrink-0"
+        >
+          {avatarUploading ? "Uploading..." : "Upload"}
+        </Button>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarUpload}
+        />
+      </div>
+    </div>
+  );
+  // The form before every chat (not optional): who the visitor is, and whether they agree to be contacted
+  const preChatNote =
+    "Visitors give their first name, mobile and email before chatting. If they tick “I agree to be contacted”, they're saved as a contact and your welcome automation runs when the chat ends.";
+
+  // The website AI shares its knowledge and instructions with WhatsApp: one place to edit them
+  const aiSharedNote = (
+    <p className="text-label text-on-surface-variant">
+      Same knowledge and instructions as WhatsApp.{" "}
+      <Link href="/ai-assistant" className="font-medium text-primary hover:underline">
+        Edit in AI assistant
+      </Link>
+    </p>
+  );
+  const embedCodeBlock = (
+    <>
+      <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
+      <div className="relative">
+        <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10 max-lg:pr-14 max-lg:whitespace-pre-wrap max-lg:break-all">
+          <code>{embedCode}</code>
+        </pre>
+        <button type="button" onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:grid max-lg:size-11 max-lg:place-items-center max-lg:p-0 max-lg:top-1 max-lg:right-1" title={copied ? "Copied" : "Copy embed code"} aria-label={copied ? "Copied" : "Copy embed code"}>
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-on-surface-variant" />}
+        </button>
+      </div>
+    </>
+  );
+  const saveStatus = (
+    <>
+      {updateConfig.isSuccess && (
+        <span className="text-body text-success flex items-center gap-1">
+          <Check className="h-3.5 w-3.5" /> Saved
+        </span>
+      )}
+      {updateConfig.isError && (
+        <span className="text-body text-error">Failed to save. Try again.</span>
+      )}
+    </>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex gap-6 h-full">
+      <div className="flex gap-6 h-full lg:p-6">
         <div className="flex-1 space-y-4">
           <SkeletonBox className="h-7 w-48" />
           <SkeletonBox className="h-20 rounded-2xl" />
           <SkeletonBox className="h-72 rounded-2xl" />
           <SkeletonBox className="h-20 rounded-2xl" />
         </div>
-        <div className="w-[360px] flex-shrink-0">
+        <div className="w-[360px] flex-shrink-0 max-lg:hidden">
           <SkeletonBox className="h-[540px] rounded-2xl" />
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex gap-6 items-start">
+  // ── Phone: live preview on top, tabs below, fields inline; Save bar only when changed ──
+  if (isPhone) {
+    const initial = (form.companyName || "?").trim().charAt(0).toUpperCase();
+    const launcherSide =
+      form.position === "bottom-left" ? "justify-start" : form.position === "bottom-center" ? "justify-center" : "justify-end";
+    const neverSaved = !!config && !("id" in config);
+    const showSaveBar = dirty || neverSaved || updateConfig.isPending;
 
-      {/* ── Left: Form ──────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-4">
+    const switchRow = (label: string, hint: string, on: boolean, toggle: () => void) => (
+      <label className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
+        <span className="min-w-0 flex-1">
+          <span className="block text-body-lg text-on-surface">{label}</span>
+          <span className="block text-label text-on-surface-variant">{hint}</span>
+        </span>
+        <Toggle label={label} enabled={on} onChange={toggle} />
+      </label>
+    );
 
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary" />
-            Chat Widget
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Embed a live chat widget on your website
-          </p>
+    return (
+      <div className={cn("space-y-4 px-4 pt-2", showSaveBar ? "pb-28" : "pb-6")}>
+        {/* Live preview: follows the form as you type */}
+        <section data-tour="widget-phone-preview" aria-label="Widget preview" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-label font-medium text-on-surface-variant">
+              <span className={cn("size-2 rounded-full", form.enabled ? "bg-success" : "bg-outline")} aria-hidden />
+              {form.enabled ? "Live on your website" : "Off on your website"}
+            </span>
+            <Toggle
+              label="Show widget on your website"
+              enabled={form.enabled}
+              onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))}
+            />
+          </div>
+
+          <div className="rounded-xl bg-surface-container p-3" aria-hidden>
+            <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 text-white" style={{ backgroundColor: form.primaryColor }}>
+                {form.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.avatarUrl} alt="" className="size-8 rounded-full border border-white/40 object-cover" />
+                ) : (
+                  <span className="grid size-8 place-items-center rounded-full bg-white/25 text-body font-semibold">{initial}</span>
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-body font-semibold">{form.companyName || "Your company"}</span>
+                  <span className="block text-caption opacity-80">Online</span>
+                </span>
+              </div>
+              <div className="space-y-2 px-3 py-3">
+                <p className="max-w-[85%] rounded-2xl rounded-tl-md bg-surface-container px-3 py-2 text-body text-on-surface">
+                  {form.welcomeMessage || "Hi! How can we help you?"}
+                </p>
+                <div className="flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1.5">
+                  <span className="flex-1 truncate text-label text-on-surface-variant">{form.placeholder || "Type a message..."}</span>
+                  <span className="size-5 rounded-full" style={{ backgroundColor: form.primaryColor }} />
+                </div>
+              </div>
+            </div>
+            <div className={cn("mt-2 flex", launcherSide)}>
+              <span className="grid size-10 place-items-center rounded-full text-white shadow-md" style={{ backgroundColor: form.primaryColor }}>
+                <MessageSquare className="h-5 w-5" />
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSheet("preview")}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl text-label font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Smartphone className="h-4 w-4" aria-hidden />
+            Try it as a visitor
+          </button>
+        </section>
+
+        {/* Sections */}
+        <div data-tour="widget-segments">
+          <SegmentedControl label="Widget settings" value={tab} onChange={setTab} options={PHONE_TABS} />
         </div>
 
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          {tab === "look" && (
+            <div className="space-y-4">
+              {companyField}
+              {avatarField}
+              <div>
+                <p className="text-label font-medium text-on-surface-variant">Colour</p>
+                <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Colour presets">
+                  {COLOR_PRESETS.map((c) => {
+                    const on = form.primaryColor.toLowerCase() === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        aria-label={c}
+                        onClick={() => setForm((f) => ({ ...f, primaryColor: c }))}
+                        className={cn(
+                          "grid size-10 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          on && "ring-2 ring-on-surface ring-offset-2 ring-offset-surface-container-lowest",
+                        )}
+                        style={{ backgroundColor: c }}
+                      >
+                        {on && <Check className="h-4 w-4 text-white" aria-hidden />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3">{colorField}</div>
+              </div>
+              <div>
+                <p className="mb-2 text-label font-medium text-on-surface-variant">Button position</p>
+                <SegmentedControl
+                  label="Button position"
+                  value={form.position}
+                  onChange={(v) => setForm((f) => ({ ...f, position: v }))}
+                  options={POSITIONS.map((p) => ({ value: p.value, label: p.label.replace("Bottom ", "") }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {tab === "messages" && (
+            <div className="space-y-4">
+              {welcomeField}
+              {placeholderField}
+            </div>
+          )}
+
+          {tab === "visitors" && (
+            <div className="divide-y divide-outline-variant/60">
+              <div className="py-3">
+                <p className="text-body-lg text-on-surface">Before the chat</p>
+                <p className="text-label text-on-surface-variant">{preChatNote}</p>
+              </div>
+              {switchRow("AI replies", "Answers visitors from your AI assistant", form.aiAssistantEnabled, () =>
+                setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled })),
+              )}
+              {form.aiAssistantEnabled && <div className="pt-3">{aiSharedNote}</div>}
+            </div>
+          )}
+
+          {tab === "install" && <div className="space-y-2">{embedCodeBlock}</div>}
+        </div>
+
+        {/* One save: appears only when something changed */}
+        {showSaveBar && (
+          <div className="fixed inset-x-0 z-20 px-3 pb-3 bottom-[calc(var(--mobile-tabbar-h)+var(--safe-bottom))] lg:hidden">
+            <div className="mx-auto flex max-w-2xl items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 shadow-lg">
+              <span className="min-w-0 flex-1 truncate text-body text-on-surface" aria-live="polite">
+                {updateConfig.isPending ? "Saving…" : updateConfig.isError ? "Couldn't save. Try again." : "Unsaved changes"}
+              </span>
+              {dirty && !updateConfig.isPending && (
+                <button
+                  type="button"
+                  onClick={() => setForm(savedForm)}
+                  className="min-h-11 px-2 text-body font-medium text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-lg"
+                >
+                  Discard
+                </button>
+              )}
+              <Button onClick={handleSave} disabled={updateConfig.isPending} className="min-h-11">
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <BottomSheet open={sheet === "preview"} onClose={() => setSheet(null)} title="Try it as a visitor" maxHeight={0.92}>
+          <div className="px-4 pt-1">
+            <div className="h-[70dvh] overflow-hidden rounded-2xl border border-outline-variant">
+              <WidgetPreview form={form} />
+            </div>
+            <p className="mt-2 text-caption text-on-surface-variant">
+              Tap the chat button to try it{form.aiAssistantEnabled ? " · AI on" : ""}
+            </p>
+          </div>
+        </BottomSheet>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 max-lg:px-4 max-lg:pb-4 lg:p-6">
+      <PageHeader title="Chat widget" className="max-lg:hidden" />
+
+    <div className="flex gap-6 items-start max-lg:flex-col max-lg:items-stretch">
+
+      {/* ── Left: Form ──────────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 max-w-2xl space-y-4 max-lg:max-w-none">
+
         {/* Enable */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
+        <div data-tour="widget-enable" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">Enable Widget</p>
+              <p className="text-body-lg font-medium text-on-surface">Enable widget</p>
               <p className="text-label text-on-surface-variant">Show widget on your website</p>
             </div>
-            <Toggle enabled={form.enabled} onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))} />
+            <Toggle label="Enable widget" enabled={form.enabled} onChange={() => setForm((f) => ({ ...f, enabled: !f.enabled }))} />
           </div>
         </div>
 
         {/* Appearance */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
-          <p className="text-body font-semibold text-on-surface">Appearance</p>
+        <div data-tour="widget-appearance" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
+          <h2 className="text-body font-semibold text-on-surface">Appearance</h2>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Company Name</label>
-              <input value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Your company" className={inputCls} />
-            </div>
-            <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Position</label>
-              <select value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} className={inputCls}>
-                {POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Primary Color</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input type="color" value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="h-9 w-9 rounded-lg border border-outline-variant/30 cursor-pointer p-0.5" />
-                <input value={form.primaryColor} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} className="flex-1 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30" />
-              </div>
-            </div>
-            <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">WhatsApp Number</label>
-              <input value={form.whatsappNumber} onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))} placeholder="+919876543210" className={inputCls} />
-            </div>
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            {companyField}
+            {positionField}
+            {colorField}
           </div>
 
-          <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Welcome Message</label>
-            <textarea value={form.welcomeMessage} onChange={(e) => setForm((f) => ({ ...f, welcomeMessage: e.target.value }))} rows={2} maxLength={500} className={cn(inputCls, "resize-none")} />
-          </div>
-          <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Input Placeholder</label>
-            <input value={form.placeholder} onChange={(e) => setForm((f) => ({ ...f, placeholder: e.target.value }))} placeholder="Type a message..." maxLength={255} className={inputCls} />
-          </div>
-          <div>
-            <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Avatar / Logo</label>
-            <div className="flex items-center gap-2 mt-1">
-              {/* Preview */}
-              {form.avatarUrl ? (
-                <img src={form.avatarUrl} alt="avatar" className="h-10 w-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-caption text-on-surface-variant/40 border border-outline-variant/20">
-                  Logo
-                </div>
-              )}
-              {/* URL input */}
-              <input
-                value={form.avatarUrl}
-                onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
-                placeholder="https://example.com/logo.png"
-                className={cn(inputCls, "mt-0 flex-1")}
-              />
-              {/* Upload button */}
-              <Button variant="secondary"
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="flex-shrink-0"
-              >
-                {avatarUploading ? "Uploading..." : "Upload"}
-              </Button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-            </div>
-          </div>
+          {welcomeField}
+          {placeholderField}
+          {avatarField}
         </div>
 
-        {/* Pre-chat form */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-body-lg font-medium text-on-surface">Pre-chat Form</p>
-              <p className="text-label text-on-surface-variant">Collect visitor name &amp; phone before chat starts</p>
-            </div>
-            <Toggle enabled={form.preChatFormEnabled} onChange={() => setForm((f) => ({ ...f, preChatFormEnabled: !f.preChatFormEnabled }))} />
-          </div>
+        {/* Before the chat (always on) */}
+        <div data-tour="widget-prechat" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <p className="text-body-lg font-medium text-on-surface">Before the chat</p>
+          <p className="text-label text-on-surface-variant">{preChatNote}</p>
         </div>
 
         {/* AI Assistant */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-3">
+        <div data-tour="widget-ai" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-body-lg font-medium text-on-surface">AI Assistant</p>
+              <p className="text-body-lg font-medium text-on-surface">AI replies</p>
               <p className="text-label text-on-surface-variant">
-                Auto-reply using your org&apos;s Knowledge Base &amp; product data
+                Answer visitors any time from your {terms.plural}, website and FAQs
               </p>
             </div>
             <Toggle
+              label="AI replies"
               enabled={form.aiAssistantEnabled}
               onChange={() => setForm((f) => ({ ...f, aiAssistantEnabled: !f.aiAssistantEnabled }))}
             />
           </div>
-          {form.aiAssistantEnabled && (
-            <div>
-              <label className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">
-                Custom Instructions (optional)
-              </label>
-              <textarea
-                value={form.aiSystemPrompt}
-                onChange={(e) => setForm((f) => ({ ...f, aiSystemPrompt: e.target.value }))}
-                rows={4}
-                maxLength={2000}
-                placeholder={`e.g. You are a friendly sales assistant for ${form.companyName || "our company"}. Only answer questions about our products. If unsure, ask the visitor to leave their contact details.`}
-                className={cn(inputCls, "resize-none mt-1")}
-              />
-              <p className="text-caption text-on-surface-variant/40 mt-1 text-right">
-                {(form.aiSystemPrompt ?? "").length}/2000
-              </p>
-            </div>
-          )}
+          {aiSharedNote}
         </div>
 
         {/* Save */}
         <div className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={updateConfig.isPending}>
-            {updateConfig.isPending ? "Saving..." : "Save Settings"}
+            {updateConfig.isPending ? "Saving..." : "Save changes"}
           </Button>
-          {updateConfig.isSuccess && (
-            <span className="text-body text-success flex items-center gap-1">
-              <Check className="h-3.5 w-3.5" /> Saved
-            </span>
-          )}
-          {updateConfig.isError && (
-            <span className="text-body text-error">Failed to save. Try again.</span>
-          )}
+          {saveStatus}
         </div>
 
         {/* Embed Code */}
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container p-4 space-y-2">
+        <div data-tour="widget-embed" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Code className="h-4 w-4 text-primary" />
-            <p className="text-body font-semibold text-on-surface">Embed Code</p>
+            <Code className="h-4 w-4 text-on-surface-variant" aria-hidden />
+            <h2 className="text-body font-semibold text-on-surface">Embed code</h2>
           </div>
-          <p className="text-label text-on-surface-variant">Paste before the closing &lt;/body&gt; tag.</p>
-          <div className="relative">
-            <pre className="rounded-xl bg-surface-container-highest p-3 text-caption text-on-surface overflow-x-auto pr-10">
-              <code>{embedCode}</code>
-            </pre>
-            <button onClick={copyEmbed} className="absolute top-2 right-2 p-1.5 rounded-lg bg-surface hover:bg-surface-container transition-colors" title="Copy">
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-on-surface-variant" />}
-            </button>
-          </div>
+          {embedCodeBlock}
         </div>
       </div>
 
       {/* ── Right: Live Preview ──────────────────────────────────────────── */}
-      <div className="w-[380px] flex-shrink-0 sticky top-6">
-        <div className="rounded-2xl border border-outline-variant/15 bg-surface-container overflow-hidden">
+      {/* Wide screens: the preview takes the free width beside the form, like a real browser window */}
+      <div data-tour="widget-preview" className="w-[380px] flex-shrink-0 sticky top-[calc(var(--header-height)+1rem)] xl:w-auto xl:min-w-[380px] xl:max-w-[640px] xl:flex-1 max-lg:static max-lg:w-full">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
           {/* Panel header */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/10">
-            <Smartphone className="h-4 w-4 text-primary" />
-            <p className="text-body font-semibold text-on-surface">Live Preview</p>
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant">
+            <Smartphone className="h-4 w-4 text-on-surface-variant" aria-hidden />
+            <h2 className="text-body font-semibold text-on-surface">Live preview</h2>
             <span className="ml-1 text-caption text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
               Interactive
             </span>
-            <p className="ml-auto text-caption text-on-surface-variant/50">Updates as you type</p>
+            <p className="ml-auto text-caption text-on-surface-variant/50 max-sm:hidden">Updates as you type</p>
           </div>
 
           {/* Browser chrome */}
-          <div className="px-3 py-2 bg-surface-container-highest flex items-center gap-2 border-b border-outline-variant/10">
+          <div className="px-3 py-2 bg-surface-container-highest flex items-center gap-2 border-b border-outline-variant">
             <div className="flex gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-error/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
@@ -667,12 +947,12 @@ export default function ChatWidgetSettingsPage() {
           </div>
 
           {/* iframe */}
-          <div className="h-[480px]">
+          <div className="h-[480px] xl:h-[560px]">
             <WidgetPreview form={form} />
           </div>
 
           {/* Hint */}
-          <div className="px-4 py-2.5 border-t border-outline-variant/10 flex items-center gap-1.5">
+          <div className="px-4 py-2.5 border-t border-outline-variant flex items-center gap-1.5">
             <RefreshCw className="h-3 w-3 text-on-surface-variant/40" />
             <p className="text-caption text-on-surface-variant/50">
               Click the chat button · Type a message · Test pre-chat form{form.aiAssistantEnabled ? " · AI enabled" : ""}
@@ -681,6 +961,7 @@ export default function ChatWidgetSettingsPage() {
         </div>
       </div>
 
+    </div>
     </div>
   );
 }

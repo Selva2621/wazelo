@@ -24,6 +24,14 @@ import { GetTeamPerformanceUseCase } from '../../application/use-cases/get-team-
 import { GetCampaignSummaryUseCase } from '../../application/use-cases/get-campaign-summary.use-case';
 import { GetDashboardOverviewUseCase } from '../../application/use-cases/get-dashboard-overview.use-case';
 import { ExportAnalyticsUseCase } from '../../application/use-cases/export-analytics.use-case';
+import { GetLiveChannelStatsUseCase } from '../../application/use-cases/get-live-channel-stats.use-case';
+import { LiveChannelsQueryDto, LiveWaitingQueryDto } from '../../application/dto/analytics-query.dto';
+import {
+  GetCityInsightsUseCase,
+  GetLeadsTodayUseCase,
+  GetRevenueSnapshotUseCase,
+  GetWaitingChatsUseCase,
+} from '../../application/use-cases/get-live-dashboard.use-cases';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -36,8 +44,76 @@ export class AnalyticsController {
     private readonly getCampaignSummaryUseCase: GetCampaignSummaryUseCase,
     private readonly getDashboardOverviewUseCase: GetDashboardOverviewUseCase,
     private readonly exportAnalyticsUseCase: ExportAnalyticsUseCase,
+    private readonly getLiveChannelStatsUseCase: GetLiveChannelStatsUseCase,
+    private readonly getWaitingChatsUseCase: GetWaitingChatsUseCase,
+    private readonly getRevenueSnapshotUseCase: GetRevenueSnapshotUseCase,
+    private readonly getLeadsTodayUseCase: GetLeadsTodayUseCase,
+    private readonly getCityInsightsUseCase: GetCityInsightsUseCase,
     private readonly queueService: QueueService,
   ) {}
+
+  /**
+   * GET /analytics/live/city-insights
+   * Messages per local hour (today vs yesterday) and average reply time per channel.
+   */
+  @Get('live/city-insights')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.ANALYTICS_READ)
+  async getCityInsights(@Query() query: LiveChannelsQueryDto, @CurrentUser() user: JwtPayload) {
+    return this.getCityInsightsUseCase.execute(user.orgId, user.role, user.sub, query);
+  }
+
+  /**
+   * GET /analytics/live/waiting
+   * Open chats whose last message is from the customer, waiting ≥ minMinutes.
+   */
+  @Get('live/waiting')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.ANALYTICS_READ)
+  async getWaitingChats(@Query() query: LiveWaitingQueryDto, @CurrentUser() user: JwtPayload) {
+    return this.getWaitingChatsUseCase.execute(user.orgId, user.role, user.sub, query);
+  }
+
+  /**
+   * GET /analytics/live/revenue
+   * Pipeline value, deals won and proposals sent/viewed in the last 7 days.
+   */
+  @Get('live/revenue')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.ANALYTICS_READ)
+  async getRevenueSnapshot(@CurrentUser() user: JwtPayload) {
+    return this.getRevenueSnapshotUseCase.execute(user.orgId, user.role, user.sub);
+  }
+
+  /**
+   * GET /analytics/live/leads
+   * Leads created today and the newest few (Message City's loading dock).
+   */
+  @Get('live/leads')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.ANALYTICS_READ)
+  async getLeadsToday(@Query() query: LiveChannelsQueryDto, @CurrentUser() user: JwtPayload) {
+    return this.getLeadsTodayUseCase.execute(user.orgId, user.role, user.sub, query);
+  }
+
+  /**
+   * GET /analytics/live/channels
+   * Messages today per channel, counted live (Message City 3D view).
+   */
+  @Get('live/channels')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @Permissions(PERMISSIONS.ANALYTICS_READ)
+  async getLiveChannels(
+    @Query() query: LiveChannelsQueryDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.getLiveChannelStatsUseCase.execute(
+      user.orgId,
+      user.role,
+      user.sub,
+      query,
+    );
+  }
 
   /**
    * GET /analytics/export

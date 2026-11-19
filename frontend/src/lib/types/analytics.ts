@@ -166,3 +166,88 @@ export interface DashboardOverviewResponse {
   peakHours: PeakHoursResponse;
   campaignSummary: CampaignSummaryResponse;
 }
+
+// ─── Live channels (Message City) ───
+
+export type LiveChannelKey =
+  | "WHATSAPP"
+  | "INSTAGRAM"
+  | "FACEBOOK_MESSENGER"
+  | "WEBSITE"
+  | "EMAIL";
+
+export interface LiveChannelStat {
+  key: LiveChannelKey;
+  inbound: number;
+  outbound: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  lastMessageAt: string | null;
+}
+
+export interface LiveChannelStatsResponse {
+  asOf: string;
+  since: string;
+  channels: LiveChannelStat[];
+  openConversations: number;
+  unread: number;
+}
+
+// ─── Live dashboard: waiting chats, money strip, leads today ───
+
+export interface LiveWaitingResponse {
+  minMinutes: number;
+  total: number;
+  items: {
+    conversationId: string;
+    contactId: string | null;
+    name: string | null;
+    phone: string;
+    channelType: string;
+    waitingMinutes: number;
+    assignee: { id: string; name: string } | null;
+  }[];
+}
+
+export interface LiveRevenueResponse {
+  since: string;
+  currency: string;
+  mixedCurrencies: boolean;
+  pipelineValue: number;
+  openDeals: number;
+  wonCount: number;
+  wonValue: number;
+  proposalsSent: number;
+  proposalsViewed: number;
+}
+
+export interface LiveLeadsResponse {
+  since: string;
+  total: number;
+  items: { id: string; name: string | null; phone: string; origin: string; createdAt: string }[];
+}
+
+// ─── Message City insights ───
+
+export interface CityHourBucket {
+  in: number;
+  out: number;
+}
+
+export interface CityChannelInsight {
+  key: LiveChannelKey;
+  today: CityHourBucket[];
+  yesterday: CityHourBucket[];
+  /** Average minutes to first reply today; null when nothing was answered */
+  replyMinutes: number | null;
+  replies: number;
+}
+
+export interface CityInsightsResponse {
+  currentHour: number;
+  channels: CityChannelInsight[];
+  totalToday: number;
+  totalYesterdaySameTime: number;
+  replyMinutes: number | null;
+}

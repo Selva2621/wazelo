@@ -1,11 +1,14 @@
-import { chromium, Page } from 'playwright';
+import { Logger } from '@nestjs/common';
+import type { Page } from 'playwright';
 import { BaseScraper } from './base-scraper';
+import { launchBrowser } from './browser';
 import { ScrapedLead, ScrapeOptions } from './scraper.interface';
 import {
   coordsFromMapsUrl,
   distanceKm,
   parsePriceLevel,
   parseRelativeTime,
+  splitSearchTerms,
   zoomForRadius,
 } from '../services/lead-parsing';
 
@@ -16,7 +19,24 @@ const MAX_SCROLLS = 40;
 
 type Coords = { lat: number; lng: number };
 
+/** Words that say nothing about which business it is */
+const NAME_NOISE = new Set(['pvt', 'private', 'ltd', 'limited', 'llp', 'inc', 'co', 'company', 'and', 'the', 'india', 'enterprises', 'enterprise']);
+
+const nameWords = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !NAME_NOISE.has(w));
+
+/** "Inventaa LED Lights Pvt Ltd" vs Maps' "Inventaa LED Lights" — most distinctive words shared */
+export function sameBusiness(a: string, b: string): boolean {
+  const wa = new Set(nameWords(a));
+  const wb = nameWords(b);
+  if (!wa.size || !wb.length) return false;
+  const shared = wb.filter((w) => wa.has(w)).length;
+  return shared / Math.min(wa.size, new Set(wb).size) >= 0.6;
+}
+
 export class GoogleMapsScraper extends BaseScraper {
+  private readonly logger = new Logger(GoogleMapsScraper.name);
+
   async scrape(
     keywords: string,
     location?: string,
@@ -29,10 +49,7 @@ export class GoogleMapsScraper extends BaseScraper {
       : maxResults;
     let browser;
     try {
-      browser = await chromium.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
-      });
+      browser = await launchBrowser(options?.signal);
 
       const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -46,9 +63,11 @@ export class GoogleMapsScraper extends BaseScraper {
 
       const placeUrls: string[] = [];
       const seen = new Set<string>();
-      for (const url of searchUrls) {
-        if (placeUrls.length >= candidateLimit) break;
-        const found = await this.collectPlaceUrls(page, url, candidateLimit - placeUrls.length, seen);
+      for (const [i, url] of searchUrls.entries()) {
+        if (placeUrls.length >= candidateLimit || options?.signal?.aborted) break;
+        // Share what's left across the remaining searches so the first type/area can't take it all
+        const budget = Math.ceil((candidateLimit - placeUrls.length) / (searchUrls.length - i));
+        const found = await this.collectPlaceUrls(page, url, budget, seen);
         for (const placeUrl of found) {
           // Skip places outside the radius before spending time on their page
           const coords = coordsFromMapsUrl(placeUrl);
@@ -58,14 +77,25 @@ export class GoogleMapsScraper extends BaseScraper {
       }
 
       const results: ScrapedLead[] = [];
+      let attempted = 0;
+      let failed = 0;
       for (const placeUrl of placeUrls) {
-        if (results.length >= maxResults) break;
+        if (results.length >= maxResults || options?.signal?.aborted) break;
+        attempted++;
         try {
-          const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview);
+          const lead = await this.scrapePlace(page, placeUrl, !!options?.collectLastReview, options?.country);
           if (!accept || (await accept(lead))) results.push(lead);
-        } catch {
-          // Skip failed detail pages
+        } catch (error) {
+          // Skip the failed place, but say why — silent skips turn a broken run into "0 found"
+          if (options?.signal?.aborted) break;
+          failed++;
+          const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
+          this.logger.warn(`Skipped place ${placeUrl.split('?')[0]}: ${message}`);
         }
+      }
+      // Every place failed: report it as a failed run, not a clean "0 found"
+      if (attempted > 0 && failed === attempted) {
+        throw new Error(`all ${failed} place pages failed to load`);
       }
 
       await context.close();
@@ -77,14 +107,49 @@ export class GoogleMapsScraper extends BaseScraper {
     }
   }
 
+  /**
+   * Look one named business up on Maps (to fill a phone other sources hide). Maps either opens
+   * the place straight away or lists matches — the first listing is read. Returns undefined
+   * when nothing turns up or the place found is a different business.
+   */
+  async findBusiness(page: Page, name: string, city?: string, country?: string): Promise<ScrapedLead | undefined> {
+    const query = [name, city].filter(Boolean).join(' ');
+    await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
+    // Either a place page (/maps/place/ URL) or a result feed
+    await page
+      .waitForFunction(
+        () =>
+          location.pathname.includes('/maps/place/') ||
+          !!document.querySelector('div[role="feed"] a[href*="/maps/place/"]'),
+        undefined,
+        { timeout: 10_000 },
+      )
+      .catch(() => undefined);
+    let placeUrl: string | undefined = page.url().includes('/maps/place/') ? page.url() : undefined;
+    if (!placeUrl) {
+      placeUrl = await page.evaluate(
+        () => (document.querySelector('div[role="feed"] a[href*="/maps/place/"]') as HTMLAnchorElement | null)?.href,
+      );
+    }
+    if (!placeUrl) return undefined;
+    const place = await this.scrapePlace(page, placeUrl, false, country);
+    return place.name && sameBusiness(place.name, name) ? place : undefined;
+  }
+
   private searchUrls(keywords: string, location: string | undefined, options?: ScrapeOptions, center?: Coords): string[] {
     const search = (q: string) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+    const terms = splitSearchTerms(keywords);
+    if (!terms.length) terms.push(keywords.trim());
     const areas = options?.areas?.map((a) => a.trim()).filter(Boolean) ?? [];
-    if (areas.length) return areas.map((area) => search(`${keywords} ${area}`));
+    if (areas.length) return terms.flatMap((term) => areas.map((area) => search(`${term} ${area}`)));
     if (center && options?.radiusKm) {
-      return [`${search(keywords)}/@${center.lat},${center.lng},${zoomForRadius(options.radiusKm)}z`];
+      const at = `/@${center.lat},${center.lng},${zoomForRadius(options.radiusKm)}z`;
+      return terms.map((term) => `${search(term)}${at}`);
     }
-    return [search(`${keywords} ${location ?? ''}`.trim())];
+    return terms.map((term) => search(`${term} ${location ?? ''}`.trim()));
   }
 
   /** Resolve a place name to coordinates by letting Maps centre on it */
@@ -148,7 +213,12 @@ export class GoogleMapsScraper extends BaseScraper {
     return urls;
   }
 
-  private async scrapePlace(page: Page, placeUrl: string, collectLastReview: boolean): Promise<ScrapedLead> {
+  private async scrapePlace(
+    page: Page,
+    placeUrl: string,
+    collectLastReview: boolean,
+    country?: string,
+  ): Promise<ScrapedLead> {
     await page.goto(placeUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     await page.waitForSelector('h1', { timeout: 8_000 }).catch(() => {});
     await this.delay(800, 1200);
@@ -238,9 +308,9 @@ export class GoogleMapsScraper extends BaseScraper {
       };
     });
 
-    // Normalize phone to E.164 (strips tel: prefix, trunk 0, adds +91)
+    // Normalize phone to E.164 (strips tel: prefix and trunk 0, adds the country code)
     const cleanPhone = detail.phone
-      ? this.normalizePhone(detail.phone.replace(/^tel:/i, '').trim()) ?? undefined
+      ? this.normalizePhone(detail.phone.replace(/^tel:/i, '').trim(), country) ?? undefined
       : undefined;
 
     // Strip leading map-pin icon characters (non-ASCII garbage before the address)

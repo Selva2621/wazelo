@@ -3,11 +3,19 @@ import { CampaignsModule } from '@/modules/campaigns/campaigns.module';
 import { SequenceRepository } from './infrastructure/repositories/sequence.repository';
 import { SequenceTemplateRepository } from './infrastructure/repositories/sequence-template.repository';
 import { SequencesController } from './interfaces/controllers/sequences.controller';
+import { EnrollContactUseCase } from './application/use-cases/enroll-contact.use-case';
+import { GenerateSequenceUseCase } from './application/use-cases/generate-sequence.use-case';
+import { AiModule } from '@/modules/ai/ai.module';
+import { BillingModule } from '@/modules/billing/billing.module';
+
+import { SequenceEmailResultsService } from './application/services/sequence-email-results.service';
 
 @Module({
-  imports: [CampaignsModule],
+  // AiModule: the AI provider for drafting; BillingModule: the @AiCredits guard and charge
+  imports: [CampaignsModule, AiModule, BillingModule],
   controllers: [SequencesController],
-  providers: [SequenceRepository, SequenceTemplateRepository],
-  exports: [SequenceRepository, SequenceTemplateRepository],
+  // SequenceEmailResultsService: an email step's result (sent / failed) lands on the recipient's step
+  providers: [SequenceRepository, SequenceTemplateRepository, EnrollContactUseCase, GenerateSequenceUseCase, SequenceEmailResultsService],
+  exports: [SequenceRepository, SequenceTemplateRepository, EnrollContactUseCase],
 })
 export class SequencesModule {}

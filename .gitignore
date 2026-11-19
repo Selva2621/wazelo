@@ -141,3 +141,15 @@ vite.config.ts.timestamp-*
 
 .Claude/
 /backend/uploads/*
+
+# Demo video project (recordings, renders, scripts): local only
+/demo/
+
+# Playwright MCP test screenshots, snapshots and logs (local only)
+.playwright-mcp/
+
+# Local dev tools (cloudflared)
+.tools/
+
+# Scratch downloads (asset packs etc.)
+/tmp/

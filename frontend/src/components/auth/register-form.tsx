@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { ContinueWithGoogle } from "@/components/auth/continue-with-google";
 
+// Legal pages live on the marketing site
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://wazelo.in";
+
 export function RegisterForm() {
   const [success, setSuccess] = useState(false);
 
@@ -172,9 +175,10 @@ export function RegisterForm() {
       {/* Terms note */}
       <p className="text-caption text-on-surface-variant/50 text-center mt-4 leading-relaxed">
         By creating an account, you agree to our{" "}
-        <Link href="#" className="text-primary/70 hover:text-primary">Terms</Link>
+        {/* Legal pages live on the marketing site (same as the auth footer); new tab keeps the form */}
+        <a href={`${SITE_URL}/terms`} target="_blank" rel="noopener noreferrer" className="text-primary/70 hover:text-primary">Terms</a>
         {" & "}
-        <Link href="#" className="text-primary/70 hover:text-primary">Privacy Policy</Link>
+        <a href={`${SITE_URL}/privacy`} target="_blank" rel="noopener noreferrer" className="text-primary/70 hover:text-primary">Privacy Policy</a>
       </p>
 
       {/* Divider */}

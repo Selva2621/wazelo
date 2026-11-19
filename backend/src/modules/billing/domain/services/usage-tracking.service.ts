@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UsageMetricType } from '@prisma/client';
+import { SubscriptionStatus, UsageMetricType } from '@prisma/client';
 import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { EVENT_NAMES } from '@/common/constants';
@@ -149,6 +149,58 @@ export class UsageTrackingService {
     }
 
     return updated;
+  }
+
+  /**
+   * Takes up to `amount` from a period allowance without going over the limit, safe
+   * under concurrency (one locked statement). An unlimited metric (limit 0) takes it
+   * all; no subscription takes nothing. Emits the same soft/hard limit events.
+   */
+  async consumeUpTo(orgId: string, metricType: UsageMetricType, amount: number): Promise<number> {
+    if (amount <= 0) return 0;
+    const subscription = await this.subscriptionRepo.findByOrgWithPlan(orgId);
+    if (!subscription) return 0;
+
+    const limitValue = await this.getEffectiveLimit(orgId, subscription.plan, metricType);
+    if (limitValue === 0) {
+      await this.incrementUsage(orgId, metricType, amount);
+      return amount;
+    }
+
+    const record = await this.usageRepo.findOrCreate(
+      orgId,
+      metricType,
+      subscription.currentPeriodStart,
+      subscription.currentPeriodEnd,
+      limitValue,
+    );
+    const taken = await this.usageRepo.incrementUpTo(record.id, amount, limitValue);
+    if (taken === 0) return 0;
+
+    const updated = await this.usageRepo.getUsage(orgId, metricType, subscription.currentPeriodStart);
+    const current = updated?.currentValue ?? 0;
+    const percentUsed = Math.round((current / limitValue) * 100);
+    const previousPercent = Math.round(((current - taken) / limitValue) * 100);
+    const softThreshold = subscription.plan.softLimitPercent;
+    if (previousPercent < softThreshold && percentUsed >= softThreshold) {
+      this.eventEmitter.emit(EVENT_NAMES.USAGE_SOFT_LIMIT_WARNING, { orgId, metricType, currentValue: current, limitValue, percentUsed });
+    }
+    if (current >= limitValue && current - taken < limitValue) {
+      this.eventEmitter.emit(EVENT_NAMES.USAGE_LIMIT_REACHED, { orgId, metricType, currentValue: current, limitValue });
+    }
+    return taken;
+  }
+
+  /**
+   * The org's plan has ended (trial or paid, after grace) and it hasn't paid since.
+   * Orgs that never had a subscription are not "ended".
+   */
+  async hasEndedSubscription(orgId: string): Promise<boolean> {
+    if (await this.subscriptionRepo.findByOrgWithPlan(orgId)) return false;
+    const latest = await this.subscriptionRepo.findLatestByOrg(orgId);
+    if (!latest) return false;
+    if (latest.status === SubscriptionStatus.EXPIRED) return true;
+    return latest.status === SubscriptionStatus.CANCELLED && latest.currentPeriodEnd <= new Date();
   }
 
   /**

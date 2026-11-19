@@ -3,8 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IntegrationStatus } from '@prisma/client';
 import { SettingsRepository } from '../../infrastructure/repositories/settings.repository';
@@ -25,6 +27,7 @@ export class ManageIntegrationsUseCase {
     private readonly encryptionService: EncryptionService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly usageTracking: UsageTrackingService,
   ) {}
 
   async create(
@@ -34,6 +37,15 @@ export class ManageIntegrationsUseCase {
     ipAddress?: string,
     userAgent?: string,
   ) {
+    if (dto.provider === 'SHOPIFY' && !(await this.usageTracking.isFeatureEnabled(orgId, 'shopify'))) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'FEATURE_NOT_AVAILABLE',
+        message: 'Shopify is not included in your current plan. Please upgrade to connect a store.',
+        details: { feature: 'shopify', orgId },
+      });
+    }
+
     // Check for existing integration with same provider
     const existing = await this.settingsRepository.findIntegrationByProvider(orgId, dto.provider);
     if (existing) {

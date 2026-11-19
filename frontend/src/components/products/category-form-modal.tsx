@@ -5,10 +5,12 @@ import { X, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateProductCategory, useUpdateProductCategory, useProductCategories } from "@/hooks/use-products";
 import type { ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { useProductTerms } from "@/lib/product-terms";
 
 interface CategoryFormModalProps {
   open: boolean;
@@ -24,13 +26,14 @@ const PRESET_COLORS = [
 ];
 
 const inputCls =
-  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
+  "w-full rounded-xl bg-surface-container-low px-4 py-2.5 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-2 focus:ring-primary/40 border border-outline-variant/10";
 
 export function CategoryFormModal({ open, onClose, category }: CategoryFormModalProps) {
   const isEditing = !!category;
   const createCategory = useCreateProductCategory();
   const updateCategory = useUpdateProductCategory();
   const { data: allCategories } = useProductCategories();
+  const terms = useProductTerms();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -107,7 +110,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               {isEditing ? "Edit Category" : "New Category"}
             </h2>
             <p className="text-caption text-on-surface-variant/60">
-              {isEditing ? "Update category details" : "Organise products into categories"}
+              {isEditing ? "Update category details" : `Organise ${terms.plural} into categories`}
             </p>
           </div>
           <IconButton size="sm"
@@ -128,7 +131,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               id="cf-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Electronics"
+              placeholder={terms.isService ? "e.g. Design" : "e.g. Electronics"}
               autoFocus
             />
           </div>
@@ -143,7 +146,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               id="cf-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What kind of products belong here?"
+              placeholder={`What kind of ${terms.plural} belong here?`}
               rows={2}
               className={`mt-1 ${inputCls} resize-none`}
             />
@@ -195,17 +198,17 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
                 Parent Category{" "}
                 <span className="font-normal text-on-surface-variant/50">(optional)</span>
               </Label>
-              <select
+              <Select
                 id="cf-parent"
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
-                className={`mt-1 ${inputCls}`}
+                className="mt-1"
               >
                 <option value="">None (top-level)</option>
                 {parentOptions.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <Label htmlFor="cf-sort">
@@ -229,7 +232,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
               <div>
                 <p className="text-body font-medium text-on-surface">Active</p>
                 <p className="text-caption text-on-surface-variant/60">
-                  Inactive categories are hidden from product forms
+                  Inactive categories are hidden from {terms.singular} forms
                 </p>
               </div>
               <button role="switch" aria-checked={isActive} aria-label="Active"
@@ -252,7 +255,7 @@ export function CategoryFormModal({ open, onClose, category }: CategoryFormModal
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 justify-end pt-1">
+          <div className="flex gap-2 justify-end pt-1 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>

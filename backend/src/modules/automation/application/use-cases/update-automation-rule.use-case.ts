@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AuditAction, AutomationRuleStatus } from '@prisma/client';
+import { AuditAction, AutomationRuleStatus, AutomationTriggerType } from '@prisma/client';
 import { AutomationRepository } from '../../infrastructure/repositories/automation.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { UpdateAutomationRuleDto } from '../dto';
@@ -40,6 +40,11 @@ export class UpdateAutomationRuleUseCase {
       throw new BadRequestException(
         'Disable the rule before modifying trigger, conditions, or actions',
       );
+    }
+
+    // Time-based rules never run (no worker yet), so a rule can't be switched to one
+    if (dto.triggerType === AutomationTriggerType.TIME_BASED) {
+      throw new BadRequestException('Time-based rules are not available yet. Use a sequence for scheduled follow-ups.');
     }
 
     // 3. Validate actions if provided

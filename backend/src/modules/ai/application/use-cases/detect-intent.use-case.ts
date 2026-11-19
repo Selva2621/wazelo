@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 export interface IntentResult {
   primaryIntent: string;
@@ -9,11 +10,19 @@ export interface IntentResult {
   suggestedAction: string | null;   // e.g. "assign_to_sales", "create_ticket", "send_catalog"
 }
 
+/** A model's "value", treating "null" / "none" / "n/a" / blank (which models write as strings) as no value. */
+function textOrNull(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const text = String(value).trim();
+  return text === '' || /^(null|none|n\/a|undefined)$/i.test(text) ? null : text;
+}
+
 @Injectable()
 export class DetectIntentUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   /**
@@ -21,12 +30,15 @@ export class DetectIntentUseCase {
    * Useful for routing, auto-assignment, and workflow triggers.
    */
   async execute(conversationId: string, orgId: string): Promise<IntentResult> {
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId, direction: 'INBOUND' },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: { body: true },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId, direction: 'INBOUND' },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { body: true },
+      }),
+    );
 
     if (messages.length === 0) {
       return { primaryIntent: 'unknown', subIntent: null, entities: {}, suggestedAction: null };
@@ -47,12 +59,22 @@ export class DetectIntentUseCase {
     });
 
     try {
-      const parsed = JSON.parse(result.text);
+      // Models often wrap the JSON in ```json fences or a sentence; take the object itself
+      const match = result.text.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : result.text);
+      const entities =
+        typeof parsed.entities === 'object' && parsed.entities && !Array.isArray(parsed.entities)
+          ? Object.fromEntries(
+              Object.entries(parsed.entities as Record<string, unknown>)
+                .map(([k, v]) => [k, textOrNull(v)])
+                .filter((e): e is [string, string] => e[1] !== null),
+            )
+          : {};
       return {
-        primaryIntent: parsed.primaryIntent || 'other',
-        subIntent: parsed.subIntent || null,
-        entities: typeof parsed.entities === 'object' && parsed.entities ? parsed.entities : {},
-        suggestedAction: parsed.suggestedAction || null,
+        primaryIntent: textOrNull(parsed.primaryIntent) ?? 'other',
+        subIntent: textOrNull(parsed.subIntent),
+        entities,
+        suggestedAction: textOrNull(parsed.suggestedAction),
       };
     } catch {
       return { primaryIntent: 'other', subIntent: null, entities: {}, suggestedAction: null };

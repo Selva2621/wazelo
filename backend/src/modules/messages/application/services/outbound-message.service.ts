@@ -15,6 +15,8 @@ export interface OutboundMessageInput {
   contactName?: string;
   body: string;
   type?: MessageType;
+  /** IMAGE / VIDEO / AUDIO / DOCUMENT: where WhatsApp fetches the file; body is the caption (file name for documents) */
+  mediaUrl?: string;
   idempotencyKey?: string;
   metadata?: Record<string, unknown>;
 }
@@ -49,6 +51,7 @@ export class OutboundMessageService {
       contactName,
       body,
       type = MessageType.TEXT,
+      mediaUrl,
       idempotencyKey,
       metadata,
     } = input;
@@ -84,6 +87,7 @@ export class OutboundMessageService {
       contactPhone,
       contactName,
       body,
+      mediaUrl,
       idempotencyKey,
       maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
       metadata,

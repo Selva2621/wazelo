@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsInt,
   IsBoolean,
+  IsIn,
   IsOptional,
   Min,
   Max,
@@ -11,6 +12,7 @@ import {
   Matches,
 } from 'class-validator';
 import { BillingCycle } from '@prisma/client';
+import { BILLING_CURRENCIES } from '@/shared/constants/billing-currencies';
 
 export class CreatePlanDto {
   @IsString()
@@ -38,10 +40,9 @@ export class CreatePlanDto {
   @Min(0)
   priceInCents: number;
 
-  /** ISO 4217 code, e.g. INR or USD */
+  /** INR or USD — the currencies Razorpay checkout takes */
   @IsOptional()
-  @IsString()
-  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code such as INR or USD' })
+  @IsIn(BILLING_CURRENCIES, { message: 'currency must be INR or USD' })
   currency?: string;
 
   @IsInt()

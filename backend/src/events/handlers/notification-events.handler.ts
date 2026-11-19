@@ -4,10 +4,14 @@ import { EVENT_NAMES, WHATSAPP_CONFIG } from '@/common/constants';
 import { NotificationDispatchService } from '@/modules/notifications/domain/services/notification-dispatch.service';
 import { UserRepository } from '@/modules/users/infrastructure/repositories/user.repository';
 import { WhatsAppLinkTokenService } from '@/modules/whatsapp/application/services/whatsapp-link-token.service';
+import type { ProposalEvent } from '@/modules/proposals/application/use-cases/respond-proposal.use-case';
 import {
   WhatsAppMessageReceivedEvent,
   ContactAssignedEvent,
   ContactReassignedEvent,
+  LeadAssignedEvent,
+  LeadFollowUpDueEvent,
+  LeadDailySummaryEvent,
   CampaignCompletedEvent,
   CampaignFailedEvent,
   AutomationExecutedEvent,
@@ -24,6 +28,20 @@ import {
   SubscriptionGracePeriodEvent,
   AlertTriggeredEvent,
 } from '@/events/event-bus';
+
+/** WhatsApp message types in plain words for notification text ("Sticker from +91…"). */
+const MESSAGE_TYPE_LABEL: Record<string, string> = {
+  TEXT: 'Message',
+  IMAGE: 'Photo',
+  VIDEO: 'Video',
+  AUDIO: 'Voice message',
+  DOCUMENT: 'Document',
+  STICKER: 'Sticker',
+  LOCATION: 'Location',
+  CONTACT: 'Contact card',
+  TEMPLATE: 'Message',
+  REACTION: 'Reaction',
+};
 
 /**
  * EPIC 11 — Notification Events Handler
@@ -54,7 +72,7 @@ export class NotificationEventsHandler {
         type: 'MESSAGE_RECEIVED',
         priority: 'NORMAL',
         title: 'New message received',
-        body: `New ${event.type} message from ${event.contactPhone}`,
+        body: `${MESSAGE_TYPE_LABEL[String(event.type).toUpperCase()] ?? 'Message'} from ${event.contactPhone}`,
         data: {
           messageId: event.messageId,
           conversationId: event.conversationId,
@@ -92,6 +110,64 @@ export class NotificationEventsHandler {
       this.logger.error(
         `Failed to dispatch CONTACT_ASSIGNED notification: ${error}`,
       );
+    }
+  }
+
+  // ─── Lead routing ───
+
+  @OnEvent(EVENT_NAMES.LEAD_ASSIGNED)
+  async handleLeadAssigned(event: LeadAssignedEvent): Promise<void> {
+    try {
+      const who = event.contactName || event.contactPhone;
+      await this.notificationDispatch.dispatch({
+        orgId: event.orgId,
+        userId: event.assigneeId,
+        type: 'LEAD_ASSIGNED',
+        priority: 'HIGH',
+        title: `New lead: ${who}${event.productName ? ` · ${event.productName}` : ''}`,
+        body: `Contact them within ${event.reminderMinutes} minutes. ${event.contactPhone}`,
+        data: { contactId: event.contactId, followUpId: event.followUpId },
+        idempotencyKey: `lead-assigned:${event.followUpId}`,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to dispatch LEAD_ASSIGNED notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.LEAD_DAILY_SUMMARY)
+  async handleLeadDailySummary(event: LeadDailySummaryEvent): Promise<void> {
+    try {
+      await this.notificationDispatch.dispatch({
+        orgId: event.orgId,
+        userId: event.managerId,
+        type: 'LEAD_DAILY_SUMMARY',
+        priority: 'NORMAL',
+        title: event.title,
+        body: event.body,
+        data: { brandId: event.brandId, date: event.date },
+        idempotencyKey: `lead-summary:${event.brandId}:${event.date}`,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to dispatch LEAD_DAILY_SUMMARY notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.LEAD_FOLLOW_UP_DUE)
+  async handleLeadFollowUpDue(event: LeadFollowUpDueEvent): Promise<void> {
+    try {
+      const who = event.contactName || event.contactPhone;
+      await this.notificationDispatch.dispatch({
+        orgId: event.orgId,
+        userId: event.assigneeId,
+        type: 'LEAD_FOLLOW_UP_DUE',
+        priority: 'HIGH',
+        title: `${who} is still waiting`,
+        body: `${event.productName ? `${event.productName} lead, ` : ''}no contact for ${event.waitingMinutes} min. Call or message them now.`,
+        data: { contactId: event.contactId, followUpId: event.followUpId },
+        idempotencyKey: `lead-due:${event.followUpId}`,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to dispatch LEAD_FOLLOW_UP_DUE notification: ${error}`);
     }
   }
 
@@ -273,6 +349,44 @@ export class NotificationEventsHandler {
       );
     } catch (error) {
       this.logger.error(`Failed to dispatch DEAL_SCOPE_RESPONSE notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.PROPOSAL_VIEWED)
+  async handleProposalViewed(event: ProposalEvent): Promise<void> {
+    try {
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        [event.userId],
+        'PROPOSAL_VIEWED',
+        'NORMAL',
+        `${event.contactName} opened your proposal`,
+        `${event.number} · ${event.title}`,
+        { proposalId: event.proposalId, contactId: event.contactId, dealId: event.dealId },
+        `proposal-viewed:${event.proposalId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch PROPOSAL_VIEWED notification: ${error}`);
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.PROPOSAL_RESPONDED)
+  async handleProposalResponded(event: ProposalEvent & { accepted: boolean; note: string | null }): Promise<void> {
+    try {
+      await this.notificationDispatch.dispatchToOrg(
+        event.orgId,
+        [event.userId],
+        'PROPOSAL_RESPONSE',
+        'HIGH',
+        event.accepted
+          ? `${event.contactName} accepted your proposal`
+          : `${event.contactName} asked for changes`,
+        event.accepted ? `${event.number} · ${event.title}` : event.note || `${event.number} · ${event.title}`,
+        { proposalId: event.proposalId, contactId: event.contactId, dealId: event.dealId, accepted: event.accepted },
+        `proposal-response:${event.proposalId}:${Date.now()}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to dispatch PROPOSAL_RESPONSE notification: ${error}`);
     }
   }
 

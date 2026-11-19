@@ -25,6 +25,7 @@ import {
   CreateContactDto,
   UpdateContactDto,
   ListContactsQueryDto,
+  PipelineMetaQueryDto,
   ChangeLeadStatusDto,
   AssignContactDto,
   MergeContactsDto,
@@ -34,6 +35,11 @@ import {
   BulkChangeLeadStatusDto,
   BulkAssignContactsDto,
   BulkAddTagDto,
+  CreateSavedContactGroupsDto,
+  SplitSavedContactGroupsDto,
+  CheckSavedGroupMoveDto,
+  MoveSavedGroupContactsDto,
+  RenameSavedContactGroupDto,
 } from '../../application/dto';
 import {
   CreateContactUseCase,
@@ -50,6 +56,7 @@ import {
   RemoveTagUseCase,
   GetContactHistoryUseCase,
   BulkContactsUseCase,
+  SavedContactGroupsUseCase,
 } from '../../application/use-cases';
 import { ExportContactsUseCase } from '../../application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from '../../application/use-cases/import-contacts.use-case';
@@ -75,6 +82,7 @@ export class ContactsController {
     private readonly exportContactsUseCase: ExportContactsUseCase,
     private readonly importContactsUseCase: ImportContactsUseCase,
     private readonly bulkContactsUseCase: BulkContactsUseCase,
+    private readonly savedContactGroupsUseCase: SavedContactGroupsUseCase,
   ) {}
 
   // ───── Contact CRUD ─────
@@ -102,6 +110,100 @@ export class ContactsController {
     @Query() query: ListContactsQueryDto,
   ) {
     return this.listContactsUseCase.execute(user.orgId, user.sub, user.role, query);
+  }
+
+  /** Lead pipeline card extras: last message, days in stage, open follow-up */
+  @Get('pipeline-meta')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getPipelineMeta(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: PipelineMetaQueryDto,
+  ) {
+    return this.listContactsUseCase.pipelineMeta(user.orgId, user.sub, user.role, query.ids);
+  }
+
+  @Get('groups')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getContactGroups(@CurrentUser() user: JwtPayload) {
+    return this.listContactsUseCase.groups(user.orgId, user.sub, user.role);
+  }
+
+  @Get('saved-groups')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async listSavedContactGroups(@CurrentUser() user: JwtPayload) {
+    return this.savedContactGroupsUseCase.list(user.orgId, user.sub, user.role);
+  }
+
+  @Post('saved-groups')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async createSavedContactGroups(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateSavedContactGroupsDto,
+  ) {
+    return this.savedContactGroupsUseCase.create(
+      user.orgId,
+      user.sub,
+      user.role,
+      dto.name,
+      dto.contactIds,
+      dto.groupSize,
+      { mode: dto.mode, onlyUngrouped: dto.onlyUngrouped },
+    );
+  }
+
+  /** Contacts not in any group yet (the "Make groups" default source) */
+  @Get('saved-groups/ungrouped-count')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async savedGroupsUngroupedCount(@CurrentUser() user: JwtPayload) {
+    return this.savedContactGroupsUseCase.ungroupedCount(user.orgId, user.sub, user.role);
+  }
+
+  /** Split every contact not in a group yet into groups of N */
+  @Post('saved-groups/split')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async splitIntoSavedGroups(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SplitSavedContactGroupsDto,
+  ) {
+    return this.savedContactGroupsUseCase.split(user.orgId, user.sub, user.role, dto.groupSize, dto.prefix, dto.mode);
+  }
+
+  /** Which groups these contacts would be moved out of (shown before saving) */
+  @Post('saved-groups/check-move')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async checkSavedGroupMove(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CheckSavedGroupMoveDto,
+  ) {
+    return this.savedContactGroupsUseCase.checkMove(user.orgId, user.sub, user.role, dto.contactIds, dto.groupId);
+  }
+
+  @Post('saved-groups/move')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async moveSavedGroupContacts(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: MoveSavedGroupContactsDto,
+  ) {
+    return this.savedContactGroupsUseCase.move(user.orgId, user.sub, user.role, dto.contactIds, dto.groupId);
+  }
+
+  @Patch('saved-groups/:groupId')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async renameSavedContactGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Body() dto: RenameSavedContactGroupDto,
+  ) {
+    return this.savedContactGroupsUseCase.rename(user.orgId, user.role, groupId, dto.name);
+  }
+
+  @Delete('saved-groups/:groupId')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async deleteSavedContactGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+  ) {
+    return this.savedContactGroupsUseCase.remove(user.orgId, user.role, groupId);
   }
 
   @Get('export')

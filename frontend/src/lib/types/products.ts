@@ -26,8 +26,32 @@ export interface Product {
   categoryId: string | null;
   category: ProductCategory | null;
   status: ProductStatus;
+  /** Older backends omit the brand and lead fields */
+  brandId?: string | null;
+  brand?: Brand | null;
+  /** People who handle this product's leads (round-robin) */
+  leadHandlerIds?: string[];
+  /** Remind the lead's owner after this many minutes without contact */
+  leadReminderMinutes?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Groups products, e.g. one builder with several projects */
+export interface Brand {
+  id: string;
+  name: string;
+  /** Gets the brand's end-of-day lead summary */
+  managerId: string | null;
+  /** Default WhatsApp number for the brand */
+  sessionId: string | null;
+  sortOrder: number;
+}
+
+export interface BrandRequest {
+  name?: string;
+  managerId?: string | null;
+  sessionId?: string | null;
 }
 
 export interface CreateProductRequest {
@@ -38,6 +62,7 @@ export interface CreateProductRequest {
   sku?: string;
   imageUrl?: string;
   categoryId?: string;
+  brandId?: string;
 }
 
 export interface UpdateProductRequest {
@@ -49,6 +74,9 @@ export interface UpdateProductRequest {
   imageUrl?: string;
   categoryId?: string;
   status?: ProductStatus;
+  brandId?: string | null;
+  leadHandlerIds?: string[];
+  leadReminderMinutes?: number;
 }
 
 export interface CreateProductCategoryRequest {

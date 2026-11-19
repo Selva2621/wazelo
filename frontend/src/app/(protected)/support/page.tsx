@@ -4,15 +4,23 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LifeBuoy, Plus, X, Loader2, ChevronRight, ArrowLeft, Send,
-  ImageIcon, ChevronLeft, MessageSquare, Tag, AlertCircle, Clock,
-  Paperclip, CheckCircle2, Circle, RefreshCw,
+  ImageIcon, MessageSquare, Tag, AlertCircle, Clock,
+  Paperclip, Compass, Smartphone, CreditCard, Mail,
 } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import apiClient from "@/lib/api/client";
 import { Spinner } from "@/components/ui/spinner";
 import { PAGE_SIZE } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useHideTabBar } from "@/hooks/use-mobile-chrome";
+import { PageHeader } from "@/components/layout/page-header";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { StartHint } from "@/components/ui/start-hint";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -73,12 +81,15 @@ function useReply(ticketId: string) {
 
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  OPEN:        { label: "Open",        className: "bg-success/10 text-success border-success/20",  icon: <Circle className="h-3 w-3" /> },
-  IN_PROGRESS: { label: "In Progress", className: "bg-info/10 text-info border-info/20",           icon: <RefreshCw className="h-3 w-3" /> },
-  RESOLVED:    { label: "Resolved",    className: "bg-chart-5/10 text-chart-5 border-chart-5/20",     icon: <CheckCircle2 className="h-3 w-3" /> },
-  CLOSED:      { label: "Closed",      className: "bg-surface-container text-on-surface-variant border-outline-variant", icon: <X className="h-3 w-3" /> },
+const STATUS_CONFIG: Record<string, { label: string; variant: "success" | "info" | "primary" | "muted" }> = {
+  OPEN:        { label: "Open",        variant: "success" },
+  IN_PROGRESS: { label: "In progress", variant: "info" },
+  RESOLVED:    { label: "Resolved",    variant: "primary" },
+  CLOSED:      { label: "Closed",      variant: "muted" },
 };
+
+/** "FEATURE_REQUEST" → "Feature request" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
 
 const PRIORITY_CONFIG: Record<string, { className: string; dot: string }> = {
   LOW:    { className: "text-on-surface-variant", dot: "bg-on-surface-variant/40" },
@@ -90,9 +101,9 @@ const PRIORITY_CONFIG: Record<string, { className: string; dot: string }> = {
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.CLOSED;
   return (
-    <span className={`inline-flex items-center gap-1 text-label px-2 py-0.5 rounded-full font-medium border ${cfg.className}`}>
-      {cfg.icon} {cfg.label}
-    </span>
+    <Badge variant={cfg.variant} dot>
+      {cfg.label}
+    </Badge>
   );
 }
 
@@ -101,7 +112,7 @@ function PriorityDot({ priority }: { priority: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 text-label font-medium ${cfg.className}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      {priority}
+      {sentenceCase(priority)}
     </span>
   );
 }
@@ -117,58 +128,6 @@ function AuthImage({ url, className }: { url: string; className?: string }) {
     <a href={url} target="_blank" rel="noreferrer">
       <img src={url} alt="attachment" className={className} onError={() => setFailed(true)} />
     </a>
-  );
-}
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-function Pagination({ page, totalPages, total, onPage }: { page: number; totalPages: number; total: number; onPage: (p: number) => void }) {
-  if (totalPages <= 1) return null;
-
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (page > 3) pages.push("...");
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-    if (page < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-      <p className="text-label text-on-surface-variant">{total} ticket{total !== 1 ? "s" : ""}</p>
-      <div className="flex items-center gap-1">
-        <IconButton size="sm"
-          onClick={() => onPage(page - 1)}
-          disabled={page === 1} aria-label="Previous page">
-          <ChevronLeft className="h-4 w-4" />
-        </IconButton>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-on-surface-variant text-label">…</span>
-          ) : (
-            <button
-              key={p}
-              onClick={() => onPage(p as number)}
-              className={`min-w-[28px] h-7 rounded-lg text-label font-medium transition-colors ${
-                p === page
-                  ? "bg-primary text-on-primary"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-              }`}
-            >
-              {p}
-            </button>
-          )
-        )}
-        <IconButton size="sm"
-          onClick={() => onPage(page + 1)}
-          disabled={page === totalPages} aria-label="Next page">
-          <ChevronRight className="h-4 w-4" />
-        </IconButton>
-      </div>
-    </div>
   );
 }
 
@@ -240,7 +199,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <div className="flex items-center gap-2">
             <LifeBuoy className="h-4 w-4 text-primary" />
-            <h2 id="new-ticket-title" className="font-semibold text-on-surface text-body-lg">New Support Ticket</h2>
+            <h2 id="new-ticket-title" className="font-semibold text-on-surface text-body-lg">New support ticket</h2>
           </div>
           <IconButton size="xs" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
@@ -250,57 +209,57 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Title</label>
+            <label className="text-label font-medium text-on-surface-variant">Title</label>
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
               maxLength={255}
               placeholder="Briefly describe the issue"
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
             />
           </div>
 
           {/* Category + Priority */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Category</label>
-              <select
+              <label className="text-label font-medium text-on-surface-variant">Category</label>
+              <Select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                aria-label="Category"
               >
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
-              </select>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{sentenceCase(c)}</option>)}
+              </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Priority</label>
-              <select
+              <label className="text-label font-medium text-on-surface-variant">Priority</label>
+              <Select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
-                className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
+                aria-label="Priority"
               >
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+                {PRIORITIES.map((p) => <option key={p} value={p}>{sentenceCase(p)}</option>)}
+              </Select>
             </div>
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Description</label>
+            <label className="text-label font-medium text-on-surface-variant">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               required
               rows={4}
               placeholder="Explain the issue in detail..."
-              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-xl px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none transition-colors"
             />
           </div>
 
           {/* Image upload */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
+            <label className="text-label font-medium text-on-surface-variant">
               Attachment <span className="normal-case font-normal text-on-surface-variant/50">(optional · max 16 MB)</span>
             </label>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageSelect} className="hidden" />
@@ -347,7 +306,7 @@ function NewTicketForm({ onClose }: { onClose: () => void }) {
               className="flex-1"
             >
               {(uploading || create.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-              {uploading ? "Uploading…" : create.isPending ? "Submitting…" : "Submit Ticket"}
+              {uploading ? "Uploading…" : create.isPending ? "Submitting…" : "Submit ticket"}
             </Button>
           </div>
         </form>
@@ -361,6 +320,8 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
   const { data: ticket, isLoading } = useTicket(ticketId);
   const reply = useReply(ticketId);
   const [body, setBody] = useState("");
+  // Mobile: full-screen ticket thread
+  useHideTabBar(true);
 
   const handleReply = () => {
     if (!body.trim()) return;
@@ -382,7 +343,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
       <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant flex-shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-body-lg text-on-surface-variant hover:text-on-surface transition-colors group"
+          className="flex items-center gap-1.5 rounded text-body-lg text-on-surface-variant outline-none hover:text-on-surface transition-colors focus-visible:ring-2 focus-visible:ring-focus group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
@@ -403,7 +364,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
             <div className="flex items-center flex-wrap gap-3 mt-2">
               <PriorityDot priority={ticket.priority} />
               <span className="flex items-center gap-1 text-label text-on-surface-variant">
-                <Tag className="h-3 w-3" /> {ticket.category.replace("_", " ")}
+                <Tag className="h-3 w-3" /> {sentenceCase(ticket.category)}
               </span>
               <span className="flex items-center gap-1 text-label text-on-surface-variant">
                 <Clock className="h-3 w-3" /> {new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -420,7 +381,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             {/* Original message */}
             <div className="flex justify-start">
-              <div className="max-w-[75%]">
+              <div className="max-w-[75%] max-lg:max-w-[88%]">
                 <div className="text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5">
                   <span className="font-medium text-on-surface">You</span>
                   <span>·</span>
@@ -448,9 +409,9 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
               const isSupport = !!r.superAdmin;
               return (
                 <div key={r.id} className={`flex ${isSupport ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%]`}>
+                  <div className={`max-w-[75%] max-lg:max-w-[88%]`}>
                     <div className={`text-label text-on-surface-variant mb-1.5 flex items-center gap-1.5 ${isSupport ? "justify-end" : ""}`}>
-                      <span className="font-medium text-on-surface">{isSupport ? "Support Team" : "You"}</span>
+                      <span className="font-medium text-on-surface">{isSupport ? "Support team" : "You"}</span>
                       <span>·</span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
                     </div>
@@ -485,7 +446,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                   onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
                   rows={3}
                   placeholder="Write a reply… (Ctrl+Enter to send)"
-                  className="w-full bg-transparent px-4 pt-3 pb-1 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none resize-none"
+                  className="w-full bg-transparent px-4 pt-3 pb-1 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none resize-none"
                 />
                 <div className="flex items-center justify-end px-3 py-2">
                   <Button
@@ -494,7 +455,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
                    
                   >
                     {reply.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Send Reply
+                    Send reply
                   </Button>
                 </div>
               </div>
@@ -505,24 +466,24 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
         {/* Right sidebar: ticket meta */}
         <div className="w-64 border-l border-outline-variant flex-shrink-0 px-5 py-5 space-y-5 overflow-y-auto hidden lg:block">
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Status</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Status</p>
             <StatusBadge status={ticket.status} />
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priority</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Priority</p>
             <PriorityDot priority={ticket.priority} />
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Category</p>
-            <p className="text-body-lg text-on-surface">{ticket.category.replace("_", " ")}</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Category</p>
+            <p className="text-body-lg text-on-surface">{sentenceCase(ticket.category)}</p>
           </div>
           <div>
-            <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Opened</p>
+            <p className="text-label font-medium text-on-surface-variant mb-2">Opened</p>
             <p className="text-body-lg text-on-surface">{new Date(ticket.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
           {ticket.closedAt && (
             <div>
-              <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide mb-2">Closed</p>
+              <p className="text-label font-medium text-on-surface-variant mb-2">Closed</p>
               <p className="text-body-lg text-on-surface">{new Date(ticket.closedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
             </div>
           )}
@@ -534,84 +495,147 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
 
 // ─── Ticket List (DataTable) ──────────────────────────────────────────────────
 
-function TicketTable({ onSelect }: { onSelect: (id: string) => void }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tickets come from an untyped local API
+type Ticket = any;
+
+const ticketColumns: DataTableColumn<Ticket>[] = [
+  {
+    id: "ticket",
+    header: "Ticket",
+    className: "max-w-[220px]",
+    cell: (t) => (
+      <div className="flex items-start gap-2">
+        {t.attachmentUrl && <Paperclip className="h-3.5 w-3.5 text-on-surface-variant flex-shrink-0 mt-0.5" />}
+        <div className="min-w-0">
+          <p className="font-medium text-on-surface truncate group-hover:text-primary transition-colors">{t.title}</p>
+          <p className="text-label text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "category",
+    header: "Category",
+    cellClassName: "text-on-surface-variant",
+    cell: (t) => (t.category ? sentenceCase(t.category) : null),
+  },
+  {
+    id: "priority",
+    header: "Priority",
+    skeleton: "short",
+    cell: (t) => <PriorityDot priority={t.priority} />,
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (t) => <StatusBadge status={t.status} />,
+  },
+  {
+    id: "replies",
+    header: "Replies",
+    skeleton: "short",
+    cellClassName: "text-on-surface-variant",
+    cell: (t) => (
+      <span className="flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5" />
+        {t._count?.replies ?? 0}
+      </span>
+    ),
+  },
+  {
+    id: "date",
+    header: "Date",
+    skeleton: "short",
+    cellClassName: "text-on-surface-variant whitespace-nowrap",
+    cell: (t) => new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+  },
+  {
+    id: "open",
+    header: "Open",
+    hideHeader: true,
+    className: "w-8",
+    skeleton: "none",
+    cell: () => <ChevronRight className="h-4 w-4 text-on-surface-variant group-hover:text-primary transition-colors" />,
+  },
+];
+
+const HELP_LINKS = [
+  { href: "/tours", icon: Compass, title: "Product tours", body: "Short walkthroughs of every screen" },
+  { href: "/settings/whatsapp", icon: Smartphone, title: "WhatsApp setup", body: "Connect or check your number" },
+  { href: "/settings/billing", icon: CreditCard, title: "Billing", body: "Plan, invoices and payments" },
+] as const;
+
+/** Zero-ticket view: start strip + quick help, so the page is never a lone empty card. */
+function SupportStart({ onNew }: { onNew: () => void }) {
+  return (
+    <div className="space-y-4">
+      <StartHint
+        icon={<LifeBuoy />}
+        title="No tickets yet"
+        description="Open a ticket and we'll reply here."
+        action={
+          <Button size="sm" onClick={onNew}>
+            <Plus className="h-4 w-4" /> New ticket
+          </Button>
+        }
+      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {HELP_LINKS.map(({ href, icon: Icon, title, body }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 outline-none transition-colors duration-120 ease-standard hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant group-hover:text-primary" />
+            <span className="min-w-0">
+              <span className="block text-body font-medium text-on-surface">{title}</span>
+              <span className="block text-label text-on-surface-variant">{body}</span>
+            </span>
+          </Link>
+        ))}
+        <div className="flex items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant" />
+          <span className="min-w-0">
+            <span className="block text-body font-medium text-on-surface">Email us</span>
+            <span className="block select-all text-label text-on-surface-variant">support@wazelo.in</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TicketTable({ onSelect, onNew }: { onSelect: (id: string) => void; onNew: () => void }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useTickets(page);
 
-  const tickets: any[] = data?.tickets ?? [];
-  const totalPages: number = data?.totalPages ?? 1;
+  const tickets: Ticket[] = data?.tickets ?? [];
   const total: number = data?.total ?? 0;
 
+  if (!isLoading && data && total === 0 && tickets.length === 0) {
+    return <SupportStart onNew={onNew} />;
+  }
+
   return (
-    <div className="border border-outline-variant rounded-2xl overflow-hidden">
-      <table className="w-full text-body-lg">
-        <thead>
-          <tr className="bg-surface-container/60 border-b border-outline-variant text-label text-on-surface-variant font-medium uppercase tracking-wide">
-            <th className="text-left px-5 py-3">Ticket</th>
-            <th className="text-left px-4 py-3 hidden sm:table-cell">Category</th>
-            <th className="text-left px-4 py-3 hidden md:table-cell">Priority</th>
-            <th className="text-left px-4 py-3">Status</th>
-            <th className="text-left px-4 py-3 hidden lg:table-cell">Replies</th>
-            <th className="text-left px-4 py-3 hidden lg:table-cell">Date</th>
-            <th className="px-4 py-3 w-8" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-outline-variant/50">
-          {isLoading ? (
-            <tr>
-              <td colSpan={7} className="py-16 text-center">
-                <Spinner className="mx-auto text-primary" />
-              </td>
-            </tr>
-          ) : tickets.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="py-16 text-center">
-                <LifeBuoy className="h-10 w-10 mx-auto mb-3 text-on-surface-variant opacity-20" />
-                <p className="font-medium text-on-surface">No tickets yet</p>
-                <p className="text-label text-on-surface-variant mt-1">Create a ticket and we'll get back to you.</p>
-              </td>
-            </tr>
-          ) : tickets.map((t) => (
-            <tr
-              key={t.id}
-              onClick={() => onSelect(t.id)}
-              className="hover:bg-surface-container/50 cursor-pointer transition-colors group"
-            >
-              <td className="px-5 py-3.5 max-w-[220px]">
-                <div className="flex items-start gap-2">
-                  {t.attachmentUrl && <Paperclip className="h-3.5 w-3.5 text-on-surface-variant flex-shrink-0 mt-0.5" />}
-                  <div className="min-w-0">
-                    <p className="font-medium text-on-surface truncate group-hover:text-primary transition-colors">{t.title}</p>
-                    <p className="text-label text-on-surface-variant mt-0.5 truncate"># {t.id.slice(0, 8).toUpperCase()}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant hidden sm:table-cell">
-                {t.category?.replace("_", " ")}
-              </td>
-              <td className="px-4 py-3.5 hidden md:table-cell">
-                <PriorityDot priority={t.priority} />
-              </td>
-              <td className="px-4 py-3.5">
-                <StatusBadge status={t.status} />
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant hidden lg:table-cell">
-                <span className="flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {t._count?.replies ?? 0}
-                </span>
-              </td>
-              <td className="px-4 py-3.5 text-on-surface-variant whitespace-nowrap hidden lg:table-cell">
-                {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-              </td>
-              <td className="px-4 py-3.5">
-                <ChevronRight className="h-4 w-4 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Pagination page={page} totalPages={totalPages} total={total} onPage={setPage} />
+    <div className="border border-outline-variant rounded-2xl overflow-hidden bg-surface-container-lowest">
+      <DataTable
+        label="Support tickets"
+        columns={ticketColumns}
+        rows={tickets}
+        rowKey={(t) => t.id}
+        rowLabel={(t) => t.title}
+        loading={isLoading}
+        skeletonRows={6}
+        onRowClick={(t) => onSelect(t.id)}
+        rowClassName={() => "group"}
+        pagination={{ page: page - 1, pageSize: PAGE_SIZE, total, onPageChange: (p) => setPage(p + 1) }}
+        empty={{
+          icon: <LifeBuoy className="h-12 w-12" />,
+          title: "No tickets yet",
+          description: "Create a ticket and we'll get back to you.",
+        }}
+      />
     </div>
   );
 }
@@ -632,25 +656,20 @@ export default function SupportPage() {
 
   return (
     <div className="flex flex-col p-6 gap-5" style={{ height: "calc(100vh - var(--header-height))" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <LifeBuoy className="h-5 w-5 text-primary" /> Support
-          </h1>
-          <p className="text-body-lg text-on-surface-variant mt-0.5">Submit and track your support tickets</p>
-        </div>
-        <Button size="lg"
-          onClick={() => setShowModal(true)}
-         
-        >
-          <Plus className="h-4 w-4" /> New Ticket
-        </Button>
-      </div>
+      <MobilePageActions primary={{ label: "New ticket", onClick: () => setShowModal(true) }} />
+      <PageHeader
+        className="flex-shrink-0 max-lg:hidden"
+        title="Support"
+        actions={
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="h-4 w-4" /> New ticket
+          </Button>
+        }
+      />
 
       {/* DataTable — fills remaining height */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <TicketTable onSelect={setSelectedId} />
+        <TicketTable onSelect={setSelectedId} onNew={() => setShowModal(true)} />
       </div>
 
       <NewTicketModal open={showModal} onClose={() => setShowModal(false)} />

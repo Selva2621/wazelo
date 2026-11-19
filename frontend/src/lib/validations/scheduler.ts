@@ -35,7 +35,7 @@ export const createScheduledMessageSchema = z
       return true;
     },
     {
-      message: "Media URL is required for media messages",
+      message: "Upload a file or paste a URL",
       path: ["mediaUrl"],
     },
   );

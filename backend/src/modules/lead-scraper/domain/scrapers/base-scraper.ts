@@ -1,4 +1,6 @@
 import { ScrapedLead } from './scraper.interface';
+import { DEFAULT_COUNTRY_CODE } from '@/shared/constants/countries';
+import { toE164 } from '@/shared/utils/phone.util';
 
 export abstract class BaseScraper {
   protected async delay(min = 2000, max = 5000): Promise<void> {
@@ -19,30 +21,9 @@ export abstract class BaseScraper {
     };
   }
 
-  protected normalizePhone(raw: string, defaultCountryCode = '91'): string | null {
-    if (!raw) return null;
-    const trimmed = raw.trim();
-    const hasPlus = trimmed.startsWith('+');
-    const digits = trimmed.replace(/\D/g, '');
-    if (digits.length < 7) return null;
-
-    // Already E.164 (has + prefix)
-    if (hasPlus) return `+${digits}`;
-
-    // Indian trunk prefix: 0XXXXXXXXXX (11 digits starting with 0) → +91XXXXXXXXXX
-    if (digits.length === 11 && digits.startsWith('0')) {
-      return `+${defaultCountryCode}${digits.slice(1)}`;
-    }
-
-    // 10-digit number without trunk prefix → +91XXXXXXXXXX
-    if (digits.length === 10) {
-      return `+${defaultCountryCode}${digits}`;
-    }
-
-    // Already has country code digits (e.g. 919876543210 = 12 digits)
-    if (digits.length > 10) return `+${digits}`;
-
-    return `+${defaultCountryCode}${digits}`;
+  /** E.164 — numbers without a country code are read as `country`'s (trunk 0 dropped) */
+  protected normalizePhone(raw: string, country = DEFAULT_COUNTRY_CODE): string | null {
+    return toE164(raw, country);
   }
 
   /**
@@ -50,13 +31,18 @@ export abstract class BaseScraper {
    * FAILED with a reason instead of COMPLETED with 0 results.
    */
   protected fail(sourceName: string, error: unknown): never {
+    const message = error instanceof Error ? error.message : String(error);
+    // Playwright's own text is a multi-line ASCII box — not something to show in the UI
+    if (message.includes("Executable doesn't exist")) {
+      throw new Error(`${sourceName} scraper browser is not installed on the server — reinstall dependencies and redeploy`);
+    }
     const status = (error as { response?: { status?: number } })?.response?.status;
     const detail =
       status === 403 || status === 429
         ? `blocked by ${sourceName} (HTTP ${status}) — try again later`
         : status
           ? `${sourceName} returned HTTP ${status}`
-          : `${sourceName} could not be reached: ${error instanceof Error ? error.message : String(error)}`;
+          : `${sourceName} could not be reached: ${message}`;
     throw new Error(detail);
   }
 

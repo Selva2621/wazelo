@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
+/** Digits with optional "+" and spacing — the backend adds the country code and checks the number */
+const PHONE_REGEX = /^\+?[\d\s().-]{7,20}$/;
 
 export const createContactSchema = z.object({
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
-    .regex(PHONE_REGEX, "Enter a valid phone number (e.g. +1234567890)"),
+    .regex(PHONE_REGEX, "Enter a valid phone number (e.g. 98765 43210)"),
+  /** Country of a number typed without a country code */
+  country: z.string().length(2).optional(),
   name: z.string().max(255, "Name must be 255 characters or less").optional(),
   email: z
     .string()

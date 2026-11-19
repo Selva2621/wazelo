@@ -10,6 +10,11 @@ import type {
   PeakHoursResponse,
   TeamPerformanceResponse,
   CampaignSummaryResponse,
+  LiveChannelStatsResponse,
+  LiveWaitingResponse,
+  LiveRevenueResponse,
+  LiveLeadsResponse,
+  CityInsightsResponse,
 } from "@/lib/types/analytics";
 
 export const analyticsApi = {
@@ -50,6 +55,33 @@ export const analyticsApi = {
   getCampaigns: (params?: AnalyticsQueryParams) =>
     apiClient
       .get<CampaignSummaryResponse>("/analytics/campaigns", { params })
+      .then((r) => r.data),
+
+  // ─── Live: messages today per channel (Message City) ───
+
+  getLiveChannels: (params?: { timezoneOffsetMinutes?: number }) =>
+    apiClient
+      .get<LiveChannelStatsResponse>("/analytics/live/channels", { params })
+      .then((r) => r.data),
+
+  // ─── Live dashboard ───
+
+  getWaiting: (params?: { minMinutes?: number }) =>
+    apiClient
+      .get<LiveWaitingResponse>("/analytics/live/waiting", { params })
+      .then((r) => r.data),
+
+  getRevenue: () =>
+    apiClient.get<LiveRevenueResponse>("/analytics/live/revenue").then((r) => r.data),
+
+  getLeadsToday: (params?: { timezoneOffsetMinutes?: number }) =>
+    apiClient
+      .get<LiveLeadsResponse>("/analytics/live/leads", { params })
+      .then((r) => r.data),
+
+  getCityInsights: (params?: { timezoneOffsetMinutes?: number }) =>
+    apiClient
+      .get<CityInsightsResponse>("/analytics/live/city-insights", { params })
       .then((r) => r.data),
 
   // ─── Backfill ───

@@ -8,6 +8,7 @@ import { MessageDirection, MessageStatus, MessageType, UsageMetricType } from '@
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { DevSendBulkMessageDto } from '../dto';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 
 @Injectable()
 export class DevSendBulkMessageUseCase {
@@ -20,6 +21,7 @@ export class DevSendBulkMessageUseCase {
     private readonly usageTracking: UsageTrackingService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messageRepo: MessageRepository,
+    private readonly orgLocale: OrgLocaleService,
   ) {}
 
   async execute(orgId: string, dto: DevSendBulkMessageDto) {
@@ -27,7 +29,9 @@ export class DevSendBulkMessageUseCase {
 
     // 1. Check usage limits for bulk count
     const usageCheck = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
-    if (!usageCheck.allowed) {
+    const overLimit =
+      usageCheck.limitValue > 0 && usageCheck.currentValue + recipientCount > usageCheck.limitValue;
+    if (!usageCheck.allowed || overLimit) {
       throw new BadRequestException({
         error: 'USAGE_LIMIT_EXCEEDED',
         message: 'Message limit reached for your current plan. Please upgrade.',
@@ -51,7 +55,10 @@ export class DevSendBulkMessageUseCase {
     const results: { to: string; messageId: string; status: string }[] = [];
 
     // 3. Queue each recipient
-    for (const to of dto.to) {
+    for (const rawTo of dto.to) {
+      // Numbers without a country code get the org's
+      const to = (await this.orgLocale.normalizePhone(orgId, rawTo)) ?? rawTo;
+
       // Auto-create or find contact
       const contactResult = await this.repo.createContact({ orgId, name: to, phoneNumber: to });
 
@@ -75,7 +82,7 @@ export class DevSendBulkMessageUseCase {
       }
 
       // Through the repository so body/media are encrypted at rest. Bulk priority
-      // puts it in the send worker's bulk lane: warm-up daily caps, sending hours,
+      // puts it in the send worker's bulk lane: daily caps, sending hours,
       // auto-pause, 10–40s human pacing and "typing…" — same as campaigns.
       const message = await this.messageRepo.create({
         orgId,
@@ -104,10 +111,7 @@ export class DevSendBulkMessageUseCase {
       results.push({ to, messageId: message.id, status: 'QUEUED' });
     }
 
-    // 4. Increment usage for all messages
-    for (let i = 0; i < recipientCount; i++) {
-      await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
-    }
+    // 4. Each message is counted toward the plan by the send worker once it goes out
 
     this.eventEmitter.emit(EVENT_NAMES.MESSAGE_QUEUED, {
       orgId,

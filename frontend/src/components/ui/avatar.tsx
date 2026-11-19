@@ -1,5 +1,6 @@
 "use client";
 
+import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type AvatarSize = "sm" | "md" | "lg";
@@ -38,6 +39,11 @@ function getColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+// Contacts with no saved name are shown by their number; "+9" is not a useful monogram
+function isPhoneLike(name: string): boolean {
+  return /^[+\d]/.test(name.trim());
+}
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
@@ -71,7 +77,7 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
       )}
       title={name}
     >
-      {getInitials(name)}
+      {isPhoneLike(name) ? <User className="h-1/2 w-1/2" strokeWidth={2.25} aria-hidden /> : getInitials(name)}
     </div>
   );
 }
