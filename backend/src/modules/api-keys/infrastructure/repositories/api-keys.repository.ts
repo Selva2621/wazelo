@@ -52,7 +52,7 @@ export class ApiKeysRepository {
       where: { keyHash },
       select: {
         id: true, orgId: true, scopes: true, isActive: true,
-        expiresAt: true,
+        expiresAt: true, createdById: true,
       },
     });
 
