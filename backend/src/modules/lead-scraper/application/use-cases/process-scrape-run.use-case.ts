@@ -10,6 +10,7 @@ import { LeadFilters, hasActiveFilters, matchesFilters } from '../../domain/serv
 import { scoreLead } from '../../domain/services/lead-score';
 import { ScrapeTimeoutError, scrapeRunTimeoutMs } from '../../domain/services/scrape-timeout';
 import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
+import { toE164 } from '@/shared/utils/phone.util';
 
 /** Websites fetched in parallel when looking for emails */
 const WEBSITE_LOOKUP_CONCURRENCY = 5;
@@ -48,13 +49,13 @@ export class ProcessScrapeRunUseCase {
     if (!started) return;
 
     const filters = (run.filters as LeadFilters | null) ?? null;
-    const isMaps = run.source === ScrapeSource.GOOGLE_MAPS;
     const limitMs = scrapeRunTimeoutMs({
       maxResults: run.maxResults,
-      isMaps,
+      // IndiaMART opens a Maps place page per supplier too
+      isMaps: BUSINESS_SOURCES.has(run.source),
       filtered: hasActiveFilters(filters),
       collectLastReview: filters?.activeWithinMonths != null,
-      findEmails: findsEmails(filters, isMaps),
+      findEmails: findsEmails(filters, run.source),
     });
 
     // Stop the scrape (closing its browser) when it runs past its limit or the user cancels it
@@ -70,7 +71,7 @@ export class ProcessScrapeRunUseCase {
     }, CANCEL_POLL_MS);
 
     try {
-      const { leads, duplicates } = await untilAborted(this.collect(run, filters, isMaps, abort.signal), abort.signal);
+      const { leads, duplicates } = await untilAborted(this.collect(run, filters, abort.signal), abort.signal);
 
       // Cancelled just before the scrape returned — discard results
       const current = await this.scrapeRunRepository.findById(scrapeRunId);
@@ -83,7 +84,7 @@ export class ProcessScrapeRunUseCase {
       if (leads.length > 0) {
         await this.prisma.scrapeResult.createMany({
           data: leads.map((lead) => ({
-            ...(isMaps ? scoreLead(lead) : { score: null, tags: [] }),
+            ...(BUSINESS_SOURCES.has(run.source) ? scoreLead(lead) : { score: null, tags: [] }),
             scrapeRunId: run.id,
             orgId: run.orgId,
             name: lead.name ?? null,
@@ -143,30 +144,31 @@ export class ProcessScrapeRunUseCase {
   private async collect(
     run: ScrapeRun,
     filters: LeadFilters | null,
-    isMaps: boolean,
     signal: AbortSignal,
   ): Promise<{ leads: ScrapedLead[]; duplicates: number }> {
     const inspected = new WeakSet<ScrapedLead>();
+    const country = filters?.country ?? (await this.orgLocale.get(run.orgId)).country;
+    const findEmails = findsEmails(filters, run.source);
     const accept = hasActiveFilters(filters)
-      ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected, findsEmails(filters, isMaps))
+      ? (lead: ScrapedLead) => this.accepts(lead, filters!, run.orgId, run.id, inspected, findEmails, country)
       : undefined;
 
     const scraper = this.scraperFactory.getScraper(run.source);
     let scraped: ScrapedLead[];
-    if (isMaps) {
-      // Maps applies the filter while scraping, so maxResults counts matching places
+    if (BUSINESS_SOURCES.has(run.source)) {
+      // Maps and IndiaMART apply the filter while scraping, so maxResults counts matching places
       scraped = await scraper.scrape(run.keywords, run.location ?? undefined, run.maxResults, {
         accept,
         areas: filters?.areas,
         radiusKm: filters?.radiusKm,
         collectLastReview: filters?.activeWithinMonths != null,
-        country: filters?.country ?? (await this.orgLocale.get(run.orgId)).country,
+        country,
         signal,
       });
     } else {
-      // Job boards return a list in one go: fetch extra, then filter down to maxResults
+      // Job boards and directories return a list in one go: fetch extra, then filter down to maxResults
       const fetchCount = accept ? Math.min(run.maxResults * JOB_FILTER_OVERSCAN, 200) : run.maxResults;
-      const fetched = await scraper.scrape(run.keywords, run.location ?? undefined, fetchCount, { signal });
+      const fetched = await scraper.scrape(run.keywords, run.location ?? undefined, fetchCount, { signal, country });
       scraped = [];
       for (const lead of fetched) {
         if (scraped.length >= run.maxResults || signal.aborted) break;
@@ -175,7 +177,7 @@ export class ProcessScrapeRunUseCase {
     }
     const { unique: leads, duplicates } = dedupeLeads(scraped);
 
-    if (findsEmails(filters, isMaps)) await this.inspectWebsites(leads, inspected, signal);
+    if (findEmails) await this.inspectWebsites(leads, inspected, signal, country);
     return { leads, duplicates };
   }
 
@@ -190,9 +192,10 @@ export class ProcessScrapeRunUseCase {
     runId: string,
     inspected: WeakSet<ScrapedLead>,
     findEmail: boolean,
+    country: string,
   ): Promise<boolean> {
     if (filters.websiteIssues?.length && lead.website && !inspected.has(lead)) {
-      await this.inspectLeadWebsite(lead, findEmail, inspected);
+      await this.inspectLeadWebsite(lead, findEmail, inspected, country);
     }
     if (!matchesFilters(lead, filters)) return false;
 
@@ -222,29 +225,49 @@ export class ProcessScrapeRunUseCase {
     return true;
   }
 
-  private async inspectLeadWebsite(lead: ScrapedLead, findEmail: boolean, inspected: WeakSet<ScrapedLead>) {
+  /** Read the lead's website: marketing signals, plus any email, phone, WhatsApp and socials it lacks */
+  private async inspectLeadWebsite(
+    lead: ScrapedLead,
+    findEmail: boolean,
+    inspected: WeakSet<ScrapedLead>,
+    country: string,
+  ) {
     inspected.add(lead);
-    const { site, email } = await inspectWebsite(lead.website!, { findEmail: findEmail && !lead.email });
-    lead.site = site;
-    if (email) lead.email = email;
+    const found = await inspectWebsite(lead.website!, { findEmail: findEmail && !lead.email });
+    lead.site = found.site;
+    if (found.email) lead.email = found.email;
+    const whatsapp = found.whatsapp.map((n) => toE164(n, country)).find(Boolean) ?? undefined;
+    if (whatsapp) lead.websiteWhatsapp = whatsapp;
+    // A click-to-chat number is on WhatsApp for sure — prefer it over a plain tel: link
+    if (!lead.phone) lead.phone = whatsapp ?? found.phones.map((n) => toE164(n, country)).find(Boolean) ?? undefined;
+    if (found.socialLinks.length) {
+      lead.socialLinks = [...new Set([...(lead.socialLinks ?? []), ...found.socialLinks])].slice(0, 8);
+    }
   }
 
   /** Fetch each lead's website for an email and marketing signals, a few at a time. */
-  private async inspectWebsites(leads: ScrapedLead[], inspected: WeakSet<ScrapedLead>, signal: AbortSignal): Promise<void> {
+  private async inspectWebsites(
+    leads: ScrapedLead[],
+    inspected: WeakSet<ScrapedLead>,
+    signal: AbortSignal,
+    country: string,
+  ): Promise<void> {
     const queue = leads.filter((l) => l.website && !inspected.has(l));
     const worker = async () => {
       for (let lead = queue.shift(); lead && !signal.aborted; lead = queue.shift()) {
-        await this.inspectLeadWebsite(lead, true, inspected);
+        await this.inspectLeadWebsite(lead, true, inspected, country);
       }
     };
     await Promise.all(Array.from({ length: WEBSITE_LOOKUP_CONCURRENCY }, worker));
   }
 }
 
-/** Google Maps always looks up an email on the lead's website, like the phone; job boards only when asked. */
-function findsEmails(filters: LeadFilters | null, isMaps: boolean): boolean {
-  return isMaps || !!filters?.findEmails;
+/** Business sources (Maps, IndiaMART) always read the lead's website for contacts; job boards only when asked. */
+function findsEmails(filters: LeadFilters | null, source: ScrapeSource): boolean {
+  return BUSINESS_SOURCES.has(source) || !!filters?.findEmails;
 }
+
+const BUSINESS_SOURCES = new Set<ScrapeSource>([ScrapeSource.GOOGLE_MAPS, ScrapeSource.INDIAMART]);
 
 /**
  * Settle with `work`, or reject with the abort reason as soon as `signal` fires — so a scraper
@@ -270,6 +293,12 @@ function leadDetails(lead: ScrapedLead): Prisma.InputJsonObject {
     lng: lead.lng,
     lastReviewAt: lead.lastReviewAt,
     site: lead.site,
+    websiteWhatsapp: lead.websiteWhatsapp,
+    yearsListed: lead.yearsListed,
+    trustSeal: lead.trustSeal,
+    responseRate: lead.responseRate,
+    product: lead.product,
+    mapsUrl: lead.mapsUrl,
     budgetMin: lead.budgetMin,
     budgetMax: lead.budgetMax,
     budgetType: lead.budgetType,

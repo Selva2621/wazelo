@@ -26,4 +26,5 @@ export const SCRAPE_SOURCE_LABELS: Record<ScrapeSource, string> = {
   FREELANCER_IN: "Freelancer.in",
   TRUELANCER: "Truelancer",
   LINKEDIN_JOBS: "LinkedIn Jobs",
+  INDIAMART: "IndiaMART",
 };

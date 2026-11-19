@@ -11,6 +11,22 @@ export interface SuggestionGroup {
 export const KEYWORD_SUGGESTIONS: Record<ScrapeSource, SuggestionGroup[]> = {
   GOOGLE_MAPS: BUSINESS_TYPE_GROUPS,
 
+  // IndiaMART product categories (each one is a real category page)
+  INDIAMART: [
+    {
+      label: "Industrial",
+      items: ["LED lights", "Solar panels", "Industrial chemicals", "Corrugated boxes", "Packaging boxes", "Water purifiers"],
+    },
+    {
+      label: "Consumer & fashion",
+      items: ["Cotton t-shirts", "Sarees", "Kurtis", "Ayurvedic medicines", "Air conditioners"],
+    },
+    {
+      label: "Business supplies",
+      items: ["Gym equipments", "Office furniture", "Modular kitchen", "CCTV cameras"],
+    },
+  ],
+
   // Upwork gig categories / roles
   UPWORK_JOBS: [
     {

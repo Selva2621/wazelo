@@ -98,6 +98,7 @@ const SOURCE_LABELS: Record<ScrapeSource, string> = {
   FREELANCER_IN: "Freelancer.in",
   TRUELANCER: "Truelancer",
   LINKEDIN_JOBS: "LinkedIn Jobs",
+  INDIAMART: "IndiaMART",
 };
 
 function StatusBadge({ status }: { status: ScrapeRunStatus }) {
@@ -368,6 +369,10 @@ function detailLines(result: ScrapeResult): [string, string][] {
   if (d.priceLevel) lines.push(["Price", "₹".repeat(d.priceLevel)]);
   if (d.photoCount != null) lines.push(["Photos", String(d.photoCount)]);
   if (d.lastReviewAt) lines.push(["Last review", timeAgo(d.lastReviewAt)]);
+  if (d.websiteWhatsapp) lines.push(["WhatsApp on site", d.websiteWhatsapp]);
+  if (d.product) lines.push(["Product", d.product]);
+  if (d.yearsListed != null) lines.push(["On IndiaMART", `${d.yearsListed} yrs${d.trustSeal ? " · TrustSEAL" : ""}`]);
+  if (d.responseRate != null) lines.push(["Responds", `${d.responseRate}%`]);
   return lines;
 }
 
@@ -543,7 +548,7 @@ function resultColumns(waStatusMap: Record<string, CheckWhatsAppResult>): DataTa
           {result.jobTitle && (
             <DetailLine label="Role" value={result.jobTitle} />
           )}
-          {result.company && (
+          {result.company && result.company !== result.name && (
             <DetailLine label="Company" value={result.company} />
           )}
           {detailLines(result).map(([label, value]) => (

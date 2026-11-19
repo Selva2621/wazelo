@@ -2664,6 +2664,7 @@ enum ScrapeSource {
   FREELANCER_IN
   TRUELANCER
   LINKEDIN_JOBS
+  INDIAMART
 }
 
 model ScrapeRun {

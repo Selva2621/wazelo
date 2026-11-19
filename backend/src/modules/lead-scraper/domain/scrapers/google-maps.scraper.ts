@@ -19,6 +19,21 @@ const MAX_SCROLLS = 40;
 
 type Coords = { lat: number; lng: number };
 
+/** Words that say nothing about which business it is */
+const NAME_NOISE = new Set(['pvt', 'private', 'ltd', 'limited', 'llp', 'inc', 'co', 'company', 'and', 'the', 'india', 'enterprises', 'enterprise']);
+
+const nameWords = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !NAME_NOISE.has(w));
+
+/** "Inventaa LED Lights Pvt Ltd" vs Maps' "Inventaa LED Lights" — most distinctive words shared */
+export function sameBusiness(a: string, b: string): boolean {
+  const wa = new Set(nameWords(a));
+  const wb = nameWords(b);
+  if (!wa.size || !wb.length) return false;
+  const shared = wb.filter((w) => wa.has(w)).length;
+  return shared / Math.min(wa.size, new Set(wb).size) >= 0.6;
+}
+
 export class GoogleMapsScraper extends BaseScraper {
   private readonly logger = new Logger(GoogleMapsScraper.name);
 
@@ -90,6 +105,38 @@ export class GoogleMapsScraper extends BaseScraper {
     } finally {
       if (browser) await browser.close().catch(() => undefined);
     }
+  }
+
+  /**
+   * Look one named business up on Maps (to fill a phone other sources hide). Maps either opens
+   * the place straight away or lists matches — the first listing is read. Returns undefined
+   * when nothing turns up or the place found is a different business.
+   */
+  async findBusiness(page: Page, name: string, city?: string, country?: string): Promise<ScrapedLead | undefined> {
+    const query = [name, city].filter(Boolean).join(' ');
+    await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
+    // Either a place page (/maps/place/ URL) or a result feed
+    await page
+      .waitForFunction(
+        () =>
+          location.pathname.includes('/maps/place/') ||
+          !!document.querySelector('div[role="feed"] a[href*="/maps/place/"]'),
+        undefined,
+        { timeout: 10_000 },
+      )
+      .catch(() => undefined);
+    let placeUrl: string | undefined = page.url().includes('/maps/place/') ? page.url() : undefined;
+    if (!placeUrl) {
+      placeUrl = await page.evaluate(
+        () => (document.querySelector('div[role="feed"] a[href*="/maps/place/"]') as HTMLAnchorElement | null)?.href,
+      );
+    }
+    if (!placeUrl) return undefined;
+    const place = await this.scrapePlace(page, placeUrl, false, country);
+    return place.name && sameBusiness(place.name, name) ? place : undefined;
   }
 
   private searchUrls(keywords: string, location: string | undefined, options?: ScrapeOptions, center?: Coords): string[] {
