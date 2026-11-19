@@ -46,6 +46,7 @@ import { Badge } from "@/components/ui/badge";
 import { CHANNEL_TYPE_LABELS } from "@/lib/types/channels";
 import type { ChannelType } from "@/lib/types/channels";
 import { ConversationList } from "@/components/chat/conversation-list";
+import { InboxOverview } from "@/components/chat/inbox-overview";
 import { MessageThread, MessageThreadSkeleton } from "@/components/chat/message-thread";
 import { Drawer } from "@/components/ui/modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -297,6 +298,33 @@ export function InboxView({
   const selectedConversation = conversations.find(
     (c) => c.id === selectedId,
   );
+
+  // ─── Desktop overview when no chat is open (counts from the loaded list) ───
+  const myId = useAuthStore((s) => s.user?.id);
+  const overview = useMemo(() => {
+    const raw = conversationsQuery.data?.data ?? [];
+    const unread = raw.filter((c) => c.unreadCount > 0);
+    const oldest = unread.reduce<ConversationResponse | null>((acc, c) => {
+      const at = c.lastMessageAt || c.createdAt;
+      return !acc || at < (acc.lastMessageAt || acc.createdAt) ? c : acc;
+    }, null);
+    return {
+      stats: [
+        { label: "Unread chats", value: unread.length },
+        { label: "Open chats", value: raw.filter((c) => c.status === "OPEN").length },
+        { label: "Assigned to me", value: raw.filter((c) => !!myId && c.assignedToId === myId).length },
+      ],
+      oldest: oldest
+        ? {
+            id: oldest.id,
+            name: oldest.contactName || oldest.contactPhone,
+            detail: oldest.contactPhone,
+            since: oldest.lastMessageAt || oldest.createdAt,
+          }
+        : null,
+      empty: !conversationsQuery.isLoading && filter !== "unread" && raw.length === 0,
+    };
+  }, [conversationsQuery.data, conversationsQuery.isLoading, filter, myId]);
 
   // ─── Mark conversation as read on select ───
   useEffect(() => {
@@ -852,11 +880,12 @@ export function InboxView({
             )}
           </>
         ) : (
-          <EmptyState
-            icon={<MessageSquare className="h-16 w-16" />}
-            title="No conversation selected"
-            description="Select a conversation from the list to start chatting."
-            className="flex-1"
+          <InboxOverview
+            stats={overview.stats}
+            oldest={overview.oldest}
+            onOpen={setSelectedId}
+            empty={overview.empty}
+            channel="whatsapp"
           />
         )}
       </div>

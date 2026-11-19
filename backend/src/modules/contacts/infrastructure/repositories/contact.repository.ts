@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 import {
   Contact,
   ContactSource,
@@ -32,6 +33,16 @@ export interface UpdateContactInput {
   email?: string;
   avatarUrl?: string;
   metadata?: Record<string, unknown>;
+}
+
+/** Lead pipeline card extras for one contact (see ContactRepository.getPipelineMeta) */
+export interface PipelineMetaRow {
+  contactId: string;
+  lastMessage: { body: string | null; type: string; direction: 'INBOUND' | 'OUTBOUND'; at: Date } | null;
+  /** When the contact entered its current lead status (created date if it never moved) */
+  stageSince: Date;
+  /** Earliest follow-up nobody has acted on yet */
+  followUpDueAt: Date | null;
 }
 
 export interface ListContactsOptions {
@@ -78,7 +89,11 @@ export type ContactWithRelations = Contact & {
 
 @Injectable()
 export class ContactRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Message bodies are encrypted at rest (pipeline cards show the last one)
+    private readonly messageEncryption: MessageEncryptionService,
+  ) {}
 
   // ───── Contact CRUD ─────
 
@@ -462,6 +477,77 @@ export class ContactRepository {
     return this.prisma.contactStatusHistory.findMany({
       where: { contactId, orgId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ───── Pipeline card extras ─────
+
+  /**
+   * Extras for lead pipeline cards, for a page of contacts at once: their last WhatsApp
+   * message (and who sent it), when they entered their current stage, and their earliest
+   * open follow-up. Only contacts in the org and inside the caller's owner scope are returned.
+   */
+  async getPipelineMeta(
+    orgId: string,
+    ids: string[],
+    scope: { ownerId?: string; ownerIds?: string[] },
+  ): Promise<PipelineMetaRow[]> {
+    if (ids.length === 0) return [];
+    const contacts = await this.prisma.contact.findMany({
+      where: {
+        orgId,
+        id: { in: ids },
+        deletedAt: null,
+        ...(scope.ownerId ? { ownerId: scope.ownerId } : {}),
+        ...(scope.ownerIds ? { ownerId: { in: scope.ownerIds } } : {}),
+      },
+      select: { id: true, phoneNumber: true, createdAt: true },
+    });
+    if (contacts.length === 0) return [];
+    const contactIds = contacts.map((c) => c.id);
+
+    // Messages store the phone with or without "+": match on digits
+    const digitsOf = (p: string) => p.replace(/\D/g, '');
+    const phoneVariants = [...new Set(contacts.flatMap((c) => [c.phoneNumber, digitsOf(c.phoneNumber), `+${digitsOf(c.phoneNumber)}`]))];
+
+    const [lastMessages, stageChanges, followUps] = await Promise.all([
+      this.prisma.$queryRaw<{ contact_phone: string; body: string | null; type: string; direction: string; created_at: Date }[]>`
+        SELECT DISTINCT ON (contact_phone) contact_phone, body, type::text AS type, direction::text AS direction, created_at
+        FROM messages
+        WHERE org_id = ${orgId}::uuid AND deleted_at IS NULL AND contact_phone IN (${Prisma.join(phoneVariants)})
+        ORDER BY contact_phone, created_at DESC`,
+      this.prisma.contactStatusHistory.groupBy({
+        by: ['contactId'],
+        where: { orgId, contactId: { in: contactIds } },
+        _max: { createdAt: true },
+      }),
+      this.prisma.leadFollowUp.groupBy({
+        by: ['contactId'],
+        where: { orgId, contactId: { in: contactIds }, touchedAt: null },
+        _min: { dueAt: true },
+      }),
+    ]);
+
+    // Latest message per contact across phone spellings
+    const lastByDigits = new Map<string, (typeof lastMessages)[number]>();
+    for (const m of lastMessages) {
+      const key = digitsOf(m.contact_phone);
+      const prev = lastByDigits.get(key);
+      if (!prev || prev.created_at < m.created_at) lastByDigits.set(key, m);
+    }
+    const stageSince = new Map(stageChanges.map((s) => [s.contactId, s._max.createdAt]));
+    const followUpDue = new Map(followUps.map((f) => [f.contactId, f._min.dueAt]));
+
+    return contacts.map((c) => {
+      const m = lastByDigits.get(digitsOf(c.phoneNumber));
+      return {
+        contactId: c.id,
+        lastMessage: m
+          ? { body: this.messageEncryption.decryptIfEncrypted(m.body), type: m.type, direction: m.direction as 'INBOUND' | 'OUTBOUND', at: m.created_at }
+          : null,
+        stageSince: stageSince.get(c.id) ?? c.createdAt,
+        followUpDueAt: followUpDue.get(c.id) ?? null,
+      };
     });
   }
 

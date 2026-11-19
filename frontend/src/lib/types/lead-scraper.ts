@@ -3,7 +3,8 @@ export type ScrapeSource =
   | "UPWORK_JOBS"
   | "FREELANCER_IN"
   | "TRUELANCER"
-  | "LINKEDIN_JOBS";
+  | "LINKEDIN_JOBS"
+  | "INDIAMART";
 
 export type ScrapeRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
@@ -60,6 +61,15 @@ export interface ScrapeResultDetails {
   lng?: number;
   lastReviewAt?: string;
   site?: { https: boolean; mobileFriendly: boolean; hasPixel: boolean; hasAnalytics: boolean };
+  /** E.164 number from a WhatsApp chat link on the business's website */
+  websiteWhatsapp?: string;
+  // IndiaMART
+  yearsListed?: number;
+  trustSeal?: boolean;
+  responseRate?: number;
+  product?: string;
+  /** Google Maps place an IndiaMART supplier's phone came from */
+  mapsUrl?: string;
   budgetMin?: number;
   budgetMax?: number;
   budgetType?: "fixed" | "hourly";

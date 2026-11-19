@@ -250,6 +250,41 @@ export function ScrapeFilters({ source, value, onChange, hasLocation }: {
                 </div>
               </Section>
             </>
+          ) : source === "INDIAMART" ? (
+            <>
+              <Section title="Quality">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Field label="Min rating">
+                    <Select value={value.minRating ?? ""} onChange={(e) => set({ minRating: e.target.value ? Number(e.target.value) : undefined })} size="sm" className="w-auto">
+                      <option value="">Any</option>
+                      {[3, 3.5, 4, 4.5].map((r) => <option key={r} value={r}>{r.toFixed(1)}+</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Reviews">
+                    <input type="number" min={0} placeholder="min" value={value.minReviews ?? ""} onChange={(e) => set({ minReviews: num(e.target.value) })} className={`${inputClass} w-20`} />
+                    –
+                    <input type="number" min={0} placeholder="max" value={value.maxReviews ?? ""} onChange={(e) => set({ maxReviews: num(e.target.value) })} className={`${inputClass} w-20`} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Contact">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Check label="Has phone" hint="found on Google Maps" checked={!!value.hasPhone} onChange={(v) => set({ hasPhone: flag(v) })} />
+                  <Check label="Mobile numbers only" hint="no landlines" checked={!!value.mobileOnly} onChange={(v) => set({ mobileOnly: flag(v) })} />
+                </div>
+              </Section>
+
+              <Section title="Business">
+                <Field label="Skip names with">
+                  <ListInput value={value.excludeWords} onChange={(excludeWords) => set({ excludeWords })} placeholder="Philips, Havells" />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Check label="No website only" checked={!!value.noWebsite} onChange={(v) => set({ noWebsite: flag(v) })} />
+                  <Check label="Skip closed" checked={!!value.skipClosed} onChange={(v) => set({ skipClosed: flag(v) })} />
+                </div>
+              </Section>
+            </>
           ) : (
             <>
               <Section title="Budget">

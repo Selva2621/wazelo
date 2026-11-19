@@ -51,7 +51,7 @@ export default function TermsPage() {
               Terms of Service
             </h1>
             <p style={{ fontSize: 14, color: "rgba(219,194,176,0.45)", fontFamily: "'Inter', sans-serif" }}>
-              Last updated: April 19, 2025 · Effective for all Wazelo CRM users
+              Last updated: November 19, 2026 · Effective for all Wazelo CRM users
             </p>
           </div>
         </div>
@@ -101,7 +101,22 @@ export default function TermsPage() {
             </ul>
           </Section>
 
-          <Section title="6. Subscription & Billing">
+          <Section title="6. Lead Finder">
+            <P>The Lead Finder collects business information that is publicly listed on third-party websites, such as Google Maps, IndiaMART, job boards and businesses' own websites. We run the search for you; you decide which leads to keep, contact and store. For the personal data you collect and use this way, you are the data fiduciary (data controller) under the Digital Personal Data Protection Act, 2023 and other applicable law, and Wazelo CRM acts on your instructions.</P>
+            <P>When you use the Lead Finder, you are solely responsible for:</P>
+            <ul style={{ paddingLeft: 20, marginBottom: 14 }}>
+              <Li>Having a lawful reason to collect, store and contact each lead, and using their data only for that purpose</Li>
+              <Li>Getting opt-in consent before you message a lead on WhatsApp or send them marketing. A number found by the Lead Finder is not consent</Li>
+              <Li>Following the terms of the websites the data comes from, and any limits they set on how it may be used</Li>
+              <Li>Following the TRAI telemarketing rules, the Do Not Disturb (DND) registry and similar rules when you call or message leads</Li>
+              <Li>Stopping contact and deleting a person's data promptly when they ask, and keeping it only as long as you need it</Li>
+              <Li>Any complaint, claim, penalty or WhatsApp account restriction that results from how you collect or use leads</Li>
+            </ul>
+            <P>To help you comply, the Service may hold back WhatsApp campaigns, sequences and automations to leads that have not opted in, keep numbers that asked to be removed from being found again, and delete raw search results after a retention period. These safeguards do not move your responsibility to us.</P>
+            <P>Lead data is provided "as is". We do not promise that it is accurate, complete or current, or that a source will remain available. We may limit, change or remove Lead Finder sources at any time, including when a source asks us to, and may suspend the Lead Finder for any account that misuses it.</P>
+          </Section>
+
+          <Section title="7. Subscription & Billing">
             <P>Wazelo CRM is offered on a subscription basis. By subscribing to a paid plan, you authorise us to charge the applicable fees to your chosen payment method at the start of each billing cycle.</P>
             <ul style={{ paddingLeft: 20, marginBottom: 14 }}>
               <Li>All prices are in Indian Rupees (INR) unless stated otherwise</Li>
@@ -111,42 +126,42 @@ export default function TermsPage() {
             </ul>
           </Section>
 
-          <Section title="7. Free Trial">
+          <Section title="8. Free Trial">
             <P>We may offer a free trial period. At the end of the trial, your account will be converted to a paid subscription unless you cancel before the trial expires. No credit card is required during the trial unless explicitly stated.</P>
           </Section>
 
-          <Section title="8. Intellectual Property">
+          <Section title="9. Intellectual Property">
             <P>All content, features, and functionality of the Service — including but not limited to software, text, graphics, logos, and user interfaces — are owned by Wazelo CRM and protected by intellectual property laws.</P>
             <P>You retain all rights to the data and content you upload to the Service. By using the Service, you grant us a limited licence to process your data solely for the purpose of providing the Service.</P>
           </Section>
 
-          <Section title="9. Data & Privacy">
+          <Section title="10. Data & Privacy">
             <P>Your use of the Service is also governed by our <a href="/privacy" style={{ color: "#ffb77d", textDecoration: "none" }}>Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you consent to the practices described therein.</P>
           </Section>
 
-          <Section title="10. Limitation of Liability">
+          <Section title="11. Limitation of Liability">
             <P>To the maximum extent permitted by applicable law, Wazelo CRM shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of the Service, including but not limited to loss of revenue, data, goodwill, or business opportunities.</P>
             <P>Our total cumulative liability to you for any claims arising under these Terms shall not exceed the amount you paid us in the 3 months preceding the claim.</P>
           </Section>
 
-          <Section title="11. Indemnification">
+          <Section title="12. Indemnification">
             <P>You agree to indemnify, defend, and hold harmless Wazelo CRM and its officers, directors, employees, and agents from any claims, liabilities, damages, and expenses (including legal fees) arising from your use of the Service, your violation of these Terms, or your violation of any third-party rights.</P>
           </Section>
 
-          <Section title="12. Termination">
+          <Section title="13. Termination">
             <P>You may cancel your account at any time from your billing settings. We may suspend or terminate your access immediately if you violate these Terms or if we are required to do so by law.</P>
             <P>Upon termination, your right to use the Service ceases immediately. We will retain your data for 30 days after termination to allow for any disputes, after which it will be permanently deleted.</P>
           </Section>
 
-          <Section title="13. Governing Law">
+          <Section title="14. Governing Law">
             <P>These Terms are governed by and construed in accordance with the laws of India. Any disputes arising from these Terms shall be subject to the exclusive jurisdiction of the courts in Bengaluru, Karnataka, India.</P>
           </Section>
 
-          <Section title="14. Changes to Terms">
+          <Section title="15. Changes to Terms">
             <P>We may update these Terms from time to time. We will notify you of material changes by email or via an in-app notice at least 14 days before the changes take effect. Continued use of the Service after the effective date constitutes your acceptance of the updated Terms.</P>
           </Section>
 
-          <Section title="15. Contact Us">
+          <Section title="16. Contact Us">
             <P>For questions about these Terms, contact us at:</P>
             <div style={{ background: "#1c1b1b", border: "1px solid rgba(255,183,125,0.1)", borderRadius: 10, padding: "20px 24px" }}>
               <p style={{ fontSize: 14, color: "#e5e2e1", fontFamily: "'Inter', sans-serif", marginBottom: 4, fontWeight: 600 }}>Wazelo CRM</p>

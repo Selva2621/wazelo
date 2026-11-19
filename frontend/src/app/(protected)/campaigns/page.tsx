@@ -181,7 +181,7 @@ export default function CampaignsPage() {
   }, [userRole, adminSessionsData, session]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="flex flex-col h-[calc(100dvh-var(--header-height))]">
       {/* Upgrade banner */}
       {!campaignsEnabled && (
         <div className="shrink-0 mx-6 mt-4 max-lg:mx-4 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-body text-warning">
@@ -293,7 +293,7 @@ export default function CampaignsPage() {
 
       {/* Table */}
       {/* Desktop: room around the table card */}
-      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
+      <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         {isError ? (
           <LoadError what="campaigns" onRetry={() => refetch()} className="m-6" />
         ) : (

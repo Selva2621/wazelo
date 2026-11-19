@@ -26,6 +26,7 @@ import type {
   SplitSavedGroupsRequest,
   SplitSavedGroupsResult,
   SavedGroupMoveImpact,
+  PipelineMeta,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -34,7 +35,13 @@ export const contactsApi = {
   create: (data: CreateContactRequest) =>
     apiClient.post<Contact>("/contacts", data).then((r) => r.data),
 
-  list: (params?: ListContactsParams) =>
+  /** Lead pipeline card extras for up to 100 contacts (one column's cards) */
+  pipelineMeta: (ids: string[]) =>
+    apiClient
+      .get<PipelineMeta[]>("/contacts/pipeline-meta", { params: { ids: ids.join(",") } })
+      .then((r) => r.data),
+
+  list:(params?: ListContactsParams) =>
     apiClient
       .get<ContactListResponse>("/contacts", {
         params: {

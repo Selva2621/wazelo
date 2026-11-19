@@ -41,6 +41,20 @@ export interface ScrapedLead {
   lastReviewAt?: string;
   /** Filled when the website was fetched (email search or website filters) */
   site?: WebsiteSignals;
+  /** E.164 number from a WhatsApp click-to-chat link on the lead's website */
+  websiteWhatsapp?: string;
+
+  // ── IndiaMART extras ──
+  /** Years on IndiaMART */
+  yearsListed?: number;
+  /** IndiaMART TrustSEAL verified supplier */
+  trustSeal?: boolean;
+  /** "80% Response Rate" → 80 */
+  responseRate?: number;
+  /** Product the supplier was listed under */
+  product?: string;
+  /** Google Maps place the phone/address came from */
+  mapsUrl?: string;
 
   // ── Job-board extras ──
   budgetMin?: number;

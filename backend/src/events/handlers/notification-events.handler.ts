@@ -29,6 +29,20 @@ import {
   AlertTriggeredEvent,
 } from '@/events/event-bus';
 
+/** WhatsApp message types in plain words for notification text ("Sticker from +91…"). */
+const MESSAGE_TYPE_LABEL: Record<string, string> = {
+  TEXT: 'Message',
+  IMAGE: 'Photo',
+  VIDEO: 'Video',
+  AUDIO: 'Voice message',
+  DOCUMENT: 'Document',
+  STICKER: 'Sticker',
+  LOCATION: 'Location',
+  CONTACT: 'Contact card',
+  TEMPLATE: 'Message',
+  REACTION: 'Reaction',
+};
+
 /**
  * EPIC 11 — Notification Events Handler
  *
@@ -58,7 +72,7 @@ export class NotificationEventsHandler {
         type: 'MESSAGE_RECEIVED',
         priority: 'NORMAL',
         title: 'New message received',
-        body: `New ${event.type} message from ${event.contactPhone}`,
+        body: `${MESSAGE_TYPE_LABEL[String(event.type).toUpperCase()] ?? 'Message'} from ${event.contactPhone}`,
         data: {
           messageId: event.messageId,
           conversationId: event.conversationId,

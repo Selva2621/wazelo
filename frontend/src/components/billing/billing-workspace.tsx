@@ -53,7 +53,8 @@ export function BillingWorkspace({ route }: { route: "billing" | "ai-credits" })
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-[1200px] space-y-6 p-6">
+      {/* Left-aligned like every other page (centring left a gap beside the sidebar) */}
+      <div className="max-w-[1400px] space-y-6 p-6">
         <div className="space-y-1 max-lg:hidden">
           <Link
             href="/settings"

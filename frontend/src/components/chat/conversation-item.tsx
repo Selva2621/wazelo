@@ -99,7 +99,8 @@ export function ConversationItem({
               hasUnread ? "text-on-surface" : "text-on-surface-variant",
             )}
           >
-            {conversation.lastMessage}
+            {/* Media, templates and reactions are stored without a text preview */}
+            {conversation.lastMessage || <span className="italic text-on-surface-variant">Message</span>}
           </p>
           {hasUnread && <CountBadge count={conversation.unreadCount} />}
         </div>

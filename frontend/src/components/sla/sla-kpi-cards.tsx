@@ -24,23 +24,27 @@ interface SlaKpiCardsProps {
 export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
   const { compliance, avgResponseByUser } = data;
 
+  const totalCount = avgResponseByUser.reduce((sum, u) => sum + u.count, 0);
   const totalAvgMs =
-    avgResponseByUser.length > 0
+    totalCount > 0
       ? Math.round(
-          avgResponseByUser.reduce((sum, u) => sum + u.avgMs * u.count, 0) /
-            avgResponseByUser.reduce((sum, u) => sum + u.count, 0),
+          avgResponseByUser.reduce((sum, u) => sum + u.avgMs * u.count, 0) / totalCount,
         )
       : null;
+  const hasData = compliance.total > 0 && Number.isFinite(compliance.complianceRate);
 
   const cards = [
     {
       label: "SLA compliance",
-      value: `${compliance.complianceRate.toFixed(1)}%`,
-      rate: `${compliance.total - compliance.breached} / ${compliance.total} within SLA`,
+      value: hasData ? `${compliance.complianceRate.toFixed(1)}%` : "—",
+      rate: hasData
+        ? `${compliance.total - compliance.breached} / ${compliance.total} within SLA`
+        : "No chats tracked",
       icon: ShieldCheck,
       accent: "max-lg:border-l-success",
-      rateColor:
-        compliance.complianceRate >= 90
+      rateColor: !hasData
+        ? "text-on-surface-variant/60"
+        : compliance.complianceRate >= 90
           ? "text-success"
           : compliance.complianceRate >= 70
             ? "text-warning"
@@ -49,9 +53,7 @@ export function SlaKpiCards({ data, activeBreaches }: SlaKpiCardsProps) {
     {
       label: "Avg response time",
       value: formatMs(totalAvgMs),
-      rate: avgResponseByUser.length > 0
-        ? `Across ${avgResponseByUser.reduce((s, u) => s + u.count, 0)} conversations`
-        : null,
+      rate: totalCount > 0 ? `Across ${totalCount} conversations` : null,
       icon: Clock,
       accent: "max-lg:border-l-primary",
       rateColor: "text-on-surface-variant/60",

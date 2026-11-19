@@ -5,6 +5,8 @@ const BASE_MS = 3 * 60_000; // browser start, searches and list scrolling
 const PER_PLACE_MS = 6_000; // one Google Maps detail page
 const PER_REVIEW_MS = 5_000; // extra for the newest-review lookup
 const EMAIL_LOOKUP_MS = 2 * 60_000;
+/** Website lookup reads up to 3 pages per lead, 5 sites at a time */
+const PER_LOOKUP_MS = 3_000;
 
 export interface RunWorkload {
   maxResults: number;
@@ -17,7 +19,7 @@ export interface RunWorkload {
 
 /** Time limit for one run, scaled to the work it asked for. */
 export function scrapeRunTimeoutMs(w: RunWorkload): number {
-  let ms = BASE_MS + (w.findEmails ? EMAIL_LOOKUP_MS : 0);
+  let ms = BASE_MS + (w.findEmails ? Math.max(EMAIL_LOOKUP_MS, w.maxResults * PER_LOOKUP_MS) : 0);
   if (w.isMaps) {
     const places = w.filtered ? Math.min(w.maxResults * 3, w.maxResults + 100) : w.maxResults;
     ms += places * (PER_PLACE_MS + (w.collectLastReview ? PER_REVIEW_MS : 0));

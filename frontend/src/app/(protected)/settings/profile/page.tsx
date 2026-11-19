@@ -11,6 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
+import { FormWithRail, RailCard, RailRow } from "@/components/layout/form-with-rail";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useSubscription } from "@/hooks/use-billing";
+
+const PASSWORD_RULES = [
+  "At least 8 characters",
+  "An uppercase and a lowercase letter",
+  "A number",
+  "A symbol",
+];
 
 export default function ProfilePage() {
   usePageTitle("Profile");
@@ -30,6 +40,9 @@ export default function ProfilePage() {
 
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
+  const { data: org } = useOrgSettings();
+  const { data: billing } = useSubscription();
+  const planName = billing?.subscription?.plan?.name;
 
   const handleProfileSave = () => {
     setProfileSuccess(false);
@@ -86,13 +99,38 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
+  const roleLabel = user.role.charAt(0) + user.role.slice(1).toLowerCase();
+
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Header */}
       <PageHeader title="My profile" className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden" />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
+        <FormWithRail
+          // This page scrolls inside its own box below the header, so the panel sticks to that box's top
+          className="max-w-2xl xl:max-w-6xl xl:[&>aside]:top-0 max-lg:[&>aside]:hidden"
+          rail={
+            <>
+              <RailCard title="Account">
+                <RailRow label="Role">{roleLabel}</RailRow>
+                {org?.name && <RailRow label="Workspace">{org.name}</RailRow>}
+                {planName && <RailRow label="Plan">{planName}</RailRow>}
+              </RailCard>
+              <RailCard title="Password rules">
+                <ul className="space-y-1.5 text-label text-on-surface-variant">
+                  {PASSWORD_RULES.map((rule) => (
+                    <li key={rule} className="flex items-center gap-2">
+                      <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-on-surface-variant" />
+                      {rule}
+                    </li>
+                  ))}
+                </ul>
+              </RailCard>
+            </>
+          }
+        >
         {/* Profile Info */}
         <div data-tour="profile-details" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-4 mb-2">
@@ -115,7 +153,7 @@ export default function ProfilePage() {
                 }
                 className="mt-1"
               >
-                {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
+                {roleLabel}
               </Badge>
             </div>
           </div>
@@ -253,6 +291,7 @@ export default function ProfilePage() {
             Change password
           </Button>
         </div>
+        </FormWithRail>
       </div>
     </div>
   );

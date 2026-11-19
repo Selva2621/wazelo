@@ -25,6 +25,8 @@ import {
   useDeleteUser,
 } from "@/hooks/use-users";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
+import { useSubscription } from "@/hooks/use-billing";
+import { StartHint } from "@/components/ui/start-hint";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -62,6 +64,9 @@ export default function AdminUsersPage() {
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: sessionsData } = useAdminSessions();
   const { data: invitations } = useInvitations();
+  // Admins only (this page is admin-only); shows the seat limit under the table
+  const { data: billing } = useSubscription({ enabled: currentUser?.role === "ADMIN" });
+  const seats = billing?.usage?.activeUsers;
 
   const createUser = useCreateUser();
   const revokeInvitation = useRevokeInvitation();
@@ -524,6 +529,20 @@ export default function AdminUsersPage() {
             skeletonRows={6}
           />
         </div>
+      )}
+
+      {/* Seats used up: say why "Create user" can't add more, and where to get more */}
+      {seats && seats.limit > 0 && seats.current >= seats.limit && (
+        <StartHint
+          icon={<Users />}
+          title={`${seats.current} of ${seats.limit} ${seats.limit === 1 ? "seat" : "seats"} used`}
+          description="Your plan is full. Upgrade to add teammates."
+          action={
+            <Button variant="secondary" size="sm" onClick={() => router.push("/settings/billing?tab=plans")}>
+              See plans
+            </Button>
+          }
+        />
       )}
     </div>
   );

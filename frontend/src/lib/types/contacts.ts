@@ -164,6 +164,17 @@ export interface Contact {
   _count: { notes: number };
 }
 
+// ─── Lead pipeline card extras (GET /contacts/pipeline-meta) ───
+
+export interface PipelineMeta {
+  contactId: string;
+  lastMessage: { body: string | null; type: string; direction: "INBOUND" | "OUTBOUND"; at: string } | null;
+  /** When the contact entered its current lead status */
+  stageSince: string;
+  /** Earliest follow-up nobody has acted on yet */
+  followUpDueAt: string | null;
+}
+
 // ─── List Response ───
 
 export interface ContactListResponse {

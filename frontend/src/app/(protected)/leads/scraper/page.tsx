@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Map, Briefcase, Globe, Search, Linkedin, Play,
+  Map, Briefcase, Globe, Search, Linkedin, Play, Factory,
   Loader2, Users, ArrowRight,
   Trash2, RotateCcw, Copy,
   StickyNote, X, Ban, Sparkles,
@@ -62,6 +62,17 @@ const SCRAPERS: {
     locationLabel: "City / Region",
   },
   {
+    source: "INDIAMART",
+    icon: <Factory className="w-6 h-6" />,
+    title: "IndiaMART",
+    description: "Find manufacturers, traders and suppliers",
+    bestFor: "B2B sales, distributors, exporters",
+    keywordsLabel: "Product",
+    keywordsPlaceholder: "LED lights",
+    locationPlaceholder: "Chennai",
+    locationLabel: "City (blank = all India)",
+  },
+  {
     source: "UPWORK_JOBS",
     icon: <Briefcase className="w-6 h-6" />,
     title: "Upwork Jobs",
@@ -109,11 +120,16 @@ const SOURCE_LABELS: Record<ScrapeSource, string> = {
   FREELANCER_IN: "Freelancer.in",
   TRUELANCER: "Truelancer",
   LINKEDIN_JOBS: "LinkedIn Jobs",
+  INDIAMART: "IndiaMART",
 };
+
+/** Sources whose leads are businesses with phones — the ones team workspaces get */
+const BUSINESS_SOURCES: ScrapeSource[] = ["GOOGLE_MAPS", "INDIAMART"];
 
 const SOURCE_OPTIONS = [
   { value: "", label: "All sources" },
   { value: "GOOGLE_MAPS", label: "Google Maps" },
+  { value: "INDIAMART", label: "IndiaMART" },
   { value: "UPWORK_JOBS", label: "Upwork Jobs" },
   { value: "FREELANCER_IN", label: "Freelancer.in" },
   { value: "TRUELANCER", label: "Truelancer" },
@@ -420,13 +436,13 @@ export default function LeadScraperPage() {
   // Picks for the org's line of work (chosen in onboarding)
   const { data: orgSettings } = useOrgSettings();
   // Job boards are for pitching freelance work and their leads have no phone to
-  // message, so team workspaces only get Google Maps
+  // message, so team workspaces only get the business directories
   const userOrgType = useAuthStore((s) => s.user?.orgType);
   const isFreelancer = (orgSettings?.orgType ?? userOrgType) === "FREELANCER";
-  const scrapers = isFreelancer ? SCRAPERS : SCRAPERS.filter((s) => s.source === "GOOGLE_MAPS");
+  const scrapers = isFreelancer ? SCRAPERS : SCRAPERS.filter((s) => BUSINESS_SOURCES.includes(s.source));
   const sourceOptions = isFreelancer
     ? SOURCE_OPTIONS
-    : SOURCE_OPTIONS.filter((o) => o.value === "" || o.value === "GOOGLE_MAPS");
+    : SOURCE_OPTIONS.filter((o) => o.value === "" || BUSINESS_SOURCES.includes(o.value as ScrapeSource));
   const suggested = selected ? suggestedFor(orgSettings?.freelancerTypes, selected) : [];
   const mapsTip = isMaps ? mapsTipFor(orgSettings?.freelancerTypes) : undefined;
   const tipApplied = !!mapsTip && Object.entries(mapsTip.filters).every(
@@ -451,7 +467,7 @@ export default function LeadScraperPage() {
         keywords: searchKeywords,
         location: location.trim() || undefined,
         maxResults,
-        ...(isMaps
+        ...(BUSINESS_SOURCES.includes(selected)
           ? { filters: { ...leadFilters, country: scrapeCountry } }
           : countActiveFilters(leadFilters) > 0 && { filters: leadFilters }),
       },
@@ -472,7 +488,7 @@ export default function LeadScraperPage() {
   }
 
   function handleDuplicate(run: ScrapeRun) {
-    // Team workspaces only offer Google Maps; an older job-board run can't be re-run here
+    // Team workspaces only offer the business directories; an older job-board run can't be re-run here
     if (!scrapers.some((s) => s.source === run.source)) {
       toast.info("This source isn't available for your workspace. Start a Google Maps search instead.");
       return;
@@ -542,7 +558,7 @@ export default function LeadScraperPage() {
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8 max-lg:space-y-6">
+    <div className="p-6 space-y-8 max-lg:space-y-6">
       {/* Header (the iOS nav bar shows the title on mobile) */}
       <PageHeader className="max-lg:hidden" title="Lead scraper" description="Search a source, review, then import" />
 
@@ -646,6 +662,11 @@ export default function LeadScraperPage() {
             {selectedScraper.source === "GOOGLE_MAPS" && (
               <p className="text-caption text-on-surface-variant/70 mt-1">
                 Google Maps visits each place detail page — higher limits take more time.
+              </p>
+            )}
+            {selectedScraper.source === "INDIAMART" && (
+              <p className="text-caption text-on-surface-variant/70 mt-1">
+                Each supplier is looked up on Google Maps for its phone, about 10 seconds each.
               </p>
             )}
           </div>

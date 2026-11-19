@@ -921,7 +921,8 @@ export default function ChatWidgetSettingsPage() {
       </div>
 
       {/* ── Right: Live Preview ──────────────────────────────────────────── */}
-      <div data-tour="widget-preview" className="w-[380px] flex-shrink-0 sticky top-6 max-lg:static max-lg:w-full">
+      {/* Wide screens: the preview takes the free width beside the form, like a real browser window */}
+      <div data-tour="widget-preview" className="w-[380px] flex-shrink-0 sticky top-[calc(var(--header-height)+1rem)] xl:w-auto xl:min-w-[380px] xl:max-w-[640px] xl:flex-1 max-lg:static max-lg:w-full">
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
           {/* Panel header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant">
@@ -946,7 +947,7 @@ export default function ChatWidgetSettingsPage() {
           </div>
 
           {/* iframe */}
-          <div className="h-[480px]">
+          <div className="h-[480px] xl:h-[560px]">
             <WidgetPreview form={form} />
           </div>
 

@@ -13,7 +13,8 @@ import {
 } from "@/hooks/use-sla";
 import { useTeamPerformance } from "@/hooks/use-analytics";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { StartHint } from "@/components/ui/start-hint";
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { PeriodSelector } from "@/components/analytics/period-selector";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
@@ -162,20 +163,25 @@ export default function SlaPage() {
         )}
 
         {performance && performance.compliance.total === 0 && (
-          <EmptyState
-            icon={<ShieldCheck className="h-12 w-12" />}
+          <StartHint
+            icon={<ShieldCheck />}
             title="No SLA data yet"
             description={
               (policies?.length ?? 0) === 0
-                ? "Create SLA policies first to start tracking response times."
-                : "Policies are active. SLA data will appear once conversations come in."
+                ? "Create a policy to start tracking response times."
+                : "Policies are active. Data appears once chats come in."
             }
-            actionLabel={(policies?.length ?? 0) === 0 && isAdmin ? "Create SLA policy" : undefined}
-            onAction={(policies?.length ?? 0) === 0 && isAdmin ? () => router.push("/settings?tab=sla") : undefined}
+            action={
+              (policies?.length ?? 0) === 0 && isAdmin ? (
+                <Button size="sm" onClick={() => router.push("/settings?tab=sla")}>
+                  Create SLA policy
+                </Button>
+              ) : undefined
+            }
           />
         )}
 
-        {performance && performance.compliance.total > 0 && (
+        {performance && (
           <>
             {/* KPI Cards */}
             <SlaKpiCards

@@ -25,6 +25,7 @@ import {
   CreateContactDto,
   UpdateContactDto,
   ListContactsQueryDto,
+  PipelineMetaQueryDto,
   ChangeLeadStatusDto,
   AssignContactDto,
   MergeContactsDto,
@@ -109,6 +110,16 @@ export class ContactsController {
     @Query() query: ListContactsQueryDto,
   ) {
     return this.listContactsUseCase.execute(user.orgId, user.sub, user.role, query);
+  }
+
+  /** Lead pipeline card extras: last message, days in stage, open follow-up */
+  @Get('pipeline-meta')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getPipelineMeta(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: PipelineMetaQueryDto,
+  ) {
+    return this.listContactsUseCase.pipelineMeta(user.orgId, user.sub, user.role, query.ids);
   }
 
   @Get('groups')
