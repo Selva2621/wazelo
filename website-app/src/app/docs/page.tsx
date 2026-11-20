@@ -6,6 +6,7 @@ import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
 import { MobileToc } from "@/components/mobile-toc";
 import SiteNavbar from "@/components/Navbar";
+import { PLANS, money, num } from "@/components/pricing/plans";
 
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
 const sections = [
@@ -330,14 +331,14 @@ export default function DocsPage() {
 
             {/* ── Billing ── */}
             <DocSection id="billing" title="Billing & Plans">
-              <P>Wazelo is billed monthly or annually. All plans include a 14-day free trial.</P>
+              <P>Wazelo is billed monthly or annually. All plans include a 14-day free trial. Prices are in US dollars, or rupees in India. See <B>Pricing</B> for every limit.</P>
               <H3>Plans</H3>
               <Rows>
-                {[
-                  ["Starter", "₹499/mo", "Up to 3 agents, 5,000 messages/mo"],
-                  ["Growth", "₹999/mo", "Up to 10 agents, 25,000 messages/mo"],
-                  ["Pro", "₹1,999/mo", "Unlimited agents, 100,000 messages/mo"],
-                ].map(([plan, price, desc]) => (
+                {PLANS.map((p) => [
+                  p.name,
+                  `${money(p.price.USD, "USD")}/mo`,
+                  `${p.users} ${p.users === 1 ? "user" : "users"}, ${num(p.messages)} messages/mo (${money(p.price.INR, "INR")}/mo in India)`,
+                ]).map(([plan, price, desc]) => (
                   <div key={plan} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 py-4">
                     <span className="w-24 shrink-0 text-[15px] font-semibold text-ink">{plan}</span>
                     <span className="w-28 shrink-0 font-display text-2xl leading-none text-ink tabular-nums">{price}</span>
@@ -346,7 +347,7 @@ export default function DocsPage() {
                 ))}
               </Rows>
               <H3>Upgrading or downgrading</H3>
-              <P>Plan changes take effect immediately. Upgrades are prorated; downgrades apply at the next billing cycle. Manage your plan from <B>Settings → Billing</B>.</P>
+              <P>Upgrades take effect immediately and are prorated. Downgrades apply at the end of the current billing period. Manage your plan from <B>Settings → Billing</B>.</P>
               <H3>Cancellation</H3>
               <P>Cancel anytime from Settings → Billing. Your account remains active until the end of the current billing period. No refunds are issued for partial months.</P>
             </DocSection>

@@ -8,21 +8,29 @@ import { Pricing } from "@/components/home/pricing";
 import { Faq } from "@/components/home/faq";
 import { FAQ } from "@/components/home/faq-data";
 import { JsonLd } from "@/components/json-ld";
+import { PLANS as PRICING_PLANS, bothPrices, num, planBySlug, type Currency } from "@/components/pricing/plans";
 import { ORG_ID, SITE_URL, SOFTWARE_ID, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
 const TITLE = "WhatsApp CRM & Lead Follow-up Platform | Wazelo";
 const DESCRIPTION =
-  "Wazelo catches leads from Meta ads, your website and WhatsApp, replies in seconds with AI and follows up until they buy. From ₹299/month, 14-day free trial.";
+  `Wazelo catches leads from Meta ads, your website and WhatsApp, replies in seconds with AI and follows up until they buy. From ${bothPrices(planBySlug("solo").price)} a month.`;
 
 export const metadata = pageMetadata({ path: "/", title: TITLE, description: DESCRIPTION, absoluteTitle: true });
 
-// Prices mirror components/home/pricing.tsx (backend seed-plans). Keep in sync.
-const PLANS = [
-  { name: "Solo", price: 299, description: "1 user, 1 WhatsApp number, 3,000 messages a month. Lead finder, client pipeline, follow-up sequences." },
-  { name: "Starter", price: 499, description: "5 users, 5 WhatsApp numbers, 5,000 messages a month. Shared inbox, 10 campaigns a month, 50 AI credits." },
-  { name: "Growth", price: 999, description: "15 users, 15 WhatsApp numbers, 25,000 messages a month. Automation workflows, 50 campaigns a month, priority support." },
-  { name: "Pro", price: 1999, description: "50 users, 50 WhatsApp numbers, 1,00,000 messages a month. Full API access, 200 campaigns a month, dedicated account manager." },
-];
+// Prices come from components/pricing/plans.ts. INR offers are for India, USD for everyone else.
+const CURRENCIES: Currency[] = ["USD", "INR"];
+const OFFERS = CURRENCIES.flatMap((c) =>
+  PRICING_PLANS.map((p) => ({
+    "@type": "Offer",
+    name: `${p.name} plan`,
+    description: `${p.users} ${p.users === 1 ? "user" : "users"}, ${p.numbers} WhatsApp ${p.numbers === 1 ? "number" : "numbers"}, ${num(p.messages)} messages a month. ${p.tagline}`,
+    price: String(p.price[c]),
+    priceCurrency: c,
+    priceSpecification: { "@type": "UnitPriceSpecification", price: String(p.price[c]), priceCurrency: c, billingDuration: "P1M", unitText: "MONTH" },
+    ...(c === "INR" ? { eligibleRegion: { "@type": "Country", name: "India" } } : {}),
+    url: `${SITE_URL}/pricing`,
+  })),
+);
 
 const softwareApplication = {
   "@context": "https://schema.org",
@@ -40,7 +48,7 @@ const softwareApplication = {
     "Meta lead ads with instant WhatsApp welcome",
     "AI assistant that answers from your knowledge base",
     "Website chat widget with human handover",
-    "Lead finder for Google Maps and IndiaMART",
+    "Lead finder for Google Maps and business directories",
     "Shared inbox for WhatsApp, Instagram, Messenger and email",
     "Follow-up sequences and automation",
     "Campaigns on official WhatsApp Cloud API numbers",
@@ -48,22 +56,7 @@ const softwareApplication = {
     "Installable mobile app with push notifications",
     "REST API, webhooks and MCP server",
   ],
-  offers: PLANS.map((p) => ({
-    "@type": "Offer",
-    name: `${p.name} plan`,
-    description: p.description,
-    price: String(p.price),
-    priceCurrency: "INR",
-    priceSpecification: {
-      "@type": "UnitPriceSpecification",
-      price: String(p.price),
-      priceCurrency: "INR",
-      billingDuration: "P1M",
-      unitText: "MONTH",
-    },
-    eligibleRegion: { "@type": "Country", name: "India" },
-    url: `${SITE_URL}/#pricing`,
-  })),
+  offers: OFFERS,
 };
 
 const faqPage = {

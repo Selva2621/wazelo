@@ -1,20 +1,16 @@
-import { JsonLd } from "@/components/json-ld";
-import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
+import { HUB_SEO } from "@/components/use-cases/use-cases";
+import { pageMetadata } from "@/lib/seo";
 
-// page.tsx is a client component, so its metadata lives here.
-const seo = {
-  path: "/use-cases",
-  title: "Lead Follow-up Use Cases by Industry",
-  description: "How real estate, e-commerce, healthcare, education and finance teams use Wazelo to answer leads on WhatsApp in seconds and follow up until they buy.",
+// page.tsx is a client component, so the hub's metadata lives here. Child pages
+// (/use-cases/[slug]) set their own metadata and JSON-LD; the hub's JSON-LD is
+// rendered by the hub page itself so it doesn't leak onto them.
+// A layout's plain string title would stop the root "%s | Wazelo" template reaching
+// child pages, so the template is restated here.
+export const metadata = {
+  ...pageMetadata(HUB_SEO),
+  title: { default: HUB_SEO.title, template: "%s | Wazelo" },
 };
 
-export const metadata = pageMetadata(seo);
-
 export default function UseCasesLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Use cases", path: seo.path }])]} />
-      {children}
-    </>
-  );
+  return children;
 }

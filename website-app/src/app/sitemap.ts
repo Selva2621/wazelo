@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "@/lib/seo";
+import { indexablePosts } from "@/components/blog/posts";
 
 // `lastModified` must reflect a real content change. Using `new Date()` tells
 // crawlers every page changed on every deploy, so they learn to ignore it.
@@ -7,8 +8,10 @@ import { absoluteUrl } from "@/lib/seo";
 // (Google ignores `priority` and `changeFrequency`, so they are omitted.)
 const ROUTES: [path: string, lastModified: string][] = [
   ["/", "2026-11-20"],
+  ["/pricing", "2026-11-20"],
 
   // Feature pages
+  ["/features", "2026-11-20"],
   ["/features/lead-ads", "2026-11-20"],
   ["/features/ai-assistant", "2026-11-20"],
   ["/features/website-chat", "2026-11-20"],
@@ -28,8 +31,17 @@ const ROUTES: [path: string, lastModified: string][] = [
   ["/features/mobile-app", "2026-11-20"],
   ["/features/developer-api", "2026-11-20"],
 
+  // Comparisons
+  ["/compare", "2026-11-20"],
+  ["/compare/wati", "2026-11-20"],
+  ["/compare/interakt", "2026-11-20"],
+  ["/compare/aisensy", "2026-11-20"],
+
   // Content + company
   ["/use-cases", "2026-11-20"],
+  ["/use-cases/real-estate", "2026-11-20"],
+  ["/use-cases/agencies", "2026-11-20"],
+  ["/use-cases/freelancers", "2026-11-20"],
   ["/about", "2026-11-20"],
   ["/security", "2026-11-20"],
   ["/docs", "2026-11-20"],
@@ -40,7 +52,9 @@ const ROUTES: [path: string, lastModified: string][] = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ROUTES.map(([path, lastModified]) => ({
+  // Blog posts with screenshot placeholders are noindex, so they stay out until finished.
+  const blog: [string, string][] = [["/blog", "2026-11-21"], ...indexablePosts().map((p): [string, string] => [`/blog/${p.slug}`, p.updated])];
+  return [...ROUTES, ...blog].map(([path, lastModified]) => ({
     url: absoluteUrl(path),
     lastModified: new Date(lastModified),
   }));

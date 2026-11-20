@@ -14,7 +14,7 @@ const CHAPTERS = [
     day: "Monday",
     time: "10:00 AM",
     title: "You find her before anyone else does.",
-    body: "The lead finder pulls bakeries, clinics and shops from Google Maps and IndiaMART, ready to message.",
+    body: "The lead finder pulls bakeries, clinics and shops from Google Maps and business directories, ready to contact.",
     path: "app.wazelo.in/leads/finder",
     link: { label: "Lead finder", href: "/features/lead-finder" },
   },

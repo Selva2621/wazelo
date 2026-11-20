@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import { LiveTime } from "./live-time";
+import { FEATURE_GROUPS } from "@/components/features/feature-groups";
 
 /* ─── "Paid." ────────────────────────────────────────────────────────────── */
 
@@ -104,46 +105,7 @@ export function People() {
 
 /* ─── Everything else ────────────────────────────────────────────────────── */
 
-const GROUPS: { name: string; items: { label: string; desc: string; href: string; isNew?: boolean }[] }[] = [
-  {
-    name: "Catch",
-    items: [
-      { label: "Meta lead ads", desc: "Facebook and Instagram form leads land in your inbox instantly.", href: "/features/lead-ads", isNew: true },
-      { label: "Website chat", desc: "A chat bubble on your site that turns visitors into leads.", href: "/features/website-chat", isNew: true },
-      { label: "Lead finder", desc: "Find businesses on Google Maps and IndiaMART to message.", href: "/features/lead-finder", isNew: true },
-      { label: "Contacts and groups", desc: "Every lead in one list, tagged and grouped.", href: "/features/contacts" },
-      { label: "Instagram, Messenger, email", desc: "Every channel in the same inbox.", href: "/features/multi-channel" },
-    ],
-  },
-  {
-    name: "Reply",
-    items: [
-      { label: "Shared inbox", desc: "Your whole team on one WhatsApp number.", href: "/features/shared-inbox" },
-      { label: "AI assistant", desc: "Suggests replies from your own prices and FAQs.", href: "/features/ai-assistant", isNew: true },
-      { label: "Chatbot builder", desc: "Answers common questions on its own.", href: "/features/chatbot" },
-      { label: "Campaigns", desc: "Send an offer to a group with approved templates.", href: "/features/campaigns" },
-    ],
-  },
-  {
-    name: "Follow up",
-    items: [
-      { label: "Sequences", desc: "Follow-ups that stop the moment the lead replies.", href: "/features/sequences" },
-      { label: "Automation rules", desc: "Tag, assign and update leads automatically.", href: "/features/automation" },
-      { label: "Lead scoring", desc: "See at a glance who is hot and who is cold.", href: "/features/lead-scoring" },
-      { label: "Mobile app", desc: "Reply from your phone, wherever you are.", href: "/features/mobile-app", isNew: true },
-    ],
-  },
-  {
-    name: "Close",
-    items: [
-      { label: "Proposals", desc: "Send a quote on WhatsApp, accepted from a link.", href: "/features/proposals", isNew: true },
-      { label: "Deals pipeline", desc: "Track every deal from enquiry to paid.", href: "/features/deals" },
-      { label: "CSAT surveys", desc: "Ask customers how you did, right in the chat.", href: "/features/csat" },
-      { label: "Analytics", desc: "Reply times, conversions and team performance.", href: "/features/analytics" },
-      { label: "API, webhooks and MCP", desc: "Connect Wazelo to the rest of your tools.", href: "/features/developer-api" },
-    ],
-  },
-];
+const GROUPS = FEATURE_GROUPS;
 
 export function FeatureList() {
   const root = useRef<HTMLElement>(null);

@@ -1,9 +1,13 @@
 // Shared by the visible FAQ (faq.tsx) and the homepage FAQPage JSON-LD, so the
 // structured data always matches what is on the page.
+import { ENTERPRISE, bothPrices, planBySlug } from "@/components/pricing/plans";
+
+const p = (slug: string) => bothPrices(planBySlug(slug).price);
+
 export const FAQ = [
   {
     q: "I'm a freelancer. Do I need a team plan?",
-    a: "No. Choose “Solo / Freelancer” at sign-up and take the Solo plan at ₹299 a month. You get the lead finder, a client pipeline, proposals and follow-up sequences. You can switch to a team setup later in Settings.",
+    a: `No. Choose “Solo / Freelancer” at sign-up and take the Solo plan at ${p("solo")} a month. You get the lead finder, a client pipeline, proposals and follow-up sequences. You can switch to a team setup later in Settings.`,
   },
   {
     q: "What do teams get that freelancers don't?",
@@ -19,7 +23,7 @@ export const FAQ = [
   },
   {
     q: "How much does it cost?",
-    a: "Solo is ₹299 a month. Team plans are Starter at ₹499, Growth at ₹999 and Pro at ₹1,999 a month. Enterprise starts at ₹3,999 a month. Every plan has a 14-day free trial with no credit card.",
+    a: `Freelancer plans are Solo at ${p("solo")} and Solo Pro at ${p("solo-pro")} a month. Team plans are Starter at ${p("starter")}, Growth at ${p("growth")} and Pro at ${p("pro")} a month. Enterprise starts at ${bothPrices(ENTERPRISE.price)} a month. Every plan has a 14-day free trial with no credit card.`,
   },
   {
     q: "Does it use the official WhatsApp Business API?",

@@ -9,6 +9,10 @@ import SiteFooter from "@/components/Footer";
 import { PhoneFrame } from "@/components/story/phone-frame";
 import SiteNavbar from "@/components/Navbar";
 import { LoopVideo } from "@/components/home/loop-video";
+import Link from "next/link";
+import { JsonLd } from "@/components/json-ld";
+import { HUB_SEO, USE_CASES } from "@/components/use-cases/use-cases";
+import { breadcrumbJsonLd, webPageJsonLd } from "@/lib/seo";
 
 const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
@@ -257,6 +261,7 @@ export default function UseCasesPage() {
 
   return (
     <div ref={root} className="min-h-dvh bg-paper font-sans text-ink">
+      <JsonLd data={[webPageJsonLd(HUB_SEO), breadcrumbJsonLd([{ name: "Use cases", path: HUB_SEO.path }])]} />
       <span data-uc="progress" aria-hidden className="fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-rust" />
       <SiteNavbar activePage="Use Cases" />
 
@@ -284,6 +289,17 @@ export default function UseCasesPage() {
               </button>
             ))}
           </div>
+          <p className="mt-8 text-[15px] text-ink-soft">
+            In depth:{" "}
+            {USE_CASES.map((u, i) => (
+              <span key={u.slug}>
+                {i > 0 && " · "}
+                <Link href={`/use-cases/${u.slug}`} className={`rounded font-semibold text-rust underline-offset-4 hover:underline ${focusInk}`}>
+                  {u.name}
+                </Link>
+              </span>
+            ))}
+          </p>
         </div>
       </section>
 

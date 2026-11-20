@@ -1,37 +1,42 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { USE_CASES } from "@/components/use-cases/use-cases";
+import { COMPETITORS } from "@/components/compare/competitors";
 
 // Same value as APP_REGISTER_URL in lib/wazelo. That module is "use client", so a server
 // component (e.g. not-found) importing a constant from it would get a client reference.
 const APP_REGISTER_URL = "https://app.wazelo.in/auth/register";
 
-const cols = [
+// Use-case and comparison links come from their data files, so a new page shows up here too.
+const cols: { title: string; links: [string, string][] }[] = [
   {
     title: "Product",
     links: [
-      ["How it works", "/#story"],
-      ["Shared inbox", "/features/shared-inbox"],
-      ["Campaigns", "/features/campaigns"],
-      ["Automation", "/features/automation"],
-      ["Chatbot builder", "/features/chatbot"],
-      ["Sequences", "/features/sequences"],
+      ["All features", "/features"],
       ["Lead ads", "/features/lead-ads"],
-      ["Lead finder", "/features/lead-finder"],
-      ["AI assistant", "/features/ai-assistant"],
       ["Website chat", "/features/website-chat"],
+      ["AI assistant", "/features/ai-assistant"],
+      ["Shared inbox", "/features/shared-inbox"],
+      ["Sequences", "/features/sequences"],
+      ["Campaigns", "/features/campaigns"],
       ["Proposals", "/features/proposals"],
       ["Mobile app", "/features/mobile-app"],
-      ["Pricing", "/#pricing"],
+      ["Pricing", "/pricing"],
     ],
   },
   {
-    title: "Resources",
+    title: "Use cases",
+    links: [...USE_CASES.map((u): [string, string] => [u.name, `/use-cases/${u.slug}`]), ["All use cases", "/use-cases"]],
+  },
+  {
+    title: "Compare & resources",
     links: [
+      ...COMPETITORS.map((c): [string, string] => [`Wazelo vs ${c.name}`, `/compare/${c.slug}`]),
+      ["Blog", "/blog"],
       ["Documentation", "/docs"],
-      ["API reference", "/api-reference"],
       ["API and MCP server", "/features/developer-api"],
-      ["Use cases", "/use-cases"],
+      ["API reference", "/api-reference"],
       ["Security", "/security"],
     ],
   },
@@ -68,8 +73,8 @@ export default function Footer({ showCta = true }: { showCta?: boolean }) {
         </div>
         )}
 
-        <div className={`grid gap-12 md:grid-cols-2 lg:grid-cols-12 ${showCta ? "pt-14" : ""}`}>
-          <div className="lg:col-span-5">
+        <div className={`grid gap-12 lg:grid-cols-12 ${showCta ? "pt-14" : ""}`}>
+          <div className="lg:col-span-4">
             <Link href="/" className={`flex w-max items-center gap-2.5 rounded-md ${focusPaper}`}>
               <Image src="/logo/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
               <span className="text-lg font-semibold tracking-tight">Wazelo</span>
@@ -78,7 +83,7 @@ export default function Footer({ showCta = true }: { showCta?: boolean }) {
               The lead follow-up platform. Catch every lead, reply fast, follow up until they buy.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 md:col-span-1 lg:col-span-7">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 lg:col-span-8">
             {cols.map((col) => (
               <div key={col.title}>
                 <h4 className="text-xs font-medium uppercase tracking-[0.22em] text-paper/40">{col.title}</h4>

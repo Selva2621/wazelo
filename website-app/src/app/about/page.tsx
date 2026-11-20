@@ -109,7 +109,7 @@ export default function AboutPage() {
         <div data-ab="mission" className="mx-auto max-w-5xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-paper/50">Why we exist</p>
           <p className="mt-8 font-display text-[clamp(2.25rem,4.5vw,4.25rem)] leading-[1.05] tracking-[-0.02em]">
-            Every Indian business deserves to answer every lead, <em className="text-[#f0b483]">without an enterprise price tag.</em>
+            Every small business deserves to answer every lead, <em className="text-[#f0b483]">without an enterprise price tag.</em>
           </p>
           <span aria-hidden className="mx-auto mt-12 block h-px w-32 bg-rust" />
         </div>

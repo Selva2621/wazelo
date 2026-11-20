@@ -7,65 +7,33 @@ import { ArrowRight, Check } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
-// Prices and limits from backend/prisma/seed-plans.js (INR). Yearly = 10x monthly.
-interface Plan {
-  name: string;
-  monthly: number;
-  yearly: number;
-  limits: string;
-  features: string[];
-}
+import { ENTERPRISE, money, num, planBySlug, plansFor, priceOf, type Currency, type Plan } from "@/components/pricing/plans";
+import { useCurrency } from "@/components/pricing/use-currency";
+import { CurrencySwitch } from "@/components/pricing/currency-switch";
 
-const SOLO: Plan = {
-  name: "Solo",
-  monthly: 299,
-  yearly: 2990,
-  limits: "1 user, 1 WhatsApp number, 3,000 messages a month",
-  features: ["Lead finder and client pipeline", "26 freelancer templates", "Follow-up sequences", "5 campaigns a month"],
-};
-
-const TEAM_PLANS: (Plan & { popular?: boolean })[] = [
-  {
-    name: "Starter",
-    monthly: 499,
-    yearly: 4990,
-    limits: "5 users, 5 numbers, 5,000 messages a month",
-    features: ["Shared inbox", "10 campaigns a month", "50 AI credits", "1 Shopify store", "Email support"],
-  },
-  {
-    name: "Growth",
-    monthly: 999,
-    yearly: 9990,
-    limits: "15 users, 15 numbers, 25,000 messages a month",
-    features: ["Everything in Starter", "50 campaigns a month", "200 AI credits", "Automation workflows", "Priority support"],
-    popular: true,
-  },
-  {
-    name: "Pro",
-    monthly: 1999,
-    yearly: 19990,
-    limits: "50 users, 50 numbers, 1,00,000 messages a month",
-    features: ["Everything in Growth", "200 campaigns a month", "500 AI credits", "Full API access", "Dedicated account manager"],
-  },
-];
-
-const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+// Prices and limits come from components/pricing/plans.ts (mirrors backend seed-plans).
+const SOLO = planBySlug("solo");
+const TEAM_PLANS = plansFor("team");
+const limits = (p: Plan, c: Currency) =>
+  `${p.users} ${p.users === 1 ? "user" : "users"}, ${p.numbers} WhatsApp ${p.numbers === 1 ? "number" : "numbers"}, ${num(p.messages, c)} messages a month`;
 const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
-function Price({ plan, yearly }: { plan: Plan; yearly: boolean }) {
-  const value = yearly ? plan.yearly : plan.monthly;
+/** Hidden (but holding its space) until the visitor's currency is known. */
+function Price({ plan, yearly, currency }: { plan: Plan; yearly: boolean; currency: Currency | null }) {
+  const c = currency ?? "USD";
+  const value = priceOf(plan.price, c, yearly);
   return (
-    <p className="flex items-baseline gap-1.5">
+    <p className={`flex items-baseline gap-1.5 transition-opacity duration-300 ${currency ? "opacity-100" : "opacity-0"}`}>
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
-          key={value}
+          key={`${c}-${value}`}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -14 }}
           transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
           className="font-display text-6xl leading-none tabular-nums"
         >
-          {inr(value)}
+          {money(value, c)}
         </motion.span>
       </AnimatePresence>
       <span className="text-sm opacity-60">/{yearly ? "year" : "month"}</span>
@@ -88,6 +56,8 @@ function Features({ items, dark }: { items: string[]; dark?: boolean }) {
 
 export function Pricing() {
   const [yearly, setYearly] = useState(false);
+  const currency = useCurrency();
+  const c = currency ?? "USD";
   const section = useRef<HTMLElement>(null);
 
   useGSAP(
@@ -107,9 +77,12 @@ export function Pricing() {
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">Pricing</p>
             <h2 className="mt-5 font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-7xl">
-              Simple pricing. <em className="text-rust">In rupees.</em>
+              Simple pricing. <em className="text-rust">Start free.</em>
             </h2>
             <p className="mt-5 text-base text-ink-soft">Every plan starts with a 14-day free trial. No card needed.</p>
+            <div className="mt-3">
+              <CurrencySwitch currency={currency} />
+            </div>
           </div>
           <div role="group" aria-label="Billing period" className="flex w-max gap-1 rounded-full border border-ink/15 bg-card/60 p-1 text-sm">
             {[
@@ -139,9 +112,9 @@ export function Pricing() {
                 <span className="rounded-full border border-paper/20 px-3 py-1 text-xs font-medium text-paper/70">For freelancers</span>
               </div>
               <div className="mt-8">
-                <Price plan={SOLO} yearly={yearly} />
+                <Price plan={SOLO} yearly={yearly} currency={currency} />
               </div>
-              <p className="mt-4 text-sm text-paper/60">{SOLO.limits}</p>
+              <p className="mt-4 text-sm text-paper/60">{limits(SOLO, c)}</p>
               <Features items={SOLO.features} dark />
               <a
                 href={APP_REGISTER_URL}
@@ -164,9 +137,9 @@ export function Pricing() {
                     {p.popular && <span className="rounded-full bg-rust/10 px-2.5 py-0.5 text-xs font-semibold text-rust">Most chosen</span>}
                   </div>
                   <div className="mt-8">
-                    <Price plan={p} yearly={yearly} />
+                    <Price plan={p} yearly={yearly} currency={currency} />
                   </div>
-                  <p className="mt-4 text-sm text-ink-soft">{p.limits}</p>
+                  <p className="mt-4 text-sm text-ink-soft">{limits(p, c)}</p>
                   <Features items={p.features} />
                   <a
                     href={APP_REGISTER_URL}
@@ -188,7 +161,7 @@ export function Pricing() {
             <div>
               <h3 className="font-display text-3xl">Enterprise</h3>
               <p className="mt-2 max-w-[60ch] text-[15px] text-ink-soft">
-                From {inr(3999)} a month for 200 users and 200 numbers, with unlimited messages and campaigns, a custom SLA and white-label options.
+                <span className={currency ? "" : "invisible"}>From {money(ENTERPRISE.price[c], c)} a month</span> for {ENTERPRISE.users} users and {ENTERPRISE.numbers} numbers, with unlimited messages and campaigns, a custom SLA and white-label options.
               </p>
             </div>
             <Link href="/contact" className={`inline-flex shrink-0 justify-center rounded-full border border-ink/20 px-6 py-3.5 text-sm font-semibold transition-colors hover:border-ink/50 active:scale-[0.98] ${focusInk}`}>
@@ -196,6 +169,13 @@ export function Pricing() {
             </Link>
           </div>
         </div>
+
+        <p className="mt-10 text-center text-[15px] text-ink-soft">
+          <Link href="/pricing" className={`group inline-flex items-center gap-1.5 rounded font-semibold text-rust underline-offset-4 hover:underline ${focusInk}`}>
+            Compare every plan, including Solo Pro
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </p>
       </div>
     </section>
   );

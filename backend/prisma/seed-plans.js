@@ -29,7 +29,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 500,
-    aiCreditsPerMonth: 50,
+    aiCreditsPerMonth: 100,
     aiEnabled: true,
     maxMessageTemplates: 15,
     shopifyEnabled: true,
@@ -62,7 +62,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 100,
-    aiCreditsPerMonth: 30,
+    aiCreditsPerMonth: 100,
     aiEnabled: true,
     maxMessageTemplates: 10,
     shopifyEnabled: false,
@@ -96,7 +96,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 100,
-    aiCreditsPerMonth: 50,
+    aiCreditsPerMonth: 200,
     aiEnabled: true,
     maxMessageTemplates: 10,
     shopifyEnabled: false,
@@ -128,7 +128,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 100,
-    aiCreditsPerMonth: 50,
+    aiCreditsPerMonth: 200,
     aiEnabled: true,
     maxMessageTemplates: 10,
     shopifyEnabled: false,
@@ -162,7 +162,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 100,
-    aiCreditsPerMonth: 50,
+    aiCreditsPerMonth: 500,
     aiEnabled: true,
     maxMessageTemplates: 25,
     shopifyEnabled: true,
@@ -194,7 +194,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 100,
-    aiCreditsPerMonth: 50,
+    aiCreditsPerMonth: 500,
     aiEnabled: true,
     maxMessageTemplates: 25,
     shopifyEnabled: true,
@@ -228,7 +228,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 1000,
-    aiCreditsPerMonth: 100,
+    aiCreditsPerMonth: 300,
     aiEnabled: true,
     maxMessageTemplates: 25,
     shopifyEnabled: true,
@@ -260,7 +260,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 1000,
-    aiCreditsPerMonth: 100,
+    aiCreditsPerMonth: 300,
     aiEnabled: true,
     maxMessageTemplates: 25,
     shopifyEnabled: true,
@@ -294,7 +294,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 10000,
-    aiCreditsPerMonth: 200,
+    aiCreditsPerMonth: 1000,
     aiEnabled: true,
     maxMessageTemplates: 50,
     shopifyEnabled: true,
@@ -326,7 +326,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 10000,
-    aiCreditsPerMonth: 200,
+    aiCreditsPerMonth: 1000,
     aiEnabled: true,
     maxMessageTemplates: 50,
     shopifyEnabled: true,
@@ -356,7 +356,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 50000,
-    aiCreditsPerMonth: 500,
+    aiCreditsPerMonth: 2500,
     aiEnabled: true,
     maxMessageTemplates: 200,
     shopifyEnabled: true,
@@ -384,7 +384,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 50000,
-    aiCreditsPerMonth: 500,
+    aiCreditsPerMonth: 2500,
     aiEnabled: true,
     maxMessageTemplates: 200,
     shopifyEnabled: true,
@@ -414,7 +414,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 0,
-    aiCreditsPerMonth: 0,
+    aiCreditsPerMonth: 5000, // fair use; top-up packs beyond this
     aiEnabled: true,
     maxMessageTemplates: 0,
     shopifyEnabled: true,
@@ -442,7 +442,7 @@ const plans = [
     automationEnabled: true,
     apiEnabled: true,
     maxApiCallsPerMonth: 0,
-    aiCreditsPerMonth: 0,
+    aiCreditsPerMonth: 5000, // fair use; top-up packs beyond this
     aiEnabled: true,
     maxMessageTemplates: 0,
     shopifyEnabled: true,
@@ -451,6 +451,27 @@ const plans = [
     gracePeriodDays: 7,
   },
 ];
+
+// ─── USD plans (orgs outside India) ──────────────────────────────
+// Same limits as the INR plans; ListPlansUseCase shows each org only the plans in its
+// billing currency (INR for India, USD elsewhere). Slugs keep the `solo-` prefix the app
+// uses to split freelancer and team plans. Trials stay shared (price 0, no USD copy).
+// Prices must match website-app/src/components/pricing/plans.ts.
+const USD_MONTHLY = { Solo: 9, 'Solo Pro': 15, Starter: 19, Growth: 39, Pro: 79, Enterprise: 149 };
+
+const usdPlans = plans
+  .filter((p) => p.priceInCents > 0)
+  .map((p) => {
+    const monthly = USD_MONTHLY[p.name];
+    if (!monthly) throw new Error(`No USD price for plan "${p.name}"`);
+    return {
+      ...p,
+      slug: `${p.slug}-usd`,
+      currency: 'USD',
+      priceInCents: monthly * 100 * (p.billingCycle === 'YEARLY' ? 10 : 1),
+    };
+  });
+plans.push(...usdPlans);
 
 async function main() {
   console.log('Seeding billing plans...');
@@ -494,7 +515,7 @@ async function main() {
       },
       create: plan,
     });
-    console.log(`  ✓ ${result.name} (${result.billingCycle}) — ₹${result.priceInCents / 100}/mo [${result.slug}]`);
+    console.log(`  ✓ ${result.name} (${result.billingCycle}) — ${result.currency} ${result.priceInCents / 100} [${result.slug}]`);
   }
 
   console.log(`\nDone! Seeded ${plans.length} plans.`);

@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://wazelo.in";
 export const SITE_NAME = "Wazelo";
-export const SITE_LOCALE = "en_IN";
+export const SITE_LOCALE = "en_US";
 export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 export const SOFTWARE_ID = `${SITE_URL}/#software`;
@@ -60,10 +60,12 @@ export function pageMetadata({ path, title, description, absoluteTitle, image, n
 // ── JSON-LD builders ───────────────────────────────────────────────────────────
 
 export function breadcrumbJsonLd(trail: { name: string; path: string }[]) {
+  // Feature pages sit under the /features hub: Home > Features > Lead ads.
+  const parent = trail[0]?.path.startsWith("/features/") ? [{ name: "Features", path: "/features" }] : [];
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [{ name: "Home", path: "/" }, ...trail].map((t, i) => ({
+    itemListElement: [{ name: "Home", path: "/" }, ...parent, ...trail].map((t, i) => ({
       "@type": "ListItem",
       position: i + 1,
       name: t.name,
@@ -82,7 +84,7 @@ export function webPageJsonLd({ path, title, description }: { path: string; titl
     url,
     name: title,
     description,
-    inLanguage: "en-IN",
+    inLanguage: "en",
     isPartOf: { "@id": WEBSITE_ID },
     about: { "@id": SOFTWARE_ID },
     publisher: { "@id": ORG_ID },

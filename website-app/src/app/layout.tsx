@@ -54,7 +54,7 @@ const siteGraph = {
       "@id": WEBSITE_ID,
       url: SITE_URL,
       name: SITE_NAME,
-      inLanguage: "en-IN",
+      inLanguage: "en",
       publisher: { "@id": ORG_ID },
     },
   ],
@@ -117,7 +117,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-IN" data-theme="light" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable}`} suppressHydrationWarning>
       <head>
         {/* Light by default; a visitor who picked dark gets it before the first paint. */}
         <Script id="theme-init" strategy="beforeInteractive">
