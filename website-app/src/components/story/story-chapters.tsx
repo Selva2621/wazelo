@@ -5,6 +5,7 @@ import Link from "next/link";
 import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import { useLenis } from "@/app/lenis-provider";
 import { LoopVideo } from "@/components/home/loop-video";
+import { PhoneFrame } from "./phone-frame";
 import { LiveTime } from "./live-time";
 
 const CHAPTERS = [
@@ -187,20 +188,31 @@ export function StoryChapters() {
             </div>
           </div>
         ) : (
-          <div className="px-4 py-24 sm:px-6">
+          // Phones and tablets: one card per step, with the app's own phone screens (recorded at
+          // phone size, so every word is readable) instead of a shrunken desktop window.
+          <div className="mx-auto max-w-xl px-4 py-24 sm:px-6">
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">Her week with Wazelo</p>
-            <div className="mt-10 flex flex-col gap-20">
-              {CHAPTERS.map((ch) => (
+            <p className="mt-4 max-w-[34ch] text-lg leading-snug text-ink-soft">
+              Follow one lead, Meera from a bakery, from her first message to a signed deal.
+            </p>
+            <div className="mt-14 flex flex-col gap-20">
+              {CHAPTERS.map((ch, i) => (
                 <article key={ch.id} data-c="card">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-rust">{ch.day}</p>
-                  <p className="font-display text-6xl leading-none">{ch.time === "now" ? <LiveTime /> : ch.time}</p>
+                  <p className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.18em] text-rust">
+                    <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")} / {String(CHAPTERS.length).padStart(2, "0")}</span>
+                    {ch.day}
+                  </p>
+                  <p className="mt-1 font-display text-6xl leading-none">{ch.time === "now" ? <LiveTime /> : ch.time}</p>
                   <h2 className="mt-5 text-xl font-semibold leading-snug">{ch.title}</h2>
                   <p className="mt-2 text-base leading-relaxed text-ink-soft">{ch.body}</p>
-                  <div className="mt-6">
-                    <BrowserFrame path={ch.path}>
-                      <LoopVideo src={`/media/story/${ch.id}.mp4`} poster={`/media/story/${ch.id}.jpg`} label={ch.title} className="!aspect-auto h-full" />
-                    </BrowserFrame>
+                  <div className="mt-8">
+                    <PhoneFrame>
+                      <LoopVideo src={`/media/story/${ch.id}-m.mp4`} poster={`/media/story/${ch.id}-m.jpg`} label={ch.title} className="!aspect-auto h-full" />
+                    </PhoneFrame>
                   </div>
+                  <Link href={ch.link.href} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-rust underline-offset-4 hover:underline">
+                    {ch.link.label} →
+                  </Link>
                 </article>
               ))}
             </div>

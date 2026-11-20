@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { MobileToc } from "@/components/mobile-toc";
 import SiteNavbar from "@/components/Navbar";
 
 // ─── Table of contents ───────────────────────────────────────────────────────
@@ -140,6 +141,8 @@ export default function PrivacyPage() {
             </nav>
           </aside>
 
+          <div className="lg:hidden"><MobileToc items={sections.map((s) => ({ id: s.id, label: s.title }))} /></div>
+
           <main data-rd="body" className="max-w-[68ch] text-[17px] leading-relaxed text-ink-soft">
 
             <Section id="introduction">
@@ -226,7 +229,7 @@ export default function PrivacyPage() {
 
             <Section id="contact">
               <P>For privacy-related questions or requests, contact us at:</P>
-              <div className="rounded-xl border border-ink/15 bg-white/50 px-6 py-5 text-[15px]">
+              <div className="rounded-xl border border-ink/15 bg-card/50 px-6 py-5 text-[15px]">
                 <p className="mb-1 font-semibold text-ink">Wazelo</p>
                 <p className="mb-1">Email: <a href="mailto:privacy@wazelo.in" className={link}>privacy@wazelo.in</a></p>
                 <p>Website: <a href="https://wazelo.in" className={link}>wazelo.in</a></p>

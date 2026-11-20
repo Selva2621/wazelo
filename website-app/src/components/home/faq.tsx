@@ -130,8 +130,8 @@ export function Faq() {
                       onClick={() => toggle(i)}
                       className="group flex w-full items-center justify-between gap-6 py-6 text-left text-lg font-medium transition-colors hover:text-rust focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                     >
-                      <span className="flex items-baseline gap-4">
-                        <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="flex min-w-0 items-baseline gap-4">
+                        <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
                         {item.q}
                       </span>
                       <span className={`grid size-8 shrink-0 place-items-center rounded-full border transition-all duration-300 ${isOpen ? "rotate-45 border-ink bg-ink text-paper" : "border-ink/20"}`}>

@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { MobileToc } from "@/components/mobile-toc";
 import SiteNavbar from "@/components/Navbar";
 
 const sections = [
@@ -20,7 +21,7 @@ function Item({ i, icon, title, desc }: { i: number; icon: string; title: string
   return (
     <div className="border-t border-ink/15 py-7">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+        <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
         <span aria-hidden className="material-symbols-outlined text-[20px] text-rust">{icon}</span>
       </div>
       <h3 className="mt-5 font-display text-2xl leading-tight text-ink">{title}</h3>
@@ -121,6 +122,8 @@ export default function SecurityPage() {
             </nav>
           </aside>
 
+          <div className="lg:hidden"><MobileToc items={sections} /></div>
+
           <main data-rd="body" className="max-w-[68ch] text-[17px] leading-relaxed text-ink-soft">
 
             {/* ── Security Pillars ── */}
@@ -142,7 +145,7 @@ export default function SecurityPage() {
                 Wazelo is hosted on reliable cloud infrastructure with high availability, automatic backups, and network-level protection — so your team stays connected and your data stays safe, around the clock.
               </p>
               <p className="mt-4">
-                Want a detailed security briefing for your procurement or compliance team? <a href="/contact" className={link}>Contact us</a> and we&apos;ll walk you through our architecture privately.
+                Want a detailed security briefing for your procurement or compliance team? <a href="/contact" className={link}>Contact us</a>{" "}and we&apos;ll walk you through our architecture privately.
               </p>
             </section>
 
@@ -165,7 +168,7 @@ export default function SecurityPage() {
       </div>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
+      <section className="tone-fixed bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
         <div data-rd="end" className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-[clamp(2.6rem,5.5vw,5rem)] leading-[0.95] tracking-[-0.02em]">
             Questions about <em className="text-[#f0b483]">security?</em>
@@ -185,7 +188,7 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooter showCta={false} />
     </div>
   );
 }

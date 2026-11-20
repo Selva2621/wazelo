@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { MobileToc } from "@/components/mobile-toc";
 import SiteNavbar from "@/components/Navbar";
 
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ const link = "text-rust underline decoration-rust/30 underline-offset-4 transiti
 // ─── Building blocks ──────────────────────────────────────────────────────────
 function Code({ children }: { children: string }) {
   return (
-    <pre className="mb-6 overflow-x-auto rounded-xl bg-ink px-5 py-4">
+    <pre className="tone-fixed mb-6 overflow-x-auto rounded-xl bg-ink px-5 py-4">
       <code className="font-mono text-[13px] leading-[1.7] text-paper/90">{children}</code>
     </pre>
   );
@@ -164,6 +165,7 @@ export default function DocsPage() {
           </aside>
 
           {/* Content */}
+          <div className="lg:hidden"><MobileToc items={sections} /></div>
           <main data-rd="body" className="max-w-[68ch] text-[17px] leading-relaxed text-ink-soft">
 
             {/* ── Getting Started ── */}

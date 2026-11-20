@@ -48,11 +48,12 @@ const cols = [
 
 const focusPaper = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper";
 
-export default function Footer() {
+export default function Footer({ showCta = true }: { showCta?: boolean }) {
   return (
     // The paper/10 top rule separates it from an ink section above; on paper the colour change does the work.
-    <footer className="border-t border-paper/10 bg-ink px-4 pb-10 pt-20 font-sans text-paper sm:px-6 lg:px-8 lg:pt-28">
+    <footer className="tone-fixed border-t border-paper/10 bg-ink px-4 pb-10 pt-20 font-sans text-paper sm:px-6 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-7xl">
+        {showCta && (
         <div className="flex flex-col gap-10 border-b border-paper/10 pb-16 lg:flex-row lg:items-end lg:justify-between lg:pb-20">
           <p className="max-w-3xl font-display text-[clamp(2.75rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
             Every lead, <em className="text-[#f0b483]">followed up.</em>
@@ -65,8 +66,9 @@ export default function Footer() {
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </a>
         </div>
+        )}
 
-        <div className="grid gap-12 pt-14 md:grid-cols-2 lg:grid-cols-12">
+        <div className={`grid gap-12 md:grid-cols-2 lg:grid-cols-12 ${showCta ? "pt-14" : ""}`}>
           <div className="lg:col-span-5">
             <Link href="/" className={`flex w-max items-center gap-2.5 rounded-md ${focusPaper}`}>
               <Image src="/logo/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
@@ -80,10 +82,10 @@ export default function Footer() {
             {cols.map((col) => (
               <div key={col.title}>
                 <h4 className="text-xs font-medium uppercase tracking-[0.22em] text-paper/40">{col.title}</h4>
-                <ul className="mt-5 flex flex-col gap-2.5">
+                <ul className="mt-3 flex flex-col lg:mt-5 lg:gap-2.5">
                   {col.links.map(([label, href]) => (
                     <li key={label}>
-                      <Link href={href} className={`rounded-sm text-sm text-paper/70 transition-colors hover:text-paper ${focusPaper}`}>
+                      <Link href={href} className={`block rounded-sm py-2.5 text-sm text-paper/70 transition-colors hover:text-paper lg:inline lg:py-0 ${focusPaper}`}>
                         {label}
                       </Link>
                     </li>

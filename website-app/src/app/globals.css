@@ -610,6 +610,8 @@ body {
   --color-ink-soft: #5e554b;
   --color-ink-faint: #9a8f82;
   --color-rust: #c2410c;
+  /* Raised surfaces on paper: form fields, chips, the pricing table */
+  --color-card: #fffdfa;
   --font-display: var(--font-serif), Georgia, serif;
 
   --color-primary: #d97706;
@@ -806,4 +808,38 @@ body {
     background:
       radial-gradient(22rem circle at var(--mx, -100%) var(--my, -100%), rgb(245 158 11 / 0.14), transparent 45%);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Light / dark theme. <html data-theme> is set before first paint by the script in
+   layout.tsx (light unless the visitor chose dark) and flipped by ThemeToggle.
+   Dark swaps the page tokens: paper becomes deep warm ink, ink becomes cream.
+   ══════════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: #110e0c;
+  --color-paper-deep: #1d1814;
+  --color-ink: #f1ebe2;
+  --color-ink-soft: #bcb1a3;
+  --color-ink-faint: #8a7e71;
+  --color-rust: #e8773f;
+  --color-card: #1f1a16;
+}
+
+/* Sections designed to be dark in both themes (the 3D hero, "Paid.", the closing CTA,
+   the footer, the featured price card, code blocks) pin the light-theme token values,
+   so bg-ink stays ink and text-paper stays cream whatever the page theme is. */
+.tone-fixed,
+:root[data-theme="dark"] .tone-fixed {
+  --color-paper: #f3eee6;
+  --color-paper-deep: #e9e1d4;
+  --color-ink: #17130f;
+  --color-ink-soft: #5e554b;
+  --color-ink-faint: #9a8f82;
+  --color-rust: #c2410c;
+  --color-card: #fffdfa;
+}
+/* In dark mode the always-dark bands sit a step above the page, so they still read as bands. */
+:root[data-theme="dark"] .tone-fixed.bg-ink {
+  background-color: #1a1612;
 }

@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { PhoneFrame } from "@/components/story/phone-frame";
 import SiteNavbar from "@/components/Navbar";
 import { LoopVideo } from "@/components/home/loop-video";
 
@@ -105,7 +106,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
         <div className="mx-auto max-w-7xl">
           <div className="max-w-4xl">
             <p data-fd="crumb" className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-ink-faint">
-              <Link href="/#features" className="hover:text-ink">Features</Link>
+              <Link href="/#features" className="-my-2 inline-block py-2 hover:text-ink">Features</Link>
               <span>/</span>
               <span className="text-rust">{data.tag}</span>
             </p>
@@ -118,7 +119,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
               {data.heroSubtitle}
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
-              <a data-fd="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+              <a data-fd="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}>
                 Start free trial
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
@@ -132,13 +133,18 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             <div data-fd="media" className="mt-16 lg:mt-24">
               <div data-fd="media-tilt" className="will-change-transform">
                 {clip ? (
-                  <div className="mx-auto max-w-5xl">
-                    <Frame path={clip.path}>
-                      <LoopVideo src={`/media/story/${clip.clip}.mp4`} poster={`/media/story/${clip.clip}.jpg`} label={`${data.tag} in the Wazelo app`} />
-                    </Frame>
-                  </div>
+                  <>
+                    <PhoneFrame className="lg:hidden">
+                      <LoopVideo src={`/media/story/${clip.clip}-m.mp4`} poster={`/media/story/${clip.clip}-m.jpg`} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
+                    </PhoneFrame>
+                    <div className="mx-auto hidden max-w-5xl lg:block">
+                      <Frame path={clip.path}>
+                        <LoopVideo src={`/media/story/${clip.clip}.mp4`} poster={`/media/story/${clip.clip}.jpg`} label={`${data.tag} in the Wazelo app`} />
+                      </Frame>
+                    </div>
+                  </>
                 ) : (
-                  <div className="overflow-hidden rounded-[1.5rem] bg-ink shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5)]">
+                  <div className="tone-fixed overflow-hidden rounded-[1.5rem] bg-ink shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5)]">
                     <Image src={data.heroScreen} alt={data.tag} width={1280} height={800} sizes="(min-width: 1280px) 1216px, 100vw" className="h-auto w-full" priority />
                   </div>
                 )}
@@ -164,7 +170,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
             {data.capabilities.map((c, i) => (
               <div key={c.title} data-fd="cap" className="border-t border-ink/15 py-8">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
                   <span className="material-symbols-outlined text-[22px] text-rust">{c.icon}</span>
                 </div>
                 <h3 className="mt-6 font-display text-3xl leading-tight">{c.title}</h3>
@@ -202,9 +208,11 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       </section>
 
       {/* ── Live demo (the older pages' interactive mock, shown as a screen) ── */}
+      {/* Desktop only: the mock is a desktop app layout and is cut off at phone width; phones
+          already get the readable phone recording at the top of the page. */}
       {data.interactiveSection && (
-        <section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
-          <div data-fd="demo" className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-ink p-5 text-on-surface sm:p-8 lg:p-12">
+        <section className="hidden px-4 pb-24 sm:px-6 lg:block lg:px-8 lg:pb-32">
+          <div data-fd="demo" className="mx-auto max-w-7xl tone-fixed overflow-hidden rounded-[2rem] bg-ink p-5 text-on-surface sm:p-8 lg:p-12">
             <p className="mb-8 text-xs font-medium uppercase tracking-[0.22em] text-paper/50">See it in action</p>
             {data.interactiveSection}
           </div>
@@ -221,7 +229,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
                 key={f.label}
                 data-fd="rel"
                 href={f.href}
-                className={`group inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white/60 px-5 py-3 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
+                className={`group inline-flex items-center gap-2 rounded-full border border-ink/15 bg-card/60 px-5 py-3 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
               >
                 <span className="material-symbols-outlined text-[18px] text-rust">{f.icon}</span>
                 {f.label}
@@ -233,7 +241,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────────── */}
-      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
+      <section className="tone-fixed bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
         <div data-fd="end" className="mx-auto max-w-4xl text-center">
           <h2 className="font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
             Ready to try <em className="text-[#f0b483]">{data.tag.toLowerCase()}?</em>
@@ -246,7 +254,7 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooter showCta={false} />
     </div>
   );
 }

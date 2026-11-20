@@ -26,7 +26,7 @@ export function PaidBand() {
     { scope: root },
   );
   return (
-    <section ref={root} className="relative overflow-hidden bg-ink px-4 py-40 text-paper sm:px-6 lg:py-56">
+    <section ref={root} className="tone-fixed relative overflow-hidden bg-ink px-4 py-24 text-paper sm:px-6 sm:py-40 lg:py-56">
       <div className="mx-auto max-w-6xl text-center">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-paper/50">Friday, 11:20 AM</p>
         <p data-p="word" className="mt-6 font-display text-[clamp(6rem,22vw,18rem)] leading-[0.8] will-change-transform">
@@ -104,43 +104,43 @@ export function People() {
 
 /* ─── Everything else ────────────────────────────────────────────────────── */
 
-const GROUPS: { name: string; items: { label: string; href: string; isNew?: boolean }[] }[] = [
+const GROUPS: { name: string; items: { label: string; desc: string; href: string; isNew?: boolean }[] }[] = [
   {
     name: "Catch",
     items: [
-      { label: "Meta lead ads", href: "/features/lead-ads", isNew: true },
-      { label: "Website chat", href: "/features/website-chat", isNew: true },
-      { label: "Lead finder", href: "/features/lead-finder", isNew: true },
-      { label: "Contacts and groups", href: "/features/contacts" },
-      { label: "Instagram, Messenger, email", href: "/features/multi-channel" },
+      { label: "Meta lead ads", desc: "Facebook and Instagram form leads land in your inbox instantly.", href: "/features/lead-ads", isNew: true },
+      { label: "Website chat", desc: "A chat bubble on your site that turns visitors into leads.", href: "/features/website-chat", isNew: true },
+      { label: "Lead finder", desc: "Find businesses on Google Maps and IndiaMART to message.", href: "/features/lead-finder", isNew: true },
+      { label: "Contacts and groups", desc: "Every lead in one list, tagged and grouped.", href: "/features/contacts" },
+      { label: "Instagram, Messenger, email", desc: "Every channel in the same inbox.", href: "/features/multi-channel" },
     ],
   },
   {
     name: "Reply",
     items: [
-      { label: "Shared inbox", href: "/features/shared-inbox" },
-      { label: "AI assistant", href: "/features/ai-assistant", isNew: true },
-      { label: "Chatbot builder", href: "/features/chatbot" },
-      { label: "Campaigns", href: "/features/campaigns" },
+      { label: "Shared inbox", desc: "Your whole team on one WhatsApp number.", href: "/features/shared-inbox" },
+      { label: "AI assistant", desc: "Suggests replies from your own prices and FAQs.", href: "/features/ai-assistant", isNew: true },
+      { label: "Chatbot builder", desc: "Answers common questions on its own.", href: "/features/chatbot" },
+      { label: "Campaigns", desc: "Send an offer to a group with approved templates.", href: "/features/campaigns" },
     ],
   },
   {
     name: "Follow up",
     items: [
-      { label: "Sequences", href: "/features/sequences" },
-      { label: "Automation rules", href: "/features/automation" },
-      { label: "Lead scoring", href: "/features/lead-scoring" },
-      { label: "Mobile app", href: "/features/mobile-app", isNew: true },
+      { label: "Sequences", desc: "Follow-ups that stop the moment the lead replies.", href: "/features/sequences" },
+      { label: "Automation rules", desc: "Tag, assign and update leads automatically.", href: "/features/automation" },
+      { label: "Lead scoring", desc: "See at a glance who is hot and who is cold.", href: "/features/lead-scoring" },
+      { label: "Mobile app", desc: "Reply from your phone, wherever you are.", href: "/features/mobile-app", isNew: true },
     ],
   },
   {
     name: "Close",
     items: [
-      { label: "Proposals", href: "/features/proposals", isNew: true },
-      { label: "Deals pipeline", href: "/features/deals" },
-      { label: "CSAT surveys", href: "/features/csat" },
-      { label: "Analytics", href: "/features/analytics" },
-      { label: "API, webhooks and MCP", href: "/features/developer-api" },
+      { label: "Proposals", desc: "Send a quote on WhatsApp, accepted from a link.", href: "/features/proposals", isNew: true },
+      { label: "Deals pipeline", desc: "Track every deal from enquiry to paid.", href: "/features/deals" },
+      { label: "CSAT surveys", desc: "Ask customers how you did, right in the chat.", href: "/features/csat" },
+      { label: "Analytics", desc: "Reply times, conversions and team performance.", href: "/features/analytics" },
+      { label: "API, webhooks and MCP", desc: "Connect Wazelo to the rest of your tools.", href: "/features/developer-api" },
     ],
   },
 ];
@@ -173,13 +173,17 @@ export function FeatureList() {
                   <li key={it.href}>
                     <Link
                       href={it.href}
-                      className="group flex items-center justify-between gap-3 border-b border-ink/[0.07] py-3.5 text-[15px] transition-colors hover:text-rust focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rust"
+                      className="group flex items-center justify-between gap-3 border-b border-ink/[0.07] py-3.5 transition-colors hover:text-rust focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rust"
                     >
-                      <span className="flex items-center gap-2">
-                        {it.label}
-                        {it.isNew && <span className="rounded-full bg-rust/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rust">New</span>}
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 text-[15px] font-medium">
+                          {it.label}
+                          {it.isNew && <span className="rounded-full bg-rust/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rust">New</span>}
+                        </span>
+                        <span className="mt-1 block text-[13px] leading-snug text-ink-soft">{it.desc}</span>
                       </span>
-                      <ArrowUpRight className="h-4 w-4 shrink-0 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
+                      {/* Always visible on touch screens so rows read as links; hover-reveal on desktop. */}
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-ink-faint transition-all duration-300 group-hover:text-rust lg:-translate-x-1 lg:opacity-0 lg:group-hover:translate-x-0 lg:group-hover:opacity-100" />
                     </Link>
                   </li>
                 ))}
@@ -211,7 +215,7 @@ export function StoryCta() {
   return (
     // The photo is shown whole: on desktop the section takes the photo's own shape, on phones
     // the photo sits on top and fades into the ink behind the copy.
-    <section ref={root} className="relative flex min-h-[90svh] items-center overflow-hidden bg-ink px-4 py-32 text-paper sm:px-6 lg:aspect-[1280/704] lg:min-h-0 lg:px-8 lg:py-0">
+    <section ref={root} className="tone-fixed relative flex min-h-[90svh] items-center overflow-hidden bg-ink px-4 py-32 text-paper sm:px-6 lg:aspect-[1280/704] lg:min-h-0 lg:px-8 lg:py-0">
       <div data-e="bg" className="absolute inset-x-0 top-0">
         <Image src="/media/story/hero.jpg" alt="" width={1280} height={704} sizes="100vw" className="h-auto w-full" />
         <div aria-hidden className="absolute inset-0 bg-ink/70" />

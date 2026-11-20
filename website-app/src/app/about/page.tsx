@@ -86,7 +86,7 @@ export default function AboutPage() {
               Wazelo is the lead follow-up platform. It catches every lead, replies fast and keeps following up until they buy.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
-              <a data-ab="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+              <a data-ab="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}>
                 Start free trial
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
@@ -105,7 +105,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── Mission (ink band) ───────────────────────────────────────────── */}
-      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-40">
+      <section className="tone-fixed bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-40">
         <div data-ab="mission" className="mx-auto max-w-5xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-paper/50">Why we exist</p>
           <p className="mt-8 font-display text-[clamp(2.25rem,4.5vw,4.25rem)] leading-[1.05] tracking-[-0.02em]">
@@ -175,7 +175,7 @@ export default function AboutPage() {
           <div data-ab="values" className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-4">
             {VALUES.map((v, i) => (
               <div key={v.title} data-ab="value" className="border-t border-ink/15 py-8">
-                <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
                 <h3 className="mt-6 font-display text-3xl leading-tight">{v.title}</h3>
                 <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{v.desc}</p>
               </div>
@@ -192,7 +192,7 @@ export default function AboutPage() {
           </h2>
           <p className="mx-auto mt-6 max-w-[40ch] text-lg text-ink-soft">Free for 14 days. No credit card.</p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <a href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+            <a href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}>
               Start free trial
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
@@ -203,7 +203,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooter showCta={false} />
     </div>
   );
 }

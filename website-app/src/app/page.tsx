@@ -92,7 +92,7 @@ export default function LandingPage() {
         <Faq />
         <StoryCta />
       </main>
-      <Footer />
+      <Footer showCta={false} />
     </div>
   );
 }

@@ -103,7 +103,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#131313",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3eee6" },
+    { media: "(prefers-color-scheme: dark)", color: "#110e0c" },
+  ],
 };
 
 // ── Root Layout ────────────────────────────────────────────────────────────────
@@ -114,8 +117,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-IN" className={`dark ${geistSans.variable} ${geistMono.variable} ${serif.variable}`} suppressHydrationWarning>
+    <html lang="en-IN" data-theme="light" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable}`} suppressHydrationWarning>
       <head>
+        {/* Light by default; a visitor who picked dark gets it before the first paint. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try{document.documentElement.dataset.theme=localStorage.getItem("wazelo-theme")==="dark"?"dark":"light"}catch(e){}`}
+        </Script>
         {/* Text fonts are self-hosted via next/font. The icon font loads only on the
             routes that use it (components/icon-font.tsx). */}
         <JsonLd data={siteGraph} />

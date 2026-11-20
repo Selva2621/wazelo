@@ -111,7 +111,7 @@ export function Pricing() {
             </h2>
             <p className="mt-5 text-base text-ink-soft">Every plan starts with a 14-day free trial. No card needed.</p>
           </div>
-          <div role="group" aria-label="Billing period" className="flex w-max gap-1 rounded-full border border-ink/15 bg-white/60 p-1 text-sm">
+          <div role="group" aria-label="Billing period" className="flex w-max gap-1 rounded-full border border-ink/15 bg-card/60 p-1 text-sm">
             {[
               { label: "Monthly", value: false },
               { label: "Yearly, 2 months free", value: true },
@@ -133,7 +133,7 @@ export function Pricing() {
         <div className="mt-16 grid gap-5 lg:grid-cols-12">
           {/* Solo: freelancers */}
           <div data-plan className="lg:col-span-4">
-            <article className="flex h-full flex-col rounded-[1.5rem] bg-ink p-8 text-paper lg:p-10">
+            <article className="tone-fixed flex h-full flex-col rounded-[1.5rem] bg-ink p-8 text-paper lg:p-10">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-3xl">{SOLO.name}</h3>
                 <span className="rounded-full border border-paper/20 px-3 py-1 text-xs font-medium text-paper/70">For freelancers</span>
@@ -155,9 +155,9 @@ export function Pricing() {
 
           {/* Team plans */}
           <div data-plan className="lg:col-span-8">
-            <div className="grid h-full divide-y divide-ink/10 rounded-[1.5rem] border border-ink/10 bg-white/70 md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="grid h-full divide-y divide-ink/10 rounded-[1.5rem] border border-ink/10 bg-card/70 md:grid-cols-3 md:divide-x md:divide-y-0">
               {TEAM_PLANS.map((p) => (
-                <article key={p.name} className={`relative flex flex-col p-8 ${p.popular ? "bg-[#fbf3e8]" : ""}`}>
+                <article key={p.name} className={`relative flex flex-col p-8 ${p.popular ? "bg-rust/[0.07]" : ""}`}>
                   {p.popular && <span aria-hidden className="absolute inset-x-8 top-0 h-0.5 bg-rust" />}
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-display text-3xl">{p.name}</h3>
@@ -171,7 +171,7 @@ export function Pricing() {
                   <a
                     href={APP_REGISTER_URL}
                     className={`mt-auto inline-flex justify-center rounded-full px-6 py-3.5 text-sm font-semibold transition-colors active:scale-[0.98] ${focusInk} ${
-                      p.popular ? "bg-ink text-paper hover:bg-black" : "border border-ink/20 hover:border-ink/50"
+                      p.popular ? "bg-ink text-paper hover:bg-ink/85" : "border border-ink/20 hover:border-ink/50"
                     }`}
                   >
                     Start free trial

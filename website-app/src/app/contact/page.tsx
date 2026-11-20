@@ -9,7 +9,7 @@ import SiteNavbar from "@/components/Navbar";
 
 const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 const fieldCls =
-  "w-full rounded-xl border border-ink/15 bg-white/70 px-4 py-3.5 text-[15px] text-ink placeholder:text-ink-faint outline-none transition-[border-color,box-shadow] focus:border-rust focus:ring-2 focus:ring-rust/25";
+  "w-full rounded-xl border border-ink/15 bg-card/70 px-4 py-3.5 text-[15px] text-ink placeholder:text-ink-faint outline-none transition-[border-color,box-shadow] focus:border-rust focus:ring-2 focus:ring-rust/25";
 const labelCls = "mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-ink-soft";
 
 // ─── Contact form with controlled state ───────────────────────────────────────
@@ -71,7 +71,7 @@ function ContactForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className={`group inline-flex items-center gap-2 self-start rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 ${focusInk}`}
+        className={`group inline-flex items-center gap-2 self-start rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 ${focusInk}`}
       >
         {status === "sending" ? "Opening email..." : status === "sent" ? "Message ready ✓" : "Send message"}
         {status === "idle" && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
@@ -144,7 +144,7 @@ export default function ContactPage() {
                 className={`group block border-t border-ink/15 py-7 transition-colors hover:border-rust ${focusInk}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
                   <ArrowUpRight className="h-4 w-4 text-ink-faint transition-colors group-hover:text-rust" />
                 </div>
                 <h2 className="mt-5 font-display text-3xl leading-tight">{c.title}</h2>
@@ -175,7 +175,7 @@ export default function ContactPage() {
               ))}
             </dl>
 
-            <div className="mt-12 rounded-[1.25rem] bg-ink p-8 text-paper">
+            <div className="tone-fixed mt-12 rounded-[1.25rem] bg-ink p-8 text-paper">
               <h3 className="font-display text-3xl leading-tight">Rather try it yourself?</h3>
               <p className="mt-3 text-[15px] leading-relaxed text-paper/70">
                 Start a free trial and look around Wazelo in a few minutes.
@@ -192,7 +192,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooter showCta={false} />
     </div>
   );
 }

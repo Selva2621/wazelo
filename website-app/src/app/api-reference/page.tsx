@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { MobileToc } from "@/components/mobile-toc";
 import SiteNavbar from "@/components/Navbar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ function MethodBadge({ method }: { method: string }) {
 
 function Code({ children, lang = "json" }: { children: string; lang?: string }) {
   return (
-    <div className="mb-6 overflow-hidden rounded-xl bg-ink">
+    <div className="tone-fixed mb-6 overflow-hidden rounded-xl bg-ink">
       <div className="border-b border-paper/10 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">{lang}</div>
       <pre className="overflow-x-auto px-5 py-4">
         <code className="font-mono text-[13px] leading-[1.75] text-paper/90">{children}</code>
@@ -198,10 +199,10 @@ export default function ApiReferencePage() {
             Integrate Wazelo into your own systems. Send messages, manage contacts, trigger automations, and listen to real-time events via webhooks.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <code className="max-w-full truncate rounded-full border border-ink/15 bg-white/60 px-4 py-2 font-mono text-[13px] text-ink">
+            <code className="max-w-full truncate rounded-full border border-ink/15 bg-card/60 px-4 py-2 font-mono text-[13px] text-ink">
               Base URL: {baseUrl}
             </code>
-            <a href="/docs" className={`inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+            <a href="/docs" className={`inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}>
               <span aria-hidden className="material-symbols-outlined text-[16px]">menu_book</span>
               Read the Docs →
             </a>
@@ -241,6 +242,7 @@ export default function ApiReferencePage() {
           </aside>
 
           {/* Content */}
+          <div className="lg:hidden"><MobileToc items={apiSections} /></div>
           <main data-rd="body" className="min-w-0 text-[17px] leading-relaxed text-ink-soft">
 
             {/* ── Overview ── */}

@@ -8,6 +8,7 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-
 import { Menu, X } from "lucide-react";
 import { APP_REGISTER_URL, APP_LOGIN_URL } from "@/lib/wazelo";
 import { useLenis } from "@/app/lenis-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface NavbarProps {
   activePage?: string;
@@ -62,7 +63,7 @@ export default function Navbar({ activePage }: NavbarProps) {
 
   return (
     <nav
-      className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-300 ${light ? "" : "tone-fixed"} ${
         !solid ? "border-transparent bg-transparent" : light ? "border-ink/10 bg-paper/85 backdrop-blur-xl" : "border-outline-variant bg-surface/85 backdrop-blur-xl"
       }`}
     >
@@ -92,14 +93,15 @@ export default function Navbar({ activePage }: NavbarProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle className={light ? "text-ink-soft hover:bg-ink/5 hover:text-ink" : "text-on-surface-variant hover:bg-card/10 hover:text-on-surface"} />
           <a href={APP_LOGIN_URL} className={`hidden rounded-full px-4 py-2 text-sm font-medium transition-colors sm:inline-flex ${focusRing} ${light ? "text-ink-soft hover:text-ink" : "text-on-surface-variant hover:text-on-surface"}`}>
             Sign in
           </a>
           <a
             href={APP_REGISTER_URL}
             className={`hidden rounded-full px-5 py-2.5 text-sm font-semibold transition-colors active:scale-[0.98] sm:inline-flex ${focusRing} ${
-              light ? "bg-ink text-paper hover:bg-black" : "bg-paper text-ink hover:bg-white"
+              light ? "bg-ink text-paper hover:bg-ink/85" : "bg-paper text-ink hover:bg-white"
             }`}
           >
             Start free trial

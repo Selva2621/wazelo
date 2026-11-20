@@ -74,7 +74,7 @@ export function StoryHero() {
   );
 
   return (
-    <section ref={root} className="relative h-[100svh] min-h-[640px] overflow-hidden bg-ink">
+    <section ref={root} className="tone-fixed relative h-[100svh] min-h-[640px] overflow-hidden bg-ink">
       <div data-h="frame" className="absolute inset-0 overflow-hidden will-change-transform">
         {/* Phones: the whole 16:9 film sits at the top, uncropped, with the copy below it.
             Desktop: full-bleed behind the copy (the 3D scene, or the film without WebGL). */}

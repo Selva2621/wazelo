@@ -40,7 +40,7 @@ export default function NotFound() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/"
-                  className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}
+                  className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}
                 >
                   Back to home
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -55,7 +55,7 @@ export default function NotFound() {
               <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm">
                 {LINKS.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className={`rounded-sm text-ink-soft underline decoration-ink/20 underline-offset-4 transition-colors hover:text-rust hover:decoration-rust ${focusInk}`}>
+                    <Link href={l.href} className={`inline-block rounded-sm py-2 text-ink-soft underline decoration-ink/20 underline-offset-4 transition-colors hover:text-rust hover:decoration-rust ${focusInk}`}>
                       {l.label}
                     </Link>
                   </li>

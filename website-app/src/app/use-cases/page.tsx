@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
+import { PhoneFrame } from "@/components/story/phone-frame";
 import SiteNavbar from "@/components/Navbar";
 import { LoopVideo } from "@/components/home/loop-video";
 
@@ -139,7 +140,7 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
           <ul className="mt-10">
             {ind.bullets.map((b, bi) => (
               <li key={b} data-uc="bullet" className="flex gap-5 border-t border-ink/15 py-4 last:border-b">
-                <span className="pt-0.5 font-mono text-xs text-ink-faint">{pad(bi + 1)}</span>
+                <span className="shrink-0 pt-0.5 font-mono text-xs text-ink-faint">{pad(bi + 1)}</span>
                 <span className="text-[15px] leading-relaxed">{b}</span>
               </li>
             ))}
@@ -147,7 +148,7 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
           <a
             data-uc="cta"
             href={APP_REGISTER_URL}
-            className={`group mt-10 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}
+            className={`group mt-10 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}
           >
             Try it free
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -157,7 +158,7 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
         {/* Media */}
         <div data-uc="media" className={`lg:col-span-6 ${reverse ? "lg:order-1 lg:col-start-1" : "lg:col-start-7"}`}>
           {ind.photo ? (
-            <div className="relative pb-16 sm:pb-20">
+            <div className="relative lg:pb-20">
               {/* Whole photo at its own shape (portrait or landscape), never cropped. */}
               <div data-uc="photo" className="overflow-hidden rounded-[1.25rem] bg-paper-deep">
                 <Image
@@ -171,13 +172,21 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
               </div>
               <div
                 data-uc="clip"
-                className={`absolute bottom-0 w-[68%] overflow-hidden rounded-xl bg-white shadow-[0_40px_80px_-30px_rgba(60,40,20,0.55),0_0_0_1px_rgba(23,19,15,0.08)] ${reverse ? "right-4 sm:right-8" : "left-4 sm:left-8"}`}
+                className={`absolute bottom-0 hidden w-[68%] overflow-hidden lg:block rounded-xl bg-white shadow-[0_40px_80px_-30px_rgba(60,40,20,0.55),0_0_0_1px_rgba(23,19,15,0.08)] ${reverse ? "right-4 sm:right-8" : "left-4 sm:left-8"}`}
               >
                 <LoopVideo src={`/media/story/${ind.clip}.mp4`} poster={`/media/story/${ind.clip}.jpg`} label={clipLabel} />
               </div>
+              {/* Phones: the app's own phone screen, readable, under the photo. */}
+              <PhoneFrame className="mt-10 lg:hidden">
+                <LoopVideo src={`/media/story/${ind.clip}-m.mp4`} poster={`/media/story/${ind.clip}-m.jpg`} label={clipLabel} className="!aspect-auto h-full" />
+              </PhoneFrame>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5),0_0_0_1px_rgba(23,19,15,0.08)]">
+            <>
+            <PhoneFrame className="lg:hidden">
+              <LoopVideo src={`/media/story/${ind.clip}-m.mp4`} poster={`/media/story/${ind.clip}-m.jpg`} label={clipLabel} className="!aspect-auto h-full" />
+            </PhoneFrame>
+            <div className="hidden overflow-hidden rounded-[1.25rem] bg-white lg:block shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5),0_0_0_1px_rgba(23,19,15,0.08)]">
               <div className="flex items-center gap-2 border-b border-ink/[0.07] bg-[#faf8f5] px-4 py-3">
                 <span className="size-2.5 rounded-full bg-[#e8645a]" />
                 <span className="size-2.5 rounded-full bg-[#f1bf4c]" />
@@ -186,6 +195,7 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
               </div>
               <LoopVideo src={`/media/story/${ind.clip}.mp4`} poster={`/media/story/${ind.clip}.jpg`} label={clipLabel} />
             </div>
+            </>
           )}
         </div>
       </div>
@@ -267,7 +277,7 @@ export default function UseCasesPage() {
                 data-uc="pill"
                 type="button"
                 onClick={() => scrollToIndustry(ind.id)}
-                className={`inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white/60 px-5 py-2.5 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
+                className={`inline-flex items-center gap-2 rounded-full border border-ink/15 bg-card/60 px-5 py-2.5 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
               >
                 <span className="font-mono text-[11px] text-ink-faint">{pad(i + 1)}</span>
                 {ind.tag}
@@ -315,7 +325,7 @@ export default function UseCasesPage() {
       </section>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
+      <section className="tone-fixed bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
         <div data-uc="end" className="mx-auto max-w-4xl text-center">
           <h2 className="font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
             Follow up every lead, <em className="text-[#f0b483]">starting today.</em>
@@ -331,7 +341,7 @@ export default function UseCasesPage() {
         </div>
       </section>
 
-      <SiteFooter />
+      <SiteFooter showCta={false} />
     </div>
   );
 }
