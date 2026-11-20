@@ -108,7 +108,7 @@ function CampaignMockup() {
                 <span style={{ background: "rgba(255,183,125,0.2)", color: "#ffb77d", padding: "1px 4px", borderRadius: 3 }}>WAZELO20</span>
                 <span> for 20% off your next order.</span>
                 <div style={{ fontSize: 10, color: "rgba(219,194,176,0.35)", textAlign: "right", marginTop: 6, fontFamily: FONT }}>
-                  Wazelo CRM • now&nbsp;&nbsp;✓✓
+                  Wazelo • now&nbsp;&nbsp;✓✓
                 </div>
               </div>
             </div>
@@ -179,7 +179,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Schedule and send personalised WhatsApp broadcasts to segmented contact lists. Track delivery, opens, and replies in real time.",
   heroScreen: "/screens/02-campaigns-broadcast.png",
   overviewTitle: "Campaigns that actually get read.",
-  overviewDesc: "Email open rates hover around 20%. WhatsApp messages get read 98% of the time — usually within 3 minutes. Wazelo CRM's campaign engine lets you broadcast to your entire contact list or a targeted segment, personalise each message with contact fields, and track every delivery and reply as it happens.",
+  overviewDesc: "Email open rates hover around 20%. WhatsApp messages get read 98% of the time — usually within 3 minutes. Wazelo's campaign engine lets you broadcast to your entire contact list or a targeted segment, personalise each message with contact fields, and track every delivery and reply as it happens.",
   capabilities: [
     { icon: "campaign", title: "Broadcast to segments", desc: "Send to your full list or a filtered segment — by tag, location, last interaction, or custom field." },
     { icon: "person", title: "Personalised messages", desc: "Merge contact fields into your message: name, city, order number, or any custom attribute." },

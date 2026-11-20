@@ -1,11 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Image from "next/image";
-import { useState, useEffect } from "react";
-import { useInView, useBreakpoint, APP_REGISTER_URL } from "@/lib/wazelo";
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { APP_REGISTER_URL } from "@/lib/wazelo";
+import { gsap, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
 import SiteNavbar from "@/components/Navbar";
+import { LoopVideo } from "@/components/home/loop-video";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FeatureDetailData {
@@ -23,426 +26,227 @@ export interface FeatureDetailData {
   interactiveSection?: React.ReactNode;
 }
 
-// ─── Scroll Progress Bar ──────────────────────────────────────────────────────
-function ScrollProgress() {
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    const h = () => {
-      const el = document.documentElement;
-      const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
-      setProgress(Math.min(100, Math.max(0, pct)));
-    };
-    window.addEventListener("scroll", h, { passive: true });
-    return () => window.removeEventListener("scroll", h);
-  }, []);
-  return (
-    <div style={{
-      position: "fixed", top: 0, left: 0, width: `${progress}%`, height: 2, zIndex: 100,
-      background: "linear-gradient(to right, #ffb77d, #d97707)",
-      transition: "width 0.1s linear",
-      boxShadow: "0 0 8px rgba(255,183,125,0.6)",
-    }} />
-  );
-}
+/** Real app recordings (public/media/story) shown instead of a still where one exists. */
+const HERO_CLIPS: Record<string, { clip: string; path: string }> = {
+  "shared-inbox": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
+  "ai-assistant": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
+  "lead-finder": { clip: "ch1-find", path: "app.wazelo.in/leads/finder" },
+  sequences: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
+  automation: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
+  proposals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
+  deals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
+};
 
+const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
-// ─── Section Label (animated underline reveal) ────────────────────────────────
-function SectionLabel({ text, inView }: { text: string; inView: boolean }) {
+function Frame({ path, children }: { path: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 14 }}>
-      <span style={{
-        fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
-        color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif",
-        opacity: inView ? 1 : 0, transition: "opacity 0.6s ease",
-      }}>{text}</span>
-      <div style={{
-        height: 1, background: "linear-gradient(to right,transparent,#ffb77d,transparent)",
-        width: inView ? "100%" : "0%", transition: "width 0.7s 0.2s ease",
-      }} />
+    <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5),0_0_0_1px_rgba(23,19,15,0.08)]">
+      <div className="flex items-center gap-2 border-b border-ink/[0.07] bg-[#faf8f5] px-4 py-3">
+        <span className="size-2.5 rounded-full bg-[#e8645a]" />
+        <span className="size-2.5 rounded-full bg-[#f1bf4c]" />
+        <span className="size-2.5 rounded-full bg-[#5fc454]" />
+        <span className="ml-3 truncate rounded-md bg-ink/[0.05] px-3 py-1 font-mono text-[11px] text-ink-soft">{path}</span>
+      </div>
+      {children}
     </div>
   );
 }
 
-// ─── Capability Card ──────────────────────────────────────────────────────────
-function CapabilityCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div className="feature-card" style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 16, padding: "28px 24px", height: "100%",
-    }}>
-      <span className="material-symbols-outlined card-icon" style={{ fontSize: 26, color: "#ffb77d", marginBottom: 14, display: "block" }}>{icon}</span>
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#e5e2e1", marginBottom: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</p>
-    </div>
-  );
-}
-
-// ─── Main Feature Detail Page ─────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function FeatureDetailPage({ data }: { data: FeatureDetailData }) {
-  const { mobile, tablet } = useBreakpoint();
+  const root = useRef<HTMLDivElement>(null);
+  const clip = HERO_CLIPS[data.slug];
 
-  const heroView      = useInView(0.05);
-  const overView      = useInView(0.15);
-  const capsView      = useInView(0.08);
-  const howView       = useInView(0.08);
-  const interactView  = useInView(0.08);
-  const relatedView   = useInView(0.15);
-  const ctaView       = useInView(0.2);
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(MQ_MOTION, () => {
+        gsap
+          .timeline({ defaults: { ease: "expo.out", duration: 1.1 } })
+          .from("[data-fd=crumb]", { y: 12, autoAlpha: 0, duration: 0.7 })
+          .from("[data-fd=title]", { y: 50, autoAlpha: 0 }, 0.1)
+          .from("[data-fd=sub]", { y: 24, autoAlpha: 0 }, 0.3)
+          .from("[data-fd=cta]", { y: 20, autoAlpha: 0, stagger: 0.08 }, 0.4)
+          .from("[data-fd=media]", { y: 90, autoAlpha: 0, duration: 1.4 }, 0.45);
 
-  // Parallax offset for hero glow
-  const [scrollY, setScrollY] = useState(0);
-  useEffect(() => {
-    const h = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", h, { passive: true });
-    return () => window.removeEventListener("scroll", h);
-  }, []);
+        const rise = (sel: string, trigger: string, stagger = 0.08) =>
+          gsap.from(sel, { y: 50, autoAlpha: 0, stagger, duration: 1, ease: "expo.out", scrollTrigger: { trigger, start: "top 78%", once: true } });
+        rise("[data-fd=over] > *", "[data-fd=over]", 0.12);
+        rise("[data-fd=cap]", "[data-fd=caps]");
+        rise("[data-fd=step]", "[data-fd=steps]", 0.12);
+        rise("[data-fd=rel]", "[data-fd=related]", 0.05);
+        rise("[data-fd=end] > *", "[data-fd=end]", 0.12);
+        if (document.querySelector("[data-fd=demo]")) {
+          gsap.from("[data-fd=demo]", { y: 80, scale: 0.96, autoAlpha: 0, duration: 1.2, ease: "expo.out", scrollTrigger: { trigger: "[data-fd=demo]", start: "top 85%", once: true } });
+        }
+      });
+      mm.add(MQ_FULL, () => {
+        // Media tilts back flat as it scrolls into place; the step line draws with scroll.
+        if (document.querySelector("[data-fd=media]")) {
+          gsap.fromTo("[data-fd=media-tilt]", { rotationX: 14, scale: 0.94, transformPerspective: 1600, transformOrigin: "50% 0%" }, { rotationX: 0, scale: 1, ease: "none", scrollTrigger: { trigger: "[data-fd=media]", start: "top 95%", end: "top 30%", scrub: 0.6 } });
+        }
+        gsap.fromTo("[data-fd=line]", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: "[data-fd=steps]", start: "top 75%", end: "bottom 60%", scrub: 0.6 } });
+        gsap.fromTo("[data-fd=progress]", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.3 } });
+      });
+    },
+    { scope: root },
+  );
 
   return (
-    <>
-      <style>{`
-        @keyframes featureGlowPulse {
-          0%,100% { opacity:0.07; transform:translate(-50%,-50%) scale(1); }
-          50%      { opacity:0.13; transform:translate(-50%,-50%) scale(1.08); }
-        }
-        @keyframes featureBadgePop {
-          0%   { opacity:0; transform:translateY(-8px) scale(0.9); }
-          100% { opacity:1; transform:translateY(0)   scale(1); }
-        }
-        @keyframes featureLineGrow {
-          from { transform:scaleX(0); }
-          to   { transform:scaleX(1); }
-        }
-        @keyframes featureStepPing {
-          0%,100% { box-shadow: 0 0 0 0 rgba(255,183,125,0.4); }
-          50%     { box-shadow: 0 0 0 8px rgba(255,183,125,0); }
-        }
-        @keyframes featureCtaGlow {
-          0%,100% { box-shadow: 0 0 40px 0px rgba(255,183,125,0.15); }
-          50%     { box-shadow: 0 0 80px 20px rgba(255,183,125,0.25); }
-        }
-        @keyframes featureFloatUp {
-          0%,100% { transform: translateY(0px); }
-          50%     { transform: translateY(-6px); }
-        }
-      `}</style>
-
-      <ScrollProgress />
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <div ref={root} className="min-h-dvh bg-paper font-sans text-ink">
+      {/* heroTitle arrives as HTML with an inline accent colour; restyle it for paper. */}
+      <style>{`[data-fd=title] span{color:var(--color-rust)!important;font-style:italic}`}</style>
+      <span data-fd="progress" aria-hidden className="fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-rust" />
       <SiteNavbar activePage="Features" />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section ref={heroView.ref} style={{
-        minHeight: "100vh", display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: mobile ? "120px 20px 60px" : "120px 48px 60px",
-        background: "var(--bg)", position: "relative", overflow: "hidden",
-      }}>
-        {/* Animated ambient glow */}
-        <div style={{
-          position: "absolute", top: "35%", left: "50%",
-          width: 800, height: 800, borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(217,119,6,0.09) 0%,transparent 70%)",
-          pointerEvents: "none",
-          animation: "featureGlowPulse 6s ease-in-out infinite",
-          transform: `translate(-50%,-50%) translateY(${scrollY * 0.15}px)`,
-        }} />
-        {/* Secondary glow ring */}
-        <div style={{
-          position: "absolute", top: "60%", left: "30%",
-          width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(217,119,6,0.04) 0%,transparent 70%)",
-          pointerEvents: "none",
-          transform: `translateY(${scrollY * -0.08}px)`,
-        }} />
-
-        <div style={{ textAlign: "center", maxWidth: 860, position: "relative", zIndex: 1 }}>
-          {/* Breadcrumb */}
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28,
-            opacity: heroView.inView ? 1 : 0,
-            transform: heroView.inView ? "translateY(0)" : "translateY(-12px)",
-            transition: "opacity 0.6s ease, transform 0.6s ease",
-            animation: heroView.inView ? "featureBadgePop 0.5s ease forwards" : "none",
-          }}>
-            <a href="/#features" style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif" }}>Features</a>
-            <span style={{ fontSize: 12, color: "rgba(219,194,176,0.2)", fontFamily: "var(--font-geist-sans), sans-serif" }}>/</span>
-            <span style={{
-              fontSize: 12, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
-              background: "rgba(255,183,125,0.08)", padding: "3px 10px", borderRadius: 20,
-              border: "1px solid rgba(255,183,125,0.2)",
-            }}>{data.tag}</span>
-          </div>
-
-          <h1 style={{
-            fontSize: "clamp(36px,5.5vw,76px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.06, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(28px)",
-            transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
-          }}
-            dangerouslySetInnerHTML={{ __html: data.heroTitle }}
-          />
-
-          <p style={{
-            fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
-            maxWidth: 580, margin: "0 auto 40px", fontFamily: "var(--font-geist-sans), sans-serif",
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.9s 0.22s ease, transform 0.9s 0.22s ease",
-          }}>
-            {data.heroSubtitle}
-          </p>
-
-          <div style={{
-            display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.9s 0.34s ease, transform 0.9s 0.34s ease",
-          }}>
-            <a href={APP_REGISTER_URL} className="btn-primary" style={{
-              padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 800,
-              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-            }}>Start Free Trial</a>
-            <a href="/#features" className="btn-ghost" style={{
-              padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 600,
-              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-            }}>See all features</a>
-          </div>
-        </div>
-
-        {/* Hero screenshot — floats gently */}
-        {data.heroScreen && (
-          <div style={{
-            marginTop: 64, maxWidth: 1100, width: "100%", position: "relative", zIndex: 1,
-            opacity: heroView.inView ? 1 : 0,
-            transform: heroView.inView ? "translateY(0) scale(1)" : "translateY(40px) scale(0.96)",
-            transition: "opacity 1.1s 0.45s ease, transform 1.1s 0.45s ease",
-            animation: heroView.inView ? "featureFloatUp 5s 1.5s ease-in-out infinite" : "none",
-          }}>
-            <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,183,125,0.15)", boxShadow: "0 40px 120px rgba(0,0,0,0.6)" }}>
-              <Image src={data.heroScreen} alt={data.tag} width={1280} height={720} style={{ width: "100%", height: "auto", display: "block" }} priority />
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="px-4 pb-24 pt-32 sm:px-6 lg:px-8 lg:pb-32 lg:pt-40">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-4xl">
+            <p data-fd="crumb" className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-ink-faint">
+              <Link href="/#features" className="hover:text-ink">Features</Link>
+              <span>/</span>
+              <span className="text-rust">{data.tag}</span>
+            </p>
+            <h1
+              data-fd="title"
+              className="mt-6 font-display text-[clamp(3rem,7vw,6.5rem)] leading-[0.92] tracking-[-0.02em]"
+              dangerouslySetInnerHTML={{ __html: data.heroTitle }}
+            />
+            <p data-fd="sub" className="mt-8 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+              {data.heroSubtitle}
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <a data-fd="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+                Start free trial
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <Link data-fd="cta" href="/#features" className={`inline-flex items-center rounded-full border border-ink/20 px-7 py-4 text-sm font-semibold transition-colors hover:border-ink/50 ${focusInk}`}>
+                See all features
+              </Link>
             </div>
           </div>
-        )}
 
-        {/* Scroll cue */}
-        <div style={{
-          position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-          opacity: heroView.inView ? 0.5 : 0, transition: "opacity 1s 1.2s ease",
-        }}>
-          <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#dbc2b0", fontFamily: "var(--font-geist-sans), sans-serif" }}>scroll</span>
-          <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom,#ffb77d,transparent)" }} />
-        </div>
-      </section>
-
-      {/* ── Overview ──────────────────────────────────────────────────────── */}
-      <section ref={overView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.06)", position: "relative", overflow: "hidden",
-      }}>
-        {/* Decorative corner accent */}
-        <div style={{
-          position: "absolute", top: -1, left: "50%", transform: "translateX(-50%)",
-          width: overView.inView ? 120 : 0, height: 2,
-          background: "linear-gradient(to right,transparent,#ffb77d,transparent)",
-          transition: "width 1s ease",
-        }} />
-        <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
-          <div style={{
-            width: overView.inView ? 60 : 0, height: 2,
-            background: "linear-gradient(to right,#ffb77d,#d97707)",
-            margin: "0 auto 32px",
-            transition: "width 0.8s ease",
-          }} />
-          <h2 style={{
-            fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2,
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20,
-            opacity: overView.inView ? 1 : 0, transform: overView.inView ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
-          }}>{data.overviewTitle}</h2>
-          <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif",
-            opacity: overView.inView ? 1 : 0, transform: overView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
-          }}>{data.overviewDesc}</p>
-        </div>
-      </section>
-
-      {/* ── Capabilities ──────────────────────────────────────────────────── */}
-      <section ref={capsView.ref} style={{
-        background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 52 }}>
-            <SectionLabel text="What you can do" inView={capsView.inView} />
-            <h2 style={{
-              fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
-              opacity: capsView.inView ? 1 : 0, transform: capsView.inView ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
-            }}>Key capabilities</h2>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: mobile ? "1fr" : tablet ? "1fr 1fr" : "repeat(3, 1fr)",
-            gap: 16,
-          }}>
-            {data.capabilities.map((c, i) => (
-              <div key={c.title} style={{
-                opacity: capsView.inView ? 1 : 0,
-                transform: capsView.inView ? "translateY(0) scale(1)" : "translateY(32px) scale(0.97)",
-                transition: `opacity 0.65s ${0.07 * i}s ease, transform 0.65s ${0.07 * i}s ease`,
-              }}>
-                <CapabilityCard {...c} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── How it works ──────────────────────────────────────────────────── */}
-      <section ref={howView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 52 }}>
-            <SectionLabel text="How it works" inView={howView.inView} />
-            <h2 style={{
-              fontSize: "clamp(24px,3vw,40px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
-              opacity: howView.inView ? 1 : 0, transform: howView.inView ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
-            }}>Up and running in minutes</h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {data.howItWorks.map((step, i) => (
-              <div key={i} style={{
-                display: "flex", gap: mobile ? 20 : 40, alignItems: "flex-start",
-                paddingBottom: i < data.howItWorks.length - 1 ? 44 : 0, position: "relative",
-                opacity: howView.inView ? 1 : 0,
-                transform: howView.inView ? "translateX(0)" : "translateX(-36px)",
-                transition: `opacity 0.7s ${0.13 * i}s ease, transform 0.7s ${0.13 * i}s ease`,
-              }}>
-                {/* Animated connector line */}
-                {i < data.howItWorks.length - 1 && (
-                  <div style={{
-                    position: "absolute", left: mobile ? 19 : 27, top: mobile ? 44 : 60,
-                    width: 2, height: "calc(100% - 24px)",
-                    background: "linear-gradient(to bottom,rgba(255,183,125,0.35),rgba(255,183,125,0.04))",
-                    transformOrigin: "top",
-                    transform: howView.inView ? "scaleY(1)" : "scaleY(0)",
-                    transition: `transform 0.6s ${0.13 * i + 0.3}s ease`,
-                  }} />
+          {(clip || data.heroScreen) && (
+            <div data-fd="media" className="mt-16 lg:mt-24">
+              <div data-fd="media-tilt" className="will-change-transform">
+                {clip ? (
+                  <div className="mx-auto max-w-5xl">
+                    <Frame path={clip.path}>
+                      <LoopVideo src={`/media/story/${clip.clip}.mp4`} poster={`/media/story/${clip.clip}.jpg`} label={`${data.tag} in the Wazelo app`} />
+                    </Frame>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-[1.5rem] bg-ink shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5)]">
+                    <Image src={data.heroScreen} alt={data.tag} width={1280} height={800} sizes="(min-width: 1280px) 1216px, 100vw" className="h-auto w-full" priority />
+                  </div>
                 )}
-                {/* Step circle with ping animation */}
-                <div style={{
-                  width: mobile ? 40 : 56, height: mobile ? 40 : 56, borderRadius: "50%",
-                  background: "rgba(255,183,125,0.1)", border: "1px solid rgba(255,183,125,0.35)",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  animation: howView.inView ? `featureStepPing 2.5s ${0.3 * i}s ease-in-out infinite` : "none",
-                }}>
-                  <span style={{ fontSize: mobile ? 13 : 16, fontWeight: 800, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.step}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Overview ─────────────────────────────────────────────────────── */}
+      <section className="border-t border-ink/10 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div data-fd="over" className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-12">
+          <h2 className="font-display text-4xl leading-[1] tracking-[-0.01em] md:text-6xl lg:col-span-7">{data.overviewTitle}</h2>
+          <p className="max-w-md text-lg leading-relaxed text-ink-soft lg:col-span-4 lg:col-start-9 lg:pt-3">{data.overviewDesc}</p>
+        </div>
+      </section>
+
+      {/* ── Capabilities ─────────────────────────────────────────────────── */}
+      <section className="bg-paper-deep/60 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">What you can do</p>
+          <div data-fd="caps" className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
+            {data.capabilities.map((c, i) => (
+              <div key={c.title} data-fd="cap" className="border-t border-ink/15 py-8">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="material-symbols-outlined text-[22px] text-rust">{c.icon}</span>
                 </div>
-                <div style={{ paddingTop: mobile ? 8 : 14 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>{step.title}</h3>
-                  <p style={{ fontSize: 14, color: "rgba(219,194,176,0.6)", lineHeight: 1.75, fontFamily: "var(--font-geist-sans), sans-serif" }}>{step.desc}</p>
-                </div>
+                <h3 className="mt-6 font-display text-3xl leading-tight">{c.title}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{c.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Interactive Section ───────────────────────────────────────────── */}
+      {/* ── How it works ─────────────────────────────────────────────────── */}
+      <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="font-display text-4xl leading-none md:text-6xl">
+            Up and running <em className="text-rust">in minutes.</em>
+          </h2>
+          <div data-fd="steps" className="relative mt-16">
+            <span aria-hidden className="absolute left-0 right-0 top-[1.15rem] hidden h-px bg-ink/10 lg:block" />
+            <span aria-hidden data-fd="line" className="absolute left-0 right-0 top-[1.15rem] hidden h-px origin-left scale-x-0 bg-rust lg:block" />
+            <ol className="grid gap-10 lg:grid-cols-4 lg:gap-8">
+              {data.howItWorks.map((s, i) => (
+                <li key={s.step + s.title} data-fd="step" className="relative flex gap-5 lg:block">
+                  <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full border border-ink/20 bg-paper font-mono text-xs">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="lg:mt-8">
+                    <h3 className="text-lg font-semibold tracking-tight">{s.title}</h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{s.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Live demo (the older pages' interactive mock, shown as a screen) ── */}
       {data.interactiveSection && (
-        <section ref={interactView.ref} style={{
-          background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-          borderTop: "1px solid rgba(255,183,125,0.06)",
-        }}>
-          <div style={{
-            maxWidth: 1100, margin: "0 auto",
-            opacity: interactView.inView ? 1 : 0,
-            transform: interactView.inView ? "translateY(0) scale(1)" : "translateY(40px) scale(0.98)",
-            transition: "opacity 0.9s ease, transform 0.9s ease",
-          }}>
+        <section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
+          <div data-fd="demo" className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-ink p-5 text-on-surface sm:p-8 lg:p-12">
+            <p className="mb-8 text-xs font-medium uppercase tracking-[0.22em] text-paper/50">See it in action</p>
             {data.interactiveSection}
           </div>
         </section>
       )}
 
-      {/* ── Related Features ──────────────────────────────────────────────── */}
-      <section ref={relatedView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.06)",
-      }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
-          <SectionLabel text="Keep exploring" inView={relatedView.inView} />
-          <h2 style={{
-            fontSize: "clamp(22px,2.5vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
-            opacity: relatedView.inView ? 1 : 0, transform: relatedView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.8s 0.1s ease, transform 0.8s 0.1s ease",
-          }}>Related features</h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
-            {data.relatedFeatures.map((f, i) => (
-              <a key={f.label} href={f.href} style={{
-                display: "inline-flex", alignItems: "center", gap: 10, padding: "12px 20px",
-                borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)",
-                textDecoration: "none",
-                opacity: relatedView.inView ? 1 : 0,
-                transform: relatedView.inView ? "translateY(0) scale(1)" : "translateY(20px) scale(0.94)",
-                transition: `opacity 0.6s ${0.07 * i}s ease, transform 0.6s ${0.07 * i}s ease, border-color 0.2s, background 0.2s`,
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,183,125,0.35)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-high)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface)"; }}
+      {/* ── Related ──────────────────────────────────────────────────────── */}
+      <section className="border-t border-ink/10 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <h2 className="font-display text-3xl md:text-4xl">Works well with</h2>
+          <div data-fd="related" className="flex flex-wrap gap-3">
+            {data.relatedFeatures.map((f) => (
+              <Link
+                key={f.label}
+                data-fd="rel"
+                href={f.href}
+                className={`group inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white/60 px-5 py-3 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#ffb77d" }}>{f.icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#dbc2b0", fontFamily: "var(--font-geist-sans), sans-serif" }}>{f.label}</span>
-              </a>
+                <span className="material-symbols-outlined text-[18px] text-rust">{f.icon}</span>
+                {f.label}
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-40 transition-opacity group-hover:opacity-100" />
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section ref={ctaView.ref} style={{
-        background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.08)", position: "relative", overflow: "hidden",
-      }}>
-        {/* Animated CTA glow */}
-        <div style={{
-          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-          width: 600, height: 300, borderRadius: "50%",
-          background: "radial-gradient(ellipse,rgba(217,119,6,0.08) 0%,transparent 70%)",
-          pointerEvents: "none",
-          animation: ctaView.inView ? "featureCtaGlow 3s ease-in-out infinite" : "none",
-        }} />
-        <div style={{ maxWidth: 660, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
-          <h2 style={{
-            fontSize: "clamp(26px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
-            opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.8s ease, transform 0.8s ease",
-          }}>
-            Ready to try <span style={{ color: "#ffb77d" }}>{data.tag}?</span>
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
+        <div data-fd="end" className="mx-auto max-w-4xl text-center">
+          <h2 className="font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
+            Ready to try <em className="text-[#f0b483]">{data.tag.toLowerCase()}?</em>
           </h2>
-          <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
-            fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
-            opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.8s 0.12s ease, transform 0.8s 0.12s ease",
-          }}>
-            Free trial. No credit card required. Setup in under 5 minutes.
-          </p>
-          <a href={APP_REGISTER_URL} className="btn-primary" style={{
-            padding: "16px 40px", borderRadius: 100, fontSize: 15, fontWeight: 800,
-            textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-            opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.8s 0.24s ease, transform 0.8s 0.24s ease",
-          }}>Start for free</a>
+          <p className="mx-auto mt-6 max-w-[40ch] text-lg text-paper/70">Free for 14 days. No credit card. Set up in minutes.</p>
+          <a href={APP_REGISTER_URL} className="group mt-10 inline-flex items-center gap-2 rounded-full bg-paper px-8 py-4 text-sm font-semibold text-ink transition-colors hover:bg-white active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper">
+            Start free trial
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
       <SiteFooter />
-    </>
+    </div>
   );
 }

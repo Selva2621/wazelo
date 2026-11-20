@@ -99,7 +99,7 @@ function KanbanMockup() {
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
           <span style={{ fontSize: 12, color: "rgba(219,194,176,0.3)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
-            Deals Pipeline — Wazelo CRM
+            Deals Pipeline — Wazelo
           </span>
         </div>
 
@@ -303,7 +303,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "A full CRM-style sales pipeline built into your WhatsApp workflow. Track deal stages, values, close dates, and owners — without switching tools.",
   heroScreen: "",
   overviewTitle: "Stop losing deals in DMs.",
-  overviewDesc: "Most WhatsApp sales teams track deals in their heads, on paper, or in a spreadsheet they never update. Wazelo CRM gives you a Kanban-style pipeline where every deal is linked to a WhatsApp conversation, a contact, and a stage — so your team sees exactly what's open, what's stalled, and what's about to close.",
+  overviewDesc: "Most WhatsApp sales teams track deals in their heads, on paper, or in a spreadsheet they never update. Wazelo gives you a Kanban-style pipeline where every deal is linked to a WhatsApp conversation, a contact, and a stage — so your team sees exactly what's open, what's stalled, and what's about to close.",
   capabilities: [
     { icon: "view_kanban",    title: "Kanban deal board",       desc: "Visualise every open deal across your custom pipeline stages. Drag to move, click to open." },
     { icon: "attach_money",   title: "Deal value & close date", desc: "Set expected revenue and expected close date per deal. Your forecast updates in real time." },

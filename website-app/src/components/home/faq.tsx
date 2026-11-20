@@ -8,45 +8,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { Reveal } from "@/components/home/reveal";
 import { Incoming, Outgoing, PhoneFrame, Time, TypingBubble, bubbleEnter } from "@/components/mocks/phone-frame";
-import { gsap, useGSAP, MQ_FULL } from "@/lib/gsap";
-import { Illustration } from "@/components/illustration";
+import { gsap, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 
-const FAQ = [
-  {
-    q: "I'm a freelancer. Do I need a team plan?",
-    a: "No. Choose “Solo / Freelancer” at sign-up and take the Solo plan at ₹299 a month. You get Lead Scraper, a client pipeline, 26 ready templates and follow-up sequences. You can switch to a team setup later in Settings.",
-  },
-  {
-    q: "What do teams get that freelancers don't?",
-    a: "Team accounts add assignments and a My Team view, automation, the chatbot and chat widget, CSAT surveys, roles for Admin, Manager and Employee, audit logs and multiple WhatsApp numbers.",
-  },
-  {
-    q: "How much does it cost?",
-    a: "Solo is ₹299 a month. Team plans are Starter at ₹499, Growth at ₹999 and Pro at ₹1,999 a month. Enterprise starts at ₹3,999 a month. Every plan has a 14-day free trial with no credit card.",
-  },
-  {
-    q: "Does it use the official WhatsApp Business API?",
-    a: "Yes. Wazelo is built on the official WhatsApp Business API from Meta. It supports multiple WhatsApp numbers, approved message templates and Meta's compliance requirements.",
-  },
-  {
-    q: "Can several people use the same WhatsApp number?",
-    a: "Yes. The shared inbox lets your whole team work one number at the same time. Chats are assigned to agents, tracked to resolution and reported on.",
-  },
-  {
-    q: "Can I send bulk WhatsApp messages?",
-    a: "Yes. Campaigns send personalised template messages to your segments, with live delivery tracking. Growth includes 25,000 messages a month and Pro includes 1,00,000.",
-  },
-  {
-    q: "How is Wazelo different from Interakt, Wati or AiSensy?",
-    a: "Wazelo puts the shared inbox, campaigns, automation, chatbot and analytics in one product, and adds a Solo plan with lead finding and proposals for freelancers.",
-  },
-  {
-    q: "Is my data secure?",
-    a: "Wazelo runs on Meta's official API infrastructure, with role-based access, audit logs and GDPR tools for data requests.",
-  },
-];
+import { FAQ } from "./faq-data";
 
 type Phase = "sent" | "typing" | "answered";
 
@@ -113,18 +78,16 @@ export function Faq() {
   const [shown, setShown] = useState(0);
   const section = useRef<HTMLElement>(null);
 
-  // Desktop: the phone tilts up into place as the section scrolls in.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
+      mm.add(MQ_MOTION, () => {
+        gsap.from("[data-faq=head] > *", { y: 40, autoAlpha: 0, stagger: 0.1, duration: 1, ease: "expo.out", scrollTrigger: { trigger: section.current, start: "top 75%", once: true } });
+        gsap.from("[data-faq=item]", { y: 30, autoAlpha: 0, stagger: 0.06, duration: 0.9, ease: "expo.out", scrollTrigger: { trigger: "[data-faq=list]", start: "top 80%", once: true } });
+      });
+      // Desktop: the phone tilts up into place as the section scrolls in.
       mm.add(MQ_FULL, () => {
-        gsap.from("[data-faq=phone]", {
-          y: 120,
-          rotation: 6,
-          autoAlpha: 0,
-          ease: "none",
-          scrollTrigger: { trigger: section.current, start: "top 85%", end: "top 30%", scrub: 1 },
-        });
+        gsap.from("[data-faq=phone]", { y: 120, rotation: 6, autoAlpha: 0, ease: "none", scrollTrigger: { trigger: section.current, start: "top 85%", end: "top 30%", scrub: 1 } });
       });
     },
     { scope: section },
@@ -136,56 +99,60 @@ export function Faq() {
   };
 
   return (
-    <section ref={section} id="faq" className="relative scroll-mt-16 overflow-hidden border-t border-outline-variant/70 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-      <div aria-hidden className="glass-stage">
-        <span className="right-[8%] top-1/4 h-96 w-96 bg-primary/15" />
-      </div>
-      <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-12 lg:gap-10">
+    <section ref={section} id="faq" className="relative scroll-mt-16 border-t border-ink/10 bg-paper px-4 py-28 text-ink sm:px-6 lg:px-8 lg:py-36">
+      <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-12 lg:gap-12">
         <div className="lg:col-span-7">
-          <Reveal>
-            <h2 className="text-4xl font-semibold leading-[1.05] tracking-tight text-on-surface md:text-5xl">Questions, answered.</h2>
-            <p className="mt-5 text-base leading-relaxed text-on-surface-variant">
+          <div data-faq="head">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">Questions</p>
+            <h2 className="mt-5 font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-7xl">
+              Asked, <em className="text-rust">answered.</em>
+            </h2>
+            <p className="mt-5 text-base leading-relaxed text-ink-soft">
               Something else on your mind?{" "}
-              <Link href="/contact" className="font-medium text-primary-container underline-offset-4 hover:underline">
+              <Link href="/contact" className="font-semibold text-rust underline-offset-4 hover:underline">
                 Talk to sales
               </Link>
               .
             </p>
-          </Reveal>
-          <Illustration name="support" label="A support agent answering questions" className="mt-8 h-40 w-full max-w-xs" />
+          </div>
 
-          <ul className="mt-10 flex flex-col divide-y divide-outline-variant border-y border-outline-variant">
+          <ul data-faq="list" className="mt-12 flex flex-col border-t border-ink/15">
             {FAQ.map((item, i) => {
               const isOpen = open === i;
               const id = `faq-${i}`;
               return (
-                <li key={item.q}>
+                <li key={item.q} data-faq="item" className="border-b border-ink/15">
                   <h3>
                     <button
                       type="button"
                       aria-expanded={isOpen}
                       aria-controls={id}
                       onClick={() => toggle(i)}
-                      className="flex w-full items-center justify-between gap-6 py-5 text-left text-base font-medium text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+                      className="group flex w-full items-center justify-between gap-6 py-6 text-left text-lg font-medium transition-colors hover:text-rust focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                     >
-                      {item.q}
-                      <Plus className={`h-5 w-5 shrink-0 text-primary-container transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`} />
+                      <span className="flex items-baseline gap-4">
+                        <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                        {item.q}
+                      </span>
+                      <span className={`grid size-8 shrink-0 place-items-center rounded-full border transition-all duration-300 ${isOpen ? "rotate-45 border-ink bg-ink text-paper" : "border-ink/20"}`}>
+                        <Plus className="h-4 w-4" />
+                      </span>
                     </button>
                   </h3>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        id={id}
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <p className="max-w-[65ch] pb-6 text-sm leading-relaxed text-on-surface-variant">{item.a}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Always in the DOM (server HTML) so every answer is crawlable and
+                      matches the FAQPage schema; collapsed + inert when closed. */}
+                  <motion.div
+                    id={id}
+                    role="region"
+                    aria-hidden={!isOpen}
+                    inert={!isOpen}
+                    initial={false}
+                    animate={isOpen ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: [0.2, 0, 0, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <p className="max-w-[62ch] pb-7 pl-9 text-[15px] leading-relaxed text-ink-soft">{item.a}</p>
+                  </motion.div>
                 </li>
               );
             })}
@@ -193,9 +160,8 @@ export function Faq() {
         </div>
 
         <div className="hidden lg:col-span-5 lg:block">
-          <div className="sticky top-24 flex justify-center">
+          <div className="sticky top-28 flex justify-center">
             <div data-faq="phone" className="relative">
-              <div aria-hidden className="device-glow" />
               <SupportPhone index={shown} />
             </div>
           </div>

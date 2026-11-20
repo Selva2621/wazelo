@@ -3,8 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
-import { Reveal } from "@/components/home/reveal";
+import { ArrowRight, Check } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
@@ -22,7 +21,7 @@ const SOLO: Plan = {
   monthly: 299,
   yearly: 2990,
   limits: "1 user, 1 WhatsApp number, 3,000 messages a month",
-  features: ["Lead Scraper and client pipeline", "26 freelancer templates", "Follow-up sequences", "5 campaigns a month"],
+  features: ["Lead finder and client pipeline", "26 freelancer templates", "Follow-up sequences", "5 campaigns a month"],
 };
 
 const TEAM_PLANS: (Plan & { popular?: boolean })[] = [
@@ -51,36 +50,36 @@ const TEAM_PLANS: (Plan & { popular?: boolean })[] = [
 ];
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
-const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
+const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 function Price({ plan, yearly }: { plan: Plan; yearly: boolean }) {
   const value = yearly ? plan.yearly : plan.monthly;
   return (
-    <p className="flex items-baseline gap-1">
+    <p className="flex items-baseline gap-1.5">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={value}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25 }}
-          className="text-4xl font-semibold tracking-tight tabular-nums"
+          exit={{ opacity: 0, y: -14 }}
+          transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+          className="font-display text-6xl leading-none tabular-nums"
         >
           {inr(value)}
         </motion.span>
       </AnimatePresence>
-      <span className="text-sm opacity-75">/{yearly ? "year" : "month"}</span>
+      <span className="text-sm opacity-60">/{yearly ? "year" : "month"}</span>
     </p>
   );
 }
 
-function Features({ items }: { items: string[] }) {
+function Features({ items, dark }: { items: string[]; dark?: boolean }) {
   return (
-    <ul className="mb-8 mt-6 flex flex-col gap-2.5 text-sm">
+    <ul className="mb-10 mt-8 flex flex-col gap-3 text-[15px]">
       {items.map((f) => (
-        <li key={f} className="flex items-start gap-2.5">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-container" />
-          <span className="text-on-surface-variant">{f}</span>
+        <li key={f} className="flex items-start gap-3">
+          <Check className={`mt-0.5 h-4 w-4 shrink-0 ${dark ? "text-[#f0b483]" : "text-rust"}`} />
+          <span className={dark ? "text-paper/80" : "text-ink-soft"}>{f}</span>
         </li>
       ))}
     </ul>
@@ -91,36 +90,28 @@ export function Pricing() {
   const [yearly, setYearly] = useState(false);
   const section = useRef<HTMLElement>(null);
 
-  // Plans rise in one after another as the grid scrolls into view.
   useGSAP(
     () => {
-      const mm = gsap.matchMedia();
-      mm.add(MQ_MOTION, () => {
-        gsap.from("[data-plan]", {
-          y: 70,
-          autoAlpha: 0,
-          stagger: 0.15,
-          duration: 0.9,
-          ease: "power3.out",
-          scrollTrigger: { trigger: "[data-plan]", start: "top 85%", once: true },
-        });
+      gsap.matchMedia().add(MQ_MOTION, () => {
+        gsap.from("[data-pr=head] > *", { y: 40, autoAlpha: 0, stagger: 0.1, duration: 1, ease: "expo.out", scrollTrigger: { trigger: section.current, start: "top 75%", once: true } });
+        gsap.from("[data-plan]", { y: 80, autoAlpha: 0, stagger: 0.12, duration: 1.1, ease: "expo.out", scrollTrigger: { trigger: "[data-plan]", start: "top 85%", once: true } });
       });
     },
     { scope: section },
   );
 
   return (
-    <section ref={section} id="pricing" className="scroll-mt-16 border-t border-outline-variant/70 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section ref={section} id="pricing" className="scroll-mt-16 border-t border-ink/10 bg-paper px-4 py-28 text-ink sm:px-6 lg:px-8 lg:py-36">
       <div className="mx-auto max-w-7xl">
-        <Reveal className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div data-pr="head" className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary-container">Pricing</p>
-            <h2 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-on-surface md:text-5xl">
-              Pay for the way you work.
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">Pricing</p>
+            <h2 className="mt-5 font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-7xl">
+              Simple pricing. <em className="text-rust">In rupees.</em>
             </h2>
-            <p className="mt-4 text-base text-on-surface-variant">Every plan starts with a 14-day free trial. No card needed.</p>
+            <p className="mt-5 text-base text-ink-soft">Every plan starts with a 14-day free trial. No card needed.</p>
           </div>
-          <div role="group" aria-label="Billing period" className="flex w-max gap-1 rounded-full border border-outline-variant bg-surface-container-lowest p-1 text-sm">
+          <div role="group" aria-label="Billing period" className="flex w-max gap-1 rounded-full border border-ink/15 bg-white/60 p-1 text-sm">
             {[
               { label: "Monthly", value: false },
               { label: "Yearly, 2 months free", value: true },
@@ -130,59 +121,57 @@ export function Pricing() {
                 type="button"
                 aria-pressed={yearly === o.value}
                 onClick={() => setYearly(o.value)}
-                className={`relative rounded-full px-4 py-2 font-medium transition-colors ${focusRing} ${
-                  yearly === o.value ? "text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-                }`}
+                className={`relative rounded-full px-4 py-2 font-medium transition-colors ${focusInk} ${yearly === o.value ? "text-paper" : "text-ink-soft hover:text-ink"}`}
               >
-                {yearly === o.value && (
-                  <motion.span layoutId="billing-pill" className="absolute inset-0 rounded-full bg-primary-container" transition={{ type: "spring", stiffness: 420, damping: 38 }} />
-                )}
+                {yearly === o.value && <motion.span layoutId="billing-pill" className="absolute inset-0 rounded-full bg-ink" transition={{ type: "spring", stiffness: 420, damping: 38 }} />}
                 <span className="relative">{o.label}</span>
               </button>
             ))}
           </div>
-        </Reveal>
+        </div>
 
-        <div className="mt-14 grid gap-4 lg:grid-cols-12">
+        <div className="mt-16 grid gap-5 lg:grid-cols-12">
           {/* Solo: freelancers */}
           <div data-plan className="lg:col-span-4">
-            <article className="flex h-full flex-col rounded-2xl border border-primary/50 bg-surface-container-lowest bg-[radial-gradient(40rem_18rem_at_0%_0%,rgb(217_119_6/0.2),transparent_65%)] p-8">
+            <article className="flex h-full flex-col rounded-[1.5rem] bg-ink p-8 text-paper lg:p-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-on-surface">{SOLO.name}</h3>
-                <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary-container">For freelancers</span>
+                <h3 className="font-display text-3xl">{SOLO.name}</h3>
+                <span className="rounded-full border border-paper/20 px-3 py-1 text-xs font-medium text-paper/70">For freelancers</span>
               </div>
-              <div className="mt-6 text-on-surface">
+              <div className="mt-8">
                 <Price plan={SOLO} yearly={yearly} />
               </div>
-              <p className="mt-3 text-sm text-on-surface-variant">{SOLO.limits}</p>
-              <Features items={SOLO.features} />
+              <p className="mt-4 text-sm text-paper/60">{SOLO.limits}</p>
+              <Features items={SOLO.features} dark />
               <a
                 href={APP_REGISTER_URL}
-                className={`mt-auto inline-flex justify-center rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-[#fbbf24] active:scale-[0.98] ${focusRing}`}
+                className="group mt-auto inline-flex items-center justify-center gap-2 rounded-full bg-paper px-6 py-3.5 text-sm font-semibold text-ink transition-colors hover:bg-white active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper"
               >
                 Start free trial
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
           </div>
 
-          {/* Team plans, one container */}
+          {/* Team plans */}
           <div data-plan className="lg:col-span-8">
-            <div className="grid h-full divide-y divide-outline-variant rounded-2xl border border-outline-variant bg-surface-container-lowest md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="grid h-full divide-y divide-ink/10 rounded-[1.5rem] border border-ink/10 bg-white/70 md:grid-cols-3 md:divide-x md:divide-y-0">
               {TEAM_PLANS.map((p) => (
-                <article key={p.name} className="flex flex-col p-8">
+                <article key={p.name} className={`relative flex flex-col p-8 ${p.popular ? "bg-[#fbf3e8]" : ""}`}>
+                  {p.popular && <span aria-hidden className="absolute inset-x-8 top-0 h-0.5 bg-rust" />}
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-on-surface">{p.name}</h3>
-                    {p.popular && <span className="rounded-full border border-outline-variant px-2.5 py-0.5 text-xs text-on-surface-variant">Most chosen</span>}
+                    <h3 className="font-display text-3xl">{p.name}</h3>
+                    {p.popular && <span className="rounded-full bg-rust/10 px-2.5 py-0.5 text-xs font-semibold text-rust">Most chosen</span>}
                   </div>
-                  <div className="mt-6 text-on-surface">
+                  <div className="mt-8">
                     <Price plan={p} yearly={yearly} />
                   </div>
-                  <p className="mt-3 text-sm text-on-surface-variant">{p.limits}</p>
+                  <p className="mt-4 text-sm text-ink-soft">{p.limits}</p>
                   <Features items={p.features} />
                   <a
                     href={APP_REGISTER_URL}
-                    className={`mt-auto inline-flex justify-center rounded-full px-6 py-3 text-sm font-semibold transition-colors active:scale-[0.98] ${focusRing} ${
-                      p.popular ? "bg-on-surface text-surface hover:bg-white" : "border border-outline-variant text-on-surface hover:border-outline"
+                    className={`mt-auto inline-flex justify-center rounded-full px-6 py-3.5 text-sm font-semibold transition-colors active:scale-[0.98] ${focusInk} ${
+                      p.popular ? "bg-ink text-paper hover:bg-black" : "border border-ink/20 hover:border-ink/50"
                     }`}
                   >
                     Start free trial
@@ -195,17 +184,14 @@ export function Pricing() {
 
         {/* Enterprise */}
         <div data-plan>
-          <div className="mt-4 flex flex-col gap-6 rounded-2xl border border-outline-variant p-8 md:flex-row md:items-center md:justify-between">
+          <div className="mt-5 flex flex-col gap-6 rounded-[1.5rem] border border-ink/10 p-8 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-on-surface">Enterprise</h3>
-              <p className="mt-2 max-w-[60ch] text-sm text-on-surface-variant">
+              <h3 className="font-display text-3xl">Enterprise</h3>
+              <p className="mt-2 max-w-[60ch] text-[15px] text-ink-soft">
                 From {inr(3999)} a month for 200 users and 200 numbers, with unlimited messages and campaigns, a custom SLA and white-label options.
               </p>
             </div>
-            <Link
-              href="/contact"
-              className={`inline-flex shrink-0 justify-center rounded-full border border-outline-variant px-6 py-3 text-sm font-semibold text-on-surface transition-colors hover:border-outline active:scale-[0.98] ${focusRing}`}
-            >
+            <Link href="/contact" className={`inline-flex shrink-0 justify-center rounded-full border border-ink/20 px-6 py-3.5 text-sm font-semibold transition-colors hover:border-ink/50 active:scale-[0.98] ${focusInk}`}>
               Talk to sales
             </Link>
           </div>

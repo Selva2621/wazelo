@@ -301,7 +301,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Visual workflow builder for WhatsApp automation — follow-up sequences, lead qualification, smart routing, and more. No code, no limits.",
   heroScreen: "/screens/03-automation-workflow.png",
   overviewTitle: "Your best agent works 24/7 and never sleeps.",
-  overviewDesc: "Manual follow-ups, repetitive answers, and missed triggers cost your team hours every day. Wazelo CRM's automation engine lets you build visual workflows that run on autopilot — from a new lead's first message to a resolved ticket's CSAT survey — so your team focuses only on conversations that need a human touch.",
+  overviewDesc: "Manual follow-ups, repetitive answers, and missed triggers cost your team hours every day. Wazelo's automation engine lets you build visual workflows that run on autopilot — from a new lead's first message to a resolved ticket's CSAT survey — so your team focuses only on conversations that need a human touch.",
   capabilities: [
     { icon: "bolt", title: "Trigger-based workflows", desc: "Start automations on any event: new message received, contact tag added, campaign replied, time elapsed, and more." },
     { icon: "account_tree", title: "Visual flow builder", desc: "Drag-and-drop conditions, delays, actions, and branches. Build complex flows without a single line of code." },

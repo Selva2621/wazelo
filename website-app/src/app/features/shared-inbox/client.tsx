@@ -222,7 +222,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Every WhatsApp conversation — routed, assigned, and resolved from a single shared workspace. No lead ever falls through again.",
   heroScreen: "/screens/01-inbox-shared-team.jpeg",
   overviewTitle: "One inbox. Zero chaos.",
-  overviewDesc: "When your team manages customer conversations across personal WhatsApp numbers, messages get missed and accountability disappears. Wazelo CRM's shared inbox gives every agent a unified view — with real-time routing, clear ownership, and full conversation history — so your team can deliver fast, consistent support at scale.",
+  overviewDesc: "When your team manages customer conversations across personal WhatsApp numbers, messages get missed and accountability disappears. Wazelo's shared inbox gives every agent a unified view — with real-time routing, clear ownership, and full conversation history — so your team can deliver fast, consistent support at scale.",
   capabilities: [
     { icon: "forum", title: "Unified conversation view", desc: "All incoming WhatsApp messages appear in one shared queue. No agent works in isolation." },
     { icon: "assignment_ind", title: "Smart assignment", desc: "Route conversations by agent, team, or keyword rules. Manual or automatic — you choose." },
@@ -232,7 +232,7 @@ const data: FeatureDetailData = {
     { icon: "history", title: "Full conversation history", desc: "Every message, note, and file ever exchanged — searchable, forever. Context at your fingertips." },
   ],
   howItWorks: [
-    { step: "01", title: "Connect your WhatsApp Business number", desc: "Link your Meta-approved WhatsApp Business API number to Wazelo CRM in under 5 minutes." },
+    { step: "01", title: "Connect your WhatsApp Business number", desc: "Link your Meta-approved WhatsApp Business API number to Wazelo in under 5 minutes." },
     { step: "02", title: "Invite your team", desc: "Add agents and set their roles. Admins get full access; agents see only their assigned conversations." },
     { step: "03", title: "Set routing rules", desc: "Define how incoming messages are assigned — round-robin, keyword-based, or manual." },
     { step: "04", title: "Reply, resolve, grow", desc: "Your team works from the shared inbox — responding faster, collaborating better, and never missing a message." },

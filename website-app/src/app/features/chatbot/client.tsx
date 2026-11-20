@@ -299,13 +299,13 @@ const data: FeatureDetailData = {
   heroSubtitle: "Create WhatsApp chatbots that qualify leads, answer FAQs, capture data, and hand off to your team — all without writing a single line of code.",
   heroScreen: "/screens/06-chatbot-builder.png",
   overviewTitle: "Automate the first conversation.",
-  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo CRM's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent — or resolve entirely on their own — 24 hours a day, 7 days a week.",
+  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent — or resolve entirely on their own — 24 hours a day, 7 days a week.",
   capabilities: [
     { icon: "smart_toy", title: "No-code flow builder", desc: "Build chatbot flows visually using a drag-and-drop canvas. No developer required." },
     { icon: "quiz", title: "Question & answer flows", desc: "Ask a sequence of questions, capture responses, and store answers as contact fields automatically." },
     { icon: "call_split", title: "Conditional branching", desc: "Route the conversation based on what the user says — keyword match, button selection, or numeric input." },
     { icon: "transfer_within_a_station", title: "Agent handoff", desc: "At any point, hand the conversation to a human agent — with the full chatbot transcript already in the inbox." },
-    { icon: "quick_replies", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
+    { icon: "quickreply", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
     { icon: "schedule_send", title: "24/7 availability", desc: "Your chatbot handles incoming messages even when your whole team is offline. Nothing slips through after hours." },
   ],
   howItWorks: [

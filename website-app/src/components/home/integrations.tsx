@@ -8,14 +8,13 @@ import { useRef } from "react";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 
 const LOGOS = [
-  { slug: "whatsapp", name: "WhatsApp Business" },
-  { slug: "meta", name: "Meta" },
+  { slug: "whatsapp", name: "WhatsApp Cloud API" },
+  { slug: "meta", name: "Meta lead ads" },
+  { slug: "instagram", name: "Instagram" },
+  { slug: "messenger", name: "Messenger" },
+  { slug: "googlemaps", name: "Google Maps" },
   { slug: "shopify", name: "Shopify" },
-  { slug: "razorpay", name: "Razorpay" },
-  { slug: "woocommerce", name: "WooCommerce" },
-  { slug: "zoho", name: "Zoho" },
-  { slug: "googlesheets", name: "Google Sheets" },
-  { slug: "zapier", name: "Zapier" },
+  { slug: "claude", name: "Claude via MCP" },
 ];
 
 function LogoSet({ hidden }: { hidden?: boolean }) {
@@ -72,7 +71,7 @@ export function Integrations() {
   return (
     <section ref={root} aria-label="Integrations" className="border-y border-outline-variant/70 py-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 sm:px-6 lg:flex-row lg:gap-10 lg:px-8">
-        <p className="shrink-0 text-sm text-on-surface-variant">Works with the tools you already use</p>
+        <p className="shrink-0 text-sm text-on-surface-variant">Connects to</p>
         <div className="w-full overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)]">
           <div data-rail className="flex w-max will-change-transform">
             <LogoSet />

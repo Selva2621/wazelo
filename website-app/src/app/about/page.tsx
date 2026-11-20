@@ -1,290 +1,209 @@
 "use client";
 
+import { useRef } from "react";
 import Image from "next/image";
-import { useState } from "react";
-import { useInView, useCounter, useBreakpoint, APP_REGISTER_URL } from "@/lib/wazelo";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { APP_REGISTER_URL } from "@/lib/wazelo";
+import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
 import SiteNavbar from "@/components/Navbar";
 
-// ─── Stat Counter Card ────────────────────────────────────────────────────────
-function StatCard({ value, suffix, label, active }: { value: number; suffix: string; label: string; active: boolean }) {
-  const count = useCounter(value, 1800, active);
-  return (
-    <div style={{
-      background: "var(--surface)", border: "1px solid rgba(255,183,125,0.12)",
-      borderRadius: 16, padding: "32px 24px", textAlign: "center",
-      flex: "1 1 180px",
-    }}>
-      <div style={{ fontSize: "clamp(36px,4vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>
-        {count.toLocaleString("en-IN")}{suffix}
-      </div>
-      <div style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", marginTop: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{label}</div>
-    </div>
-  );
-}
+const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
-// ─── Core Value Card ──────────────────────────────────────────────────────────
-function ValueCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div className="feature-card" style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 16, padding: "28px 24px",
-    }}>
-      <span className="material-symbols-outlined card-icon" style={{ fontSize: 28, color: "#ffb77d", marginBottom: 16, display: "block" }}>{icon}</span>
-      <h3 style={{ fontSize: 17, fontWeight: 700, color: "#e5e2e1", marginBottom: 8, fontFamily: "var(--font-geist-sans), sans-serif" }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "rgba(219,194,176,0.6)", lineHeight: 1.7, fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</p>
-    </div>
-  );
-}
+const TIMELINE = [
+  { when: "2024", what: "The idea: one place to follow up every lead a small business gets." },
+  { when: "Q1 2025", what: "First version ships with a shared inbox and campaigns." },
+  { when: "Q2 2025", what: "Automation rules and the chatbot builder arrive." },
+  { when: "Now", what: "Meta lead ads, website chat, an AI assistant, proposals and a mobile app." },
+];
 
-// ─── About Page ───────────────────────────────────────────────────────────────
+const VALUES = [
+  { title: "Speed", desc: "A lead that waits goes cold. We build for the reply that goes out in seconds." },
+  { title: "Privacy", desc: "Your conversations are yours. We don't sell your data." },
+  { title: "Simplicity", desc: "Powerful doesn't have to mean complicated. Clarity comes first." },
+  { title: "Follow-through", desc: "The sale is usually in the fifth message, not the first. Wazelo remembers to send it." },
+];
+
+const PHOTOS = [
+  { img: "realty", who: "Realtors" },
+  { img: "coaching-desk", who: "Coaching institutes" },
+  { img: "boutique", who: "Shops and boutiques" },
+];
+
 export default function AboutPage() {
-  const { mobile, tablet } = useBreakpoint();
+  const root = useRef<HTMLDivElement>(null);
 
-  const heroView = useInView(0.1);
-  const missionView = useInView(0.2);
-  const storyView = useInView(0.15);
-  const valuesView = useInView(0.1);
-  const statsView = useInView(0.2);
-  const ctaView = useInView(0.2);
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(MQ_MOTION, () => {
+        gsap
+          .timeline({ defaults: { ease: "expo.out", duration: 1.1 } })
+          .from("[data-ab=kicker]", { y: 12, autoAlpha: 0, duration: 0.7 })
+          .from("[data-ab=title]", { y: 50, autoAlpha: 0 }, 0.1)
+          .from("[data-ab=sub]", { y: 24, autoAlpha: 0 }, 0.3)
+          .from("[data-ab=cta]", { y: 20, autoAlpha: 0, stagger: 0.08 }, 0.4)
+          .from("[data-ab=hero-photo]", { y: 90, autoAlpha: 0, duration: 1.4 }, 0.45);
 
-  const values = [
-    { icon: "bolt", title: "Speed", desc: "We move fast. Every millisecond of latency is a problem worth solving." },
-    { icon: "lock", title: "Privacy", desc: "Your conversations are yours. We never sell data, never mine messages." },
-    { icon: "layers", title: "Simplicity", desc: "Powerful doesn't have to mean complicated. We design for clarity first." },
-    { icon: "trending_up", title: "Scale", desc: "Built to handle millions of messages without breaking a sweat." },
-  ];
+        const rise = (sel: string, trigger: string, stagger = 0.1) =>
+          gsap.from(sel, { y: 50, autoAlpha: 0, stagger, duration: 1, ease: "expo.out", scrollTrigger: { trigger, start: "top 78%", once: true } });
+        rise("[data-ab=mission] > *", "[data-ab=mission]", 0.12);
+        rise("[data-ab=story] > *", "[data-ab=story]", 0.12);
+        rise("[data-ab=when]", "[data-ab=timeline]", 0.1);
+        rise("[data-ab=value]", "[data-ab=values]", 0.08);
+        rise("[data-ab=end] > *", "[data-ab=end]", 0.12);
+        ScrollTrigger.batch("[data-ab=photo-card]", {
+          start: "top 85%",
+          once: true,
+          onEnter: (els) => gsap.from(els, { y: 80, autoAlpha: 0, stagger: 0.12, duration: 1.2, ease: "expo.out" }),
+        });
+      });
+      mm.add(MQ_FULL, () => {
+        // Photo cards drift a little as the page scrolls past (photos are never cropped).
+        gsap.utils.toArray<HTMLElement>("[data-ab=drift]").forEach((el) =>
+          gsap.fromTo(el, { y: -18 }, { y: 18, ease: "none", scrollTrigger: { trigger: el.parentElement, start: "top bottom", end: "bottom top", scrub: true } }),
+        );
+        gsap.fromTo("[data-ab=line]", { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: { trigger: "[data-ab=timeline]", start: "top 75%", end: "bottom 60%", scrub: 0.6 } });
+      });
+    },
+    { scope: root },
+  );
 
   return (
-    <>
-      {/* Google Material Icons */}
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-
+    <div ref={root} className="min-h-dvh bg-paper font-sans text-ink">
       <SiteNavbar activePage="About" />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section ref={heroView.ref} style={{
-        minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        padding: mobile ? "120px 20px 80px" : "120px 48px 80px",
-        background: "var(--bg)", position: "relative", overflow: "hidden",
-      }}>
-        {/* Ambient glow */}
-        <div style={{ position: "absolute", top: "30%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,rgba(217,119,6,0.08) 0%,transparent 70%)", pointerEvents: "none" }} />
-
-        <div style={{ textAlign: "center", maxWidth: 820, position: "relative", zIndex: 1 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px",
-            borderRadius: 100, background: "rgba(255,183,125,0.08)", border: "1px solid rgba(255,183,125,0.2)",
-            marginBottom: 32,
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.8s ease, transform 0.8s ease",
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb77d", display: "inline-block" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ffb77d", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>Our Story</span>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="px-4 pb-24 pt-32 sm:px-6 lg:px-8 lg:pb-32 lg:pt-40">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-4xl">
+            <p data-ab="kicker" className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">About Wazelo</p>
+            <h1 data-ab="title" className="mt-6 font-display text-[clamp(3rem,7vw,6.5rem)] leading-[0.95] tracking-[-0.02em]">
+              We built the tool <em className="text-rust">we kept wishing for.</em>
+            </h1>
+            <p data-ab="sub" className="mt-8 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+              Wazelo is the lead follow-up platform. It catches every lead, replies fast and keeps following up until they buy.
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <a data-ab="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+                Start free trial
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <Link data-ab="cta" href="/#features" className={`inline-flex items-center rounded-full border border-ink/20 px-7 py-4 text-sm font-semibold transition-colors hover:border-ink/50 ${focusInk}`}>
+                See the product
+              </Link>
+            </div>
           </div>
 
-          <h1 style={{
-            fontSize: "clamp(38px,5.5vw,80px)", fontWeight: 900, letterSpacing: "-0.04em",
-            lineHeight: 1.08, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24,
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
-          }}>
-            We built the CRM<br />
-            <span style={{ color: "#ffb77d" }}>we always wanted.</span>
-          </h1>
-
-          <p style={{
-            fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(219,194,176,0.7)", lineHeight: 1.8,
-            maxWidth: 560, margin: "0 auto 40px", fontFamily: "var(--font-geist-sans), sans-serif",
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.9s 0.2s ease, transform 0.9s 0.2s ease",
-          }}>
-            Wazelo CRM was born from a simple frustration — managing WhatsApp conversations for a growing business was chaos. We fixed that.
-          </p>
-
-          <div style={{
-            display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
-            opacity: heroView.inView ? 1 : 0, transform: heroView.inView ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.9s 0.3s ease, transform 0.9s 0.3s ease",
-          }}>
-            <a href={APP_REGISTER_URL} className="btn-primary" style={{
-              padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 800,
-              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-            }}>Start Free Trial</a>
-            <a href="/#features" className="btn-ghost" style={{
-              padding: "14px 32px", borderRadius: 100, fontSize: 14, fontWeight: 600,
-              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-            }}>See the product</a>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Mission ───────────────────────────────────────────────────────── */}
-      <section ref={missionView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
-          <div style={{
-            width: 48, height: 2, background: "linear-gradient(to right,#ffb77d,#d97707)", margin: "0 auto 40px",
-            opacity: missionView.inView ? 1 : 0, transition: "opacity 0.8s ease",
-          }} />
-          <blockquote style={{
-            fontSize: "clamp(22px,3vw,38px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.4,
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", fontStyle: "normal",
-            opacity: missionView.inView ? 1 : 0, transform: missionView.inView ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
-          }}>
-            "Every Indian business deserves enterprise-grade customer communication — without the enterprise price tag."
-          </blockquote>
-          <p style={{
-            fontSize: 13, color: "rgba(219,194,176,0.4)", marginTop: 24, letterSpacing: "0.08em",
-            textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif",
-            opacity: missionView.inView ? 1 : 0, transition: "opacity 0.9s 0.25s ease",
-          }}>
-            — Our founding mission
-          </p>
-        </div>
-      </section>
-
-      {/* ── Founding Story ────────────────────────────────────────────────── */}
-      <section ref={storyView.ref} style={{
-        background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{
-          maxWidth: 1100, margin: "0 auto",
-          display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
-          gap: mobile ? 40 : 80, alignItems: "center",
-        }}>
-          <div style={{
-            opacity: storyView.inView ? 1 : 0, transform: storyView.inView ? "translateX(0)" : "translateX(-32px)",
-            transition: "opacity 0.9s ease, transform 0.9s ease",
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 16 }}>Founding Story</span>
-            <h2 style={{ fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.2, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 24 }}>
-              Built out of<br />real frustration.
-            </h2>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
-              We ran a small services business in India. Our team was managing customer conversations across personal WhatsApp numbers — missed follow-ups, zero accountability, no visibility.
-            </p>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20 }}>
-              Every CRM we tried was built for email or calls — not WhatsApp. So in 2024, we decided to build our own.
-            </p>
-            <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif" }}>
-              Wazelo CRM is what we wished existed — a shared inbox, campaign tools, automation, and analytics, all purpose-built for WhatsApp.
-            </p>
-          </div>
-
-          <div style={{
-            opacity: storyView.inView ? 1 : 0, transform: storyView.inView ? "translateX(0)" : "translateX(32px)",
-            transition: "opacity 0.9s 0.15s ease, transform 0.9s 0.15s ease",
-          }}>
-            <div style={{
-              background: "var(--surface)", borderRadius: 20,
-              border: "1px solid rgba(255,183,125,0.2)",
-              padding: "40px 36px",
-              boxShadow: "0 0 60px rgba(217,119,6,0.06)",
-            }}>
-              {[
-                { year: "2024", event: "Idea formed — WhatsApp CRM for Indian SMBs" },
-                { year: "Q1 2025", event: "MVP launched with shared inbox + campaigns" },
-                { year: "Q2 2025", event: "Automation engine + chatbot builder shipped" },
-                { year: "Now", event: "Powering hundreds of teams across India" },
-              ].map((m, i) => (
-                <div key={i} style={{ display: "flex", gap: 20, marginBottom: i < 3 ? 28 : 0, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 72, fontSize: 11, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.06em", fontFamily: "var(--font-geist-sans), sans-serif", paddingTop: 2 }}>{m.year}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 1, background: "rgba(255,183,125,0.15)", marginBottom: 10 }} />
-                    <p style={{ fontSize: 14, color: "rgba(219,194,176,0.7)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.6 }}>{m.event}</p>
-                  </div>
-                </div>
-              ))}
+          <div data-ab="hero-photo" className="relative mt-16 lg:mt-24">
+            <div data-ab="drift" className="overflow-hidden rounded-[1.5rem] bg-paper-deep">
+              <Image src="/media/story/hero.jpg" alt="A bakery owner checking messages on her phone behind the counter" width={1280} height={704} priority sizes="(min-width: 1280px) 1216px, 100vw" className="h-auto w-full" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Core Values ───────────────────────────────────────────────────── */}
-      <section ref={valuesView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12 }}>What we stand for</span>
-            <h2 style={{
-              fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
-              opacity: valuesView.inView ? 1 : 0, transform: valuesView.inView ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 0.8s ease, transform 0.8s ease",
-            }}>Our core values</h2>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: mobile ? "1fr 1fr" : tablet ? "1fr 1fr" : "repeat(4, 1fr)",
-            gap: 16,
-            opacity: valuesView.inView ? 1 : 0, transform: valuesView.inView ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.9s 0.1s ease, transform 0.9s 0.1s ease",
-          }}>
-            {values.map(v => <ValueCard key={v.title} {...v} />)}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats ─────────────────────────────────────────────────────────── */}
-      <section ref={statsView.ref} style={{
-        background: "var(--bg)", padding: mobile ? "80px 20px" : "100px 48px",
-      }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 style={{
-              fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, letterSpacing: "-0.04em",
-              color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif",
-              opacity: statsView.inView ? 1 : 0, transition: "opacity 0.8s ease",
-            }}>Growing every day</h2>
-          </div>
-          <div style={{
-            display: "flex", flexWrap: "wrap", gap: 16,
-            opacity: statsView.inView ? 1 : 0, transition: "opacity 0.9s 0.1s ease",
-          }}>
-            <StatCard value={500} suffix="+" label="Teams using Wazelo CRM" active={statsView.inView} />
-            <StatCard value={2000000} suffix="+" label="Messages sent per day" active={statsView.inView} />
-            <StatCard value={99} suffix=".9%" label="Platform uptime SLA" active={statsView.inView} />
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section ref={ctaView.ref} style={{
-        background: "var(--surface-low)", padding: mobile ? "80px 20px" : "100px 48px",
-        borderTop: "1px solid rgba(255,183,125,0.08)",
-      }}>
-        <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-          <h2 style={{
-            fontSize: "clamp(28px,3.5vw,48px)", fontWeight: 800, letterSpacing: "-0.04em",
-            color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16,
-            opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.8s ease, transform 0.8s ease",
-          }}>
-            Ready to get started?
-          </h2>
-          <p style={{
-            fontSize: 16, color: "rgba(219,194,176,0.6)", lineHeight: 1.7,
-            fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 36,
-            opacity: ctaView.inView ? 1 : 0, transition: "opacity 0.8s 0.1s ease",
-          }}>
-            Join hundreds of Indian businesses already using Wazelo CRM to manage their WhatsApp relationships.
+      {/* ── Mission (ink band) ───────────────────────────────────────────── */}
+      <section className="bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-40">
+        <div data-ab="mission" className="mx-auto max-w-5xl text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-paper/50">Why we exist</p>
+          <p className="mt-8 font-display text-[clamp(2.25rem,4.5vw,4.25rem)] leading-[1.05] tracking-[-0.02em]">
+            Every Indian business deserves to answer every lead, <em className="text-[#f0b483]">without an enterprise price tag.</em>
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href={APP_REGISTER_URL} className="btn-primary" style={{
-              padding: "16px 40px", borderRadius: 100, fontSize: 15, fontWeight: 800,
-              textDecoration: "none", fontFamily: "var(--font-geist-sans), sans-serif", display: "inline-block",
-              opacity: ctaView.inView ? 1 : 0, transform: ctaView.inView ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 0.8s 0.2s ease, transform 0.8s 0.2s ease",
-            }}>Start your free trial</a>
+          <span aria-hidden className="mx-auto mt-12 block h-px w-32 bg-rust" />
+        </div>
+      </section>
+
+      {/* ── Story + timeline ─────────────────────────────────────────────── */}
+      <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-12 lg:gap-12">
+          <div data-ab="story" className="lg:col-span-6">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">How it started</p>
+            <h2 className="mt-6 font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">
+              Built out of <em className="text-rust">missed follow-ups.</em>
+            </h2>
+            <p className="mt-8 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+              We ran a small services business in India. Leads came in on personal WhatsApp numbers, follow-ups slipped, and nobody could see who had replied to whom.
+            </p>
+            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+              The tools we tried were built for email and calls. So in 2024 we started building our own.
+            </p>
+          </div>
+
+          <ol data-ab="timeline" className="relative lg:col-span-5 lg:col-start-8 lg:pt-4">
+            <span aria-hidden className="absolute bottom-0 left-[1.1rem] top-0 w-px bg-ink/10" />
+            <span aria-hidden data-ab="line" className="absolute bottom-0 left-[1.1rem] top-0 w-px origin-top bg-rust" />
+            {TIMELINE.map((t, i) => (
+              <li key={t.when} data-ab="when" className="relative flex gap-6 pb-10 last:pb-0">
+                <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full border border-ink/20 bg-paper font-mono text-xs">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="pt-1.5">
+                  <p className="font-mono text-xs uppercase tracking-[0.16em] text-rust">{t.when}</p>
+                  <p className="mt-2 text-[17px] leading-snug">{t.what}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── Who it's for ─────────────────────────────────────────────────── */}
+      <section className="border-t border-ink/10 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="max-w-3xl font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">
+            For people who sell <em className="text-rust">on WhatsApp.</em>
+          </h2>
+          <div className="mt-16 grid gap-6 md:grid-cols-3">
+            {PHOTOS.map((p, i) => (
+              <figure key={p.img} data-ab="photo-card" className={i === 1 ? "md:mt-16" : ""}>
+                <div data-ab="drift" className="overflow-hidden rounded-[1.25rem] bg-paper-deep">
+                  <Image src={`/media/story/${p.img}.jpg`} alt="" width={1024} height={1280} sizes="(min-width: 768px) 33vw, 100vw" className="h-auto w-full" />
+                </div>
+                <figcaption className="mt-5 text-sm font-semibold uppercase tracking-[0.16em] text-rust">{p.who}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Values ───────────────────────────────────────────────────────── */}
+      <section className="bg-paper-deep/60 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">What we care about</p>
+          <div data-ab="values" className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-4">
+            {VALUES.map((v, i) => (
+              <div key={v.title} data-ab="value" className="border-t border-ink/15 py-8">
+                <span className="font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                <h3 className="mt-6 font-display text-3xl leading-tight">{v.title}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{v.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section className="px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+        <div data-ab="end" className="mx-auto max-w-4xl text-center">
+          <h2 className="font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
+            See it with <em className="text-rust">your own leads.</em>
+          </h2>
+          <p className="mx-auto mt-6 max-w-[40ch] text-lg text-ink-soft">Free for 14 days. No credit card.</p>
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <a href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-8 py-4 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+              Start free trial
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
+            <Link href="/contact" className={`inline-flex items-center rounded-full border border-ink/20 px-8 py-4 text-sm font-semibold transition-colors hover:border-ink/50 ${focusInk}`}>
+              Talk to us
+            </Link>
           </div>
         </div>
       </section>
 
       <SiteFooter />
-    </>
+    </div>
   );
 }

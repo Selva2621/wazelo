@@ -14,8 +14,7 @@ interface NavbarProps {
 }
 
 const navLinks: [string, string][] = [
-  ["Freelancers", "/#freelancers"],
-  ["Teams", "/#teams"],
+  ["How it works", "/#story"],
   ["Features", "/#features"],
   ["Pricing", "/#pricing"],
   ["Use Cases", "/use-cases"],
@@ -32,7 +31,15 @@ export default function Navbar({ activePage }: NavbarProps) {
   const lenis = useLenis();
   const { scrollY } = useScroll();
 
-  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 20));
+  const [pastHero, setPastHero] = useState(false);
+  useMotionValueEvent(scrollY, "change", (y) => {
+    setScrolled(y > 20);
+    setPastHero(y > window.innerHeight - 64);
+  });
+  // Paper pages get an ink-on-paper bar; the homepage keeps the light-on-dark bar
+  // only while it sits over the dark hero film.
+  const light = pathname !== "/" || pastHero;
+  const solid = scrolled || menuOpen;
 
   useEffect(() => {
     setMenuOpen(false);
@@ -56,14 +63,14 @@ export default function Navbar({ activePage }: NavbarProps) {
   return (
     <nav
       className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-300 ${
-        scrolled || menuOpen ? "border-outline-variant bg-surface/85 backdrop-blur-xl" : "border-transparent bg-transparent"
+        !solid ? "border-transparent bg-transparent" : light ? "border-ink/10 bg-paper/85 backdrop-blur-xl" : "border-outline-variant bg-surface/85 backdrop-blur-xl"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
         <Link href="/" className={`flex items-center gap-2.5 rounded-lg ${focusRing}`}>
           <Image src="/logo/logo.png" alt="" width={32} height={32} priority className="size-8 object-contain" />
-          <span className="text-lg font-semibold tracking-tight text-on-surface">
-            Waze<span className="text-primary-container">lo</span>
+          <span className={`text-lg font-semibold tracking-tight ${light ? "text-ink" : "text-on-surface"}`}>
+            Waze<span className={light ? "text-rust" : "text-primary-container"}>lo</span>
           </span>
         </Link>
 
@@ -75,7 +82,9 @@ export default function Navbar({ activePage }: NavbarProps) {
               onClick={(e) => handleNavClick(e, href)}
               aria-current={label === activePage ? "page" : undefined}
               className={`rounded text-sm transition-colors ${focusRing} ${
-                label === activePage ? "text-primary-container" : "text-on-surface-variant hover:text-on-surface"
+                label === activePage
+                  ? light ? "text-rust" : "text-primary-container"
+                  : light ? "text-ink-soft hover:text-ink" : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
               {label}
@@ -84,12 +93,14 @@ export default function Navbar({ activePage }: NavbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <a href={APP_LOGIN_URL} className={`hidden rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface sm:inline-flex ${focusRing}`}>
+          <a href={APP_LOGIN_URL} className={`hidden rounded-full px-4 py-2 text-sm font-medium transition-colors sm:inline-flex ${focusRing} ${light ? "text-ink-soft hover:text-ink" : "text-on-surface-variant hover:text-on-surface"}`}>
             Sign in
           </a>
           <a
             href={APP_REGISTER_URL}
-            className={`hidden rounded-full bg-primary-container px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-[#fbbf24] active:scale-[0.98] sm:inline-flex ${focusRing}`}
+            className={`hidden rounded-full px-5 py-2.5 text-sm font-semibold transition-colors active:scale-[0.98] sm:inline-flex ${focusRing} ${
+              light ? "bg-ink text-paper hover:bg-black" : "bg-paper text-ink hover:bg-white"
+            }`}
           >
             Start free trial
           </a>
@@ -99,7 +110,7 @@ export default function Navbar({ activePage }: NavbarProps) {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
-            className={`grid size-10 place-items-center rounded-full text-on-surface lg:hidden ${focusRing}`}
+            className={`grid size-10 place-items-center rounded-full lg:hidden ${focusRing} ${light ? "text-ink" : "text-on-surface"}`}
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -114,7 +125,7 @@ export default function Navbar({ activePage }: NavbarProps) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-            className="overflow-hidden border-t border-outline-variant lg:hidden"
+            className={`overflow-hidden border-t lg:hidden ${light ? "border-ink/10" : "border-outline-variant"}`}
           >
             <div className="flex flex-col px-4 pb-6 pt-2 sm:px-6">
               {navLinks.map(([label, href]) => (
@@ -122,16 +133,18 @@ export default function Navbar({ activePage }: NavbarProps) {
                   key={label}
                   href={href}
                   onClick={(e) => handleNavClick(e, href)}
-                  className={`border-b border-outline-variant/60 py-3.5 text-base ${label === activePage ? "text-primary-container" : "text-on-surface"}`}
+                  className={`border-b py-3.5 text-base ${light ? "border-ink/10" : "border-outline-variant/60"} ${
+                    label === activePage ? (light ? "text-rust" : "text-primary-container") : light ? "text-ink" : "text-on-surface"
+                  }`}
                 >
                   {label}
                 </Link>
               ))}
               <div className="mt-6 grid grid-cols-2 gap-3">
-                <a href={APP_LOGIN_URL} className="rounded-full border border-outline-variant py-3 text-center text-sm font-medium text-on-surface">
+                <a href={APP_LOGIN_URL} className={`rounded-full border py-3 text-center text-sm font-medium ${light ? "border-ink/20 text-ink" : "border-outline-variant text-on-surface"}`}>
                   Sign in
                 </a>
-                <a href={APP_REGISTER_URL} className="rounded-full bg-primary-container py-3 text-center text-sm font-semibold text-on-primary">
+                <a href={APP_REGISTER_URL} className={`rounded-full py-3 text-center text-sm font-semibold ${light ? "bg-ink text-paper" : "bg-paper text-ink"}`}>
                   Start free trial
                 </a>
               </div>

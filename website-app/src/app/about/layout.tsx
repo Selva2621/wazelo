@@ -1,54 +1,20 @@
-import type { Metadata } from "next";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About Wazelo — WhatsApp CRM Built for India",
-  description:
-    "Learn how Wazelo CRM was built to help Indian businesses grow faster with WhatsApp-first customer relationship management. Our mission, team, and values.",
-  keywords: [
-    // Short-keys
-    "Wazelo",
-    "Wazelo CRM",
-    "Wazelo about",
-    "WhatsApp CRM company India",
-    "WA CRM startup",
-    // Long-tail
-    "Wazelo CRM about",
-    "WhatsApp CRM India company",
-    "WhatsApp CRM startup India",
-    "Wazelo team",
-    "WhatsApp business software India",
-    "Wazelo CRM founders",
-    "WhatsApp CRM made in India",
-    "Indian WhatsApp CRM company",
-    "Wazelo CRM story",
-    "WhatsApp CRM for Indian SMEs",
-  ],
-  alternates: {
-    canonical: "https://wazelo.in/about",
-  },
-  openGraph: {
-    title: "About Wazelo — WhatsApp CRM Built for India | Wazelo CRM",
-    description:
-      "Learn how Wazelo CRM was built to help Indian businesses close more deals on WhatsApp. Our mission, team, and story.",
-    url: "https://wazelo.in/about",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "About Wazelo CRM — WhatsApp CRM for India",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "About Wazelo — WhatsApp CRM Built for India",
-    description:
-      "How Wazelo CRM was built to help Indian businesses close more deals on WhatsApp.",
-    images: ["/opengraph-image"],
-  },
+// page.tsx is a client component, so its metadata lives here.
+const seo = {
+  path: "/about",
+  title: "About Wazelo: Lead Follow-up Software Made in India",
+  description: "Why we built Wazelo, the lead follow-up platform for Indian businesses that sell on WhatsApp. Our mission, our story and the values behind the product.",
 };
 
+export const metadata = pageMetadata(seo);
+
 export default function AboutLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "About", path: seo.path }])]} />
+      {children}
+    </>
+  );
 }

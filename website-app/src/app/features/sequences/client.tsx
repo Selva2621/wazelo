@@ -160,7 +160,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Multi-step WhatsApp drip sequences that enrol contacts, space messages by hours or days, and stop automatically the moment a contact replies.",
   heroScreen: "",
   overviewTitle: "Your follow-up runs itself.",
-  overviewDesc: "Sales teams lose deals not because they had the wrong product, but because they forgot to follow up. Wazelo CRM Sequences let you build a timed series of WhatsApp messages that automatically send to enrolled contacts — and automatically stop the moment someone responds, so you never message someone who's already engaged.",
+  overviewDesc: "Sales teams lose deals not because they had the wrong product, but because they forgot to follow up. Wazelo Sequences let you build a timed series of WhatsApp messages that automatically send to enrolled contacts — and automatically stop the moment someone responds, so you never message someone who's already engaged.",
   capabilities: [
     { icon: "low_priority",  title: "Multi-step message flows",  desc: "Chain up to 10+ messages with individual delays between each step — hours, days, or weeks." },
     { icon: "person_add",    title: "Automatic enrolment",       desc: "Enrol contacts via automation rules, tags, or manual selection. Bulk-enrol from a filtered segment." },

@@ -1,30 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useBreakpoint } from "@/lib/wazelo";
+import { useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
 import SiteNavbar from "@/components/Navbar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const METHOD_COLORS: Record<string, string> = {
-  GET: "#86efac", POST: "#a3defe", PUT: "#fbbf24", PATCH: "#f9a8d4", DELETE: "#f87171",
+const METHOD_STYLES: Record<string, string> = {
+  GET: "border-ink/20 text-ink",
+  POST: "border-ink bg-ink text-paper",
+  PUT: "border-rust/40 text-rust",
+  PATCH: "border-rust/40 text-rust",
+  DELETE: "border-rust bg-rust text-paper",
 };
+
+const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+const kicker = "text-xs font-medium uppercase tracking-[0.22em] text-ink-faint";
 
 function MethodBadge({ method }: { method: string }) {
   return (
-    <span style={{ fontSize: 11, fontWeight: 800, color: METHOD_COLORS[method] ?? "#e5e2e1", background: `${METHOD_COLORS[method]}18`, border: `1px solid ${METHOD_COLORS[method]}44`, borderRadius: 4, padding: "2px 8px", fontFamily: "'Courier New', monospace", letterSpacing: "0.06em" }}>
+    <span className={`inline-flex w-[4.25rem] shrink-0 justify-center rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em] ${METHOD_STYLES[method] ?? "border-ink/20 text-ink"}`}>
       {method}
     </span>
   );
 }
 
 function Code({ children, lang = "json" }: { children: string; lang?: string }) {
-  const color = lang === "bash" ? "#fbbf24" : lang === "json" ? "#a3defe" : "#86efac";
   return (
-    <pre style={{ background: "#0a0a0a", border: "1px solid rgba(255,183,125,0.08)", borderRadius: 8, padding: "16px 20px", overflowX: "auto", marginBottom: 20 }}>
-      <code style={{ fontSize: 13, color, fontFamily: "'Courier New', monospace", lineHeight: 1.75 }}>{children}</code>
-    </pre>
+    <div className="mb-6 overflow-hidden rounded-xl bg-ink">
+      <div className="border-b border-paper/10 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">{lang}</div>
+      <pre className="overflow-x-auto px-5 py-4">
+        <code className="font-mono text-[13px] leading-[1.75] text-paper/90">{children}</code>
+      </pre>
+    </div>
   );
+}
+
+function C({ children }: { children: React.ReactNode }) {
+  return <code className="rounded bg-ink/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-ink">{children}</code>;
 }
 
 function Endpoint({ method, path, desc, params, bodyFields, responseExample, notes }: {
@@ -35,30 +49,37 @@ function Endpoint({ method, path, desc, params, bodyFields, responseExample, not
   notes?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const toggle = () => {
+    setOpen((o: boolean) => !o);
+    // Expanding shifts everything below; keep the TOC triggers in step.
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+  };
   return (
-    <div style={{ border: "1px solid rgba(255,183,125,0.08)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
-      <button onClick={() => setOpen((o: boolean) => !o)} style={{
-        width: "100%", background: open ? "#1c1b1b" : "#161616", border: "none", cursor: "pointer",
-        padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
-      }}>
+    <div className="border-b border-ink/10">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className={`group flex w-full flex-wrap items-center gap-x-4 gap-y-2 py-4 text-left ${focusInk}`}
+      >
         <MethodBadge method={method} />
-        <code style={{ fontSize: 13, color: "#e5e2e1", fontFamily: "'Courier New', monospace", flex: 1 }}>{path}</code>
-        <span style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif", marginRight: 8 }}>{desc}</span>
-        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "rgba(219,194,176,0.4)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>expand_more</span>
+        <code className="min-w-0 flex-1 font-mono text-[14px] text-ink">{path}</code>
+        <span className="hidden text-sm text-ink-faint transition-colors group-hover:text-ink-soft md:inline">{desc}</span>
+        <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 text-ink-faint transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div style={{ padding: "20px 24px", background: "#131313", borderTop: "1px solid rgba(255,183,125,0.06)" }}>
-          <p style={{ fontSize: 14, color: "rgba(219,194,176,0.65)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 20, lineHeight: 1.7 }}>{desc}</p>
+        <div className="pb-8 pl-0 md:pl-[5.25rem]">
+          <p className="mb-6 text-[15px] leading-relaxed text-ink-soft">{desc}</p>
 
           {params && params.length > 0 && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Path / Query Parameters</p>
-              <div style={{ background: "#0e0e0e", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
-                {params.map(([name, type, pdesc], i) => (
-                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < params.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap" }}>
-                    <code style={{ fontSize: 12, color: "#ffb77d", fontFamily: "'Courier New', monospace", minWidth: 120 }}>{name}</code>
-                    <span style={{ fontSize: 11, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{pdesc}</span>
+              <p className={`${kicker} mb-3`}>Path / Query Parameters</p>
+              <div className="mb-6 divide-y divide-ink/10 border-y border-ink/15">
+                {params.map(([name, type, pdesc]) => (
+                  <div key={name} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5">
+                    <code className="min-w-[120px] font-mono text-[13px] font-medium text-ink">{name}</code>
+                    <span className="min-w-[60px] font-mono text-[12px] text-rust">{type}</span>
+                    <span className="text-sm text-ink-soft">{pdesc}</span>
                   </div>
                 ))}
               </div>
@@ -67,24 +88,24 @@ function Endpoint({ method, path, desc, params, bodyFields, responseExample, not
 
           {bodyFields && bodyFields.length > 0 && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Request Body</p>
-              <div style={{ background: "#0e0e0e", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
-                {bodyFields.map(([name, type, bdesc, required], i) => (
-                  <div key={name} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < bodyFields.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap", alignItems: "center" }}>
-                    <code style={{ fontSize: 12, color: "#ffb77d", fontFamily: "'Courier New', monospace", minWidth: 140 }}>{name}</code>
-                    <span style={{ fontSize: 11, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 60 }}>{type}</span>
-                    {required && <span style={{ fontSize: 10, color: "#f87171", border: "1px solid #f8717144", borderRadius: 4, padding: "1px 6px", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "0.05em" }}>required</span>}
-                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{bdesc}</span>
+              <p className={`${kicker} mb-3`}>Request Body</p>
+              <div className="mb-6 divide-y divide-ink/10 border-y border-ink/15">
+                {bodyFields.map(([name, type, bdesc, required]) => (
+                  <div key={name} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
+                    <code className="min-w-[140px] font-mono text-[13px] font-medium text-ink">{name}</code>
+                    <span className="min-w-[60px] font-mono text-[12px] text-rust">{type}</span>
+                    {required && <span className="rounded-full border border-rust/40 px-2 py-px font-mono text-[10px] tracking-[0.05em] text-rust">required</span>}
+                    <span className="text-sm text-ink-soft">{bdesc}</span>
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#ffb77d", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10 }}>Response Example</p>
+          <p className={`${kicker} mb-3`}>Response Example</p>
           <Code>{responseExample}</Code>
 
-          {notes && <p style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.7, borderLeft: "2px solid rgba(255,183,125,0.2)", paddingLeft: 12 }}>{notes}</p>}
+          {notes && <p className="border-l-2 border-rust pl-4 text-sm leading-relaxed text-ink-soft">{notes}</p>}
         </div>
       )}
     </div>
@@ -105,109 +126,134 @@ const apiSections = [
 
 function ApiSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} style={{ marginBottom: 64, scrollMarginTop: 88 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", letterSpacing: "-0.03em", marginBottom: 12 }}>{title}</h2>
-      <div style={{ width: 40, height: 2, background: "linear-gradient(to right,#ffb77d,transparent)", marginBottom: 24, borderRadius: 2 }} />
+    <section id={id} data-rd="sec" className="scroll-mt-28 border-t border-ink/10 py-14 first:border-t-0 first:pt-0">
+      <h2 className="mb-6 font-display text-4xl leading-[1.05] tracking-[-0.01em] text-ink md:text-5xl">{title}</h2>
       {children}
-    </div>
+    </section>
   );
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 15, color: "rgba(219,194,176,0.65)", lineHeight: 1.85, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 14 }}>{children}</p>;
+  return <p className="mb-4 max-w-[68ch]">{children}</p>;
 }
 
 function H3({ children }: { children: React.ReactNode }) {
-  return <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e5e2e1", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 10, marginTop: 24 }}>{children}</h3>;
+  return <h3 className="mb-3 mt-8 text-lg font-semibold tracking-tight text-ink">{children}</h3>;
+}
+
+function Endpoints({ children }: { children: React.ReactNode }) {
+  return <div className="mt-6 border-t border-ink/15">{children}</div>;
 }
 
 // ─── API Reference Page ───────────────────────────────────────────────────────
 export default function ApiReferencePage() {
-  const { mobile } = useBreakpoint();
+  const root = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState("overview");
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => { entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); }); },
-      { rootMargin: "-80px 0px -60% 0px" }
-    );
-    apiSections.forEach(s => { const el = document.getElementById(s.id); if (el) observer.observe(el); });
-    return () => observer.disconnect();
-  }, []);
+  useGSAP(
+    () => {
+      const triggers = apiSections.map((s) =>
+        ScrollTrigger.create({
+          trigger: `#${s.id}`,
+          start: "top 40%",
+          end: "bottom 40%",
+          onToggle: (self) => { if (self.isActive) setActive(s.id); },
+        }),
+      );
+      ScrollTrigger.create({
+        trigger: "[data-rd=body]",
+        start: "bottom bottom",
+        onEnter: () => setActive(apiSections[apiSections.length - 1].id),
+        onLeaveBack: () => {
+          const i = triggers.findIndex((t) => t.isActive);
+          if (i >= 0) setActive(apiSections[i].id);
+        },
+      });
+
+      gsap.matchMedia().add(MQ_MOTION, () => {
+        gsap.from("[data-rd=head] > *", { y: 24, autoAlpha: 0, stagger: 0.08, duration: 1, ease: "expo.out" });
+        gsap.from("[data-rd=toc]", { autoAlpha: 0, duration: 1, delay: 0.3, ease: "power2.out" });
+        gsap.utils.toArray<HTMLElement>("[data-rd=sec]").forEach((el) => {
+          gsap.from(el, { y: 28, autoAlpha: 0, duration: 0.9, ease: "expo.out", scrollTrigger: { trigger: el, start: "top 88%", once: true } });
+        });
+      });
+    },
+    { scope: root },
+  );
 
   const baseUrl = "https://api.wazelo.in/v1";
 
   return (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <div ref={root} className="min-h-dvh bg-paper font-sans text-ink">
       <SiteNavbar />
 
       {/* Hero */}
-      <div style={{ background: "#131313", borderBottom: "1px solid rgba(255,183,125,0.06)", padding: mobile ? "100px 20px 48px" : "100px 48px 56px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(163,222,254,0.08)", border: "1px solid rgba(163,222,254,0.2)", marginBottom: 20 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 14, color: "#a3defe" }}>api</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#a3defe", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif" }}>REST API · v1</span>
-          </div>
-          <h1 style={{ fontSize: mobile ? "clamp(28px,7vw,44px)" : "clamp(32px,3.5vw,52px)", fontWeight: 900, letterSpacing: "-0.04em", color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
-            API Reference
+      <header className="px-4 pb-16 pt-32 sm:px-6 lg:px-8 lg:pb-20 lg:pt-40">
+        <div data-rd="head" className="mx-auto max-w-6xl">
+          <p className={kicker}>REST API · v1</p>
+          <h1 className="mt-6 font-display text-[clamp(3rem,7vw,6rem)] leading-[0.95] tracking-[-0.02em]">
+            API <em className="text-rust">Reference</em>
           </h1>
-          <p style={{ fontSize: 16, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", maxWidth: 560 }}>
-            Integrate Wazelo CRM into your own systems. Send messages, manage contacts, trigger automations, and listen to real-time events via webhooks.
+          <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+            Integrate Wazelo into your own systems. Send messages, manage contacts, trigger automations, and listen to real-time events via webhooks.
           </p>
-          <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <code style={{ fontSize: 13, color: "#a3defe", background: "#0e0e0e", border: "1px solid rgba(163,222,254,0.15)", borderRadius: 6, padding: "8px 14px", fontFamily: "'Courier New', monospace" }}>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <code className="max-w-full truncate rounded-full border border-ink/15 bg-white/60 px-4 py-2 font-mono text-[13px] text-ink">
               Base URL: {baseUrl}
             </code>
-            <a href="/docs" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>menu_book</span>
+            <a href="/docs" className={`inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-black active:scale-[0.98] ${focusInk}`}>
+              <span aria-hidden className="material-symbols-outlined text-[16px]">menu_book</span>
               Read the Docs →
             </a>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Layout */}
-      <div style={{ background: "var(--bg)", maxWidth: 1200, margin: "0 auto", padding: mobile ? "0" : "0 48px", display: "flex", gap: 0, minHeight: "80vh" }}>
+      <div className="border-t border-ink/10 px-4 pb-28 pt-14 sm:px-6 lg:px-8 lg:pt-20">
+        <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-16">
 
-        {/* Sidebar */}
-        {!mobile && (
-          <aside style={{ width: 220, flexShrink: 0, paddingTop: 40, paddingRight: 32, position: "sticky", top: 64, alignSelf: "flex-start", height: "calc(100vh - 64px)", overflowY: "auto" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(219,194,176,0.3)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 12 }}>Endpoints</p>
-            {apiSections.map(s => (
-              <a key={s.id} href={`#${s.id}`} onClick={() => setActive(s.id)} style={{
-                display: "block", padding: "7px 12px", borderRadius: 6, marginBottom: 2,
-                fontSize: 13, fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none",
-                fontWeight: active === s.id ? 600 : 400,
-                color: active === s.id ? "#a3defe" : "rgba(219,194,176,0.5)",
-                background: active === s.id ? "rgba(163,222,254,0.07)" : "transparent",
-                borderLeft: active === s.id ? "2px solid #a3defe" : "2px solid transparent",
-                transition: "all 0.15s",
-              }}>{s.label}</a>
-            ))}
-            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,183,125,0.08)" }}>
-              <a href="/docs" style={{ fontSize: 13, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif", textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 15 }}>menu_book</span>
-                Full Docs →
-              </a>
-            </div>
+          {/* Sidebar */}
+          <aside className="hidden lg:block">
+            <nav data-rd="toc" aria-label="Endpoints" className="sticky top-28 max-h-[calc(100dvh-8rem)] overflow-y-auto">
+              <p className={kicker}>Endpoints</p>
+              <ol className="mt-5 flex flex-col border-l border-ink/10">
+                {apiSections.map((s) => (
+                  <li key={s.id}>
+                    <a
+                      href={`#${s.id}`}
+                      onClick={() => setActive(s.id)}
+                      aria-current={active === s.id ? "location" : undefined}
+                      className={`-ml-px block border-l py-1.5 pl-4 text-sm transition-colors ${focusInk} ${active === s.id ? "border-rust font-medium text-rust" : "border-transparent text-ink-soft hover:text-ink"}`}
+                    >
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-8 border-t border-ink/10 pt-6">
+                <a href="/docs" className={`inline-flex items-center gap-1.5 text-sm font-medium text-ink transition-colors hover:text-rust ${focusInk}`}>
+                  <span aria-hidden className="material-symbols-outlined text-[16px]">menu_book</span>
+                  Full Docs →
+                </a>
+              </div>
+            </nav>
           </aside>
-        )}
 
-        {/* Content */}
-        <main style={{ flex: 1, padding: mobile ? "40px 20px 80px" : "40px 0 100px 40px", borderLeft: mobile ? "none" : "1px solid rgba(255,183,125,0.06)", minWidth: 0 }}>
+          {/* Content */}
+          <main data-rd="body" className="min-w-0 text-[17px] leading-relaxed text-ink-soft">
 
-          {/* ── Overview ── */}
-          <ApiSection id="overview" title="Overview">
-            <P>The Wazelo CRM REST API lets you programmatically interact with contacts, conversations, messages, and campaigns. All requests require authentication via an API key.</P>
-            <H3>Request format</H3>
-            <P>All requests must include the following headers:</P>
-            <Code lang="bash">{`Authorization: Bearer YOUR_API_KEY
+            {/* ── Overview ── */}
+            <ApiSection id="overview" title="Overview">
+              <P>The Wazelo REST API lets you programmatically interact with contacts, conversations, messages, and campaigns. All requests require authentication via an API key.</P>
+              <H3>Request format</H3>
+              <P>All requests must include the following headers:</P>
+              <Code lang="bash">{`Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 Accept: application/json`}</Code>
-            <H3>Response format</H3>
-            <P>All responses return JSON. Successful responses use HTTP 2xx status codes. Errors return 4xx or 5xx with an error object.</P>
-            <Code>{`{
+              <H3>Response format</H3>
+              <P>All responses return JSON. Successful responses use HTTP 2xx status codes. Errors return 4xx or 5xx with an error object.</P>
+              <Code>{`{
   "success": true,
   "data": { ... },
   "meta": {
@@ -216,35 +262,36 @@ Accept: application/json`}</Code>
     "total": 145
   }
 }`}</Code>
-          </ApiSection>
+            </ApiSection>
 
-          {/* ── Auth ── */}
-          <ApiSection id="auth" title="Authentication">
-            <P>Wazelo CRM uses API keys for authentication. Generate your key from <strong style={{ color: "#e5e2e1" }}>Settings → API Keys</strong> in your dashboard. Keep your API key secret — treat it like a password.</P>
-            <H3>Generating an API key</H3>
-            <P>Go to Settings → API Keys → New Key. Give it a name and select the permission scope. Keys can be scoped to read-only, read-write, or specific resources.</P>
-            <H3>Using the key</H3>
-            <Code lang="bash">{`curl -X GET https://api.wazelo.in/v1/contacts \\
+            {/* ── Auth ── */}
+            <ApiSection id="auth" title="Authentication">
+              <P>Wazelo uses API keys for authentication. Generate your key from <strong className="font-semibold text-ink">Settings → API Keys</strong> in your dashboard. Keep your API key secret — treat it like a password.</P>
+              <H3>Generating an API key</H3>
+              <P>Go to Settings → API Keys → New Key. Give it a name and select the permission scope. Keys can be scoped to read-only, read-write, or specific resources.</P>
+              <H3>Using the key</H3>
+              <Code lang="bash">{`curl -X GET https://api.wazelo.in/v1/contacts \\
   -H "Authorization: Bearer wzl_live_xxxxxxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json"`}</Code>
-            <H3>Key rotation</H3>
-            <P>Rotate your API key from the Settings panel at any time. The old key is immediately invalidated. Update your integrations before rotating in production.</P>
-          </ApiSection>
+              <H3>Key rotation</H3>
+              <P>Rotate your API key from the Settings panel at any time. The old key is immediately invalidated. Update your integrations before rotating in production.</P>
+            </ApiSection>
 
-          {/* ── Contacts ── */}
-          <ApiSection id="contacts-api" title="Contacts">
-            <P>Manage your contact database — create, retrieve, update, tag, and delete contacts.</P>
+            {/* ── Contacts ── */}
+            <ApiSection id="contacts-api" title="Contacts">
+              <P>Manage your contact database — create, retrieve, update, tag, and delete contacts.</P>
+              <Endpoints>
 
-            <Endpoint
-              method="GET" path="/contacts"
-              desc="List all contacts with optional filters and pagination."
-              params={[
-                ["page", "integer", "Page number (default: 1)"],
-                ["limit", "integer", "Results per page, max 100 (default: 20)"],
-                ["tag", "string", "Filter by tag slug"],
-                ["search", "string", "Search by name or phone number"],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="GET" path="/contacts"
+                desc="List all contacts with optional filters and pagination."
+                params={[
+                  ["page", "integer", "Page number (default: 1)"],
+                  ["limit", "integer", "Results per page, max 100 (default: 20)"],
+                  ["tag", "string", "Filter by tag slug"],
+                  ["search", "string", "Search by name or phone number"],
+                ]}
+                responseExample={`{
   "success": true,
   "data": [
     {
@@ -258,13 +305,13 @@ Accept: application/json`}</Code>
   ],
   "meta": { "page": 1, "limit": 20, "total": 312 }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="GET" path="/contacts/:id"
-              desc="Retrieve a single contact by ID."
-              params={[["id", "string", "Contact ID (e.g. cnt_01HX4K9)"]]}
-              responseExample={`{
+              <Endpoint
+                method="GET" path="/contacts/:id"
+                desc="Retrieve a single contact by ID."
+                params={[["id", "string", "Contact ID (e.g. cnt_01HX4K9)"]]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "cnt_01HX4K9",
@@ -277,19 +324,19 @@ Accept: application/json`}</Code>
     "created_at": "2025-03-14T10:22:00Z"
   }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="POST" path="/contacts"
-              desc="Create a new contact."
-              bodyFields={[
-                ["phone", "string", "Phone number with country code, no +", true],
-                ["name", "string", "Full name of the contact", false],
-                ["email", "string", "Email address", false],
-                ["tags", "string[]", "Array of tag slugs to apply", false],
-                ["custom_fields", "object", "Key-value pairs for custom fields", false],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="POST" path="/contacts"
+                desc="Create a new contact."
+                bodyFields={[
+                  ["phone", "string", "Phone number with country code, no +", true],
+                  ["name", "string", "Full name of the contact", false],
+                  ["email", "string", "Email address", false],
+                  ["tags", "string[]", "Array of tag slugs to apply", false],
+                  ["custom_fields", "object", "Key-value pairs for custom fields", false],
+                ]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "cnt_01HX5M2",
@@ -299,19 +346,19 @@ Accept: application/json`}</Code>
     "created_at": "2025-04-19T09:00:00Z"
   }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="PATCH" path="/contacts/:id"
-              desc="Update a contact's details. Only provided fields are updated."
-              params={[["id", "string", "Contact ID"]]}
-              bodyFields={[
-                ["name", "string", "Updated name", false],
-                ["email", "string", "Updated email", false],
-                ["tags", "string[]", "Replaces the entire tag list", false],
-                ["custom_fields", "object", "Merges with existing custom fields", false],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="PATCH" path="/contacts/:id"
+                desc="Update a contact's details. Only provided fields are updated."
+                params={[["id", "string", "Contact ID"]]}
+                bodyFields={[
+                  ["name", "string", "Updated name", false],
+                  ["email", "string", "Updated email", false],
+                  ["tags", "string[]", "Replaces the entire tag list", false],
+                  ["custom_fields", "object", "Merges with existing custom fields", false],
+                ]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "cnt_01HX4K9",
@@ -320,35 +367,37 @@ Accept: application/json`}</Code>
     "updated_at": "2025-04-19T11:30:00Z"
   }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="DELETE" path="/contacts/:id"
-              desc="Permanently delete a contact and all associated conversation history."
-              params={[["id", "string", "Contact ID"]]}
-              responseExample={`{
+              <Endpoint
+                method="DELETE" path="/contacts/:id"
+                desc="Permanently delete a contact and all associated conversation history."
+                params={[["id", "string", "Contact ID"]]}
+                responseExample={`{
   "success": true,
   "message": "Contact cnt_01HX4K9 deleted."
 }`}
-              notes="This action is irreversible. All conversation history linked to this contact will also be deleted."
-            />
-          </ApiSection>
+                notes="This action is irreversible. All conversation history linked to this contact will also be deleted."
+              />
+              </Endpoints>
+            </ApiSection>
 
-          {/* ── Messages ── */}
-          <ApiSection id="messages-api" title="Messages">
-            <P>Send WhatsApp messages to contacts. You can send template messages at any time, and freeform messages within the 24-hour customer service window.</P>
+            {/* ── Messages ── */}
+            <ApiSection id="messages-api" title="Messages">
+              <P>Send WhatsApp messages to contacts. You can send template messages at any time, and freeform messages within the 24-hour customer service window.</P>
+              <Endpoints>
 
-            <Endpoint
-              method="POST" path="/messages/send"
-              desc="Send a WhatsApp message to a contact."
-              bodyFields={[
-                ["to", "string", "Recipient phone number with country code, no +", true],
-                ["type", "string", '"template" or "text"', true],
-                ["template_name", "string", "Approved template name (required if type=template)", false],
-                ["template_vars", "string[]", "Variable substitutions in order (e.g. [\"Rahul\", \"50L\"])", false],
-                ["text", "string", "Message body (required if type=text, within 24h window only)", false],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="POST" path="/messages/send"
+                desc="Send a WhatsApp message to a contact."
+                bodyFields={[
+                  ["to", "string", "Recipient phone number with country code, no +", true],
+                  ["type", "string", '"template" or "text"', true],
+                  ["template_name", "string", "Approved template name (required if type=template)", false],
+                  ["template_vars", "string[]", "Variable substitutions in order (e.g. [\"Rahul\", \"50L\"])", false],
+                  ["text", "string", "Message body (required if type=text, within 24h window only)", false],
+                ]}
+                responseExample={`{
   "success": true,
   "data": {
     "message_id": "msg_01HX6P9",
@@ -358,14 +407,14 @@ Accept: application/json`}</Code>
     "queued_at": "2025-04-19T10:00:00Z"
   }
 }`}
-              notes="Template messages can be sent at any time. Text messages require a 24-hour active session (i.e. the contact must have messaged you within the last 24 hours)."
-            />
+                notes="Template messages can be sent at any time. Text messages require a 24-hour active session (i.e. the contact must have messaged you within the last 24 hours)."
+              />
 
-            <Endpoint
-              method="GET" path="/messages/:id"
-              desc="Get the delivery status of a sent message."
-              params={[["id", "string", "Message ID (e.g. msg_01HX6P9)"]]}
-              responseExample={`{
+              <Endpoint
+                method="GET" path="/messages/:id"
+                desc="Get the delivery status of a sent message."
+                params={[["id", "string", "Message ID (e.g. msg_01HX6P9)"]]}
+                responseExample={`{
   "success": true,
   "data": {
     "message_id": "msg_01HX6P9",
@@ -374,23 +423,25 @@ Accept: application/json`}</Code>
     "read_at": "2025-04-19T10:04:21Z"
   }
 }`}
-            />
-          </ApiSection>
+              />
+              </Endpoints>
+            </ApiSection>
 
-          {/* ── Conversations ── */}
-          <ApiSection id="conversations" title="Conversations">
-            <P>Retrieve and manage conversations from your shared inbox.</P>
+            {/* ── Conversations ── */}
+            <ApiSection id="conversations" title="Conversations">
+              <P>Retrieve and manage conversations from your shared inbox.</P>
+              <Endpoints>
 
-            <Endpoint
-              method="GET" path="/conversations"
-              desc="List conversations with filters."
-              params={[
-                ["status", "string", '"open", "resolved", "pending" (default: open)'],
-                ["assigned_to", "string", "Filter by agent user ID"],
-                ["page", "integer", "Page number"],
-                ["limit", "integer", "Results per page, max 50"],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="GET" path="/conversations"
+                desc="List conversations with filters."
+                params={[
+                  ["status", "string", '"open", "resolved", "pending" (default: open)'],
+                  ["assigned_to", "string", "Filter by agent user ID"],
+                  ["page", "integer", "Page number"],
+                  ["limit", "integer", "Results per page, max 50"],
+                ]}
+                responseExample={`{
   "success": true,
   "data": [
     {
@@ -405,17 +456,17 @@ Accept: application/json`}</Code>
   ],
   "meta": { "page": 1, "limit": 20, "total": 48 }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="PATCH" path="/conversations/:id"
-              desc="Update conversation status or assignment."
-              params={[["id", "string", "Conversation ID"]]}
-              bodyFields={[
-                ["status", "string", '"open", "resolved", or "pending"', false],
-                ["assigned_to", "string", "Agent user ID to assign the conversation", false],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="PATCH" path="/conversations/:id"
+                desc="Update conversation status or assignment."
+                params={[["id", "string", "Conversation ID"]]}
+                bodyFields={[
+                  ["status", "string", '"open", "resolved", or "pending"', false],
+                  ["assigned_to", "string", "Agent user ID to assign the conversation", false],
+                ]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "conv_01HX7Q1",
@@ -423,24 +474,26 @@ Accept: application/json`}</Code>
     "resolved_at": "2025-04-19T12:00:00Z"
   }
 }`}
-            />
-          </ApiSection>
+              />
+              </Endpoints>
+            </ApiSection>
 
-          {/* ── Campaigns ── */}
-          <ApiSection id="campaigns-api" title="Campaigns">
-            <P>Create and monitor broadcast campaigns programmatically.</P>
+            {/* ── Campaigns ── */}
+            <ApiSection id="campaigns-api" title="Campaigns">
+              <P>Create and monitor broadcast campaigns programmatically.</P>
+              <Endpoints>
 
-            <Endpoint
-              method="POST" path="/campaigns"
-              desc="Create and schedule a new campaign."
-              bodyFields={[
-                ["name", "string", "Internal campaign name", true],
-                ["template_name", "string", "Approved Meta template name", true],
-                ["segment", "object", 'Targeting rules — e.g. {"tags": ["hot-lead"]}', true],
-                ["scheduled_at", "string", "ISO 8601 datetime to send (omit to send immediately)", false],
-                ["template_vars_map", "object", 'Map template vars to contact fields — e.g. {"1": "name"}', false],
-              ]}
-              responseExample={`{
+              <Endpoint
+                method="POST" path="/campaigns"
+                desc="Create and schedule a new campaign."
+                bodyFields={[
+                  ["name", "string", "Internal campaign name", true],
+                  ["template_name", "string", "Approved Meta template name", true],
+                  ["segment", "object", 'Targeting rules — e.g. {"tags": ["hot-lead"]}', true],
+                  ["scheduled_at", "string", "ISO 8601 datetime to send (omit to send immediately)", false],
+                  ["template_vars_map", "object", 'Map template vars to contact fields — e.g. {"1": "name"}', false],
+                ]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "cmp_01HX8R5",
@@ -450,13 +503,13 @@ Accept: application/json`}</Code>
     "scheduled_at": "2025-04-20T09:00:00Z"
   }
 }`}
-            />
+              />
 
-            <Endpoint
-              method="GET" path="/campaigns/:id/stats"
-              desc="Get real-time delivery and engagement stats for a campaign."
-              params={[["id", "string", "Campaign ID"]]}
-              responseExample={`{
+              <Endpoint
+                method="GET" path="/campaigns/:id/stats"
+                desc="Get real-time delivery and engagement stats for a campaign."
+                params={[["id", "string", "Campaign ID"]]}
+                responseExample={`{
   "success": true,
   "data": {
     "id": "cmp_01HX8R5",
@@ -470,33 +523,34 @@ Accept: application/json`}</Code>
     "reply_rate": "10.5%"
   }
 }`}
-            />
-          </ApiSection>
+              />
+              </Endpoints>
+            </ApiSection>
 
-          {/* ── Webhooks ── */}
-          <ApiSection id="webhooks" title="Webhooks">
-            <P>Receive real-time event notifications by registering a webhook URL. Wazelo CRM sends a POST request to your endpoint when events occur.</P>
-            <H3>Registering a webhook</H3>
-            <P>Go to <strong style={{ color: "#e5e2e1" }}>Settings → Webhooks → New Webhook</strong>. Enter your endpoint URL and select the events to subscribe to.</P>
-            <H3>Supported events</H3>
-            <div style={{ background: "#1c1b1b", borderRadius: 8, overflow: "hidden", marginBottom: 20 }}>
-              {[
-                ["message.received", "A new inbound message arrived"],
-                ["message.delivered", "A sent message was delivered"],
-                ["message.read", "A sent message was read"],
-                ["conversation.assigned", "A conversation was assigned to an agent"],
-                ["conversation.resolved", "A conversation was marked resolved"],
-                ["contact.created", "A new contact was created"],
-                ["campaign.completed", "A campaign finished sending"],
-              ].map(([event, desc], i) => (
-                <div key={event} style={{ display: "flex", gap: 16, padding: "10px 16px", borderBottom: i < 6 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <code style={{ fontSize: 12, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 200 }}>{event}</code>
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
-                </div>
-              ))}
-            </div>
-            <H3>Payload example — message.received</H3>
-            <Code>{`{
+            {/* ── Webhooks ── */}
+            <ApiSection id="webhooks" title="Webhooks">
+              <P>Receive real-time event notifications by registering a webhook URL. Wazelo sends a POST request to your endpoint when events occur.</P>
+              <H3>Registering a webhook</H3>
+              <P>Go to <strong className="font-semibold text-ink">Settings → Webhooks → New Webhook</strong>. Enter your endpoint URL and select the events to subscribe to.</P>
+              <H3>Supported events</H3>
+              <div className="mb-6 divide-y divide-ink/10 border-y border-ink/15">
+                {[
+                  ["message.received", "A new inbound message arrived"],
+                  ["message.delivered", "A sent message was delivered"],
+                  ["message.read", "A sent message was read"],
+                  ["conversation.assigned", "A conversation was assigned to an agent"],
+                  ["conversation.resolved", "A conversation was marked resolved"],
+                  ["contact.created", "A new contact was created"],
+                  ["campaign.completed", "A campaign finished sending"],
+                ].map(([event, desc]) => (
+                  <div key={event} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:gap-4">
+                    <code className="font-mono text-[13px] font-medium text-ink sm:min-w-[200px]">{event}</code>
+                    <span className="text-sm text-ink-soft">{desc}</span>
+                  </div>
+                ))}
+              </div>
+              <H3>Payload example — message.received</H3>
+              <Code>{`{
   "event": "message.received",
   "timestamp": "2025-04-19T10:14:33Z",
   "data": {
@@ -509,9 +563,9 @@ Accept: application/json`}</Code>
     "received_at": "2025-04-19T10:14:33Z"
   }
 }`}</Code>
-            <H3>Webhook security</H3>
-            <P>Each webhook request includes an <code style={{ background: "#1c1b1b", padding: "1px 6px", borderRadius: 4, color: "#ffb77d", fontSize: 13 }}>X-Wazelo-Signature</code> header — an HMAC-SHA256 signature of the request body using your webhook secret. Always verify this before processing the payload.</P>
-            <Code lang="js">{`const crypto = require("crypto");
+              <H3>Webhook security</H3>
+              <P>Each webhook request includes an <C>X-Wazelo-Signature</C> header — an HMAC-SHA256 signature of the request body using your webhook secret. Always verify this before processing the payload.</P>
+              <Code lang="js">{`const crypto = require("crypto");
 
 function verifySignature(payload, signature, secret) {
   const expected = crypto
@@ -523,12 +577,12 @@ function verifySignature(payload, signature, secret) {
     Buffer.from(expected)
   );
 }`}</Code>
-          </ApiSection>
+            </ApiSection>
 
-          {/* ── Errors ── */}
-          <ApiSection id="errors" title="Error Codes">
-            <P>Wazelo CRM uses standard HTTP status codes. All error responses follow this format:</P>
-            <Code>{`{
+            {/* ── Errors ── */}
+            <ApiSection id="errors" title="Error Codes">
+              <P>Wazelo uses standard HTTP status codes. All error responses follow this format:</P>
+              <Code>{`{
   "success": false,
   "error": {
     "code": "CONTACT_NOT_FOUND",
@@ -536,30 +590,31 @@ function verifySignature(payload, signature, secret) {
     "status": 404
   }
 }`}</Code>
-            <div style={{ background: "#1c1b1b", borderRadius: 8, overflow: "hidden" }}>
-              {[
-                ["400", "BAD_REQUEST", "Missing or invalid request parameters"],
-                ["401", "UNAUTHORIZED", "Missing or invalid API key"],
-                ["403", "FORBIDDEN", "Your API key doesn't have permission for this action"],
-                ["404", "NOT_FOUND", "The requested resource doesn't exist"],
-                ["409", "CONFLICT", "Resource already exists (e.g. duplicate phone number)"],
-                ["422", "VALIDATION_ERROR", "Request body failed validation — see errors array"],
-                ["429", "RATE_LIMITED", "Too many requests — back off and retry after the Retry-After header"],
-                ["500", "INTERNAL_ERROR", "Something went wrong on our side — contact support if this persists"],
-              ].map(([code, name, desc], i) => (
-                <div key={code} style={{ display: "flex", gap: 16, padding: "12px 16px", borderBottom: i < 7 ? "1px solid rgba(255,255,255,0.04)" : "none", flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: parseInt(code) >= 500 ? "#f87171" : parseInt(code) >= 400 ? "#fbbf24" : "#86efac", fontFamily: "'Courier New', monospace", minWidth: 36 }}>{code}</span>
-                  <code style={{ fontSize: 12, color: "#a3defe", fontFamily: "'Courier New', monospace", minWidth: 180 }}>{name}</code>
-                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{desc}</span>
-                </div>
-              ))}
-            </div>
-          </ApiSection>
+              <div className="divide-y divide-ink/10 border-y border-ink/15">
+                {[
+                  ["400", "BAD_REQUEST", "Missing or invalid request parameters"],
+                  ["401", "UNAUTHORIZED", "Missing or invalid API key"],
+                  ["403", "FORBIDDEN", "Your API key doesn't have permission for this action"],
+                  ["404", "NOT_FOUND", "The requested resource doesn't exist"],
+                  ["409", "CONFLICT", "Resource already exists (e.g. duplicate phone number)"],
+                  ["422", "VALIDATION_ERROR", "Request body failed validation — see errors array"],
+                  ["429", "RATE_LIMITED", "Too many requests — back off and retry after the Retry-After header"],
+                  ["500", "INTERNAL_ERROR", "Something went wrong on our side — contact support if this persists"],
+                ].map(([code, name, desc]) => (
+                  <div key={code} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
+                    <span className={`min-w-[36px] font-mono text-[13px] font-semibold ${parseInt(code) >= 500 ? "text-rust" : "text-ink"}`}>{code}</span>
+                    <code className="min-w-[180px] font-mono text-[12px] text-ink-soft">{name}</code>
+                    <span className="text-sm text-ink-soft">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </ApiSection>
 
-        </main>
+          </main>
+        </div>
       </div>
 
       <SiteFooter />
-    </>
+    </div>
   );
 }

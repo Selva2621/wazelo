@@ -95,7 +95,7 @@ function CsatMockup() {
                 Hi! We&apos;ve resolved your issue. How was your experience today?
               </div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textAlign: "right", marginTop: 6 }}>
-                Wazelo CRM &nbsp;✓✓
+                Wazelo &nbsp;✓✓
               </div>
             </div>
 
@@ -238,7 +238,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Automatically send satisfaction surveys after every resolved WhatsApp conversation. Collect scores, read responses, and identify your best and worst-performing agents.",
   heroScreen: "/screens/09-csat-surveys.png",
   overviewTitle: "Every resolved conversation is a data point.",
-  overviewDesc: "CSAT surveys are usually an afterthought — a form link nobody clicks. Wazelo CRM sends satisfaction surveys directly on WhatsApp, immediately after a conversation is marked resolved, with quick-tap rating buttons so customers respond in 2 seconds. Every score is automatically linked to the agent and conversation, giving you a real, unbiased view of team performance.",
+  overviewDesc: "CSAT surveys are usually an afterthought — a form link nobody clicks. Wazelo sends satisfaction surveys directly on WhatsApp, immediately after a conversation is marked resolved, with quick-tap rating buttons so customers respond in 2 seconds. Every score is automatically linked to the agent and conversation, giving you a real, unbiased view of team performance.",
   capabilities: [
     { icon: "star_rate", title: "Automatic post-resolution surveys", desc: "Survey sends the moment a conversation is marked resolved. No manual trigger required." },
     { icon: "thumbs_up_down", title: "1–5 star or thumbs rating", desc: "Choose your rating format — numeric scale or thumbs up/down. Tapping sends the response instantly." },
