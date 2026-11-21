@@ -89,6 +89,17 @@ export function StoryHero() {
               className="h-full w-full object-cover lg:hidden"
             />
           )}
+          {/* Desktop: a sharp still of the 3D scene's first frame, in the server HTML so it shows
+              at first paint. The live scene fades in over it once ready (no blank hero). */}
+          {use3d !== false && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/media/hero3d/poster.jpg"
+              alt=""
+              fetchPriority="high"
+              className="absolute inset-0 hidden h-full w-full object-cover lg:block"
+            />
+          )}
           {use3d === false && (
             <LoopVideo
               src="/media/story/hero-cut.mp4"
