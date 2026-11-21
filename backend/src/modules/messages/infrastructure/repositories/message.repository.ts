@@ -69,6 +69,8 @@ export class MessageRepository {
   }
 
   async findById(id: string) {
+    // An undefined id would make Prisma drop the filter and return some other message
+    if (!id) return null;
     const msg = await this.prisma.message.findFirst({
       where: { id, deletedAt: null },
     });
@@ -149,6 +151,14 @@ export class MessageRepository {
     if (extra) Object.assign(data, extra);
 
     return this.prisma.message.update({ where: { id }, data });
+  }
+
+  async clearQueuedRetryAt(id: string): Promise<boolean> {
+    const result = await this.prisma.message.updateMany({
+      where: { id, status: MessageStatus.QUEUED },
+      data: { nextRetryAt: null },
+    });
+    return result.count > 0;
   }
 
   async markFailed(id: string, reason: string) {

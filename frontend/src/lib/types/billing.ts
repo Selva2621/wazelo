@@ -1,3 +1,5 @@
+import { formatMoney } from "@/lib/utils";
+
 // ─── Plan ───
 
 export type BillingCycle = "MONTHLY" | "YEARLY";
@@ -60,9 +62,14 @@ export interface Plan {
 }
 
 // Convenience helpers for display
+/** The plan's price in its own currency (₹299, $19), not always dollars. */
+/** Free trial plans (team and freelancer) are given on signup, never sold. */
+export function isTrialPlan(plan: Pick<Plan, "priceInCents" | "trialDays">): boolean {
+  return plan.priceInCents === 0 && plan.trialDays > 0;
+}
+
 export function formatPlanPrice(plan: Plan): string {
-  const dollars = (plan.priceInCents / 100).toFixed(2);
-  return `$${dollars}`;
+  return formatMoney(plan.priceInCents, plan.currency || "USD");
 }
 
 export function getPlanLimits(plan: Plan) {

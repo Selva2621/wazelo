@@ -1,123 +1,291 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
 import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureDetailPage";
-import { Incoming, Outgoing, PhoneFrame, QuickReply, Time, TypingBubble, bubbleEnter, usePageVisible } from "@/components/mocks/phone-frame";
 
-// ─── ChatbotMockup ────────────────────────────────────────────────────────────
-// A looping bot conversation in the shared WhatsApp phone. Each step adds one
-// thing to the chat; "tap" steps press the quick reply the visitor picks.
-const STEPS = ["menu", "tap1", "user1", "bot2", "tap2", "user2", "bot3"] as const;
-type Step = (typeof STEPS)[number];
-const HOLD: Record<Step, number> = { menu: 1400, tap1: 350, user1: 1000, bot2: 1400, tap2: 350, user2: 1000, bot3: 2600 };
+// ─── Typing Dots ──────────────────────────────────────────────────────────────
+const dotKeyframes = `
+@keyframes chatbotDotBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30%            { transform: translateY(-5px); opacity: 1; }
+}
+`;
 
-const FIRST = ["💰 Pricing", "🎯 Book a demo", "🆘 Support"];
-const SECOND = ["👤 Solo", "👥 Small team", "🏢 Enterprise"];
-
-function Replies({ options, pressed }: { options: string[]; pressed?: string }) {
+function TypingIndicator() {
   return (
-    <motion.div {...bubbleEnter} layout className="flex w-[85%] flex-col gap-1 self-start">
-      {options.map((o) => (
-        <QuickReply key={o} label={o} pressed={pressed === o} />
-      ))}
-    </motion.div>
+    <>
+      <style>{dotKeyframes}</style>
+      <div style={{
+        background: "#2a2a2a",
+        borderRadius: "10px 10px 10px 3px",
+        padding: "10px 14px",
+        display: "inline-flex",
+        gap: 4,
+        alignSelf: "flex-start",
+      }}>
+        {[0, 1, 2].map((i) => (
+          <span key={i} style={{
+            background: "#94a3b8",
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            display: "inline-block",
+            animation: "chatbotDotBounce 1.2s infinite",
+            animationDelay: `${i * 0.2}s`,
+          }} />
+        ))}
+      </div>
+    </>
   );
 }
 
+// ─── Bot Bubble ───────────────────────────────────────────────────────────────
+function BotBubble({ text }: { text: string }) {
+  return (
+    <div style={{
+      background: "#2a2a2a",
+      color: "#e5e2e1",
+      borderRadius: "10px 10px 10px 3px",
+      padding: "9px 12px",
+      maxWidth: "80%",
+      fontSize: 13,
+      lineHeight: 1.5,
+      alignSelf: "flex-start",
+    }}>
+      {text}
+    </div>
+  );
+}
+
+// ─── User Bubble ──────────────────────────────────────────────────────────────
+function UserBubble({ text }: { text: string }) {
+  return (
+    <div style={{
+      background: "#d97707",
+      color: "#4d2600",
+      borderRadius: "10px 10px 3px 10px",
+      padding: "9px 12px",
+      maxWidth: "80%",
+      fontSize: 13,
+      lineHeight: 1.5,
+      alignSelf: "flex-end",
+    }}>
+      {text}
+    </div>
+  );
+}
+
+// ─── Quick Reply Button ────────────────────────────────────────────────────────
+function QuickReplyBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: "rgba(255,183,125,0.1)",
+        border: "1px solid rgba(255,183,125,0.3)",
+        color: "#ffb77d",
+        borderRadius: 16,
+        padding: "6px 12px",
+        fontSize: 11,
+        cursor: "pointer",
+        fontFamily: "var(--font-geist-sans), sans-serif",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─── ChatbotMockup ────────────────────────────────────────────────────────────
 function ChatbotMockup() {
-  const [i, setI] = useState(0);
-  const visible = usePageVisible();
-  const step = STEPS[i];
-  const at = (s: Step) => i >= STEPS.indexOf(s);
+  // step: 0 = first bot msg + buttons
+  //       1 = user tapped "💰 Pricing", show bubble + typing
+  //       2 = second bot msg + buttons
+  //       3 = user tapped "👤 Small Team", show bubble + typing
+  //       4 = final bot msg, then reset
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+  const [typing, setTyping] = useState(false);
 
+  // Auto-advance all steps
   useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => setI((n) => (n + 1) % STEPS.length), HOLD[step]);
-    return () => clearTimeout(t);
-  }, [step, visible]);
+    if (step === 0) {
+      const t = setTimeout(() => setStep(1), 1200);
+      return () => clearTimeout(t);
+    }
+    if (step === 1) {
+      setTyping(true);
+      const t = setTimeout(() => { setTyping(false); setStep(2); }, 900);
+      return () => clearTimeout(t);
+    }
+    if (step === 2) {
+      const t = setTimeout(() => setStep(3), 1200);
+      return () => clearTimeout(t);
+    }
+    if (step === 3) {
+      setTyping(true);
+      const t = setTimeout(() => { setTyping(false); setStep(4); }, 900);
+      return () => clearTimeout(t);
+    }
+    if (step === 4) {
+      const t = setTimeout(() => setStep(0), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
 
-  const typing = step === "user1" || step === "user2";
+  function handleFirstReply() {
+    setStep(1);
+  }
+
+  function handleSecondReply() {
+    setStep(3);
+  }
+
   return (
     <div>
       {/* Section header */}
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "var(--c-primary-container)",
+          textTransform: "uppercase", color: "#ffb77d",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
-          letterSpacing: "-0.04em", color: "var(--c-on-surface)",
+          letterSpacing: "-0.04em", color: "#e5e2e1",
           fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your 24/7 WhatsApp chatbot.
         </h2>
       </div>
 
-      <div className="relative mt-10 flex justify-center">
-        <div aria-hidden className="device-glow" />
-        <PhoneFrame contact={{ name: "Wazelo Bot", initials: "WB", subtitle: "Business account" }} typing={typing}>
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div key="bot1" layout className="flex flex-col">
-              <Incoming>
-                Hi! 👋 What are you looking for today?
-                <Time>10:02</Time>
-              </Incoming>
-            </motion.div>
+      {/* Phone frame outer */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "0 20px" }}>
+        <div style={{
+          width: 300,
+          height: 540,
+          background: "#131313",
+          borderRadius: 36,
+          overflow: "hidden",
+          border: "8px solid #1c1b1b",
+          boxShadow: "0 40px 80px rgba(0,0,0,0.7)",
+          marginTop: 32,
+          display: "flex",
+          flexDirection: "column",
+        }}>
 
-            {!at("user1") && <Replies key="menu1" options={FIRST} pressed={step === "tap1" ? FIRST[0] : undefined} />}
+          {/* WhatsApp header bar */}
+          <div style={{
+            background: "#131313",
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 16, color: "#fff", lineHeight: 1 }}>‹</span>
+            <div style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: "#ffb77d",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#fff" }}>smart_toy</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
+              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
+            </div>
+          </div>
 
-            {at("user1") && (
-              <motion.div key="user1" {...bubbleEnter} layout className="flex flex-col">
-                <Outgoing>
-                  {FIRST[0]}
-                  <Time read>10:02</Time>
-                </Outgoing>
-              </motion.div>
-            )}
-            {step === "user1" && (
-              <motion.div key="typing1" {...bubbleEnter} layout className="flex flex-col">
-                <TypingBubble />
-              </motion.div>
+          {/* Messages area */}
+          <div style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "12px 10px",
+            background: "#0e0e0e",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            minHeight: 0,
+          }}>
+            {/* Step 0: First bot message — always visible */}
+            <BotBubble text="Hi! 👋 What are you looking for today?" />
+
+            {/* Quick replies for step 0 */}
+            {step === 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                {["💰 Pricing", "🎯 Demo", "🆘 Support"].map((r) => (
+                  <QuickReplyBtn key={r} label={r} onClick={handleFirstReply} />
+                ))}
+              </div>
             )}
 
-            {at("bot2") && (
-              <motion.div key="bot2" {...bubbleEnter} layout className="flex flex-col">
-                <Incoming>
-                  Sure! We have plans for every size. Which best describes you?
-                  <Time>10:02</Time>
-                </Incoming>
-              </motion.div>
-            )}
-            {at("bot2") && !at("user2") && <Replies key="menu2" options={SECOND} pressed={step === "tap2" ? SECOND[1] : undefined} />}
+            {/* Step >= 1: user bubble */}
+            {step >= 1 && <UserBubble text="💰 Pricing" />}
 
-            {at("user2") && (
-              <motion.div key="user2" {...bubbleEnter} layout className="flex flex-col">
-                <Outgoing>
-                  {SECOND[1]}
-                  <Time read>10:03</Time>
-                </Outgoing>
-              </motion.div>
-            )}
-            {step === "user2" && (
-              <motion.div key="typing2" {...bubbleEnter} layout className="flex flex-col">
-                <TypingBubble />
-              </motion.div>
+            {/* Step 1 typing indicator */}
+            {step === 1 && typing && <TypingIndicator />}
+
+            {/* Step >= 2: second bot message */}
+            {step >= 2 && (
+              <BotBubble text="Sure! We have 3 plans. Which best describes your team?" />
             )}
 
-            {at("bot3") && (
-              <motion.div key="bot3" {...bubbleEnter} layout className="flex flex-col">
-                <Incoming>
-                  Great choice! Our Starter plan fits small teams. Want me to send the price list?
-                  <Time>10:03</Time>
-                </Incoming>
-              </motion.div>
+            {/* Quick replies for step 2 */}
+            {step === 2 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                {["👤 Solo", "👥 Small Team", "🏢 Enterprise"].map((r) => (
+                  <QuickReplyBtn key={r} label={r} onClick={handleSecondReply} />
+                ))}
+              </div>
             )}
-          </AnimatePresence>
-        </PhoneFrame>
+
+            {/* Step >= 3: second user bubble */}
+            {step >= 3 && <UserBubble text="👤 Small Team" />}
+
+            {/* Step 3 typing indicator */}
+            {step === 3 && typing && <TypingIndicator />}
+
+            {/* Step >= 4: final bot message */}
+            {step >= 4 && (
+              <BotBubble text="Great choice! I'll connect you with our sales team. 🚀" />
+            )}
+
+            {/* Step 4: start over button */}
+            {step === 4 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                <QuickReplyBtn label="Start Over" onClick={() => setStep(0)} />
+              </div>
+            )}
+          </div>
+
+          {/* Input bar */}
+          <div style={{
+            background: "#1c1b1b",
+            padding: "8px 12px",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexShrink: 0,
+          }}>
+            <div style={{
+              flex: 1,
+              background: "#2a2a2a",
+              border: "none",
+              borderRadius: 20,
+              padding: "8px 12px",
+              fontSize: 12,
+              color: "#9ca3af",
+              fontFamily: "var(--font-geist-sans), sans-serif",
+              lineHeight: 1,
+            }}>
+              Type a message...
+            </div>
+            <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#ffb77d" }}>send</span>
+          </div>
+
+        </div>
       </div>
     </div>
   );
@@ -127,34 +295,27 @@ function ChatbotMockup() {
 const data: FeatureDetailData = {
   slug: "chatbot",
   tag: "Chatbot Builder",
-  heroTitle: "Build bots.<br /><span style=\"color:var(--c-primary-container)\">No code needed.</span>",
-  heroSubtitle: "Answer WhatsApp messages with an AI bot that reads your documents, or a step-by-step flow you design.",
-  overviewTitle: "Answer the first message, any hour.",
-  overviewDesc: "Start with Create AI Chatbot: write a system prompt, choose which products it covers, and upload PDF, TXT, CSV or Markdown files. It replies using your documents, your knowledge base articles and the last 20 messages of the chat. Or build a Custom Flow that sends messages, asks questions, checks answers and calls your API, then test it before you switch it on.",
+  heroTitle: "Build bots.<br /><span style=\"color:#ffb77d\">No code needed.</span>",
+  heroSubtitle: "Create WhatsApp chatbots that qualify leads, answer FAQs, capture data, and hand off to your team — all without writing a single line of code.",
+  heroScreen: "/screens/06-chatbot-builder.png",
+  overviewTitle: "Automate the first conversation.",
+  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent — or resolve entirely on their own — 24 hours a day, 7 days a week.",
   capabilities: [
-    { icon: "smart_toy", title: "AI Chatbot", desc: "Set a System Prompt and Product Scope, upload product docs, and the bot answers from them." },
-    { icon: "bolt", title: "Three triggers", desc: "Start on a Keyword Match, a First Message, or a Button Reply." },
-    { icon: "quiz", title: "Ask and remember", desc: "Ask Question saves the answer as a variable you can use later in the chat, like {{name}}." },
-    { icon: "call_split", title: "Conditions", desc: "Branch on an answer that equals, contains or does not equal a value." },
-    { icon: "api", title: "API Call step", desc: "Fetch or send data to your own system in the middle of a conversation." },
-    { icon: "science", title: "Test before going live", desc: "Run a custom flow in the Test panel, then Activate or Pause it at any time." },
-  ],
-  details: [
-    { title: "Flow steps", items: ["Send Message", "Ask Question", "Condition", "AI Reply", "Intent Detect", "API Call", "Carousel (as a numbered list)"] },
-    { title: "What the AI reads", items: ["System Prompt", "Product Scope", "PDF, TXT, CSV, Markdown", "Up to 20MB per file", "Knowledge base articles", "Last 20 messages"] },
-    { title: "Triggers", items: ["Keyword Match", "First Message", "Button Reply"] },
+    { icon: "smart_toy", title: "No-code flow builder", desc: "Build chatbot flows visually using a drag-and-drop canvas. No developer required." },
+    { icon: "quiz", title: "Question & answer flows", desc: "Ask a sequence of questions, capture responses, and store answers as contact fields automatically." },
+    { icon: "call_split", title: "Conditional branching", desc: "Route the conversation based on what the user says — keyword match, button selection, or numeric input." },
+    { icon: "transfer_within_a_station", title: "Agent handoff", desc: "At any point, hand the conversation to a human agent — with the full chatbot transcript already in the inbox." },
+    { icon: "quickreply", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
+    { icon: "schedule_send", title: "24/7 availability", desc: "Your chatbot handles incoming messages even when your whole team is offline. Nothing slips through after hours." },
   ],
   howItWorks: [
-    { step: "01", title: "Choose a bot type", desc: "Click Create AI Chatbot (recommended) or Create Custom Flow." },
-    { step: "02", title: "Teach or design it", desc: "Add a prompt and documents for the AI, or add steps for a custom flow." },
-    { step: "03", title: "Set the trigger", desc: "Pick a keyword, a first message, or a button reply." },
-    { step: "04", title: "Activate", desc: "Test a custom flow, then switch the bot on. Pause it whenever you like." },
+    { step: "01", title: "Design your flow", desc: "Use the visual builder to map out how your bot should respond to different inputs — start with a template or build from scratch." },
+    { step: "02", title: "Add questions and branches", desc: "Insert question blocks, decision branches, and action steps like setting contact fields or adding tags." },
+    { step: "03", title: "Set your triggers", desc: "Choose when the bot activates — on every first message, a specific keyword, outside business hours, or from a campaign CTA." },
+    { step: "04", title: "Activate and review", desc: "Go live. Monitor bot sessions, drop-off points, and handoff rates to improve your flow over time." },
   ],
-  faqs: [
-    { q: "Do I need to code?", a: "No. The AI bot needs only a prompt and your documents. The API Call step is optional, for teams who want to connect their own system." },
-    { q: "Which files can the AI learn from?", a: "PDF, TXT, CSV and Markdown files up to 20MB each, plus the articles in your knowledge base." },
-    { q: "Does the bot answer every message?", a: "It answers incoming text messages that match its trigger. When the bot replies to a message, automation rules don't also fire for it." },
-    { q: "Who can build chatbots?", a: "Admins and Managers." },
+  screens: [
+    { src: "/screens/03-automation-workflow.png", caption: "Chatbot flows integrate with automation workflows" },
   ],
   relatedFeatures: [
     { label: "Automation", href: "/features/automation", icon: "bolt" },

@@ -4,20 +4,23 @@ import { ContactSource } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { ContactRepository } from '@/modules/contacts/infrastructure/repositories/contact.repository';
 import { EVENT_NAMES } from '@/common/constants';
+import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
+import { toE164 } from '@/shared/utils/phone.util';
+import { WhatsAppPermissionUseCase } from '@/modules/contacts/application/use-cases/whatsapp-permission.use-case';
+import { RecordWhatsAppPermissionDto } from '@/modules/contacts/application/dto/whatsapp-permission.dto';
 
-function normalizeE164(phone: string): string | null {
-  if (!phone) return null;
-  const hasPlus = phone.trimStart().startsWith('+');
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 7) return null;
-  return hasPlus ? `+${digits}` : digits;
-}
+/** Phone numbers imported at once */
+const IMPORT_CONCURRENCY = 8;
 
 export interface ImportScrapeResultsOutcome {
   imported: number;
   skipped: number;
   /** Results with no usable phone number — a contact needs one to be messaged */
   noPhone: number;
+  /** Results that hit an error while importing (counted apart from duplicates) */
+  failed: number;
+  /** Imported lead finder contacts that "they agreed" was recorded for (0 when not asked) */
+  permissionRecorded: number;
 }
 
 @Injectable()
@@ -28,6 +31,8 @@ export class ImportScrapeResultsUseCase {
     private readonly prisma: PrismaService,
     private readonly contactRepository: ContactRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orgLocale: OrgLocaleService,
+    private readonly whatsAppPermission: WhatsAppPermissionUseCase,
   ) {}
 
   async execute(
@@ -35,12 +40,18 @@ export class ImportScrapeResultsUseCase {
     userId: string,
     scrapeRunId: string,
     resultIds: string[] = [],
+    whatsappPermission?: RecordWhatsAppPermissionDto,
   ): Promise<ImportScrapeResultsOutcome> {
     const run = await this.prisma.scrapeRun.findFirst({
       where: { id: scrapeRunId, orgId },
-      select: { id: true, source: true },
+      select: { id: true, source: true, filters: true },
     });
     if (!run) throw new NotFoundException('Scrape run not found');
+
+    // Numbers without a country code belong to the country the run searched in
+    const country =
+      (run.filters as { country?: string } | null)?.country ??
+      (await this.orgLocale.get(orgId)).country;
 
     // Scoped to this run — without resultIds it imports the run's remaining
     // results, never other runs' results
@@ -58,18 +69,28 @@ export class ImportScrapeResultsUseCase {
     let imported = 0;
     let skipped = 0;
     let noPhone = 0;
+    // Real errors, reported separately so they aren't mistaken for duplicates
+    let failed = 0;
+    // Contacts this import created or linked, for recording WhatsApp permission
+    const contactIds: string[] = [];
 
+    // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
+    // Truelancer, Upwork) have no phone — bid on them via their link instead
+    // of creating a contact with a made-up number.
+    // Leads sharing a number (chain branches) are imported one after another so
+    // the upsert never races itself into duplicate contacts.
+    const byPhone = new Map<string, typeof results>();
     for (const result of results) {
-      try {
-        // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
-        // Truelancer, Upwork) have no phone — bid on them via their link instead
-        // of creating a contact with a made-up number.
-        const phoneNumber = result.phone ? normalizeE164(result.phone) : null;
-        if (!phoneNumber) {
-          noPhone++;
-          continue;
-        }
+      const phoneNumber = toE164(result.phone, country);
+      if (!phoneNumber) {
+        noPhone++;
+        continue;
+      }
+      byPhone.set(phoneNumber, [...(byPhone.get(phoneNumber) ?? []), result]);
+    }
 
+    const importOne = async (phoneNumber: string, result: (typeof results)[number]) => {
+      try {
         const metadata: Record<string, unknown> = {
           company: result.company,
           jobTitle: result.jobTitle,
@@ -104,6 +125,15 @@ export class ImportScrapeResultsUseCase {
           where: { id: result.id },
           data: { imported: true, contactId: contact.id },
         });
+        contactIds.push(contact.id);
+        // Keep a known "on WhatsApp?" answer so campaigns can skip dead numbers
+        // without checking them again
+        if (result.waExists !== null && result.waCheckedAt) {
+          await this.prisma.contact.update({
+            where: { id: contact.id },
+            data: { waExists: result.waExists, waCheckedAt: result.waCheckedAt },
+          });
+        }
 
         if (created) {
           imported++;
@@ -118,8 +148,19 @@ export class ImportScrapeResultsUseCase {
         }
       } catch (err) {
         this.logger.warn(`Failed to import result ${result.id}: ${err instanceof Error ? err.message : String(err)}`);
-        skipped++;
+        failed++;
       }
+    };
+
+    // A few numbers at a time: one by one took ~0.8s per lead on a remote DB,
+    // so 50 leads outran the app's request timeout
+    const groups = [...byPhone.entries()];
+    for (let i = 0; i < groups.length; i += IMPORT_CONCURRENCY) {
+      await Promise.all(
+        groups.slice(i, i + IMPORT_CONCURRENCY).map(async ([phoneNumber, group]) => {
+          for (const result of group) await importOne(phoneNumber, result);
+        }),
+      );
     }
 
     const totalImported = await this.prisma.scrapeResult.count({
@@ -130,6 +171,17 @@ export class ImportScrapeResultsUseCase {
       data: { importedCount: totalImported },
     });
 
-    return { imported, skipped, noPhone };
+    // "They agreed": recorded in one batch for the lead finder contacts among
+    // them that don't have an active agreement yet
+    const permissionRecorded = whatsappPermission
+      ? (
+          await this.whatsAppPermission.recordForContacts(orgId, userId, contactIds, whatsappPermission, {
+            via: 'lead_finder_import',
+            scrapeRunId,
+          })
+        ).recorded
+      : 0;
+
+    return { imported, skipped, noPhone, failed, permissionRecorded };
   }
 }

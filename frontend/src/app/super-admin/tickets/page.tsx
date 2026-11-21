@@ -3,28 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { LifeBuoy } from "lucide-react";
 import { useSATickets } from "@/hooks/use-super-admin";
 import { useDebounce } from "@/hooks/use-debounce";
-import { Spinner } from "@/components/ui/spinner";
 import { SearchInput } from "@/components/ui/search-input";
 import { PAGE_SIZE } from "@/lib/constants";
-import { IconButton } from "@/components/ui/icon-button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge, humanizeStatus } from "@/components/super-admin/status-badge";
 import { TicketSlaBadge, WaitingOnUs, useNow } from "@/components/super-admin/ticket-sla";
 import { cn } from "@/lib/utils";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
-import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
+import { NEWEST_FIRST, nextSort, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
 
-const COLUMNS = ["Title", "Org", "Category", "Priority", "Status", "First reply", "Assignee", "Created", "Updated"];
-
-/** Sortable column header → server sort field (server whitelist) and first-click direction */
-const SORT_FIELDS: Record<string, { field: string; firstOrder: "asc" | "desc" }> = {
-  Priority: { field: "priority", firstOrder: "desc" },
-  Status: { field: "status", firstOrder: "asc" },
-  Created: { field: "createdAt", firstOrder: "desc" },
-  Updated: { field: "updatedAt", firstOrder: "desc" },
+/** Sortable column (server sort field, on the server whitelist) → first-click direction */
+const SORT_FIRST_ORDER: Record<string, "asc" | "desc"> = {
+  priority: "desc",
+  status: "asc",
+  createdAt: "desc",
+  updatedAt: "desc",
 };
 
 const STATUS_OPTIONS = ["", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
@@ -78,11 +78,58 @@ export default function SuperAdminTicketsPage() {
   };
   const { data, isLoading, isError, refetch } = useSATickets({ page, limit: PAGE_SIZE, ...filters });
 
-  return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-title font-semibold text-on-surface">Help Tickets</h1>
+  const columns: DataTableColumn<NonNullable<typeof data>["tickets"][number]>[] = [
+    {
+      id: "title",
+      header: "Title",
+      cell: (t) => (
+        <>
+          <Link href={`/super-admin/tickets/${t.id}`} className="font-medium text-on-surface hover:text-primary line-clamp-1">{t.title}</Link>
+          <p className="text-label text-on-surface-variant">{t.user?.firstName} {t.user?.lastName}</p>
+        </>
+      ),
+    },
+    { id: "org", header: "Org", cellClassName: "text-on-surface-variant", cell: (t) => t.organization?.name },
+    { id: "category", header: "Category", cellClassName: "text-on-surface-variant text-label", cell: (t) => (t.category ? sentenceCase(t.category) : "—") },
+    { id: "priority", header: "Priority", sortable: true, skeleton: "badge", cell: (t) => priorityBadge(t.priority) },
+    { id: "status", header: "Status", sortable: true, skeleton: "badge", cell: (t) => <StatusBadge status={t.status} /> },
+    {
+      id: "firstReply",
+      header: "First reply",
+      skeleton: "badge",
+      cell: (t) => (
+        <div className="flex flex-col items-start gap-1">
+          {t.sla ? <TicketSlaBadge sla={t.sla} now={now} /> : <span className="text-on-surface-variant">—</span>}
+          {t.sla?.waitingOnSupport && <WaitingOnUs />}
+        </div>
+      ),
+    },
+    { id: "assignee", header: "Assignee", cellClassName: "text-on-surface-variant", cell: (t) => t.assignedTo?.name ?? "Unassigned" },
+    {
+      id: "createdAt",
+      header: "Created",
+      sortable: true,
+      cellClassName: "text-on-surface-variant",
+      cell: (t) => new Date(t.createdAt).toLocaleDateString(),
+    },
+    {
+      id: "updatedAt",
+      header: "Updated",
+      sortable: true,
+      cellClassName: "text-on-surface-variant",
+      cell: (t) => (t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "—"),
+    },
+  ];
 
-      <div className="flex gap-2 flex-wrap">
+  return (
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Help tickets"
+        count={data?.total}
+        actions={<ExportCsvButton list="tickets" params={filters} />}
+      />
+
+      <FilterBar>
         <SearchInput
           aria-label="Search tickets by title or organization"
           value={search}
@@ -90,122 +137,66 @@ export default function SuperAdminTicketsPage() {
           placeholder="Search title or organization…"
           className="w-full sm:max-w-xs"
         />
+        <FilterBarDivider />
         {[
           { label: "Filter by status", value: status, onChange: (v: string) => { setStatus(v); setPage(1); }, options: STATUS_OPTIONS, placeholder: "All statuses" },
           { label: "Filter by category", value: category, onChange: (v: string) => { setCategory(v); setPage(1); }, options: CATEGORY_OPTIONS, placeholder: "All categories" },
           { label: "Filter by priority", value: priority, onChange: (v: string) => { setPriority(v); setPage(1); }, options: PRIORITY_OPTIONS, placeholder: "All priorities" },
         ].map((sel) => (
-          <select key={sel.label} aria-label={sel.label} value={sel.value} onChange={(e) => sel.onChange(e.target.value)}
-            className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
-            {sel.options.map((s) => <option key={s} value={s}>{s || sel.placeholder}</option>)}
-          </select>
+          <FilterSelect key={sel.label} label={sel.label} active={!!sel.value} value={sel.value} onChange={(e) => sel.onChange(e.target.value)}>
+            {sel.options.map((s) => <option key={s} value={s}>{s ? sentenceCase(s) : sel.placeholder}</option>)}
+          </FilterSelect>
         ))}
-        <select
-          aria-label="Filter by assignee"
+        <FilterSelect
+          label="Filter by assignee"
+          active={!!assignee}
           value={assignee}
           onChange={(e) => { setAssignee(e.target.value); setPage(1); }}
-          className="bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Anyone</option>
           <option value="me">Assigned to me</option>
           <option value="unassigned">Unassigned</option>
-        </select>
+        </FilterSelect>
+        <FilterBarDivider />
         <button
           type="button"
           aria-pressed={needsReply}
           onClick={() => { setNeedsReply((v) => !v); setPage(1); }}
           title="Open tickets where the customer spoke last or nobody has replied yet"
+          // Same pill chip as the shared Tabs (dark fill when on); it toggles on its own
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-body-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             needsReply
-              ? "border-primary bg-primary/10 text-primary font-medium"
-              : "border-outline-variant bg-surface-container text-on-surface hover:bg-surface-container-high",
+              ? "border-transparent bg-on-surface text-surface"
+              : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
           )}
         >
-          <span className={cn("h-1.5 w-1.5 rounded-full", needsReply ? "bg-primary" : "bg-on-surface-variant")} aria-hidden />
+          <span className={cn("h-1.5 w-1.5 rounded-full", needsReply ? "bg-surface" : "bg-on-surface-variant")} aria-hidden />
           Waiting on us
         </button>
-        <ExportCsvButton list="tickets" params={filters} className="sm:ml-auto" />
-      </div>
+      </FilterBar>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
-          <caption className="sr-only">Help tickets</caption>
-          <thead>
-            <tr className="border-b border-outline-variant text-left">
-              {COLUMNS.map((h) =>
-                SORT_FIELDS[h] ? (
-                  <SortableTh
-                    key={h}
-                    label={h}
-                    field={SORT_FIELDS[h].field}
-                    firstOrder={SORT_FIELDS[h].firstOrder}
-                    sort={sort}
-                    onSort={changeSort}
-                  />
-                ) : (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium">{h}</th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/40">
-            {isLoading ? (
-              <tr>
-                <td colSpan={COLUMNS.length} className="py-12 text-center" role="status">
-                  <Spinner className="mx-auto text-primary" />
-                  <span className="sr-only">Loading tickets…</span>
-                </td>
-              </tr>
-            ) : isError ? (
-              <tr>
-                <td colSpan={COLUMNS.length} className="py-12 text-center text-error" role="alert">
-                  Could not load tickets.{" "}
-                  <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-                    Try again
-                  </button>
-                </td>
-              </tr>
-            ) : data?.tickets?.length === 0 ? (
-              <tr><td colSpan={COLUMNS.length} className="py-12 text-center text-on-surface-variant">
-                {debouncedSearch
-                  ? `No tickets match “${debouncedSearch}”`
-                  : needsReply ? "No customers are waiting on a reply" : "No tickets found"}
-              </td></tr>
-            ) : data?.tickets?.map((t) => (
-              <tr key={t.id} className="hover:bg-surface-container transition-colors">
-                <td className="px-4 py-3">
-                  <Link href={`/super-admin/tickets/${t.id}`} className="font-medium text-on-surface hover:text-primary line-clamp-1">{t.title}</Link>
-                  <p className="text-label text-on-surface-variant">{t.user?.firstName} {t.user?.lastName}</p>
-                </td>
-                <td className="px-4 py-3 text-on-surface-variant">{t.organization?.name}</td>
-                <td className="px-4 py-3 text-on-surface-variant text-label">{t.category}</td>
-                <td className="px-4 py-3">{priorityBadge(t.priority)}</td>
-                <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col items-start gap-1">
-                    {t.sla ? <TicketSlaBadge sla={t.sla} now={now} /> : <span className="text-on-surface-variant">—</span>}
-                    {t.sla?.waitingOnSupport && <WaitingOnUs />}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-on-surface-variant">{t.assignedTo?.name ?? "Unassigned"}</td>
-                <td className="px-4 py-3 text-on-surface-variant">{new Date(t.createdAt).toLocaleDateString()}</td>
-                <td className="px-4 py-3 text-on-surface-variant">{t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-            <span className="text-label text-on-surface-variant">{data.total} total</span>
-            <div className="flex items-center gap-2">
-              <IconButton size="xs" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></IconButton>
-              <span className="text-label text-on-surface-variant">{page} / {data.totalPages}</span>
-              <IconButton size="xs" onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} aria-label="Next page"><ChevronRight className="h-4 w-4" /></IconButton>
-            </div>
-          </div>
-        )}
+      <div className={TABLE_CARD}>
+        <DataTable
+          label="Help tickets"
+          columns={columns}
+          rows={data?.tickets ?? []}
+          rowKey={(t) => t.id}
+          rowLabel={(t) => t.title}
+          loading={isLoading}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <LifeBuoy className="h-12 w-12" />,
+            title: debouncedSearch
+              ? `No tickets match “${debouncedSearch}”`
+              : needsReply ? "No customers are waiting on a reply" : "No tickets found",
+            description: debouncedSearch ? "Try a different title or organization." : "Try changing the filters.",
+          }}
+          sort={{ id: sort.field, order: sort.order }}
+          onSortChange={(next) => changeSort(nextSort(sort, next.id, SORT_FIRST_ORDER[next.id] ?? "desc"))}
+          pagination={data ? { page: page - 1, pageSize: PAGE_SIZE, total: data.total, onPageChange: (p) => setPage(p + 1) } : undefined}
+        />
       </div>
     </div>
   );

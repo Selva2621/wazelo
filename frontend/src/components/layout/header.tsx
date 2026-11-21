@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { User, LogOut, Sparkles, CreditCard, Search, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { TourHelpButton } from "@/components/tour/tour-help-button";
+import { User, LogOut, Sparkles, CreditCard, Search, Menu } from "lucide-react";
+import { statusChipSegment, statusChipTone, type StatusChipTone } from "@/components/ui/status-chip";
+import { useAiCredits } from "@/hooks/use-ai-credits";
+import type { AiCreditWallet } from "@/lib/api/ai-credits";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -18,6 +22,25 @@ import { useLogout } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-billing";
 import type { SubscriptionStatus } from "@/lib/types/billing";
 
+/** Credits left in total (plan + bought), with a tone for how close to empty. */
+function aiCreditsPill(wallet: AiCreditWallet): { value: string; title: string; tone: StatusChipTone } {
+  const { plan, purchased, available } = wallet;
+  const planText = plan.unlimited ? "Plan: unlimited" : `Plan: ${plan.used.toLocaleString("en-IN")} / ${plan.limit.toLocaleString("en-IN")} used`;
+  const title = `${planText} · Extra: ${purchased.toLocaleString("en-IN")}`;
+  if (available === null) {
+    return { value: "Unlimited", title, tone: "ok" };
+  }
+  const planLow = !plan.unlimited && plan.limit > 0 && plan.used / plan.limit >= 0.8;
+  const tone =
+    available === 0
+      ? "error"
+      : // Warn only when credits are actually running out, not while bought credits cover it
+        planLow && purchased === 0
+        ? "warning"
+        : "ok";
+  return { value: available.toLocaleString("en-IN"), title, tone };
+}
+
 const statusBadgeStyles: Record<SubscriptionStatus, string> = {
   ACTIVE:       "bg-success-container text-success",
   TRIAL:        "bg-primary/15 text-primary-container",
@@ -32,12 +55,14 @@ interface HeaderProps {
   scrolled?: boolean;
   /** Left offset matching the sidebar width (lg and up). */
   offsetClassName?: string;
+  /** The page renders its own <h1>; the header title is then a plain label, not a heading. */
+  pageHasHeading?: boolean;
+  /** False while the page's own heading is on screen, so the title appears only once. */
+  showTitle?: boolean;
 }
 
-export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
+export function Header({ scrolled = false, offsetClassName, pageHasHeading = false, showTitle = true }: HeaderProps) {
   const user = useAuthStore((s) => s.user);
-  const collapsed = useUIStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const setMobileOpen = useUIStore((s) => s.setMobileSidebarOpen);
   const pageTitle = useUIStore((s) => s.pageTitle);
   const userName = user ? `${user.firstName} ${user.lastName}` : "User";
@@ -49,17 +74,11 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { data: billingData } = useSubscription({ enabled: isAuthenticated });
-  const aiCredits = billingData?.usage?.aiCredits;
   const subscription = billingData?.subscription;
-
-  const aiPillColor =
-    !aiCredits
-      ? null
-      : aiCredits.percentUsed >= 100
-      ? "bg-error-container text-error border-error/20"
-      : aiCredits.percentUsed >= 80
-      ? "bg-warning-container text-warning border-warning/20"
-      : "bg-success-container text-success border-success/20";
+  // Plan credits + bought credits — the plan counter alone ignores purchased packs
+  const { data: aiData } = useAiCredits({ enabled: isAuthenticated });
+  const wallet = aiData?.wallet;
+  const aiPill = wallet ? aiCreditsPill(wallet) : null;
 
   // Global ⌘K shortcut
   useEffect(() => {
@@ -106,25 +125,14 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </IconButton>
-        <IconButton
-          className="hidden lg:inline-flex"
-          onClick={toggleSidebar}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar to icons"}
-          aria-pressed={collapsed}
-          aria-controls="app-sidebar"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-        </IconButton>
-
-        <h1 className="min-w-0 truncate text-title-sm font-semibold text-on-surface">{pageTitle}</h1>
-
-        {/* Search: opens the command palette */}
+        {/* Desktop collapse button lives in the sidebar's brand row (and on the "[" key) */}
+        {/* Search (left-aligned): opens the command palette */}
         <button
           type="button"
+          data-tour="search"
           onClick={() => setSearchOpen(true)}
           className={cn(
-            "ml-auto hidden h-10 w-full max-w-sm items-center gap-2.5 rounded-full border border-outline-variant bg-surface-container-low px-4 text-body text-placeholder md:flex",
+            "hidden h-10 w-full max-w-sm shrink items-center gap-2.5 rounded-full border border-outline-variant bg-surface-container-low px-4 text-body text-placeholder md:flex",
             "transition-[border-color,background-color] duration-120 ease-standard hover:border-outline hover:bg-surface-container",
             "outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
           )}
@@ -135,39 +143,65 @@ export function Header({ scrolled = false, offsetClassName }: HeaderProps) {
             ⌘K
           </kbd>
         </button>
-        <IconButton className="ml-auto md:hidden" onClick={() => setSearchOpen(true)} aria-label="Search">
+        <IconButton className="md:hidden" onClick={() => setSearchOpen(true)} aria-label="Search">
           <Search className="h-5 w-5" />
         </IconButton>
 
-        {/* Right actions */}
-        <div className="flex shrink-0 items-center gap-2">
-          {aiPillColor && aiCredits && (
-            <Link
-              href="/settings/billing"
-              className={cn(
-                "hidden h-10 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-opacity hover:opacity-80 sm:flex",
-                aiPillColor,
-              )}
-              title={`${aiCredits.current} of ${aiCredits.limit} AI credits used`}
-            >
-              <Sparkles className="h-3.5 w-3.5 shrink-0" />
-              <span className="tabular-nums">
-                {aiCredits.current} / {aiCredits.limit}
-                <span className="ml-1 hidden xl:inline">AI credits</span>
-              </span>
-            </Link>
-          )}
+        {/* Page title after the search; it fades in once the page's own heading scrolls away */}
+        {pageHasHeading ? (
+          <p
+            aria-hidden
+            className={cn(
+              "ml-2 min-w-0 truncate text-title-sm font-semibold text-on-surface transition-[opacity,translate] duration-200 ease-standard",
+              showTitle ? "opacity-100" : "pointer-events-none translate-y-1 opacity-0",
+            )}
+          >
+            {pageTitle}
+          </p>
+        ) : (
+          <h1 className="ml-2 min-w-0 truncate text-title-sm font-semibold text-on-surface">{pageTitle}</h1>
+        )}
 
-          <AccountHealthPill />
+        {/* Right actions */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* One quiet status chip: AI credits + WhatsApp health (hidden when both are absent) */}
+          <div
+            data-tour="status-chip"
+            className="hidden h-10 items-center gap-0.5 rounded-full border border-outline-variant bg-surface-container-low p-1 empty:hidden sm:flex"
+          >
+            {aiPill && (
+              <Link
+                href="/settings/ai-credits"
+                className={cn(statusChipSegment, statusChipTone[aiPill.tone])}
+                title={aiPill.title}
+                aria-label={`${aiPill.value} AI credits left. ${aiPill.title}`}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span className="tabular-nums">
+                  {aiPill.value}
+                  <span className="ml-1 hidden xl:inline">credits</span>
+                </span>
+              </Link>
+            )}
+            <AccountHealthPill />
+          </div>
 
           <ThemeCycleButton />
 
-          <NotificationCenter />
+          {/* Replays this screen's tour */}
+          <Suspense fallback={null}>
+            <TourHelpButton />
+          </Suspense>
+
+          <span data-tour="notifications" className="inline-flex">
+            <NotificationCenter />
+          </span>
 
           {/* Account menu */}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
+              data-tour="account-menu"
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label="Account menu"
               aria-haspopup="menu"

@@ -11,8 +11,12 @@ import { CampaignStateMachineService } from '../../domain/services/campaign-stat
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
+import { readBatchPlanMetadata } from '../../domain/services/batch-plan';
 import { AuditAction, CampaignStatus, UsageMetricType } from '@prisma/client';
 import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { campaignTemplateProblem } from '../services/campaign-template-guard';
 
 @Injectable()
 export class ExecuteCampaignUseCase {
@@ -26,6 +30,7 @@ export class ExecuteCampaignUseCase {
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly usageTracking: UsageTrackingService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -44,12 +49,27 @@ export class ExecuteCampaignUseCase {
     // 2. Verify valid transition
     this.stateMachine.assertTransition(campaign.status, CampaignStatus.RUNNING);
 
-    // 3. Verify session is connected
-    const session = await this.sessionRepo.findByIdAndOrg(campaign.sessionId, orgId);
-    if (!session || session.status !== 'CONNECTED') {
-      throw new BadRequestException(
-        'WhatsApp session is not connected. Connect via QR first.',
-      );
+    // 3. Verify session is connected (email campaigns send from the workspace's mailbox instead)
+    if (campaign.channel !== 'EMAIL') {
+      // Batches are dealt over the connected numbers of the pool, so one is enough
+      const { pool } = readBatchPlanMetadata(campaign.metadata, campaign.sessionId);
+      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(pool, orgId);
+      if (connectedSessions.length === 0) {
+        throw new BadRequestException(
+          'Connect at least one of this campaign\'s WhatsApp numbers before starting it',
+        );
+      }
+    }
+
+    // Uploaded media can be wiped by a server restart; every send would fail
+    if (isLocalMediaMissing(campaign.mediaUrl)) {
+      throw new BadRequestException(MEDIA_MISSING_REASON);
+    }
+
+    // Official numbers can't send without their approved template
+    const templateProblem = await campaignTemplateProblem(this.prisma, campaign, orgId);
+    if (templateProblem) {
+      throw new BadRequestException(templateProblem);
     }
 
     // 4. If scheduled in the future, don't execute now

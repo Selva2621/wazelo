@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { MessageSquare, WifiOff, ArrowLeft, Trash2, XCircle, Archive, RotateCcw, Star, Handshake } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { MessageSquare, WifiOff, ArrowLeft, Trash2, XCircle, Archive, RotateCcw, Star, Handshake, ChevronLeft, Ellipsis, EllipsisVertical } from "lucide-react";
+import { useHideTabBar, useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { ActionSheet } from "@/components/ios/action-sheet";
+import { MOBILE_BACK_EVENT } from "@/components/mobile/edge-swipe-back";
+import { haptic } from "@/lib/haptics";
+import { usePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
 import { useInboxStore } from "@/stores/inbox-store";
@@ -25,8 +30,9 @@ import {
   useAssignConversation,
 } from "@/hooks/use-conversations";
 import { useSendCsatSurvey } from "@/hooks/use-csat";
-import { AiReplySuggestions } from "@/components/chat/ai-reply-suggestions";
 import { ConversationSummaryPanel } from "@/components/chat/conversation-summary-panel";
+import { BotStatusChip } from "@/components/inbox/bot-status-chip";
+import { InboxChannelTabs } from "@/components/inbox/inbox-channel-tabs";
 import { AiInsightPanel } from "@/components/chat/ai-insight-panel";
 import { useContactByPhone, useChangeLeadStatus } from "@/hooks/use-contacts";
 import { useUsers } from "@/hooks/use-users";
@@ -40,10 +46,12 @@ import { Badge } from "@/components/ui/badge";
 import { CHANNEL_TYPE_LABELS } from "@/lib/types/channels";
 import type { ChannelType } from "@/lib/types/channels";
 import { ConversationList } from "@/components/chat/conversation-list";
+import { InboxOverview } from "@/components/chat/inbox-overview";
 import { MessageThread, MessageThreadSkeleton } from "@/components/chat/message-thread";
 import { Drawer } from "@/components/ui/modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChatInput, type MediaAttachment } from "@/components/chat/chat-input";
+import { WhatsAppPermissionBanner } from "@/components/chat/whatsapp-permission-banner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { uploadApi } from "@/lib/api/messages";
 import { ContactPanel } from "@/components/chat/contact-panel";
@@ -54,6 +62,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { Conversation } from "@/components/chat/conversation-item";
 import type { Message } from "@/components/chat/message-bubble";
 import type { InteractivePayload } from "@/lib/types/inbox";
+import type { CloudTemplateChoice } from "@/lib/api/whatsapp";
 import type {
   ConversationResponse,
   MessageResponse,
@@ -112,6 +121,33 @@ function mapMessage(m: MessageResponse): Message {
   };
 }
 
+// ─── Mobile: the part of the screen not covered by the keyboard ───
+// iOS keeps fixed elements in the full-height layout when the keyboard opens, so the open
+// chat sizes itself to the visual viewport to keep the composer above the keyboard.
+
+function subscribeViewport(onChange: () => void) {
+  const vv = window.visualViewport;
+  if (!vv) return () => {};
+  vv.addEventListener("resize", onChange);
+  vv.addEventListener("scroll", onChange);
+  return () => {
+    vv.removeEventListener("resize", onChange);
+    vv.removeEventListener("scroll", onChange);
+  };
+}
+
+function viewportSnapshot() {
+  const vv = window.visualViewport;
+  return vv ? `${Math.round(vv.height)}|${Math.round(vv.offsetTop)}` : "";
+}
+
+function useVisualViewport() {
+  const snap = useSyncExternalStore(subscribeViewport, viewportSnapshot, () => "");
+  if (!snap) return null;
+  const [height, top] = snap.split("|").map(Number);
+  return { height, top, keyboardOpen: height < window.innerHeight - 120 };
+}
+
 // ─── Props ───────────────────────────────────────
 
 export interface InboxViewProps {
@@ -125,6 +161,10 @@ export interface InboxViewProps {
   onBack?: () => void;
   /** Auto-select conversation matching this phone number (from contacts page) */
   autoSelectPhone?: string | null;
+  /** Manager: show every team member's chats */
+  teamView?: boolean;
+  /** Shown under the channel tabs — the "Viewing: …" switcher for admins/managers */
+  scopeControl?: ReactNode;
 }
 
 // ─── Component ───────────────────────────────────────
@@ -135,6 +175,8 @@ export function InboxView({
   isAdminView = false,
   onBack,
   autoSelectPhone,
+  teamView = false,
+  scopeControl,
 }: InboxViewProps) {
   const userRole = useAuthStore((s) => s.user?.role);
   const contactPanelOpen = useUIStore((s) => s.contactPanelOpen);
@@ -170,12 +212,14 @@ export function InboxView({
     const params: Record<string, unknown> = {};
     if (targetUserId) {
       params.targetUserId = targetUserId;
+    } else if (teamView) {
+      params.teamView = true;
     }
     if (filter === "unread") {
       params.status = "OPEN";
     }
     return Object.keys(params).length > 0 ? params : undefined;
-  }, [targetUserId, filter]);
+  }, [targetUserId, teamView, filter]);
 
   // When auto-selecting by phone, also fetch that specific conversation directly
   const phoneFilterParams = useMemo(
@@ -202,6 +246,25 @@ export function InboxView({
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [mobileContactOpen, setMobileContactOpen] = useState(false);
 
+  // Mobile: an open chat is a full-screen pushed screen (tab bar hidden, own iOS header)
+  const inMobileThread = !isDesktop && !!selectedId;
+  const [threadMenuOpen, setThreadMenuOpen] = useState(false);
+  const android = usePlatform() === "android";
+  useHideTabBar(inMobileThread);
+  useMobileTitle(isAdminView && targetUserName ? `${targetUserName.trim()}'s Inbox` : null);
+  const viewport = useVisualViewport();
+
+  // Edge swipe back (installed app) closes the open chat instead of leaving the inbox
+  useEffect(() => {
+    if (!inMobileThread) return;
+    const onBack = (e: Event) => {
+      e.preventDefault();
+      setSelectedId(null);
+    };
+    window.addEventListener(MOBILE_BACK_EVENT, onBack);
+    return () => window.removeEventListener(MOBILE_BACK_EVENT, onBack);
+  }, [inMobileThread, setSelectedId]);
+
   // ─── Contact data for selected conversation (lookup by phone) ───
   const selectedRawConv = conversationsQuery.data?.data?.find(
     (c) => c.id === selectedId,
@@ -227,10 +290,42 @@ export function InboxView({
     () => (messagesQuery.data?.data ?? []).map(mapMessage).reverse(),
     [messagesQuery.data],
   );
+  // Newest thing the customer wrote: where the free FAQ search starts
+  const lastCustomerMessage = useMemo(
+    () => [...currentMessages].reverse().find((m) => m.direction === "incoming" && m.content.trim())?.content ?? "",
+    [currentMessages],
+  );
 
   const selectedConversation = conversations.find(
     (c) => c.id === selectedId,
   );
+
+  // ─── Desktop overview when no chat is open (counts from the loaded list) ───
+  const myId = useAuthStore((s) => s.user?.id);
+  const overview = useMemo(() => {
+    const raw = conversationsQuery.data?.data ?? [];
+    const unread = raw.filter((c) => c.unreadCount > 0);
+    const oldest = unread.reduce<ConversationResponse | null>((acc, c) => {
+      const at = c.lastMessageAt || c.createdAt;
+      return !acc || at < (acc.lastMessageAt || acc.createdAt) ? c : acc;
+    }, null);
+    return {
+      stats: [
+        { label: "Unread chats", value: unread.length },
+        { label: "Open chats", value: raw.filter((c) => c.status === "OPEN").length },
+        { label: "Assigned to me", value: raw.filter((c) => !!myId && c.assignedToId === myId).length },
+      ],
+      oldest: oldest
+        ? {
+            id: oldest.id,
+            name: oldest.contactName || oldest.contactPhone,
+            detail: oldest.contactPhone,
+            since: oldest.lastMessageAt || oldest.createdAt,
+          }
+        : null,
+      empty: !conversationsQuery.isLoading && filter !== "unread" && raw.length === 0,
+    };
+  }, [conversationsQuery.data, conversationsQuery.isLoading, filter, myId]);
 
   // ─── Mark conversation as read on select ───
   useEffect(() => {
@@ -354,6 +449,25 @@ export function InboxView({
     [selectedConversation, selectedId, sendMessage, targetUserId],
   );
 
+  /** Official number: send a Meta-approved template (the way back in after 24 hours) */
+  const handleSendTemplate = useCallback(
+    (choice: CloudTemplateChoice) => {
+      if (!selectedConversation) return;
+      sendMessage.mutate({
+        contactPhone: selectedConversation.contactPhone,
+        contactName: selectedConversation.contactName,
+        type: "TEXT",
+        idempotencyKey: `${selectedConversation.id}-tpl-${Date.now()}`,
+        conversationId: selectedId || undefined,
+        cloudTemplateId: choice.templateId,
+        cloudTemplateParams: choice.params,
+        ...(choice.headerImageUrl && { cloudTemplateHeaderImageUrl: choice.headerImageUrl }),
+        ...(targetUserId && { viaSessionUserId: targetUserId }),
+      });
+    },
+    [selectedConversation, selectedId, sendMessage, targetUserId],
+  );
+
   // Rendered in the desktop side panel and the mobile bottom sheet
   const renderContactPanel = (onClose: () => void) =>
     selectedConversation && selectedId ? (
@@ -407,7 +521,7 @@ export function InboxView({
   if (!skipSessionCheck && !hasActiveChannels && (hasNoSession || isConnecting)) {
     return (
       <div className="flex h-[calc(100dvh-var(--header-height))]">
-        <div className="flex-1 flex items-center justify-center">
+        <div data-tour="inbox-connect" className="flex-1 flex items-center justify-center">
           <EmptyState
             icon={<MessageSquare className="h-16 w-16" />}
             title={isConnecting ? "Connecting to WhatsApp..." : "Connect WhatsApp to start messaging"}
@@ -432,6 +546,7 @@ export function InboxView({
     <div className="flex h-[calc(100dvh-var(--header-height))]">
       {/* Left panel — Conversation list (full width on mobile until a chat is opened) */}
       <div
+        data-tour="chat-list"
         className={cn(
           "w-full lg:w-[320px] shrink-0 lg:border-r border-outline-variant/15 flex-col",
           selectedId ? "hidden lg:flex" : "flex",
@@ -443,9 +558,16 @@ export function InboxView({
             className="flex items-center gap-2 px-4 py-2.5 text-body font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-b border-outline-variant/15 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            {targetUserName ? `${targetUserName}'s Inbox` : "Back to Users"}
+            {/* Mobile: the nav bar already shows whose inbox this is */}
+            <span className="max-lg:hidden">{targetUserName ? `${targetUserName}'s Inbox` : "Back to Users"}</span>
+            <span className="lg:hidden">All users</span>
           </button>
         )}
+        {/* WhatsApp | Website chats, then whose chats (admins/managers) */}
+        <div className="shrink-0 space-y-2.5 border-b border-outline-variant/15 px-4 py-2.5">
+          <InboxChannelTabs active="whatsapp" />
+          {scopeControl}
+        </div>
         <div className="flex-1 min-h-0">
           <ConversationList
             conversations={conversations}
@@ -460,7 +582,15 @@ export function InboxView({
       </div>
 
       {/* Center panel — Message thread (replaces the list on mobile) */}
-      <div className={cn("flex-1 flex-col min-w-0", selectedId ? "flex" : "hidden lg:flex")}>
+      <div
+        className={cn(
+          "flex-1 flex-col min-w-0",
+          selectedId ? "flex" : "hidden lg:flex",
+          // Mobile: full-screen chat over the app bars
+          selectedId && "max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-40 max-lg:h-dvh max-lg:bg-surface",
+        )}
+        style={inMobileThread && viewport ? { height: viewport.height, top: viewport.top } : undefined}
+      >
         {/* Disconnected banner */}
         {isDisconnected && !skipSessionCheck && (
           <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-warning-container/80 border-b border-warning/20">
@@ -496,8 +626,76 @@ export function InboxView({
 
         {selectedConversation ? (
           <>
-            {/* Chat header */}
-            <div className="shrink-0 flex items-center justify-between gap-2 px-2 sm:px-4 py-3 border-b border-outline-variant/15">
+            {/* Chat header (mobile): ‹ Inbox · contact · … */}
+            <div className="ios-nav-bar m3-top-app-bar shrink-0 lg:hidden max-lg:-order-1" data-scrolled="true">
+              <div className="flex h-[52px] items-center gap-1 px-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic();
+                    setSelectedId(null);
+                  }}
+                  className={
+                    android
+                      ? "m3-icon-button text-on-surface"
+                      : "flex h-11 shrink-0 items-center pr-1 text-primary active:opacity-50"
+                  }
+                  aria-label="Back to conversations"
+                >
+                  {android ? (
+                    <ArrowLeft className="h-6 w-6" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <>
+                      <ChevronLeft className="h-7 w-7" strokeWidth={2.2} aria-hidden />
+                      <span className="-ml-0.5 text-native-body">Inbox</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileContactOpen(true)}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2",
+                    android ? "justify-start rounded-full py-1 pr-2" : "justify-center active:opacity-60",
+                  )}
+                  aria-label="Contact info"
+                >
+                  <Avatar name={selectedConversation.contactName} size="sm" />
+                  <span className="min-w-0 text-left">
+                    <span className="block truncate text-native-callout font-semibold leading-5 text-on-surface">
+                      {selectedConversation.contactName}
+                    </span>
+                    <span className="block truncate text-native-caption leading-4 text-on-surface-variant">
+                      {selectedConversation.contactName !== selectedConversation.contactPhone
+                        ? selectedConversation.contactPhone
+                        : CHANNEL_TYPE_LABELS[selectedChannelType ?? "WHATSAPP"]}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic();
+                    setThreadMenuOpen(true);
+                  }}
+                  className={
+                    android
+                      ? "m3-icon-button text-on-surface-variant"
+                      : "grid size-11 shrink-0 place-items-center text-primary active:opacity-50"
+                  }
+                  aria-label="Conversation actions"
+                >
+                  {android ? (
+                    <EllipsisVertical className="h-6 w-6" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <Ellipsis className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Chat header (desktop) */}
+            <div className="shrink-0 flex items-center justify-between gap-2 px-2 sm:px-4 py-3 border-b border-outline-variant/15 max-lg:hidden">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <IconButton size="sm"
                   onClick={() => setSelectedId(null)}
@@ -531,7 +729,15 @@ export function InboxView({
                   </div>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+              <div data-tour="chat-header-actions" className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+                {/* Chatbot / automations on or paused in this chat */}
+                {selectedId && (
+                  <BotStatusChip
+                    key={selectedId}
+                    conversationId={selectedId}
+                    lastActivity={selectedRawConv?.lastMessageAt ?? undefined}
+                  />
+                )}
                 {/* Close / Reopen */}
                 {selectedRawConv?.status === "OPEN" ? (
                   <IconButton size="sm"
@@ -635,13 +841,11 @@ export function InboxView({
               <MessageThread key={selectedId} messages={currentMessages} />
             )}
 
-            {/* AI Insight Panel */}
-            <AiInsightPanel conversationId={selectedId} />
-
-            {/* AI Reply Suggestions */}
-            <AiReplySuggestions
+            {/* About this chat: AI read-out, suggested replies, answers from bot knowledge */}
+            <AiInsightPanel
               conversationId={selectedId}
-              onSelect={setAiSuggestionText}
+              onSelectReply={setAiSuggestionText}
+              lastCustomerMessage={lastCustomerMessage}
             />
 
             {/* Input — disabled when disconnected */}
@@ -653,9 +857,16 @@ export function InboxView({
                 </div>
               </div>
             ) : (
+              <>
+              {/* Lead finder contact without WhatsApp permission: warn, don't block */}
+              {contactData?.source === "WEB_SCRAPE" && (selectedChannelType === "WHATSAPP" || !selectedChannelType) && (
+                <WhatsAppPermissionBanner contactId={contactData.id} />
+              )}
               <ChatInput
                 onSend={handleSend}
                 onSendInteractive={handleSendInteractive}
+                templateSessionId={selectedChannelType === "WHATSAPP" || !selectedChannelType ? selectedRawConv?.sessionId ?? undefined : undefined}
+                onSendTemplate={handleSendTemplate}
                 uploading={uploading}
                 channelType={selectedChannelType}
                 emailSubject={emailSubject}
@@ -668,21 +879,27 @@ export function InboxView({
                     : undefined
                 }
               />
+              </>
+            )}
+            {/* Mobile: clear the home indicator (the keyboard covers it when open) */}
+            {!viewport?.keyboardOpen && (
+              <div aria-hidden className="h-[var(--safe-bottom)] shrink-0 bg-surface-container-lowest lg:hidden" />
             )}
           </>
         ) : (
-          <EmptyState
-            icon={<MessageSquare className="h-16 w-16" />}
-            title="No conversation selected"
-            description="Select a conversation from the list to start chatting."
-            className="flex-1"
+          <InboxOverview
+            stats={overview.stats}
+            oldest={overview.oldest}
+            onOpen={setSelectedId}
+            empty={overview.empty}
+            channel="whatsapp"
           />
         )}
       </div>
 
       {/* Right panel — Contact details (desktop). CSS-gated so it doesn't flash in after hydration */}
       {contactPanelOpen && selectedConversation && selectedId && (
-        <div className="hidden lg:block w-[300px] shrink-0 border-l border-outline-variant/15">
+        <div data-tour="chat-contact-panel" className="hidden lg:block w-[300px] shrink-0 border-l border-outline-variant/15">
           {renderContactPanel(toggleContactPanel)}
         </div>
       )}
@@ -695,15 +912,40 @@ export function InboxView({
         className="overflow-y-auto"
         aria-label="Contact info"
       >
-        {() => (
-          <>
-            <div className="sticky top-0 z-10 flex justify-center bg-surface-container-lowest pt-2 pb-1">
-              <span aria-hidden className="h-1 w-10 rounded-full bg-outline-variant" />
-            </div>
-            {renderContactPanel(() => setMobileContactOpen(false))}
-          </>
-        )}
+        {() => <div className="pt-3">{renderContactPanel(() => setMobileContactOpen(false))}</div>}
       </Drawer>
+      {/* Mobile chat actions (the desktop header shows these as icon buttons) */}
+      <ActionSheet
+        open={threadMenuOpen}
+        onClose={() => setThreadMenuOpen(false)}
+        title={selectedConversation?.contactName}
+        actions={[
+          { label: "Contact info", onSelect: () => setMobileContactOpen(true) },
+          selectedRawConv?.status === "OPEN"
+            ? { label: "Close conversation", onSelect: () => setShowCloseConfirm(true) }
+            : {
+                label: "Reopen conversation",
+                onSelect: () => selectedId && reopenConversation.mutate(selectedId),
+              },
+          ...(selectedRawConv?.status !== "ARCHIVED"
+            ? [{ label: "Archive", onSelect: () => selectedId && archiveConversation.mutate(selectedId) }]
+            : []),
+          ...(contactData?.id ? [{ label: "Create deal", onSelect: () => setShowCreateDeal(true) }] : []),
+          {
+            label: "Send satisfaction survey",
+            disabled: sendCsatSurvey.isPending,
+            onSelect: () => {
+              if (!selectedId || !selectedRawConv) return;
+              sendCsatSurvey.mutate({
+                conversationId: selectedId,
+                contactPhone: selectedRawConv.contactPhone,
+                sessionId: selectedRawConv.sessionId ?? undefined,
+              });
+            },
+          },
+          { label: "Delete conversation", destructive: true, onSelect: () => setShowDeleteConfirm(true) },
+        ]}
+      />
       <ConfirmDialog
         open={showDeleteConfirm}
         title="Delete Conversation"

@@ -17,15 +17,15 @@ function AnalyticsMockup() {
   const kpis = [
     { label: "Total Messages", value: "48,500", icon: "forum", delta: "+12%" },
     { label: "Avg Response", value: "4m 12s", icon: "timer", delta: "-8%" },
-    { label: "Delivered", value: "96.4%", icon: "done_all", delta: "+1.2%" },
-    { label: "Conversion Rate", value: "18%", icon: "trending_up", delta: "+3%" },
+    { label: "CSAT Score", value: "4.3/5", icon: "star", delta: "+0.3" },
+    { label: "Resolution Rate", value: "87%", icon: "check_circle", delta: "+5%" },
   ];
 
   const agents = [
-    { name: "Priya S.", convs: 142, time: "3m 40s", score: 31 },
-    { name: "Rahul K.", convs: 118, time: "5m 12s", score: 24 },
-    { name: "Meera J.", convs: 97, time: "6m 05s", score: 19 },
-    { name: "Arjun T.", convs: 83, time: "7m 22s", score: 12 },
+    { name: "Priya S.", convs: 142, time: "3m 40s", score: 4.8 },
+    { name: "Rahul K.", convs: 118, time: "5m 12s", score: 4.5 },
+    { name: "Meera J.", convs: 97, time: "6m 05s", score: 4.1 },
+    { name: "Arjun T.", convs: 83, time: "7m 22s", score: 3.9 },
   ];
 
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -34,10 +34,10 @@ function AnalyticsMockup() {
     <div ref={view.ref}>
       {/* Section header */}
       <div style={{ textAlign: "center", marginBottom: 0 }}>
-        <p style={{ fontSize: 11, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+        <p style={{ fontSize: 11, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
           See it in action
         </p>
-        <h3 style={{ fontSize: 32, fontWeight: 700, color: "var(--c-on-surface)", margin: 0 }}>
+        <h3 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: 0 }}>
           The analytics dashboard, live.
         </h3>
       </div>
@@ -45,13 +45,13 @@ function AnalyticsMockup() {
       {/* Mockup container */}
       <div style={{
         borderRadius: 16,
-        background: "var(--c-surface-container-lowest)",
-        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
+        background: "#1c1b1b",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         padding: 28,
         marginTop: 32,
       }}>
 
-        {/* Row 1 - KPI cards */}
+        {/* Row 1 — KPI cards */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
@@ -59,27 +59,27 @@ function AnalyticsMockup() {
         }}>
           {kpis.map((kpi) => {
             const isPositiveDelta = kpi.delta.startsWith("+");
-            const deltaColor = isPositiveDelta ? "var(--c-success)" : "var(--c-success)"; // response time down = good too
+            const deltaColor = isPositiveDelta ? "#34d399" : "#34d399"; // response time down = good too
             // For "Avg Response", a "-" delta is actually good (faster)
             const deltaGood = kpi.delta.startsWith("+") || kpi.label === "Avg Response";
             const finalDeltaColor = kpi.label === "Avg Response"
-              ? (kpi.delta.startsWith("-") ? "var(--c-success)" : "var(--c-error)")
-              : (kpi.delta.startsWith("+") ? "var(--c-success)" : "var(--c-error)");
+              ? (kpi.delta.startsWith("-") ? "#34d399" : "#f87171")
+              : (kpi.delta.startsWith("+") ? "#34d399" : "#f87171");
 
             return (
               <div key={kpi.label} style={{
-                background: "var(--c-surface-container-high)",
+                background: "#2a2a2a",
                 borderRadius: 12,
                 padding: "16px 20px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#ffb77d" }}>
                     {kpi.icon}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--c-on-surface-variant)" }}>{kpi.label}</span>
+                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.55)" }}>{kpi.label}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "var(--c-on-surface)" }}>{kpi.value}</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{kpi.value}</span>
                   <span style={{ fontSize: 12, color: finalDeltaColor }}>{kpi.delta}</span>
                 </div>
               </div>
@@ -87,7 +87,7 @@ function AnalyticsMockup() {
           })}
         </div>
 
-        {/* Row 2 - Chart + Leaderboard */}
+        {/* Row 2 — Chart + Leaderboard */}
         <div style={{
           marginTop: 24,
           display: "grid",
@@ -95,10 +95,10 @@ function AnalyticsMockup() {
           gap: 20,
         }}>
 
-          {/* Left - Bar chart */}
-          <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
-            <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
-              Message Volume, This Week
+          {/* Left — Bar chart */}
+          <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "20px 20px 16px" }}>
+            <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", margin: 0 }}>
+              Message Volume — Last 7 Days
             </p>
             <div style={{
               height: 160,
@@ -113,21 +113,21 @@ function AnalyticsMockup() {
                     <div style={{
                       width: "100%",
                       height: `${bars[i]}%`,
-                      background: "linear-gradient(to top, var(--c-primary), var(--c-primary-container))",
+                      background: "linear-gradient(to top, #d97707, #ffb77d)",
                       borderRadius: "4px 4px 0 0",
                       transition: "height 0.8s ease",
                     }} />
                   </div>
-                  <span style={{ fontSize: 10, color: "var(--c-placeholder)" }}>{day}</span>
+                  <span style={{ fontSize: 10, color: "rgba(219,194,176,0.4)" }}>{day}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right - Agent leaderboard */}
-          <div style={{ background: "var(--c-surface-container-high)", borderRadius: 12, padding: "20px 20px 16px" }}>
-            <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", margin: 0 }}>
-              Team Performance
+          {/* Right — Agent leaderboard */}
+          <div style={{ background: "#2a2a2a", borderRadius: 12, padding: "20px 20px 16px" }}>
+            <p style={{ fontSize: 13, color: "rgba(219,194,176,0.55)", margin: 0 }}>
+              Top Agents
             </p>
             <div style={{ marginTop: 12 }}>
               {agents.map((agent, i) => (
@@ -135,7 +135,7 @@ function AnalyticsMockup() {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  borderBottom: "1px solid rgb(var(--fx-ink) / 0.05)",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
                   padding: "10px 0",
                 }}>
                   {/* Rank */}
@@ -143,32 +143,32 @@ function AnalyticsMockup() {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    background: "rgb(var(--fx-accent) / 0.12)",
+                    background: "rgba(255,183,125,0.12)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "var(--c-primary-container)",
+                    color: "#ffb77d",
                     flexShrink: 0,
                   }}>
                     {i + 1}
                   </div>
                   {/* Name */}
-                  <span style={{ fontSize: 13, color: "var(--c-on-surface)", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ fontSize: 13, color: "#e5e2e1", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {agent.name}
                   </span>
                   {/* Convs */}
-                  <span style={{ fontSize: 12, color: "var(--c-placeholder)", minWidth: 30, textAlign: "right" }}>
+                  <span style={{ fontSize: 12, color: "rgba(219,194,176,0.45)", minWidth: 30, textAlign: "right" }}>
                     {agent.convs}
                   </span>
                   {/* Avg time */}
-                  <span style={{ fontSize: 11, color: "var(--c-placeholder)", minWidth: 44, textAlign: "right" }}>
+                  <span style={{ fontSize: 11, color: "rgba(219,194,176,0.35)", minWidth: 44, textAlign: "right" }}>
                     {agent.time}
                   </span>
                   {/* Score */}
-                  <span style={{ fontSize: 12, color: "var(--c-primary-container)", minWidth: 32, textAlign: "right" }}>
-                    {agent.score} won
+                  <span style={{ fontSize: 12, color: "#ffb77d", minWidth: 32, textAlign: "right" }}>
+                    {agent.score} ★
                   </span>
                 </div>
               ))}
@@ -184,33 +184,27 @@ function AnalyticsMockup() {
 const data: FeatureDetailData = {
   slug: "analytics",
   tag: "Analytics",
-  heroTitle: "Data that<br /><span style=\"color:var(--c-primary-container)\">drives deals.</span>",
-  heroSubtitle: "Messages, response times, delivery and conversions for today, this week or this month, with every agent's numbers for managers.",
-  overviewTitle: "Know how your WhatsApp is doing.",
-  overviewDesc: "The dashboard is the first thing you see after logging in. Everyone gets total messages, average response time and delivery, plus message volume and response time charts. Admins and Managers also see the lead funnel, peak hours, a row for each agent, and a summary of campaign delivery, reads and failures.",
+  heroTitle: "Data that<br /><span style=\"color:#ffb77d\">drives deals.</span>",
+  heroSubtitle: "Track response times, delivery rates, agent performance, and CSAT scores — all in one real-time dashboard.",
+  heroScreen: "/screens/04-analytics-dashboard.png",
+  overviewTitle: "You can't improve what you can't measure.",
+  overviewDesc: "Gut feel doesn't scale. Wazelo gives you a live analytics layer across your entire WhatsApp operation — from message delivery rates and campaign performance to individual agent response times and customer satisfaction scores. Export raw data or integrate via API into your BI tool of choice.",
   capabilities: [
-    { icon: "speed", title: "KPI cards", desc: "Total Messages, Avg Response Time, Delivered and Conversion Rate at a glance." },
-    { icon: "bar_chart", title: "Volume and response time", desc: "Charts for the period you pick: Today, This Week or This Month." },
-    { icon: "filter_alt", title: "Conversion funnel", desc: "How many contacts are at New, Contacted, Interested, Converted and Closed." },
-    { icon: "schedule", title: "Peak hours", desc: "Hourly bars show when customers message most, so you can staff those hours." },
-    { icon: "groups", title: "Team performance", desc: "Sent, Received, Avg Response, Converted and Active Convos for every agent." },
-    { icon: "campaign", title: "Campaign summary", desc: "Campaigns sent, with their Delivered, Read and Failed totals." },
-  ],
-  details: [
-    { title: "Everyone sees", items: ["Total Messages", "Avg Response Time", "Delivered", "Message Volume", "Response Time"] },
-    { title: "Admins and Managers also see", items: ["Conversion Rate", "Conversion Funnel", "Peak Hours", "Team Performance", "Campaign summary"] },
-    { title: "Freelancer dashboard", items: ["Total Leads", "Proposals Sent", "Closed This Month", "Follow-ups Due Today", "Pipeline bar"] },
+    { icon: "bar_chart", title: "Message delivery analytics", desc: "Track sent, delivered, read, and failed counts per campaign, channel, or time period." },
+    { icon: "speed", title: "Response time tracking", desc: "Measure first response time and average resolution time per agent, team, or conversation type." },
+    { icon: "person_search", title: "Agent performance", desc: "Leaderboards for conversations handled, resolution rate, and CSAT score per agent." },
+    { icon: "star_rate", title: "CSAT scores", desc: "Automatic customer satisfaction surveys with aggregated scoring by agent, team, and time period." },
+    { icon: "trending_up", title: "Campaign performance", desc: "Open rates, reply rates, and conversion tracking for every broadcast campaign." },
+    { icon: "download", title: "Export & API", desc: "Download CSV exports or access raw analytics via REST API for use in your own BI dashboards." },
   ],
   howItWorks: [
-    { step: "01", title: "Log in", desc: "The dashboard opens with today's numbers." },
-    { step: "02", title: "Pick a period", desc: "Switch between Today, This Week and This Month." },
-    { step: "03", title: "Compare the team", desc: "Managers scroll to Team Performance to see each agent side by side." },
-    { step: "04", title: "Check satisfaction", desc: "Open the CSAT page for average ratings and scores by agent." },
+    { step: "01", title: "Data is collected automatically", desc: "Every message sent, delivered, read, or replied — every agent action and CSAT response — is captured in real time." },
+    { step: "02", title: "View your live dashboard", desc: "Open the Analytics tab for a real-time overview: today vs yesterday, week-over-week trends, and team leaderboards." },
+    { step: "03", title: "Drill down into specifics", desc: "Filter by agent, date range, campaign, or conversation tag to isolate exactly what you need to see." },
+    { step: "04", title: "Export or pipe to your BI tool", desc: "Download CSV reports or use the API to send data to Metabase, Looker, Power BI, or any other tool." },
   ],
-  faqs: [
-    { q: "Can employees see everyone's numbers?", a: "No. Employees see message and response-time figures. The funnel, peak hours, team and campaign views are for Admins and Managers." },
-    { q: "Can I export reports?", a: "Not from the dashboard yet." },
-    { q: "Where are CSAT scores?", a: "On their own Customer Satisfaction page, with average rating, rating distribution and scores by agent." },
+  screens: [
+    { src: "/screens/09-csat-surveys.png", caption: "CSAT survey responses tracked in analytics" },
   ],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },

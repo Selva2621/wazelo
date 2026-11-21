@@ -3,6 +3,11 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { ConversationStatus, Prisma } from '@prisma/client';
 import { MessageEncryptionService } from '../../domain/services/message-encryption.service';
 
+function normalizeContactPhone(contactPhone: string): string {
+  const digits = contactPhone.replace(/\D/g, '');
+  return digits ? `+${digits}` : contactPhone.trim();
+}
+
 @Injectable()
 export class ConversationRepository {
   constructor(
@@ -18,34 +23,79 @@ export class ConversationRepository {
   }
 
   /**
-   * Find or create a conversation for a given org + session + contactPhone.
-   * Uses upsert to handle race conditions when two messages arrive
-   * simultaneously for the same contact.
+   * Find or create the single conversation for an org + contactPhone.
+   * Recover from concurrent creates and legacy WhatsApp rows without a session.
    */
   async findOrCreate(input: {
     orgId: string;
     sessionId: string;
     contactPhone: string;
     contactId?: string;
+    /**
+     * Bulk sends (campaigns) keep an existing thread on its current number, so it
+     * doesn't jump to the campaign's number (and out of the inbox of agents who
+     * only see that number). A reply from the contact moves it as usual.
+     */
+    preserveSession?: boolean;
   }) {
-    const conv = await this.prisma.conversation.upsert({
-      where: {
-        unique_conversation_per_contact_session: {
+    const contactPhone = normalizeContactPhone(input.contactPhone);
+    const where = {
+      orgId: input.orgId,
+      contactPhone,
+      sessionId: { not: null },
+    };
+    const existing = await this.prisma.conversation.findFirst({ where });
+    if (existing) {
+      const conv = await this.prisma.conversation.update({
+        where: { id: existing.id },
+        data: {
+          ...(!input.preserveSession && { sessionId: input.sessionId }),
+          deletedAt: null,
+          ...(input.contactId && { contactId: input.contactId }),
+        },
+      });
+      return this.decryptConversation(conv);
+    }
+
+    try {
+      const conv = await this.prisma.conversation.create({
+        data: {
           orgId: input.orgId,
           sessionId: input.sessionId,
-          contactPhone: input.contactPhone,
+          contactPhone,
+          contactId: input.contactId || null,
+          status: ConversationStatus.OPEN,
         },
-      },
-      create: {
-        orgId: input.orgId,
-        sessionId: input.sessionId,
-        contactPhone: input.contactPhone,
-        contactId: input.contactId || null,
-        status: ConversationStatus.OPEN,
-      },
-      update: {}, // No-op on conflict — just return existing
-    });
-    return this.decryptConversation(conv);
+      });
+      return this.decryptConversation(conv);
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
+      }
+
+      const conflictingConversation = await this.prisma.conversation.findFirst({
+        where: {
+          orgId: input.orgId,
+          contactPhone,
+          OR: [
+            { sessionId: { not: null } },
+            { channelType: 'WHATSAPP' },
+            { channelType: null, channelId: null },
+          ],
+        },
+      });
+      if (!conflictingConversation) throw error;
+
+      const conv = await this.prisma.conversation.update({
+        where: { id: conflictingConversation.id },
+        data: {
+          ...((!input.preserveSession || !conflictingConversation.sessionId) && { sessionId: input.sessionId }),
+          deletedAt: null,
+          ...(input.contactId && { contactId: input.contactId }),
+        },
+      });
+      return this.decryptConversation(conv);
+    }
   }
 
   async findById(id: string) {
@@ -127,17 +177,27 @@ export class ConversationRepository {
       assignedToId?: string;
       sessionId?: string;
       sessionIds?: string[];
+      /** Also chats on these (shared, official) numbers that are assigned to `sharedAssignee` */
+      sharedSessionIds?: string[];
+      sharedAssignee?: string;
       contactPhone?: string;
     },
   ) {
+    const shared = !!(options.sharedSessionIds?.length && options.sharedAssignee);
     const where: Prisma.ConversationWhereInput = {
       orgId,
       deletedAt: null,
       ...(options.status && { status: options.status }),
       ...(options.assignedToId && { assignedToId: options.assignedToId }),
       ...(options.sessionId && { sessionId: options.sessionId }),
-      ...(options.sessionIds && { sessionId: { in: options.sessionIds } }),
-      ...(options.contactPhone && { contactPhone: options.contactPhone }),
+      ...(options.sessionIds && !shared && { sessionId: { in: options.sessionIds } }),
+      ...(shared && {
+        OR: [
+          { sessionId: { in: options.sessionIds ?? [] } },
+          { sessionId: { in: options.sharedSessionIds }, assignedToId: options.sharedAssignee },
+        ],
+      }),
+      ...(options.contactPhone && { contactPhone: normalizeContactPhone(options.contactPhone) }),
     };
 
     const [data, total] = await Promise.all([
@@ -154,16 +214,14 @@ export class ConversationRepository {
   }
 
   /**
-   * Find conversation by org + session + contact phone.
+   * Find conversation by org + contact phone, regardless of WhatsApp session.
    */
-  async findByContact(orgId: string, sessionId: string, contactPhone: string) {
-    const conv = await this.prisma.conversation.findUnique({
+  async findByContact(orgId: string, contactPhone: string) {
+    const conv = await this.prisma.conversation.findFirst({
       where: {
-        unique_conversation_per_contact_session: {
-          orgId,
-          sessionId,
-          contactPhone,
-        },
+        orgId,
+        sessionId: { not: null },
+        contactPhone: normalizeContactPhone(contactPhone),
       },
     });
     return conv ? this.decryptConversation(conv) : null;

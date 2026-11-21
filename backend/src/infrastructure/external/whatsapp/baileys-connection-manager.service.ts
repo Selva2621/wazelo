@@ -75,6 +75,12 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   private readonly pairingRequested = new WeakSet<WASocket>();
   /** Sessions that just linked (QR or code) — the phone was online for that */
   private readonly newLogins = new Set<string>();
+  /** When the current QR link attempt showed its first code — caps an unscanned QR loop */
+  private readonly qrStartedAt = new Map<string, number>();
+  /** When the phone scanned the QR — the login finishes after WhatsApp's restart (515) */
+  private readonly scannedAt = new Map<string, number>();
+  /** Latest creds save per session — the restart after a scan must read the saved creds */
+  private readonly credsSaving = new Map<string, Promise<void>>();
   /** Last phone-activity report per session, to keep DB writes rare */
   private readonly phoneActivityReportedAt = new Map<string, number>();
   private readonly msgRetryCounterCache = new MemoryCacheStore();
@@ -159,6 +165,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
         // Lets Baileys re-send a message the recipient couldn't decrypt ("waiting for this message")
         msgRetryCounterCache: this.msgRetryCounterCache,
         getMessage: (key) => this.getSentMessage(key),
+        // Same lifetime for every QR (Baileys defaults to 60s first, 20s after), so the UI countdown is right
+        qrTimeout: WHATSAPP_CONFIG.QR_REFRESH_INTERVAL_MS,
         connectTimeoutMs: WHATSAPP_CONFIG.DISCONNECT_DETECTION_TIMEOUT_MS,
         keepAliveIntervalMs: WHATSAPP_CONFIG.HEARTBEAT_INTERVAL_MS,
       });
@@ -228,6 +236,16 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
   /** True only once the connection is open — not while the socket is still pairing or connecting. */
   isConnected(sessionId: string): boolean {
     return this.openSockets.has(sessionId);
+  }
+
+  /** True between a QR scan and the connection opening — a new QR now would break the login. */
+  isFinishingLink(sessionId: string): boolean {
+    const at = this.scannedAt.get(sessionId);
+    return (
+      at !== undefined &&
+      !this.openSockets.has(sessionId) &&
+      Date.now() - at < WHATSAPP_CONFIG.QR_SCAN_FINISH_MS
+    );
   }
 
   /** Registered by the messages module so Baileys can re-send messages on retry receipts. */
@@ -332,6 +350,9 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     sessionId: string,
     logout: boolean = false,
   ): Promise<void> {
+    this.qrStartedAt.delete(sessionId);
+    this.scannedAt.delete(sessionId);
+
     const sock = this.connections.get(sessionId);
     if (!sock) return;
 
@@ -369,12 +390,19 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       const { connection, lastDisconnect, qr, isNewLogin } = update;
 
       // Set when a QR scan / pairing code succeeds (just before the 515 restart)
-      if (isNewLogin) this.newLogins.add(sessionId);
+      if (isNewLogin) {
+        this.newLogins.add(sessionId);
+        this.scannedAt.set(sessionId, Date.now());
+        this.qrStartedAt.delete(sessionId);
+        // Tell the UI right away — the restart + login still takes a few seconds
+        this.wsGateway.emitToUser(userId, 'whatsapp:qr-scanned', { sessionId });
+      }
 
       // Pairing-code mode: the socket is ready once it offers a QR — ask for a code instead
       if (qr && this.pairingRequests.has(sessionId)) {
         await this.issuePairingCode(sock, sessionId, userId);
       } else if (qr) {
+        if (!this.qrStartedAt.has(sessionId)) this.qrStartedAt.set(sessionId, Date.now());
         try {
           const qrDataUri = await QRCode.toDataURL(qr, { width: 300 });
 
@@ -398,6 +426,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       if (connection === 'open') {
         this.openSockets.add(sessionId);
         this.pairingRequests.delete(sessionId);
+        this.qrStartedAt.delete(sessionId);
+        this.scannedAt.delete(sessionId);
         const phoneNumber = sock.user?.id?.split(':')[0] || null;
 
         this.eventEmitter.emit(EVENT_NAMES.BAILEYS_CONNECTION_UPDATE, {
@@ -436,16 +466,37 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
           (!paired && decision.action === 'reconnect_backoff');
 
         if (reconnectNow) {
+          // QR never scanned for a while (modal closed, user walked away): stop making codes.
+          // The session stays CONNECTING; "Refresh QR" starts a new attempt.
+          const qrSince = this.qrStartedAt.get(sessionId);
+          if (
+            !paired &&
+            !this.pairingRequests.has(sessionId) &&
+            qrSince !== undefined &&
+            Date.now() - qrSince > WHATSAPP_CONFIG.QR_LINK_WINDOW_MS
+          ) {
+            this.qrStartedAt.delete(sessionId);
+            this.logger.log(`QR for session ${sessionId} not scanned in time — stopped`);
+            this.wsGateway.emitToUser(userId, 'whatsapp:qr-expired', { sessionId });
+            return;
+          }
+
           // The unused code's half-registered creds would make the next socket try to log in
           if (pairingPending) await this.authStateService.clearAuthState(sessionId);
+          // Right after a scan (515), restart at once — the user is watching. Wait for the
+          // scan's creds to be saved first, or the new socket would ask for a QR again.
+          const restart = decision.reason === 'RESTART';
+          if (restart) await this.credsSaving.get(sessionId)?.catch(() => undefined);
           setTimeout(() => {
             this.createConnection(sessionId, userId, orgId).catch((err) => {
               this.logger.error(`Reconnect failed for session ${sessionId}: ${err.message}`);
               this.emitDisconnect(sessionId, orgId, userId, 'disconnected', statusCode, 'NETWORK', `Reconnect failed: ${err.message}`);
             });
-          }, 1500);
+          }, restart ? 100 : 1500);
           return;
         }
+
+        this.scannedAt.delete(sessionId);
 
         if (decision.clearCreds) {
           await this.authStateService.clearAuthState(sessionId);
@@ -467,25 +518,30 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
 
     // ── creds.update ──
     sock.ev.on('creds.update', async () => {
+      const saving = saveCreds();
+      this.credsSaving.set(sessionId, saving);
       try {
-        await saveCreds();
+        await saving;
       } catch (error) {
         this.logger.error(
           `Failed to save creds for session ${sessionId}`,
           error,
         );
+      } finally {
+        if (this.credsSaving.get(sessionId) === saving) this.credsSaving.delete(sessionId);
       }
     });
 
-    // ── messages.upsert (incoming messages) ──
+    // ── messages.upsert (incoming and phone-originated live messages) ──
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
       if (type !== 'notify') return;
 
       for (const msg of messages) {
         try {
-          // Our own sends come back as 'append'; a 'notify' fromMe was typed on the phone
+          // App-originated sends come back as 'append'; only sync live phone sends.
           if (msg.key.fromMe && msg.key.remoteJid !== 'status@broadcast') {
             this.reportPhoneActivity(sessionId, orgId, userId);
+            this.reportPhoneReply(msg, sessionId, orgId);
           }
           if (msg.message?.pollUpdateMessage) {
             if (!msg.key.fromMe) await this.handlePollVote(sock, msg, sessionId);
@@ -556,6 +612,19 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** A reply typed on the phone to one contact: a person is handling that chat now. */
+  private reportPhoneReply(msg: WAMessage, sessionId: string, orgId: string): void {
+    const jid = msg.key.remoteJid || '';
+    const alt = (msg.key as { remoteJidAlt?: string }).remoteJidAlt;
+    const phoneJid = jid.endsWith('@s.whatsapp.net') ? jid : alt?.endsWith('@s.whatsapp.net') ? alt : null;
+    if (!phoneJid) return; // groups, broadcasts, or a LID we can't map to a number
+    this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_PHONE_REPLY, {
+      orgId,
+      sessionId,
+      contactPhone: phoneJid.split('@')[0].split(':')[0],
+    });
+  }
+
   private reportPhoneActivity(sessionId: string, orgId: string, userId: string): void {
     const last = this.phoneActivityReportedAt.get(sessionId) ?? 0;
     if (Date.now() - last < WHATSAPP_CONFIG.PHONE_ACTIVITY_WRITE_INTERVAL_MS) return;
@@ -593,7 +662,6 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
     sessionId: string,
   ): Record<string, unknown> | null {
     if (msg.key.remoteJid === 'status@broadcast') return null;
-    if (msg.key.fromMe) return null;
 
     const remoteJid = msg.key.remoteJid || '';
     // Accept regular users (@s.whatsapp.net) and LID-addressed users (@lid)
@@ -691,7 +759,8 @@ export class BaileysConnectionManager implements OnModuleInit, OnModuleDestroy {
       sessionId,
       whatsappMessageId: msg.key.id || `unknown-${Date.now()}`,
       contactPhone: `+${contactPhone}`,
-      contactName,
+      contactName: msg.key.fromMe ? undefined : contactName,
+      fromMe: Boolean(msg.key.fromMe),
       type,
       body,
       mediaUrl: undefined,

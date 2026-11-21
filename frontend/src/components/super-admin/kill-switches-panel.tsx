@@ -138,7 +138,7 @@ export function KillSwitchesPanel() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-body-lg font-medium text-on-surface">{sw.label}</span>
-                    {on ? <Badge variant="muted">On</Badge> : <Badge variant="error">Off for all orgs</Badge>}
+                    {on ? <Badge dot variant="muted">On</Badge> : <Badge dot variant="error">Off for all orgs</Badge>}
                   </div>
                   <p className="mt-0.5 text-label text-on-surface-variant">{meta?.stops}</p>
                   {!on && (

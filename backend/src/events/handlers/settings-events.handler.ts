@@ -16,7 +16,15 @@ import {
   SubscriptionUpgradedEvent,
   SubscriptionCancelledEvent,
   SubscriptionDowngradeAppliedEvent,
+  ContactAssignedEvent,
+  ContactStatusChangedEvent,
+  ContactTagAddedEvent,
+  ContactTagRemovedEvent,
+  ContactNoteAddedEvent,
+  ConversationClosedEvent,
+  DealStageChangedEvent,
 } from '../event-bus';
+import type { ConversationAssignedEvent } from '@/modules/messages/application/use-cases/assign-conversation.use-case';
 
 /**
  * EPIC 12 — Settings Events Handler
@@ -87,6 +95,90 @@ export class SettingsEventsHandler {
     await this.dispatchSafe(event.orgId, 'CONTACT_UPDATED', {
       contactId: event.contactId,
       changes: event.changes,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONTACT_ASSIGNED)
+  async onContactAssigned(event: ContactAssignedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONTACT_ASSIGNED', {
+      contactId: event.contactId,
+      ownerId: event.ownerId,
+      assignedById: event.assignedById,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONTACT_STATUS_CHANGED)
+  async onLeadStatusChanged(event: ContactStatusChangedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'LEAD_STATUS_CHANGED', {
+      contactId: event.contactId,
+      previousStatus: event.previousStatus,
+      newStatus: event.newStatus,
+      changedById: event.changedById,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONTACT_TAG_ADDED)
+  async onContactTagAdded(event: ContactTagAddedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONTACT_TAG_ADDED', {
+      contactId: event.contactId,
+      tagId: event.tagId,
+      tagName: event.tagName,
+      addedById: event.addedById,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONTACT_TAG_REMOVED)
+  async onContactTagRemoved(event: ContactTagRemovedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONTACT_TAG_REMOVED', {
+      contactId: event.contactId,
+      tagId: event.tagId,
+      tagName: event.tagName,
+      removedById: event.removedById,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONTACT_NOTE_ADDED)
+  async onContactNoteAdded(event: ContactNoteAddedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONTACT_NOTE_ADDED', {
+      contactId: event.contactId,
+      noteId: event.noteId,
+      authorId: event.authorId,
+    });
+  }
+
+  // ─── Conversation Events → Webhook ───
+
+  @OnEvent(EVENT_NAMES.CONVERSATION_ASSIGNED)
+  async onConversationAssigned(event: ConversationAssignedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONVERSATION_ASSIGNED', {
+      conversationId: event.conversationId,
+      assignedToId: event.assignedToId,
+      assignedById: event.assignedById,
+    });
+  }
+
+  @OnEvent(EVENT_NAMES.CONVERSATION_CLOSED)
+  async onConversationClosed(event: ConversationClosedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'CONVERSATION_CLOSED', {
+      conversationId: event.conversationId,
+      contactPhone: event.contactPhone,
+      status: event.status,
+      assignedToId: event.assignedToId,
+      closedById: event.closedById,
+    });
+  }
+
+  // ─── Deal Events → Webhook ───
+
+  @OnEvent(EVENT_NAMES.DEAL_STAGE_CHANGED)
+  async onDealStageChanged(event: DealStageChangedEvent): Promise<void> {
+    await this.dispatchSafe(event.orgId, 'DEAL_STAGE_CHANGED', {
+      dealId: event.dealId,
+      pipelineId: event.pipelineId,
+      contactId: event.contactId,
+      stageId: event.stageId,
+      // null when the deal was just created
+      previousStageId: event.previousStageId,
     });
   }
 

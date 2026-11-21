@@ -24,9 +24,10 @@ interface CampaignStatusBadgeProps {
 export function CampaignStatusBadge({ status, pulse }: CampaignStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
 
+  // Only the dot pulses while running, so the label stays steady and readable
   return (
-    <span className={pulse && status === "RUNNING" ? "animate-pulse" : ""}>
-      <Badge variant={config.variant}>{config.label}</Badge>
-    </span>
+    <Badge variant={config.variant} dot pulse={pulse && status === "RUNNING"}>
+      {config.label}
+    </Badge>
   );
 }

@@ -6,6 +6,7 @@ import {
   type CreateCouponBody,
   type CreateInvoiceBody,
   type CreditChangeBody,
+  type FreelancerTypeBody,
   type KillSwitchFeature,
   type PlanEditMode,
   type SAExportList,
@@ -153,6 +154,26 @@ export function useSACouponActions() {
   return {
     create: useMutation({ mutationFn: (body: CreateCouponBody) => superAdminApi.createCoupon(body), onSuccess: refresh }),
     deactivate: useMutation({ mutationFn: (id: string) => superAdminApi.deactivateCoupon(id), onSuccess: refresh }),
+  };
+}
+
+const FREELANCER_TYPES_KEY = ["sa", "freelancer-types"] as const;
+
+export function useSAFreelancerTypes() {
+  return useQuery({ queryKey: FREELANCER_TYPES_KEY, queryFn: superAdminApi.listFreelancerTypes });
+}
+
+export function useSAFreelancerTypeActions() {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: FREELANCER_TYPES_KEY });
+  return {
+    create: useMutation({ mutationFn: (body: FreelancerTypeBody) => superAdminApi.createFreelancerType(body), onSuccess: refresh }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: Partial<FreelancerTypeBody> & { id: string; isActive?: boolean }) =>
+        superAdminApi.updateFreelancerType(id, body),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => superAdminApi.deleteFreelancerType(id), onSuccess: refresh }),
   };
 }
 

@@ -3,15 +3,14 @@
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CreditCard, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useSAInvoiceActions, useSAInvoices, useSAPayments, useSARecordPaymentRefund } from "@/hooks/use-super-admin";
 import type { PaymentRefund } from "@/lib/api/super-admin";
 import { useDebounce } from "@/hooks/use-debounce";
-import { Spinner } from "@/components/ui/spinner";
 import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
-import { IconButton } from "@/components/ui/icon-button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -19,10 +18,19 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusBadge } from "@/components/super-admin/status-badge";
 import { ExportCsvButton } from "@/components/super-admin/export-csv-button";
-import { NEWEST_FIRST, SortableTh, type ListSort } from "@/components/super-admin/sortable-header";
-import { cn, formatMoney } from "@/lib/utils";
+import { NEWEST_FIRST, nextSort, type ListSort } from "@/components/super-admin/sortable-header";
+import { TABLE_CARD, sentenceCase } from "@/components/super-admin/list-styles";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider, FilterSelect } from "@/components/ui/filter-bar";
+import { Tabs } from "@/components/ui/tabs";
+import { formatMoney } from "@/lib/utils";
 
 type Tab = "payments" | "invoices";
+
+const RECORD_TABS: { id: Tab; label: string }[] = [
+  { id: "payments", label: "Payments" },
+  { id: "invoices", label: "Invoices" },
+];
 
 /** Sortable column header → server sort field, per tab (server whitelist) */
 const SORT_FIELDS: Record<Tab, Record<string, string>> = {
@@ -37,9 +45,6 @@ function fmtDate(value?: string | null) {
   return value ? new Date(value).toLocaleDateString() : "—";
 }
 
-const selectClass =
-  "bg-surface-container border border-outline-variant text-body-lg text-on-surface rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary";
-
 /** Deleted orgs keep their billing history but have no detail page, so no link. */
 function OrgCell({ org }: { org?: { id: string; name: string; deletedAt?: string | null } | null }) {
   if (!org) return <span className="text-on-surface-variant">—</span>;
@@ -47,7 +52,7 @@ function OrgCell({ org }: { org?: { id: string; name: string; deletedAt?: string
     return (
       <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
         {org.name}
-        <Badge variant="muted">Deleted</Badge>
+        <Badge dot variant="muted">Deleted</Badge>
       </span>
     );
   }
@@ -189,9 +194,9 @@ function RecordRefundForm({ payment, titleId, onDone }: { payment: RefundablePay
       {refunds.length > 0 && (
         <div>
           <h3 className="text-body-lg font-medium text-on-surface-variant mb-1">Previous refunds</h3>
-          <ul className="divide-y divide-outline-variant/40 rounded-lg border border-outline-variant">
+          <ul className="divide-y divide-outline-variant/60">
             {refunds.map((r) => (
-              <li key={r.id} className="px-3 py-2 text-body">
+              <li key={r.id} className="py-2 text-body">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-on-surface tabular-nums">{money(r.amountInCents)}</span>
                   <span className="text-label text-on-surface-variant">{fmtDate(r.createdAt)}</span>
@@ -223,7 +228,7 @@ function RefundSummary({ payment }: { payment: RefundablePayment }) {
   if (refunded < payment.amountInCents) {
     return (
       <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-        <Badge variant="warning">Partly refunded</Badge>
+        <Badge dot variant="warning">Partly refunded</Badge>
         <span className="text-label text-on-surface-variant">{label}</span>
       </span>
     );
@@ -368,7 +373,104 @@ export default function SuperAdminBillingPage() {
   const active = tab === "payments" ? payments : invoices;
   const data = active.data;
   const rows: any[] = (tab === "payments" ? data?.payments : data?.invoices) ?? [];
-  const colCount = tab === "payments" ? 8 : 9;
+
+  const paymentColumns: DataTableColumn<(typeof rows)[number]>[] = [
+    { id: "organization", header: "Organization", cell: (p) => <OrgCell org={p.organization} /> },
+    {
+      id: SORT_FIELDS.payments.Amount,
+      header: "Amount",
+      sortable: true,
+      cellClassName: "text-on-surface tabular-nums",
+      cell: (p) => (
+        <>
+          {formatMoney(p.amountInCents, p.currency)}
+          <RefundSummary payment={p} />
+        </>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (p) => (
+        <>
+          <StatusBadge status={p.status} />
+          {p.failedReason && <p className="text-label text-error mt-0.5 max-w-xs truncate" title={p.failedReason}>{p.failedReason}</p>}
+        </>
+      ),
+    },
+    { id: "method", header: "Method", cellClassName: "text-on-surface-variant", cell: (p) => p.paymentMethod ?? "—" },
+    { id: "invoice", header: "Invoice", cellClassName: "text-on-surface-variant font-mono text-body", cell: (p) => p.invoice?.invoiceNumber ?? "—" },
+    { id: SORT_FIELDS.payments.Paid, header: "Paid", sortable: true, cellClassName: "text-on-surface-variant", cell: (p) => fmtDate(p.paidAt) },
+    { id: SORT_FIELDS.payments.Created, header: "Created", sortable: true, cellClassName: "text-on-surface-variant", cell: (p) => fmtDate(p.createdAt) },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (p) =>
+        p.status === "SUCCEEDED" && remainingRefundable(p) > 0 && (
+          <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => setRefundTarget(p)}>
+            Record refund
+          </Button>
+        ),
+    },
+  ];
+
+  const invoiceColumns: DataTableColumn<(typeof rows)[number]>[] = [
+    {
+      id: "invoice",
+      header: "Invoice",
+      cellClassName: "text-on-surface font-mono text-body",
+      cell: (inv) => (
+        <>
+          {inv.pdfUrl ? (
+            <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="hover:text-primary">
+              {inv.invoiceNumber}<span className="sr-only"> (PDF, opens in a new tab)</span>
+            </a>
+          ) : inv.invoiceNumber}
+          {inv.metadata?.manual === true && <Badge variant="info" className="ml-1.5 font-sans">Manual</Badge>}
+        </>
+      ),
+    },
+    { id: "organization", header: "Organization", cell: (inv) => <OrgCell org={inv.organization} /> },
+    {
+      id: SORT_FIELDS.invoices.Amount,
+      header: "Amount",
+      sortable: true,
+      cellClassName: "text-on-surface tabular-nums",
+      cell: (inv) => formatMoney(inv.amountInCents, inv.currency),
+    },
+    { id: "status", header: "Status", skeleton: "badge", cell: (inv) => <StatusBadge status={inv.status} /> },
+    {
+      id: "period",
+      header: "Period",
+      cellClassName: "text-on-surface-variant whitespace-nowrap",
+      cell: (inv) => (inv.periodStart || inv.periodEnd ? `${fmtDate(inv.periodStart)} – ${fmtDate(inv.periodEnd)}` : "—"),
+    },
+    { id: "due", header: "Due", cellClassName: "text-on-surface-variant", cell: (inv) => fmtDate(inv.dueDate) },
+    { id: "paid", header: "Paid", cellClassName: "text-on-surface-variant", cell: (inv) => fmtDate(inv.paidAt) },
+    { id: SORT_FIELDS.invoices.Created, header: "Created", sortable: true, cellClassName: "text-on-surface-variant", cell: (inv) => fmtDate(inv.createdAt) },
+    {
+      id: "actions",
+      header: "Actions",
+      hideHeader: true,
+      align: "right",
+      skeleton: "none",
+      cell: (inv) =>
+        (inv.status === "OPEN" || inv.status === "DRAFT") && (
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => openInvoiceAction(inv, "paid")}>
+              Mark paid
+            </Button>
+            <Button size="sm" variant="ghost" className="text-error" onClick={() => openInvoiceAction(inv, "void")}>
+              Void
+            </Button>
+          </div>
+        ),
+    },
+  ];
 
   const switchTab = (next: Tab) => {
     setTab(next);
@@ -379,32 +481,21 @@ export default function SuperAdminBillingPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-title font-semibold text-on-surface">Billing</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Payments and invoices across all organizations.
-          {orgId && <> Showing one organization · <Link href="/super-admin/billing" className="text-primary hover:underline">show all</Link></>}
-        </p>
-      </div>
+    <div className="p-4 lg:p-6 space-y-5">
+      <PageHeader
+        title="Billing"
+        count={data?.total}
+        description={
+          orgId ? (
+            <>One organization · <Link href="/super-admin/billing" className="text-primary hover:underline">show all</Link></>
+          ) : undefined
+        }
+        actions={<ExportCsvButton list={tab} params={filters} />}
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Billing records" className="flex gap-1 rounded-lg bg-surface-container/30 p-1">
-          {(["payments", "invoices"] as const).map((t) => (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => switchTab(t)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-body font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                tab === t ? "bg-surface-container text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+      <FilterBar>
+        <Tabs tabs={RECORD_TABS} activeTab={tab} onTabChange={(id) => switchTab(id as Tab)} />
+        <FilterBarDivider />
         <SearchInput
           aria-label={`Search ${tab} by organization or invoice number`}
           value={search}
@@ -412,140 +503,37 @@ export default function SuperAdminBillingPage() {
           placeholder="Search organization or invoice #…"
           className="w-full sm:max-w-xs"
         />
-        <select
-          aria-label={`Filter ${tab} by status`}
+        <FilterSelect
+          label={`Filter ${tab} by status`}
+          active={!!status}
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className={selectClass}
         >
           {(tab === "payments" ? PAYMENT_STATUSES : INVOICE_STATUSES).map((s) => (
-            <option key={s} value={s}>{s || "All statuses"}</option>
+            <option key={s} value={s}>{s ? sentenceCase(s) : "All statuses"}</option>
           ))}
-        </select>
-        <ExportCsvButton list={tab} params={filters} className="sm:ml-auto" />
-      </div>
+        </FilterSelect>
+      </FilterBar>
 
-      <div role="tabpanel" className="bg-surface-container-low border border-outline-variant rounded-xl overflow-x-auto">
-        <table className="w-full text-body-lg">
-          <caption className="sr-only">{tab === "payments" ? "Payments" : "Invoices"}</caption>
-          <thead>
-            <tr className="border-b border-outline-variant text-left">
-              {(tab === "payments"
-                ? ["Organization", "Amount", "Status", "Method", "Invoice", "Paid", "Created", "Actions"]
-                : ["Invoice", "Organization", "Amount", "Status", "Period", "Due", "Paid", "Created", "Actions"]
-              ).map((h) =>
-                SORT_FIELDS[tab][h] ? (
-                  <SortableTh key={h} label={h} field={SORT_FIELDS[tab][h]} sort={sort} onSort={changeSort} />
-                ) : (
-                  <th key={h} scope="col" className="px-4 py-3 text-on-surface-variant font-medium whitespace-nowrap">
-                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/40">
-            {active.isLoading ? (
-              <tr>
-                <td colSpan={colCount} className="py-12 text-center" role="status">
-                  <Spinner className="mx-auto text-primary" />
-                  <span className="sr-only">Loading…</span>
-                </td>
-              </tr>
-            ) : active.isError ? (
-              <tr>
-                <td colSpan={colCount} className="py-12 text-center text-error" role="alert">
-                  Could not load {tab}.{" "}
-                  <button type="button" onClick={() => active.refetch()} className="underline hover:no-underline">
-                    Try again
-                  </button>
-                </td>
-              </tr>
-            ) : !rows.length ? (
-              <tr><td colSpan={colCount} className="py-12 text-center text-on-surface-variant">
-                {searchTerm ? `No ${tab} match “${searchTerm}”` : `No ${tab} found`}
-              </td></tr>
-            ) : tab === "payments" ? (
-              rows.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-container transition-colors">
-                  <td className="px-4 py-3">
-                    <OrgCell org={p.organization} />
-                  </td>
-                  <td className="px-4 py-3 text-on-surface tabular-nums">
-                    {formatMoney(p.amountInCents, p.currency)}
-                    <RefundSummary payment={p} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={p.status} />
-                    {p.failedReason && <p className="text-label text-error mt-0.5 max-w-xs truncate" title={p.failedReason}>{p.failedReason}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant">{p.paymentMethod ?? "—"}</td>
-                  <td className="px-4 py-3 text-on-surface-variant font-mono text-body">{p.invoice?.invoiceNumber ?? "—"}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(p.paidAt)}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(p.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {p.status === "SUCCEEDED" && remainingRefundable(p) > 0 && (
-                      <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => setRefundTarget(p)}>
-                        Record refund
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              rows.map((inv) => (
-                <tr key={inv.id} className="hover:bg-surface-container transition-colors">
-                  <td className="px-4 py-3 text-on-surface font-mono text-body">
-                    {inv.pdfUrl ? (
-                      <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="hover:text-primary">
-                        {inv.invoiceNumber}<span className="sr-only"> (PDF, opens in a new tab)</span>
-                      </a>
-                    ) : inv.invoiceNumber}
-                    {inv.metadata?.manual === true && <Badge variant="info" className="ml-1.5 font-sans">Manual</Badge>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <OrgCell org={inv.organization} />
-                  </td>
-                  <td className="px-4 py-3 text-on-surface tabular-nums">{formatMoney(inv.amountInCents, inv.currency)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={inv.status} /></td>
-                  <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                    {inv.periodStart || inv.periodEnd ? `${fmtDate(inv.periodStart)} – ${fmtDate(inv.periodEnd)}` : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.dueDate)}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.paidAt)}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{fmtDate(inv.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {(inv.status === "OPEN" || inv.status === "DRAFT") && (
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="secondary" className="whitespace-nowrap" onClick={() => openInvoiceAction(inv, "paid")}>
-                          Mark paid
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-error" onClick={() => openInvoiceAction(inv, "void")}>
-                          Void
-                        </Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
-            <span className="text-label text-on-surface-variant">{data.total} total</span>
-            <div className="flex items-center gap-2">
-              <IconButton size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page">
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-              </IconButton>
-              <span className="text-label text-on-surface-variant">{page} / {data.totalPages}</span>
-              <IconButton size="sm" onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} aria-label="Next page">
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </IconButton>
-            </div>
-          </div>
-        )}
+      <div className={TABLE_CARD}>
+        <DataTable
+          key={tab}
+          label={tab === "payments" ? "Payments" : "Invoices"}
+          columns={tab === "payments" ? paymentColumns : invoiceColumns}
+          rows={rows}
+          rowKey={(r) => r.id}
+          loading={active.isLoading}
+          error={active.isError}
+          onRetry={() => active.refetch()}
+          empty={{
+            icon: tab === "payments" ? <CreditCard className="h-12 w-12" /> : <FileText className="h-12 w-12" />,
+            title: searchTerm ? `No ${tab} match “${searchTerm}”` : `No ${tab} found`,
+            description: searchTerm ? "Try a different organization or invoice number." : "Try changing the status filter.",
+          }}
+          sort={{ id: sort.field, order: sort.order }}
+          onSortChange={(next) => changeSort(nextSort(sort, next.id))}
+          pagination={data ? { page: page - 1, pageSize: 25, total: data.total, onPageChange: (p) => setPage(p + 1) } : undefined}
+        />
       </div>
 
       <Modal

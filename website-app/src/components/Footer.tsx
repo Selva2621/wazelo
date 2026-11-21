@@ -1,28 +1,42 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FooterDock } from "@/components/footer-dock";
-import { Reveal } from "@/components/home/reveal";
+import { ArrowRight } from "lucide-react";
+import { USE_CASES } from "@/components/use-cases/use-cases";
+import { COMPETITORS } from "@/components/compare/competitors";
 
-const cols = [
+// Same value as APP_REGISTER_URL in lib/wazelo. That module is "use client", so a server
+// component (e.g. not-found) importing a constant from it would get a client reference.
+const APP_REGISTER_URL = "https://app.wazelo.in/auth/register";
+
+// Use-case and comparison links come from their data files, so a new page shows up here too.
+const cols: { title: string; links: [string, string][] }[] = [
   {
     title: "Product",
     links: [
-      ["For freelancers", "/#freelancers"],
-      ["For teams", "/#teams"],
+      ["All features", "/features"],
+      ["Lead ads", "/features/lead-ads"],
+      ["Website chat", "/features/website-chat"],
+      ["AI assistant", "/features/ai-assistant"],
       ["Shared inbox", "/features/shared-inbox"],
-      ["Campaigns", "/features/campaigns"],
-      ["Automation", "/features/automation"],
-      ["Chatbot builder", "/features/chatbot"],
       ["Sequences", "/features/sequences"],
-      ["Pricing", "/#pricing"],
+      ["Campaigns", "/features/campaigns"],
+      ["Proposals", "/features/proposals"],
+      ["Mobile app", "/features/mobile-app"],
+      ["Pricing", "/pricing"],
     ],
   },
   {
-    title: "Resources",
+    title: "Use cases",
+    links: [...USE_CASES.map((u): [string, string] => [u.name, `/use-cases/${u.slug}`]), ["All use cases", "/use-cases"]],
+  },
+  {
+    title: "Compare & resources",
     links: [
+      ...COMPETITORS.map((c): [string, string] => [`Wazelo vs ${c.name}`, `/compare/${c.slug}`]),
+      ["Blog", "/blog"],
       ["Documentation", "/docs"],
-      // ["API reference", "/api-reference"],
-      ["Use cases", "/use-cases"],
+      ["API and MCP server", "/features/developer-api"],
+      ["API reference", "/api-reference"],
       ["Security", "/security"],
     ],
   },
@@ -37,56 +51,59 @@ const cols = [
   },
 ];
 
-export default function Footer() {
+const focusPaper = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper";
+
+export default function Footer({ showCta = true }: { showCta?: boolean }) {
   return (
-    <footer className="ember-rule relative overflow-hidden bg-surface px-4 pb-8 pt-16 font-sans sm:px-6 lg:px-8 lg:pt-20">
-      {/* Light under the dock, so its glass has something to bend. */}
-      <div aria-hidden className="glass-stage">
-        <span className="bottom-[-6rem] left-1/2 h-64 w-[36rem] -translate-x-1/2 bg-primary/15" />
-      </div>
-      <div className="relative mx-auto max-w-7xl">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-12">
-          <Reveal className="lg:col-span-5">
-            <Link href="/" className="flex w-max items-center gap-2.5">
+    // The paper/10 top rule separates it from an ink section above; on paper the colour change does the work.
+    <footer className="tone-fixed border-t border-paper/10 bg-ink px-4 pb-10 pt-20 font-sans text-paper sm:px-6 lg:px-8 lg:pt-28">
+      <div className="mx-auto max-w-7xl">
+        {showCta && (
+        <div className="flex flex-col gap-10 border-b border-paper/10 pb-16 lg:flex-row lg:items-end lg:justify-between lg:pb-20">
+          <p className="max-w-3xl font-display text-[clamp(2.75rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
+            Every lead, <em className="text-[#f0b483]">followed up.</em>
+          </p>
+          <a
+            href={APP_REGISTER_URL}
+            className={`group inline-flex w-max shrink-0 items-center gap-2 rounded-full bg-paper px-7 py-4 text-sm font-semibold text-ink transition-colors hover:bg-white active:scale-[0.98] ${focusPaper}`}
+          >
+            Start free trial
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </div>
+        )}
+
+        <div className={`grid gap-12 lg:grid-cols-12 ${showCta ? "pt-14" : ""}`}>
+          <div className="lg:col-span-4">
+            <Link href="/" className={`flex w-max items-center gap-2.5 rounded-md ${focusPaper}`}>
               <Image src="/logo/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
-              <span className="text-lg font-semibold tracking-tight text-on-surface">
-                Waze<span className="text-primary-container">lo</span>
-              </span>
+              <span className="text-lg font-semibold tracking-tight">Wazelo</span>
             </Link>
-            <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-on-surface-variant">
-              The WhatsApp CRM for freelancers finding clients and teams sharing one inbox. Connect your number with a QR scan.
+            <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-paper/60">
+              The lead follow-up platform. Catch every lead, reply fast, follow up until they buy.
             </p>
-          </Reveal>
-          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 md:col-span-1 lg:col-span-7">
-            {cols.map((col, i) => (
-              <Reveal key={col.title} delay={0.08 * (i + 1)}>
-                <h4 className="text-sm font-semibold text-on-surface">{col.title}</h4>
-                <ul className="mt-4 flex flex-col gap-2.5">
+          </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 lg:col-span-8">
+            {cols.map((col) => (
+              <div key={col.title}>
+                <h4 className="text-xs font-medium uppercase tracking-[0.22em] text-paper/40">{col.title}</h4>
+                <ul className="mt-3 flex flex-col lg:mt-5 lg:gap-2.5">
                   {col.links.map(([label, href]) => (
                     <li key={label}>
-                      <Link
-                        href={href}
-                        className="group relative text-sm text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
-                      >
+                      <Link href={href} className={`block rounded-sm py-2.5 text-sm text-paper/70 transition-colors hover:text-paper lg:inline lg:py-0 ${focusPaper}`}>
                         {label}
-                        <span
-                          aria-hidden
-                          className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-primary-container transition-transform duration-300 ease-standard group-hover:scale-x-100 motion-reduce:transition-none"
-                        />
                       </Link>
                     </li>
                   ))}
                 </ul>
-              </Reveal>
+              </div>
             ))}
           </div>
         </div>
-        <div className="mt-16">
-          <FooterDock />
-        </div>
-        <div className="mt-8 flex flex-col items-center justify-between gap-3 text-xs text-on-surface-variant sm:flex-row">
-          <p>© {new Date().getFullYear()} Wazelo CRM. All rights reserved.</p>
-          <p>Made in India for businesses that sell on WhatsApp.</p>
+
+        <div className="mt-16 flex flex-col justify-between gap-3 border-t border-paper/10 pt-6 font-mono text-xs text-paper/45 sm:flex-row">
+          <p>© {new Date().getFullYear()} Wazelo. All rights reserved.</p>
+          <p>Made in India.</p>
         </div>
       </div>
     </footer>

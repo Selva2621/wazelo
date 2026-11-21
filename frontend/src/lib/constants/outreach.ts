@@ -14,6 +14,52 @@ export const FREELANCER_TYPE_OPTIONS = [
 
 export type FreelancerTypeValue = (typeof FREELANCER_TYPE_OPTIONS)[number]["value"];
 
+export interface FreelancerTypeOption {
+  value: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  popular: boolean;
+}
+
+const OTHER_OPTION = FREELANCER_TYPE_OPTIONS.find((o) => o.value === "OTHER")!;
+
+/**
+ * Every line of work from the server catalog (built in + super admin), then
+ * "Something else" last. Before it loads, the five classic types.
+ */
+export function freelancerTypeOptions(
+  catalog?: { key: string; label: string; description: string; keywords?: string[]; popular?: boolean }[],
+): FreelancerTypeOption[] {
+  const types = catalog?.length
+    ? catalog.map((c) => ({ value: c.key, label: c.label, description: c.description, keywords: c.keywords ?? [], popular: !!c.popular }))
+    : FREELANCER_TYPE_OPTIONS.filter((o) => o.value !== "OTHER").map((o) => ({ ...o, keywords: [], popular: true }));
+  return [...types, { ...OTHER_OPTION, keywords: [], popular: true }];
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * What to show: with a search, every match (label, description or keyword);
+ * otherwise the popular ones plus anything already picked, or all of them.
+ * "Something else" always stays.
+ */
+export function visibleFreelancerOptions(
+  options: FreelancerTypeOption[],
+  { query, selected, showAll }: { query: string; selected: readonly string[]; showAll: boolean },
+): FreelancerTypeOption[] {
+  const q = norm(query);
+  if (q) {
+    return options.filter(
+      (o) =>
+        o.value === "OTHER" ||
+        selected.includes(o.value) ||
+        [o.label, o.description, ...o.keywords].some((t) => norm(t).includes(q) || q.split(" ").every((w) => norm(t).includes(w))),
+    );
+  }
+  return showAll ? options : options.filter((o) => o.popular || selected.includes(o.value));
+}
+
 interface OutreachStep {
   name: string;
   delayMinutes: number;
@@ -60,6 +106,47 @@ export function getOutreachSteps(types?: readonly string[] | null, service?: str
       messageBody: "Hi {{name}}, last check-in from my side. If now isn't the right time, no worries at all. All the best!",
     },
   ];
+}
+
+/**
+ * Ready-made outreach for a business / team workspace: same shape and timing as the
+ * freelancer version, in the business's own "we" voice.
+ */
+export function getTeamOutreachSteps(orgName?: string | null): OutreachStep[] {
+  const who = orgName?.trim() ? `this is ${orgName.trim()}` : "this is our team";
+  return [
+    {
+      name: "Intro",
+      delayMinutes: 0,
+      messageBody: `Hi {{name}}, ${who}. We came across your business online. We offer [what you offer] and think it could help you. Would you be open to a quick chat this week?`,
+    },
+    {
+      name: "Follow-up",
+      delayMinutes: 2 * DAY,
+      messageBody: "Hi {{name}}, just following up on our last message. Happy to share details or answer any questions.",
+    },
+    {
+      name: "Last check-in",
+      delayMinutes: 3 * DAY,
+      messageBody: "Hi {{name}}, a last check-in from our side. If now isn't the right time, no problem. Reply anytime if you need us.",
+    },
+  ];
+}
+
+interface OutreachOrg {
+  orgType?: string | null;
+  name?: string | null;
+  freelancerTypes?: readonly string[] | null;
+  freelancerService?: string | null;
+  freelancerServiceLabel?: string | null;
+}
+
+/** Outreach written for this workspace: freelancers in their line of work, everyone else as a team. */
+export function getOutreachStepsFor(org?: OutreachOrg | null): OutreachStep[] {
+  if (org?.orgType === "FREELANCER") {
+    return getOutreachSteps(org.freelancerTypes, org.freelancerServiceLabel ?? org.freelancerService);
+  }
+  return getTeamOutreachSteps(org?.name);
 }
 
 /** Default (no type known) — kept for callers that don't have org settings */

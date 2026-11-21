@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AuditAction } from '@prisma/client';
+import { AuditAction, AutomationTriggerType } from '@prisma/client';
 import { AutomationRepository } from '../../infrastructure/repositories/automation.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { CreateAutomationRuleDto } from '../dto';
@@ -27,6 +27,11 @@ export class CreateAutomationRuleUseCase {
     ipAddress: string,
     userAgent: string,
   ) {
+    // Time-based rules have no worker and no contacts to act on yet: refuse rather than save a rule that never runs
+    if (dto.triggerType === AutomationTriggerType.TIME_BASED) {
+      throw new BadRequestException('Time-based rules are not available yet. Use a sequence for scheduled follow-ups.');
+    }
+
     // 1. Check org limit
     const existingCount = await this.automationRepo.countByOrg(orgId);
     if (existingCount >= AUTOMATION_CONFIG.MAX_RULES_PER_ORG) {

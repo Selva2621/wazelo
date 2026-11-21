@@ -70,40 +70,40 @@ function InboxMockup() {
   return (
     <div>
       {/* Section header */}
-      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--c-primary-container)", marginBottom: 8 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f59e0b", marginBottom: 8 }}>
         See it in action
       </p>
-      <h3 style={{ fontSize: 32, fontWeight: 700, color: "var(--c-on-surface)", margin: 0 }}>
+      <h3 style={{ fontSize: 32, fontWeight: 700, color: "#ffffff", margin: 0 }}>
         Your team&apos;s shared inbox.
       </h3>
 
       {/* Mockup container */}
-      <div style={{ background: "var(--c-surface-container-lowest)", borderRadius: 16, boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)", overflow: "hidden", marginTop: 32 }}>
+      <div style={{ background: "#1c1b1b", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", overflow: "hidden", marginTop: 32 }}>
 
         {/* App chrome bar */}
-        <div style={{ background: "var(--c-surface)", height: 36, display: "flex", alignItems: "center", padding: "0 16px", gap: 8 }}>
+        <div style={{ background: "#131313", height: 36, display: "flex", alignItems: "center", padding: "0 16px", gap: 8 }}>
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-primary-container)" }} />
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--c-success)" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
         </div>
 
         {/* Two-panel layout */}
         <div style={{ display: "flex", height: 520 }}>
 
           {/* LEFT PANEL */}
-          <div style={{ width: 280, flexShrink: 0, background: "var(--c-surface)", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: 280, flexShrink: 0, background: "#0e0e0e", borderRight: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column" }}>
 
             {/* Header */}
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)" }}>Inbox</span>
-              <span style={{ background: "var(--c-primary-container)", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#ffffff" }}>Inbox</span>
+              <span style={{ background: "#f59e0b", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
             </div>
 
             {/* Search */}
             <div style={{ margin: "8px 12px" }}>
               <input
                 placeholder="Search..."
-                style={{ background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-ink) / 0.08)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "var(--c-on-surface)", width: "100%", outline: "none", boxSizing: "border-box" }}
+                style={{ background: "#1c1b1b", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#e5e2e1", width: "100%", outline: "none", boxSizing: "border-box" }}
                 readOnly
               />
             </div>
@@ -117,12 +117,12 @@ function InboxMockup() {
                   style={{
                     padding: "12px 16px",
                     cursor: "pointer",
-                    background: selectedConv === i ? "rgb(var(--fx-accent) / 0.1)" : "transparent",
-                    borderLeft: selectedConv === i ? "2px solid var(--c-primary-container)" : "2px solid transparent",
+                    background: selectedConv === i ? "rgba(255,183,125,0.1)" : "transparent",
+                    borderLeft: selectedConv === i ? "2px solid #ffb77d" : "2px solid transparent",
                     transition: "background 0.15s",
                   }}
                   onMouseEnter={e => {
-                    if (selectedConv !== i) (e.currentTarget as HTMLDivElement).style.background = "rgb(var(--fx-ink) / 0.04)";
+                    if (selectedConv !== i) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
                   }}
                   onMouseLeave={e => {
                     if (selectedConv !== i) (e.currentTarget as HTMLDivElement).style.background = "transparent";
@@ -131,24 +131,24 @@ function InboxMockup() {
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     {/* Avatar + online dot */}
                     <div style={{ position: "relative", flexShrink: 0 }}>
-                      <div style={{ width: 32, height: 32, background: "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))", borderRadius: "50%", fontSize: 11, fontWeight: 700, color: "var(--c-on-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 32, height: 32, background: "linear-gradient(135deg,#554336,#d97707)", borderRadius: "50%", fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {c.avatar}
                       </div>
-                      <div style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: c.online ? "var(--c-success)" : "transparent", border: "2px solid var(--c-surface)" }} />
+                      <div style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: c.online ? "#22c55e" : "transparent", border: "2px solid #0e0e0e" }} />
                     </div>
 
                     {/* Text column */}
                     <div style={{ flex: 1, overflow: "hidden" }}>
                       <div style={{ display: "flex", alignItems: "center" }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", flex: 1 }}>{c.name}</span>
-                        <span style={{ fontSize: 11, color: "var(--c-placeholder)", marginLeft: "auto", whiteSpace: "nowrap", paddingLeft: 4 }}>{c.time}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#ffffff", flex: 1 }}>{c.name}</span>
+                        <span style={{ fontSize: 11, color: "rgba(229,226,225,0.4)", marginLeft: "auto", whiteSpace: "nowrap", paddingLeft: 4 }}>{c.time}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{c.preview}</div>
+                      <div style={{ fontSize: 12, color: "rgba(229,226,225,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{c.preview}</div>
                     </div>
 
                     {/* Unread badge */}
                     {c.unread > 0 && (
-                      <div style={{ background: "var(--c-primary-container)", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ background: "#f59e0b", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         {c.unread}
                       </div>
                     )}
@@ -162,17 +162,17 @@ function InboxMockup() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
             {/* Chat header */}
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))", borderRadius: "50%", fontSize: 12, fontWeight: 700, color: "var(--c-on-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#554336,#d97707)", borderRadius: "50%", fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {conv.avatar}
                 </div>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)" }}>{conv.name}</div>
-                <div style={{ fontSize: 11, color: "var(--c-placeholder)", marginTop: 1 }}>Assigned to: Priya ▾</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#ffffff" }}>{conv.name}</div>
+                <div style={{ fontSize: 11, color: "rgba(229,226,225,0.45)", marginTop: 1 }}>Assigned to: Priya ▾</div>
               </div>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: conv.online ? "var(--c-success)" : "color-mix(in srgb, var(--c-on-surface-variant) 25%, transparent)", flexShrink: 0 }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: conv.online ? "#22c55e" : "rgba(229,226,225,0.25)", flexShrink: 0 }} />
             </div>
 
             {/* Messages area */}
@@ -180,8 +180,8 @@ function InboxMockup() {
               {conv.messages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: msg.from === "agent" ? "flex-end" : "flex-start" }}>
                   <div style={{
-                    background: msg.from === "agent" ? "var(--c-primary)" : "rgb(var(--fx-ink) / 0.07)",
-                    color: msg.from === "agent" ? "var(--c-on-primary)" : "var(--c-on-surface)",
+                    background: msg.from === "agent" ? "#d97707" : "rgba(255,255,255,0.07)",
+                    color: msg.from === "agent" ? "#4d2600" : "#e5e2e1",
                     borderRadius: msg.from === "agent" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
                     padding: "10px 14px",
                     fontSize: 13,
@@ -195,16 +195,16 @@ function InboxMockup() {
             </div>
 
             {/* Input bar */}
-            <div style={{ padding: "12px 16px", borderTop: "1px solid rgb(var(--fx-ink) / 0.06)", display: "flex", gap: 10, alignItems: "center" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)", cursor: "pointer" }}>attach_file</span>
-              <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--c-primary-container)", cursor: "pointer" }}>photo_camera</span>
+            <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 10, alignItems: "center" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#f59e0b", cursor: "pointer" }}>attach_file</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#f59e0b", cursor: "pointer" }}>photo_camera</span>
               <input
                 placeholder="Type a message..."
-                style={{ flex: 1, background: "var(--c-surface-container-lowest)", border: "1px solid rgb(var(--fx-ink) / 0.08)", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "var(--c-on-surface)", outline: "none" }}
+                style={{ flex: 1, background: "#1c1b1b", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#e5e2e1", outline: "none" }}
                 readOnly
               />
-              <button style={{ background: "var(--c-primary-container)", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--c-on-primary)" }}>send</span>
+              <button style={{ background: "#ffb77d", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#4d2600" }}>send</span>
               </button>
             </div>
 
@@ -218,34 +218,28 @@ function InboxMockup() {
 const data: FeatureDetailData = {
   slug: "shared-inbox",
   tag: "Shared Inbox",
-  heroTitle: "Your whole team.<br /><span style=\"color:var(--c-primary-container)\">One inbox.</span>",
-  heroSubtitle: "Your team's WhatsApp chats in one place. Assign them, reply with media or quick replies, and close with AI help.",
-  overviewTitle: "Every chat has an owner.",
-  overviewDesc: "Connect your WhatsApp number by QR and every conversation lands in Wazelo, live. Agents work their own inbox. Admins and Managers can open any team member's inbox, set who a chat is assigned to, and track response times against SLA policies. While replying, AI summarises the chat and suggests what to say next.",
+  heroTitle: "Your whole team.<br /><span style=\"color:#ffb77d\">One inbox.</span>",
+  heroSubtitle: "Every WhatsApp conversation — routed, assigned, and resolved from a single shared workspace. No lead ever falls through again.",
+  heroScreen: "/screens/01-inbox-shared-team.jpeg",
+  overviewTitle: "One inbox. Zero chaos.",
+  overviewDesc: "When your team manages customer conversations across personal WhatsApp numbers, messages get missed and accountability disappears. Wazelo's shared inbox gives every agent a unified view — with real-time routing, clear ownership, and full conversation history — so your team can deliver fast, consistent support at scale.",
   capabilities: [
-    { icon: "forum", title: "An inbox for every teammate", desc: "Agents see their own chats. Admins and Managers pick any team member and see that person's conversations in real time, with All and Unread tabs and search by name or phone." },
-    { icon: "attach_file", title: "Media, buttons and lists", desc: "Send images, video, audio and documents with captions, or build interactive button and list messages." },
-    { icon: "bolt", title: "Quick replies with /", desc: "Type / in the composer to search your saved replies by title or shortcut." },
-    { icon: "auto_awesome", title: "AI Summary and Insights", desc: "Summarise a chat, see sentiment, intent and a suggested next action, and tap an AI reply to fill the composer." },
-    { icon: "person_pin", title: "Contact Info beside every chat", desc: "Lead Status, Assigned To, phone, email, owner and tags, without leaving the conversation." },
-    { icon: "timer", title: "SLA policies", desc: "Set First Response, Avg Response or Resolution targets by priority, with warning and breach alerts." },
-  ],
-  details: [
-    { title: "Conversation actions", items: ["Close", "Reopen", "Archive", "Create deal", "Send Survey", "Delete (messages kept for audit)"] },
-    { title: "In the composer", items: ["Images", "Video", "Audio", "PDF, Word, Excel", "CSV and text files", "Captions", "Button messages", "List messages", "/ quick replies", "AI reply suggestions"] },
-    { title: "AI Insights shows", items: ["Sentiment", "Confidence", "Intent", "Suggested action", "Suggested labels", "Priority", "Language", "Knowledge base answers"] },
+    { icon: "forum", title: "Unified conversation view", desc: "All incoming WhatsApp messages appear in one shared queue. No agent works in isolation." },
+    { icon: "assignment_ind", title: "Smart assignment", desc: "Route conversations by agent, team, or keyword rules. Manual or automatic — you choose." },
+    { icon: "swap_horiz", title: "Transfer & escalate", desc: "Hand off conversations between agents with full context preserved. No customer ever has to repeat themselves." },
+    { icon: "check_circle", title: "Resolve & reopen", desc: "Mark conversations resolved when done. Reopen instantly if the customer follows up." },
+    { icon: "visibility", title: "Live agent presence", desc: "See who is online, who is typing, and which conversations are being handled right now." },
+    { icon: "history", title: "Full conversation history", desc: "Every message, note, and file ever exchanged — searchable, forever. Context at your fingertips." },
   ],
   howItWorks: [
-    { step: "01", title: "Connect WhatsApp", desc: "In WhatsApp, open Settings, Linked Devices, Link a Device, and scan the QR code in Wazelo." },
-    { step: "02", title: "Invite your team", desc: "Add people as Admin, Manager or Employee and edit what each role can do." },
-    { step: "03", title: "Reply from one place", desc: "Open a chat and answer with text, media, a / quick reply or an AI suggestion." },
-    { step: "04", title: "Assign and close", desc: "Managers set Assigned To in Contact Info. Close, archive or send a CSAT survey when done." },
+    { step: "01", title: "Connect your WhatsApp Business number", desc: "Link your Meta-approved WhatsApp Business API number to Wazelo in under 5 minutes." },
+    { step: "02", title: "Invite your team", desc: "Add agents and set their roles. Admins get full access; agents see only their assigned conversations." },
+    { step: "03", title: "Set routing rules", desc: "Define how incoming messages are assigned — round-robin, keyword-based, or manual." },
+    { step: "04", title: "Reply, resolve, grow", desc: "Your team works from the shared inbox — responding faster, collaborating better, and never missing a message." },
   ],
-  faqs: [
-    { q: "Do I need the WhatsApp Business API?", a: "No. You link your existing WhatsApp number by scanning a QR code from Linked Devices, the same way WhatsApp Web works. Each user connects one number." },
-    { q: "Can a manager see every agent's chats?", a: "Yes. Admins and Managers choose a team member in the inbox and see that person's conversations. Only they can change who a chat is assigned to." },
-    { q: "Do the AI features cost extra?", a: "AI Summary, Insights and reply suggestions use AI credits from your plan: 50 a month on Starter, 200 on Growth and 500 on Pro. The Solo plan has none." },
-    { q: "What happens when I delete a conversation?", a: "It leaves the inbox, but its messages are kept for audit purposes." },
+  screens: [
+    { src: "/screens/05-contacts-management.png", caption: "Contact profiles linked to conversations" },
+    { src: "/screens/09-csat-surveys.png", caption: "Automatic CSAT surveys after resolution" },
   ],
   relatedFeatures: [
     { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },

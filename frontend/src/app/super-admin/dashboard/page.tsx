@@ -1,10 +1,8 @@
 "use client";
 
-import {
-  Building2, CreditCard, Clock, AlertCircle,
-  TrendingUp, LifeBuoy, ArrowUpRight, ArrowDownRight,
-  ChevronRight, RefreshCw, Minus,
-} from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, RefreshCw, Minus } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { CARD } from "@/components/super-admin/list-styles";
 import { useSAStats, useSAOrgs, useSAActivity, useSAGrowth } from "@/hooks/use-super-admin";
 import { MonthlyBars } from "@/components/super-admin/monthly-bars";
 import { KillSwitchBanner } from "@/components/super-admin/kill-switches-panel";
@@ -14,7 +12,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/super-admin/status-badge";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 function timeAgo(iso: string): string {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -40,36 +38,28 @@ function activityColor(item: PlatformActivityItem): string {
 interface StatCardProps {
   label: string;
   value: string | number;
-  icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
   trend?: { value: string; up: boolean | null };
 }
 
-function StatCard({ label, value, icon: Icon, iconColor, iconBg, trend }: StatCardProps) {
+/** Quiet Ops KPI: label, big number, one short caption (tinted only when it signals a change) */
+function StatCard({ label, value, trend }: StatCardProps) {
   return (
-    <div className="group bg-surface-container-low border border-outline-variant hover:border-outline-variant/70 rounded-xl p-5 transition-all duration-200 flex flex-col gap-4">
-      <div className="flex items-start justify-between">
-        <span className="text-label text-on-surface-variant">{label}</span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
-        </div>
-      </div>
-      <div className="flex items-end justify-between">
-        <span className="text-headline font-semibold text-on-surface tabular-nums">{value}</span>
-        {trend && (
-          <span className={`flex items-center gap-0.5 text-label font-medium px-2 py-0.5 rounded-full ${
-            trend.up === true ? "bg-success/10 text-success" :
-            trend.up === false ? "bg-error/10 text-error" :
-            "bg-surface-container text-on-surface-variant"
-          }`}>
-            {trend.up === true ? <ArrowUpRight className="h-3 w-3" /> :
-             trend.up === false ? <ArrowDownRight className="h-3 w-3" /> :
-             <Minus className="h-3 w-3" />}
-            {trend.value}
-          </span>
-        )}
-      </div>
+    <div className={cn(CARD, "flex min-w-0 flex-col gap-1 p-4")}>
+      <span className="truncate text-label text-on-surface-variant">{label}</span>
+      <span className="truncate text-headline font-semibold text-on-surface tabular-nums">{value}</span>
+      {trend && (
+        <span
+          className={cn(
+            "flex min-w-0 items-center gap-1 text-caption",
+            trend.up === true ? "text-success" : trend.up === false ? "text-error" : "text-on-surface-variant",
+          )}
+        >
+          {trend.up === true ? <ArrowUpRight className="h-3 w-3 shrink-0" aria-hidden /> :
+           trend.up === false ? <ArrowDownRight className="h-3 w-3 shrink-0" aria-hidden /> :
+           <Minus className="h-3 w-3 shrink-0" aria-hidden />}
+          <span className="truncate">{trend.value}</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -91,7 +81,7 @@ function ActivityRow({ item }: { item: PlatformActivityItem }) {
   return (
     <li>
       {item.orgId ? (
-        <Link href={`/super-admin/organizations/${item.orgId}`} className="flex items-start gap-3 py-2.5 hover:bg-surface-container rounded-lg -mx-2 px-2">
+        <Link href={`/super-admin/organizations/${item.orgId}`} className="flex items-start gap-3 py-2.5 hover:bg-surface-container-low rounded-xl -mx-2 px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           {body}
         </Link>
       ) : (
@@ -144,25 +134,16 @@ export default function SuperAdminDashboard() {
     {
       label: "Total organizations",
       value: stats?.totalOrgs ?? "—",
-      icon: Building2,
-      iconColor: "text-info",
-      iconBg: "bg-info/10",
       trend: { value: `${stats?.newOrgsLast30Days ?? 0} this month`, up: (stats?.newOrgsLast30Days ?? 0) > 0 ? true : null },
     },
     {
       label: "Active subscriptions",
       value: stats?.activeSubscriptions ?? "—",
-      icon: CreditCard,
-      iconColor: "text-success",
-      iconBg: "bg-success/10",
       trend: { value: `${paidActive} paid · ${freeActive} free`, up: paidActive > 0 ? true : null },
     },
     {
       label: "Trial accounts",
       value: stats?.trialSubscriptions ?? "—",
-      icon: Clock,
-      iconColor: "text-warning",
-      iconBg: "bg-warning/10",
       trend: {
         value: `${stats?.trialsEndingIn7Days ?? 0} ending in 7 days`,
         up: (stats?.trialsEndingIn7Days ?? 0) > 0 ? false : null,
@@ -171,9 +152,6 @@ export default function SuperAdminDashboard() {
     {
       label: "Expired / cancelled",
       value: stats?.expiredSubscriptions ?? "—",
-      icon: AlertCircle,
-      iconColor: "text-error",
-      iconBg: "bg-error/10",
       trend: {
         value: `${stats?.churnedLast30Days ?? 0} in 30 days`,
         up: (stats?.churnedLast30Days ?? 0) > 0 ? false : null,
@@ -182,9 +160,6 @@ export default function SuperAdminDashboard() {
     {
       label: "MRR",
       value: primaryRevenue ? formatMoney(primaryRevenue.mrrCents, primaryRevenue.currency) : "—",
-      icon: TrendingUp,
-      iconColor: "text-primary",
-      iconBg: "bg-primary/10",
       trend: {
         value: primaryRevenue
           ? `ARR ${formatMoney(primaryRevenue.arrCents, primaryRevenue.currency)}`
@@ -195,9 +170,6 @@ export default function SuperAdminDashboard() {
     {
       label: "Open tickets",
       value: stats?.openTickets ?? "—",
-      icon: LifeBuoy,
-      iconColor: "text-chart-5",
-      iconBg: "bg-chart-5/10",
       trend: { value: (stats?.openTickets ?? 0) > 0 ? "Needs attention" : "All clear", up: (stats?.openTickets ?? 0) > 0 ? false : null },
     },
   ];
@@ -211,28 +183,26 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface tracking-tight">Platform Dashboard</h1>
-          <p className="text-body-lg text-on-surface-variant mt-0.5">Overview of all organizations and platform activity</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-label text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-lg">{today}</span>
-          <Button variant="secondary" size="sm"
-            onClick={() => {
-              refetch();
-              refetchActivity();
-              refetchOrgs();
-              refetchGrowth();
-            }}
-          >
-            <RefreshCw className="h-3 w-3" />
-            Refresh
-          </Button>
-        </div>
-      </div>
+    <div className="p-4 lg:p-6 space-y-6 max-w-7xl">
+      <PageHeader
+        title="Dashboard"
+        actions={
+          <>
+            <span className="text-label text-on-surface-variant">{today}</span>
+            <Button variant="secondary" size="sm"
+              onClick={() => {
+                refetch();
+                refetchActivity();
+                refetchOrgs();
+                refetchGrowth();
+              }}
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden />
+              Refresh
+            </Button>
+          </>
+        }
+      />
 
       <KillSwitchBanner />
 
@@ -308,9 +278,9 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
 
         {/* Recent Organizations */}
-        <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
+        <div className={cn(CARD, "overflow-hidden")}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant">
-            <h2 className="text-body-lg font-semibold text-on-surface">Recent Organizations</h2>
+            <h2 className="text-body-lg font-semibold text-on-surface">Recent organizations</h2>
             <Link href="/super-admin/organizations" className="text-label text-primary hover:text-primary/80 flex items-center gap-0.5 transition-colors">
               View all <ArrowUpRight className="h-3 w-3" />
             </Link>
@@ -333,12 +303,9 @@ export default function SuperAdminDashboard() {
                 <Link
                   key={org.id}
                   href={`/super-admin/organizations/${org.id}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-container transition-colors group"
+                  className="flex items-center justify-between px-5 py-3 hover:bg-surface-container-low transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-label font-semibold text-primary">{org.name?.[0]?.toUpperCase() ?? "O"}</span>
-                    </div>
                     <div className="min-w-0">
                       <p className="text-body-lg font-medium text-on-surface truncate">{org.name}</p>
                       <p className="text-label text-on-surface-variant truncate">{org.slug} · {org.userCount ?? 0} users</p>
@@ -361,9 +328,8 @@ export default function SuperAdminDashboard() {
         {/* Right column */}
         <div className="space-y-4">
           {/* Activity feed */}
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
-            <h2 className="text-body-lg font-semibold text-on-surface mb-1">Platform Activity</h2>
-            <p className="text-label text-on-surface-variant mb-3">Recent events across all orgs</p>
+          <div className={cn(CARD, "p-5")}>
+            <h2 className="text-body-lg font-semibold text-on-surface mb-3">Platform activity</h2>
             {activityLoading ? (
               <div className="flex justify-center py-6" role="status">
                 <Spinner className="text-primary" />
@@ -388,16 +354,16 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Subscription breakdown */}
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5 space-y-4">
+          <div className={cn(CARD, "p-5 space-y-4")}>
             <div>
-              <h2 className="text-body-lg font-semibold text-on-surface">Subscription Breakdown</h2>
+              <h2 className="text-body-lg font-semibold text-on-surface">Subscription breakdown</h2>
               <p className="text-label text-on-surface-variant mt-0.5">{totalSubs} total subscriptions</p>
             </div>
             <div className="space-y-3">
               <SubBar label="Active" count={stats?.activeSubscriptions ?? 0} total={totalSubs} color="bg-primary" />
               <SubBar label="Trial" count={stats?.trialSubscriptions ?? 0} total={totalSubs} color="bg-warning" />
               <SubBar label="Past due / grace" count={stats?.pastDueSubscriptions ?? 0} total={totalSubs} color="bg-warning" />
-              <SubBar label="Expired / Cancelled" count={stats?.expiredSubscriptions ?? 0} total={totalSubs} color="bg-error" />
+              <SubBar label="Expired / cancelled" count={stats?.expiredSubscriptions ?? 0} total={totalSubs} color="bg-error" />
             </div>
             <Link href="/super-admin/subscriptions" className="flex items-center gap-1 text-label text-primary hover:text-primary/80 transition-colors mt-1">
               View all subscriptions <ArrowUpRight className="h-3 w-3" />

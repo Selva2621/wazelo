@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-export const alt = "Wazelo CRM, the WhatsApp CRM for freelancers and teams";
+export const alt = "Wazelo — the lead follow-up platform";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -74,7 +73,7 @@ export default async function OGImage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Wazelo CRM
+            Wazelo
           </span>
           <div
             style={{
@@ -87,7 +86,7 @@ export default async function OGImage() {
               background: "rgba(255,183,125,0.08)",
             }}
           >
-            WhatsApp CRM
+            Lead follow-up platform
           </div>
         </div>
 
@@ -101,11 +100,13 @@ export default async function OGImage() {
               lineHeight: "1.05",
               letterSpacing: "-0.03em",
               maxWidth: "700px",
+              display: "flex",
+              flexWrap: "wrap",
+              columnGap: "0.25em",
             }}
           >
-            Win and serve{" "}
-            <span style={{ color: "#ffb77d" }}>customers</span>{" "}
-            on WhatsApp
+            <span>Every lead,</span>
+            <span style={{ color: "#ffb77d" }}>followed up.</span>
           </div>
           <div
             style={{
@@ -116,7 +117,7 @@ export default async function OGImage() {
               fontWeight: "400",
             }}
           >
-            Shared inbox · Lead scraper · Campaigns · Automation
+            Lead ads · AI replies · Follow-up · Pipeline
           </div>
         </div>
 
@@ -138,7 +139,7 @@ export default async function OGImage() {
             wazelo.in
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
-            {["Scan a QR to connect", "14-day free trial", "From ₹299/mo"].map((label) => (
+            {["WhatsApp · Instagram · Web", "14-day free trial"].map((label) => (
               <div
                 key={label}
                 style={{

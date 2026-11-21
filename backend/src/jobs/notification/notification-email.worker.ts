@@ -120,6 +120,9 @@ export class NotificationEmailWorker implements OnModuleInit {
       WHATSAPP_PHONE_INACTIVE:      { label: 'Check Connection',   url: `${this.frontendUrl}/settings/whatsapp` },
       CONTACT_ASSIGNED:             { label: 'View Contact',       url: `${this.frontendUrl}/contacts/${data?.contactId ?? ''}` },
       CONTACT_REASSIGNED:           { label: 'View Contact',       url: `${this.frontendUrl}/contacts/${data?.contactId ?? ''}` },
+      LEAD_ASSIGNED:                { label: 'Open Lead',          url: `${this.frontendUrl}/contacts?id=${data?.contactId ?? ''}` },
+      LEAD_FOLLOW_UP_DUE:           { label: 'Open Lead',          url: `${this.frontendUrl}/contacts?id=${data?.contactId ?? ''}` },
+      LEAD_DAILY_SUMMARY:           { label: 'View Lead Ads',      url: `${this.frontendUrl}/lead-ads` },
       SLA_BREACH:                   { label: 'View Conversation',  url: `${this.frontendUrl}/inbox/${data?.conversationId ?? ''}` },
       TICKET_REPLY:                 { label: 'View Ticket',        url: `${this.frontendUrl}/support/${data?.ticketId ?? ''}` },
       TICKET_RESOLVED:              { label: 'View Ticket',        url: `${this.frontendUrl}/support/${data?.ticketId ?? ''}` },
@@ -129,6 +132,8 @@ export class NotificationEmailWorker implements OnModuleInit {
       USAGE_LIMIT_REACHED:          { label: 'Upgrade Plan',       url: `${this.frontendUrl}/settings/billing` },
       DEAL_FOLLOW_UP_DUE:           { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
       DEAL_SCOPE_RESPONSE:          { label: 'View Deal',          url: `${this.frontendUrl}/deals` },
+      PROPOSAL_VIEWED:              { label: 'View Proposal',      url: `${this.frontendUrl}/proposals/${data?.proposalId ?? ''}` },
+      PROPOSAL_RESPONSE:            { label: 'View Proposal',      url: `${this.frontendUrl}/proposals/${data?.proposalId ?? ''}` },
     };
 
     // Session owner: reconnect straight from the phone, no login

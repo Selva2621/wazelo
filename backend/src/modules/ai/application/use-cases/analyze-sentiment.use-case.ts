@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 import { sanitizePromptInput } from '@/common/utils/prompt-sanitizer.util';
 
 export type SentimentLabel = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'URGENT';
@@ -18,6 +19,7 @@ export class AnalyzeSentimentUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiProvider: AiProviderService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   /**
@@ -25,12 +27,15 @@ export class AnalyzeSentimentUseCase {
    * Used for real-time agent dashboards and escalation triggers.
    */
   async execute(conversationId: string, orgId: string): Promise<SentimentResult> {
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId, direction: 'INBOUND' },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: { body: true, createdAt: true },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId, direction: 'INBOUND' },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { body: true, createdAt: true },
+      }),
+    );
 
     if (messages.length === 0) {
       return { sentiment: 'NEUTRAL', confidence: 1, reason: 'No inbound messages' };

@@ -12,10 +12,37 @@ export const chatbotKeys = {
   analytics: (id: string) => ["chatbot", "analytics", id] as const,
 };
 
-export function useChatbotFlows() {
+/** Health strip + suspicious messages on the Chatbot page */
+export function useBotInsights(enabled = true, days = 7) {
+  return useQuery({
+    queryKey: ["chatbot", "insights", days],
+    queryFn: () => chatbotApi.getInsights(days),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useBotBehavior(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["chatbot", "behavior"],
+    queryFn: () => chatbotApi.getBehavior(),
+    enabled: options.enabled ?? true,
+  });
+}
+
+export function useSaveBotBehavior() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: chatbotApi.saveBehavior,
+    onSuccess: (data) => qc.setQueryData(["chatbot", "behavior"], data),
+  });
+}
+
+export function useChatbotFlows(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: chatbotKeys.flows(),
     queryFn: () => chatbotApi.listFlows(),
+    enabled: options.enabled ?? true,
   });
 }
 

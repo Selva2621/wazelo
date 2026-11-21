@@ -8,10 +8,13 @@ import { CampaignRepository } from '../../infrastructure/repositories/campaign.r
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { EmailRepository } from '@/modules/email/infrastructure/repositories/email.repository';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { EVENT_NAMES, QUEUE_NAMES } from '@/common/constants';
 import { AuditAction, CampaignStatus } from '@prisma/client';
 import { findUnknownPlaceholders } from '../../domain/services/message-placeholders';
+import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { renderCloudTemplate, templateNeedsHeaderImage } from '@/shared/utils/cloud-template';
 
 /** Contacts would otherwise receive raw `{{lead.service}}`-style text. */
 export function assertNoUnknownPlaceholders(body: string | null | undefined): void {
@@ -21,6 +24,34 @@ export function assertNoUnknownPlaceholders(body: string | null | undefined): vo
       `Fill in these placeholders before sending: ${unknown.map((k) => `{{${k}}}`).join(', ')}`,
     );
   }
+}
+
+/**
+ * Check a campaign's Meta-approved template (official numbers) and work out the text
+ * version of it (preview, and what any QR number in the pool sends).
+ */
+export async function resolveCampaignTemplate(
+  prisma: PrismaService,
+  orgId: string,
+  input: { cloudTemplateId: string; cloudTemplateParams?: string[]; cloudTemplateHeaderImageUrl?: string },
+): Promise<{ messageBody: string; cloudTemplate: Record<string, unknown> }> {
+  const template = await prisma.messageTemplate.findFirst({
+    where: { id: input.cloudTemplateId, orgId, deletedAt: null, status: 'APPROVED', whatsappTemplateId: { not: null } },
+    select: { name: true, language: true, components: true },
+  });
+  if (!template) throw new BadRequestException('The chosen template is missing or not approved by Meta');
+  if (templateNeedsHeaderImage(template) && !input.cloudTemplateHeaderImageUrl) {
+    throw new BadRequestException('This template has an image header: add the image link');
+  }
+  const raw = renderCloudTemplate(template, input.cloudTemplateParams, (s) => s);
+  return {
+    messageBody: raw.body,
+    cloudTemplate: {
+      templateId: input.cloudTemplateId,
+      params: input.cloudTemplateParams ?? [],
+      ...(input.cloudTemplateHeaderImageUrl && { headerImageUrl: input.cloudTemplateHeaderImageUrl }),
+    },
+  };
 }
 
 @Injectable()
@@ -33,6 +64,8 @@ export class CreateCampaignUseCase {
     private readonly queueService: QueueService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly emailRepo: EmailRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -50,30 +83,94 @@ export class CreateCampaignUseCase {
       }
     }
 
-    // 2. Validate session exists and belongs to org
-    const session = await this.sessionRepo.findByIdAndOrg(dto.sessionId, orgId);
-    if (!session) {
-      throw new BadRequestException('WhatsApp session not found');
-    }
-    if (session.status !== 'CONNECTED') {
-      throw new BadRequestException(
-        'WhatsApp session is not connected. Connect via QR first.',
+    // A "filtered" audience with no filter at all would silently mean everyone
+    if (dto.audienceType === 'FILTERED') {
+      const filters = (dto.audienceFilters ?? {}) as Record<string, unknown>;
+      const narrows = Object.values(filters).some((v) =>
+        Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '',
       );
+      if (!narrows) {
+        throw new BadRequestException('Pick at least one group or filter, or send to all contacts');
+      }
     }
 
-    // 3. Validate message content
-    if (dto.messageType === 'TEXT' && !dto.messageBody) {
-      throw new BadRequestException('Text campaigns require a messageBody');
+    const isEmail = dto.channel === 'EMAIL';
+    /** Official numbers: the approved template to send (filled per recipient at send time) */
+    let cloudTemplate: Record<string, unknown> | undefined;
+    // Numbers to send from: the selected pool, plus any number used in an override
+    const sessionPool = [...new Set([
+      ...(dto.sessionIds ?? []),
+      ...(dto.sessionId ? [dto.sessionId] : []),
+      ...(dto.batchAssignments ?? []).map((a) => a.sessionId),
+    ])];
+    const primarySessionId = sessionPool[0] ?? null;
+    if (isEmail) {
+      // 2. Email: sent from the workspace's own mailbox, which must be connected
+      const account = await this.emailRepo.account(orgId);
+      if (!account) throw new BadRequestException('Connect your business email in Settings → Email first');
+      if (account.status !== 'ACTIVE') throw new BadRequestException('Your email account needs to be reconnected in Settings → Email');
+      if (!dto.emailSubject?.trim()) throw new BadRequestException('Email campaigns need a subject');
+      if (!dto.messageBody?.trim()) throw new BadRequestException('Email campaigns need a message');
+      assertNoUnknownPlaceholders(`${dto.emailSubject} ${dto.messageBody}`);
+    } else {
+      // Validate every selected batch session before storing the assignment plan.
+      const batchAssignments = dto.batchAssignments ?? [];
+      const duplicateBatchNumbers = batchAssignments.some(
+        (assignment, index) =>
+          batchAssignments.findIndex((candidate) => candidate.batchNumber === assignment.batchNumber) !== index,
+      );
+      if (duplicateBatchNumbers) {
+        throw new BadRequestException('Assign exactly one WhatsApp session to each batch');
+      }
+
+      const selectedSessionIds = sessionPool;
+      if (selectedSessionIds.length === 0) {
+        throw new BadRequestException('Select at least one WhatsApp number to send from');
+      }
+
+      const connectedSessions = await this.sessionRepo.findConnectedByIdsAndOrg(selectedSessionIds, orgId);
+      if (connectedSessions.length !== selectedSessionIds.length) {
+        throw new BadRequestException(
+          'Every selected WhatsApp session must belong to this organization and be connected',
+        );
+      }
+
+      // Official numbers can only start a chat with a Meta-approved template
+      const cloudIds = await this.sessionRepo.findCloudIdsAmong(selectedSessionIds, orgId);
+      if (cloudIds.length > 0 || dto.cloudTemplateId) {
+        if (!dto.cloudTemplateId) {
+          throw new BadRequestException('Official WhatsApp numbers need an approved template. Pick one in the message step.');
+        }
+        const resolved = await resolveCampaignTemplate(this.prisma, orgId, {
+          cloudTemplateId: dto.cloudTemplateId,
+          cloudTemplateParams: dto.cloudTemplateParams,
+          cloudTemplateHeaderImageUrl: dto.cloudTemplateHeaderImageUrl,
+        });
+        // The same message as text, for any QR number in the pool and for the preview
+        dto.messageType = 'TEXT';
+        dto.messageBody = resolved.messageBody;
+        cloudTemplate = resolved.cloudTemplate;
+      }
+
+      // 3. Validate message content
+      if (dto.messageType === 'TEXT' && !dto.messageBody) {
+        throw new BadRequestException('Text campaigns require a messageBody');
+      }
+      if ((dto.messageBody?.length ?? 0) > 4096) {
+        throw new BadRequestException('WhatsApp messages can be at most 4096 characters');
+      }
+      if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(dto.messageType) && !dto.mediaUrl) {
+        throw new BadRequestException(`${dto.messageType} campaigns require a mediaUrl`);
+      }
+      assertNoUnknownPlaceholders(dto.messageBody);
     }
-    if (['IMAGE', 'VIDEO', 'DOCUMENT', 'AUDIO'].includes(dto.messageType) && !dto.mediaUrl) {
-      throw new BadRequestException(`${dto.messageType} campaigns require a mediaUrl`);
-    }
-    assertNoUnknownPlaceholders(dto.messageBody);
 
     // 4. Create campaign as DRAFT
     const campaign = await this.campaignRepo.create({
       orgId,
-      sessionId: dto.sessionId,
+      channel: isEmail ? 'EMAIL' : 'WHATSAPP',
+      sessionId: isEmail ? null : primarySessionId,
+      emailSubject: isEmail ? dto.emailSubject!.trim() : null,
       name: dto.name,
       description: dto.description,
       messageType: dto.messageType,
@@ -86,6 +183,15 @@ export class CreateCampaignUseCase {
       timezone: dto.timezone,
       createdById: userId,
       idempotencyKey: dto.idempotencyKey,
+      // Batches are planned when the campaign runs (round-robin over the pool)
+      metadata: !isEmail
+        ? {
+            sessionPool,
+            ...(dto.sendAnyTime ? { sendAnyTime: true } : {}),
+            ...(dto.batchAssignments?.length ? { batchSessionAssignments: dto.batchAssignments } : {}),
+            ...(cloudTemplate ? { cloudTemplate } : {}),
+          }
+        : undefined,
       productId: dto.productId,
     });
 
@@ -116,7 +222,9 @@ export class CreateCampaignUseCase {
         name: dto.name,
         messageType: dto.messageType,
         audienceType: dto.audienceType,
-        sessionId: dto.sessionId,
+        sessionId: primarySessionId,
+        sessionPool,
+        batchAssignments: dto.batchAssignments,
       },
       ipAddress,
       userAgent,
@@ -146,7 +254,7 @@ export class CreateCampaignUseCase {
           {
             campaignId: campaign.id,
             orgId,
-            sessionId: dto.sessionId,
+            sessionId: primarySessionId,
             scheduled: true,
           },
           delaySeconds,

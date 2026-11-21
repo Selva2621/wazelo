@@ -30,6 +30,7 @@ import { StorageModule } from './infrastructure/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrgModule } from './modules/org/org.module';
 import { UsersModule } from './modules/users/users.module';
+import { ToursModule } from './modules/tours/tours.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
@@ -49,6 +50,7 @@ import { LeadAdsModule } from './modules/lead-ads/lead-ads.module';
 import { LeadScoringModule } from './modules/lead-scoring/lead-scoring.module';
 import { SequencesModule } from './modules/sequences/sequences.module';
 import { WidgetModule } from './modules/widget/widget.module';
+import { EmailModule as OrgEmailModule } from './modules/email/email.module';
 import { GdprModule } from './modules/gdpr/gdpr.module';
 import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
@@ -56,7 +58,9 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { SearchModule } from './modules/search/search.module';
 import { CsatModule } from './modules/csat/csat.module';
 import { DealsModule } from './modules/deals/deals.module';
+import { ProposalsModule } from './modules/proposals/proposals.module';
 import { ProductsModule } from './modules/products/products.module';
+import { LeadFollowUpsModule } from './modules/lead-follow-ups/lead-follow-ups.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { DeveloperApiModule } from './modules/developer-api/developer-api.module';
@@ -123,6 +127,7 @@ import { EventsModule } from './events/events.module';
     AuthModule,
     OrgModule,
     UsersModule,
+    ToursModule,
     WhatsAppModule,
     MessagesModule,
     ContactsModule,
@@ -142,6 +147,8 @@ import { EventsModule } from './events/events.module';
     LeadScoringModule,
     SequencesModule,
     WidgetModule,
+    // The workspace's own mailbox: setup, templates, sending, unsubscribe
+    OrgEmailModule,
     GdprModule,
     KnowledgeBaseModule,
     CustomFieldsModule,
@@ -149,7 +156,10 @@ import { EventsModule } from './events/events.module';
     SearchModule,
     CsatModule,
     DealsModule,
+    ProposalsModule,
     ProductsModule,
+    // Who must contact each lead, by when (lead routing + reminders)
+    LeadFollowUpsModule,
     AiModule,
     ChatbotModule,
     DeveloperApiModule,

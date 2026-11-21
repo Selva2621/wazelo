@@ -8,6 +8,11 @@ const triggerConfigSchema = z.object({
   delaySeconds: z.number().int().min(0).optional(),
   minOrderValue: z.number().min(0).optional(),
   minCartValue: z.number().min(0).optional(),
+  stageId: z.string().optional().or(z.literal("")),
+  platform: z.string().optional(),
+  formId: z.string().max(64).optional().or(z.literal("")),
+  pageId: z.string().max(64).optional().or(z.literal("")),
+  newContactsOnly: z.boolean().optional(),
 });
 
 const conditionSchema = z.object({
@@ -16,17 +21,32 @@ const conditionSchema = z.object({
   value: z.any(),
 });
 
-const actionSchema = z.object({
-  actionType: z.enum([
-    "SEND_MESSAGE",
-    "ASSIGN_CONTACT",
-    "ADD_TAG",
-    "UPDATE_STATUS",
-  ]),
-  actionConfig: z.record(z.string(), z.any()),
-  orderIndex: z.number().int().min(0).optional(),
-  delaySeconds: z.number().int().min(0).optional(),
-});
+const actionSchema = z
+  .object({
+    actionType: z.enum([
+      "SEND_MESSAGE",
+      "SEND_EMAIL",
+      "ASSIGN_CONTACT",
+      "ADD_TAG",
+      "UPDATE_STATUS",
+      "ENROLL_IN_SEQUENCE",
+      "STOP_SEQUENCE",
+      "ASSIGN_CONVERSATION",
+      "ADD_TO_PRODUCT",
+    ]),
+    actionConfig: z.record(z.string(), z.any()),
+    orderIndex: z.number().int().min(0).optional(),
+    delaySeconds: z.number().int().min(0).optional(),
+  })
+  .superRefine((a, ctx) => {
+    if (a.actionType === "ADD_TO_PRODUCT" && !a.actionConfig.productId)
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "productId"], message: "Choose a product" });
+    if (a.actionType !== "SEND_EMAIL") return;
+    if (!String(a.actionConfig.subject ?? "").trim())
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "subject"], message: "Add a subject" });
+    if (!String(a.actionConfig.body ?? "").trim())
+      ctx.addIssue({ code: "custom", path: ["actionConfig", "body"], message: "Add a message" });
+  });
 
 export const createAutomationRuleSchema = z.object({
   name: z
@@ -45,6 +65,7 @@ export const createAutomationRuleSchema = z.object({
     "SHOPIFY_ORDER_FULFILLED",
     "SHOPIFY_CART_ABANDONED",
     "WIDGET_MESSAGE_RECEIVED",
+    "DEAL_STAGE_CHANGED",
   ]),
   triggerConfig: triggerConfigSchema,
   conditions: z.array(conditionSchema).optional(),
@@ -68,6 +89,8 @@ export const updateAutomationRuleSchema = z.object({
       "SHOPIFY_ORDER_CREATED",
       "SHOPIFY_ORDER_FULFILLED",
       "SHOPIFY_CART_ABANDONED",
+      "WIDGET_MESSAGE_RECEIVED",
+      "DEAL_STAGE_CHANGED",
     ])
     .optional(),
   triggerConfig: triggerConfigSchema.optional(),

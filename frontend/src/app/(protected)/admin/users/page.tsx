@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Users,
   MessageSquare,
-  Wifi,
-  WifiOff,
-  Minus,
   UserPlus,
   Shield,
   Ban,
@@ -28,55 +25,36 @@ import {
   useDeleteUser,
 } from "@/hooks/use-users";
 import { useAdminSessions } from "@/hooks/use-whatsapp";
+import { useSubscription } from "@/hooks/use-billing";
+import { StartHint } from "@/components/ui/start-hint";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import type { OrgUser } from "@/lib/api/users";
 import { IconButton } from "@/components/ui/icon-button";
+import { PageHeader } from "@/components/layout/page-header";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
+/** "QR_PENDING" → "Qr pending" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
+
 function SessionStatusBadge({ status }: { status?: string }) {
-  if (!status) {
-    return (
-      <Badge variant="default" className="gap-1">
-        <Minus className="h-3 w-3" />
-        No Session
-      </Badge>
-    );
-  }
-  if (status === "CONNECTED") {
-    return (
-      <Badge variant="success" className="gap-1">
-        <Wifi className="h-3 w-3" />
-        Connected
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="warning" className="gap-1">
-      <WifiOff className="h-3 w-3" />
-      {status}
-    </Badge>
-  );
+  if (!status) return <Badge variant="default" dot>No session</Badge>;
+  if (status === "CONNECTED") return <Badge variant="success" dot>Connected</Badge>;
+  return <Badge variant="warning" dot>{sentenceCase(status)}</Badge>;
 }
 
 function UserStatusBadge({ status }: { status: string }) {
-  if (status === "ACTIVE") return <Badge variant="success">Active</Badge>;
-  if (status === "SUSPENDED") return <Badge variant="error">Disabled</Badge>;
-  if (status === "LOCKED") return <Badge variant="warning">Locked</Badge>;
-  return <Badge variant="muted">{status}</Badge>;
+  if (status === "ACTIVE") return <Badge variant="success" dot>Active</Badge>;
+  if (status === "SUSPENDED") return <Badge variant="error" dot>Disabled</Badge>;
+  if (status === "LOCKED") return <Badge variant="warning" dot>Locked</Badge>;
+  return <Badge variant="muted" dot>{sentenceCase(status)}</Badge>;
 }
 
 export default function AdminUsersPage() {
@@ -86,6 +64,9 @@ export default function AdminUsersPage() {
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: sessionsData } = useAdminSessions();
   const { data: invitations } = useInvitations();
+  // Admins only (this page is admin-only); shows the seat limit under the table
+  const { data: billing } = useSubscription({ enabled: currentUser?.role === "ADMIN" });
+  const seats = billing?.usage?.activeUsers;
 
   const createUser = useCreateUser();
   const revokeInvitation = useRevokeInvitation();
@@ -161,37 +142,226 @@ export default function AdminUsersPage() {
     );
   };
 
-  if (usersLoading) {
-    return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <Spinner size="lg" className="text-primary" />
-      </div>
-    );
-  }
+  const columns: DataTableColumn<OrgUser>[] = [
+    {
+      id: "user",
+      header: "User",
+      skeleton: "avatar",
+      cell: (user) => {
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar
+                name={`${user.firstName} ${user.lastName}`}
+                size="sm"
+              />
+              {user.isOnline && (
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface-container-lowest" />
+              )}
+            </div>
+            <div>
+              <p className="text-body-lg font-medium text-on-surface">
+                {user.firstName} {user.lastName}
+                {isSelf && (
+                  <span className="text-caption text-on-surface-variant ml-1.5">
+                    (you)
+                  </span>
+                )}
+              </p>
+              <p className="text-label text-on-surface-variant">
+                {user.email}
+              </p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "role",
+      header: "Role",
+      skeleton: "badge",
+      cell: (user) => {
+        const isSelf = user.id === currentUser?.id;
+        return changingRoleUserId === user.id ? (
+          <div className="flex items-center gap-1.5">
+            <Select
+              value={newRole}
+              onChange={(e) =>
+                setNewRole(e.target.value as Role)
+              }
+              size="sm"
+              className="w-auto"
+            >
+              <option value="EMPLOYEE">Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="ADMIN">Admin</option>
+            </Select>
+            <button
+              onClick={() => handleChangeRole(user.id)}
+              className="text-caption text-primary hover:text-primary/80 font-medium"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setChangingRoleUserId(null)}
+              className="text-caption text-on-surface-variant hover:text-on-surface"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              if (!isSelf) {
+                setChangingRoleUserId(user.id);
+                setNewRole(user.role);
+              }
+            }}
+            disabled={isSelf}
+            className="group flex items-center gap-1.5"
+            title={isSelf ? "Cannot change own role" : "Click to change role"}
+          >
+            <Badge
+              variant={
+                user.role === "ADMIN"
+                  ? "primary"
+                  : user.role === "MANAGER"
+                    ? "info"
+                    : "default"
+              }
+            >
+              {sentenceCase(user.role)}
+            </Badge>
+            {!isSelf && (
+              <Shield className="h-3 w-3 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
+            )}
+          </button>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (user) => <UserStatusBadge status={user.status} />,
+    },
+    {
+      id: "whatsapp",
+      header: "WhatsApp",
+      skeleton: "badge",
+      cell: (user) => {
+        const session = sessionByUser.get(user.id) as
+          | { status: string; phoneNumber: string | null }
+          | undefined;
+        return (
+          <div className="flex items-center gap-2">
+            <SessionStatusBadge status={session?.status} />
+            {session?.phoneNumber && (
+              <span className="text-caption text-on-surface-variant">
+                {session.phoneNumber}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (user) => {
+        const session = sessionByUser.get(user.id) as
+          | { status: string; phoneNumber: string | null }
+          | undefined;
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            {/* View Inbox */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                router.push(`/admin/users/${user.id}/inbox`)
+              }
+              disabled={
+                !session || session.status !== "CONNECTED"
+              }
+              title="View inbox"
+              aria-label="View inbox"
+              className="max-lg:size-10"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </Button>
+
+            {/* Disable / Enable */}
+            {!isSelf && (
+              <>
+                {user.status === "ACTIVE" ? (
+                  <IconButton size="xs"
+                    onClick={() => disableUser.mutate(user.id)}
+                    className="hover:text-warning hover:bg-warning/10 max-lg:size-10"
+                    title="Disable user" aria-label="Disable user">
+                    <Ban className="h-3.5 w-3.5" />
+                  </IconButton>
+                ) : user.status === "SUSPENDED" ? (
+                  <IconButton size="xs"
+                    onClick={() => enableUser.mutate(user.id)}
+                    className="hover:text-success hover:bg-success/10 max-lg:size-10"
+                    title="Enable user" aria-label="Enable user">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  </IconButton>
+                ) : null}
+
+                {/* Delete */}
+                <IconButton size="xs" variant="danger"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
+                      )
+                    ) {
+                      deleteUser.mutate(user.id);
+                    }
+                  }}
+                  className="max-lg:size-10"
+                  title="Delete user" aria-label="Delete user">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </IconButton>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Users</h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage org users, roles, and WhatsApp sessions
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
-          <UserPlus className="h-4 w-4 mr-1.5" />
-          Create User
-        </Button>
-      </div>
+      {/* Phones/tablets: the iOS nav bar carries the title and the + button */}
+      <MobilePageActions
+        primary={{ label: "Create user", onClick: () => setShowCreate(true) }}
+      />
+      <PageHeader
+        className="max-lg:hidden"
+        title="Users"
+        count={users.length}
+        actions={
+          <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Create user
+          </Button>
+        }
+      />
 
       {/* Create user form */}
       {showCreate && (
-        <div className="rounded-xl border border-outline-variant/15 p-5 space-y-4 bg-surface-container/30">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-body-lg font-semibold text-on-surface">
-              Create New User
-            </h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">
+              Create new user
+            </h2>
             <IconButton size="xs"
               onClick={() => { setShowCreate(false); setFormError(""); }} aria-label="Close">
               <X className="h-4 w-4" />
@@ -204,79 +374,83 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                First Name
+              <label htmlFor="new-user-first" className="text-label font-medium text-on-surface-variant">
+                First name
               </label>
               <input
+                id="new-user-first"
                 type="text"
                 placeholder="John"
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Last Name
+              <label htmlFor="new-user-last" className="text-label font-medium text-on-surface-variant">
+                Last name
               </label>
               <input
+                id="new-user-last"
                 type="text"
                 placeholder="Doe"
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
-              Email Address
+            <label htmlFor="new-user-email" className="text-label font-medium text-on-surface-variant">
+              Email address
             </label>
             <input
+              id="new-user-email"
               type="email"
               placeholder="john.doe@company.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-password" className="text-label font-medium text-on-surface-variant">
                 Password
               </label>
               <input
+                id="new-user-password"
                 type="password"
                 placeholder="Min 8 characters"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
+              <label htmlFor="new-user-role" className="text-label font-medium text-on-surface-variant">
                 Role
               </label>
-              <select
+              <Select
+                id="new-user-role"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="EMPLOYEE">Employee</option>
                 <option value="MANAGER">Manager</option>
                 <option value="ADMIN">Admin</option>
-              </select>
+              </Select>
             </div>
           </div>
 
           <div className="flex gap-2 pt-1">
             <Button onClick={handleCreateUser} disabled={createUser.isPending}>
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-              {createUser.isPending ? "Creating..." : "Create User"}
+              {createUser.isPending ? "Creating..." : "Create user"}
             </Button>
             <Button
               variant="secondary"
@@ -290,21 +464,20 @@ export default function AdminUsersPage() {
 
       {/* Pending invitations */}
       {pendingInvites.length > 0 && (
-        <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
-          <div className="px-4 py-2.5 bg-surface-container/40 border-b border-outline-variant/10">
-            <h3 className="text-body font-semibold text-on-surface-variant uppercase tracking-wider">
-              Pending Invitations ({pendingInvites.length})
-            </h3>
+        <div data-tour="admin-invites" className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+          <div className="flex items-baseline gap-2 border-b border-outline-variant px-4 py-2.5">
+            <h2 className="text-body font-semibold text-on-surface">Pending invitations</h2>
+            <span className="text-label tabular-nums text-on-surface-variant">{pendingInvites.length}</span>
           </div>
-          <div className="divide-y divide-outline-variant/10">
+          <div className="divide-y divide-outline-variant/60">
             {pendingInvites.map((inv) => (
               <div
                 key={inv.id}
-                className="flex items-center justify-between px-4 py-2.5"
+                className="flex items-center justify-between px-4 py-2.5 max-lg:gap-3 max-lg:py-3"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-wrap max-lg:gap-x-2 max-lg:gap-y-1">
                   <Mail className="h-4 w-4 text-on-surface-variant/50" />
-                  <span className="text-body text-on-surface">
+                  <span className="text-body text-on-surface max-lg:min-w-0 max-lg:break-all">
                     {inv.email}
                   </span>
                   <Badge
@@ -316,7 +489,7 @@ export default function AdminUsersPage() {
                           : "default"
                     }
                   >
-                    {inv.role}
+                    {sentenceCase(inv.role)}
                   </Badge>
                   <span className="text-caption text-on-surface-variant">
                     Expires{" "}
@@ -325,7 +498,7 @@ export default function AdminUsersPage() {
                 </div>
                 <button
                   onClick={() => revokeInvitation.mutate(inv.id)}
-                  className="text-label text-error hover:text-error/80 transition-colors"
+                  className="rounded text-label text-error outline-none transition-colors hover:text-error/80 focus-visible:ring-2 focus-visible:ring-focus max-lg:min-h-11 max-lg:shrink-0 max-lg:px-1"
                 >
                   Revoke
                 </button>
@@ -336,191 +509,40 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users table */}
-      {users.length === 0 ? (
+      {!usersLoading && users.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No users found"
           description="Invite users to your organization to get started."
-          actionLabel="Invite User"
+          actionLabel="Invite user"
           onAction={() => setShowCreate(true)}
         />
       ) : (
-        <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>WhatsApp</TableHead>
-                <TableHead align="right">Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => {
-                const session = sessionByUser.get(user.id) as
-                  | { status: string; phoneNumber: string | null }
-                  | undefined;
-                const isSelf = user.id === currentUser?.id;
-
-                return (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar
-                            name={`${user.firstName} ${user.lastName}`}
-                            size="sm"
-                          />
-                          {user.isOnline && (
-                            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface-container-lowest" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-body-lg font-medium text-on-surface">
-                            {user.firstName} {user.lastName}
-                            {isSelf && (
-                              <span className="text-caption text-on-surface-variant ml-1.5">
-                                (you)
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-label text-on-surface-variant">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {changingRoleUserId === user.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            value={newRole}
-                            onChange={(e) =>
-                              setNewRole(e.target.value as Role)
-                            }
-                            className="rounded-md border border-outline-variant/20 bg-surface px-2 py-1 text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          >
-                            <option value="EMPLOYEE">Employee</option>
-                            <option value="MANAGER">Manager</option>
-                            <option value="ADMIN">Admin</option>
-                          </select>
-                          <button
-                            onClick={() => handleChangeRole(user.id)}
-                            className="text-caption text-primary hover:text-primary/80 font-medium"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setChangingRoleUserId(null)}
-                            className="text-caption text-on-surface-variant hover:text-on-surface"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (!isSelf) {
-                              setChangingRoleUserId(user.id);
-                              setNewRole(user.role);
-                            }
-                          }}
-                          disabled={isSelf}
-                          className="group flex items-center gap-1.5"
-                          title={isSelf ? "Cannot change own role" : "Click to change role"}
-                        >
-                          <Badge
-                            variant={
-                              user.role === "ADMIN"
-                                ? "primary"
-                                : user.role === "MANAGER"
-                                  ? "info"
-                                  : "default"
-                            }
-                          >
-                            {user.role}
-                          </Badge>
-                          {!isSelf && (
-                            <Shield className="h-3 w-3 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
-                          )}
-                        </button>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <UserStatusBadge status={user.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <SessionStatusBadge status={session?.status} />
-                        {session?.phoneNumber && (
-                          <span className="text-caption text-on-surface-variant">
-                            {session.phoneNumber}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell align="right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* View Inbox */}
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/admin/users/${user.id}/inbox`)
-                          }
-                          disabled={
-                            !session || session.status !== "CONNECTED"
-                          }
-                          title="View Inbox"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                        </Button>
-
-                        {/* Disable / Enable */}
-                        {!isSelf && (
-                          <>
-                            {user.status === "ACTIVE" ? (
-                              <IconButton size="xs"
-                                onClick={() => disableUser.mutate(user.id)}
-                                className="hover:text-warning hover:bg-warning/10"
-                                title="Disable user" aria-label="Disable user">
-                                <Ban className="h-3.5 w-3.5" />
-                              </IconButton>
-                            ) : user.status === "SUSPENDED" ? (
-                              <IconButton size="xs"
-                                onClick={() => enableUser.mutate(user.id)}
-                                className="hover:text-success hover:bg-success/10"
-                                title="Enable user" aria-label="Enable user">
-                                <CheckCircle className="h-3.5 w-3.5" />
-                              </IconButton>
-                            ) : null}
-
-                            {/* Delete */}
-                            <IconButton size="xs" variant="danger"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
-                                  )
-                                ) {
-                                  deleteUser.mutate(user.id);
-                                }
-                              }}
-                             
-                              title="Delete user" aria-label="Delete user">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </IconButton>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+          <DataTable
+            label="Users"
+            columns={columns}
+            rows={users}
+            rowKey={(u) => u.id}
+            rowLabel={(u) => `${u.firstName} ${u.lastName}`}
+            loading={usersLoading}
+            skeletonRows={6}
+          />
         </div>
+      )}
+
+      {/* Seats used up: say why "Create user" can't add more, and where to get more */}
+      {seats && seats.limit > 0 && seats.current >= seats.limit && (
+        <StartHint
+          icon={<Users />}
+          title={`${seats.current} of ${seats.limit} ${seats.limit === 1 ? "seat" : "seats"} used`}
+          description="Your plan is full. Upgrade to add teammates."
+          action={
+            <Button variant="secondary" size="sm" onClick={() => router.push("/settings/billing?tab=plans")}>
+              See plans
+            </Button>
+          }
+        />
       )}
     </div>
   );

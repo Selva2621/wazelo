@@ -13,10 +13,12 @@ import {
   DEFAULT_TAGS,
 } from '@/shared/constants/org-defaults';
 import {
+  BUSINESS_SYSTEM_TEMPLATES,
   SHOPIFY_SYSTEM_TEMPLATES,
   SystemTemplate,
 } from '@/shared/constants/system-templates';
 import { buildFreelancerTemplates } from '@/shared/constants/freelancer-profiles';
+import { FreelancerProfileResolverService } from '../services/freelancer-profile-resolver.service';
 
 /**
  * - signup           — new org: full onboarding including the free trial
@@ -47,6 +49,7 @@ export class OnboardOrgUseCase {
     private readonly onboardingRepository: OrgOnboardingRepository,
     private readonly rbacService: RbacService,
     private readonly orgAiMemory: OrgAiMemoryService,
+    private readonly freelancerProfiles: FreelancerProfileResolverService,
   ) {}
 
   async execute(orgId: string, mode: OnboardingMode): Promise<void> {
@@ -69,7 +72,7 @@ export class OnboardOrgUseCase {
 
     // Trials are only for brand-new signups — never hand one to an existing org
     if (mode === 'signup') {
-      await this.assignTrial(orgId, org.trialUsedAt);
+      await this.assignTrial(orgId, org.trialUsedAt, org.orgType);
     }
 
     await this.rbacService.seedDefaultPermissionsForOrg(orgId);
@@ -92,10 +95,12 @@ export class OnboardOrgUseCase {
     this.logger.log(`Onboarding (${mode}) complete for org ${orgId}`);
   }
 
-  private async assignTrial(orgId: string, trialUsedAt: Date | null): Promise<void> {
+  private async assignTrial(orgId: string, trialUsedAt: Date | null, orgType: OrgType): Promise<void> {
     if (trialUsedAt || (await this.onboardingRepository.hasAnySubscription(orgId))) return;
 
-    const plan = await this.onboardingRepository.findDefaultTrialPlan();
+    // Freelancer or team trial. Most orgs pick their type after signup; that switch
+    // moves the trial over (billing AlignTrialPlanUseCase).
+    const plan = await this.onboardingRepository.findDefaultTrialPlan(orgType);
     if (!plan || plan.trialDays <= 0) {
       this.logger.warn(`No default trial plan configured — org ${orgId} starts without a trial`);
       return;
@@ -115,6 +120,8 @@ export class OnboardOrgUseCase {
         [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
         [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
         [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
+        [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
+        [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
       } as Record<UsageMetricType, number>,
     });
     this.logger.log(`Assigned ${plan.trialDays}-day trial to org ${orgId}`);
@@ -167,7 +174,11 @@ export class OnboardOrgUseCase {
     const templates: SystemTemplate[] = [
       ...SHOPIFY_SYSTEM_TEMPLATES,
       // Worded for their lines of work (services filled in, plus pitch templates per type)
-      ...(orgType === OrgType.FREELANCER ? buildFreelancerTemplates(freelancerTypes, freelancerService) : []),
+      ...(orgType === OrgType.FREELANCER
+        ? await this.freelancerTemplates(freelancerTypes ?? [], freelancerService)
+        : []),
+      // Team / business workspaces: welcome, follow-up, reminders, offers… ready to send
+      ...(orgType === OrgType.TEAM ? BUSINESS_SYSTEM_TEMPLATES : []),
     ];
 
     const existing = await this.onboardingRepository.findTemplateNames(
@@ -178,5 +189,21 @@ export class OnboardOrgUseCase {
     if (missing.length === 0) return;
 
     await this.onboardingRepository.createSystemTemplates(orgId, missing);
+  }
+
+  /**
+   * Types they picked use their hand-written wording (built in, or added by a super
+   * admin). A "Something else" service is matched to a catalog type by keywords;
+   * with no match it gets generic wording with their service filled in. No AI.
+   */
+  private async freelancerTemplates(
+    types: readonly string[],
+    service?: string | null,
+  ): Promise<SystemTemplate[]> {
+    const [profiles, otherProfile] = await Promise.all([
+      this.freelancerProfiles.savedProfiles(types),
+      types.includes('OTHER') && service?.trim() ? this.freelancerProfiles.resolveTyped(service) : null,
+    ]);
+    return buildFreelancerTemplates(types, service, { profiles, otherProfile });
   }
 }

@@ -1,14 +1,20 @@
 "use client";
 
+import { PICKED_FROM_SESSION, stashPickedContacts } from "@/lib/campaigns/picked-contacts";
+import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Users, GitMerge, Upload, Download, LayoutList, Kanban } from "lucide-react";
+import { Plus, GitMerge, Upload, Download, LayoutList, Kanban, FolderOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { useContacts, useImportContacts, useExportContacts } from "@/hooks/use-contacts";
+import { useContacts, useExportContacts, useSavedContactGroups } from "@/hooks/use-contacts";
 import { useContactsStore } from "@/stores/contacts-store";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ContactFilters } from "@/components/contacts/contact-filters";
+import { ContactSourceGroups } from "@/components/contacts/contact-source-groups";
 import { ContactsTable } from "@/components/contacts/contacts-table";
 import { ContactsBulkBar } from "@/components/contacts/contacts-bulk-bar";
 import { ContactKanbanBoard } from "@/components/contacts/contact-kanban-board";
@@ -16,7 +22,9 @@ import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer
 import { CreateContactModal } from "@/components/contacts/create-contact-modal";
 import { MergeContactsModal } from "@/components/contacts/merge-contacts-modal";
 import { ImportContactsModal } from "@/components/contacts/import-contacts-modal";
+import { GroupsPanel } from "@/components/contacts/groups-panel";
 import { LoadError } from "@/components/ui/empty-state";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import type { LeadStatus, ListContactsParams } from "@/lib/types/contacts";
 
 const TAKE = 20;
@@ -33,6 +41,7 @@ const STATUS_TABS: { id: string; label: string }[] = [
 
 export default function ContactsPage() {
   usePageTitle("Contacts");
+  const router = useRouter();
 
   const [showCreate, setShowCreate] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
@@ -48,10 +57,16 @@ export default function ContactsPage() {
     return () => cancelAnimationFrame(frame);
   }, []);
   const [showImport, setShowImport] = useState(false);
+  // Groups panel; opened from the bulk bar it starts with the selection
+  const [groupsPanel, setGroupsPanel] = useState<{ open: boolean; fromSelection: boolean }>({
+    open: false,
+    fromSelection: false,
+  });
   const [statusTab, setStatusTab] = useState("ALL");
   const [view, setView] = useState<"list" | "kanban">("list");
 
   const exportContacts = useExportContacts();
+  const { data: savedGroups } = useSavedContactGroups();
 
   const {
     selectedContactId,
@@ -60,6 +75,7 @@ export default function ContactsPage() {
     filterStatus,
     filterOwnerId,
     filterSource,
+    filterScrapeRunId,
     filterTagIds,
     filterProductIds,
     page,
@@ -81,6 +97,7 @@ export default function ContactsPage() {
       leadStatus: effectiveStatus,
       ownerId: filterOwnerId ?? undefined,
       source: filterSource ?? undefined,
+      scrapeRunId: filterScrapeRunId ?? undefined,
       tagIds: filterTagIds.length > 0 ? filterTagIds : undefined,
       productIds: filterProductIds.length > 0 ? filterProductIds : undefined,
       sortBy: "createdAt",
@@ -92,6 +109,7 @@ export default function ContactsPage() {
       effectiveStatus,
       filterOwnerId,
       filterSource,
+      filterScrapeRunId,
       filterTagIds,
       filterProductIds,
     ],
@@ -108,6 +126,8 @@ export default function ContactsPage() {
   });
   const selectedIds = selection.key === paramsKey ? selection.ids : EMPTY_SELECTION;
   const setSelectedIds = (ids: Set<string>) => setSelection({ key: paramsKey, ids });
+  // The board has no selection
+  const panelSelection = useMemo(() => (view === "list" ? [...selectedIds] : []), [view, selectedIds]);
 
   // Add counts to status tabs
   const tabsWithCounts = STATUS_TABS.map((tab) => ({
@@ -121,101 +141,130 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100dvh-var(--header-height))]">
+    // Phones, list view: the page itself scrolls (no inner scroll box); the board keeps its bounded height
+    <div
+      className={cn(
+        "relative flex flex-col h-[calc(100dvh-var(--header-height))]",
+        view === "list" && "max-lg:h-auto",
+      )}
+    >
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">
-              Contacts
-            </h1>
-            {data && (
-              <span className="text-body text-on-surface-variant/60">
-                {data.total} total
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchInput
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search contacts..."
-              className="w-64"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => exportContacts.mutate()}
-              loading={exportContacts.isPending}
-              title="Export CSV"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowImport(true)}
-              title="Import CSV"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowMerge(true)}
-              title="Merge contacts"
-            >
-              <GitMerge className="h-4 w-4" />
-            </Button>
-            {/* View toggle */}
-            <div className="flex items-center rounded-lg border border-outline-variant/20 p-0.5 gap-0.5">
-              <button
-                onClick={() => setView("list")}
-                title="List view"
-                className={`p-1.5 rounded-md transition-colors ${
-                  view === "list"
-                    ? "bg-primary/15 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                }`}
+      <div className="shrink-0 px-6 pt-5 pb-0 space-y-4 max-lg:pt-1 max-lg:space-y-3">
+        {/* Phones/tablets: title is in the nav bar, buttons in its + and … menus */}
+        <MobilePageActions
+          primary={{ label: "New contact", onClick: () => setShowCreate(true) }}
+          more={[
+            {
+              label: view === "list" ? "Show as board" : "Show as list",
+              onSelect: () => setView(view === "list" ? "kanban" : "list"),
+            },
+            { label: "Import CSV", onSelect: () => setShowImport(true) },
+            { label: "Export CSV", onSelect: () => exportContacts.mutate() },
+            { label: "Merge contacts", onSelect: () => setShowMerge(true) },
+            { label: "Groups", onSelect: () => setGroupsPanel({ open: true, fromSelection: false }) },
+          ]}
+        />
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={data ? `Search ${data.total} contacts` : "Search contacts"}
+          className="w-full lg:hidden"
+        />
+        <PageHeader
+          className="max-lg:hidden"
+          title="Contacts"
+          count={data?.total}
+          actions={
+            <>
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search contacts"
+                className="w-64"
+              />
+              <div data-tour="contacts-tools" className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => exportContacts.mutate()}
+                  loading={exportContacts.isPending}
+                  title="Export CSV"
+                  aria-label="Export CSV"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowImport(true)} title="Import CSV" aria-label="Import CSV">
+                  <Upload className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowMerge(true)} title="Merge contacts" aria-label="Merge contacts">
+                  <GitMerge className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Saved groups: one campaign batch each */}
+              <Button
+                data-tour="contacts-groups"
+                variant="ghost"
+                size="sm"
+                onClick={() => setGroupsPanel({ open: true, fromSelection: false })}
+                aria-haspopup="dialog"
+                aria-label={`Groups${savedGroups?.length ? `, ${savedGroups.length}` : ""}`}
               >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setView("kanban")}
-                title="Kanban view"
-                className={`p-1.5 rounded-md transition-colors ${
-                  view === "kanban"
-                    ? "bg-primary/15 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                }`}
-              >
-                <Kanban className="h-4 w-4" />
-              </button>
-            </div>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              New Contact
-            </Button>
-          </div>
-        </div>
-
-        {/* Status tabs */}
-        <Tabs
-          tabs={tabsWithCounts}
-          activeTab={statusTab}
-          onTabChange={handleStatusTabChange}
+                <FolderOpen className="h-4 w-4" aria-hidden />
+                Groups
+                {!!savedGroups?.length && (
+                  <span className="tabular-nums text-on-surface-variant">{savedGroups.length}</span>
+                )}
+              </Button>
+              {/* View toggle */}
+              <div role="group" aria-label="View" data-tour="contacts-view-toggle" className="flex items-center gap-0.5 rounded-lg border border-outline-variant p-0.5">
+                {(
+                  [
+                    { id: "list", label: "List view", Icon: LayoutList },
+                    { id: "kanban", label: "Board view", Icon: Kanban },
+                  ] as const
+                ).map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setView(id)}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={view === id}
+                    className={cn(
+                      "rounded-md p-1.5 outline-none transition-colors duration-120 ease-standard focus-visible:ring-2 focus-visible:ring-focus",
+                      view === id
+                        ? "bg-primary/12 text-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
+              <Button data-tour="contacts-new" onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                New contact
+              </Button>
+            </>
+          }
         />
 
-        {/* Filters */}
-        <ContactFilters />
+        {/* Every filter on one row: status, source, then owner / tag / product */}
+        <FilterBar className="mobile-scroll-x">
+          <Tabs tabs={tabsWithCounts} activeTab={statusTab} onTabChange={handleStatusTabChange} />
+          <FilterBarDivider />
+          <ContactSourceGroups />
+          <FilterBarDivider />
+          <ContactFilters showStatus={false} />
+        </FilterBar>
       </div>
 
       {/* Content */}
       {view === "kanban" ? (
         <ContactKanbanBoard />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        // Desktop: room around the table card
+        <div className="flex-1 min-h-0 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4 max-lg:flex-none max-lg:overflow-visible">
           {isError ? (
             <LoadError what="contacts" onRetry={() => refetch()} className="m-6" />
           ) : (
@@ -239,6 +288,11 @@ export default function ContactsPage() {
         <ContactsBulkBar
           selectedIds={selectedIds}
           onClear={() => setSelectedIds(new Set())}
+          onCreateCampaign={() => {
+            stashPickedContacts([...selectedIds]);
+            router.push(`/campaigns?action=new&contactIds=${PICKED_FROM_SESSION}`);
+          }}
+          onGroup={() => setGroupsPanel({ open: true, fromSelection: true })}
         />
       )}
 
@@ -261,6 +315,13 @@ export default function ContactsPage() {
       <ImportContactsModal
         open={showImport}
         onClose={() => setShowImport(false)}
+      />
+      <GroupsPanel
+        open={groupsPanel.open}
+        onClose={() => setGroupsPanel((p) => ({ ...p, open: false }))}
+        selectedIds={panelSelection}
+        startWithSelection={groupsPanel.fromSelection}
+        onSelectionUsed={() => setSelectedIds(new Set())}
       />
     </div>
   );

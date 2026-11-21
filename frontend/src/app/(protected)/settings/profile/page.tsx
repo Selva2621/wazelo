@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, Lock, Save, CheckCircle2 } from "lucide-react";
+import { Lock, Save, CheckCircle2 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUpdateProfile, useChangePassword } from "@/hooks/use-users";
@@ -10,6 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
+import { FormWithRail, RailCard, RailRow } from "@/components/layout/form-with-rail";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useSubscription } from "@/hooks/use-billing";
+
+const PASSWORD_RULES = [
+  "At least 8 characters",
+  "An uppercase and a lowercase letter",
+  "A number",
+  "A symbol",
+];
 
 export default function ProfilePage() {
   usePageTitle("Profile");
@@ -29,6 +40,9 @@ export default function ProfilePage() {
 
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
+  const { data: org } = useOrgSettings();
+  const { data: billing } = useSubscription();
+  const planName = billing?.subscription?.plan?.name;
 
   const handleProfileSave = () => {
     setProfileSuccess(false);
@@ -85,22 +99,40 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
+  const roleLabel = user.role.charAt(0) + user.role.slice(1).toLowerCase();
+
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+    <div className="flex flex-col h-[calc(100vh-var(--header-height))] max-lg:h-auto">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4">
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">
-            My Profile
-          </h1>
-        </div>
-      </div>
+      <PageHeader title="My profile" className="shrink-0 px-6 pt-5 pb-4 max-lg:hidden" />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6 max-w-2xl">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 max-lg:overflow-visible max-lg:px-4 max-lg:pt-2">
+        <FormWithRail
+          // This page scrolls inside its own box below the header, so the panel sticks to that box's top
+          className="max-w-2xl xl:max-w-6xl xl:[&>aside]:top-0 max-lg:[&>aside]:hidden"
+          rail={
+            <>
+              <RailCard title="Account">
+                <RailRow label="Role">{roleLabel}</RailRow>
+                {org?.name && <RailRow label="Workspace">{org.name}</RailRow>}
+                {planName && <RailRow label="Plan">{planName}</RailRow>}
+              </RailCard>
+              <RailCard title="Password rules">
+                <ul className="space-y-1.5 text-label text-on-surface-variant">
+                  {PASSWORD_RULES.map((rule) => (
+                    <li key={rule} className="flex items-center gap-2">
+                      <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-on-surface-variant" />
+                      {rule}
+                    </li>
+                  ))}
+                </ul>
+              </RailCard>
+            </>
+          }
+        >
         {/* Profile Info */}
-        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
+        <div data-tour="profile-details" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-4 mb-2">
             <Avatar
               name={`${user.firstName} ${user.lastName}`}
@@ -121,7 +153,7 @@ export default function ProfilePage() {
                 }
                 className="mt-1"
               >
-                {user.role}
+                {roleLabel}
               </Badge>
             </div>
           </div>
@@ -134,22 +166,24 @@ export default function ProfilePage() {
             <Alert variant="error">{profileError || "Failed to update profile"}</Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                First Name
+              <label htmlFor="profile-first-name" className="text-label font-medium text-on-surface-variant">
+                First name
               </label>
               <Input
+                id="profile-first-name"
                 value={firstName}
                 onChange={(e) => { setFirstName(e.target.value); setProfileSuccess(false); }}
                 placeholder="First name"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Last Name
+              <label htmlFor="profile-last-name" className="text-label font-medium text-on-surface-variant">
+                Last name
               </label>
               <Input
+                id="profile-last-name"
                 value={lastName}
                 onChange={(e) => { setLastName(e.target.value); setProfileSuccess(false); }}
                 placeholder="Last name"
@@ -158,10 +192,11 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
-              Email Address
+            <label htmlFor="profile-email" className="text-label font-medium text-on-surface-variant">
+              Email address
             </label>
             <Input
+              id="profile-email"
               type="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setProfileSuccess(false); }}
@@ -176,17 +211,16 @@ export default function ProfilePage() {
             size="sm"
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            Save Changes
+            Save changes
           </Button>
         </div>
 
         {/* Change Password */}
-        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/10 p-5 space-y-4">
+        <div data-tour="profile-password" className="rounded-2xl bg-surface-container-lowest border border-outline-variant p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Lock className="h-4 w-4 text-on-surface-variant" />
-            <h3 className="text-body-lg font-semibold text-on-surface">
-              Change Password
-            </h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">
+              Change password
+            </h2>
           </div>
 
           {passwordSuccess && (
@@ -203,10 +237,11 @@ export default function ProfilePage() {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant">
-              Current Password
+            <label htmlFor="profile-current-password" className="text-label font-medium text-on-surface-variant">
+              Current password
             </label>
             <Input
+              id="profile-current-password"
               type="password"
               value={oldPassword}
               onChange={(e) => { setOldPassword(e.target.value); setPasswordError(""); setPasswordSuccess(false); }}
@@ -214,12 +249,13 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                New Password
+              <label htmlFor="profile-new-password" className="text-label font-medium text-on-surface-variant">
+                New password
               </label>
               <Input
+                id="profile-new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
@@ -227,10 +263,11 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Confirm New Password
+              <label htmlFor="profile-confirm-password" className="text-label font-medium text-on-surface-variant">
+                Confirm new password
               </label>
               <Input
+                id="profile-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
@@ -251,9 +288,10 @@ export default function ProfilePage() {
             size="sm"
           >
             <Lock className="h-3.5 w-3.5 mr-1.5" />
-            Change Password
+            Change password
           </Button>
         </div>
+        </FormWithRail>
       </div>
     </div>
   );

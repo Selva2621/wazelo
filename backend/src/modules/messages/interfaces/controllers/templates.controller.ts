@@ -20,11 +20,13 @@ import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decora
 import { PERMISSIONS } from '@/modules/rbac/domain/permissions.constants';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
 import { UsageMetricType } from '@prisma/client';
 import { TemplateRepository } from '../../infrastructure/repositories/template.repository';
 import { SyncTemplatesUseCase } from '../../application/use-cases/sync-templates.use-case';
 import { SendTemplateMessageUseCase } from '../../application/use-cases/send-template-message.use-case';
 import { GenerateTemplateUseCase } from '../../application/use-cases/generate-template.use-case';
+import { RewriteTemplateUseCase } from '../../application/use-cases/rewrite-template.use-case';
 import {
   IsNotEmpty,
   IsOptional,
@@ -32,6 +34,7 @@ import {
   IsUUID,
   IsObject,
   MaxLength,
+  IsUrl,
   IsEnum,
   Matches,
 } from 'class-validator';
@@ -48,6 +51,8 @@ class CreateTemplateDto {
   @IsOptional() @IsString() @MaxLength(50) category?: string;
   @IsOptional() @IsString() @MaxLength(10) language?: string;
   @IsOptional() @IsUUID() productId?: string;
+  /** Image sent above the message (uploaded or pasted link) */
+  @IsOptional() @IsUrl({ require_tld: false, protocols: ['http', 'https'] }) @MaxLength(2048) imageUrl?: string;
 }
 
 class UpdateTemplateDto {
@@ -56,12 +61,19 @@ class UpdateTemplateDto {
   @IsOptional() @IsString() @MaxLength(50) category?: string;
   @IsOptional() @IsString() @MaxLength(10) language?: string;
   @IsOptional() @IsUUID() productId?: string;
+  /** null removes the image; leave out to keep it */
+  @IsOptional() @IsUrl({ require_tld: false, protocols: ['http', 'https'] }) @MaxLength(2048) imageUrl?: string | null;
 }
 
 class GenerateTemplateDto {
   @IsString() @IsNotEmpty() @MaxLength(500) prompt: string;
   @IsOptional() @IsString() @MaxLength(50) category?: string;
   @IsOptional() @IsString() @MaxLength(10) language?: string;
+}
+
+class RewriteTemplateDto {
+  @IsString() @IsNotEmpty() @MaxLength(1024) body: string;
+  @IsString() @IsNotEmpty() @MaxLength(120) service: string;
 }
 
 class SendTemplateDto {
@@ -80,6 +92,7 @@ export class TemplatesController {
     private readonly syncTemplates: SyncTemplatesUseCase,
     private readonly sendTemplate: SendTemplateMessageUseCase,
     private readonly generateTemplate: GenerateTemplateUseCase,
+    private readonly rewriteTemplate: RewriteTemplateUseCase,
   ) {}
 
   @Get()
@@ -118,6 +131,7 @@ export class TemplatesController {
       language: dto.language,
       category: dto.category,
       productId: dto.productId,
+      imageUrl: dto.imageUrl,
     });
   }
 
@@ -136,6 +150,8 @@ export class TemplatesController {
       category: dto.category,
       language: dto.language,
       productId: dto.productId,
+      imageUrl: dto.imageUrl,
+      current: template.components,
     });
     return this.templateRepo.findById(id, user.orgId);
   }
@@ -155,15 +171,27 @@ export class TemplatesController {
   @Post('generate')
   @Permissions(PERMISSIONS.MESSAGES_SEND)
   @PlatformFeature('ai')
+  @AiCredits('template_generate')
   async generate(
     @CurrentUser() user: JwtPayload,
     @Body() dto: GenerateTemplateDto,
   ) {
     return this.generateTemplate.execute({
+      orgId: user.orgId,
       prompt: dto.prompt,
       category: dto.category,
       language: dto.language,
     });
+  }
+
+  /** "Rewrite for my service": AI suggestion only; the user reviews and saves it */
+  @Post('rewrite')
+  @Permissions(PERMISSIONS.MESSAGES_SEND)
+  @PlatformFeature('ai')
+  @AiCredits('template_generate')
+  @HttpCode(HttpStatus.OK)
+  async rewrite(@CurrentUser() user: JwtPayload, @Body() dto: RewriteTemplateDto) {
+    return this.rewriteTemplate.execute({ orgId: user.orgId, body: dto.body, service: dto.service });
   }
 
   @Post('sync')

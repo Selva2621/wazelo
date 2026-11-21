@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EVENT_NAMES } from '@/common/constants';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
 import { DealRepository } from '@/modules/deals/infrastructure/repositories/deal.repository';
+import { DealLifecycleUseCase } from '@/modules/deals/application/use-cases/deal-lifecycle.use-case';
 import { PipelineRepository } from '@/modules/deals/infrastructure/repositories/pipeline.repository';
 import { ConfigResolutionService } from '@/modules/settings/domain/services/config-resolution.service';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
@@ -19,6 +21,8 @@ export class PurchaseIntentHandler {
     private readonly configService: ConfigResolutionService,
     private readonly wsGateway: AppWebSocketGateway,
     private readonly prisma: PrismaService,
+    private readonly dealLifecycle: DealLifecycleUseCase,
+    private readonly aiCredits: AiCreditsService,
   ) {}
 
   @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_RECEIVED, { async: true })
@@ -43,7 +47,8 @@ export class PurchaseIntentHandler {
         'ai',
         'auto_detect_purchase_intent',
       );
-      if (!setting || setting.value !== 'true') return;
+      // Stored as a boolean by the settings page (older rows hold the string "true")
+      if (!setting || (setting.value !== true && setting.value !== 'true')) return;
 
       // Check if contact already has an open deal
       const existingDeal = await this.dealRepo.findOpenByContact(payload.orgId, payload.contactId);
@@ -52,6 +57,9 @@ export class PurchaseIntentHandler {
       // Get default pipeline
       const pipeline = await this.pipelineRepo.findDefaultOrFirst(payload.orgId);
       if (!pipeline || !pipeline.stages.length) return;
+
+      // Out of AI credits: skip detection silently, the message itself is unaffected
+      if (!(await this.aiCredits.canAfford(payload.orgId, 'purchase_intent'))) return;
 
       // Ask AI to detect purchase intent
       const result = await this.aiProvider.complete({
@@ -63,6 +71,8 @@ Message: "${payload.body}"
 Respond with JSON: {"intent": true/false, "confidence": 0.0-1.0, "keywords": ["matched keywords"]}`,
         maxTokens: 100,
       });
+      if (!result.text) return;
+      await this.aiCredits.charge(payload.orgId, 'purchase_intent');
 
       // Parse AI response
       let parsed: { intent: boolean; confidence: number; keywords: string[] };
@@ -85,8 +95,8 @@ Respond with JSON: {"intent": true/false, "confidence": 0.0-1.0, "keywords": ["m
       const contactName = contact?.name || contact?.phoneNumber || payload.contactPhone;
       const firstStage = pipeline.stages[0];
 
-      // Create deal
-      const deal = await this.dealRepo.create({
+      // Create deal — like one made by hand, so first-stage sequences/automations fire
+      const deal = await this.dealLifecycle.create({
         orgId: payload.orgId,
         pipelineId: pipeline.id,
         stageId: firstStage.id,

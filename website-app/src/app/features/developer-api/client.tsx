@@ -5,28 +5,75 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 const endpoints = [
   {
     method: "POST",
-    path: "/messages/send",
-    request: "{\n  \"to\": \"+919876543210\",\n  \"type\": \"text\",\n  \"body\": \"Hi Ananya, your order is confirmed!\"\n}",
-    response: "{\n  \"success\": true,\n  \"data\": {\n    \"message\": {\n      \"id\": \"8f2c41d7-...\",\n      \"to\": \"+919876543210\",\n      \"type\": \"text\",\n      \"status\": \"QUEUED\",\n      \"createdAt\": \"2026-10-09T10:23:41Z\"\n    },\n    \"deduplicated\": false\n  },\n  \"timestamp\": \"2026-10-09T10:23:41Z\"\n}"
+    path: "/api/v1/developer/messages/send",
+    request: `{
+  "to": "+919876543210",
+  "type": "text",
+  "body": "Hi Priya, thanks for your enquiry."
+}`,
+    response: `{
+  "success": true,
+  "data": {
+    "message": {
+      "id": "3f9c…",
+      "to": "+919876543210",
+      "type": "text",
+      "status": "QUEUED"
+    }
+  }
+}`,
+  },
+  {
+    method: "GET",
+    path: "/api/v1/developer/contacts?search=priya",
+    request: `// Matches name, phone or email
+// Filter by leadStatus, page with cursor`,
+    response: `{
+  "success": true,
+  "data": {
+    "data": [
+      {
+        "id": "7a1e…",
+        "name": "Priya",
+        "phoneNumber": "+919876543210",
+        "leadStatus": "INTERESTED"
+      }
+    ],
+    "nextCursor": null,
+    "hasMore": false
+  }
+}`,
   },
   {
     method: "POST",
-    path: "/messages/send-bulk",
-    request: "{\n  \"to\": [\n    \"+919876543210\",\n    \"+919812345678\"\n  ],\n  \"type\": \"image\",\n  \"mediaUrl\": \"https://example.com/diwali-offer.jpg\",\n  \"caption\": \"Our Diwali offer is live\"\n}",
-    response: "{\n  \"success\": true,\n  \"data\": {\n    \"queued\": 2\n  },\n  \"timestamp\": \"2026-10-09T10:24:02Z\"\n}"
-  },
-  {
-    method: "GET",
-    path: "/contacts",
-    request: "\"limit\": 20\n\"X-API-Key\": \"your-api-key\"",
-    response: "{\n  \"success\": true,\n  \"data\": {\n    \"data\": [\n      {\n        \"id\": \"c1a9...\",\n        \"name\": \"Ananya Sharma\",\n        \"phoneNumber\": \"+919876543210\",\n        \"leadStatus\": \"INTERESTED\",\n        \"source\": \"WHATSAPP\"\n      }\n    ],\n    \"nextCursor\": \"c1a9...\",\n    \"hasMore\": true\n  }\n}"
-  },
-  {
-    method: "GET",
-    path: "/session/status",
-    request: "\"X-API-Key\": \"your-api-key\"",
-    response: "{\n  \"success\": true,\n  \"data\": {\n    \"connected\": true,\n    \"sessions\": [\n      {\n        \"phoneNumber\": \"+919876543210\",\n        \"status\": \"CONNECTED\"\n      }\n    ]\n  }\n}"
+    path: "/api/v1/developer/contacts/:id/notes",
+    request: `{
+  "content": "Asked for a quote. Call back Monday."
+}`,
+    response: `{
+  "success": true,
+  "data": {
+    "id": "c4d2…",
+    "content": "Asked for a quote. Call back Monday.",
+    "createdAt": "…"
   }
+}`,
+  },
+  {
+    method: "PUT",
+    path: "/api/v1/developer/deals/:id/stage",
+    request: `{
+  "stageId": "b81f…"
+}`,
+    response: `{
+  "success": true,
+  "data": {
+    "id": "9e07…",
+    "title": "Website redesign",
+    "stage": { "name": "Proposal sent" }
+  }
+}`,
+  },
 ];
 
 function ApiMockup() {
@@ -63,12 +110,12 @@ function ApiMockup() {
 
   const methodStyle = (method: string): React.CSSProperties =>
     method === "POST"
-      ? { background: "#22c55e1a", color: "var(--c-success)", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }
+      ? { background: "#22c55e1a", color: "#22c55e", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }
       : { background: "#3b82f61a", color: "#3b82f6", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 };
 
   const methodStyleLarge = (method: string): React.CSSProperties =>
     method === "POST"
-      ? { background: "#22c55e1a", color: "var(--c-success)", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }
+      ? { background: "#22c55e1a", color: "#22c55e", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }
       : { background: "#3b82f61a", color: "#3b82f6", padding: "3px 8px", borderRadius: 4, fontSize: 12, fontWeight: 700, fontFamily: "monospace" };
 
   const fullResponse = endpoints[activeTab].response;
@@ -77,24 +124,24 @@ function ApiMockup() {
   return (
     <div>
       <div style={{ textAlign: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--c-primary-container)" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#ffb77d" }}>
           See it in action
         </span>
       </div>
-      <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "var(--c-on-surface)", marginBottom: 0 }}>
-        Real requests, real responses.
+      <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "#e5e2e1", marginBottom: 0 }}>
+        A REST API for your leads.
       </h2>
 
-      <div style={{ background: "var(--c-surface)", borderRadius: 16, boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)", overflow: "hidden", marginTop: 32 }}>
+      <div style={{ background: "#0e0e0e", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", overflow: "hidden", marginTop: 32 }}>
         {/* Chrome bar */}
-        <div style={{ background: "var(--c-surface)", height: 36, display: "flex", alignItems: "center", paddingLeft: 14, gap: 6 }}>
+        <div style={{ background: "#0e0e0e", height: 36, display: "flex", alignItems: "center", paddingLeft: 14, gap: 6 }}>
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", background: "var(--c-surface)", borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)", overflowX: "auto" }}>
+        <div style={{ display: "flex", background: "#131313", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
           {endpoints.map((ep, i) => {
             const isActive = activeTab === i;
             return (
@@ -109,14 +156,14 @@ function ApiMockup() {
                   alignItems: "center",
                   gap: 8,
                   whiteSpace: "nowrap",
-                  background: isActive ? "var(--c-surface-container-lowest)" : "transparent",
-                  borderBottom: isActive ? "2px solid var(--c-primary-container)" : "2px solid transparent",
-                  color: isActive ? "var(--c-on-surface)" : "var(--c-placeholder)",
+                  background: isActive ? "#1c1b1b" : "transparent",
+                  borderBottom: isActive ? "2px solid #ffb77d" : "2px solid transparent",
+                  color: isActive ? "#fff" : "rgba(219,194,176,0.4)",
                   transition: "background 0.15s, color 0.15s",
                 }}
               >
                 <span style={methodStyle(ep.method)}>{ep.method}</span>
-                <span style={{ fontSize: 12, fontFamily: "monospace" }}>{ep.path}</span>
+                <span style={{ fontSize: 12, fontFamily: "monospace" }}>{ep.path.replace("/api/v1/developer", "")}</span>
               </div>
             );
           })}
@@ -125,20 +172,20 @@ function ApiMockup() {
         {/* Code area */}
         <div style={{ display: "flex", minHeight: 320 }}>
           {/* Left: Request */}
-          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgb(var(--fx-ink) / 0.06)" }}>
+          <div style={{ flex: 1, padding: "20px 20px", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--c-placeholder)" }}>
+              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(219,194,176,0.4)" }}>
                 Request
               </span>
               <button
                 onClick={handleCopy}
                 style={{
-                  background: "var(--c-surface-container-high)",
-                  border: "1px solid rgb(var(--fx-ink) / 0.1)",
+                  background: "#2a2a2a",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 6,
                   padding: "4px 10px",
                   fontSize: 11,
-                  color: copied ? "var(--c-success)" : "var(--c-on-surface-variant)",
+                  color: copied ? "#22c55e" : "rgba(219,194,176,0.6)",
                   cursor: "pointer",
                   transition: "color 0.2s",
                 }}
@@ -149,11 +196,11 @@ function ApiMockup() {
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontFamily: "monospace" }}>
               <span style={methodStyleLarge(endpoints[activeTab].method)}>{endpoints[activeTab].method}</span>
-              <span style={{ fontSize: 14, color: "var(--c-on-surface)" }}>/api/v1/developer{endpoints[activeTab].path}</span>
+              <span style={{ fontSize: 14, color: "#e5e2e1" }}>{endpoints[activeTab].path}</span>
             </div>
 
-            <div style={{ background: "var(--c-surface)", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
-              <pre style={{ margin: 0, color: "var(--c-code-green)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            <div style={{ background: "#0e0e0e", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
+              <pre style={{ margin: 0, color: "#86efac", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                 {endpoints[activeTab].request.split("\n").map((line, li) => {
                   const keyMatch = line.match(/^(\s*)("[\w_]+")(\s*:\s*)(.*)$/);
                   if (keyMatch) {
@@ -162,15 +209,15 @@ function ApiMockup() {
                     return (
                       <span key={li}>
                         {indent}
-                        <span style={{ color: "var(--c-code-cyan)" }}>{key}</span>
-                        <span style={{ color: "var(--c-placeholder)" }}>{colon}</span>
-                        <span style={{ color: isNumOrBool ? "var(--c-code-pink)" : "var(--c-code-green)" }}>{rest}</span>
+                        <span style={{ color: "#7dd3fc" }}>{key}</span>
+                        <span style={{ color: "#94a3b8" }}>{colon}</span>
+                        <span style={{ color: isNumOrBool ? "#f9a8d4" : "#86efac" }}>{rest}</span>
                         {"\n"}
                       </span>
                     );
                   }
                   return (
-                    <span key={li} style={{ color: "var(--c-placeholder)" }}>
+                    <span key={li} style={{ color: "#94a3b8" }}>
                       {line}
                       {"\n"}
                     </span>
@@ -183,13 +230,13 @@ function ApiMockup() {
           {/* Right: Response */}
           <div style={{ flex: 1, padding: "20px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--c-placeholder)" }}>
+              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(219,194,176,0.4)" }}>
                 Response
               </span>
               <span style={{
-                background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
-                color: "var(--c-success)",
-                border: "1px solid color-mix(in srgb, var(--c-success) 20%, transparent)",
+                background: "rgba(34,197,94,0.1)",
+                color: "#22c55e",
+                border: "1px solid rgba(34,197,94,0.2)",
                 borderRadius: 6,
                 padding: "3px 8px",
                 fontSize: 11,
@@ -199,15 +246,15 @@ function ApiMockup() {
               </span>
             </div>
 
-            <div style={{ background: "var(--c-surface)", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
-              <pre style={{ margin: 0, color: "var(--c-code-green)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            <div style={{ background: "#0e0e0e", borderRadius: 8, padding: "14px 16px", overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
+              <pre style={{ margin: 0, color: "#86efac", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                 {displayedResponse}
                 {isTyping && (
                   <span style={{
                     display: "inline-block",
                     width: 7,
                     height: 14,
-                    background: "var(--c-primary-container)",
+                    background: "#ffb77d",
                     marginLeft: 2,
                     verticalAlign: "middle",
                     animation: "cursorBlink 1s ease-in-out infinite",
@@ -225,41 +272,34 @@ function ApiMockup() {
 const data: FeatureDetailData = {
   slug: "developer-api",
   tag: "Developer API",
-  heroTitle: "Build anything<br /><span style=\"color:var(--c-primary-container)\">on top of Wazelo.</span>",
-  heroSubtitle: "Send WhatsApp messages and manage contacts from your own code, and get a webhook when something happens.",
-  overviewTitle: "Connect Wazelo to your systems.",
-  overviewDesc: "Create an API key in Settings, send it in the X-API-Key header, and call the REST API to send messages, message up to 100 numbers at once, use templates, manage contacts and check your WhatsApp connection. Webhooks push events like a received message or a finished campaign to your URL, signed so you can verify them and retried if your server is down.",
+  heroTitle: "Build on<br /><span style=\"color:#ffb77d\">your Wazelo data.</span>",
+  heroSubtitle: "A REST API, webhooks and an MCP server. Connect Wazelo to your own tools or to an AI agent.",
+  heroScreen: "",
+  overviewTitle: "Your leads, in your tools.",
+  overviewDesc: "Search contacts, add notes and tags, read conversations and move deals from your own code. Webhooks tell your systems the moment something changes.",
   capabilities: [
-    { icon: "send", title: "Send messages", desc: "Send text, media or a template, or the same message to up to 100 numbers in one request." },
-    { icon: "contacts", title: "Contacts API", desc: "List, create, read and update contacts, up to 100 per page." },
-    { icon: "key", title: "API keys", desc: "Create keys with an expiry date, rotate them and revoke them from Settings." },
-    { icon: "webhook", title: "Webhooks", desc: "Subscribe to 11 events and receive a signed POST at your URL when they happen." },
-    { icon: "verified_user", title: "Signed and retried", desc: "HMAC-SHA256 signatures, retries with backoff, a delivery log and a Send test button." },
-    { icon: "terminal", title: "Quick Start", desc: "Copy-ready examples in cURL, Node and Python, plus API Logs of your recent calls." },
-  ],
-  details: [
-    { title: "Endpoints", items: ["POST /messages/send", "POST /messages/send-bulk", "POST /messages/send-template", "GET /messages", "GET /messages/:id", "GET, POST /contacts", "GET, PUT /contacts/:id", "GET, POST /templates", "GET /session/status"] },
-    { title: "Webhook events", items: ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED", "CONTACT_CREATED", "CONTACT_UPDATED", "CAMPAIGN_COMPLETED", "CAMPAIGN_FAILED", "PAYMENT_SUCCEEDED", "PAYMENT_FAILED", "SUBSCRIPTION_CHANGED"] },
-    { title: "Security and delivery", items: ["X-API-Key header", "Key expiry and rotation", "X-Webhook-Signature", "X-Webhook-Timestamp", "Custom headers", "Up to 10 retries", "Paused after 10 failures", "Up to 25 webhooks"] },
+    { icon: "search", title: "Contacts and search", desc: "Find contacts by name, phone or email, and create or update them." },
+    { icon: "sticky_note_2", title: "Notes and tags", desc: "Read and add notes, and tag or untag contacts." },
+    { icon: "forum", title: "Conversations", desc: "List conversations and read their messages." },
+    { icon: "view_kanban", title: "Deals", desc: "List pipelines and deals, and move a deal to another stage." },
+    { icon: "send", title: "Send messages", desc: "Send WhatsApp text and approved templates from your code." },
+    { icon: "webhook", title: "Webhooks", desc: "Get events for messages, contacts, lead status, tags, notes, assignments, conversations and deals." },
+    { icon: "smart_toy", title: "MCP server", desc: "Let Claude and other AI agents search, update and message your contacts." },
+    { icon: "key", title: "Scoped API keys", desc: "Each key gets only the scopes you choose, and you can revoke it any time." },
   ],
   howItWorks: [
-    { step: "01", title: "Create a key", desc: "Open Settings, Developer API, API Keys and click New API Key. Copy it now, it's shown only once." },
-    { step: "02", title: "Connect WhatsApp", desc: "API messages go out from your connected number, so link it by QR first." },
-    { step: "03", title: "Call the API", desc: "Send requests to /api/v1/developer with your key in the X-API-Key header." },
-    { step: "04", title: "Add a webhook", desc: "In Settings, Webhooks, add your URL, pick events and send a test." },
+    { step: "01", title: "Create an API key", desc: "Open Settings → API keys, pick its scopes and copy the key." },
+    { step: "02", title: "Call the API", desc: "Send the key as a Bearer token. The full reference is at /api-reference." },
+    { step: "03", title: "Add a webhook", desc: "Choose the events you want and we post them to your URL." },
+    { step: "04", title: "Or connect an AI agent", desc: "Add the Wazelo MCP server to Claude, Cursor or any MCP client with the same key." },
   ],
-  faqs: [
-    { q: "Which plans include the API?", a: "Starter, Growth, Pro and Enterprise. The Solo plan doesn't include API access." },
-    { q: "How many numbers can a bulk send reach?", a: "Up to 100 recipients per request." },
-    { q: "How do I verify a webhook?", a: "Each delivery has an X-Webhook-Signature header: an HMAC-SHA256 of the timestamp and body, made with your webhook secret, which starts with whsec_." },
-    { q: "What if my server is down?", a: "Failed deliveries are retried with growing delays, 5 times by default and up to 10. After 10 failures in a row the webhook is paused." },
-  ],
+  screens: [],
   interactiveSection: <ApiMockup />,
   relatedFeatures: [
     { label: "Automation", href: "/features/automation", icon: "bolt" },
-    { label: "Analytics", href: "/features/analytics", icon: "bar_chart" },
-    { label: "Contacts CRM", href: "/features/contacts", icon: "group" },
-    { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },
+    { label: "Contacts", href: "/features/contacts", icon: "group" },
+    { label: "Deals", href: "/features/deals", icon: "view_kanban" },
+    { label: "AI assistant", href: "/features/ai-assistant", icon: "auto_awesome" },
   ],
 };
 

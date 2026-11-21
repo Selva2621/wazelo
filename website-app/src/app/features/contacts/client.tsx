@@ -18,27 +18,27 @@ const tagFilters: TagFilter[] = ["All", "Hot Lead", "Nurture", "Customer"];
 // Deterministic avatar gradient based on first letter
 function avatarGradient(name: string): string {
   const gradients: Record<string, string> = {
-    A: "linear-gradient(135deg, var(--c-outline-variant), var(--c-primary))",
-    V: "linear-gradient(135deg, var(--c-primary-container), var(--c-primary-container))",
-    S: "linear-gradient(135deg, #10b981, var(--c-success))",
-    K: "linear-gradient(135deg, #ef4444, var(--c-error))",
+    A: "linear-gradient(135deg, #554336, #d97707)",
+    V: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+    S: "linear-gradient(135deg, #10b981, #34d399)",
+    K: "linear-gradient(135deg, #ef4444, #f87171)",
     D: "linear-gradient(135deg, #8b5cf6, #a78bfa)",
-    R: "linear-gradient(135deg, #06b6d4, var(--c-code-cyan))",
+    R: "linear-gradient(135deg, #06b6d4, #67e8f9)",
   };
-  return gradients[name[0]] ?? "linear-gradient(135deg, var(--c-outline-variant), var(--c-primary))";
+  return gradients[name[0]] ?? "linear-gradient(135deg, #554336, #d97707)";
 }
 
 function scoreStyle(score: number): React.CSSProperties {
-  if (score >= 70) return { background: "color-mix(in srgb, var(--c-success) 12%, transparent)", color: "var(--c-success)" };
-  if (score >= 40) return { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)" };
-  return { background: "color-mix(in srgb, var(--c-error) 12%, transparent)", color: "#ef4444" };
+  if (score >= 70) return { background: "rgba(52,211,153,0.12)", color: "#34d399" };
+  if (score >= 40) return { background: "rgba(251,191,36,0.12)", color: "#fbbf24" };
+  return { background: "rgba(239,68,68,0.12)", color: "#ef4444" };
 }
 
 function tagBadgeStyle(tag: string): React.CSSProperties {
   const map: Record<string, React.CSSProperties> = {
-    "Hot Lead": { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)", border: "1px solid rgb(var(--fx-accent) / 0.3)" },
-    "Nurture":  { background: "rgb(var(--fx-accent) / 0.12)", color: "var(--c-primary-container)", border: "1px solid rgb(var(--fx-accent) / 0.25)" },
-    "Customer": { background: "color-mix(in srgb, var(--c-success) 12%, transparent)", color: "var(--c-success)", border: "1px solid color-mix(in srgb, var(--c-success) 25%, transparent)" },
+    "Hot Lead": { background: "rgba(255,183,125,0.12)", color: "#ffb77d", border: "1px solid rgba(255,183,125,0.3)" },
+    "Nurture":  { background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" },
+    "Customer": { background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" },
   };
   return map[tag] ?? {};
 }
@@ -63,10 +63,10 @@ function ContactsMockup() {
     <div>
       {/* Section header */}
       <div style={{ textAlign: "center", marginBottom: 0 }}>
-        <p style={{ fontSize: 11, color: "var(--c-primary-container)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+        <p style={{ fontSize: 11, color: "#ffb77d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
           See it in action
         </p>
-        <h3 style={{ fontSize: 32, fontWeight: 700, color: "var(--c-on-surface)", margin: 0 }}>
+        <h3 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: 0 }}>
           The contacts dashboard, live.
         </h3>
       </div>
@@ -74,8 +74,8 @@ function ContactsMockup() {
       {/* Mockup container */}
       <div style={{
         borderRadius: 16,
-        background: "var(--c-surface-container-lowest)",
-        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
+        background: "#1c1b1b",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         padding: 28,
         marginTop: 32,
       }}>
@@ -86,12 +86,12 @@ function ContactsMockup() {
             type="text"
             placeholder="Search contacts..."
             style={{
-              background: "var(--c-surface-container-high)",
-              border: "1px solid rgb(var(--fx-ink) / 0.08)",
+              background: "#2a2a2a",
+              border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 8,
               padding: "8px 14px",
               fontSize: 13,
-              color: "var(--c-on-surface)",
+              color: "#e5e2e1",
               flex: 1,
               minWidth: 160,
               outline: "none",
@@ -106,9 +106,9 @@ function ContactsMockup() {
                 borderRadius: 20,
                 fontSize: 12,
                 cursor: "pointer",
-                border: activeTag === tag ? "1px solid var(--c-primary-container)" : "1px solid rgb(var(--fx-ink) / 0.1)",
-                background: activeTag === tag ? "var(--c-primary-container)" : "transparent",
-                color: activeTag === tag ? "var(--c-on-primary)" : "var(--c-on-surface-variant)",
+                border: activeTag === tag ? "1px solid #ffb77d" : "1px solid rgba(255,255,255,0.1)",
+                background: activeTag === tag ? "#ffb77d" : "transparent",
+                color: activeTag === tag ? "#4d2600" : "rgba(219,194,176,0.6)",
                 transition: "all 0.15s ease",
               }}
             >
@@ -125,11 +125,11 @@ function ContactsMockup() {
                 {["Name", "Phone", "Tag", "Score", "Last Active"].map((h) => (
                   <th key={h} style={{
                     fontSize: 11,
-                    color: "var(--c-placeholder)",
+                    color: "rgba(219,194,176,0.35)",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
                     paddingBottom: 10,
-                    borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
                     textAlign: "left",
                     fontWeight: 600,
                     paddingRight: 16,
@@ -143,7 +143,7 @@ function ContactsMockup() {
               {filtered.map((contact) => (
                 <tr key={contact.name}>
                   {/* Name + avatar */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{
                         width: 28,
@@ -155,20 +155,20 @@ function ContactsMockup() {
                         justifyContent: "center",
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "var(--c-on-surface)",
+                        color: "#fff",
                         flexShrink: 0,
                       }}>
                         {contact.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <span style={{ fontSize: 14, color: "var(--c-on-surface)", whiteSpace: "nowrap" }}>{contact.name}</span>
+                      <span style={{ fontSize: 14, color: "#fff", whiteSpace: "nowrap" }}>{contact.name}</span>
                     </div>
                   </td>
                   {/* Phone */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
-                    <span style={{ fontSize: 13, color: "var(--c-on-surface-variant)", whiteSpace: "nowrap" }}>{contact.phone}</span>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
+                    <span style={{ fontSize: 13, color: "rgba(219,194,176,0.5)", whiteSpace: "nowrap" }}>{contact.phone}</span>
                   </td>
                   {/* Tag */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
                     <span style={{
                       fontSize: 11,
                       padding: "3px 10px",
@@ -180,7 +180,7 @@ function ContactsMockup() {
                     </span>
                   </td>
                   {/* Score */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)", paddingRight: 16 }}>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingRight: 16 }}>
                     <span style={{
                       fontSize: 12,
                       padding: "2px 8px",
@@ -192,8 +192,8 @@ function ContactsMockup() {
                     </span>
                   </td>
                   {/* Last active */}
-                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgb(var(--fx-ink) / 0.04)" }}>
-                    <span style={{ fontSize: 12, color: "var(--c-placeholder)" }}>{contact.last}</span>
+                  <td style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ fontSize: 12, color: "rgba(219,194,176,0.4)" }}>{contact.last}</span>
                   </td>
                 </tr>
               ))}
@@ -202,7 +202,7 @@ function ContactsMockup() {
         </div>
 
         {/* Row count */}
-        <p style={{ fontSize: 13, color: "var(--c-placeholder)", marginTop: 14, marginBottom: 0 }}>
+        <p style={{ fontSize: 13, color: "rgba(219,194,176,0.35)", marginTop: 14, marginBottom: 0 }}>
           Showing {filtered.length} contact{filtered.length !== 1 ? "s" : ""}
         </p>
 
@@ -214,34 +214,27 @@ function ContactsMockup() {
 const data: FeatureDetailData = {
   slug: "contacts",
   tag: "Contacts CRM",
-  heroTitle: "Every lead.<br /><span style=\"color:var(--c-primary-container)\">Always organised.</span>",
-  heroSubtitle: "Every number that messages you becomes a contact. Tag, filter, import and assign them from one list.",
-  overviewTitle: "Every number, with its story.",
-  overviewDesc: "When a new number messages you, Wazelo creates the contact for you. Add tags, notes, custom fields and an owner, move people through New, Contacted, Interested, Converted and Closed, and switch between a list and a kanban board. Bring in more contacts from a CSV, Meta lead ads or the lead scraper, and export them whenever you need.",
+  heroTitle: "Every lead.<br /><span style=\"color:#ffb77d\">Always organised.</span>",
+  heroSubtitle: "Tag, segment, search, and manage all your WhatsApp contacts and customers in one place. Full conversation history. Zero spreadsheets.",
+  heroScreen: "/screens/05-contacts-management.png",
+  overviewTitle: "Your contacts are your business.",
+  overviewDesc: "Every WhatsApp number that messages you is a potential customer. Wazelo automatically creates a contact profile for every conversation — with their name, number, tags, custom fields, and full message history — so your team always has context and your marketing always hits the right segment.",
   capabilities: [
-    { icon: "person_add", title: "Created automatically", desc: "An inbound WhatsApp message creates the contact, owned by whoever's number received it." },
-    { icon: "view_kanban", title: "List or kanban", desc: "Switch views, and drag contacts between lead statuses on the board." },
-    { icon: "label", title: "Tags, notes and custom fields", desc: "Add your own fields in nine types, from text and dates to dropdowns and yes/no." },
-    { icon: "filter_list", title: "Filters", desc: "Filter by status, owner, source, tags or products, and search by name." },
-    { icon: "upload_file", title: "CSV import and export", desc: "Import with a preview that skips duplicate phone numbers. Export name, phone, status, owner, tags and more." },
-    { icon: "travel_explore", title: "Lead Scraper", desc: "Find leads on Google Maps, Upwork, Freelancer.in, Truelancer and LinkedIn Jobs, up to 200 per run." },
-  ],
-  details: [
-    { title: "Lead statuses", items: ["New", "Contacted", "Interested", "Converted", "Closed"] },
-    { title: "Custom field types", items: ["Text", "Number", "Date", "Select", "Multi-select", "Yes / No", "URL", "Email", "Phone"] },
-    { title: "Where contacts come from", items: ["WhatsApp messages", "CSV import", "Added by hand", "Meta lead ads", "Lead Scraper", "Developer API"] },
+    { icon: "group", title: "Unified contact profiles", desc: "Each contact has a profile with name, WhatsApp number, email, tags, custom fields, and full conversation history." },
+    { icon: "label", title: "Tags & custom fields", desc: "Create your own tags and fields to capture anything — lead source, city, product interest, deal stage." },
+    { icon: "filter_list", title: "Powerful segmentation", desc: "Filter contacts by any combination of tags, fields, last message date, or conversation status to build precise lists." },
+    { icon: "upload_file", title: "CSV import & export", desc: "Bulk import contacts from a CSV or export your entire database at any time." },
+    { icon: "search", title: "Instant search", desc: "Find any contact by name, number, email, or custom field value in milliseconds." },
+    { icon: "history", title: "Full conversation history", desc: "Every message ever exchanged with a contact is stored and searchable — across all agents and channels." },
   ],
   howItWorks: [
-    { step: "01", title: "Bring contacts in", desc: "Let inbound chats create them, or import a CSV with a Phone column." },
-    { step: "02", title: "Organise them", desc: "Add tags, notes, custom fields and an owner to each contact." },
-    { step: "03", title: "Work the pipeline", desc: "Drag contacts across lead statuses on the kanban board." },
-    { step: "04", title: "Reach them", desc: "Use the same filters to build a campaign audience, or export the list." },
+    { step: "01", title: "Contacts are created automatically", desc: "Every new WhatsApp conversation creates a contact profile. Or import your existing list via CSV." },
+    { step: "02", title: "Enrich with tags and custom fields", desc: "Add tags manually or via automation rules. Fill in custom fields to capture any data your business needs." },
+    { step: "03", title: "Segment your audience", desc: "Use the filter builder to create precise segments for campaigns, reports, or workflow triggers." },
+    { step: "04", title: "Act on your data", desc: "Launch a campaign to a segment, assign conversations to the right agent, or export a list for use outside Wazelo." },
   ],
-  faqs: [
-    { q: "What does my CSV need?", a: "Only a Phone column. Name, Email, Status and Source are optional. You see a preview before importing, and duplicate phone numbers are skipped." },
-    { q: "Can I merge duplicates?", a: "Yes. An Admin picks two contacts to merge, and the notes and tags move to the one you keep." },
-    { q: "Where do lead ad leads go?", a: "Leads from Facebook and Instagram lead ads arrive as contacts and are shared round-robin across your team." },
-    { q: "Who can delete contacts?", a: "Admins and Managers. Merging contacts is for Admins only." },
+  screens: [
+    { src: "/screens/01-inbox-shared-team.jpeg", caption: "Contact profiles visible in every conversation" },
   ],
   relatedFeatures: [
     { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },

@@ -11,16 +11,12 @@ import { usePlans, useSubscribeToPlan, useCreateOrder, useVerifyPayment, useSubs
 import { useAuthStore } from "@/stores/auth-store";
 import { useOrgSettings } from "@/hooks/use-settings";
 import { Spinner } from "@/components/ui/spinner";
-import type { Plan, BillingCycle, SubscriptionPlanSummary } from "@/lib/types/billing";
+import { isTrialPlan, type Plan, type BillingCycle, type SubscriptionPlanSummary } from "@/lib/types/billing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatINR(cents: number) {
-  return `₹${(cents / 100).toLocaleString("en-IN")}`;
-}
 
 function formatLimit(val: number) {
   if (val === 0) return "Unlimited";
@@ -34,6 +30,9 @@ function apiMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
   return Array.isArray(message) ? message[0] : message;
 }
+
+/** The two free-trial plans (backend: shared/constants/trial-plans.ts) */
+const TRIAL_SLUGS = ["free-trial", "free-trial-solo"];
 
 function daysRemaining(endsAt?: string | null) {
   if (!endsAt) return 0;
@@ -142,7 +141,7 @@ function TrialActiveStep({
 
       <Button size="lg"
         onClick={onContinue}
-       
+        className="max-lg:h-12 max-lg:w-full"
       >
         Go to Dashboard
         <ArrowRight className="w-4 h-4" />
@@ -201,7 +200,7 @@ function WelcomeStep({
 
       <Button size="lg"
         onClick={onNext}
-       
+        className="max-lg:h-12 max-lg:w-full"
       >
         Choose a Plan
         <ChevronRight className="w-4 h-4" />
@@ -252,7 +251,7 @@ function PlanCard({
         </div>
         <div className="text-right flex-shrink-0 ml-3">
           <div className="font-semibold text-on-surface">
-            {formatINR(perMonth)}<span className="text-label font-normal text-on-surface-variant">/mo</span>
+            {formatMoney(perMonth, plan.currency)}<span className="text-label font-normal text-on-surface-variant">/mo</span>
           </div>
         </div>
       </div>
@@ -296,7 +295,7 @@ function ChoosePlanStep({
   // Free trial is only auto-assigned on signup. Freelancers see Solo plans,
   // everyone else the team plans — same rule as Settings › Billing.
   const filtered = plans
-    .filter((p) => p.billingCycle === cycle && p.isActive && p.slug !== "free-trial")
+    .filter((p) => p.billingCycle === cycle && p.isActive && !isTrialPlan(p))
     .filter((p) => (isFreelancer ? p.slug.startsWith("solo-") : !p.slug.startsWith("solo-")))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -340,14 +339,14 @@ function ChoosePlanStep({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors max-lg:min-h-12 max-lg:px-3"
         >
           Back
         </button>
         <Button size="lg"
           onClick={onNext}
           disabled={!selectedId}
-          className="flex-1"
+          className="flex-1 max-lg:h-12"
         >
           Continue
           <ChevronRight className="w-4 h-4" />
@@ -405,7 +404,7 @@ function ConfirmStep({
     );
   };
 
-  const dueToday = coupon ? formatMoney(coupon.finalAmountInCents, coupon.currency) : formatINR(plan.priceInCents);
+  const dueToday = coupon ? formatMoney(coupon.finalAmountInCents, coupon.currency) : formatMoney(plan.priceInCents, plan.currency);
 
   return (
     <div className="text-center">
@@ -498,14 +497,14 @@ function ConfirmStep({
         <button
           onClick={onBack}
           disabled={loading}
-          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="px-5 py-2.5 text-body-lg font-medium text-on-surface-variant hover:text-on-surface transition-colors max-lg:min-h-12 max-lg:px-3"
         >
           Back
         </button>
         <Button size="lg"
           onClick={() => onConfirm(coupon)}
           disabled={loading || validate.isPending}
-          className="flex-1"
+          className="flex-1 max-lg:h-12"
         >
           {loading ? (
             <>
@@ -529,7 +528,7 @@ function ConfirmStep({
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { data: subData, isLoading: subLoading } = useSubscription();
+  const { data: subData, isLoading: subLoading, refetch: refetchSubscription } = useSubscription();
   const { data: orgSettings, isLoading: orgLoading } = useOrgSettings();
   const { data: plans, isLoading: plansLoading } = usePlans();
   const createOrder = useCreateOrder();
@@ -556,19 +555,41 @@ export default function OnboardingPage() {
   const isOnTrial = subData?.subscription?.status === "TRIAL";
   const trialDaysLeft = daysRemaining(subData?.subscription?.trialEndsAt);
 
+  // Signup starts every trial on the team plan; picking Solo / Freelancer moves it to the
+  // solo trial in a background job. Until that lands the plan here is the wrong one, so
+  // check again for a few seconds and hide its limits meanwhile.
+  const trialPlan = subData?.subscription?.plan;
+  const expectedTrialSlug = orgSettings?.orgType === "FREELANCER" ? "free-trial-solo" : "free-trial";
+  const trialPlanPending =
+    isOnTrial &&
+    !!orgSettings?.orgType &&
+    orgSettings.orgType !== "CRM" &&
+    TRIAL_SLUGS.includes(trialPlan?.slug ?? "") &&
+    trialPlan?.slug !== expectedTrialSlug;
+  const [alignChecks, setAlignChecks] = useState(0);
+  useEffect(() => {
+    if (!trialPlanPending || alignChecks >= 10) return;
+    const timer = window.setTimeout(() => {
+      refetchSubscription();
+      setAlignChecks((n) => n + 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [trialPlanPending, alignChecks, refetchSubscription]);
+
   // If on active trial → show trial welcome screen
   if (!subLoading && isOnTrial) {
     return (
-      <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
+      <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-[calc(24px+var(--safe-bottom))] max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
         <div className="w-full max-w-xl">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 max-lg:mb-5">
             <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
           </div>
-          <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
+          <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8 max-lg:p-5">
             <TrialActiveStep
               firstName={user?.firstName ?? ""}
               daysLeft={trialDaysLeft}
-              plan={subData?.subscription?.plan}
+              // Gave up waiting (10s): show nothing rather than the wrong plan's limits
+              plan={trialPlanPending ? undefined : trialPlan}
               onContinue={() => router.push("/dashboard")}
             />
           </div>
@@ -648,16 +669,16 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12">
+    <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-[calc(24px+var(--safe-bottom))] max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
       <div className="w-full max-w-xl">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 max-lg:mb-5">
           <span className="font-semibold text-on-surface text-title">Waze<span className="text-primary">lo</span></span>
         </div>
 
         <Steps current={step} labels={["Welcome", "Choose Plan", "Confirm"]} />
 
-        <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8">
+        <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8 max-lg:p-5">
           {(subLoading || plansLoading) ? (
             <div className="flex items-center justify-center h-40">
               <Spinner />

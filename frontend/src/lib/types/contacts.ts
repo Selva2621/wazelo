@@ -1,3 +1,5 @@
+import type { ScrapeSource } from "./lead-scraper";
+
 // ─── Enums (match backend Prisma enums) ───
 
 export type LeadStatus = "NEW" | "CONTACTED" | "INTERESTED" | "CONVERTED" | "CLOSED";
@@ -26,7 +28,85 @@ export type ContactSource =
   | "API"
   | "FACEBOOK_LEAD_AD"
   | "INSTAGRAM_LEAD_AD"
-  | "WHATSAPP_LEAD_AD";
+  | "WHATSAPP_LEAD_AD"
+  | "SHOPIFY"
+  | "WEB_SCRAPE"
+  | "WEBSITE";
+
+// ─── Lead-source groups (GET /contacts/groups) ───
+
+export interface ContactGroups {
+  sources: { source: ContactSource; count: number }[];
+  scrapeRuns: {
+    id: string;
+    source: ScrapeSource;
+    keywords: string;
+    location: string | null;
+    createdAt: string;
+    count: number;
+  }[];
+}
+
+/** running | done | stopped | no_session (no connected number) | day_limit (150 lookups/number/day) */
+export type GroupWaCheckState = "running" | "done" | "stopped" | "no_session" | "day_limit";
+
+export interface SavedContactGroup {
+  id: string;
+  name: string;
+  contactCount: number;
+  createdAt: string;
+  /** "On WhatsApp?" answers for the members you can see */
+  whatsapp?: { on: number; off: number; unchecked: number };
+  /** Background "Check numbers" run */
+  waCheck?: { state: GroupWaCheckState; startedAt?: string; finishedAt?: string } | null;
+}
+
+/** Contacts per saved group by default: one campaign batch */
+export const SAVED_GROUP_DEFAULT_SIZE = 100;
+export const SAVED_GROUP_MAX_SIZE = 1_000;
+/** Most contacts one save / move / split call handles */
+export const SAVED_GROUP_MAX_CONTACTS = 10_000;
+
+/** split: groups of `groupSize` named "<name> N" · one: a single group named exactly `name` */
+export type SavedGroupBuildMode = "split" | "one";
+
+export interface CreateSavedGroupsRequest {
+  name: string;
+  contactIds: string[];
+  /** 1..1000, default 100 */
+  groupSize?: number;
+  /** Omitted (older callers): "<name> - 001", "<name> - 002"… */
+  mode?: SavedGroupBuildMode;
+  /** Leave contacts that are already in a group where they are */
+  onlyUngrouped?: boolean;
+}
+
+export interface CreateSavedGroupsResult {
+  groups: SavedContactGroup[];
+  batchSize: number;
+  /** Selected contacts that were moved out of another group */
+  movedFromGroups: number;
+  /** Selected contacts left in their group (onlyUngrouped) */
+  skippedGrouped?: number;
+}
+
+export interface SplitSavedGroupsRequest {
+  groupSize?: number;
+  prefix?: string;
+  mode?: SavedGroupBuildMode;
+}
+
+export interface SplitSavedGroupsResult {
+  groups: SavedContactGroup[];
+  /** Ungrouped contacts left over (split handles 10,000 per call) */
+  remaining: number;
+}
+
+/** Which groups the contacts would leave if saved / moved */
+export interface SavedGroupMoveImpact {
+  alreadyGrouped: number;
+  groups: { id: string; name: string; count: number }[];
+}
 
 // ─── Tag ───
 
@@ -84,6 +164,17 @@ export interface Contact {
   _count: { notes: number };
 }
 
+// ─── Lead pipeline card extras (GET /contacts/pipeline-meta) ───
+
+export interface PipelineMeta {
+  contactId: string;
+  lastMessage: { body: string | null; type: string; direction: "INBOUND" | "OUTBOUND"; at: string } | null;
+  /** When the contact entered its current lead status */
+  stageSince: string;
+  /** Earliest follow-up nobody has acted on yet */
+  followUpDueAt: string | null;
+}
+
 // ─── List Response ───
 
 export interface ContactListResponse {
@@ -139,6 +230,8 @@ export interface ContactOwnerHistoryEntry {
 
 export interface CreateContactRequest {
   phoneNumber: string;
+  /** Country of a number typed without a country code; defaults to the org's */
+  country?: string;
   name?: string;
   email?: string;
   source?: ContactSource;
@@ -183,6 +276,7 @@ export interface ListContactsParams {
   leadStatus?: LeadStatus;
   ownerId?: string;
   source?: ContactSource;
+  scrapeRunId?: string;
   tagIds?: string[];
   productIds?: string[];
   search?: string;
@@ -198,4 +292,47 @@ export interface OrgMember {
   lastName: string;
   email: string;
   role: string;
+}
+
+// ─── WhatsApp permission (lead finder contacts) ───
+
+/** How a team member got the contact's agreement */
+export type WhatsAppPermissionHow = "call" | "email" | "in_person" | "other";
+
+/**
+ * messaged_first: the contact wrote to you on WhatsApp
+ * agreed: a team member recorded their agreement
+ * not_yet: lead finder contact with neither (campaigns, sequences, automations skip them)
+ * not_required: not a lead finder contact
+ */
+export type WhatsAppPermissionStatus = "messaged_first" | "agreed" | "not_yet" | "not_required";
+
+export interface WhatsAppPermission {
+  contactId: string;
+  /** Only lead finder contacts need permission */
+  required: boolean;
+  status: WhatsAppPermissionStatus;
+  agreement: {
+    id: string;
+    how: string;
+    note: string | null;
+    recordedBy: string | null;
+    grantedAt: string;
+  } | null;
+}
+
+export interface RecordWhatsAppPermissionRequest {
+  how: WhatsAppPermissionHow;
+  note?: string;
+}
+
+/** POST /contacts/whatsapp-permission/bulk (max BULK_CONTACTS_MAX ids per request) */
+export interface BulkRecordWhatsAppPermissionRequest extends RecordWhatsAppPermissionRequest {
+  contactIds: string[];
+}
+
+/** skipped: not lead finder contacts, or already had permission */
+export interface BulkRecordWhatsAppPermissionResponse {
+  recorded: number;
+  skipped: number;
 }

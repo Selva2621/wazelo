@@ -1,17 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Briefcase } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { usePipelines, useCreateDeal } from "@/hooks/use-deals";
+import { useAuthStore } from "@/stores/auth-store";
+import { SearchInput } from "@/components/ui/search-input";
+import { PipelineCard } from "@/components/leads/pipeline-card";
+import { useNow } from "@/components/super-admin/ticket-sla";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { LeadStatusBadge } from "@/components/contacts/lead-status-badge";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { ContactDetailDrawer } from "@/components/contacts/contact-detail-drawer";
-import { useContacts, useChangeLeadStatus } from "@/hooks/use-contacts";
+import { contactKeys, useBulkContactAction, useContactGroups, useContacts, usePipelineMeta } from "@/hooks/use-contacts";
+import { CloseReasonDialog } from "@/components/leads/close-reason-dialog";
+import { Button } from "@/components/ui/button";
+import { contactsApi } from "@/lib/api/contacts";
 import { useContactsStore } from "@/stores/contacts-store";
-import type { LeadStatus, Contact, ContactSource, ListContactsParams } from "@/lib/types/contacts";
+import { CONTACT_SOURCE_LABELS, SCRAPE_SOURCE_LABELS } from "@/lib/constants/contact-sources";
+import type { LeadStatus, Contact, ContactSource, ContactListResponse, ListContactsParams } from "@/lib/types/contacts";
+import { ActionSheet, type ActionSheetAction } from "@/components/ios/action-sheet";
+import { StageChip, StageNote, StagePanel, StageRow, StageTabs } from "@/components/ui/swipe-columns";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 
@@ -22,81 +34,78 @@ const COLUMNS: { status: LeadStatus; label: string; color: string }[] = [
   { status: "CONVERTED",  label: "Converted",  color: "var(--success)" },
   { status: "CLOSED",     label: "Closed",     color: "var(--on-surface-variant)" },
 ];
+const LABEL = Object.fromEntries(COLUMNS.map((c) => [c.status, c.label])) as Record<LeadStatus, string>;
 
-const SCRAPE_SOURCE_LABELS: Record<string, string> = {
-  GOOGLE_MAPS:   "Google Maps",
-  UPWORK_JOBS:   "Upwork",
-  FREELANCER_IN: "Freelancer.in",
-  TRUELANCER:    "Truelancer",
-  LINKEDIN_JOBS: "LinkedIn",
-};
+/** Cards loaded per column, and per "Show more" */
+const PAGE = 50;
 
-// ─── Contact Card ─────────────────────────────────────────────────────────────
-
-function PipelineCard({
-  contact,
-  onDragStart,
-  onClick,
-  onConvert,
-}: {
-  contact: Contact;
-  onDragStart: (e: React.DragEvent, id: string) => void;
-  onClick: (id: string) => void;
-  onConvert?: (contact: Contact) => void;
-}) {
-  const meta = contact.metadata as Record<string, unknown> | null;
-  const scrapeSource = meta?.scrapeSource as string | undefined;
-  const rating = meta?.rating as number | undefined;
-
-  return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, contact.id)}
-      onClick={() => onClick(contact.id)}
-      className="cursor-grab active:cursor-grabbing bg-surface-container rounded-lg p-3 border border-outline-variant/10 hover:border-outline-variant/30 hover:bg-surface-container-high transition-colors space-y-2"
-    >
-      {/* Avatar + name */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <Avatar name={contact.name || contact.phoneNumber} src={contact.avatarUrl} size="sm" />
-        <div className="min-w-0 flex-1">
-          <p className="text-body font-medium text-on-surface truncate">
-            {contact.name || "Unknown"}
-          </p>
-          <p className="text-caption text-on-surface-variant/60 truncate">{contact.phoneNumber}</p>
-        </div>
-      </div>
-
-      {/* Badges row */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {scrapeSource && SCRAPE_SOURCE_LABELS[scrapeSource] && (
-          <span className="text-caption bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-            {SCRAPE_SOURCE_LABELS[scrapeSource]}
-          </span>
-        )}
-        {rating != null && (
-          <span className="text-caption text-on-surface-variant font-medium">Rating {rating.toFixed(1)}</span>
-        )}
-        <LeadStatusBadge status={contact.leadStatus} />
-      </div>
-
-      {onConvert && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onConvert(contact);
-          }}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-outline-variant/20 py-1 text-caption font-medium text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-        >
-          <Briefcase className="h-3 w-3" />
-          Convert to deal
-        </button>
-      )}
-    </div>
-  );
+function errorText(err: unknown, fallback: string) {
+  const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  return (Array.isArray(msg) ? msg[0] : msg) || fallback;
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
+function sourceLabelOf(contact: Contact) {
+  const meta = contact.metadata as Record<string, unknown> | null;
+  const scrapeSource = meta?.scrapeSource as keyof typeof SCRAPE_SOURCE_LABELS | undefined;
+  return scrapeSource && SCRAPE_SOURCE_LABELS[scrapeSource]
+    ? SCRAPE_SOURCE_LABELS[scrapeSource]
+    : CONTACT_SOURCE_LABELS[contact.source];
+}
+
+function ratingOf(contact: Contact) {
+  const meta = contact.metadata as Record<string, unknown> | null;
+  return meta?.rating as number | undefined;
+}
+
+/** Converted and closed leads are done: no new deal from them */
+function canConvertLead(contact: Contact) {
+  return contact.leadStatus !== "CONVERTED" && contact.leadStatus !== "CLOSED";
+}
+
+// ─── Moving a lead (instant, undone if the server refuses) ───────────────────
+
+function useMoveLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contact, to, reason }: { contact: Contact; to: LeadStatus; reason?: string }) =>
+      contactsApi.changeStatus(contact.id, { status: to, ...(reason ? { reason } : {}) }),
+    onMutate: async ({ contact, to }) => {
+      await qc.cancelQueries({ queryKey: ["contacts", "list"] });
+      const snapshot = qc.getQueriesData<ContactListResponse>({ queryKey: ["contacts", "list"] });
+      for (const [key, data] of snapshot) {
+        if (!data) continue;
+        const params = (key[2] ?? {}) as ListContactsParams;
+        if (!params.leadStatus) continue;
+        if (params.leadStatus === contact.leadStatus) {
+          // Leave the old column
+          qc.setQueryData<ContactListResponse>(key, {
+            ...data,
+            contacts: data.contacts.filter((c) => c.id !== contact.id),
+            total: Math.max(0, data.total - 1),
+          });
+        } else if (params.leadStatus === to && (!params.source || params.source === contact.source)) {
+          // Arrive at the top of the new one
+          qc.setQueryData<ContactListResponse>(key, {
+            ...data,
+            contacts: [{ ...contact, leadStatus: to }, ...data.contacts.filter((c) => c.id !== contact.id)],
+            total: data.total + 1,
+          });
+        }
+      }
+      return { snapshot };
+    },
+    onError: (err, { contact }, ctx) => {
+      for (const [key, data] of ctx?.snapshot ?? []) qc.setQueryData(key, data);
+      toast.error(errorText(err, `Couldn't move ${contact.name || contact.phoneNumber}. It's back where it was.`));
+    },
+    onSettled: (_data, _err, { contact }) => {
+      qc.invalidateQueries({ queryKey: contactKeys.all });
+      qc.invalidateQueries({ queryKey: contactKeys.statusHistory(contact.id) });
+    },
+  });
+}
+
+// ─── Kanban Column (desktop) ──────────────────────────────────────────────────
 
 function PipelineColumn({
   status,
@@ -105,145 +114,551 @@ function PipelineColumn({
   baseFilter,
   onDragStart,
   onDrop,
-  onCardClick,
+  onOpen,
   onConvert,
+  convertingId,
+  onTotal,
+  limit,
+  onShowMore,
+  next,
+  onMove,
+  selected,
+  onToggleSelect,
+  dragging,
+  onDragEnd,
 }: {
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
+  /** A card is being dragged: empty columns open up so they can take it */
+  dragging: boolean;
+  onDragEnd: () => void;
   status: LeadStatus;
   label: string;
   color: string;
   baseFilter: ListContactsParams;
-  onDragStart: (e: React.DragEvent, id: string) => void;
-  onDrop: (e: React.DragEvent, status: LeadStatus) => void;
-  onCardClick: (id: string) => void;
+  onDragStart: (e: React.DragEvent, contact: Contact) => void;
+  onDrop: (status: LeadStatus) => void;
+  onOpen: (id: string) => void;
+  /** The column to the right, for the card's "move on" button */
+  next?: { status: LeadStatus; label: string };
+  onMove: (contact: Contact, to: LeadStatus) => void;
   onConvert?: (contact: Contact) => void;
+  convertingId: string | null;
+  /** Reports the column's lead count (for the phone stage tabs) */
+  onTotal: (status: LeadStatus, total: number | null) => void;
+  /** Leads loaded (grows with "Show more"); the phone list shares it */
+  limit: number;
+  onShowMore: (status: LeadStatus) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const { data, isLoading } = useContacts({ ...baseFilter, leadStatus: status, take: 100 });
+  const { data, isLoading, isError, isFetching } = useContacts({ ...baseFilter, leadStatus: status, take: limit });
   const contacts = data?.contacts ?? [];
+  const total = data?.total ?? 0;
+  const headingId = `col-${status}`;
+  // Last message / days here / follow-up for the cards on screen (max 100 per request)
+  const ids = contacts.slice(0, 100).map((c) => c.id);
+  const { data: metaRows } = usePipelineMeta(ids);
+  const now = useNow();
+  const metaById = new Map((metaRows ?? []).map((m) => [m.contactId, m]));
+  const waitingCount = (metaRows ?? []).filter((m) => m.lastMessage?.direction === "INBOUND").length;
+  const shownTotal = isLoading ? null : total;
+  useEffect(() => {
+    onTotal(status, shownTotal);
+  }, [onTotal, status, shownTotal]);
+
+  // Empty column: a thin labelled strip, so busy columns get the room (opens up during a drag)
+  const collapsed = !isLoading && !isError && total === 0 && !dragging && !isDragOver;
 
   return (
-    <div
-      className={`flex flex-col w-[272px] shrink-0 rounded-xl border transition-colors ${
-        isDragOver
-          ? "border-primary/40 bg-primary/5"
-          : "border-outline-variant/10 bg-surface-container/40"
-      }`}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setIsDragOver(true); }}
+    <section
+      aria-labelledby={headingId}
+      // Columns share the width so all five fit on a laptop screen; narrower windows scroll the board
+      className={cn(
+        "flex flex-col rounded-xl border transition-[flex-basis,background-color,border-color] duration-200 ease-standard",
+        collapsed ? "w-12 flex-none" : "min-w-[220px] flex-1 basis-0",
+        isDragOver ? "border-primary/40 bg-primary/5" : "border-outline-variant/10 bg-surface-container/40",
+      )}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+      }}
       onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => { setIsDragOver(false); onDrop(e, status); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        onDrop(status);
+      }}
     >
+      {collapsed ? (
+        <div className="flex flex-1 flex-col items-center gap-3 py-3" title={`${label}: no leads`}>
+          <div aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+          <Badge variant="muted" className="text-caption">
+            <span className="sr-only">Leads: </span>0
+          </Badge>
+          <h2 id={headingId} className="text-body font-semibold text-on-surface-variant [writing-mode:vertical-rl]">
+            {label}
+          </h2>
+        </div>
+      ) : (
+      <>
       {/* Column header */}
-      <div className="shrink-0 flex items-center gap-2 px-3.5 py-3 border-b border-outline-variant/10">
-        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-body font-semibold text-on-surface">{label}</span>
-        <Badge variant="muted" className="text-caption ml-auto">
-          {isLoading ? "…" : data?.total ?? contacts.length}
+      <div className="flex shrink-0 items-center gap-2 border-b border-outline-variant/10 px-3.5 py-3">
+        <div aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+        <h2 id={headingId} className="text-body font-semibold text-on-surface">
+          {label}
+        </h2>
+        {waitingCount > 0 && (
+          <span className="ml-auto text-caption font-medium text-primary" title="Last message is from the lead">
+            {waitingCount} waiting
+          </span>
+        )}
+        <Badge variant="muted" className={waitingCount > 0 ? "text-caption" : "ml-auto text-caption"}>
+          <span className="sr-only">Leads: </span>
+          {isLoading ? "…" : total}
         </Badge>
       </div>
 
       {/* Cards */}
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
+      <div className="flex-1 overflow-y-auto p-2.5">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Spinner size="sm" className="text-on-surface-variant/40" />
           </div>
+        ) : isError ? (
+          <p className="py-8 text-center text-label text-error" role="alert">
+            Couldn&apos;t load these leads.
+          </p>
         ) : contacts.length === 0 ? (
-          <div className="text-center py-8 text-label text-on-surface-variant/40">No leads</div>
+          <p className="py-8 text-center text-label text-on-surface-variant">No leads</p>
         ) : (
-          contacts.map((c) => (
-            <PipelineCard
-              key={c.id}
-              contact={c}
-              onDragStart={onDragStart}
-              onClick={onCardClick}
-              onConvert={onConvert}
-            />
-          ))
+          <>
+            {/* Grid: a column widened by collapsed neighbours shows cards side by side */}
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] items-start gap-2">
+              {contacts.map((c) => (
+                <PipelineCard
+                  key={c.id}
+                  contact={c}
+                  meta={metaById.get(c.id)}
+                  now={now}
+                  sourceLabel={sourceLabelOf(c)}
+                  nextLabel={next?.label}
+                  onNext={next ? () => onMove(c, next.status) : undefined}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  selected={selected.has(c.id)}
+                  selectMode={selected.size > 0}
+                  onToggleSelect={() => onToggleSelect(c.id)}
+                  onOpen={onOpen}
+                  onConvert={onConvert && canConvertLead(c) ? () => onConvert(c) : undefined}
+                  converting={convertingId === c.id}
+                />
+              ))}
+            </ul>
+            {contacts.length < total && (
+              <button
+                type="button"
+                disabled={isFetching}
+                onClick={() => onShowMore(status)}
+                className="mt-2 w-full rounded-lg py-2 text-label font-medium text-primary hover:bg-primary/5 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                {isFetching ? "Loading…" : `Show more (${total - contacts.length} left)`}
+              </button>
+            )}
+          </>
         )}
       </div>
-    </div>
+      </>
+      )}
+    </section>
+  );
+}
+
+// ─── Phone list (one status at a time) ───────────────────────────────────────
+
+function PhoneLeadList({
+  status,
+  baseFilter,
+  limit,
+  onShowMore,
+  onOpen,
+  onMenu,
+  convertingId,
+}: {
+  status: LeadStatus;
+  baseFilter: ListContactsParams;
+  limit: number;
+  onShowMore: (status: LeadStatus) => void;
+  onOpen: (id: string) => void;
+  onMenu: (contact: Contact) => void;
+  convertingId: string | null;
+}) {
+  // Same query as the desktop column, so it is shared, not fetched twice
+  const { data, isLoading, isError, isFetching } = useContacts({ ...baseFilter, leadStatus: status, take: limit });
+  const contacts = data?.contacts ?? [];
+  const total = data?.total ?? 0;
+
+  if (isLoading) {
+    return (
+      <StageNote role="status">
+        <Spinner size="sm" className="text-on-surface-variant/40" />
+        <span className="sr-only">Loading leads</span>
+      </StageNote>
+    );
+  }
+  if (isError) {
+    return (
+      <StageNote role="alert">
+        <span className="text-error">Couldn&apos;t load these leads.</span>
+      </StageNote>
+    );
+  }
+  if (contacts.length === 0) return <StageNote>No {LABEL[status].toLowerCase()} leads</StageNote>;
+
+  return (
+    <>
+      <ul className="bg-surface-container-lowest">
+        {contacts.map((c) => {
+          const sourceLabel = sourceLabelOf(c);
+          const rating = ratingOf(c);
+          const display = c.name || c.phoneNumber;
+          return (
+            <StageRow
+              key={c.id}
+              leading={<Avatar name={display} src={c.avatarUrl} size="md" />}
+              title={c.name || "Unknown"}
+              subtitle={c.phoneNumber}
+              meta={
+                (sourceLabel || rating != null || convertingId === c.id) && (
+                  <>
+                    {sourceLabel && <StageChip>{sourceLabel}</StageChip>}
+                    {rating != null && (
+                      <span className="text-caption text-on-surface-variant">Rating {rating.toFixed(1)}</span>
+                    )}
+                    {convertingId === c.id && <span className="text-caption text-primary">Converting…</span>}
+                  </>
+                )
+              }
+              onOpen={() => onOpen(c.id)}
+              onMenu={() => onMenu(c)}
+              menuLabel={`Actions for ${display}`}
+            />
+          );
+        })}
+      </ul>
+      {contacts.length < total && (
+        <div className="p-4">
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => onShowMore(status)}
+            className="h-11 w-full rounded-lg text-label font-medium text-primary active:bg-primary/5 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            {isFetching ? "Loading…" : `Show more (${total - contacts.length} left)`}
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LeadPipelinePage() {
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const changeLeadStatus = useChangeLeadStatus();
+  const [dragged, setDragged] = useState<Contact | null>(null);
+  const [source, setSource] = useState<ContactSource | "">("");
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const moveLead = useMoveLead();
+  const { data: groups } = useContactGroups();
   const openContactDetail = useContactsStore((s) => s.openContactDetail);
   const closeContactDetail = useContactsStore((s) => s.closeContactDetail);
   const selectedContactId = useContactsStore((s) => s.selectedContactId);
   const detailDrawerOpen = useContactsStore((s) => s.detailDrawerOpen);
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
+  // Closing a lead first asks why (saved on the status change); every other move is instant
+  const [closing, setClosing] = useState<Contact | null>(null);
+  const move = (contact: Contact, to: LeadStatus) => {
+    if (contact.leadStatus === to) return;
+    if (to === "CLOSED") {
+      setClosing(contact);
+      return;
+    }
+    moveLead.mutate({ contact, to });
+  };
+
+  // Bulk select (desktop board): tick cards, then move them all at once
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+  useEffect(() => {
+    if (selected.size === 0) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && clearSelection();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected.size, clearSelection]);
+  const bulk = useBulkContactAction();
+  const bulkMove = (to: LeadStatus) =>
+    bulk.mutate({ action: "status", contactIds: [...selected], status: to }, { onSuccess: clearSelection });
+
+  const handleDragStart = (e: React.DragEvent, contact: Contact) => {
+    setDragged(contact);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  // A lead that's turning into paid work becomes a deal in the default pipeline
+  const handleDragEnd = () => setDragged(null);
+
+  const handleDrop = (target: LeadStatus) => {
+    if (dragged) move(dragged, target);
+    setDragged(null);
+  };
+
+  // A lead that's turning into paid work becomes a deal in the default pipeline,
+  // and moves to Converted so it can't be converted twice
   const { data: pipelines } = usePipelines();
   const createDeal = useCreateDeal();
-  const router = useRouter();
   const convertPipeline = pipelines?.find((p) => p.isDefault) ?? pipelines?.[0];
   const firstStage = convertPipeline?.stages.slice().sort((a, b) => a.order - b.order)[0];
 
-  const handleConvert = (contact: Contact) => {
-    if (!convertPipeline || !firstStage || createDeal.isPending) return;
-    createDeal.mutate(
-      {
+  const handleConvert = async (contact: Contact) => {
+    if (!convertPipeline || !firstStage || convertingId) return;
+    setConvertingId(contact.id);
+    try {
+      await createDeal.mutateAsync({
         pipelineId: convertPipeline.id,
         stageId: firstStage.id,
         contactId: contact.id,
         title: `${contact.name || contact.phoneNumber} — project`,
-      },
-      { onSuccess: () => router.push("/deals") },
-    );
+      });
+      moveLead.mutate({ contact, to: "CONVERTED" });
+    } catch {
+      // useCreateDeal already showed the error
+    } finally {
+      setConvertingId(null);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent, targetStatus: LeadStatus) => {
-    e.preventDefault();
-    if (!draggedId) return;
-    changeLeadStatus.mutate({ contactId: draggedId, status: targetStatus });
-    setDraggedId(null);
-  };
+  // Board search (name or phone, debounced) and "Mine" (leads I own); admins/managers only,
+  // employees already see just their own
+  const userId = useAuthStore((s) => s.user?.id);
+  const role = useAuthStore((s) => s.user?.role);
+  const [searchText, setSearchText] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearch(searchText.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [searchText]);
+  const [mine, setMine] = useState(false);
+  const canFilterMine = role === "ADMIN" || role === "MANAGER";
 
-  // Only show WEB_SCRAPE contacts
-  const baseFilter: ListContactsParams = { source: "WEB_SCRAPE" as ContactSource };
+  // All leads by default, like the dashboard; narrow by source, search or owner
+  const baseFilter: ListContactsParams = {
+    ...(source ? { source } : {}),
+    ...(search ? { search } : {}),
+    ...(mine && canFilterMine && userId ? { ownerId: userId } : {}),
+  };
+  const filterKey = `${source}|${search}|${mine}`;
+  const sourceOptions = (groups?.sources ?? []).filter((g) => g.count > 0);
+  const moved = moveLead.isSuccess ? moveLead.variables : undefined;
+
+  // Leads loaded per status ("Show more" adds a page); a new source filter starts over
+  const [limits, setLimits] = useState<Partial<Record<LeadStatus, number>>>({});
+  const showMore = useCallback((status: LeadStatus) => {
+    setLimits((prev) => ({ ...prev, [status]: (prev[status] ?? PAGE) + PAGE }));
+  }, []);
+
+  // Phones: one status at a time, picked from tabs that show every status's count
+  const [phoneStatus, setPhoneStatus] = useState<LeadStatus>("NEW");
+  const [totals, setTotals] = useState<Partial<Record<LeadStatus, number | null>>>({});
+  const reportTotal = useCallback((status: LeadStatus, total: number | null) => {
+    setTotals((prev) => (prev[status] === total ? prev : { ...prev, [status]: total }));
+  }, []);
+
+  // Phones: a row's ⋮ menu replaces dragging and the card's buttons
+  const [menuFor, setMenuFor] = useState<Contact | null>(null);
+  const menuActions: ActionSheetAction[] = menuFor
+    ? [
+        ...(convertPipeline && canConvertLead(menuFor)
+          ? [{ label: "Convert to deal", disabled: !!convertingId, onSelect: () => handleConvert(menuFor) }]
+          : []),
+        ...COLUMNS.filter((c) => c.status !== menuFor.leadStatus).map((c) => ({
+          label: `Move to ${c.label}`,
+          onSelect: () => move(menuFor, c.status),
+        })),
+      ]
+    : [];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-outline-variant/10">
-        <h1 className="text-title font-semibold text-on-surface">Lead Pipeline</h1>
-        <p className="text-body-lg text-on-surface-variant mt-0.5">
-          Scraped leads tracked through your sales stages. Drag cards to update status.
-        </p>
-      </div>
+    // One screen tall on every size: each column scrolls its own cards, headers stay in view
+    <div className="flex h-[calc(100dvh-var(--header-height))] min-w-0 flex-col overflow-hidden">
+      {/* The iOS nav bar shows the title on mobile */}
+      <PageHeader
+        className="shrink-0 px-6 pt-5 pb-1 max-lg:hidden"
+        title="Lead pipeline"
+        description="Drag a card to change its status, or open it to change it there"
+      />
 
-      {/* Kanban board */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-4 p-6 h-full min-h-0">
-          {COLUMNS.map((col) => (
+      <FilterBar className="shrink-0 px-6 pt-2 max-lg:px-4 max-lg:pb-1">
+        <SearchInput
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setLimits({});
+          }}
+          placeholder="Search name or phone"
+          aria-label="Search leads"
+          className="w-64 max-lg:w-full"
+        />
+        {canFilterMine && (
+          <button
+            type="button"
+            aria-pressed={mine}
+            onClick={() => {
+              setMine((v) => !v);
+              setLimits({});
+            }}
+            className={cn(
+              "inline-flex h-9 items-center rounded-lg border px-3 text-label font-medium outline-none transition-colors duration-120 ease-standard focus-visible:ring-2 focus-visible:ring-focus",
+              mine
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+            )}
+          >
+            Mine
+          </button>
+        )}
+        <FilterSelect
+          label="Lead source"
+          active={!!source}
+          value={source}
+          onChange={(e) => {
+            setSource(e.target.value as ContactSource | "");
+            setLimits({});
+          }}
+          className="max-lg:max-w-full"
+          wrapperClassName="max-lg:max-w-full"
+        >
+          <option value="">All sources</option>
+          {sourceOptions.map((g) => (
+            <option key={g.source} value={g.source}>
+              {CONTACT_SOURCE_LABELS[g.source] ?? g.source} ({g.count})
+            </option>
+          ))}
+        </FilterSelect>
+        {/* Tells screen readers where a card went */}
+        <span className="sr-only" aria-live="polite">
+          {moved ? `${moved.contact.name || moved.contact.phoneNumber} moved to ${LABEL[moved.to]}` : ""}
+        </span>
+      </FilterBar>
+
+      {/* Phones: status tabs (fixed) above the list (the only part that scrolls) */}
+      <StageTabs
+        idBase="lead-status"
+        label="Lead statuses"
+        value={phoneStatus}
+        onChange={(id) => setPhoneStatus(id as LeadStatus)}
+        className="shrink-0"
+        tabs={COLUMNS.map((col) => ({
+          id: col.status,
+          label: col.label,
+          count: totals[col.status],
+          color: col.color,
+        }))}
+      />
+      <StagePanel idBase="lead-status" tabId={phoneStatus}>
+        <PhoneLeadList
+          key={`${phoneStatus}-${filterKey}`}
+          status={phoneStatus}
+          baseFilter={baseFilter}
+          limit={limits[phoneStatus] ?? PAGE}
+          onShowMore={showMore}
+          onOpen={openContactDetail}
+          onMenu={setMenuFor}
+          convertingId={convertingId}
+        />
+      </StagePanel>
+
+      {/* Kanban board (desktop; phones use the list above) */}
+      <div data-tour="pipeline-board" className="min-h-0 flex-1 overflow-x-auto max-lg:hidden">
+        <div className="flex h-full min-h-0 gap-4 p-6">
+          {COLUMNS.map((col, i) => (
             <PipelineColumn
-              key={col.status}
+              // A new filter (source, search, mine) starts each column afresh
+              key={`${col.status}-${filterKey}`}
               status={col.status}
               label={col.label}
               color={col.color}
               baseFilter={baseFilter}
+              next={COLUMNS[i + 1] && { status: COLUMNS[i + 1].status, label: COLUMNS[i + 1].label }}
+              onMove={move}
+              selected={selected}
+              onToggleSelect={toggleSelect}
+              dragging={dragged !== null}
+              onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
               onDrop={handleDrop}
-              onCardClick={openContactDetail}
+              onOpen={openContactDetail}
               onConvert={convertPipeline ? handleConvert : undefined}
+              convertingId={convertingId}
+              onTotal={reportTotal}
+              limit={limits[col.status] ?? PAGE}
+              onShowMore={showMore}
             />
           ))}
         </div>
       </div>
 
-      <ContactDetailDrawer
-        contactId={selectedContactId}
-        open={detailDrawerOpen}
-        onClose={closeContactDetail}
+      {/* Bulk bar: shows while cards are ticked (desktop board only) */}
+      {selected.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Selected leads"
+          className="rise-in fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-wrap items-center gap-2 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 shadow-lg max-lg:hidden"
+        >
+          <span className="text-body font-semibold text-on-surface tabular-nums">{selected.size} selected</span>
+          <span aria-hidden className="mx-1 h-5 w-px bg-outline-variant" />
+          <span className="text-label text-on-surface-variant">Move to</span>
+          {COLUMNS.map((c) => (
+            <button
+              key={c.status}
+              type="button"
+              disabled={bulk.isPending}
+              onClick={() => bulkMove(c.status)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-variant px-2.5 text-label font-medium text-on-surface outline-none hover:bg-surface-container-low disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
+              {c.label}
+            </button>
+          ))}
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={bulk.isPending}>
+            Clear
+          </Button>
+        </div>
+      )}
+
+      <CloseReasonDialog
+        leadName={closing ? closing.name || closing.phoneNumber : null}
+        onCancel={() => setClosing(null)}
+        onConfirm={(reason) => {
+          if (closing) moveLead.mutate({ contact: closing, to: "CLOSED", reason });
+          setClosing(null);
+        }}
       />
+
+      <ActionSheet
+        open={!!menuFor}
+        onClose={() => setMenuFor(null)}
+        title={menuFor ? menuFor.name || menuFor.phoneNumber : undefined}
+        actions={menuActions}
+      />
+
+      <ContactDetailDrawer contactId={selectedContactId} open={detailDrawerOpen} onClose={closeContactDetail} />
     </div>
   );
 }

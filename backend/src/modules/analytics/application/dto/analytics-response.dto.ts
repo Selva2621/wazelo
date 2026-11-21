@@ -1,3 +1,5 @@
+import type { LiveChannelStat } from '../../domain/services/live-channel-stats';
+
 export interface MessageVolumeResponse {
   series: {
     date: string;
@@ -99,6 +101,49 @@ export interface CampaignSummaryResponse {
     avgDeliveryRate: number;
     avgReadRate: number;
   };
+}
+
+export interface LiveChannelStatsResponse {
+  asOf: string;
+  /** Start of the requester's local day (UTC instant) */
+  since: string;
+  channels: LiveChannelStat[];
+  openConversations: number;
+  unread: number;
+}
+
+export interface LiveWaitingResponse {
+  minMinutes: number;
+  /** All chats waiting that long (the list shows the oldest few) */
+  total: number;
+  items: {
+    conversationId: string;
+    contactId: string | null;
+    name: string | null;
+    phone: string;
+    channelType: string;
+    waitingMinutes: number;
+    assignee: { id: string; name: string } | null;
+  }[];
+}
+
+export interface LiveRevenueResponse {
+  /** Start of the 7-day window for "won" and "proposals" */
+  since: string;
+  currency: string;
+  mixedCurrencies: boolean;
+  pipelineValue: number;
+  openDeals: number;
+  wonCount: number;
+  wonValue: number;
+  proposalsSent: number;
+  proposalsViewed: number;
+}
+
+export interface LiveLeadsResponse {
+  since: string;
+  total: number;
+  items: { id: string; name: string | null; phone: string; origin: string; createdAt: string }[];
 }
 
 export interface DashboardOverviewResponse {

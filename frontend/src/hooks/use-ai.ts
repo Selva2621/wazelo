@@ -4,14 +4,48 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { aiApi } from "@/lib/api/ai";
 import type { RoutingSuggestion, AiInsightsResult, CampaignCopyResult, DealScoreResult } from "@/lib/api/ai";
+import type { SmartReplyOptions } from "@/lib/types/ai";
 
-export function useSmartReplies(conversationId: string | null) {
+/**
+ * Conversation AI results cost credits per call, so they run only when asked
+ * (`enabled`) and are kept for the session instead of refetching on revisit.
+ */
+const AI_RESULT_CACHE = { staleTime: Infinity, gcTime: 30 * 60_000, refetchOnWindowFocus: false } as const;
+
+const chatReadKey = (conversationId: string | null) => ["ai", "read-chat", conversationId] as const;
+
+/**
+ * The saved AI read of a chat (free, no AI call). Re-checked whenever the chat is
+ * opened, so "they've written since" shows up without spending anything.
+ */
+export function useChatRead(conversationId: string | null) {
   return useQuery({
-    queryKey: ["ai", "smart-replies", conversationId],
-    queryFn: () => aiApi.getSmartReplies(conversationId!),
+    queryKey: chatReadKey(conversationId),
+    queryFn: () => aiApi.peekChat(conversationId!),
     enabled: !!conversationId,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 10_000,
+    // A database look-up, not an AI call: notices new customer messages while the chat is open
+    refetchInterval: 30_000,
+  });
+}
+
+/** Reads the chat with the AI (1 credit; free when nothing new since the last read) */
+export function useReadChat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) => aiApi.readChat(conversationId),
+    onSuccess: (data, conversationId) => {
+      qc.setQueryData(chatReadKey(conversationId), data);
+      qc.invalidateQueries({ queryKey: ["ai-credits"] });
+    },
+  });
+}
+
+/** One credit-metered call per click; tone and goal change what comes back, so nothing is cached */
+export function useSuggestReplies() {
+  return useMutation({
+    mutationFn: ({ conversationId, ...options }: { conversationId: string } & SmartReplyOptions) =>
+      aiApi.getSmartReplies(conversationId, options),
   });
 }
 
@@ -22,32 +56,33 @@ export function useSummarizeConversation() {
   });
 }
 
-export function useSentiment(conversationId: string | null) {
+export function useSentiment(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "sentiment", conversationId],
     queryFn: () => aiApi.getSentiment(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 
-export function useCategorization(conversationId: string | null) {
+export function useCategorization(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "categorization", conversationId],
     queryFn: () => aiApi.getCategorization(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 
-export function useApplyCategorization() {
+export function useSaveTagsToContact() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (conversationId: string) => aiApi.applyCategorization(conversationId),
+    mutationFn: ({ conversationId, ...body }: { conversationId: string } & Parameters<typeof aiApi.saveTagsToContact>[1]) =>
+      aiApi.saveTagsToContact(conversationId, body),
+    // Contact tags and the org's tag list all live under ["contacts"]
     onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
-    onError: (err: Error) => toast.error(err.message || "Failed to apply categorization"),
+    onError: (err: Error & { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message || "Couldn't save the tag"),
   });
 }
 
@@ -65,18 +100,16 @@ export function useKbSuggest(conversationId: string | null) {
     queryKey: ["ai", "kb-suggest", conversationId],
     queryFn: () => aiApi.kbSuggest(conversationId!),
     enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    ...AI_RESULT_CACHE,
   });
 }
 
-export function useDetectIntent(conversationId: string | null) {
+export function useDetectIntent(conversationId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["ai", "intent", conversationId],
     queryFn: () => aiApi.detectIntent(conversationId!),
-    enabled: !!conversationId,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    enabled: !!conversationId && enabled,
+    ...AI_RESULT_CACHE,
   });
 }
 

@@ -1,31 +1,83 @@
-import { SEND_SAFETY_CONFIG } from '@/common/constants';
+import { SEND_SAFETY_CONFIG, SENDING_LIMIT_BOUNDS } from '@/common/constants';
 
 /**
  * Pure send-safety rules for bulk messages (campaigns, sequences) on a
  * Baileys number. No I/O — AccountSafetyService feeds in the counts.
  */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export interface WarmupTier {
-  stage: number;
-  /** Cold messages (to people who never wrote first) allowed per day */
-  coldCap: number;
-  /** All bulk messages allowed per day */
-  bulkCap: number;
+export interface DailyCaps {
+  /** Cold messages (to people who never wrote first) allowed per day; null = no daily cap */
+  coldCap: number | null;
+  /** All bulk messages allowed per day; null = no daily cap (only the plan's message limit) */
+  bulkCap: number | null;
+  /**
+   * What decides daily volume on this number:
+   * - plan:   no daily cap; the org's plan message limit is the only volume limit (default)
+   * - custom: admin-set daily caps
+   */
+  mode: 'plan' | 'custom';
 }
 
-export function warmupTier(linkedAt: Date | null, now: Date): WarmupTier {
-  const ageDays = linkedAt ? (now.getTime() - linkedAt.getTime()) / DAY_MS : 0;
-  const index = SEND_SAFETY_CONFIG.WARMUP_TIERS.findIndex((t) => ageDays < t.maxAgeDays);
-  const tier = SEND_SAFETY_CONFIG.WARMUP_TIERS[index];
-  return { stage: index + 1, coldCap: tier.cold, bulkCap: tier.bulk };
+/**
+ * Per-number sending limits set by an admin (whatsapp_sessions.sending_limits).
+ * Every field is optional. With nothing set there is no daily cap: volume is
+ * limited only by the org's plan (monthly message limit).
+ */
+export interface SendingLimits {
+  /** Bulk messages per day on this number */
+  dailyBulkCap?: number;
+  /** Of those, messages to people who never messaged first */
+  dailyColdCap?: number;
+  /** Random gap between two bulk messages on this number */
+  bulkGapMinMs?: number;
+  bulkGapMaxMs?: number;
+}
+
+const intIn = (value: unknown, min: number, max: number): number | undefined =>
+  typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : undefined;
+
+/** Parse the stored JSON, dropping anything out of bounds (never trust a DB blob blindly). */
+export function readSendingLimits(raw: unknown): SendingLimits {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const r = raw as Record<string, unknown>;
+  // Older rows may still hold warm-up fields (warmupEnabled, warmupStage): ignored
+  const limits: SendingLimits = {
+    dailyBulkCap: intIn(r.dailyBulkCap, 0, SENDING_LIMIT_BOUNDS.DAILY_BULK_MAX),
+    dailyColdCap: intIn(r.dailyColdCap, 0, SENDING_LIMIT_BOUNDS.DAILY_COLD_MAX),
+    bulkGapMinMs: intIn(r.bulkGapMinMs, SENDING_LIMIT_BOUNDS.BULK_GAP_MIN_MS, SENDING_LIMIT_BOUNDS.BULK_GAP_MAX_MS),
+    bulkGapMaxMs: intIn(r.bulkGapMaxMs, SENDING_LIMIT_BOUNDS.BULK_GAP_MIN_MS, SENDING_LIMIT_BOUNDS.BULK_GAP_MAX_MS),
+  };
+  for (const key of Object.keys(limits) as (keyof SendingLimits)[]) {
+    if (limits[key] === undefined) delete limits[key];
+  }
+  return limits;
+}
+
+/** Daily caps on a number: only what an admin set; otherwise none (plan limit only). */
+export function dailyCaps(limits: SendingLimits = {}): DailyCaps {
+  const bulkCap = limits.dailyBulkCap ?? null;
+  const rawCold = limits.dailyColdCap ?? null;
+  // New-contact messages are a subset of bulk messages
+  const coldCap = rawCold === null ? null : bulkCap === null ? rawCold : Math.min(rawCold, bulkCap);
+  return { coldCap, bulkCap, mode: bulkCap !== null || coldCap !== null ? 'custom' : 'plan' };
+}
+
+/** Random-gap bounds between bulk sends for a number (custom or default). */
+export function bulkGapRange(limits: SendingLimits = {}): { min: number; max: number } {
+  const min = limits.bulkGapMinMs ?? SEND_SAFETY_CONFIG.BULK_GAP_MIN_MS;
+  const max = limits.bulkGapMaxMs ?? SEND_SAFETY_CONFIG.BULK_GAP_MAX_MS;
+  return { min: Math.min(min, max), max: Math.max(min, max) };
 }
 
 export interface LocalClock {
   hour: number;
   minute: number;
   second: number;
+}
+
+export interface SendWindow {
+  startHour: number;
+  endHour: number;
 }
 
 /** Wall-clock time in an IANA time zone (falls back to UTC for an unknown zone). */
@@ -70,25 +122,34 @@ export function localDayStart(now: Date, timeZone: string): Date {
 }
 
 /** Next time bulk sending opens (start hour, local), from now. */
-export function nextSendWindowStart(now: Date, timeZone: string): Date {
+export function nextSendWindowStart(
+  now: Date,
+  timeZone: string,
+  startHour: number = SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+): Date {
   const { hour, minute, second } = localClock(now, timeZone);
-  const start = SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR;
   const secondsIntoDay = (hour * 60 + minute) * 60 + second;
-  let secondsUntil = start * 3600 - secondsIntoDay;
+  let secondsUntil = startHour * 3600 - secondsIntoDay;
   if (secondsUntil <= 0) secondsUntil += 24 * 3600;
-  const aligned = alignToLocalTime(new Date(now.getTime() + secondsUntil * 1000), timeZone, start, 0);
+  const aligned = alignToLocalTime(new Date(now.getTime() + secondsUntil * 1000), timeZone, startHour, 0);
   return aligned.getTime() > now.getTime() ? aligned : new Date(now.getTime() + secondsUntil * 1000);
 }
 
-export function isWithinSendWindow(now: Date, timeZone: string): boolean {
+export function isWithinSendWindow(
+  now: Date,
+  timeZone: string,
+  window: SendWindow = {
+    startHour: SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+    endHour: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
+  },
+): boolean {
   const { hour } = localClock(now, timeZone);
-  return hour >= SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR && hour < SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR;
+  return hour >= window.startHour && hour < window.endHour;
 }
 
 export interface BulkSendInput {
   now: Date;
   timeZone: string;
-  linkedAt: Date | null;
   pausedUntil: Date | null;
   pausedReason: string | null;
   /** Bulk messages sent today (local day) on this number */
@@ -97,6 +158,27 @@ export interface BulkSendInput {
   coldSentToday: number;
   /** Has this recipient never messaged the org? */
   recipientIsCold: boolean;
+  /** Optional feature-specific window; otherwise use the shared bulk window. */
+  sendWindow?: SendWindow;
+  /**
+   * Time zone whose midnight resets the daily counters (the org's). Defaults to
+   * `timeZone`. A campaign in another zone sends in its own window but shares the
+   * number's daily budget, so a capped message must wait for *this* midnight.
+   */
+  budgetTimeZone?: string;
+  /** Admin-set limits for this number */
+  limits?: SendingLimits;
+}
+
+/**
+ * When a message held by a daily cap can try again: the next reset of the
+ * counters (budget-zone midnight), moved to the opening of the sending window
+ * if the window is closed at that moment.
+ */
+export function nextCapResetAt(now: Date, timeZone: string, budgetTimeZone: string, window: SendWindow): Date {
+  const reset = nextSendWindowStart(now, budgetTimeZone, 0);
+  if (isWithinSendWindow(reset, timeZone, window)) return reset;
+  return nextSendWindowStart(reset, timeZone, window.startHour);
 }
 
 export type BulkSendDecision =
@@ -105,6 +187,10 @@ export type BulkSendDecision =
 
 export function decideBulkSend(input: BulkSendInput): BulkSendDecision {
   const { now, timeZone } = input;
+  const sendWindow = input.sendWindow ?? {
+    startHour: SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
+    endHour: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
+  };
 
   if (input.pausedUntil && input.pausedUntil > now) {
     return {
@@ -114,23 +200,28 @@ export function decideBulkSend(input: BulkSendInput): BulkSendDecision {
     };
   }
 
-  if (!isWithinSendWindow(now, timeZone)) {
-    return { allowed: false, retryAt: nextSendWindowStart(now, timeZone), reason: 'Outside sending hours' };
-  }
-
-  const tier = warmupTier(input.linkedAt, now);
-  if (input.bulkSentToday >= tier.bulkCap) {
+  if (!isWithinSendWindow(now, timeZone, sendWindow)) {
     return {
       allowed: false,
-      retryAt: nextSendWindowStart(now, timeZone),
-      reason: `Daily limit reached (${tier.bulkCap} bulk messages, warm-up stage ${tier.stage})`,
+      retryAt: nextSendWindowStart(now, timeZone, sendWindow.startHour),
+      reason: 'Outside sending hours',
     };
   }
-  if (input.recipientIsCold && input.coldSentToday >= tier.coldCap) {
+
+  const caps = dailyCaps(input.limits);
+  const capResetAt = () => nextCapResetAt(now, timeZone, input.budgetTimeZone ?? timeZone, sendWindow);
+  if (caps.bulkCap !== null && input.bulkSentToday >= caps.bulkCap) {
     return {
       allowed: false,
-      retryAt: nextSendWindowStart(now, timeZone),
-      reason: `Daily limit reached for new contacts (${tier.coldCap}, warm-up stage ${tier.stage})`,
+      retryAt: capResetAt(),
+      reason: `Daily limit reached (${caps.bulkCap} bulk messages, number setting)`,
+    };
+  }
+  if (input.recipientIsCold && caps.coldCap !== null && input.coldSentToday >= caps.coldCap) {
+    return {
+      allowed: false,
+      retryAt: capResetAt(),
+      reason: `Daily limit reached for new contacts (${caps.coldCap}, number setting)`,
     };
   }
 

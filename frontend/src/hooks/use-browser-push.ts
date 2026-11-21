@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@/lib/api/notifications";
 import { getDeviceId, getDeviceName } from "@/lib/device";
+import { registerServiceWorker } from "@/lib/pwa/register-sw";
 import type { DevicePermission, NotificationDevice } from "@/lib/types/notifications";
 
 export type BrowserPushStatus =
@@ -39,7 +40,7 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 
 /** This browser's push subscription, creating it when needed (permission must be granted). */
 async function browserSubscription(publicKey: string): Promise<PushSubscription> {
-  const registration = await navigator.serviceWorker.register("/sw.js");
+  const registration = await registerServiceWorker();
   await navigator.serviceWorker.ready;
   return (
     (await registration.pushManager.getSubscription()) ??

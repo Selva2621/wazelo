@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
 
 /* ─── Root ─── */
 interface TableProps {
@@ -20,12 +20,12 @@ export function Table({ children, className, stickyHeader = false }: TableRootPr
     <div
       className={cn(
         stickyHeader
-          ? "overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-surface-container-low"
+          ? "overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-surface-container-lowest"
           : "overflow-x-auto",
         className,
       )}
     >
-      <table className="w-full text-body-lg">{children}</table>
+      <table className="w-full text-body">{children}</table>
     </div>
   );
 }
@@ -40,7 +40,7 @@ export function TableHeaderRow({ children, className }: TableProps) {
   return (
     <tr
       className={cn(
-        "bg-surface-container/40 border-b border-outline-variant/15",
+        "border-b border-outline-variant",
         className,
       )}
     >
@@ -65,7 +65,7 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "px-5 py-3 text-caption font-semibold uppercase tracking-wider text-on-surface-variant",
+        "h-10 px-4 text-label font-medium whitespace-nowrap text-on-surface-variant",
         align === "right" && "text-right",
         align === "center" && "text-center",
         align === "left" && "text-left",
@@ -84,16 +84,20 @@ export function TableBody({ children, className }: TableProps) {
 }
 
 /* ─── Body Row ─── */
-interface TableRowProps extends TableProps {
+interface TableRowProps
+  extends TableProps,
+    Pick<HTMLAttributes<HTMLTableRowElement>, "tabIndex" | "onKeyDown" | "aria-label" | "aria-expanded"> {
   onClick?: () => void;
 }
 
-export function TableRow({ children, className, onClick }: TableRowProps) {
+export function TableRow({ children, className, onClick, ...rest }: TableRowProps) {
   return (
     <tr
       onClick={onClick}
+      {...rest}
       className={cn(
-        "border-b border-outline-variant/5 hover:bg-surface-container/20 transition-colors",
+        "border-b border-outline-variant/60 transition-colors duration-120 ease-standard hover:bg-surface-container-low",
+        onClick && "cursor-pointer",
         className,
       )}
     >
@@ -118,7 +122,7 @@ export function TableCell({
   return (
     <td
       className={cn(
-        "px-5 py-3",
+        "px-4 py-3",
         align === "right" && "text-right",
         align === "center" && "text-center",
         className,

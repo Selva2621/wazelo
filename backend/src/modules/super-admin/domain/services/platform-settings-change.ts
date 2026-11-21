@@ -13,6 +13,10 @@ export interface PlatformSettingsPatch {
   googleClientSecret?: string | null;
   /** '' clears it */
   googleRedirectUri?: string;
+  /** New workspaces may choose Team / Company */
+  teamSetupEnabled?: boolean;
+  /** New workspaces may choose Solo / Freelancer */
+  freelancerSetupEnabled?: boolean;
 }
 
 export type PlatformSettingsChange =
@@ -124,6 +128,18 @@ export function planPlatformSettingsChange(
     set.push({ key: K.googleSignupEnabled, value: signup });
     before.googleSignupEnabled = current.googleSignupEnabled;
     after.googleSignupEnabled = signup;
+  }
+
+  const setupToggles = [
+    ['teamSetupEnabled', 'TEAM', K.teamSetupEnabled],
+    ['freelancerSetupEnabled', 'FREELANCER', K.freelancerSetupEnabled],
+  ] as const;
+  for (const [field, type, key] of setupToggles) {
+    const value = patch[field];
+    if (value === undefined || value === current.orgTypeSetup[type]) continue;
+    set.push({ key, value });
+    before[field] = current.orgTypeSetup[type];
+    after[field] = value;
   }
 
   if (!set.length && !remove.length) return { kind: 'noop' };

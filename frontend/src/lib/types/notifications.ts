@@ -15,7 +15,9 @@ export type NotificationType =
   | "SUBSCRIPTION_EXPIRING"
   | "SYSTEM_ALERT"
   | "WHATSAPP_SESSION_UNSTABLE"
-  | "WHATSAPP_PHONE_INACTIVE";
+  | "WHATSAPP_PHONE_INACTIVE"
+  /** A website visitor asked to talk to a person */
+  | "WEBSITE_HANDOFF";
 
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
 export type NotificationChannel = "IN_APP" | "EMAIL";

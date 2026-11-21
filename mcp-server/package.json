@@ -1,0 +1,28 @@
+{
+  "name": "wazelo-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Wazelo CRM: contacts, conversations, deals and WhatsApp messaging from any MCP client",
+  "type": "module",
+  "bin": {
+    "wazelo-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "typescript": "5.8.3"
+  }
+}

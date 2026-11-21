@@ -44,6 +44,7 @@ import {
   StartGoogleAuthUseCase,
 } from '../../application/use-cases/google-auth.use-cases';
 import { GOOGLE_STATE_TTL_SECONDS } from '../../application/services/google-oauth-state.service';
+import { publicFrontendUrl } from '@/config/public-urls';
 
 @Controller('auth')
 export class AuthController {
@@ -237,7 +238,7 @@ export class AuthController {
       userAgent: this.getUa(req),
     });
 
-    const frontendUrl = this.configService.get<string>('app.frontendUrl', 'http://localhost:3001').replace(/\/$/, '');
+    const frontendUrl = (this.configService.get<string>('app.frontendUrl') || publicFrontendUrl()).replace(/\/$/, '');
     if (!result.ok) {
       res.redirect(302, `${frontendUrl}/auth/login?ssoError=${encodeURIComponent(result.code)}`);
       return;

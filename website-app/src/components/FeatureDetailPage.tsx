@@ -1,20 +1,15 @@
 "use client";
 
-// Shared layout for every /features/<slug> page: split hero with the feature's
-// illustration (public/illustrations/feature-<slug>.svg), a capability bento,
-// the setup steps, the page's live demo, and a closing call to action.
-
-import type { ReactNode } from "react";
+import React, { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import SiteNavbar from "@/components/Navbar";
-import SiteFooter from "@/components/Footer";
-import { SiteBackdrop } from "@/components/site-backdrop";
-import { Illustration } from "@/components/illustration";
-import { Reveal } from "@/components/home/reveal";
-import { easeOut } from "@/components/mocks/motion";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
+import { gsap, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
+import SiteFooter from "@/components/Footer";
+import { PhoneFrame } from "@/components/story/phone-frame";
+import SiteNavbar from "@/components/Navbar";
+import { LoopVideo } from "@/components/home/loop-video";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FeatureDetailData {
@@ -22,285 +17,244 @@ export interface FeatureDetailData {
   tag: string;
   heroTitle: string;
   heroSubtitle: string;
+  heroScreen: string;
   overviewTitle: string;
   overviewDesc: string;
   capabilities: { icon: string; title: string; desc: string }[];
   howItWorks: { step: string; title: string; desc: string }[];
+  screens?: { src: string; caption: string }[];
   relatedFeatures: { label: string; href: string; icon: string }[];
-  /** Grouped specifics (e.g. every trigger, every filter), shown as pills. */
-  details?: { title: string; items: string[] }[];
-  /** Short questions and plain answers, shown as an accordion. */
-  faqs?: { q: string; a: string }[];
-  interactiveSection?: ReactNode;
+  interactiveSection?: React.ReactNode;
 }
 
-const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";
-const primaryBtn = `group inline-flex items-center gap-2 rounded-full bg-primary-container px-7 py-3.5 text-base font-semibold text-on-primary transition-colors duration-200 hover:bg-primary active:scale-[0.98] ${focusRing}`;
+/** Real app recordings (public/media/story) shown instead of a still where one exists. */
+const HERO_CLIPS: Record<string, { clip: string; path: string }> = {
+  "shared-inbox": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
+  "ai-assistant": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
+  "lead-finder": { clip: "ch1-find", path: "app.wazelo.in/leads/finder" },
+  sequences: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
+  automation: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
+  proposals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
+  deals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
+};
 
-function Icon({ name, className = "" }: { name: string; className?: string }) {
+const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+function Frame({ path, children }: { path: string; children: React.ReactNode }) {
   return (
-    <span aria-hidden className={`material-symbols-outlined ${className}`}>
-      {name}
-    </span>
-  );
-}
-
-// ─── Hero ─────────────────────────────────────────────────────────────────────
-function Hero({ data }: { data: FeatureDetailData }) {
-  return (
-    <section className="relative overflow-hidden">
-      <div aria-hidden className="site-aurora" />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-28 sm:px-6 lg:min-h-[86dvh] lg:grid-cols-2 lg:gap-16 lg:px-8 lg:pb-20 lg:pt-24">
-        <div>
-          <Reveal>
-            <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm">
-              <Link href="/#features" className={`rounded text-placeholder transition-colors hover:text-on-surface ${focusRing}`}>
-                Features
-              </Link>
-              <span aria-hidden className="text-placeholder">/</span>
-              <span aria-current="page" className="font-medium text-on-surface-variant">
-                {data.tag}
-              </span>
-            </nav>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <h1
-              className="text-4xl font-semibold leading-[1.04] tracking-tighter text-on-surface sm:text-5xl lg:text-6xl"
-              dangerouslySetInnerHTML={{ __html: data.heroTitle }}
-            />
-          </Reveal>
-          <Reveal delay={0.12}>
-            <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-on-surface-variant">{data.heroSubtitle}</p>
-          </Reveal>
-          <Reveal delay={0.2} className="mt-9 flex flex-wrap items-center gap-3">
-            <a href={APP_REGISTER_URL} className={primaryBtn}>
-              Start free trial
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </a>
-            <Link
-              href="/#features"
-              className={`inline-flex items-center rounded-full border border-outline-variant px-6 py-3.5 text-base font-medium text-on-surface transition-colors duration-200 hover:border-on-surface-variant active:scale-[0.98] ${focusRing}`}
-            >
-              All features
-            </Link>
-          </Reveal>
-        </div>
-
-        {/* Fixed-height slot so the page doesn't shift when the SVG loads. */}
-        <div className="relative h-64 sm:h-80 lg:h-[30rem]">
-          <Illustration name={`feature-${data.slug}`} label={`${data.tag} illustration`} className="h-full w-full" />
-        </div>
+    <div className="overflow-hidden rounded-[1.25rem] bg-white shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5),0_0_0_1px_rgba(23,19,15,0.08)]">
+      <div className="flex items-center gap-2 border-b border-ink/[0.07] bg-[#faf8f5] px-4 py-3">
+        <span className="size-2.5 rounded-full bg-[#e8645a]" />
+        <span className="size-2.5 rounded-full bg-[#f1bf4c]" />
+        <span className="size-2.5 rounded-full bg-[#5fc454]" />
+        <span className="ml-3 truncate rounded-md bg-ink/[0.05] px-3 py-1 font-mono text-[11px] text-ink-soft">{path}</span>
       </div>
-    </section>
-  );
-}
-
-// ─── Overview ─────────────────────────────────────────────────────────────────
-function Overview({ data }: { data: FeatureDetailData }) {
-  return (
-    <section className="border-t border-outline-variant/50">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <Reveal className="max-w-3xl">
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-on-surface md:text-4xl">{data.overviewTitle}</h2>
-          <p className="mt-6 max-w-[65ch] text-lg leading-relaxed text-on-surface-variant">{data.overviewDesc}</p>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-// ─── Capabilities bento ───────────────────────────────────────────────────────
-// Six cells: a 2x2 lead tile, two stacked beside it, then a row of three.
-// At md (2 columns) the last tile spans the row so no cell is left empty.
-const BENTO_CELLS = [
-  "md:col-span-2 lg:row-span-2 bg-primary-container/10 border-primary-container/25",
-  "lg:col-start-3 bg-surface-container-lowest border-outline-variant/60",
-  "lg:col-start-3 bg-surface-container-lowest border-outline-variant/60",
-  "bg-surface-container-high border-transparent",
-  "bg-surface-container-lowest border-outline-variant/60",
-  "md:col-span-2 lg:col-span-1 bg-surface-container-high border-transparent",
-];
-
-function Capabilities({ items }: { items: FeatureDetailData["capabilities"] }) {
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-      <Reveal>
-        <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">What you can do</h2>
-      </Reveal>
-      <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((c, i) => {
-          const lead = i === 0;
-          return (
-            <Reveal key={c.title} delay={0.05 * i} className={`rounded-2xl border ${BENTO_CELLS[i % BENTO_CELLS.length]}`}>
-              <div className={`flex h-full flex-col ${lead ? "justify-between gap-10 p-8 lg:min-h-[22rem] lg:p-10" : "p-6"}`}>
-                <Icon
-                  name={c.icon}
-                  className={lead ? "!text-[44px] text-primary-container" : "!text-[26px] text-primary-container"}
-                />
-                <div className={lead ? "" : "mt-5"}>
-                  <h3 className={`font-semibold text-on-surface ${lead ? "text-2xl tracking-tight md:text-3xl" : "text-base"}`}>{c.title}</h3>
-                  <p className={`mt-2 leading-relaxed text-on-surface-variant ${lead ? "max-w-[44ch] text-base" : "text-sm"}`}>{c.desc}</p>
-                </div>
-              </div>
-            </Reveal>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-// ─── In detail ────────────────────────────────────────────────────────────────
-function Details({ groups }: { groups: NonNullable<FeatureDetailData["details"]> }) {
-  return (
-    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8 lg:pb-28">
-      <Reveal>
-        <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">In detail</h2>
-      </Reveal>
-      <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
-        {groups.map((g, i) => (
-          <Reveal key={g.title} delay={0.06 * i}>
-            <h3 className="border-t border-outline-variant/60 pt-5 text-base font-semibold text-on-surface">{g.title}</h3>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {g.items.map((item) => (
-                <li
-                  key={item}
-                  className="rounded-full border border-outline-variant/70 bg-surface-container-lowest px-3 py-1.5 text-sm text-on-surface-variant"
-                >
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── FAQ ──────────────────────────────────────────────────────────────────────
-// No FAQPage JSON-LD here: the root layout already emits the site-wide one,
-// and a page should carry only one.
-function Faqs({ items }: { items: NonNullable<FeatureDetailData["faqs"]> }) {
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 lg:px-8 lg:pt-28">
-      <div className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
-        <Reveal>
-          <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">Questions</h2>
-        </Reveal>
-        <Reveal delay={0.08}>
-          <div className="divide-y divide-outline-variant/50 border-y border-outline-variant/50">
-            {items.map((f) => (
-              <details key={f.q} className="group py-5">
-                <summary className={`flex cursor-pointer list-none items-start justify-between gap-6 rounded text-base font-medium text-on-surface [&::-webkit-details-marker]:hidden ${focusRing}`}>
-                  {f.q}
-                  <Icon name="add" className="!text-[20px] shrink-0 text-placeholder transition-transform duration-200 group-open:rotate-45" />
-                </summary>
-                <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-on-surface-variant">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-// ─── How it works ─────────────────────────────────────────────────────────────
-function Steps({ steps }: { steps: FeatureDetailData["howItWorks"] }) {
-  const reduce = useReducedMotion();
-  return (
-    <section className="border-y border-outline-variant/50 bg-surface-container-low/60">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-        <Reveal>
-          <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">Up and running in minutes</h2>
-        </Reveal>
-        <ol className="mt-12 grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-          {steps.map((s, i) => (
-            <li key={s.title}>
-              {/* The progress rule fills left to right as the steps enter, in order. */}
-              <div className="h-0.5 w-full overflow-hidden rounded-full bg-outline-variant/60">
-                <motion.div
-                  className="h-full origin-left bg-primary-container"
-                  initial={reduce ? false : { scaleX: 0 }}
-                  whileInView={{ scaleX: 1 }}
-                  viewport={{ once: true, amount: 0.6 }}
-                  transition={{ duration: 0.7, delay: 0.25 * i, ease: easeOut }}
-                />
-              </div>
-              <Reveal delay={0.25 * i + 0.1}>
-                <h3 className="mt-6 text-lg font-semibold text-on-surface">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{s.desc}</p>
-              </Reveal>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-// ─── Closing: call to action + related features ───────────────────────────────
-function Closing({ data }: { data: FeatureDetailData }) {
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-      <Reveal className="grid overflow-hidden rounded-3xl border border-outline-variant/60 bg-surface-container-low lg:grid-cols-[1.25fr_1fr]">
-        <div className="flex flex-col gap-8 p-8 sm:flex-row sm:items-center lg:p-12">
-          <div className="relative h-36 w-48 shrink-0">
-            <Illustration name="success" className="h-full w-full" />
-          </div>
-          <div>
-            <h2 className="text-3xl font-semibold tracking-tight text-on-surface md:text-4xl">
-              Ready to try <span className="text-primary-container">{data.tag}</span>?
-            </h2>
-            <p className="mt-3 text-base text-on-surface-variant">Free trial. No credit card. Set up in minutes.</p>
-            <a href={APP_REGISTER_URL} className={`mt-7 ${primaryBtn}`}>
-              Start free trial
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </a>
-          </div>
-        </div>
-
-        <nav aria-label="Related features" className="border-t border-outline-variant/60 p-8 lg:border-l lg:border-t-0 lg:p-12">
-          <h3 className="text-sm font-medium text-placeholder">Related features</h3>
-          <ul className="mt-4 divide-y divide-outline-variant/50">
-            {data.relatedFeatures.map((f) => (
-              <li key={f.href}>
-                <Link href={f.href} className={`group flex items-center gap-3 rounded py-3.5 text-on-surface transition-colors hover:text-primary-container ${focusRing}`}>
-                  <Icon name={f.icon} className="!text-[20px] text-primary-container" />
-                  <span className="flex-1 font-medium">{f.label}</span>
-                  <ArrowUpRight className="h-4 w-4 text-placeholder transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary-container" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </Reveal>
-    </section>
+      {children}
+    </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function FeatureDetailPage({ data }: { data: FeatureDetailData }) {
+  const root = useRef<HTMLDivElement>(null);
+  const clip = HERO_CLIPS[data.slug];
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add(MQ_MOTION, () => {
+        gsap
+          .timeline({ defaults: { ease: "expo.out", duration: 1.1 } })
+          .from("[data-fd=crumb]", { y: 12, autoAlpha: 0, duration: 0.7 })
+          .from("[data-fd=title]", { y: 50, autoAlpha: 0 }, 0.1)
+          .from("[data-fd=sub]", { y: 24, autoAlpha: 0 }, 0.3)
+          .from("[data-fd=cta]", { y: 20, autoAlpha: 0, stagger: 0.08 }, 0.4)
+          .from("[data-fd=media]", { y: 90, autoAlpha: 0, duration: 1.4 }, 0.45);
+
+        const rise = (sel: string, trigger: string, stagger = 0.08) =>
+          gsap.from(sel, { y: 50, autoAlpha: 0, stagger, duration: 1, ease: "expo.out", scrollTrigger: { trigger, start: "top 78%", once: true } });
+        rise("[data-fd=over] > *", "[data-fd=over]", 0.12);
+        rise("[data-fd=cap]", "[data-fd=caps]");
+        rise("[data-fd=step]", "[data-fd=steps]", 0.12);
+        rise("[data-fd=rel]", "[data-fd=related]", 0.05);
+        rise("[data-fd=end] > *", "[data-fd=end]", 0.12);
+        if (document.querySelector("[data-fd=demo]")) {
+          gsap.from("[data-fd=demo]", { y: 80, scale: 0.96, autoAlpha: 0, duration: 1.2, ease: "expo.out", scrollTrigger: { trigger: "[data-fd=demo]", start: "top 85%", once: true } });
+        }
+      });
+      mm.add(MQ_FULL, () => {
+        // Media tilts back flat as it scrolls into place; the step line draws with scroll.
+        if (document.querySelector("[data-fd=media]")) {
+          gsap.fromTo("[data-fd=media-tilt]", { rotationX: 14, scale: 0.94, transformPerspective: 1600, transformOrigin: "50% 0%" }, { rotationX: 0, scale: 1, ease: "none", scrollTrigger: { trigger: "[data-fd=media]", start: "top 95%", end: "top 30%", scrub: 0.6 } });
+        }
+        gsap.fromTo("[data-fd=line]", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: "[data-fd=steps]", start: "top 75%", end: "bottom 60%", scrub: 0.6 } });
+        gsap.fromTo("[data-fd=progress]", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.3 } });
+      });
+    },
+    { scope: root },
+  );
+
   return (
-    <div className="relative isolate min-h-dvh bg-surface font-sans text-on-surface">
-      <SiteBackdrop />
+    <div ref={root} className="min-h-dvh bg-paper font-sans text-ink">
+      {/* heroTitle arrives as HTML with an inline accent colour; restyle it for paper. */}
+      <style>{`[data-fd=title] span{color:var(--color-rust)!important;font-style:italic}`}</style>
+      <span data-fd="progress" aria-hidden className="fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-rust" />
       <SiteNavbar activePage="Features" />
-      <main>
-        <Hero data={data} />
-        <Overview data={data} />
-        <Capabilities items={data.capabilities} />
-        {data.details?.length ? <Details groups={data.details} /> : null}
-        <Steps steps={data.howItWorks} />
-        {data.interactiveSection && (
-          <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 lg:px-8 lg:pt-28">
-            <Reveal>{data.interactiveSection}</Reveal>
-          </section>
-        )}
-        {data.faqs?.length ? <Faqs items={data.faqs} /> : null}
-        <Closing data={data} />
-      </main>
-      <SiteFooter />
+
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="px-4 pb-24 pt-32 sm:px-6 lg:px-8 lg:pb-32 lg:pt-40">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-4xl">
+            <p data-fd="crumb" className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-ink-faint">
+              <Link href="/#features" className="-my-2 inline-block py-2 hover:text-ink">Features</Link>
+              <span>/</span>
+              <span className="text-rust">{data.tag}</span>
+            </p>
+            <h1
+              data-fd="title"
+              className="mt-6 font-display text-[clamp(3rem,7vw,6.5rem)] leading-[0.92] tracking-[-0.02em]"
+              dangerouslySetInnerHTML={{ __html: data.heroTitle }}
+            />
+            <p data-fd="sub" className="mt-8 max-w-[52ch] text-lg leading-relaxed text-ink-soft">
+              {data.heroSubtitle}
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <a data-fd="cta" href={APP_REGISTER_URL} className={`group inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85 active:scale-[0.98] ${focusInk}`}>
+                Start free trial
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <Link data-fd="cta" href="/#features" className={`inline-flex items-center rounded-full border border-ink/20 px-7 py-4 text-sm font-semibold transition-colors hover:border-ink/50 ${focusInk}`}>
+                See all features
+              </Link>
+            </div>
+          </div>
+
+          {(clip || data.heroScreen) && (
+            <div data-fd="media" className="mt-16 lg:mt-24">
+              <div data-fd="media-tilt" className="will-change-transform">
+                {clip ? (
+                  <>
+                    <PhoneFrame className="lg:hidden">
+                      <LoopVideo src={`/media/story/${clip.clip}-m.mp4`} poster={`/media/story/${clip.clip}-m.jpg`} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
+                    </PhoneFrame>
+                    <div className="mx-auto hidden max-w-5xl lg:block">
+                      <Frame path={clip.path}>
+                        <LoopVideo src={`/media/story/${clip.clip}.mp4`} poster={`/media/story/${clip.clip}.jpg`} label={`${data.tag} in the Wazelo app`} />
+                      </Frame>
+                    </div>
+                  </>
+                ) : (
+                  <div className="tone-fixed overflow-hidden rounded-[1.5rem] bg-ink shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5)]">
+                    <Image src={data.heroScreen} alt={data.tag} width={1280} height={800} sizes="(min-width: 1280px) 1216px, 100vw" className="h-auto w-full" priority />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Overview ─────────────────────────────────────────────────────── */}
+      <section className="border-t border-ink/10 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div data-fd="over" className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-12">
+          <h2 className="font-display text-4xl leading-[1] tracking-[-0.01em] md:text-6xl lg:col-span-7">{data.overviewTitle}</h2>
+          <p className="max-w-md text-lg leading-relaxed text-ink-soft lg:col-span-4 lg:col-start-9 lg:pt-3">{data.overviewDesc}</p>
+        </div>
+      </section>
+
+      {/* ── Capabilities ─────────────────────────────────────────────────── */}
+      <section className="bg-paper-deep/60 px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">What you can do</p>
+          <div data-fd="caps" className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
+            {data.capabilities.map((c, i) => (
+              <div key={c.title} data-fd="cap" className="border-t border-ink/15 py-8">
+                <div className="flex items-center justify-between">
+                  <span className="shrink-0 font-mono text-xs text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="material-symbols-outlined text-[22px] text-rust">{c.icon}</span>
+                </div>
+                <h3 className="mt-6 font-display text-3xl leading-tight">{c.title}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ─────────────────────────────────────────────────── */}
+      <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="font-display text-4xl leading-none md:text-6xl">
+            Up and running <em className="text-rust">in minutes.</em>
+          </h2>
+          <div data-fd="steps" className="relative mt-16">
+            <span aria-hidden className="absolute left-0 right-0 top-[1.15rem] hidden h-px bg-ink/10 lg:block" />
+            <span aria-hidden data-fd="line" className="absolute left-0 right-0 top-[1.15rem] hidden h-px origin-left scale-x-0 bg-rust lg:block" />
+            <ol className="grid gap-10 lg:grid-cols-4 lg:gap-8">
+              {data.howItWorks.map((s, i) => (
+                <li key={s.step + s.title} data-fd="step" className="relative flex gap-5 lg:block">
+                  <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full border border-ink/20 bg-paper font-mono text-xs">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="lg:mt-8">
+                    <h3 className="text-lg font-semibold tracking-tight">{s.title}</h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{s.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Live demo (the older pages' interactive mock, shown as a screen) ── */}
+      {/* Desktop only: the mock is a desktop app layout and is cut off at phone width; phones
+          already get the readable phone recording at the top of the page. */}
+      {data.interactiveSection && (
+        <section className="hidden px-4 pb-24 sm:px-6 lg:block lg:px-8 lg:pb-32">
+          <div data-fd="demo" className="mx-auto max-w-7xl tone-fixed overflow-hidden rounded-[2rem] bg-ink p-5 text-on-surface sm:p-8 lg:p-12">
+            <p className="mb-8 text-xs font-medium uppercase tracking-[0.22em] text-paper/50">See it in action</p>
+            {data.interactiveSection}
+          </div>
+        </section>
+      )}
+
+      {/* ── Related ──────────────────────────────────────────────────────── */}
+      <section className="border-t border-ink/10 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <h2 className="font-display text-3xl md:text-4xl">Works well with</h2>
+          <div data-fd="related" className="flex flex-wrap gap-3">
+            {data.relatedFeatures.map((f) => (
+              <Link
+                key={f.label}
+                data-fd="rel"
+                href={f.href}
+                className={`group inline-flex items-center gap-2 rounded-full border border-ink/15 bg-card/60 px-5 py-3 text-sm font-medium transition-colors hover:border-rust hover:text-rust ${focusInk}`}
+              >
+                <span className="material-symbols-outlined text-[18px] text-rust">{f.icon}</span>
+                {f.label}
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-40 transition-opacity group-hover:opacity-100" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section className="tone-fixed bg-ink px-4 py-28 text-paper sm:px-6 lg:px-8 lg:py-36">
+        <div data-fd="end" className="mx-auto max-w-4xl text-center">
+          <h2 className="font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.02em]">
+            Ready to try <em className="text-[#f0b483]">{data.tag.toLowerCase()}?</em>
+          </h2>
+          <p className="mx-auto mt-6 max-w-[40ch] text-lg text-paper/70">Free for 14 days. No credit card. Set up in minutes.</p>
+          <a href={APP_REGISTER_URL} className="group mt-10 inline-flex items-center gap-2 rounded-full bg-paper px-8 py-4 text-sm font-semibold text-ink transition-colors hover:bg-white active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper">
+            Start free trial
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </div>
+      </section>
+
+      <SiteFooter showCta={false} />
     </div>
   );
 }

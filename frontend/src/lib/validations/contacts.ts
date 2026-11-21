@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
+/** Digits with optional "+" and spacing — the backend adds the country code and checks the number */
+const PHONE_REGEX = /^\+?[\d\s().-]{7,20}$/;
 
 export const createContactSchema = z.object({
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
-    .regex(PHONE_REGEX, "Enter a valid phone number (e.g. +1234567890)"),
+    .regex(PHONE_REGEX, "Enter a valid phone number (e.g. 98765 43210)"),
+  /** Country of a number typed without a country code */
+  country: z.string().length(2).optional(),
   name: z.string().max(255, "Name must be 255 characters or less").optional(),
   email: z
     .string()
@@ -78,3 +81,27 @@ export type AssignContactFormData = z.infer<typeof assignContactSchema>;
 export type MergeContactsFormData = z.infer<typeof mergeContactsSchema>;
 export type AddNoteFormData = z.infer<typeof addNoteSchema>;
 export type AddTagFormData = z.infer<typeof addTagSchema>;
+
+// ─── Record WhatsApp permission ───
+
+export const recordWhatsAppPermissionSchema = z.object({
+  how: z.enum(["call", "email", "in_person", "other"], { message: "Pick how they agreed" }),
+  note: z.string().trim().max(500, "Keep the note under 500 characters").optional(),
+});
+
+export type RecordWhatsAppPermissionFormData = z.infer<typeof recordWhatsAppPermissionSchema>;
+
+// Lead finder import: "Have they agreed to WhatsApp messages?" (how only needed for yes)
+export const importLeadsPermissionSchema = z
+  .object({
+    agreed: z.enum(["no", "yes"]),
+    how: recordWhatsAppPermissionSchema.shape.how.optional(),
+    note: recordWhatsAppPermissionSchema.shape.note,
+  })
+  .superRefine((data, ctx) => {
+    if (data.agreed === "yes" && !data.how) {
+      ctx.addIssue({ code: "custom", path: ["how"], message: "Pick how they agreed" });
+    }
+  });
+
+export type ImportLeadsPermissionFormData = z.infer<typeof importLeadsPermissionSchema>;

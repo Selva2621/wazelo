@@ -9,7 +9,10 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  NotFoundException,
 } from '@nestjs/common';
+import { SimulateLeadAdUseCase } from '../../application/use-cases/simulate-lead-ad.use-case';
+import { SimulateLeadAdDto } from '../../application/dto/simulate-lead-ad.dto';
 import { ConfigService } from '@nestjs/config';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -20,6 +23,7 @@ import { GetLeadAdAnalyticsUseCase } from '../../application/use-cases/get-lead-
 import { ProcessLeadAdUseCase } from '../../application/use-cases/process-lead-ad.use-case';
 import { ListLeadAdsQueryDto, LeadAdAnalyticsQueryDto } from '../../application/dto/list-lead-ads-query.dto';
 import { SaveLeadAdsConfigDto } from '../../application/dto/save-lead-ads-config.dto';
+import { publicApiUrl } from '@/config/public-urls';
 
 @Controller('lead-ads')
 export class LeadAdsController {
@@ -29,6 +33,7 @@ export class LeadAdsController {
     private readonly analyticsUseCase: GetLeadAdAnalyticsUseCase,
     private readonly processUseCase: ProcessLeadAdUseCase,
     private readonly configService: ConfigService,
+    private readonly simulateUseCase: SimulateLeadAdUseCase,
   ) {}
 
   @Get('entries')
@@ -86,6 +91,32 @@ export class LeadAdsController {
     return { success: true };
   }
 
+  /** Dev only (404 in production): a test lead without Meta, to try automations locally */
+  @Post('dev/simulate')
+  @Permissions(PERMISSIONS.LEAD_ADS_MANAGE)
+  @HttpCode(HttpStatus.OK)
+  async simulateLead(
+    @CurrentUser('orgId') orgId: string,
+    @Body() dto: SimulateLeadAdDto,
+  ) {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new NotFoundException();
+    }
+    return this.simulateUseCase.execute(orgId, dto);
+  }
+
+  /** Pages + forms seen so far, for picking them in Lead ad received rules */
+  @Get('forms')
+  @Permissions(PERMISSIONS.LEAD_ADS_READ)
+  async listForms(@CurrentUser('orgId') orgId: string) {
+    const [forms, channels] = await Promise.all([
+      this.leadAdRepo.listForms(orgId),
+      this.leadAdRepo.findChannelsByOrg(orgId),
+    ]);
+    const pageNames = new Map(channels.map((ch) => [ch.externalId, ch.externalHandle || ch.name]));
+    return forms.map((f) => ({ ...f, pageName: pageNames.get(f.pageId) ?? null }));
+  }
+
   @Get('analytics')
   @Permissions(PERMISSIONS.LEAD_ADS_READ)
   async getAnalytics(
@@ -105,7 +136,7 @@ export class LeadAdsController {
   async getConfig(@CurrentUser('orgId') orgId: string) {
     const channels = await this.leadAdRepo.findChannelsByOrg(orgId);
     const leadAdsConfig = await this.leadAdsConfigRepo.findByOrgId(orgId);
-    const apiBaseUrl = this.configService.get<string>('API_BASE_URL', '');
+    const apiBaseUrl = publicApiUrl();
 
     return {
       configured: channels.length > 0,

@@ -141,6 +141,8 @@ export class SendTemplateMessageUseCase {
       contactPhone,
       type: 'TEXT',
     });
+    // A person answered here: the AI bot leaves this chat to them for a while
+    this.eventEmitter.emit(EVENT_NAMES.CONVERSATION_AGENT_REPLIED, { orgId, conversationId: conversation.id, userId });
 
     return message;
   }

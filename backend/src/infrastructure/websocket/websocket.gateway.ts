@@ -11,10 +11,14 @@ import { TokenService } from '@/modules/auth/domain/services/token.service';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { EVENT_NAMES } from '@/common/constants';
+import { publicFrontendUrl } from '@/config/public-urls';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    // Checked per connection, not when this file is imported: decorators run before
+    // ConfigModule loads .env, so a .env-only FRONTEND_URL was never seen here
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) =>
+      cb(null, !origin || origin.replace(/\/+$/, '') === publicFrontendUrl()),
     credentials: true,
   },
   namespace: '/ws',

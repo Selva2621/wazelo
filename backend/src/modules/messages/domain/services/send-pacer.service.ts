@@ -43,7 +43,16 @@ export class SendPacerService {
    * reply, while a reply pushes the next bulk message back a little so the two
    * don't go out back-to-back.
    */
-  reserve(sessionId: string, lane: SendLane, now = Date.now()): PaceDecision {
+  reserve(
+    sessionId: string,
+    lane: SendLane,
+    now = Date.now(),
+    /** Per-number bulk gap (admin setting); defaults to SEND_SAFETY_CONFIG */
+    bulkGap: { min: number; max: number } = {
+      min: SEND_SAFETY_CONFIG.BULK_GAP_MIN_MS,
+      max: SEND_SAFETY_CONFIG.BULK_GAP_MAX_MS,
+    },
+  ): PaceDecision {
     const state = this.pace.get(sessionId) ?? { nextDirectAt: 0, nextBulkAt: 0 };
     const directGap = this.randomBetween(
       SEND_SAFETY_CONFIG.DIRECT_GAP_MIN_MS,
@@ -57,10 +66,7 @@ export class SendPacerService {
       state.nextBulkAt = Math.max(state.nextBulkAt, sendAt + directGap);
     } else {
       sendAt = Math.max(now, state.nextBulkAt);
-      state.nextBulkAt = sendAt + this.randomBetween(
-        SEND_SAFETY_CONFIG.BULK_GAP_MIN_MS,
-        SEND_SAFETY_CONFIG.BULK_GAP_MAX_MS,
-      );
+      state.nextBulkAt = sendAt + this.randomBetween(bulkGap.min, bulkGap.max);
     }
     this.pace.set(sessionId, state);
 

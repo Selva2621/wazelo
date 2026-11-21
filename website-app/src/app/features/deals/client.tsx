@@ -4,38 +4,38 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 
 // ─── KanbanMockup ─────────────────────────────────────────────────────────────
 const columns = [
-  { name: "Qualified", color: "var(--c-placeholder)", total: "₹73,500", deals: [
+  { name: "Lead", color: "#94a3b8", total: "₹73,500", deals: [
     { id: 0, name: "Ananya Sharma", value: "₹45,000", owner: "PS", days: "Day 2" },
     { id: 1, name: "Rohan Verma",   value: "₹28,500", owner: "RK", days: "Day 5" },
   ]},
-  { name: "Proposal", color: "var(--c-primary)", total: "₹1,95,000", deals: [
+  { name: "Qualified", color: "#d97707", total: "₹1,95,000", deals: [
     { id: 2, name: "Vikram Patel",  value: "₹1,20,000", owner: "MJ", days: "Day 8" },
     { id: 3, name: "Meera Joshi",   value: "₹75,000",   owner: "PS", days: "Day 3" },
   ]},
-  { name: "Negotiation", color: "var(--c-primary-container)", total: "₹2,50,000", deals: [
+  { name: "Proposal", color: "#f59e0b", total: "₹2,50,000", deals: [
     { id: 4, name: "Karan Mehta",   value: "₹2,50,000", owner: "AT", days: "Day 12" },
   ]},
-  { name: "Won", color: "var(--c-success)", total: "₹2,40,000", deals: [
+  { name: "Won", color: "#22c55e", total: "₹2,40,000", deals: [
     { id: 5, name: "Sneha Rao",     value: "₹90,000",   owner: "RK", days: "Day 18" },
     { id: 6, name: "Divya Nair",    value: "₹1,50,000", owner: "MJ", days: "Day 7"  },
   ]},
 ];
 
 const dealDetails = [
-  { conv: "Product: Growth plan, yearly",   activity: ["Asked about team pricing on WhatsApp", "Wants a demo for 3 agents"],       closeDate: "Dec 15, 2025" },
-  { conv: "Product: Starter plan",          activity: ["Created from an inbox chat", "Comparing with spreadsheet setup"],                         closeDate: "Jan 8, 2026"  },
-  { conv: "Product: Pro plan",              activity: ["Needs a GST invoice", "Decision by end of month"],                   closeDate: "Dec 28, 2025" },
-  { conv: "Product: Growth plan",           activity: ["Decision maker confirmed", "Sent price list on WhatsApp"],                         closeDate: "Jan 15, 2026" },
-  { conv: "Product: Enterprise plan",       activity: ["Reviewing proposal", "Follow up on Monday"],              closeDate: "Dec 20, 2025" },
-  { conv: "Product: Starter plan",          activity: ["Marked Won", "Onboarding next week"],              closeDate: "Nov 30, 2025" },
-  { conv: "Product: Pro plan renewal",      activity: ["Existing customer upsell", "Marked Won"],                          closeDate: "Dec 7, 2025"  },
+  { conv: "Conv #1042 — Order inquiry",     activity: ["Stage changed: New → Lead",            "Note added: Interested in Pro plan",          "Follow-up scheduled: Tomorrow 10am"],       closeDate: "Dec 15, 2025" },
+  { conv: "Conv #987 — Pricing question",   activity: ["Contact created",                       "Deal created from conversation",              "Tagged: Hot Lead"],                         closeDate: "Jan 8, 2026"  },
+  { conv: "Conv #1103 — Enterprise demo",   activity: ["Stage changed: Lead → Qualified",       "Note added: Needs custom invoice",            "Meeting booked: Dec 10"],                   closeDate: "Dec 28, 2025" },
+  { conv: "Conv #1055 — Product walkthrough",activity: ["Stage changed: New → Qualified",       "Note added: Decision maker confirmed",        "Tagged: Priority"],                         closeDate: "Jan 15, 2026" },
+  { conv: "Conv #1198 — Contract review",   activity: ["Stage changed: Qualified → Proposal",  "Note added: Sent proposal doc",               "Follow-up scheduled: Dec 14"],              closeDate: "Dec 20, 2025" },
+  { conv: "Conv #892 — Onboarding call",    activity: ["Stage changed: Proposal → Won",        "Payment confirmed",                           "Onboarding scheduled: Dec 5"],              closeDate: "Nov 30, 2025" },
+  { conv: "Conv #944 — Renewal discussion", activity: ["Stage changed: Lead → Won",            "Note added: Existing customer upsell",        "Contract signed"],                          closeDate: "Dec 7, 2025"  },
 ];
 
 // Gradient pool for owner avatars
 const gradients = [
-  "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
-  "linear-gradient(135deg,var(--c-primary-container),var(--c-primary-container))",
-  "linear-gradient(135deg,var(--c-success),var(--c-code-green))",
+  "linear-gradient(135deg,#554336,#d97707)",
+  "linear-gradient(135deg,#f59e0b,#fbbf24)",
+  "linear-gradient(135deg,#22c55e,#4ade80)",
   "linear-gradient(135deg,#ec4899,#f472b6)",
 ];
 const ownerGrad: Record<string, string> = {
@@ -66,14 +66,14 @@ function KanbanMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "var(--c-primary-container)",
+          textTransform: "uppercase", color: "#ffb77d",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 12,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-0.04em",
-          color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
+          color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your pipeline, always in view.
         </h2>
@@ -81,25 +81,25 @@ function KanbanMockup() {
 
       {/* Mockup container */}
       <div style={{
-        background: "var(--c-surface-container-lowest)",
+        background: "#1c1b1b",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         overflow: "hidden",
         marginTop: 32,
         position: "relative",
       }}>
         {/* App chrome bar */}
         <div style={{
-          background: "var(--c-surface)",
-          borderBottom: "1px solid rgb(var(--fx-ink) / 0.06)",
+          background: "#131313",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
           padding: "12px 18px",
           display: "flex", alignItems: "center", gap: 8,
         }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
-            Deals Pipeline - Wazelo CRM
+          <span style={{ fontSize: 12, color: "rgba(219,194,176,0.3)", fontFamily: "var(--font-geist-sans), sans-serif", marginLeft: 10 }}>
+            Deals Pipeline — Wazelo
           </span>
         </div>
 
@@ -114,17 +114,17 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: col.color, display: "inline-block", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{col.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{col.name}</span>
                     <span style={{
                       marginLeft: "auto",
-                      background: "rgb(var(--fx-ink) / 0.07)", borderRadius: 10,
+                      background: "rgba(255,255,255,0.07)", borderRadius: 10,
                       padding: "1px 8px", fontSize: 11,
-                      color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
+                      color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 600,
                     }}>
                       {col.deals.length}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif", paddingLeft: 17 }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.4)", fontFamily: "var(--font-geist-sans), sans-serif", paddingLeft: 17 }}>
                     {col.total}
                   </div>
                 </div>
@@ -138,19 +138,19 @@ function KanbanMockup() {
                         key={deal.id}
                         onClick={() => setSelectedDeal(isSelected ? null : deal.id)}
                         style={{
-                          background: isSelected ? "rgb(var(--fx-accent) / 0.12)" : "var(--c-surface-container-high)",
+                          background: isSelected ? "rgba(255,183,125,0.12)" : "#2a2a2a",
                           borderRadius: 10, padding: "12px 14px", cursor: "pointer",
-                          border: isSelected ? "1px solid var(--c-primary-container)" : "1px solid rgb(var(--fx-ink) / 0.06)",
+                          border: isSelected ? "1px solid #ffb77d" : "1px solid rgba(255,255,255,0.06)",
                           transition: "background 0.15s, border-color 0.15s",
                         }}
                         onMouseEnter={e => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "rgb(var(--fx-ink) / 0.04)";
+                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
                         }}
                         onMouseLeave={e => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "var(--c-surface-container-high)";
+                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#2a2a2a";
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 6 }}>
                           {deal.name}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: col.color, fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 8 }}>
@@ -160,18 +160,18 @@ function KanbanMockup() {
                           {/* Owner avatar */}
                           <div style={{
                             width: 22, height: 22, borderRadius: "50%",
-                            background: ownerGrad[deal.owner] ?? "linear-gradient(135deg,var(--c-outline-variant),var(--c-primary))",
+                            background: ownerGrad[deal.owner] ?? "linear-gradient(135deg,#554336,#d97707)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 9, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif",
+                            fontSize: 9, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif",
                             flexShrink: 0,
                           }}>
                             {deal.owner}
                           </div>
                           {/* Days badge */}
                           <span style={{
-                            background: "rgb(var(--fx-ink) / 0.06)", borderRadius: 10,
+                            background: "rgba(255,255,255,0.06)", borderRadius: 10,
                             padding: "2px 8px", fontSize: 10,
-                            color: "var(--c-placeholder)", fontFamily: "var(--font-geist-sans), sans-serif",
+                            color: "rgba(219,194,176,0.45)", fontFamily: "var(--font-geist-sans), sans-serif",
                           }}>
                             {deal.days}
                           </span>
@@ -187,13 +187,13 @@ function KanbanMockup() {
           {/* Detail panel */}
           <div style={{
             width: 240, flexShrink: 0,
-            background: "var(--c-surface)",
-            borderLeft: "1px solid rgb(var(--fx-ink) / 0.06)",
+            background: "#131313",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
             padding: "20px 18px",
           }}>
             {selected === null ? (
               <div style={{
-                fontSize: 12, color: "var(--c-placeholder)",
+                fontSize: 12, color: "rgba(219,194,176,0.3)",
                 fontFamily: "var(--font-geist-sans), sans-serif", textAlign: "center", paddingTop: 40,
               }}>
                 ↑ Click a deal to view details
@@ -206,7 +206,7 @@ function KanbanMockup() {
                   style={{
                     position: "absolute", top: 0, right: 0,
                     background: "none", border: "none", cursor: "pointer",
-                    fontSize: 16, color: "var(--c-placeholder)", lineHeight: 1,
+                    fontSize: 16, color: "rgba(219,194,176,0.4)", lineHeight: 1,
                     padding: 0,
                   }}
                 >
@@ -214,7 +214,7 @@ function KanbanMockup() {
                 </button>
 
                 {/* Deal Details heading */}
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 16 }}>
                   Deal Details
                 </div>
 
@@ -223,7 +223,7 @@ function KanbanMockup() {
                   <div style={{ marginBottom: 16 }}>
                     <span style={{
                       fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                      textTransform: "uppercase", color: "var(--c-primary-container)",
+                      textTransform: "uppercase", color: "#ffb77d",
                       fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 4,
                     }}>
                       STAGE
@@ -243,12 +243,12 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 16 }}>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "var(--c-primary-container)",
+                    textTransform: "uppercase", color: "#ffb77d",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    PRODUCT
+                    CONVERSATION
                   </span>
-                  <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5 }}>
                     {selected.conv}
                   </div>
                 </div>
@@ -257,15 +257,15 @@ function KanbanMockup() {
                 <div style={{ marginBottom: 16 }}>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "var(--c-primary-container)",
+                    textTransform: "uppercase", color: "#ffb77d",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    NOTES
+                    ACTIVITY
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {selected.activity.map((item, i) => (
-                      <div key={i} style={{ fontSize: 11, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
-                        <span style={{ color: "var(--c-placeholder)", flexShrink: 0 }}>•</span>
+                      <div key={i} style={{ fontSize: 11, color: "rgba(219,194,176,0.5)", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.5, display: "flex", gap: 6 }}>
+                        <span style={{ color: "rgba(219,194,176,0.3)", flexShrink: 0 }}>•</span>
                         {item}
                       </div>
                     ))}
@@ -276,12 +276,12 @@ function KanbanMockup() {
                 <div>
                   <span style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "var(--c-primary-container)",
+                    textTransform: "uppercase", color: "#ffb77d",
                     fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 6,
                   }}>
-                    EXPECTED CLOSE
+                    CLOSE DATE
                   </span>
-                  <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
+                  <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
                     {selected.closeDate}
                   </div>
                 </div>
@@ -299,34 +299,26 @@ function KanbanMockup() {
 const data: FeatureDetailData = {
   slug: "deals",
   tag: "Deals Pipeline",
-  heroTitle: "Your pipeline.<br /><span style=\"color:var(--c-primary-container)\">Always full.</span>",
-  heroSubtitle: "Track deals on a kanban board, each linked to a contact, with a value and an expected close date.",
-  overviewTitle: "See what's about to close.",
-  overviewDesc: "Create a pipeline, add deals with a contact, value, product and expected close date, and drag them through Qualified, Proposal, Negotiation, Won and Lost. Each stage shows its total value, so you always know how much is in play. Create deals from a contact's page or straight from a WhatsApp chat in the inbox.",
+  heroTitle: "Your pipeline.<br /><span style=\"color:#ffb77d\">Always full.</span>",
+  heroSubtitle: "A full CRM-style sales pipeline built into your WhatsApp workflow. Track deal stages, values, close dates, and owners — without switching tools.",
+  heroScreen: "",
+  overviewTitle: "Stop losing deals in DMs.",
+  overviewDesc: "Most WhatsApp sales teams track deals in their heads, on paper, or in a spreadsheet they never update. Wazelo gives you a Kanban-style pipeline where every deal is linked to a WhatsApp conversation, a contact, and a stage — so your team sees exactly what's open, what's stalled, and what's about to close.",
   capabilities: [
-    { icon: "view_kanban", title: "Kanban board", desc: "Drag deals between stages and see the total value of each stage and of the whole pipeline." },
-    { icon: "account_tree", title: "Multiple pipelines", desc: "Keep separate pipelines, for example one for new sales and one for renewals." },
-    { icon: "currency_rupee", title: "Value and close date", desc: "Record what each deal is worth in rupees and when you expect it to close." },
-    { icon: "forum", title: "Create from a chat", desc: "Click Create deal in the inbox and the contact is filled in for you." },
-    { icon: "inventory_2", title: "Linked to products", desc: "Attach the product from your catalogue that the deal is about." },
-    { icon: "assignment_ind", title: "Owner and status", desc: "Assign each deal to a teammate and mark it Open, Won or Lost." },
-  ],
-  details: [
-    { title: "Default stages", items: ["Qualified", "Proposal", "Negotiation", "Won", "Lost"] },
-    { title: "Deal fields", items: ["Title", "Contact", "Product", "Value (INR)", "Expected close", "Notes", "Assignee", "Status"] },
-    { title: "Create deals from", items: ["An inbox chat", "A contact's page", "The contact drawer", "The deals board"] },
+    { icon: "view_kanban",    title: "Kanban deal board",       desc: "Visualise every open deal across your custom pipeline stages. Drag to move, click to open." },
+    { icon: "attach_money",   title: "Deal value & close date", desc: "Set expected revenue and expected close date per deal. Your forecast updates in real time." },
+    { icon: "assignment_ind", title: "Deal owner assignment",   desc: "Assign each deal to the agent or team responsible. Accountability at every stage." },
+    { icon: "forum",          title: "Linked conversation",     desc: "Every deal is linked to a WhatsApp conversation thread. Full context, always one click away." },
+    { icon: "history",        title: "Deal activity log",       desc: "Automatic log of every stage change, note, and file attached to the deal." },
+    { icon: "trending_up",    title: "Pipeline analytics",      desc: "Win rate, average deal size, time in stage, and conversion rate — tracked automatically." },
   ],
   howItWorks: [
-    { step: "01", title: "Create a pipeline", desc: "Click New Pipeline. It starts with the five default stages." },
-    { step: "02", title: "Add a deal", desc: "Pick the contact, then add a value, product and expected close date." },
-    { step: "03", title: "Move it along", desc: "Drag the card to the next stage as the conversation progresses." },
-    { step: "04", title: "Close it out", desc: "Mark it Won or Lost and watch the stage totals update." },
+    { step: "01", title: "Create a deal from any conversation", desc: "Open any WhatsApp conversation and create a deal in two clicks. Contact details, tags, and history carry over automatically." },
+    { step: "02", title: "Set your pipeline stages",            desc: "Define your own stages — e.g. New Lead, Qualified, Proposal Sent, Negotiation, Won. Drag deals between stages as they progress." },
+    { step: "03", title: "Log notes and set close dates",       desc: "Add internal notes, set deal values, and pick an expected close date. Use these to prioritise your daily follow-ups." },
+    { step: "04", title: "Review your forecast",                desc: "Open the pipeline analytics view to see total open value, win rate, and which stage is becoming a bottleneck for your team." },
   ],
-  faqs: [
-    { q: "Does it show win rate or forecasts?", a: "Not yet. The board shows the number and total value of deals in each stage and status." },
-    { q: "Which currency are deal values in?", a: "Indian rupees (INR)." },
-    { q: "Can a deal be created from WhatsApp?", a: "Yes. Click Create deal in a conversation's header and the deal is linked to that contact." },
-  ],
+  screens: [],
   relatedFeatures: [
     { label: "Shared Inbox",  href: "/features/shared-inbox",   icon: "forum"        },
     { label: "Contacts CRM",  href: "/features/contacts",       icon: "group"        },

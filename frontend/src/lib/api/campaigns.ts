@@ -38,6 +38,12 @@ export const campaignsApi = {
       .post<Campaign>(`/campaigns/${campaignId}/execute`)
       .then((r) => r.data),
 
+  /** Runs a finished campaign again as a new campaign — returns the new one */
+  rerun: (campaignId: string) =>
+    apiClient
+      .post<Campaign>(`/campaigns/${campaignId}/rerun`)
+      .then((r) => r.data),
+
   schedule: (campaignId: string, data: ScheduleCampaignRequest) =>
     apiClient
       .post<Campaign>(`/campaigns/${campaignId}/schedule`, data)
@@ -51,6 +57,18 @@ export const campaignsApi = {
   resume: (campaignId: string) =>
     apiClient
       .post<Campaign>(`/campaigns/${campaignId}/resume`)
+      .then((r) => r.data),
+
+  /** Swap the media of a paused or scheduled campaign */
+  replaceMedia: (campaignId: string, data: { mediaUrl: string; mediaMimeType?: string }) =>
+    apiClient
+      .patch<Campaign>(`/campaigns/${campaignId}/media`, data)
+      .then((r) => r.data),
+
+  /** Resend to recipients that failed only because the WhatsApp connection was down */
+  retryFailed: (campaignId: string) =>
+    apiClient
+      .post<{ campaign: Campaign; retried: number }>(`/campaigns/${campaignId}/retry-failed`)
       .then((r) => r.data),
 
   cancel: (campaignId: string) =>
@@ -79,6 +97,7 @@ export const campaignsApi = {
   previewAudience: (data: {
     audienceType: string;
     audienceFilters?: Record<string, unknown>;
+    channel?: "WHATSAPP" | "EMAIL";
   }) =>
     apiClient
       .post<AudiencePreview>("/campaigns/preview-audience", data)

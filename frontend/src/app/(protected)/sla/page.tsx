@@ -13,9 +13,12 @@ import {
 } from "@/hooks/use-sla";
 import { useTeamPerformance } from "@/hooks/use-analytics";
 import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { StartHint } from "@/components/ui/start-hint";
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { PeriodSelector } from "@/components/analytics/period-selector";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
 import { PAGE_SIZE } from "@/lib/constants";
 import { SlaKpiCards } from "@/components/sla/sla-kpi-cards";
 import { SlaBreachTable } from "@/components/sla/sla-breach-table";
@@ -48,7 +51,7 @@ function periodToDates(period: AnalyticsPeriod) {
 }
 
 export default function SlaPage() {
-  usePageTitle("SLA Tracking");
+  usePageTitle("SLA tracking");
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [period, setPeriod] = useState<AnalyticsPeriod>("week");
@@ -107,23 +110,32 @@ export default function SlaPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-5 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <h1 className="text-title font-semibold text-on-surface">
-            SLA Tracking
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {isAdmin && (
-            <a
-              href="/settings?tab=sla"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-body font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-              Manage Policies
-            </a>
-          )}
+      {isAdmin && (
+        <MobilePageActions
+          more={[{ label: "Manage policies", onSelect: () => router.push("/settings?tab=sla") }]}
+        />
+      )}
+      <div className="shrink-0 px-6 pt-5 pb-4 max-lg:pt-1">
+        <PageHeader
+          className="max-lg:hidden"
+          title="SLA tracking"
+          actions={
+            <>
+              <PeriodSelector value={period} onChange={setPeriod} />
+              {isAdmin && (
+                <a
+                  href="/settings?tab=sla"
+                  className="inline-flex h-8 items-center gap-2 rounded-lg border border-outline-variant px-3 text-body font-medium text-on-surface outline-none transition-colors duration-120 ease-standard hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Manage policies
+                </a>
+              )}
+            </>
+          }
+        />
+        {/* Phones/tablets: title is in the nav bar, Manage policies in its … menu */}
+        <div className="flex items-center gap-3 w-full min-w-0 lg:hidden">
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
       </div>
@@ -137,13 +149,13 @@ export default function SlaPage() {
         )}
 
         {perfError && (
-          <div className="rounded-xl bg-error/10 border border-error/20 p-4 text-center">
+          <div className="rounded-2xl bg-error-container border border-error/20 p-4 text-center">
             <p className="text-body text-error mb-2">
               Failed to load SLA data
             </p>
             <button
               onClick={() => refetchPerf()}
-              className="text-label text-primary hover:underline"
+              className="rounded text-label text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
             >
               Try again
             </button>
@@ -151,20 +163,25 @@ export default function SlaPage() {
         )}
 
         {performance && performance.compliance.total === 0 && (
-          <EmptyState
-            icon={<ShieldCheck className="h-12 w-12" />}
+          <StartHint
+            icon={<ShieldCheck />}
             title="No SLA data yet"
             description={
               (policies?.length ?? 0) === 0
-                ? "Create SLA policies first to start tracking response times."
-                : "Policies are active. SLA data will appear once conversations come in."
+                ? "Create a policy to start tracking response times."
+                : "Policies are active. Data appears once chats come in."
             }
-            actionLabel={(policies?.length ?? 0) === 0 && isAdmin ? "Create SLA Policy" : undefined}
-            onAction={(policies?.length ?? 0) === 0 && isAdmin ? () => router.push("/settings?tab=sla") : undefined}
+            action={
+              (policies?.length ?? 0) === 0 && isAdmin ? (
+                <Button size="sm" onClick={() => router.push("/settings?tab=sla")}>
+                  Create SLA policy
+                </Button>
+              ) : undefined
+            }
           />
         )}
 
-        {performance && performance.compliance.total > 0 && (
+        {performance && (
           <>
             {/* KPI Cards */}
             <SlaKpiCards

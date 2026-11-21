@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiTryIt, publicApiBase } from "@/components/settings/api-try-it";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -24,7 +24,6 @@ import {
   EyeOff,
   Copy,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   RotateCw,
   ChevronDown,
@@ -45,6 +44,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { GroupedSection, ListRow } from "@/components/ios/grouped-list";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   useOrgSettings,
@@ -66,6 +67,7 @@ import {
   useUpdateIntegration,
   useDeleteIntegration,
   useTestIntegration,
+  useFreelancerProfiles,
 } from "@/hooks/use-settings";
 import {
   useNotificationPreferences,
@@ -79,13 +81,25 @@ import {
   useRevokeApiKey,
   useRotateApiKey,
 } from "@/hooks/use-developer";
-import type { DeveloperApiKey } from "@/lib/types/developer";
+import type { DeveloperApiKey, DeveloperApiRequestLog } from "@/lib/types/developer";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrowserPushCard } from "@/components/notifications/browser-push-card";
+import {
+  FilesCard,
+  InstructionsCard,
+  WebsitesCard,
+  costOf,
+  knowledgeCard,
+} from "@/components/knowledge/knowledge-cards";
+import { UnansweredCard } from "@/components/knowledge/unanswered-card";
+import { FaqsCard } from "@/components/knowledge/faqs-card";
+import { useAiCredits } from "@/hooks/use-ai-credits";
+import { useProducts } from "@/hooks/use-products";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { Pagination } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
 import { PAGE_SIZE } from "@/lib/constants";
 import type {
   UpdateOrgSettingsRequest,
@@ -96,9 +110,12 @@ import type {
   WebhookDeliveryStatus,
   IntegrationConfig,
   IntegrationProvider,
-  WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
-import { FREELANCER_TYPE_OPTIONS } from "@/lib/constants/outreach";
+import { WEBHOOK_EVENT_TYPES } from "@/lib/types/settings";
+import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
+import { COUNTRIES, CURRENCY_CODES, DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
+import { CountrySelect } from "@/components/ui/country-select";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type {
   NotificationType,
@@ -115,12 +132,14 @@ import {
 import {
   useAiMemory,
   useRebuildAiMemory,
-  useUpdateAiMemory,
-  useUploadAiMemoryDocument,
   useDeleteAiMemoryDocument,
 } from "@/hooks/use-settings";
-import type { SlaPolicy } from "@/lib/types/sla";
+import type { SlaPolicy, CreateSlaPolicyRequest, UpdateSlaPolicyRequest } from "@/lib/types/sla";
 import { IconButton } from "@/components/ui/icon-button";
+import { PageHeader } from "@/components/layout/page-header";
+import { FormWithRail } from "@/components/layout/form-with-rail";
+import { WorkspaceRail } from "@/components/settings/workspace-rail";
+import { useProductTerms } from "@/lib/product-terms";
 
 type SettingsTab =
   | "organization"
@@ -140,7 +159,7 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
     label: "Workspace",
     tabs: [
       { id: "organization", label: "Organization", icon: Building2 },
-      { id: "working-hours", label: "Working Hours", icon: Clock },
+      { id: "working-hours", label: "Working hours", icon: Clock },
       { id: "notifications", label: "Notifications", icon: Bell },
     ],
   },
@@ -155,23 +174,40 @@ const TAB_GROUPS: { label: string; tabs: { id: SettingsTab; label: string; icon:
     label: "AI",
     tabs: [
       { id: "features", label: "Features & AI", icon: ToggleLeft },
-      { id: "ai-memory", label: "AI Memory", icon: Zap },
+      { id: "ai-memory", label: "Business knowledge", icon: Zap },
     ],
   },
   {
     label: "Service",
     tabs: [
-      { id: "sla", label: "SLA Policies", icon: Shield },
+      { id: "sla", label: "SLA policies", icon: Shield },
     ],
   },
   {
     label: "Developers",
     tabs: [
-      { id: "developer-api", label: "API Keys & Docs", icon: Code },
+      { id: "developer-api", label: "API keys & docs", icon: Code },
       { id: "webhooks", label: "Webhooks", icon: Webhook },
     ],
   },
 ];
+
+// Tabs with tables and logs that use the whole content column (no side panel)
+const FULL_WIDTH_TABS: SettingsTab[] = ["developer-api", "webhooks", "sla"];
+
+// Icon tile colours for the mobile section list
+const MOBILE_TAB_TILE: Record<SettingsTab, string> = {
+  organization: "bg-chart-6",
+  "working-hours": "bg-chart-1",
+  notifications: "bg-error",
+  whatsapp: "bg-[#25D366]",
+  shopify: "bg-chart-3",
+  features: "bg-chart-5",
+  "ai-memory": "bg-chart-4",
+  sla: "bg-chart-2",
+  "developer-api": "bg-primary",
+  webhooks: "bg-chart-6",
+};
 
 const TIMEZONES = [
   "UTC",
@@ -215,9 +251,18 @@ export default function SettingsPage() {
   const tabParam: SettingsTab | null = rawTab && VALID_TABS.includes(rawTab as SettingsTab) ? (rawTab as SettingsTab) : null;
   const [activeTab, setActiveTab] = useState<SettingsTab>(tabParam ?? "organization");
 
-  useEffect(() => {
+  // Follow ?tab when it changes
+  const [syncedTabParam, setSyncedTabParam] = useState(tabParam);
+  if (tabParam !== syncedTabParam) {
+    setSyncedTabParam(tabParam);
     if (tabParam) setActiveTab(tabParam);
-  }, [tabParam]);
+  }
+
+  // Mobile: no ?tab shows the list of sections; ?tab shows that section alone
+  const mobileTabLabel = tabParam
+    ? TAB_GROUPS.flatMap((g) => g.tabs).find((t) => t.id === tabParam)?.label
+    : null;
+  useMobileTitle(mobileTabLabel);
 
   if (user?.role !== "ADMIN") {
     return <EmployeeSettingsRedirect />;
@@ -225,18 +270,31 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-headline font-semibold text-on-surface">Settings</h1>
-        <p className="text-body text-on-surface-variant mt-1">
-          Manage your organization, integrations, and system configuration
-        </p>
-      </div>
+      {/* Mobile: iOS Settings-style section list */}
+      {!tabParam && (
+        <div data-tour="settings-list" className="lg:hidden -mx-4 -mt-2">
+          {TAB_GROUPS.map((group) => (
+            <GroupedSection key={group.label} header={group.label}>
+              {group.tabs.map((tab) => (
+                <ListRow
+                  key={tab.id}
+                  icon={<tab.icon className="h-[18px] w-[18px]" />}
+                  iconClassName={MOBILE_TAB_TILE[tab.id]}
+                  title={tab.label}
+                  href={`/settings?tab=${tab.id}`}
+                />
+              ))}
+            </GroupedSection>
+          ))}
+        </div>
+      )}
+
+      <PageHeader title="Settings" className="max-lg:hidden" />
 
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Nav */}
-        <div className="md:w-56 shrink-0">
-          <nav className="space-y-4">
+        <div className="md:w-56 shrink-0 max-lg:hidden">
+          <nav data-tour="settings-nav" className="space-y-4">
             {TAB_GROUPS.map((group) => (
               <div key={group.label}>
                 <p className="px-3 mb-1 text-caption font-medium text-on-surface-variant">
@@ -246,18 +304,19 @@ export default function SettingsPage() {
                   {group.tabs.map((tab) => (
                     <button
                       key={tab.id}
+                      type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
+                      aria-current={activeTab === tab.id ? "page" : undefined}
+                      className={cn(
+                        "flex h-9 w-full items-center gap-3 rounded-lg px-3 text-body font-medium transition-colors duration-120 ease-standard",
+                        "outline-none focus-visible:ring-2 focus-visible:ring-focus",
                         activeTab === tab.id
                           ? "bg-primary/10 text-primary"
-                          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                      }`}
+                          : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                      )}
                     >
                       <tab.icon className="h-4 w-4 shrink-0" />
                       {tab.label}
-                      {activeTab === tab.id && (
-                        <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                      )}
                     </button>
                   ))}
                 </div>
@@ -267,22 +326,33 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          {activeTab === "organization" && <OrganizationSection />}
-          {activeTab === "ai-memory" && <AiMemorySection />}
-          {activeTab === "whatsapp" && <WhatsAppSection />}
-          {activeTab === "working-hours" && <WorkingHoursSection />}
-          {activeTab === "features" && (
+        {/* Forms keep a readable width with a workspace panel beside them; tabs with tables and logs keep the full column */}
+        <div className={cn("flex-1 min-w-0", !tabParam && "max-lg:hidden")}>
+          {FULL_WIDTH_TABS.includes(activeTab) ? (
             <>
-              <FeatureFlagsSection />
-              <AiSettingsSection />
+              {activeTab === "webhooks" && <WebhooksSection />}
+              {activeTab === "developer-api" && <DeveloperApiSection />}
+              {activeTab === "sla" && <SlaSection />}
             </>
+          ) : (
+            <FormWithRail
+              className="max-w-3xl xl:max-w-[68rem] max-lg:[&>aside]:hidden"
+              rail={<WorkspaceRail />}
+            >
+              {activeTab === "organization" && <OrganizationSection />}
+              {activeTab === "ai-memory" && <AiMemorySection />}
+              {activeTab === "whatsapp" && <WhatsAppSection />}
+              {activeTab === "working-hours" && <WorkingHoursSection />}
+              {activeTab === "features" && (
+                <div>
+                  <FeatureFlagsSection />
+                  <AiSettingsSection />
+                </div>
+              )}
+              {activeTab === "notifications" && <NotificationsSection />}
+              {activeTab === "shopify" && <ShopifySection />}
+            </FormWithRail>
           )}
-          {activeTab === "notifications" && <NotificationsSection />}
-          {activeTab === "webhooks" && <WebhooksSection />}
-          {activeTab === "developer-api" && <DeveloperApiSection />}
-          {activeTab === "sla" && <SlaSection />}
-          {activeTab === "shopify" && <ShopifySection />}
         </div>
       </div>
     </div>
@@ -293,10 +363,13 @@ export default function SettingsPage() {
 
 function OrganizationSection() {
   const { data, isLoading } = useOrgSettings();
+  const terms = useProductTerms();
   const updateMutation = useUpdateOrgSettings();
 
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("UTC");
+  const [country, setCountry] = useState(DEFAULT_COUNTRY_CODE);
+  const [currency, setCurrency] = useState("INR");
   const [language, setLanguage] = useState("en");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
@@ -305,27 +378,37 @@ function OrganizationSection() {
   const [freelancerService, setFreelancerService] = useState("");
   const isFreelancer = data?.orgType === "FREELANCER";
   const hasOther = freelancerTypes.includes("OTHER");
+  const { data: catalog } = useFreelancerProfiles(isFreelancer);
+  const typeOptions = freelancerTypeOptions(catalog);
+  const [typeQuery, setTypeQuery] = useState("");
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  const visibleTypes = visibleFreelancerOptions(typeOptions, { query: typeQuery, selected: freelancerTypes, showAll: showAllTypes });
 
   const toggleFreelancerType = (value: string) =>
     setFreelancerTypes((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]));
 
-  useEffect(() => {
-    if (data) {
-      setName(data.name ?? "");
-      setTimezone(data.timezone ?? "UTC");
-      setLanguage(data.language ?? "en");
-      setIndustry(data.industry ?? "");
-      setDescription(data.description ?? "");
-      setWebsite(data.website ?? "");
-      setFreelancerTypes(data.freelancerTypes ?? []);
-      setFreelancerService(data.freelancerService ?? "");
-    }
-  }, [data]);
+  // Copy each loaded copy of the settings into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setName(data.name ?? "");
+    setTimezone(data.timezone ?? "UTC");
+    setCountry(data.country ?? DEFAULT_COUNTRY_CODE);
+    setCurrency(data.currency ?? "INR");
+    setLanguage(data.language ?? "en");
+    setIndustry(data.industry ?? "");
+    setDescription(data.description ?? "");
+    setWebsite(data.website ?? "");
+    setFreelancerTypes(data.freelancerTypes ?? []);
+    setFreelancerService(data.freelancerService ?? "");
+  }
 
   const handleSave = () => {
     const payload: UpdateOrgSettingsRequest = {
       name,
       timezone,
+      country,
+      currency,
       language,
       industry,
       description,
@@ -348,14 +431,14 @@ function OrganizationSection() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-title-sm">
           <Building2 className="h-5 w-5" />
-          Organization Settings
+          Organization
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Org Name */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Organization Name
+          <label className="text-label font-medium text-on-surface-variant">
+            Organization name
           </label>
           <input
             type="text"
@@ -366,47 +449,81 @@ function OrganizationSection() {
           />
         </div>
 
+        {/* Country — sets the default phone code, currency and timezone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="org-country"
+              className="text-label font-medium text-on-surface-variant"
+            >
+              Country
+            </label>
+            <CountrySelect
+              id="org-country"
+              value={country}
+              showDialCode
+              onChange={(code) => {
+                const c = getCountry(code);
+                setCountry(c.code);
+                setCurrency(c.currency);
+                setTimezone(c.timezone);
+              }}
+            />
+            <p className="text-caption text-on-surface-variant">
+              Numbers saved without a country code get +{getCountry(country).dialCode}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="org-currency"
+              className="text-label font-medium text-on-surface-variant"
+            >
+              Currency
+            </label>
+            <Select id="org-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCY_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </Select>
+            <p className="text-caption text-on-surface-variant">Default for deals and {terms.plural}</p>
+          </div>
+        </div>
+
         {/* Timezone */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-label font-medium text-on-surface-variant flex items-center gap-1.5">
             <Globe className="h-3.5 w-3.5" />
             Timezone
           </label>
-          <select
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {TIMEZONES.map((tz) => (
+          <Select value={timezone} onChange={(e) => setTimezone(e.target.value)} aria-label="Timezone">
+            {[...new Set([...TIMEZONES, ...COUNTRIES.map((c) => c.timezone), timezone])].map((tz) => (
               <option key={tz} value={tz}>
                 {tz}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Language */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+          <label className="text-label font-medium text-on-surface-variant">
             Language
           </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full h-10 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-          >
+          <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
             {LANGUAGES.map((lang) => (
               <option key={lang.value} value={lang.value}>
                 {lang.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Business Profile */}
         <div className="border-t border-outline-variant/20 pt-5 mt-2">
-          <p className="text-label font-semibold text-on-surface-variant uppercase tracking-wider mb-4">
-            Business Profile
+          <p className="text-label font-semibold text-on-surface-variant mb-4">
+            Business profile
           </p>
           <div className="space-y-4">
             {isFreelancer && (
@@ -414,8 +531,16 @@ function OrganizationSection() {
                 <p id="freelancer-types-label" className="text-label font-medium text-on-surface-variant">
                   What do you do? <span className="text-on-surface-variant/60">(pick all that apply)</span>
                 </p>
+                <input
+                  type="search"
+                  aria-label="Search your line of work"
+                  value={typeQuery}
+                  onChange={(e) => setTypeQuery(e.target.value)}
+                  placeholder="Search, e.g. civil, tutor, makeup"
+                  className="w-full h-9 rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 text-body text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                />
                 <div role="group" aria-labelledby="freelancer-types-label" className="flex flex-wrap gap-2">
-                  {FREELANCER_TYPE_OPTIONS.map((option) => {
+                  {visibleTypes.map((option) => {
                     const selected = freelancerTypes.includes(option.value);
                     return (
                       <button
@@ -436,6 +561,15 @@ function OrganizationSection() {
                     );
                   })}
                 </div>
+                {!typeQuery.trim() && visibleTypes.length < typeOptions.length && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTypes(true)}
+                    className="text-body text-primary hover:underline"
+                  >
+                    Show all {typeOptions.length - 1} types
+                  </button>
+                )}
                 {hasOther && (
                   <input
                     type="text"
@@ -510,208 +644,144 @@ function OrganizationSection() {
   );
 }
 
-// ─── AI Memory Section ──────────────────────────
+// ─── Business Knowledge Section ─────────────────
+// One place for what every AI feature knows about the business. The cards are
+// shared with Chatbot → Knowledge, so both pages edit the same data.
+
+const KNOWLEDGE_USED_BY = ["Chatbot", "Website chat", "Sequences", "Campaigns", "Automation", "Proposals", "Templates", "Reply suggestions"];
+
+function KnowledgeStep({ n, title, children, action }: { n: number; title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`bk-${n}`} className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id={`bk-${n}`} className="flex items-center gap-2 text-body-lg font-semibold text-on-surface">
+          <span aria-hidden className="grid size-6 place-items-center rounded-full bg-primary/10 text-caption font-semibold tabular-nums text-primary">
+            {n}
+          </span>
+          {title}
+        </h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function AiMemorySection() {
   const { data, isLoading } = useAiMemory();
   const rebuildMutation = useRebuildAiMemory();
-  const updateMutation = useUpdateAiMemory();
-  const uploadDocMutation = useUploadAiMemoryDocument();
   const deleteDocMutation = useDeleteAiMemoryDocument();
-  const [customContext, setCustomContext] = useState("");
-  const [customSaved, setCustomSaved] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (data) {
-      setCustomContext(data.customContext ?? "");
-    }
-  }, [data]);
-
-  const handleSaveCustom = () => {
-    updateMutation.mutate({ customContext }, {
-      onSuccess: () => {
-        setCustomSaved(true);
-        setTimeout(() => setCustomSaved(false), 2000);
-      },
-    });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    uploadDocMutation.mutate(file);
-    e.target.value = "";
-  };
+  const { data: creditsData } = useAiCredits();
+  const { data: products } = useProducts();
+  const buildCost = costOf(creditsData?.costs, "kb_build", 10);
+  const faqCost = costOf(creditsData?.costs, "faq_generate", 3);
+  const productCount = Array.isArray(products) ? products.length : 0;
+  const terms = useProductTerms();
 
   if (isLoading) return <SectionLoader />;
 
   return (
-    <div className="space-y-4">
-      {/* Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-title-sm">
-            <Zap className="h-5 w-5" />
-            AI Memory
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <p className="text-body text-on-surface-variant">
-            AI Memory gives every AI response context about your business — products, knowledge base, and Shopify store. It auto-rebuilds when you update your profile.
-          </p>
+    <div className="space-y-8">
+      {/* What this page is for, and everything that reads it */}
+      <div className={cn(knowledgeCard, "space-y-2 p-5")}>
+        <p className="text-body text-on-surface">
+          What the AI knows about your business. Fill it once — every AI feature uses it.
+        </p>
+        <ul className="flex flex-wrap gap-1.5" aria-label="Used by">
+          {KNOWLEDGE_USED_BY.map((f) => (
+            <li key={f} className="rounded-full border border-outline-variant bg-surface-container-low px-2.5 py-0.5 text-caption text-on-surface-variant">
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-          {data ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-body">
-                <span className="text-on-surface-variant">Last rebuilt</span>
-                <span className="text-on-surface font-medium">
-                  {data.builtAt
-                    ? new Date(data.builtAt).toLocaleString()
-                    : "Never"}
-                </span>
-              </div>
-              {data.shopifyStore && (
-                <div className="flex items-center justify-between text-body">
-                  <span className="text-on-surface-variant">Shopify store</span>
-                  <span className="text-on-surface font-medium">{data.shopifyStore}</span>
-                </div>
-              )}
-              {data.context && (
-                <div className="space-y-1.5">
-                  <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-                    Current Context
-                  </label>
-                  <pre className="w-full rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2.5 text-label text-on-surface/80 whitespace-pre-wrap font-mono overflow-auto max-h-64">
-                    {data.context}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-body text-on-surface-variant/60">
-              No memory built yet. Save your Business Profile to generate the first memory.
-            </p>
-          )}
+      <KnowledgeStep
+        n={1}
+        title="About your business"
+        action={
+          <Link href="/settings?tab=organization" className="text-label font-medium text-primary hover:underline">
+            Edit profile
+          </Link>
+        }
+      >
+        <p className="text-label text-on-surface-variant">
+          Name, industry and a short description come from your business profile.
+        </p>
+      </KnowledgeStep>
 
-          <div className="pt-1">
-            <Button
-              onClick={() => rebuildMutation.mutate()}
-              disabled={rebuildMutation.isPending}
-              size="sm"
-              variant="secondary"
-            >
-              <RotateCw className="h-4 w-4" />
-              {rebuildMutation.isPending ? "Rebuilding..." : "Rebuild Now"}
+      <KnowledgeStep
+        n={2}
+        title={terms.isService ? terms.Plural : "Products & services"}
+        action={
+          <Link href="/settings/products" className="text-label font-medium text-primary hover:underline">
+            Manage
+          </Link>
+        }
+      >
+        <p className="text-label text-on-surface-variant">
+          {productCount > 0
+            ? `${productCount} ${productCount === 1 ? terms.singular : terms.plural} — names, prices and descriptions are used.`
+            : `No ${terms.plural} yet. Add your services and prices so the AI can quote them.`}
+        </p>
+      </KnowledgeStep>
+
+      <KnowledgeStep n={3} title="Website">
+        <WebsitesCard buildCost={buildCost} title="Your website" hideTitle />
+      </KnowledgeStep>
+
+      <KnowledgeStep n={4} title="Documents">
+        <FilesCard title="Files" hideTitle />
+        {/* The single document the old AI Memory page took: the team's AI uses it, customers' bots never do */}
+        {data?.documentName && (
+          <div className={cn(knowledgeCard, "flex items-center gap-3 px-5 py-3")}>
+            <FileCode className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-body text-on-surface">{data.documentName}</span>
+            <span title="Used when your team writes with AI; never shown to customers">
+              <Badge variant="muted" dot>Team AI only</Badge>
+            </span>
+            <Button size="sm" variant="ghost" onClick={() => deleteDocMutation.mutate()} disabled={deleteDocMutation.isPending} aria-label={`Remove ${data.documentName}`}>
+              <Trash2 className="h-4 w-4 text-error" />
             </Button>
-            {rebuildMutation.isSuccess && (
-              <span className="ml-3 text-label text-primary">Rebuilt!</span>
-            )}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </KnowledgeStep>
 
-      {/* Document Upload Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-sm">Upload Business Document</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-body text-on-surface-variant">
-            Upload a PDF, TXT, or CSV file (e.g. product catalog, company profile, FAQ sheet). The text will be extracted and injected into every AI response.
-          </p>
+      <KnowledgeStep n={5} title="FAQs">
+        <UnansweredCard className={knowledgeCard} />
+        <FaqsCard suggestCost={faqCost} className={knowledgeCard} />
+      </KnowledgeStep>
 
-          {data?.documentName ? (
-            <div className="flex items-center gap-3 rounded-lg border border-outline-variant/30 bg-surface-container px-4 py-3">
-              <FileCode className="h-5 w-5 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-body font-medium text-on-surface truncate">{data.documentName}</p>
-                <p className="text-caption text-on-surface-variant">Document indexed in AI memory</p>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteDocMutation.mutate()}
-                disabled={deleteDocMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 text-error" />
-              </Button>
-            </div>
+      <KnowledgeStep n={6} title="Rules & tone">
+        <InstructionsCard
+          title="Rules & tone"
+          hideTitle
+          description="How the AI should write and what it must or mustn't say — used by every AI feature."
+        />
+      </KnowledgeStep>
+
+      {/* What the AI actually receives, for the curious */}
+      <details className={cn(knowledgeCard, "p-5")}>
+        <summary className="cursor-pointer text-label font-medium text-on-surface">What the AI sees</summary>
+        <div className="mt-3 space-y-3">
+          {data?.context ? (
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container px-3 py-2.5 font-mono text-label text-on-surface/80">
+              {data.context}
+            </pre>
           ) : (
-            <div
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-outline-variant/30 py-8 cursor-pointer hover:border-primary/50 hover:bg-surface-container/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Activity className="h-8 w-8 text-on-surface-variant/40" />
-              <p className="text-body text-on-surface-variant">Click to upload a document</p>
-              <p className="text-caption text-on-surface-variant/60">PDF, TXT, CSV, Markdown — max 20 MB</p>
-            </div>
+            <p className="text-label text-on-surface-variant">Nothing yet. Save your business profile to start.</p>
           )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.txt,.csv,.md,text/plain,text/csv,text/markdown,application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {!data?.documentName && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadDocMutation.isPending}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadDocMutation.isPending ? "Uploading..." : "Choose File"}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => rebuildMutation.mutate()} loading={rebuildMutation.isPending} size="sm" variant="secondary">
+              <RotateCw className="h-4 w-4" />
+              Refresh
             </Button>
-          )}
-
-          {uploadDocMutation.isError && (
-            <p className="text-label text-error">
-              Upload failed. Make sure the file is a valid PDF, TXT, or CSV.
-            </p>
-          )}
-          {uploadDocMutation.isSuccess && (
-            <p className="text-label text-primary">
-              Document uploaded — {(uploadDocMutation.data as any)?.extractedLength?.toLocaleString()} characters extracted.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Custom Instructions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-title-sm">Custom Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-body text-on-surface-variant">
-            Add extra context that should be injected into every AI response — tone guidelines, specific rules, or business policies.
-          </p>
-          <textarea
-            value={customContext}
-            onChange={(e) => setCustomContext(e.target.value)}
-            placeholder="e.g. Always respond in a friendly tone. Never mention competitor products. Our support hours are 9am–6pm IST."
-            maxLength={2000}
-            rows={5}
-            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-          />
-          <p className="text-caption text-on-surface-variant/60 text-right">{customContext.length}/2000</p>
-          <Button
-            onClick={handleSaveCustom}
-            disabled={updateMutation.isPending}
-            size="sm"
-          >
-            <Save className="h-4 w-4" />
-            {updateMutation.isPending ? "Saving..." : "Save Instructions"}
-          </Button>
-          {customSaved && (
-            <span className="ml-3 text-label text-primary">Saved!</span>
-          )}
-        </CardContent>
-      </Card>
+            <span className="text-caption text-on-surface-variant">
+              Updated {data?.builtAt ? new Date(data.builtAt).toLocaleString() : "never"}. Website pages and files are matched to each request.
+            </span>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -727,14 +797,15 @@ function WhatsAppSection() {
   const [autoReconnect, setAutoReconnect] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(3600);
 
-  useEffect(() => {
-    if (data) {
-      setMessageDelay(data.messageDelay ?? 1000);
-      setRetryLimit(data.retryLimit ?? 3);
-      setAutoReconnect(data.autoReconnect ?? true);
-      setSessionTimeout(data.sessionTimeout ?? 3600);
-    }
-  }, [data]);
+  // Copy each loaded copy of the config into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setMessageDelay(data.messageDelay ?? 1000);
+    setRetryLimit(data.retryLimit ?? 3);
+    setAutoReconnect(data.autoReconnect ?? true);
+    setSessionTimeout(data.sessionTimeout ?? 3600);
+  }
 
   const handleSave = () => {
     const payload: UpdateWhatsAppConfigRequest = {
@@ -837,9 +908,9 @@ function WhatsAppSection() {
 
         {/* Message Delay */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-label font-medium text-on-surface-variant flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
-            Message Delay (ms)
+            Message delay (ms)
           </label>
           <input
             type="number"
@@ -857,8 +928,8 @@ function WhatsAppSection() {
 
         {/* Retry Limit */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Retry Limit
+          <label className="text-label font-medium text-on-surface-variant">
+            Retry limit
           </label>
           <input
             type="number"
@@ -899,8 +970,8 @@ function WhatsAppSection() {
 
         {/* Session Timeout */}
         <div className="space-y-1.5">
-          <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-            Session Timeout (seconds)
+          <label className="text-label font-medium text-on-surface-variant">
+            Session timeout (seconds)
           </label>
           <input
             type="number"
@@ -943,21 +1014,15 @@ function WorkingHoursSection() {
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("18:00");
   const [workDays, setWorkDays] = useState([true, true, true, true, true, false, false]);
-  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
-  const [autoReplyMessage, setAutoReplyMessage] = useState(
-    "Thanks for reaching out! We're currently outside business hours. We'll get back to you as soon as we're open."
-  );
-
-  useEffect(() => {
-    if (data) {
-      setEnabled(data.enabled ?? true);
-      setStartHour(data.startHour ?? "09:00");
-      setEndHour(data.endHour ?? "18:00");
-      setWorkDays(data.workDays ?? [true, true, true, true, true, false, false]);
-      setAutoReplyEnabled(data.autoReplyEnabled ?? false);
-      setAutoReplyMessage(data.autoReplyMessage ?? "");
-    }
-  }, [data]);
+  // Copy each loaded copy of the hours into the form
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setEnabled(data.enabled ?? true);
+    setStartHour(data.startHour ?? "09:00");
+    setEndHour(data.endHour ?? "18:00");
+    setWorkDays(data.workDays ?? [true, true, true, true, true, false, false]);
+  }
 
   const toggleDay = (idx: number) => {
     const next = [...workDays];
@@ -966,7 +1031,15 @@ function WorkingHoursSection() {
   };
 
   const handleSave = () => {
-    updateMutation.mutate({ enabled, startHour, endHour, workDays, autoReplyEnabled, autoReplyMessage });
+    // Keep whatever auto-reply values are stored; they're no longer edited here
+    updateMutation.mutate({
+      enabled,
+      startHour,
+      endHour,
+      workDays,
+      autoReplyEnabled: data?.autoReplyEnabled ?? false,
+      autoReplyMessage: data?.autoReplyMessage ?? "",
+    });
   };
 
   if (isLoading) return <SectionLoader />;
@@ -979,7 +1052,7 @@ function WorkingHoursSection() {
           Business Hours
         </h3>
         <p className="text-body text-on-surface-variant mb-4">
-          Set your team&apos;s availability hours. Outside these hours, auto-reply can be sent to customers.
+          Set your team&apos;s availability hours.
         </p>
 
         <div className="space-y-4">
@@ -1024,7 +1097,7 @@ function WorkingHoursSection() {
                 <label className="text-label font-medium text-on-surface-variant mb-2 block">
                   Working Days
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 max-lg:flex-wrap">
                   {DAYS.map((day, i) => (
                     <button
                       key={day}
@@ -1045,41 +1118,15 @@ function WorkingHoursSection() {
         </div>
       </div>
 
-      {/* Auto-Reply */}
+      {/* The after-hours reply lives with the chatbot (one place, and it actually sends) */}
       <div className="border-t border-outline-variant/15 pt-6">
-        <h3 className="text-body-lg font-semibold text-on-surface mb-1">
-          Auto-Reply (Outside Hours)
-        </h3>
-        <p className="text-body text-on-surface-variant mb-4">
-          Automatically reply to customers when a message is received outside working hours.
+        <h3 className="text-body-lg font-semibold text-on-surface mb-1">Reply outside hours</h3>
+        <p className="text-body text-on-surface-variant">
+          The message customers get when nobody is available is set with the chatbot&apos;s opening hours.{" "}
+          <Link href="/ai-assistant" className="font-medium text-primary hover:underline">
+            Set it in AI assistant → Handover &amp; hours
+          </Link>
         </p>
-
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoReplyEnabled}
-              onChange={(e) => setAutoReplyEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-outline-variant/30 accent-primary"
-            />
-            <span className="text-body text-on-surface">Enable auto-reply outside business hours</span>
-          </label>
-
-          {autoReplyEnabled && (
-            <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">
-                Auto-Reply Message
-              </label>
-              <textarea
-                value={autoReplyMessage}
-                onChange={(e) => setAutoReplyMessage(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                placeholder="Enter your auto-reply message..."
-              />
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Save */}
@@ -1117,9 +1164,12 @@ function FeatureFlagsSection() {
     billing: true,
   });
 
-  useEffect(() => {
-    if (data) setFlags(data);
-  }, [data]);
+  // Copy each loaded copy of the flags into local state
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setFlags(data);
+  }
 
   const toggleFlag = (key: keyof FeatureFlagsType) => {
     const updated = { ...flags, [key]: !flags[key] };
@@ -1214,7 +1264,7 @@ function AiSettingsSection() {
           params: { category: "ai", key: "auto_detect_purchase_intent" },
         })
         .then((r) => {
-          setAiPurchaseIntent(r.data?.value === "true");
+          setAiPurchaseIntent(r.data?.value === true || r.data?.value === "true");
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -1229,8 +1279,8 @@ function AiSettingsSection() {
       await apiClient.post("/settings/config", {
         category: "ai",
         key: "auto_detect_purchase_intent",
-        value: String(newValue),
-        type: "BOOLEAN",
+        value: newValue,
+        valueType: "boolean",
         scope: "ORG",
       });
     } catch {
@@ -1256,7 +1306,7 @@ function AiSettingsSection() {
             </p>
             <p className="text-caption text-on-surface-variant/60">
               AI analyzes incoming messages and auto-creates deals when customers
-              show buying intent (e.g., "I want to buy", "send me pricing")
+              show buying intent (e.g., &ldquo;I want to buy&rdquo;, &ldquo;send me pricing&rdquo;)
             </p>
           </div>
           <button role="switch" aria-checked={aiPurchaseIntent} aria-label="Auto-detect purchase intent"
@@ -1290,6 +1340,7 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, { label: string; descri
   WHATSAPP_SESSION_DISCONNECTED: { label: "Session Disconnected", description: "WhatsApp session disconnects" },
   WHATSAPP_SESSION_UNSTABLE: { label: "Connection Unstable", description: "WhatsApp keeps failing to reconnect" },
   WHATSAPP_PHONE_INACTIVE: { label: "Phone Inactive", description: "Your phone hasn't been online for days — WhatsApp may unlink" },
+  WEBSITE_HANDOFF: { label: "Website visitor wants a person", description: "A visitor on your website asked to talk to someone" },
   PAYMENT_FAILED: { label: "Payment Failed", description: "Payment failure alerts" },
   USAGE_LIMIT_WARNING: { label: "Usage Warning", description: "Approaching plan limits" },
   USAGE_LIMIT_REACHED: { label: "Usage Limit Reached", description: "Plan limit reached alerts" },
@@ -1352,13 +1403,13 @@ function NotificationsSection() {
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container/40 border-b border-outline-variant/15">
-              <th className="py-2.5 text-left text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-left text-label font-medium text-on-surface-variant">
                 Notification Type
               </th>
-              <th className="py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-center text-label font-medium text-on-surface-variant">
                 In-App
               </th>
-              <th className="py-2.5 text-center text-caption font-semibold uppercase tracking-wider text-on-surface-variant">
+              <th className="py-2.5 text-center text-label font-medium text-on-surface-variant">
                 Email
               </th>
             </tr>
@@ -1422,19 +1473,8 @@ function NotificationsSection() {
 
 // ─── Webhooks Section (EPIC 12 Enhanced) ─────────
 
-const WEBHOOK_EVENTS = [
-  "MESSAGE_RECEIVED",
-  "MESSAGE_SENT",
-  "MESSAGE_DELIVERED",
-  "MESSAGE_FAILED",
-  "CONTACT_CREATED",
-  "CONTACT_UPDATED",
-  "CAMPAIGN_COMPLETED",
-  "CAMPAIGN_FAILED",
-  "PAYMENT_SUCCEEDED",
-  "PAYMENT_FAILED",
-  "SUBSCRIPTION_CHANGED",
-] as const;
+// One list shared with the API types, so a new event shows up here automatically
+const WEBHOOK_EVENTS = WEBHOOK_EVENT_TYPES;
 
 function WebhooksSection() {
   const { data, isLoading } = useWebhooks();
@@ -1554,7 +1594,7 @@ function WebhooksSection() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Endpoint URL
               </label>
               <input
@@ -1567,7 +1607,7 @@ function WebhooksSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Description (optional)
               </label>
               <input
@@ -1580,7 +1620,7 @@ function WebhooksSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
+              <label className="text-label font-medium text-on-surface-variant">
                 Events
               </label>
               <div className="flex flex-wrap gap-2">
@@ -1769,10 +1809,10 @@ function WebhookCard({
               {webhook.url}
             </p>
             {isAutoDisabled && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error text-caption font-medium shrink-0">
-                <AlertTriangle className="h-3 w-3" />
+              <Badge variant="error" className="shrink-0 font-medium">
+                <AlertTriangle className="h-3 w-3" aria-hidden />
                 Auto-disabled
-              </span>
+              </Badge>
             )}
           </div>
           {webhook.description && (
@@ -1852,8 +1892,8 @@ function WebhookCard({
         <div className="border-t border-outline-variant/10 px-4 py-3 space-y-4">
           {/* Signing Secret */}
           <div className="space-y-1.5">
-            <label className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-              Signing Secret
+            <label className="text-label font-medium text-on-surface-variant">
+              Signing secret
             </label>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-label font-mono bg-surface-container-lowest border border-outline-variant/20 rounded px-3 py-2 text-on-surface">
@@ -1882,13 +1922,13 @@ function WebhookCard({
           {/* Config details */}
           <div className="grid grid-cols-3 gap-4 text-label">
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
-                Max Retries
+              <p className="text-on-surface-variant/60 text-caption">
+                Max retries
               </p>
               <p className="text-on-surface font-medium">{webhook.maxRetries}</p>
             </div>
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
+              <p className="text-on-surface-variant/60 text-caption">
                 Timeout
               </p>
               <p className="text-on-surface font-medium">
@@ -1896,8 +1936,8 @@ function WebhookCard({
               </p>
             </div>
             <div>
-              <p className="text-on-surface-variant/60 uppercase tracking-wider text-caption">
-                Failure Count
+              <p className="text-on-surface-variant/60 text-caption">
+                Failure count
               </p>
               <p
                 className={`font-medium ${webhook.failureCount > 0 ? "text-error" : "text-on-surface"}`}
@@ -1918,9 +1958,12 @@ function WebhookCard({
 function WebhookDeliveryLogs({ webhookId }: { webhookId: string }) {
   const [deliveryPage, setDeliveryPage] = useState(1);
 
-  useEffect(() => {
+  // Back to page 1 when a different webhook is shown
+  const [syncedWebhookId, setSyncedWebhookId] = useState(webhookId);
+  if (webhookId !== syncedWebhookId) {
+    setSyncedWebhookId(webhookId);
     setDeliveryPage(1);
-  }, [webhookId]);
+  }
 
   const { data, isLoading } = useWebhookDeliveries(webhookId, {
     limit: PAGE_SIZE,
@@ -1947,96 +1990,202 @@ function WebhookDeliveryLogs({ webhookId }: { webhookId: string }) {
     );
   }
 
-  const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
-
   return (
     <div className="space-y-1.5">
-      <p className="text-label font-medium text-on-surface-variant uppercase tracking-wider">
-        Recent Deliveries
+      <p className="text-label font-medium text-on-surface-variant">
+        Recent deliveries
       </p>
-      <div className="space-y-1">
-        {deliveries.map((d) => (
-          <DeliveryRow key={d.id} delivery={d} />
-        ))}
-      </div>
-      {totalPages > 1 && (
-        <Pagination
-          page={deliveryPage}
-          totalPages={totalPages}
-          total={data?.total ?? 0}
-          onPageChange={setDeliveryPage}
-        />
-      )}
+      <DataTable
+        label="Webhook deliveries"
+        columns={deliveryColumns}
+        rows={deliveries}
+        rowKey={(d) => d.id}
+        rowLabel={(d) => `${d.eventType} delivery`}
+        pagination={{
+          page: deliveryPage - 1,
+          pageSize: PAGE_SIZE,
+          total: data?.total ?? 0,
+          onPageChange: (p) => setDeliveryPage(p + 1),
+        }}
+      />
     </div>
   );
 }
 
-function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
-  const statusConfig: Record<
-    WebhookDeliveryStatus,
-    { icon: typeof CheckCircle2; color: string; label: string }
-  > = {
-    SUCCESS: {
-      icon: CheckCircle2,
-      color: "text-primary",
-      label: "Success",
-    },
-    FAILED: {
-      icon: XCircle,
-      color: "text-error",
-      label: "Failed",
-    },
-    RETRYING: {
-      icon: RotateCw,
-      color: "text-warning",
-      label: "Retrying",
-    },
-    PENDING: {
-      icon: Clock,
-      color: "text-on-surface-variant",
-      label: "Pending",
-    },
-  };
+const DELIVERY_STATUS: Record<
+  WebhookDeliveryStatus,
+  { label: string; variant: "success" | "error" | "warning" | "muted" }
+> = {
+  SUCCESS: { label: "Success", variant: "success" },
+  FAILED: { label: "Failed", variant: "error" },
+  RETRYING: { label: "Retrying", variant: "warning" },
+  PENDING: { label: "Pending", variant: "muted" },
+};
 
-  const config = statusConfig[delivery.status];
-  const StatusIcon = config.icon;
-  const timestamp = new Date(delivery.createdAt).toLocaleString();
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded bg-surface-container-lowest/50 text-label">
-      <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
-      <span className="text-on-surface-variant font-mono shrink-0">
-        {delivery.eventType}
-      </span>
-      {delivery.httpStatus && (
-        <span
-          className={`shrink-0 ${
-            delivery.httpStatus >= 200 && delivery.httpStatus < 300
-              ? "text-primary"
-              : "text-error"
-          }`}
-        >
-          {delivery.httpStatus}
+const deliveryColumns: DataTableColumn<WebhookDelivery>[] = [
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cell: (d) => {
+      const m = DELIVERY_STATUS[d.status] ?? { label: d.status, variant: "muted" as const };
+      return <Badge variant={m.variant} dot>{m.label}</Badge>;
+    },
+  },
+  {
+    id: "event",
+    header: "Event",
+    cellClassName: "font-mono text-label text-on-surface-variant whitespace-nowrap",
+    cell: (d) => d.eventType,
+  },
+  {
+    id: "http",
+    header: "HTTP",
+    skeleton: "short",
+    cellClassName: "text-label tabular-nums",
+    cell: (d) =>
+      d.httpStatus ? (
+        <span className={d.httpStatus >= 200 && d.httpStatus < 300 ? "text-success" : "text-error"}>
+          {d.httpStatus}
         </span>
-      )}
-      {delivery.duration !== null && (
-        <span className="text-on-surface-variant/50 shrink-0">
-          {delivery.duration}ms
-        </span>
-      )}
-      {delivery.error && (
-        <span className="text-error/70 truncate min-w-0">
-          {delivery.error}
-        </span>
-      )}
-      <span className="text-on-surface-variant/40 ml-auto shrink-0">
-        {timestamp}
-      </span>
-    </div>
-  );
-}
+      ) : (
+        "—"
+      ),
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    skeleton: "short",
+    cellClassName: "text-label tabular-nums text-on-surface-variant whitespace-nowrap",
+    cell: (d) => (d.duration !== null ? `${d.duration} ms` : "—"),
+  },
+  {
+    id: "error",
+    header: "Error",
+    cellClassName: "text-label text-error/70 max-w-[240px] truncate",
+    cell: (d) => d.error || "—",
+  },
+  {
+    id: "time",
+    header: "Time",
+    skeleton: "short",
+    cellClassName: "text-label text-on-surface-variant whitespace-nowrap",
+    cell: (d) => new Date(d.createdAt).toLocaleString(),
+  },
+];
 
 // ─── Developer API Section ──────────────────────
+
+type ApiEndpoint = [method: string, path: string, desc: string, scopes: string];
+
+const API_ENDPOINTS: ApiEndpoint[] = [
+  ["POST", "/developer/messages/send", "Send a text, media or interactive message", "write, messages"],
+  ["POST", "/developer/messages/send-bulk", "Send one message to up to 100 numbers", "write, messages"],
+  ["POST", "/developer/messages/send-template", "Send a saved template with variables", "write, messages"],
+  ["GET", "/developer/messages", "List messages (cursor pagination)", "read, messages"],
+  ["GET", "/developer/messages/:id", "Get a message and its status events", "read, messages"],
+  ["GET", "/developer/templates", "List templates", "read, messages"],
+  ["POST", "/developer/templates", "Create or update a template", "write, messages"],
+  ["GET", "/developer/contacts", "List contacts (cursor pagination)", "read, contacts"],
+  ["POST", "/developer/contacts", "Create a contact (returns existing one if the phone exists)", "write, contacts"],
+  ["GET", "/developer/contacts/:id", "Get a contact", "read, contacts"],
+  ["PUT", "/developer/contacts/:id", "Update name, email or metadata", "write, contacts"],
+  ["GET", "/developer/session/status", "Check the WhatsApp connection", "read"],
+];
+
+const apiEndpointColumns: DataTableColumn<ApiEndpoint>[] = [
+  {
+    id: "method",
+    header: "Method",
+    cellClassName: "font-mono text-label",
+    cell: ([method]) => (
+      <span className={`px-1.5 py-0.5 rounded text-caption font-semibold ${
+        method === "POST" ? "bg-primary/10 text-primary" :
+        method === "DELETE" ? "bg-error/10 text-error" :
+        method === "PUT" ? "bg-warning/10 text-warning" :
+        "bg-surface-container text-on-surface"
+      }`}>
+        {method}
+      </span>
+    ),
+  },
+  {
+    id: "endpoint",
+    header: "Endpoint",
+    cellClassName: "font-mono text-label text-on-surface",
+    cell: ([, path]) => `/api/v1${path}`,
+  },
+  {
+    id: "description",
+    header: "Description",
+    cellClassName: "text-label text-on-surface-variant font-sans",
+    cell: ([, , desc]) => desc,
+  },
+  {
+    id: "scopes",
+    header: "Scopes",
+    cellClassName: "font-mono text-label text-on-surface-variant whitespace-nowrap",
+    cell: ([, , , scopes]) => scopes,
+  },
+];
+
+const apiLogColumns: DataTableColumn<DeveloperApiRequestLog>[] = [
+  {
+    id: "time",
+    header: "Time",
+    cellClassName: "align-top text-on-surface-variant text-label whitespace-nowrap",
+    cell: (log) => new Date(log.createdAt).toLocaleString(),
+  },
+  {
+    id: "request",
+    header: "Request",
+    cellClassName: "align-top",
+    cell: (log) => (
+      <>
+        <span className="font-mono text-label">
+          <span className="font-semibold">{log.method}</span>{" "}
+          {log.path.replace(/^\/api\/v1/, "")}
+        </span>
+        {log.errorMessage && (
+          <p className="text-caption text-error mt-0.5 max-w-[360px]">{log.errorMessage}</p>
+        )}
+      </>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    skeleton: "badge",
+    cellClassName: "align-top",
+    cell: (log) => (
+      <span className={`px-1.5 py-0.5 rounded text-caption font-medium font-mono ${
+        log.statusCode < 300 ? "bg-success/10 text-success" :
+        log.statusCode < 500 ? "bg-warning/10 text-warning" :
+        "bg-error/10 text-error"
+      }`}>
+        {log.statusCode}
+      </span>
+    ),
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    skeleton: "short",
+    cellClassName: "align-top text-on-surface-variant text-label tabular-nums",
+    cell: (log) => `${log.durationMs} ms`,
+  },
+  {
+    id: "key",
+    header: "Key",
+    cellClassName: "align-top text-on-surface-variant text-label",
+    cell: (log) => (
+      <>
+        {log.apiKeyName ?? "Deleted key"}
+        {log.apiKeyPrefix && <span className="font-mono text-caption block">{log.apiKeyPrefix}…</span>}
+      </>
+    ),
+  },
+];
 
 function DeveloperApiSection() {
   const { data: stats, isLoading: statsLoading } = useDeveloperDashboard();
@@ -2058,6 +2207,94 @@ function DeveloperApiSection() {
     sectionParam === "keys" || sectionParam === "docs" || sectionParam === "logs" ? sectionParam : "overview",
   );
   const [keyConfirm, setKeyConfirm] = useState<{ type: "rotate" | "revoke"; id: string; name: string } | null>(null);
+
+  const rotatePending = rotateKey.isPending;
+  const revokePending = revokeKey.isPending;
+  const apiKeyColumns = useMemo<DataTableColumn<DeveloperApiKey>[]>(
+    () => [
+      { id: "name", header: "Name", cellClassName: "font-medium text-on-surface", cell: (key) => key.name },
+      {
+        id: "key",
+        header: "Key",
+        cell: (key) => (
+          <code className="text-label bg-surface-container px-2 py-0.5 rounded font-mono">
+            {key.keyPrefix}...
+          </code>
+        ),
+      },
+      {
+        id: "scopes",
+        header: "Scopes",
+        skeleton: "badge",
+        cell: (key) => (
+          <div className="flex flex-wrap gap-1">
+            {key.scopes.map((s) => (
+              <span key={s} className="px-1.5 py-0.5 bg-surface-container rounded text-caption">{s}</span>
+            ))}
+          </div>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        skeleton: "badge",
+        cell: (key) =>
+          key.isActive ? (
+            <Badge variant="success" dot>Active</Badge>
+          ) : (
+            <Badge variant="error" dot>Revoked</Badge>
+          ),
+      },
+      {
+        id: "lastUsed",
+        header: "Last Used",
+        skeleton: "short",
+        cellClassName: "text-on-surface-variant",
+        cell: (key) => (key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"),
+      },
+      {
+        id: "expires",
+        header: "Expires",
+        skeleton: "short",
+        cellClassName: "text-on-surface-variant",
+        cell: (key) =>
+          !key.expiresAt ? (
+            "Never"
+          ) : new Date(key.expiresAt) < new Date() ? (
+            <span className="text-error">Expired</span>
+          ) : (
+            new Date(key.expiresAt).toLocaleDateString()
+          ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        skeleton: "none",
+        cell: (key) =>
+          key.isActive && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => setKeyConfirm({ type: "rotate", id: key.id, name: key.name })}
+                disabled={rotatePending}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
+              >
+                <RotateCw className="h-3 w-3" />
+                Rotate
+              </button>
+              <button
+                onClick={() => setKeyConfirm({ type: "revoke", id: key.id, name: key.name })}
+                disabled={revokePending}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
+              >
+                <Trash2 className="h-3 w-3" />
+                Revoke
+              </button>
+            </div>
+          ),
+      },
+    ],
+    [rotatePending, revokePending],
+  );
 
   const AVAILABLE_SCOPES = ["read", "write", "messages", "contacts"];
 
@@ -2087,7 +2324,7 @@ function DeveloperApiSection() {
   return (
     <div className="space-y-6">
       {/* Sub-tabs */}
-      <div className="flex gap-1 p-1 bg-surface-container rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-surface-container rounded-lg w-fit mobile-scroll-x max-lg:w-full">
         {(
           [
             { id: "overview", label: "Overview", icon: BarChart3 },
@@ -2099,13 +2336,13 @@ function DeveloperApiSection() {
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-body font-medium transition-colors ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-body font-medium transition-colors max-lg:flex-1 max-lg:justify-center max-sm:px-2 max-sm:py-2 ${
               activeSubTab === tab.id
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <tab.icon className="h-4 w-4" />
+            <tab.icon className="h-4 w-4 max-sm:hidden" />
             {tab.label}
           </button>
         ))}
@@ -2119,10 +2356,10 @@ function DeveloperApiSection() {
           ) : stats ? (
             <>
               {/* Usage Stats */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-sm:grid-cols-2 max-sm:gap-3">
                 <Card>
-                  <CardContent className="pt-5">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Messages Used</p>
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
+                    <p className="text-label font-medium text-on-surface-variant">Messages used</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">
                       {(stats.messagesUsed ?? 0).toLocaleString()}
                       <span className="text-body font-normal text-on-surface-variant">
@@ -2142,22 +2379,22 @@ function DeveloperApiSection() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Active Sessions</p>
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
+                    <p className="text-label font-medium text-on-surface-variant">Active sessions</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeSessions}</p>
                     <p className="text-label text-on-surface-variant mt-1">WhatsApp connected</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">API Keys</p>
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
+                    <p className="text-label font-medium text-on-surface-variant">API Keys</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{stats.activeApiKeys}</p>
                     <p className="text-label text-on-surface-variant mt-1">Active keys</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-5">
-                    <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">Contacts</p>
+                  <CardContent className="pt-5 max-lg:mt-0 max-lg:pt-0">
+                    <p className="text-label font-medium text-on-surface-variant">Contacts</p>
                     <p className="text-headline font-semibold text-on-surface mt-1">{(stats.totalContacts ?? 0).toLocaleString()}</p>
                     <p className="text-label text-on-surface-variant mt-1">Total contacts</p>
                   </CardContent>
@@ -2241,7 +2478,7 @@ function DeveloperApiSection() {
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
                       placeholder="e.g., Production API Key"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                   <div>
@@ -2276,7 +2513,7 @@ function DeveloperApiSection() {
                       onChange={(e) => setNewKeyExpiry(e.target.value)}
                       type="number"
                       placeholder="Leave empty for no expiry"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                   <div className="flex gap-2 justify-end">
@@ -2290,93 +2527,20 @@ function DeveloperApiSection() {
               )}
 
               {/* Keys Table */}
-              {keysLoading ? (
-                <SectionLoader />
-              ) : keys && keys.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-body">
-                    <thead>
-                      <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                        <th className="pb-2 font-medium">Name</th>
-                        <th className="pb-2 font-medium">Key</th>
-                        <th className="pb-2 font-medium">Scopes</th>
-                        <th className="pb-2 font-medium">Status</th>
-                        <th className="pb-2 font-medium">Last Used</th>
-                        <th className="pb-2 font-medium">Expires</th>
-                        <th className="pb-2 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {keys.map((key) => (
-                        <tr key={key.id} className="border-b border-outline-variant/10">
-                          <td className="py-3 font-medium text-on-surface">{key.name}</td>
-                          <td className="py-3">
-                            <code className="text-label bg-surface-container px-2 py-0.5 rounded font-mono">
-                              {key.keyPrefix}...
-                            </code>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {key.scopes.map((s) => (
-                                <span key={s} className="px-1.5 py-0.5 bg-surface-container rounded text-caption">{s}</span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            {key.isActive ? (
-                              <span className="flex items-center gap-1 text-primary text-label">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Active
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-error text-label">
-                                <XCircle className="h-3.5 w-3.5" /> Revoked
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 text-on-surface-variant">
-                            {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : "Never"}
-                          </td>
-                          <td className="py-3 text-on-surface-variant">
-                            {!key.expiresAt ? (
-                              "Never"
-                            ) : new Date(key.expiresAt) < new Date() ? (
-                              <span className="text-error">Expired</span>
-                            ) : (
-                              new Date(key.expiresAt).toLocaleDateString()
-                            )}
-                          </td>
-                          <td className="py-3">
-                            {key.isActive && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => setKeyConfirm({ type: "rotate", id: key.id, name: key.name })}
-                                  disabled={rotateKey.isPending}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40"
-                                >
-                                  <RotateCw className="h-3 w-3" />
-                                  Rotate
-                                </button>
-                                <button
-                                  onClick={() => setKeyConfirm({ type: "revoke", id: key.id, name: key.name })}
-                                  disabled={revokeKey.isPending}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-caption text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors disabled:opacity-40"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                  Revoke
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center py-8 text-on-surface-variant text-body">
-                  No API keys yet. Create one to get started.
-                </p>
-              )}
+              <DataTable
+                label="API keys"
+                columns={apiKeyColumns}
+                rows={keys ?? []}
+                rowKey={(key) => key.id}
+                rowLabel={(key) => key.name}
+                loading={keysLoading}
+                skeletonRows={3}
+                empty={{
+                  icon: <Key className="h-10 w-10" />,
+                  title: "No API keys yet",
+                  description: "Create one to get started.",
+                }}
+              />
             </CardContent>
           </Card>
         </div>
@@ -2558,50 +2722,13 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
               </a>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-body">
-                  <thead>
-                    <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                      <th className="pb-2 font-medium">Method</th>
-                      <th className="pb-2 font-medium">Endpoint</th>
-                      <th className="pb-2 font-medium">Description</th>
-                      <th className="pb-2 font-medium">Scopes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="font-mono text-label">
-                    {[
-                      ["POST", "/developer/messages/send", "Send a text, media or interactive message", "write, messages"],
-                      ["POST", "/developer/messages/send-bulk", "Send one message to up to 100 numbers", "write, messages"],
-                      ["POST", "/developer/messages/send-template", "Send a saved template with variables", "write, messages"],
-                      ["GET", "/developer/messages", "List messages (cursor pagination)", "read, messages"],
-                      ["GET", "/developer/messages/:id", "Get a message and its status events", "read, messages"],
-                      ["GET", "/developer/templates", "List templates", "read, messages"],
-                      ["POST", "/developer/templates", "Create or update a template", "write, messages"],
-                      ["GET", "/developer/contacts", "List contacts (cursor pagination)", "read, contacts"],
-                      ["POST", "/developer/contacts", "Create a contact (returns existing one if the phone exists)", "write, contacts"],
-                      ["GET", "/developer/contacts/:id", "Get a contact", "read, contacts"],
-                      ["PUT", "/developer/contacts/:id", "Update name, email or metadata", "write, contacts"],
-                      ["GET", "/developer/session/status", "Check the WhatsApp connection", "read"],
-                    ].map(([method, path, desc, scopes]) => (
-                      <tr key={`${method}-${path}`} className="border-b border-outline-variant/10">
-                        <td className="py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-caption font-semibold ${
-                            method === "POST" ? "bg-primary/10 text-primary" :
-                            method === "DELETE" ? "bg-error/10 text-error" :
-                            method === "PUT" ? "bg-warning/10 text-warning" :
-                            "bg-surface-container text-on-surface"
-                          }`}>
-                            {method}
-                          </span>
-                        </td>
-                        <td className="py-2 text-on-surface">/api/v1{path}</td>
-                        <td className="py-2 text-on-surface-variant font-sans">{desc}</td>
-                        <td className="py-2 text-on-surface-variant whitespace-nowrap">{scopes}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                label="API endpoints"
+                columns={apiEndpointColumns}
+                rows={API_ENDPOINTS}
+                rowKey={([method, path]) => `${method}-${path}`}
+                rowLabel={([method, path]) => `${method} ${path}`}
+              />
               <div className="mt-4 space-y-1 text-label text-on-surface-variant">
                 <p>
                   Send your key in the <code className="bg-surface-container px-1 rounded">X-API-Key</code> header.
@@ -2612,7 +2739,7 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
                 <p>
                   Successful responses are wrapped as <code className="bg-surface-container px-1 rounded">{"{ success, data, timestamp }"}</code>.
                   Errors return <code className="bg-surface-container px-1 rounded">{"{ statusCode, message, error }"}</code>.
-                  Send an <code className="bg-surface-container px-1 rounded">Idempotency-Key</code> header (or <code className="bg-surface-container px-1 rounded">idempotencyKey</code> in the body) on send and send-template so a retried request doesn't send twice.
+                  Send an <code className="bg-surface-container px-1 rounded">Idempotency-Key</code> header (or <code className="bg-surface-container px-1 rounded">idempotencyKey</code> in the body) on send and send-template so a retried request doesn&apos;t send twice.
                 </p>
                 <p>
                   Each key can make 60 requests per minute. Check the{" "}
@@ -2673,57 +2800,18 @@ app.post("/wazelo-webhook", express.raw({ type: "application/json" }), (req, res
             <p className="text-label text-on-surface-variant">Last 50 requests made with your API keys. Kept for 30 days.</p>
           </CardHeader>
           <CardContent>
-            {logs?.data && logs.data.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-body">
-                  <thead>
-                    <tr className="text-left text-on-surface-variant border-b border-outline-variant/15">
-                      <th className="pb-2 font-medium">Time</th>
-                      <th className="pb-2 font-medium">Request</th>
-                      <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 font-medium">Duration</th>
-                      <th className="pb-2 font-medium">Key</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.data.map((log) => (
-                      <tr key={log.id} className="border-b border-outline-variant/10 align-top">
-                        <td className="py-2.5 pr-3 text-on-surface-variant text-label whitespace-nowrap">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <span className="font-mono text-label">
-                            <span className="font-semibold">{log.method}</span>{" "}
-                            {log.path.replace(/^\/api\/v1/, "")}
-                          </span>
-                          {log.errorMessage && (
-                            <p className="text-caption text-error mt-0.5 max-w-[360px]">{log.errorMessage}</p>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <span className={`px-1.5 py-0.5 rounded text-caption font-medium font-mono ${
-                            log.statusCode < 300 ? "bg-success/10 text-success" :
-                            log.statusCode < 500 ? "bg-warning/10 text-warning" :
-                            "bg-error/10 text-error"
-                          }`}>
-                            {log.statusCode}
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-3 text-on-surface-variant text-label tabular-nums">{log.durationMs} ms</td>
-                        <td className="py-2.5 text-on-surface-variant text-label">
-                          {log.apiKeyName ?? "Deleted key"}
-                          {log.apiKeyPrefix && <span className="font-mono text-caption block">{log.apiKeyPrefix}…</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-center py-8 text-on-surface-variant text-body">
-                No API requests yet. Requests made with your API keys show up here.
-              </p>
-            )}
+            <DataTable
+              label="API requests"
+              columns={apiLogColumns}
+              rows={logs?.data ?? []}
+              rowKey={(log) => log.id}
+              rowLabel={(log) => `${log.method} ${log.path}`}
+              empty={{
+                icon: <Activity className="h-10 w-10" />,
+                title: "No API requests yet",
+                description: "Requests made with your API keys show up here.",
+              }}
+            />
           </CardContent>
         </Card>
       )}
@@ -2810,7 +2898,7 @@ function SlaSection() {
 
       {showForm && (
         <SlaPolicyForm
-          onSubmit={(data) => createPolicy.mutate(data as any, { onSuccess: () => setShowForm(false) })}
+          onSubmit={(data) => createPolicy.mutate(data as CreateSlaPolicyRequest, { onSuccess: () => setShowForm(false) })}
           onCancel={() => setShowForm(false)}
           isSubmitting={createPolicy.isPending}
         />
@@ -2819,7 +2907,7 @@ function SlaSection() {
       {editPolicy && (
         <SlaPolicyForm
           policy={editPolicy}
-          onSubmit={(data) => updatePolicy.mutate({ id: editPolicy.id, data: data as any }, { onSuccess: () => setEditPolicy(null) })}
+          onSubmit={(data) => updatePolicy.mutate({ id: editPolicy.id, data: data as UpdateSlaPolicyRequest }, { onSuccess: () => setEditPolicy(null) })}
           onCancel={() => setEditPolicy(null)}
           isSubmitting={updatePolicy.isPending}
         />
@@ -2868,8 +2956,8 @@ function ShopifyWebhookUrlCard({ orgId }: { orgId: string }) {
 
   return (
     <div className="rounded-xl bg-surface-container border border-outline-variant/10 p-4 space-y-2">
-      <p className="text-label font-semibold text-on-surface-variant uppercase tracking-wider">
-        Your Shopify Webhook URL
+      <p className="text-label font-semibold text-on-surface-variant">
+        Your Shopify webhook URL
       </p>
       <p className="text-caption text-on-surface-variant/60 leading-relaxed">
         Register this URL in Shopify Admin → Settings → Notifications → Webhooks.
@@ -2921,7 +3009,7 @@ function ShopifyIntegrationForm({ existing, onSuccess, onCancel }: { existing?: 
     }
   }
 
-  const inputCls = "w-full px-3 py-2.5 rounded-lg bg-surface-container border border-outline-variant/15 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "w-full px-3 py-2.5 rounded-lg bg-surface-container border border-outline-variant/15 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -2941,7 +3029,7 @@ function ShopifyIntegrationForm({ existing, onSuccess, onCancel }: { existing?: 
         <p className="text-caption text-on-surface-variant/50">Shopify Admin → Apps → Develop apps → Admin API access token. Requires: <code className="text-primary">read_orders</code>, <code className="text-primary">read_customers</code>.</p>
       </div>
       <div className="space-y-1.5">
-        <label className="text-label font-medium text-on-surface-variant">Webhook Signing Secret {!isEditing && <span className="text-error">*</span>}</label>
+        <label className="text-label font-medium text-on-surface-variant">Webhook signing secret {!isEditing && <span className="text-error">*</span>}</label>
         <div className="relative">
           <input type={showSecret ? "text" : "password"} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} required={!isEditing} placeholder={isEditing ? "Leave blank to keep existing" : "Your webhook signing secret"} className={`${inputCls} pr-10`} />
           <button aria-label={showSecret ? "Hide secret" : "Show secret"} type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
@@ -2978,9 +3066,12 @@ function ShopifySection() {
 
   const shopifyIntegration = integrations?.find((i) => i.provider === "SHOPIFY");
 
-  useEffect(() => {
+  // Open the form when loading finishes with no store connected (re-checked only when these change)
+  const [syncedShopify, setSyncedShopify] = useState<{ isLoading: boolean; integration: typeof shopifyIntegration } | null>(null);
+  if (!syncedShopify || syncedShopify.isLoading !== isLoading || syncedShopify.integration !== shopifyIntegration) {
+    setSyncedShopify({ isLoading, integration: shopifyIntegration });
     if (!isLoading && !shopifyIntegration) setShowForm(true);
-  }, [isLoading, shopifyIntegration]);
+  }
 
   function handleTest() {
     if (!shopifyIntegration) return;
@@ -2999,10 +3090,10 @@ function ShopifySection() {
 
   if (isLoading) return <SectionLoader />;
 
-  const statusColor =
-    shopifyIntegration?.status === "ACTIVE" ? "text-success bg-success-container" :
-    shopifyIntegration?.status === "ERROR"  ? "text-error bg-error-container" :
-    "text-on-surface-variant bg-surface-container";
+  const statusVariant =
+    shopifyIntegration?.status === "ACTIVE" ? "success" :
+    shopifyIntegration?.status === "ERROR"  ? "error" :
+    "muted";
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -3050,10 +3141,12 @@ function ShopifySection() {
               <p className="text-body-lg font-semibold text-on-surface">{shopifyIntegration.displayName}</p>
               <p className="text-caption text-on-surface-variant/60">Connected · {new Date(shopifyIntegration.updatedAt).toLocaleDateString()}</p>
             </div>
-            <span className={`px-2 py-0.5 rounded-full text-caption font-medium ${statusColor}`}>{shopifyIntegration.status}</span>
+            <Badge variant={statusVariant} dot>
+              {shopifyIntegration.status.charAt(0) + shopifyIntegration.status.slice(1).toLowerCase().replace(/_/g, " ")}
+            </Badge>
           </div>
           <div className="px-4 py-3 space-y-2.5 border-b border-outline-variant/8">
-            <p className="text-caption font-semibold text-on-surface-variant/60 uppercase tracking-wider">Listening For</p>
+            <p className="text-caption font-semibold text-on-surface-variant/60">Listening for</p>
             {SHOPIFY_EVENTS.map((ev) => {
               const Icon = ev.icon;
               return (
@@ -3135,7 +3228,7 @@ function ShopifySection() {
 
       {/* Setup guide */}
       <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-4 space-y-2">
-        <p className="text-label font-semibold text-on-surface-variant/60 uppercase tracking-wider">Setup Guide</p>
+        <p className="text-label font-semibold text-on-surface-variant/60">Setup guide</p>
         <ol className="space-y-2 text-label text-on-surface-variant leading-relaxed list-decimal list-inside">
           <li>Go to Shopify Admin → Apps → Develop apps → Create an app</li>
           <li>Under Admin API, add scopes: <code className="text-primary bg-primary/8 px-1 rounded">read_orders</code> <code className="text-primary bg-primary/8 px-1 rounded">read_customers</code></li>

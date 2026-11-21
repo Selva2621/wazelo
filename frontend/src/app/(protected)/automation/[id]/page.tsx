@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Power,
   PowerOff,
   Trash2,
-  Zap,
   AlertCircle,
   Save,
   Plus,
@@ -21,10 +20,15 @@ import {
   Tag,
   RefreshCcw,
   CheckCircle2,
+  Workflow,
+  Mail,
+  Package,
 } from "lucide-react";
+import { ProductSelectField } from "@/components/ui/product-select-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RuleStatusBadge } from "@/components/automation/rule-status-badge";
@@ -43,27 +47,39 @@ import type {
   AutomationConditionOperator,
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
-import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useMobileTitle } from "@/hooks/use-mobile-chrome";
+import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
+import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { OfficialTemplateToggle } from "@/components/automation/official-template-toggle";
+import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
+import { SendEmailFields, validateSendEmail, type SendEmailErrors } from "@/components/automation/send-email-fields";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
-  { value: "MESSAGE_RECEIVED",        label: "Message Received" },
-  { value: "CONTACT_CREATED",         label: "Contact Created" },
-  { value: "LEAD_STATUS_CHANGED",     label: "Lead Status Changed" },
-  { value: "TIME_BASED",              label: "Time-Based (Cron)" },
-  { value: "NO_REPLY",                label: "No Reply Follow-Up" },
-  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
-  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
-  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
-  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
+  { value: "MESSAGE_RECEIVED",        label: "Message received" },
+  { value: "CONTACT_CREATED",         label: "Contact created" },
+  { value: "LEAD_AD_RECEIVED",        label: "Lead ad received" },
+  { value: "LEAD_STATUS_CHANGED",     label: "Lead status changed" },
+  { value: "NO_REPLY",                label: "No reply follow-up" },
+  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — order created",   group: "shopify" },
+  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — order fulfilled",  group: "shopify" },
+  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — cart abandoned",   group: "shopify" },
+  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget message received" },
+  { value: "DEAL_STAGE_CHANGED",      label: "Deal stage changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string; icon: React.ElementType; color: string }[] = [
-  { value: "SEND_MESSAGE",   label: "Send Message",   icon: MessageSquare, color: "#6366f1" },
-  { value: "ASSIGN_CONTACT", label: "Assign Contact", icon: UserCheck,     color: "#22c55e" },
-  { value: "ADD_TAG",        label: "Add Tag",         icon: Tag,           color: "#ec4899" },
-  { value: "UPDATE_STATUS",  label: "Update Status",   icon: RefreshCcw,    color: "#f59e0b" },
+  { value: "SEND_MESSAGE",   label: "Send message",   icon: MessageSquare, color: "#6366f1" },
+  { value: "SEND_EMAIL",     label: "Send email",     icon: Mail,          color: "#8b5cf6" },
+  { value: "ASSIGN_CONTACT", label: "Assign contact", icon: UserCheck,     color: "#22c55e" },
+  { value: "ADD_TAG",        label: "Add tag",         icon: Tag,           color: "#ec4899" },
+  { value: "ADD_TO_PRODUCT", label: "Add to product",  icon: Package,       color: "#14b8a6" },
+  { value: "UPDATE_STATUS",  label: "Update status",   icon: RefreshCcw,    color: "#f59e0b" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to sequence", icon: Workflow,  color: "#0ea5e9" },
+  { value: "STOP_SEQUENCE",  label: "Stop sequence",  icon: Workflow,      color: "#64748b" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign chat", icon: UserCheck,   color: "#22c55e" },
 ];
 
 const CONDITION_FIELDS = [
@@ -86,14 +102,6 @@ const CONDITION_OPERATORS: { value: AutomationConditionOperator; label: string }
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
 
-const VAR_CHIPS = [
-  { label: "Name",       value: "{{contact.name}}" },
-  { label: "Phone",      value: "{{contact.phone}}" },
-  { label: "Order #",    value: "{{shopify.order_name}}" },
-  { label: "Total",      value: "{{shopify.total_price}}" },
-  { label: "Items",      value: "{{shopify.items}}" },
-  { label: "Cart Total", value: "{{shopify.cart_total}}" },
-];
 
 const TAKE = 20;
 
@@ -103,10 +111,10 @@ function formatDate(d: string) {
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
-function Section({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({ title, children, defaultOpen = true, tour }: { title: string; children: React.ReactNode; defaultOpen?: boolean; tour?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
+    <div data-tour={tour} className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -129,7 +137,7 @@ interface TriggerConfigProps {
 }
 
 function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerConfigProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+  const inputCls = "mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   if (triggerType === "MESSAGE_RECEIVED" || triggerType === "WIDGET_MESSAGE_RECEIVED") {
     return (
@@ -152,7 +160,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
     return (
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>From Status</Label>
+          <Label>From status</Label>
           <input
             className={inputCls}
             placeholder="e.g. NEW"
@@ -161,7 +169,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
           />
         </div>
         <div>
-          <Label>To Status</Label>
+          <Label>To status</Label>
           <input
             className={inputCls}
             placeholder="e.g. QUALIFIED"
@@ -176,7 +184,7 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
   if (triggerType === "TIME_BASED") {
     return (
       <div>
-        <Label>Cron Expression</Label>
+        <Label>Cron expression</Label>
         <input
           className={inputCls}
           placeholder="e.g. 0 9 * * 1 (every Monday at 9 AM)"
@@ -233,6 +241,35 @@ function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: TriggerCon
     );
   }
 
+  if (triggerType === "LEAD_AD_RECEIVED") {
+    return (
+      <LeadAdTriggerFields
+        value={{
+          platform: triggerConfig.platform as string | undefined,
+          pageId: triggerConfig.pageId as string | undefined,
+          formId: triggerConfig.formId as string | undefined,
+          newContactsOnly: triggerConfig.newContactsOnly as boolean | undefined,
+        }}
+        onChange={onChange}
+        inputClassName={inputCls}
+      />
+    );
+  }
+
+  if (triggerType === "DEAL_STAGE_CHANGED") {
+    return (
+      <div>
+        <Label>Moved to stage</Label>
+        <StageSelect
+          className="mt-1"
+          value={String(triggerConfig.stageId ?? "")}
+          onChange={(e) => onChange("stageId", e.target.value || undefined)}
+        />
+        <p className="text-caption text-on-surface-variant/50 mt-1">Also fires when a deal is created in that stage.</p>
+      </div>
+    );
+  }
+
   return (
     <p className="text-label text-on-surface-variant/60 italic">No additional configuration needed for this trigger.</p>
   );
@@ -254,7 +291,6 @@ interface ConditionBuilderProps {
 
 function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
   const inputCls = "flex-1 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
-  const selectCls = `${inputCls} flex-none`;
 
   function add() {
     onChange([...conditions, { id: crypto.randomUUID(), field: "contact.name", operator: "EQUALS", value: "" }]);
@@ -276,34 +312,36 @@ function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps) {
         </p>
       )}
       {conditions.map((row, i) => (
-        <div key={row.id} className="flex items-center gap-2">
+        <div key={row.id} className="flex items-center gap-2 max-lg:flex-wrap">
           {i > 0 && (
-            <span className="text-caption font-semibold text-primary uppercase shrink-0 w-6 text-center">AND</span>
+            <span className="text-caption font-semibold text-primary uppercase shrink-0 w-6 text-center max-lg:basis-full max-lg:text-left">AND</span>
           )}
-          {i === 0 && <span className="w-6 shrink-0" />}
+          {i === 0 && <span className="w-6 shrink-0 max-lg:hidden" />}
 
-          <select
+          <Select
             value={row.field}
             onChange={(e) => update(row.id, "field", e.target.value)}
-            className={`${selectCls} w-40`}
+            size="sm"
+            className="flex-none w-40 max-lg:w-[calc(50%-0.25rem)]"
           >
             {CONDITION_FIELDS.map((f) => (
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={row.operator}
             onChange={(e) => update(row.id, "operator", e.target.value as AutomationConditionOperator)}
-            className={`${selectCls} w-28`}
+            size="sm"
+            className="flex-none w-28 max-lg:w-[calc(50%-0.25rem)]"
           >
             {CONDITION_OPERATORS.map((op) => (
               <option key={op.value} value={op.value}>{op.label}</option>
             ))}
-          </select>
+          </Select>
 
           <input
-            className={inputCls}
+            className={`${inputCls} max-lg:min-w-0 max-lg:basis-[calc(100%-3rem)]`}
             placeholder="value"
             value={row.value}
             onChange={(e) => update(row.id, "value", e.target.value)}
@@ -346,9 +384,11 @@ interface ActionRowEditorProps {
   onRemove: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
+  triggerType: AutomationTriggerType;
+  emailErrors?: SendEmailErrors;
 }
 
-function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMoveDown }: ActionRowEditorProps) {
+function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMoveDown, triggerType, emailErrors }: ActionRowEditorProps) {
   const inputCls = "w-full px-3 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
   const meta = ACTION_TYPES.find((a) => a.value === row.actionType);
   const Icon = meta?.icon ?? MessageSquare;
@@ -394,15 +434,16 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
         {/* Type selector */}
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
           <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: meta?.color ?? "#6366f1" }} />
-          <select
+          <Select
             value={row.actionType}
             onChange={(e) => onUpdate(row.id, { actionType: e.target.value as AutomationActionType, actionConfig: {} })}
-            className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-outline-variant/20 bg-surface-container-low text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+            size="sm"
+            className="flex-1 min-w-0"
           >
             {ACTION_TYPES.map((a) => (
               <option key={a.value} value={a.value}>{a.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {total > 1 && (
@@ -417,8 +458,14 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
       {/* Config */}
       {row.actionType === "SEND_MESSAGE" && (
         <div className="space-y-2 pl-8">
-          <div>
-            <Label className="text-caption">Message Body</Label>
+          <OfficialTemplateToggle
+            config={row.actionConfig}
+            chips={[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)]}
+            onChange={(patch) => onUpdate(row.id, { actionConfig: { ...row.actionConfig, ...patch } })}
+          />
+          {/* Message body (not used when an approved template is picked) */}
+          <div className={row.actionConfig.templateId ? "hidden" : undefined}>
+            <Label className="text-caption">Message body</Label>
             <textarea
               rows={3}
               value={String(row.actionConfig.messageBody ?? "")}
@@ -427,7 +474,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
               className={`${inputCls} resize-none mt-1`}
             />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {VAR_CHIPS.map((chip) => (
+              {[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)].map((chip) => (
                 <button
                   key={chip.value}
                   type="button"
@@ -442,7 +489,8 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
           <div>
             <Label className="text-caption">Send from</Label>
             <SessionSelect
-              className={`${inputCls} mt-1`}
+              size="sm"
+              className="mt-1"
               value={String(row.actionConfig.sessionId ?? "")}
               onChange={(e) => setConfig("sessionId", e.target.value)}
             />
@@ -450,11 +498,26 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
         </div>
       )}
 
+      {row.actionType === "SEND_EMAIL" && (
+        <div className="pl-8 max-lg:pl-0">
+          <SendEmailFields
+            subject={String(row.actionConfig.subject ?? "")}
+            body={String(row.actionConfig.body ?? "")}
+            onChange={(patch) => onUpdate(row.id, { actionConfig: { ...row.actionConfig, ...patch } })}
+            extraChips={triggerVarChips(triggerType)}
+            errors={emailErrors}
+            inputClassName={inputCls}
+            labelClassName="text-caption"
+          />
+        </div>
+      )}
+
       {row.actionType === "ASSIGN_CONTACT" && (
         <div className="pl-8">
           <Label className="text-caption">Assign to</Label>
           <MemberSelect
-            className={`${inputCls} mt-1`}
+            size="sm"
+            className="mt-1"
             value={String(row.actionConfig.assignToUserId ?? "")}
             onChange={(e) => setConfig("assignToUserId", e.target.value)}
           />
@@ -463,7 +526,7 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
 
       {row.actionType === "ADD_TAG" && (
         <div className="pl-8">
-          <Label className="text-caption">Tag Name</Label>
+          <Label className="text-caption">Tag name</Label>
           <input
             className={`${inputCls} mt-1`}
             placeholder="e.g. hot-lead"
@@ -473,24 +536,79 @@ function ActionRowEditor({ row, index, total, onUpdate, onRemove, onMoveUp, onMo
         </div>
       )}
 
+      {row.actionType === "ADD_TO_PRODUCT" && (
+        <div className="pl-8">
+          <ProductSelectField
+            label="Add the contact to"
+            optional={false}
+            value={String(row.actionConfig.productId ?? "")}
+            onChange={(v) => setConfig("productId", v)}
+          />
+          <p className="mt-1 text-caption text-on-surface-variant">
+            They keep their other products. Campaigns can target everyone in it.
+          </p>
+        </div>
+      )}
+
       {row.actionType === "UPDATE_STATUS" && (
         <div className="pl-8">
-          <Label className="text-caption">New Status</Label>
-          <select
+          <Label className="text-caption">New status</Label>
+          <Select
             value={String(row.actionConfig.newStatus ?? "")}
             onChange={(e) => setConfig("newStatus", e.target.value)}
-            className={`${inputCls} mt-1`}
+            size="sm"
+            className="mt-1"
           >
             <option value="">— Select status —</option>
             {LEAD_STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
-          </select>
+          </Select>
+        </div>
+      )}
+
+      {row.actionType === "ENROLL_IN_SEQUENCE" && (
+        <div className="pl-8">
+          <Label className="text-caption">Sequence</Label>
+          <SequenceSelect
+            size="sm"
+            className="mt-1"
+            value={String(row.actionConfig.sequenceId ?? "")}
+            onChange={(e) => setConfig("sequenceId", e.target.value)}
+          />
+        </div>
+      )}
+
+      {row.actionType === "STOP_SEQUENCE" && (
+        <div className="pl-8">
+          <Label className="text-caption">Sequence</Label>
+          <SequenceSelect
+            size="sm"
+            className="mt-1"
+            anyLabel="Every sequence they're in"
+            value={String(row.actionConfig.sequenceId ?? "")}
+            onChange={(e) => setConfig("sequenceId", e.target.value)}
+          />
+        </div>
+      )}
+
+      {row.actionType === "ASSIGN_CONVERSATION" && (
+        <div className="pl-8">
+          <Label className="text-caption">Give the chat to</Label>
+          <MemberSelect
+            size="sm"
+            className="mt-1"
+            value={String(row.actionConfig.assignToUserId ?? "")}
+            onChange={(e) => setConfig("assignToUserId", e.target.value)}
+          />
+          <p className="mt-1 text-caption text-on-surface-variant">
+            The chatbot and automatic replies pause in that chat until it&apos;s unassigned.
+          </p>
         </div>
       )}
 
       {/* Delay */}
-      <div className="pl-8 flex items-center gap-2">
+      <div className="pl-8 flex items-center gap-2 max-lg:flex-wrap max-lg:pl-0">
         <Clock className="h-3.5 w-3.5 text-on-surface-variant/50 shrink-0" />
         <Label className="text-caption text-on-surface-variant/60 shrink-0">Delay before action:</Label>
         <input
@@ -530,8 +648,12 @@ export default function AutomationRuleEditorPage() {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [maxExecutionsPerContact, setMaxExecutionsPerContact] = useState(0);
   const [initialized, setInitialized] = useState(false);
+  // Shown after a save attempt; keyed by action row id
+  const [emailErrors, setEmailErrors] = useState<Record<string, SendEmailErrors>>({});
 
   const { data: rule, isLoading, isError } = useAutomationRule(id);
+  // The rule name is editable just below, so the bar keeps a short title
+  useMobileTitle("Rule");
   const { data: logsData, isLoading: logsLoading } = useExecutionLogs({
     ruleId: id,
     limit: TAKE,
@@ -543,9 +665,8 @@ export default function AutomationRuleEditorPage() {
   const disableRule = useDisableAutomationRule();
   const deleteRule = useDeleteAutomationRule();
 
-  // Initialize form from API data
-  useEffect(() => {
-    if (!rule || initialized) return;
+  // Initialize form from API data (once, during render)
+  if (rule && !initialized) {
     setName(rule.name);
     setDescription(rule.description ?? "");
     setTriggerType(rule.triggerType);
@@ -574,7 +695,7 @@ export default function AutomationRuleEditorPage() {
     setCooldownSeconds(rule.cooldownSeconds);
     setMaxExecutionsPerContact(rule.maxExecutionsPerContact);
     setInitialized(true);
-  }, [rule, initialized]);
+  }
 
   function markDirty() {
     setIsDirty(true);
@@ -591,7 +712,23 @@ export default function AutomationRuleEditorPage() {
     deleteRule.mutate(id, { onSuccess: () => router.push("/automation") });
   }
 
+  function emailErrorsOf(rows: ActionRow[]) {
+    const out: Record<string, SendEmailErrors> = {};
+    for (const a of rows) {
+      if (a.actionType !== "SEND_EMAIL") continue;
+      const e = validateSendEmail(a.actionConfig);
+      if (e.subject || e.body) out[a.id] = e;
+    }
+    return out;
+  }
+
   function handleSave() {
+    const invalid = emailErrorsOf(actions);
+    setEmailErrors(invalid);
+    if (Object.keys(invalid).length > 0) {
+      setActiveTab("builder");
+      return;
+    }
     updateRule.mutate(
       {
         ruleId: id,
@@ -636,7 +773,10 @@ export default function AutomationRuleEditorPage() {
   }
 
   function updateAction(rowId: string, patch: Partial<ActionRow>) {
-    setActions((prev) => prev.map((a) => (a.id === rowId ? { ...a, ...patch } : a)));
+    const next = actions.map((a) => (a.id === rowId ? { ...a, ...patch } : a));
+    setActions(next);
+    // Once shown, errors clear as the fields get filled in
+    if (rowId in emailErrors) setEmailErrors(emailErrorsOf(next));
     markDirty();
   }
 
@@ -683,7 +823,7 @@ export default function AutomationRuleEditorPage() {
           icon={<AlertCircle className="h-12 w-12 text-error" />}
           title="Rule not found"
           description="This automation rule does not exist or was deleted."
-          actionLabel="Back to Automation"
+          actionLabel="Back to automation"
           onAction={() => router.push("/automation")}
         />
       </div>
@@ -696,36 +836,50 @@ export default function AutomationRuleEditorPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
+      {/* Mobile: Enable/Disable and Delete live in the nav bar "…" menu */}
+      <MobilePageActions
+        moreTitle={rule.name}
+        more={[
+          { label: rule.status === "ACTIVE" ? "Disable" : "Enable", onSelect: handleToggle, disabled: isToggling },
+          { label: "Delete", onSelect: () => setShowDeleteDialog(true), destructive: true },
+        ]}
+      />
       {/* ── Header ── */}
-      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant/10 bg-surface-container-low">
-        <div className="flex items-center gap-3">
+      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-between border-b border-outline-variant bg-surface-container-low">
+        <div className="flex items-center gap-3 max-lg:min-w-0 max-lg:flex-1 max-lg:gap-2">
+          {/* Mobile: the nav bar has Back */}
           <IconButton size="sm"
             onClick={() => router.push("/automation")}
-           
-            aria-label="Back"
+            className="max-lg:hidden"
+            aria-label="Back to automation"
+            title="Back to automation"
           >
             <ArrowLeft className="h-4 w-4" />
           </IconButton>
-          <Zap className="h-4 w-4 text-on-surface-variant" />
-          <input
-            value={name}
-            onChange={(e) => { setName(e.target.value); markDirty(); }}
-            className="text-body-lg font-semibold text-on-surface bg-transparent border-none outline-none w-[240px] focus:ring-0"
-          />
+          {/* The editable name is the page's one heading */}
+          <h1 className="min-w-0 max-lg:flex-1">
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); markDirty(); }}
+              aria-label="Rule name"
+              className="w-[240px] rounded-md border-none bg-transparent px-1 text-title-sm font-semibold text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-focus max-lg:w-full max-lg:min-w-0"
+            />
+          </h1>
           <RuleStatusBadge status={rule.status} />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-lg:shrink-0">
           {isDirty && (
-            <span className="text-caption text-on-surface-variant/50">Unsaved changes</span>
+            <span className="text-caption text-on-surface-variant max-lg:hidden">Unsaved changes</span>
           )}
           {saved && (
-            <span className="flex items-center gap-1 text-caption text-success">
+            <span className="flex items-center gap-1 text-caption text-success max-lg:hidden">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Saved
             </span>
           )}
           <Button
+            data-tour="rule-save"
             size="sm"
             onClick={handleSave}
             loading={updateRule.isPending}
@@ -739,6 +893,7 @@ export default function AutomationRuleEditorPage() {
             size="sm"
             onClick={handleToggle}
             loading={isToggling}
+            className="max-lg:hidden"
           >
             {rule.status === "ACTIVE" ? (
               <><PowerOff className="h-4 w-4 mr-1.5" />Disable</>
@@ -750,7 +905,7 @@ export default function AutomationRuleEditorPage() {
             variant="ghost"
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
-            className="text-error hover:bg-error/10"
+            className="text-error hover:bg-error/10 max-lg:hidden"
           >
             <Trash2 className="h-4 w-4 mr-1.5" />
             Delete
@@ -759,18 +914,20 @@ export default function AutomationRuleEditorPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="shrink-0 flex gap-0 border-b border-outline-variant/10 px-6">
+      <div className="shrink-0 flex gap-0 border-b border-outline-variant px-6">
         {(["builder", "logs"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-body font-medium border-b-2 transition-colors ${
+            aria-pressed={activeTab === tab}
+            className={`px-4 py-2.5 text-body font-medium border-b-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            {tab === "builder" ? "Rule Builder" : "Execution Logs"}
+            {tab === "builder" ? "Rule builder" : "Execution logs"}
           </button>
         ))}
       </div>
@@ -795,23 +952,23 @@ export default function AutomationRuleEditorPage() {
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); markDirty(); }}
                 placeholder="Optional description for this rule..."
-                className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
             </Section>
 
             {/* Trigger */}
-            <Section title="Trigger — When this happens…">
+            <Section tour="rule-trigger" title="Trigger — When this happens…">
               <div className="space-y-3">
                 <div>
-                  <Label>Event Type</Label>
-                  <select
+                  <Label>Event type</Label>
+                  <Select
                     value={triggerType}
                     onChange={(e) => {
                       setTriggerType(e.target.value as AutomationTriggerType);
                       setTriggerConfig({});
                       markDirty();
                     }}
-                    className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="mt-1"
                   >
                     <optgroup label="General">
                       {TRIGGER_TYPES.filter((t) => !t.group).map((t) => (
@@ -823,7 +980,7 @@ export default function AutomationRuleEditorPage() {
                         <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
                     </optgroup>
-                  </select>
+                  </Select>
                 </div>
                 <TriggerConfigPanel
                   triggerType={triggerType}
@@ -837,7 +994,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Conditions */}
-            <Section title="Conditions — Only if…" defaultOpen={conditions.length > 0}>
+            <Section tour="rule-conditions" title="Conditions — Only if…" defaultOpen={conditions.length > 0}>
               <ConditionBuilder
                 conditions={conditions}
                 onChange={(rows) => {
@@ -848,7 +1005,7 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Actions */}
-            <Section title={`Actions — Then do… (${actions.length})`}>
+            <Section tour="rule-actions" title={`Actions — Then do… (${actions.length})`}>
               <div className="space-y-2">
                 {actions.map((action, i) => (
                   <ActionRowEditor
@@ -860,6 +1017,8 @@ export default function AutomationRuleEditorPage() {
                     onRemove={removeAction}
                     onMoveUp={(rid) => moveAction(rid, -1)}
                     onMoveDown={(rid) => moveAction(rid, 1)}
+                    triggerType={triggerType}
+                    emailErrors={emailErrors[action.id]}
                   />
                 ))}
                 <Button variant="secondary" size="lg"
@@ -874,8 +1033,8 @@ export default function AutomationRuleEditorPage() {
             </Section>
 
             {/* Advanced Settings */}
-            <Section title="Advanced Settings" defaultOpen={false}>
-              <div className="grid grid-cols-3 gap-3">
+            <Section tour="rule-advanced" title="Advanced Settings" defaultOpen={false}>
+              <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
                 <div>
                   <Label>Priority</Label>
                   <Input

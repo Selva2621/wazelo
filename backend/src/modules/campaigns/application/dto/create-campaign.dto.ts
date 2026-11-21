@@ -11,11 +11,38 @@ import {
   IsNumber,
   MaxLength,
   ValidateNested,
+  IsIn,
+  IsInt,
+  Min,
+  Max,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CampaignAudienceType, LeadStatus, ContactSource } from '@prisma/client';
 
+export class CampaignBatchAssignmentDto {
+  @IsInt()
+  @Min(1)
+  @Max(1_000)
+  batchNumber: number;
+
+  @IsUUID('4')
+  sessionId: string;
+}
+
 export class AudienceFiltersDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10_000)
+  @IsUUID('4', { each: true })
+  contactIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10_000)
+  @IsUUID('4', { each: true })
+  contactGroupIds?: string[];
+
   @IsOptional()
   @IsArray()
   @IsEnum(LeadStatus, { each: true })
@@ -81,9 +108,21 @@ export class CreateCampaignDto {
   @IsEnum(MessageType)
   messageType: MessageType;
 
+  /** WHATSAPP (default) or EMAIL (sent from the workspace's email account) */
+  @IsOptional()
+  @IsIn(['WHATSAPP', 'EMAIL'])
+  channel?: 'WHATSAPP' | 'EMAIL';
+
+  /** Email campaigns: the subject line */
   @IsOptional()
   @IsString()
-  @MaxLength(4096)
+  @MaxLength(255)
+  emailSubject?: string;
+
+  /** WhatsApp messages are checked against 4096 characters in the use case; emails can be longer */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
   messageBody?: string;
 
   @IsOptional()
@@ -103,8 +142,30 @@ export class CreateCampaignDto {
   @Type(() => AudienceFiltersDto)
   audienceFilters?: AudienceFiltersDto;
 
+  /** Legacy default WhatsApp number; new campaigns submit a session per batch. */
+  @IsOptional()
   @IsUUID()
-  sessionId: string;
+  sessionId?: string;
+
+  /** WhatsApp only: send round the clock instead of the campaign window (daily caps still apply) */
+  @IsOptional()
+  @IsBoolean()
+  sendAnyTime?: boolean;
+
+  /** WhatsApp numbers to send from; batches are dealt round-robin across them at run time. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('4', { each: true })
+  sessionIds?: string[];
+
+  /** Optional per-batch overrides (batches without one follow the round-robin). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1_000)
+  @ValidateNested({ each: true })
+  @Type(() => CampaignBatchAssignmentDto)
+  batchAssignments?: CampaignBatchAssignmentDto[];
 
   @IsOptional()
   @IsDateString()
@@ -123,4 +184,23 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsUUID('4')
   productId?: string;
+
+  /** Official (Cloud API) numbers: the Meta-approved template to send. Required when one is in the pool. */
+  @IsOptional()
+  @IsUUID()
+  cloudTemplateId?: string;
+
+  /** Values for the template's {{1}}, {{2}}… slots; may use {{name}} and other contact fields */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  cloudTemplateParams?: string[];
+
+  /** Image link for a template whose header is an image */
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  cloudTemplateHeaderImageUrl?: string;
 }

@@ -46,7 +46,7 @@ export function ContactNotes({ contactId }: ContactNotesProps) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="Add a note..."
           rows={2}
-          className="flex-1 rounded-xl bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          className="flex-1 rounded-lg bg-surface-container-low px-3 py-2 text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-1 focus:ring-primary/40 resize-none"
         />
         <Button
           type="submit"

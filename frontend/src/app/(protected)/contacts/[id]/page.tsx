@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs } from "@/components/ui/tabs";
@@ -32,6 +33,7 @@ import { ContactTags } from "@/components/contacts/contact-tags";
 import { ContactNotes } from "@/components/contacts/contact-notes";
 import { ContactHistory } from "@/components/contacts/contact-history";
 import { AssignOwnerModal } from "@/components/contacts/assign-owner-modal";
+import { WhatsAppPermissionChip } from "@/components/contacts/whatsapp-permission-chip";
 import { CreateDealModal } from "@/components/deals/create-deal-modal";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
@@ -57,6 +59,9 @@ import { exportContactData, eraseContactData } from "@/lib/api/gdpr";
 import { SendMessageModal } from "@/components/contacts/send-message-modal";
 import type { LeadStatus } from "@/lib/types/contacts";
 import { IconButton } from "@/components/ui/icon-button";
+import { formatAmount } from "@/lib/utils";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useProductTerms } from "@/lib/product-terms";
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "New" },
@@ -92,6 +97,8 @@ export default function ContactDetailPage() {
   const contactId = params.id as string;
   const router = useRouter();
   const userRole = useAuthStore((s) => s.user?.role);
+  const terms = useProductTerms();
+  const pageTabs = PAGE_TABS.map((t) => (t.id === "products" ? { ...t, label: terms.Plural } : t));
 
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssign, setShowAssign] = useState(false);
@@ -171,20 +178,34 @@ export default function ContactDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-10">
-      {/* Back nav */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-10 max-lg:space-y-4 max-lg:px-4 max-lg:pt-2">
+      {/* Mobile: Send Message is the nav bar button, the other actions sit in its "…" menu */}
+      <MobilePageActions
+        primary={{ label: "Send message", onClick: () => setShowSendMessage(true), icon: <MessageSquare className="h-[22px] w-[22px]" aria-hidden /> }}
+        moreTitle={contact.name || contact.phoneNumber}
+        more={[
+          { label: "Open chat", onSelect: openConversation },
+          !editing && { label: "Edit", onSelect: startEditing },
+          { label: "Assign owner", onSelect: () => setShowAssign(true) },
+          { label: "Export data", onSelect: handleExport },
+          { label: "Delete contact", onSelect: () => setShowDeleteConfirm(true), destructive: true },
+        ]}
+      />
+
+      {/* Back nav (the iOS nav bar has Back on mobile) */}
       <button
         onClick={() => router.push("/contacts")}
-        className="flex items-center gap-1.5 text-body text-on-surface-variant hover:text-on-surface transition-colors"
+        type="button"
+        className="flex items-center gap-1.5 rounded text-body text-on-surface-variant outline-none hover:text-on-surface transition-colors focus-visible:ring-2 focus-visible:ring-focus max-lg:hidden"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Contacts
+        Contacts
       </button>
 
       {/* Profile Card */}
-      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 space-y-5">
+      <div data-tour="contact-profile" className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-5 max-lg:p-4 max-lg:space-y-4">
         {/* Header row */}
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-5 max-lg:flex-wrap max-lg:gap-3">
           <Avatar
             name={contact.name || contact.phoneNumber}
             src={contact.avatarUrl}
@@ -221,16 +242,20 @@ export default function ContactDetailPage() {
               </div>
             ) : (
               <>
-                <h1 className="text-headline font-semibold text-on-surface truncate">
-                  {contact.name || "Unknown"}
-                </h1>
-                <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <h1 className="text-headline font-semibold text-on-surface truncate max-lg:text-title">
+                    {contact.name || "Unknown"}
+                  </h1>
+                  {/* Lead finder contacts only: WhatsApp permission status + record / revoke */}
+                  {contact.source === "WEB_SCRAPE" && <WhatsAppPermissionChip contactId={contact.id} />}
+                </div>
+                <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant max-lg:gap-x-3 max-lg:gap-y-1">
                   <span className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> {contact.phoneNumber}
                   </span>
                   {contact.email && (
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" /> {contact.email}
+                    <span className="flex items-center gap-1.5 max-lg:min-w-0 max-lg:break-all">
+                      <Mail className="h-3.5 w-3.5 max-lg:shrink-0" /> {contact.email}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">
@@ -248,53 +273,56 @@ export default function ContactDetailPage() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div data-tour="contact-actions" className="flex items-center gap-2 shrink-0 max-lg:w-full">
             <LeadScoreBadge score={contact.leadScore} size="md" />
             {!editing && (
               <IconButton size="sm"
                 onClick={startEditing}
-                className="hover:text-primary hover:bg-primary/10"
+                className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
                 title="Edit" aria-label="Edit">
                 <Pencil className="h-4 w-4" />
               </IconButton>
             )}
             <IconButton size="sm"
               onClick={() => setShowAssign(true)}
-              className="hover:text-primary hover:bg-primary/10"
-              title="Assign Owner" aria-label="Assign Owner">
+              className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
+              title="Assign owner" aria-label="Assign owner">
               <UserPlus className="h-4 w-4" />
             </IconButton>
-            <Button size="sm" onClick={() => setShowSendMessage(true)}>
-              <MessageSquare className="h-4 w-4 mr-1" /> Send Message
-            </Button>
-            <Button size="sm" variant="secondary" onClick={openConversation}>
-              Open Chat
-            </Button>
             <IconButton size="sm"
               onClick={handleExport}
-              className="hover:text-primary hover:bg-primary/10"
-              title="Export Data" aria-label="Export Data">
+              className="hover:text-primary hover:bg-primary/10 max-lg:hidden"
+              title="Export data" aria-label="Export data">
               <Download className="h-4 w-4" />
             </IconButton>
             <IconButton size="sm" variant="danger"
               onClick={() => setShowDeleteConfirm(true)}
-             
-              title="Delete Contact" aria-label="Delete Contact">
+              className="max-lg:hidden"
+              title="Delete contact" aria-label="Delete contact">
               <Trash2 className="h-4 w-4" />
             </IconButton>
+            {/* Primary action last */}
+            <Button size="sm" variant="secondary" className="max-lg:hidden" onClick={openConversation}>
+              Open chat
+            </Button>
+            <Button size="sm" className="max-lg:hidden" onClick={() => setShowSendMessage(true)}>
+              <MessageSquare className="h-4 w-4 mr-1" /> Send message
+            </Button>
           </div>
         </div>
 
         {/* Lead status row */}
-        <div className="space-y-1.5">
-          <p className="text-caption font-medium text-on-surface-variant/60 uppercase tracking-wide">Lead Status</p>
+        <div data-tour="contact-status" className="space-y-1.5">
+          <p className="text-label text-on-surface-variant">Lead status</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             {LEAD_STATUSES.map((s) => (
               <button
                 key={s.value}
+                type="button"
                 onClick={() => handleStatusChange(s.value)}
                 disabled={changeStatus.isPending}
-                className={`transition-opacity ${contact.leadStatus === s.value ? "opacity-100" : "opacity-35 hover:opacity-70"}`}
+                aria-pressed={contact.leadStatus === s.value}
+                className={`rounded-full outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-focus ${contact.leadStatus === s.value ? "opacity-100" : "opacity-35 hover:opacity-70"}`}
               >
                 <LeadStatusBadge status={s.value} />
               </button>
@@ -303,15 +331,15 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Tags */}
-        <div>
+        <div data-tour="contact-tags">
           <ContactTags contactId={contact.id} tags={contact.contactTags} />
         </div>
       </div>
 
       {/* Tabs content */}
-      <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
-        <div className="px-6 pt-4 border-b border-outline-variant/10">
-          <Tabs tabs={PAGE_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
+        <div data-tour="contact-tabs" className="px-6 pt-4 border-b border-outline-variant max-lg:px-3 max-lg:pt-2">
+          <Tabs tabs={pageTabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
         <div className="p-6">
@@ -342,7 +370,7 @@ export default function ContactDetailPage() {
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Delete Contact"
+        title="Delete contact"
         message="This contact and all associated data will be soft-deleted."
         confirmLabel="Delete"
         variant="danger"
@@ -367,8 +395,8 @@ function OverviewTab({ contact, contactId }: { contact: any; contactId: string }
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Contact Info */}
       <div className="space-y-3">
-        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-          Contact Information
+        <h3 className="text-title-sm font-semibold text-on-surface">
+          Contact information
         </h3>
         <div className="space-y-2">
           <InfoRow label="Phone" value={contact.phoneNumber} />
@@ -444,8 +472,8 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-body font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-          Custom Fields
+        <h3 className="text-title-sm font-semibold text-on-surface">
+          Custom fields
         </h3>
         {!editing ? (
           <button onClick={startEdit} className="text-label text-primary hover:underline">
@@ -491,16 +519,17 @@ function CustomFieldsSection({ contactId }: { contactId: string }) {
                       className="rounded"
                     />
                   ) : def.fieldType === "select" && def.options ? (
-                    <select
+                    <Select
                       value={values[def.id] || ""}
                       onChange={(e) => setValues((v) => ({ ...v, [def.id]: e.target.value }))}
-                      className="rounded-lg border border-outline-variant/20 bg-surface px-2 py-1 text-label"
+                      size="sm"
+                      className="w-auto"
                     >
                       <option value="">—</option>
                       {(def.options as string[]).map((o) => (
                         <option key={o} value={o}>{o}</option>
                       ))}
-                    </select>
+                    </Select>
                   ) : (
                     <input
                       type={def.fieldType === "number" ? "number" : def.fieldType === "date" ? "date" : "text"}
@@ -535,23 +564,23 @@ function ContactDealsSection({ contactId, contactName }: { contactId: string; co
           Deals <span className="text-on-surface-variant/50 font-normal">({deals?.length || 0})</span>
         </h3>
         <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Create Deal
+          <Plus className="h-3.5 w-3.5 mr-1" /> Create deal
         </Button>
       </div>
 
       {deals && deals.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
           {deals.map((deal) => (
-            <div key={deal.id} className="p-4 rounded-xl bg-surface-container border border-outline-variant/10 space-y-2">
+            <div key={deal.id} className="p-3 rounded-xl transition-colors hover:bg-surface-container-low space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-body-lg font-medium text-on-surface">{deal.title}</span>
-                <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"}>
-                  {deal.status}
+                <Badge variant={deal.status === "WON" ? "success" : deal.status === "LOST" ? "error" : "default"} dot>
+                  {deal.status.charAt(0) + deal.status.slice(1).toLowerCase().replace(/_/g, " ")}
                 </Badge>
               </div>
               {deal.value != null && (
                 <p className="text-body text-primary font-semibold">
-                  ₹{Number(deal.value).toLocaleString("en-IN")}
+                  {formatAmount(Number(deal.value), deal.currency)}
                 </p>
               )}
               {deal.stage && (
@@ -590,6 +619,7 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
   const { data: allProducts, isLoading: loadingAll } = useProducts();
   const assignProduct = useAssignProduct();
   const unassignProduct = useUnassignProduct();
+  const terms = useProductTerms();
 
   if (loadingContact || loadingAll) return <div className="flex justify-center py-8"><Spinner /></div>;
 
@@ -600,39 +630,38 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-body-lg font-semibold text-on-surface">
-          Products <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
+          {terms.Plural} <span className="text-on-surface-variant/50 font-normal">({contactProducts?.length || 0})</span>
         </h3>
         {available.length > 0 && (
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                assignProduct.mutate({ contactId, productId: e.target.value });
-                e.target.value = "";
-              }
+          <Select
+            value=""
+            onValueChange={(v) => {
+              if (v) assignProduct.mutate({ contactId, productId: v });
             }}
-            defaultValue=""
-            className="rounded-lg border border-outline-variant/20 bg-surface px-3 py-1.5 text-body text-on-surface"
+            aria-label={`Assign ${terms.singular}`}
+            size="sm"
+            className="w-auto"
           >
-            <option value="" disabled>+ Assign Product</option>
+            <option value="" disabled>+ Assign {terms.singular}</option>
             {available.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 
       {contactProducts && contactProducts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
           {contactProducts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-container border border-outline-variant/10">
+            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl transition-colors hover:bg-surface-container-low">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Package className="h-4 w-4 text-primary" />
                 </div>
                 <div>
                   <p className="text-body font-medium text-on-surface">{p.name}</p>
-                  <Badge variant={p.status === "ACTIVE" ? "success" : "muted"} className="mt-0.5">
-                    {p.status}
+                  <Badge variant={p.status === "ACTIVE" ? "success" : "muted"} dot className="mt-0.5">
+                    {p.status.charAt(0) + p.status.slice(1).toLowerCase().replace(/_/g, " ")}
                   </Badge>
                 </div>
               </div>
@@ -648,9 +677,9 @@ function ContactProductsSection({ contactId }: { contactId: string }) {
       ) : (
         <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Package className="h-8 w-8 text-on-surface-variant/30" />
-          <p className="text-body text-on-surface-variant/50">No products assigned yet</p>
+          <p className="text-body text-on-surface-variant/50">No {terms.plural} assigned yet</p>
           {available.length > 0 && (
-            <p className="text-label text-on-surface-variant/40">Use the dropdown above to assign a product</p>
+            <p className="text-label text-on-surface-variant/40">Use the dropdown above to assign a {terms.singular}</p>
           )}
         </div>
       )}

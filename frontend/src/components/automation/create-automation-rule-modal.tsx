@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Trash2, Sparkles, ChevronDown } from "lucide-react";
+import { X, Plus, Trash2, Sparkles } from "lucide-react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useCreateAutomationRule, useGenerateAutomationRule } from "@/hooks/use-automation";
 import { ProductSelectField } from "@/components/ui/product-select-field";
@@ -21,45 +22,83 @@ import type {
 } from "@/lib/types/automation";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
-import { SessionSelect, MemberSelect } from "@/components/automation/action-pickers";
+import { SessionSelect, MemberSelect, StageSelect, SequenceSelect } from "@/components/automation/action-pickers";
+import type { AutomationPreset } from "@/lib/constants/automation-presets";
+import { SendEmailFields, type SendEmailErrors } from "@/components/automation/send-email-fields";
+import { LeadAdTriggerFields } from "@/components/automation/lead-ad-trigger-fields";
+import { OfficialTemplateToggle } from "@/components/automation/official-template-toggle";
+import { CONTACT_VAR_CHIPS, triggerVarChips } from "@/lib/constants/automation-variables";
+import { useOrgSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface CreateAutomationRuleModalProps {
   open: boolean;
   onClose: () => void;
+  /** Recipe picked on the Automation page — fills the form when the modal opens */
+  preset?: AutomationPreset | null;
 }
 
+/**
+ * For optional number boxes: empty means "not set". (valueAsNumber turns an empty box
+ * into NaN, which failed validation with no message, so the rule silently didn't save.)
+ */
+const NUMBER_OR_UNSET = {
+  setValueAs: (v: unknown) => (v === "" || v == null ? undefined : Number(v)),
+};
+
+const EMPTY_RULE: Partial<CreateAutomationRuleFormData> = {
+  triggerType: "MESSAGE_RECEIVED",
+  triggerConfig: {},
+  actions: [{ actionType: "SEND_MESSAGE", actionConfig: {}, orderIndex: 0 }],
+};
+
 const TRIGGER_TYPES: { value: AutomationTriggerType; label: string; group?: string }[] = [
-  { value: "MESSAGE_RECEIVED",      label: "Message Received" },
-  { value: "CONTACT_CREATED",       label: "Contact Created" },
-  { value: "LEAD_STATUS_CHANGED",   label: "Lead Status Changed" },
-  { value: "TIME_BASED",            label: "Time-Based (Cron)" },
-  { value: "NO_REPLY",              label: "No Reply Follow-Up" },
-  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — Order Created",   group: "shopify" },
-  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — Order Fulfilled",  group: "shopify" },
-  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — Cart Abandoned",   group: "shopify" },
-  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget Message Received" },
+  { value: "MESSAGE_RECEIVED",      label: "Message received" },
+  { value: "CONTACT_CREATED",       label: "Contact created" },
+  { value: "LEAD_AD_RECEIVED",      label: "Lead ad received" },
+  { value: "LEAD_STATUS_CHANGED",   label: "Lead status changed" },
+  { value: "NO_REPLY",              label: "No reply follow-up" },
+  { value: "SHOPIFY_ORDER_CREATED",   label: "Shopify — order created",   group: "shopify" },
+  { value: "SHOPIFY_ORDER_FULFILLED", label: "Shopify — order fulfilled",  group: "shopify" },
+  { value: "SHOPIFY_CART_ABANDONED",  label: "Shopify — cart abandoned",   group: "shopify" },
+  { value: "WIDGET_MESSAGE_RECEIVED", label: "Widget message received" },
+  { value: "DEAL_STAGE_CHANGED",    label: "Deal stage changed" },
 ];
 
 const ACTION_TYPES: { value: AutomationActionType; label: string }[] = [
-  { value: "SEND_MESSAGE",   label: "Send WhatsApp Message" },
-  { value: "ASSIGN_CONTACT", label: "Assign Contact" },
-  { value: "ADD_TAG",        label: "Add Tag" },
-  { value: "UPDATE_STATUS",  label: "Update Lead Status" },
+  { value: "SEND_MESSAGE",   label: "Send WhatsApp message" },
+  { value: "SEND_EMAIL",     label: "Send email" },
+  { value: "ASSIGN_CONTACT", label: "Assign contact" },
+  { value: "ADD_TAG",        label: "Add tag" },
+  { value: "ADD_TO_PRODUCT", label: "Add to product" },
+  { value: "UPDATE_STATUS",  label: "Update lead status" },
+  { value: "ENROLL_IN_SEQUENCE", label: "Add to sequence" },
+  { value: "STOP_SEQUENCE", label: "Stop sequence" },
+  { value: "ASSIGN_CONVERSATION", label: "Assign chat to a person" },
 ];
 
 const LEAD_STATUS_OPTIONS = ["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"];
 
+/** Placeholder examples for the AI prompt and rule name, per kind of workspace */
+const FREELANCER_EXAMPLES = {
+  prompts: [
+    "When a new enquiry comes in, reply with my intro and ask about their project",
+    "If a client doesn't reply for 2 days, send a gentle follow-up",
+    "When a deal is won, thank the client and tag them 'client'",
+  ],
+  name: "Reply to new enquiries",
+};
+const TEAM_EXAMPLES = {
+  prompts: [
+    "When someone messages after hours, send our away message",
+    "Follow up 1 hour after no reply with a gentle reminder",
+    "When a new contact is created, tag them 'new-lead' and assign them to the team",
+  ],
+  name: "After-hours reply",
+};
+
 // Variable hint chips for message body textarea
-const VAR_CHIPS = [
-  { label: "Name",          value: "{{contact.name}}" },
-  { label: "Phone",         value: "{{contact.phone}}" },
-  { label: "Order #",       value: "{{shopify.order_name}}" },
-  { label: "Total",         value: "{{shopify.total_price}}" },
-  { label: "Currency",      value: "{{shopify.currency}}" },
-  { label: "Items",         value: "{{shopify.items}}" },
-  { label: "Recovery URL",  value: "{{shopify.recovery_url}}" },
-  { label: "Cart Total",    value: "{{shopify.cart_total}}" },
-];
+const FIELD_INPUT_CLS = "mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
 // ─── Action config sub-form ───────────────────────────────────────────────────
 
@@ -69,15 +108,36 @@ interface ActionConfigFieldsProps {
   register: ReturnType<typeof useForm<CreateAutomationRuleFormData>>["register"];
   setValue: ReturnType<typeof useForm<CreateAutomationRuleFormData>>["setValue"];
   getValues: ReturnType<typeof useForm<CreateAutomationRuleFormData>>["getValues"];
+  /** Live config of this action (watched), for controlled fields */
+  config?: Record<string, unknown>;
+  triggerType: AutomationTriggerType;
+  configErrors?: SendEmailErrors;
+  /** ADD_TO_PRODUCT: no product picked */
+  productError?: string;
 }
 
-function ActionConfigFields({ idx, actionType, register, setValue, getValues }: ActionConfigFieldsProps) {
-  const inputCls = "mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+function ActionConfigFields({ idx, actionType, register, setValue, getValues, config = {}, triggerType, configErrors, productError }: ActionConfigFieldsProps) {
+  const inputCls = FIELD_INPUT_CLS;
 
   function insertVar(variable: string) {
     const field = `actions.${idx}.actionConfig.messageBody` as const;
-    const current = (getValues(field as any) as string) || "";
-    setValue(field as any, current + variable, { shouldDirty: true });
+    const current = (getValues(field) as string) || "";
+    setValue(field, current + variable, { shouldDirty: true });
+  }
+
+  if (actionType === "SEND_EMAIL") {
+    return (
+      <SendEmailFields
+        subject={String(config.subject ?? "")}
+        body={String(config.body ?? "")}
+        onChange={(patch) =>
+          setValue(`actions.${idx}.actionConfig`, { ...config, ...patch }, { shouldDirty: true, shouldValidate: !!configErrors })
+        }
+        extraChips={triggerVarChips(triggerType)}
+        errors={configErrors}
+        inputClassName={inputCls.replace("mt-1 ", "")}
+      />
+    );
   }
 
   if (actionType === "SEND_MESSAGE") {
@@ -87,23 +147,34 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
         <div>
           <Label>Send from</Label>
           <SessionSelect
-            {...register(`actions.${idx}.actionConfig.sessionId` as any)}
-            className={inputCls}
+            value={String(config.sessionId ?? "")}
+            onValueChange={(v) => setValue(`actions.${idx}.actionConfig.sessionId`, v, { shouldValidate: true, shouldDirty: true })}
+            className="mt-1"
           />
         </div>
 
-        {/* Message Body */}
-        <div>
+        <OfficialTemplateToggle
+          config={config}
+          chips={[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)]}
+          onChange={(patch) => setValue(`actions.${idx}.actionConfig`, { ...config, ...patch }, { shouldDirty: true })}
+        />
+
+        {/* Message Body (not used when an approved template is picked) */}
+        <div className={config.templateId ? "hidden" : undefined}>
           <Label>Message Body <span className="text-error">*</span></Label>
           <textarea
-            {...register(`actions.${idx}.actionConfig.messageBody` as any)}
+            {...register(`actions.${idx}.actionConfig.messageBody`)}
             rows={4}
-            placeholder={"Hi {{contact.name}}, your order {{shopify.order_name}} for ₹{{shopify.total_price}} is confirmed."}
+            placeholder={
+              triggerType === "LEAD_AD_RECEIVED"
+                ? "Hi {{contact.name}}, thanks for your interest in {{lead.campaign}}! We'll be in touch shortly."
+                : "Hi {{contact.name}}, thanks for reaching out!"
+            }
             className={`${inputCls} resize-none`}
           />
           {/* Variable chips */}
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {VAR_CHIPS.map((chip) => (
+            {[...CONTACT_VAR_CHIPS, ...triggerVarChips(triggerType)].map((chip) => (
               <button
                 key={chip.value}
                 type="button"
@@ -115,7 +186,9 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
             ))}
           </div>
           <p className="text-caption text-on-surface-variant/50 mt-1">
-            Click chips to insert variables. Unknown variables are left as-is.
+            {triggerType === "LEAD_AD_RECEIVED"
+              ? "Form answers work too: {{lead.city}}, {{lead.budget}}…"
+              : "Click chips to insert variables. Unknown variables are left as-is."}
           </p>
         </div>
       </div>
@@ -127,8 +200,9 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
       <div>
         <Label>Assign to <span className="text-error">*</span></Label>
         <MemberSelect
-          {...register(`actions.${idx}.actionConfig.assignToUserId` as any)}
-          className={inputCls}
+          value={String(config.assignToUserId ?? "")}
+          onValueChange={(v) => setValue(`actions.${idx}.actionConfig.assignToUserId`, v, { shouldValidate: true, shouldDirty: true })}
+          className="mt-1"
         />
       </div>
     );
@@ -139,10 +213,30 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
       <div>
         <Label>Tag Name <span className="text-error">*</span></Label>
         <input
-          {...register(`actions.${idx}.actionConfig.tagName` as any)}
-          placeholder="e.g. shopify-customer"
+          {...register(`actions.${idx}.actionConfig.tagName`)}
+          placeholder="e.g. hot-lead"
           className={inputCls}
         />
+      </div>
+    );
+  }
+
+  if (actionType === "ADD_TO_PRODUCT") {
+    return (
+      <div>
+        <ProductSelectField
+          label="Add the contact to"
+          optional={false}
+          value={String(config.productId ?? "")}
+          onChange={(v) => setValue(`actions.${idx}.actionConfig.productId`, v || undefined, { shouldValidate: true, shouldDirty: true })}
+        />
+        {productError ? (
+          <p className="text-caption text-error mt-1">{productError}</p>
+        ) : (
+          <p className="mt-1 text-caption text-on-surface-variant">
+            They keep their other products. Campaigns can target everyone in it.
+          </p>
+        )}
       </div>
     );
   }
@@ -151,15 +245,65 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
     return (
       <div>
         <Label>New Status <span className="text-error">*</span></Label>
-        <select
-          {...register(`actions.${idx}.actionConfig.newStatus` as any)}
-          className={inputCls}
+        <Select
+          value={String(config.newStatus ?? "")}
+          onValueChange={(v) => setValue(`actions.${idx}.actionConfig.newStatus`, v, { shouldValidate: true, shouldDirty: true })}
+          className="mt-1"
         >
           <option value="">— Select status —</option>
           {LEAD_STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
-        </select>
+        </Select>
+      </div>
+    );
+  }
+
+  if (actionType === "ENROLL_IN_SEQUENCE") {
+    return (
+      <div>
+        <Label>Sequence <span className="text-error">*</span></Label>
+        <SequenceSelect
+          value={String(config.sequenceId ?? "")}
+          onValueChange={(v) => setValue(`actions.${idx}.actionConfig.sequenceId`, v, { shouldValidate: true, shouldDirty: true })}
+          className="mt-1"
+        />
+        <p className="text-caption text-on-surface-variant/50 mt-1">
+          Someone already in this sequence keeps their place.
+        </p>
+      </div>
+    );
+  }
+
+  if (actionType === "STOP_SEQUENCE") {
+    return (
+      <div>
+        <Label>Sequence</Label>
+        <SequenceSelect
+          value={String(config.sequenceId ?? "")}
+          onValueChange={(v) => setValue(`actions.${idx}.actionConfig.sequenceId`, v, { shouldValidate: true, shouldDirty: true })}
+          anyLabel="Every sequence they're in"
+          className="mt-1"
+        />
+        <p className="text-caption text-on-surface-variant mt-1">
+          They get no more messages from it. Messages already sent stay sent.
+        </p>
+      </div>
+    );
+  }
+
+  if (actionType === "ASSIGN_CONVERSATION") {
+    return (
+      <div>
+        <Label>Give the chat to <span className="text-error">*</span></Label>
+        <MemberSelect
+          value={String(config.assignToUserId ?? "")}
+          onValueChange={(v) => setValue(`actions.${idx}.actionConfig.assignToUserId`, v, { shouldValidate: true, shouldDirty: true })}
+          className="mt-1"
+        />
+        <p className="text-caption text-on-surface-variant mt-1">
+          The chatbot and automatic replies pause in that chat until it&apos;s unassigned.
+        </p>
       </div>
     );
   }
@@ -172,14 +316,21 @@ function ActionConfigFields({ idx, actionType, register, setValue, getValues }: 
 export function CreateAutomationRuleModal({
   open,
   onClose,
+  preset,
 }: CreateAutomationRuleModalProps) {
   const router = useRouter();
   const createRule = useCreateAutomationRule();
   const generateRule = useGenerateAutomationRule();
   const [productId, setProductId] = useState("");
+  /** The last save was stopped by a field the form rejected */
+  const [blocked, setBlocked] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  // Examples written for the kind of workspace
+  const { data: orgSettings } = useOrgSettings();
+  const userOrgType = useAuthStore((s) => s.user?.orgType);
+  const examples = (orgSettings?.orgType ?? userOrgType) === "FREELANCER" ? FREELANCER_EXAMPLES : TEAM_EXAMPLES;
 
   const {
     register,
@@ -192,14 +343,13 @@ export function CreateAutomationRuleModal({
     formState: { errors },
   } = useForm<CreateAutomationRuleFormData>({
     resolver: zodResolver(createAutomationRuleSchema),
-    defaultValues: {
-      triggerType: "MESSAGE_RECEIVED",
-      triggerConfig: {},
-      actions: [
-        { actionType: "SEND_MESSAGE", actionConfig: {}, orderIndex: 0 },
-      ],
-    },
+    defaultValues: EMPTY_RULE,
   });
+
+  // A recipe opens the form already filled in
+  useEffect(() => {
+    if (open && preset) reset({ ...EMPTY_RULE, ...preset.values });
+  }, [open, preset, reset]);
 
   const {
     fields: actionFields,
@@ -223,6 +373,8 @@ export function CreateAutomationRuleModal({
   }
 
   function handleClose() {
+    setBlocked(false);
+    createRule.reset();
     reset();
     setProductId("");
     setAiPrompt("");
@@ -257,7 +409,14 @@ export function CreateAutomationRuleModal({
     });
   }
 
-  const isShopifyTrigger = triggerType === "SHOPIFY_ORDER_CREATED" || triggerType === "SHOPIFY_ORDER_FULFILLED";
+  /** Subject/message errors from the schema for a SEND_EMAIL action */
+  function emailErrorsFor(idx: number): SendEmailErrors | undefined {
+    const cfg = errors.actions?.[idx]?.actionConfig as Record<string, { message?: string } | undefined> | undefined;
+    if (!cfg?.subject && !cfg?.body) return undefined;
+    return { subject: cfg.subject?.message, body: cfg.body?.message };
+  }
+
+  const isShopifyTrigger = triggerType ==="SHOPIFY_ORDER_CREATED" || triggerType === "SHOPIFY_ORDER_FULFILLED";
   const isCartTrigger = triggerType === "SHOPIFY_CART_ABANDONED";
 
   return (
@@ -282,7 +441,13 @@ export function CreateAutomationRuleModal({
 
         {/* Form */}
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(
+            (data) => {
+              setBlocked(false);
+              onSubmit(data);
+            },
+            () => setBlocked(true),
+          )}
           className="flex-1 overflow-y-auto px-6 py-4 space-y-5"
         >
           {/* AI Generate Panel */}
@@ -322,12 +487,8 @@ export function CreateAutomationRuleModal({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate();
                   }}
-                  placeholder={
-                    "e.g. When a Shopify order is created, send a WhatsApp confirmation to the customer\n" +
-                    "e.g. Follow up 1 hour after no reply with a gentle reminder\n" +
-                    "e.g. When a new contact is created, tag them as 'new-lead' and update status to CONTACTED"
-                  }
-                  className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  placeholder={examples.prompts.map((p) => `e.g. ${p}`).join("\n")}
+                  className="mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
                 <p className="text-caption text-on-surface-variant/50 mt-1">
                   Press ⌘Enter to generate. The form will be filled automatically — you can review and edit before saving.
@@ -359,10 +520,10 @@ export function CreateAutomationRuleModal({
 
           {/* Rule Name */}
           <div>
-            <Label htmlFor="name">Rule Name</Label>
+            <Label htmlFor="name">Rule name</Label>
             <Input
               id="name"
-              placeholder="e.g. Shopify order confirmation"
+              placeholder={`e.g. ${examples.name}`}
               error={errors.name?.message}
               {...register("name")}
             />
@@ -376,17 +537,18 @@ export function CreateAutomationRuleModal({
               rows={2}
               placeholder="Optional description..."
               {...register("description")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="mt-1 w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
           {/* Trigger Type */}
           <div>
             <Label htmlFor="triggerType">Trigger</Label>
-            <select
+            <Select
               id="triggerType"
-              {...register("triggerType")}
-              className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={triggerType ?? ""}
+              onValueChange={(v) => setValue("triggerType", v as AutomationTriggerType, { shouldValidate: true, shouldDirty: true })}
+              className="mt-1"
             >
               <optgroup label="General">
                 {TRIGGER_TYPES.filter((t) => !t.group).map((t) => (
@@ -398,7 +560,7 @@ export function CreateAutomationRuleModal({
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </optgroup>
-            </select>
+            </Select>
           </div>
 
           {/* Trigger Config — contextual fields */}
@@ -421,7 +583,7 @@ export function CreateAutomationRuleModal({
             {triggerType === "LEAD_STATUS_CHANGED" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="triggerConfig.fromStatus">From Status</Label>
+                  <Label htmlFor="triggerConfig.fromStatus">From status</Label>
                   <Input
                     id="triggerConfig.fromStatus"
                     placeholder="e.g. NEW"
@@ -429,7 +591,7 @@ export function CreateAutomationRuleModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="triggerConfig.toStatus">To Status</Label>
+                  <Label htmlFor="triggerConfig.toStatus">To status</Label>
                   <Input
                     id="triggerConfig.toStatus"
                     placeholder="e.g. QUALIFIED"
@@ -441,7 +603,7 @@ export function CreateAutomationRuleModal({
 
             {triggerType === "TIME_BASED" && (
               <div>
-                <Label htmlFor="triggerConfig.cronExpression">Cron Expression</Label>
+                <Label htmlFor="triggerConfig.cronExpression">Cron expression</Label>
                 <Input
                   id="triggerConfig.cronExpression"
                   placeholder="e.g. 0 9 * * 1 (every Monday at 9AM)"
@@ -457,7 +619,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.delaySeconds"
                   type="number"
                   placeholder="e.g. 3600 (1 hour)"
-                  {...register("triggerConfig.delaySeconds", { valueAsNumber: true })}
+                  {...register("triggerConfig.delaySeconds", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -466,6 +628,36 @@ export function CreateAutomationRuleModal({
               <p className="text-label text-on-surface-variant/60">
                 Triggers when any new contact is created.
               </p>
+            )}
+
+            {triggerType === "LEAD_AD_RECEIVED" && (
+              <LeadAdTriggerFields
+                value={{
+                  platform: watch("triggerConfig.platform"),
+                  pageId: watch("triggerConfig.pageId"),
+                  formId: watch("triggerConfig.formId"),
+                  newContactsOnly: watch("triggerConfig.newContactsOnly"),
+                }}
+                onChange={(k, v) =>
+                  setValue(`triggerConfig.${k}`, v as never, { shouldValidate: true, shouldDirty: true })
+                }
+                inputClassName={FIELD_INPUT_CLS}
+              />
+            )}
+
+            {triggerType === "DEAL_STAGE_CHANGED" && (
+              <div>
+                <Label htmlFor="triggerConfig.stageId">Moved to stage</Label>
+                <StageSelect
+                  id="triggerConfig.stageId"
+                  value={watch("triggerConfig.stageId") ?? ""}
+                  onValueChange={(v) => setValue("triggerConfig.stageId", v, { shouldValidate: true, shouldDirty: true })}
+                  className="mt-1"
+                />
+                <p className="text-caption text-on-surface-variant/50 mt-1">
+                  Also fires when a deal is created in that stage.
+                </p>
+              </div>
             )}
 
             {triggerType === "WIDGET_MESSAGE_RECEIVED" && (
@@ -491,7 +683,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.minOrderValue"
                   type="number"
                   placeholder="e.g. 500 — only trigger for orders above this amount"
-                  {...register("triggerConfig.minOrderValue", { valueAsNumber: true })}
+                  {...register("triggerConfig.minOrderValue", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -503,7 +695,7 @@ export function CreateAutomationRuleModal({
                   id="triggerConfig.minCartValue"
                   type="number"
                   placeholder="e.g. 200 — only trigger for carts above this amount"
-                  {...register("triggerConfig.minCartValue", { valueAsNumber: true })}
+                  {...register("triggerConfig.minCartValue", NUMBER_OR_UNSET)}
                 />
               </div>
             )}
@@ -554,17 +746,18 @@ export function CreateAutomationRuleModal({
                   </div>
 
                   <div>
-                    <Label>Action Type</Label>
-                    <select
-                      {...register(`actions.${idx}.actionType`)}
-                      className="mt-1 w-full rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2.5 text-body-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    <Label>Action type</Label>
+                    <Select
+                      value={currentActionType}
+                      onValueChange={(v) => setValue(`actions.${idx}.actionType`, v as AutomationActionType, { shouldValidate: true, shouldDirty: true })}
+                      className="mt-1"
                     >
                       {ACTION_TYPES.map((a) => (
                         <option key={a.value} value={a.value}>
                           {a.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Action-specific config fields */}
@@ -574,6 +767,10 @@ export function CreateAutomationRuleModal({
                     register={register}
                     setValue={setValue}
                     getValues={getValues}
+                    config={actionTypes?.[idx]?.actionConfig}
+                    triggerType={triggerType}
+                    configErrors={emailErrorsFor(idx)}
+                    productError={(errors.actions?.[idx]?.actionConfig as Record<string, { message?: string }> | undefined)?.productId?.message}
                   />
 
                   <div>
@@ -581,7 +778,7 @@ export function CreateAutomationRuleModal({
                     <Input
                       type="number"
                       placeholder="0"
-                      {...register(`actions.${idx}.delaySeconds`, { valueAsNumber: true })}
+                      {...register(`actions.${idx}.delaySeconds`, NUMBER_OR_UNSET)}
                     />
                   </div>
                 </div>
@@ -598,14 +795,14 @@ export function CreateAutomationRuleModal({
             <p className="text-label font-medium text-on-surface-variant uppercase tracking-wide">
               Advanced Settings
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
               <div>
                 <Label htmlFor="priority">Priority</Label>
                 <Input
                   id="priority"
                   type="number"
                   placeholder="0"
-                  {...register("priority", { valueAsNumber: true })}
+                  {...register("priority", NUMBER_OR_UNSET)}
                 />
               </div>
               <div>
@@ -614,7 +811,7 @@ export function CreateAutomationRuleModal({
                   id="maxExecutionsPerContact"
                   type="number"
                   placeholder="0 (unlimited)"
-                  {...register("maxExecutionsPerContact", { valueAsNumber: true })}
+                  {...register("maxExecutionsPerContact", NUMBER_OR_UNSET)}
                 />
               </div>
               <div>
@@ -623,7 +820,7 @@ export function CreateAutomationRuleModal({
                   id="cooldownSeconds"
                   type="number"
                   placeholder="0"
-                  {...register("cooldownSeconds", { valueAsNumber: true })}
+                  {...register("cooldownSeconds", NUMBER_OR_UNSET)}
                 />
               </div>
             </div>
@@ -636,8 +833,17 @@ export function CreateAutomationRuleModal({
             onBeforeRedirect={onClose}
           />
 
+          {/* Why it didn't save: a field the form rejected, or the server's answer */}
+          {(blocked || createRule.isError) && (
+            <p role="alert" className="rounded-lg border border-error/15 bg-error/8 px-3 py-2 text-label text-error">
+              {createRule.isError
+                ? createRule.error?.message || "Couldn't save the rule. Please try again."
+                : "Something above isn't filled in correctly. Check the fields and try again."}
+            </p>
+          )}
+
           {/* Submit */}
-          <div className="flex justify-end gap-2 pt-2 pb-2">
+          <div className="flex justify-end gap-2 pt-2 pb-2 max-lg:[&>button]:flex-1">
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>

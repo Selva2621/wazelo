@@ -3,8 +3,12 @@
 import { useId, useState } from "react";
 import { Package, Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useSAPlans, useSACreatePlan, useSAUpdatePlan, useSAPlanLifecycle } from "@/hooks/use-super-admin";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { TABLE_CARD } from "@/components/super-admin/list-styles";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -14,7 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import type { Plan, BillingCycle } from "@/lib/types/billing";
 import type { PlanEditMode, PlanUpdateResult } from "@/lib/api/super-admin";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -229,28 +233,32 @@ function PlanFormBody({
         </div>
         <div>
           <label htmlFor={fid("cycle")} className={labelClass}>Billing cycle</label>
-          <select
+          <Select
             id={fid("cycle")}
             disabled={isEdit}
-            className={inputClass}
             value={form.billingCycle}
             onChange={(e) => set("billingCycle", e.target.value as BillingCycle)}
           >
             <option value="MONTHLY">Monthly</option>
             <option value="YEARLY">Yearly</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor={fid("currency")} className={labelClass}>Currency</label>
-          <select
+          <Select
             id={fid("currency")}
             disabled={isEdit}
-            className={inputClass}
             value={form.currency}
             onChange={(e) => set("currency", e.target.value)}
           >
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </Select>
+          {!isEdit && (
+            <p className="text-label text-on-surface-variant mt-0.5">
+              INR plans are shown to orgs in India, USD plans to everyone else. A USD plan needs its own
+              slug (e.g. starter-usd) and Razorpay International Payments switched on.
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor={fid("price")} className={labelClass}>Price ({form.currency})</label>
@@ -546,185 +554,215 @@ export default function SuperAdminPlansPage() {
 
   const isSaving = createPlan.isPending || updatePlan.isPending;
 
-  return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Package className="w-5 h-5 text-primary-container" aria-hidden />
-          </div>
-          <div>
-            <h1 className="text-title font-semibold text-on-surface">Plan Management</h1>
-            <p className="text-body-lg text-on-surface-variant">Create and manage subscription plans</p>
-          </div>
+  const columns: DataTableColumn<Plan>[] = [
+    {
+      id: "plan",
+      header: "Plan",
+      cell: (plan) => (
+        <>
+          <div className="font-medium text-on-surface">{plan.name}</div>
+          <div className="text-label text-on-surface-variant">{plan.slug} · v{plan.version}</div>
+        </>
+      ),
+    },
+    {
+      id: "cycle",
+      header: "Cycle",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => (plan.billingCycle === "MONTHLY" ? "Monthly" : "Yearly"),
+    },
+    {
+      id: "price",
+      header: "Price",
+      skeleton: "short",
+      cellClassName: "font-medium text-on-surface",
+      cell: (plan) => formatMoney(plan.priceInCents, plan.currency),
+    },
+    {
+      id: "subscribers",
+      header: "Subscribers",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => (plan.liveSubscribers ?? 0).toLocaleString(),
+    },
+    { id: "users", header: "Users", skeleton: "short", cellClassName: "text-on-surface-variant", cell: (plan) => formatLimit(plan.maxUsers) },
+    {
+      id: "sessions",
+      header: "Sessions",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => formatLimit(plan.maxWhatsappSessions),
+    },
+    {
+      id: "messages",
+      header: "Messages",
+      skeleton: "short",
+      cellClassName: "text-on-surface-variant",
+      cell: (plan) => formatLimit(plan.maxMessagesPerMonth),
+    },
+    {
+      id: "features",
+      header: "Features",
+      skeleton: "badge",
+      cell: (plan) => (
+        <div className="flex flex-wrap gap-1">
+          {plan.campaignsEnabled && <Badge variant="muted">Campaigns</Badge>}
+          {plan.automationEnabled && <Badge variant="muted">Auto</Badge>}
+          {plan.apiEnabled && <Badge variant="muted">API</Badge>}
+          {plan.aiEnabled && <Badge variant="muted">AI</Badge>}
+          {plan.shopifyEnabled && <Badge variant="muted">Shopify</Badge>}
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-2" aria-hidden />
-          New Plan
-        </Button>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (plan) => (
+        <>
+          {plan.archivedAt ? (
+            <Badge dot variant="muted">Archived</Badge>
+          ) : plan.isActive ? (
+            <Badge dot variant="success">Active</Badge>
+          ) : (plan.liveSubscribers ?? 0) > 0 ? (
+            <Badge dot variant="warning">Retired · grandfathered</Badge>
+          ) : (
+            <Badge dot variant="muted">Inactive</Badge>
+          )}
+          {plan.isDefault && (
+            <Badge variant="primary" className="ml-1">Default</Badge>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      skeleton: "none",
+      cell: (plan) => (
+        <div className="flex items-center gap-2">
+          <IconButton
+            size="sm"
+            onClick={() => openEdit(plan)}
+            className="hover:text-primary-container hover:bg-primary/10"
+            aria-label={`Edit ${plan.name}`}
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" aria-hidden />
+          </IconButton>
+          {plan.archivedAt ? (
+            <IconButton
+              size="sm"
+              onClick={() => handleUnarchive(plan)}
+              disabled={lifecycleBusy}
+              className="hover:text-primary-container hover:bg-primary/10"
+              aria-label={`Unarchive ${plan.name}`}
+              title="Unarchive"
+            >
+              <ArchiveRestore className="w-4 h-4" aria-hidden />
+            </IconButton>
+          ) : (
+            <>
+              <IconButton
+                size="sm"
+                role="switch"
+                aria-checked={plan.isActive}
+                aria-label={`${plan.name} active`}
+                title={plan.isActive ? "Deactivate" : "Activate"}
+                disabled={updatePlan.isPending}
+                onClick={() => handleToggle(plan)}
+              >
+                {plan.isActive ? (
+                  <ToggleRight className="w-4 h-4 text-success" aria-hidden />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" aria-hidden />
+                )}
+              </IconButton>
+              <IconButton
+                size="sm"
+                onClick={() => setArchiving(plan)}
+                disabled={lifecycleBusy}
+                aria-label={`Archive ${plan.name}`}
+                title="Archive"
+              >
+                <Archive className="w-4 h-4" aria-hidden />
+              </IconButton>
+            </>
+          )}
+          {(plan.liveSubscribers ?? 0) === 0 && (
+            <IconButton
+              size="sm"
+              onClick={() => setDeleting(plan)}
+              disabled={lifecycleBusy}
+              className="hover:text-error hover:bg-error/10"
+              aria-label={`Delete ${plan.name}`}
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden />
+            </IconButton>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-5">
+      <PageHeader
+        title="Plans"
+        count={plans.length}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="w-4 h-4" aria-hidden />
+            New plan
+          </Button>
+        }
+      />
+
+      <FilterBar>
+        {[
+          { label: "Show inactive", count: inactiveCount, on: showInactive, set: setShowInactive },
+          { label: "Show archived", count: archivedCount, on: showArchived, set: setShowArchived },
+        ].map((chip) => (
+          <button
+            key={chip.label}
+            type="button"
+            aria-pressed={chip.on}
+            onClick={() => chip.set(!chip.on)}
+            // Same pill chip as the shared Tabs, but each one toggles on its own
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+              chip.on
+                ? "border-transparent bg-on-surface text-surface"
+                : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface",
+            )}
+          >
+            {chip.on && <Check className="h-3.5 w-3.5" aria-hidden />}
+            {chip.label}
+            <span className={cn("tabular-nums", chip.on ? "text-surface/70" : "text-on-surface-variant/70")}>{chip.count}</span>
+          </button>
+        ))}
+      </FilterBar>
+
+      <div className={TABLE_CARD}>
+        <DataTable
+          label="Subscription plans"
+          columns={columns}
+          rows={plans}
+          rowKey={(plan) => plan.id}
+          rowLabel={(plan) => plan.name}
+          loading={isLoading}
+          skeletonRows={5}
+          error={isError}
+          onRetry={() => refetch()}
+          empty={{
+            icon: <Package className="w-10 h-10" aria-hidden />,
+            title: allPlans.length ? "No active plans" : "No plans yet",
+            description: allPlans.length ? "Show inactive plans to reactivate one." : "Create your first plan.",
+          }}
+        />
       </div>
-
-      <label className="mb-3 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
-        <input
-          type="checkbox"
-          checked={showInactive}
-          onChange={(e) => setShowInactive(e.target.checked)}
-          className="h-4 w-4 rounded border-outline accent-primary"
-        />
-        Show inactive plans ({inactiveCount})
-      </label>
-      <label className="mb-3 ml-6 inline-flex items-center gap-2 text-body-lg text-on-surface-variant cursor-pointer">
-        <input
-          type="checkbox"
-          checked={showArchived}
-          onChange={(e) => setShowArchived(e.target.checked)}
-          className="h-4 w-4 rounded border-outline accent-primary"
-        />
-        Show archived ({archivedCount})
-      </label>
-
-      <Card>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32" role="status">
-            <Spinner />
-            <span className="sr-only">Loading plans…</span>
-          </div>
-        ) : isError ? (
-          <div className="flex items-center justify-center h-32 text-body-lg text-error" role="alert">
-            <p>
-              Could not load plans.{" "}
-              <button type="button" onClick={() => refetch()} className="underline hover:no-underline">
-                Try again
-              </button>
-            </p>
-          </div>
-        ) : !plans.length ? (
-          <div className="flex flex-col items-center justify-center h-40 text-on-surface-variant">
-            <Package className="w-10 h-10 mb-2 opacity-30" aria-hidden />
-            <p className="text-body-lg">
-              {allPlans.length ? "No active plans. Show inactive plans to reactivate one." : "No plans yet. Create your first plan."}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-body-lg">
-              <caption className="sr-only">Subscription plans</caption>
-              <thead>
-                <tr className="border-b border-outline-variant text-left">
-                  {["Plan", "Cycle", "Price", "Subscribers", "Users", "Sessions", "Messages", "Features", "Status", "Actions"].map((h) => (
-                    <th key={h} scope="col" className="px-4 py-3 text-label font-medium text-on-surface-variant">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant">
-                {plans.map((plan) => (
-                  <tr key={plan.id} className="hover:bg-surface-container-low transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-on-surface">{plan.name}</div>
-                      <div className="text-label text-on-surface-variant">{plan.slug} · v{plan.version}</div>
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">
-                      {plan.billingCycle === "MONTHLY" ? "Monthly" : "Yearly"}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-on-surface">
-                      {formatMoney(plan.priceInCents, plan.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">{(plan.liveSubscribers ?? 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxUsers)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxWhatsappSessions)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant">{formatLimit(plan.maxMessagesPerMonth)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {plan.campaignsEnabled && <Badge variant="muted" className="text-label">Campaigns</Badge>}
-                        {plan.automationEnabled && <Badge variant="muted" className="text-label">Auto</Badge>}
-                        {plan.apiEnabled && <Badge variant="muted" className="text-label">API</Badge>}
-                        {plan.aiEnabled && <Badge variant="muted" className="text-label">AI</Badge>}
-                        {plan.shopifyEnabled && <Badge variant="muted" className="text-label">Shopify</Badge>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {plan.archivedAt ? (
-                        <Badge variant="muted" className="text-label">Archived</Badge>
-                      ) : plan.isActive ? (
-                        <Badge className="text-label bg-success-container text-success border-success/30">Active</Badge>
-                      ) : (plan.liveSubscribers ?? 0) > 0 ? (
-                        <Badge variant="warning" className="text-label">Retired · grandfathered</Badge>
-                      ) : (
-                        <Badge variant="muted" className="text-label">Inactive</Badge>
-                      )}
-                      {plan.isDefault && (
-                        <Badge className="text-label ml-1 bg-primary/10 text-primary-container border-primary/30">Default</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <IconButton
-                          size="sm"
-                          onClick={() => openEdit(plan)}
-                          className="hover:text-primary-container hover:bg-primary/10"
-                          aria-label={`Edit ${plan.name}`}
-                        >
-                          <Pencil className="w-4 h-4" aria-hidden />
-                        </IconButton>
-                        {plan.archivedAt ? (
-                          <IconButton
-                            size="sm"
-                            onClick={() => handleUnarchive(plan)}
-                            disabled={lifecycleBusy}
-                            className="hover:text-primary-container hover:bg-primary/10"
-                            aria-label={`Unarchive ${plan.name}`}
-                            title="Unarchive"
-                          >
-                            <ArchiveRestore className="w-4 h-4" aria-hidden />
-                          </IconButton>
-                        ) : (
-                          <>
-                            <IconButton
-                              size="sm"
-                              role="switch"
-                              aria-checked={plan.isActive}
-                              aria-label={`${plan.name} active`}
-                              disabled={updatePlan.isPending}
-                              onClick={() => handleToggle(plan)}
-                            >
-                              {plan.isActive ? (
-                                <ToggleRight className="w-4 h-4 text-success" aria-hidden />
-                              ) : (
-                                <ToggleLeft className="w-4 h-4" aria-hidden />
-                              )}
-                            </IconButton>
-                            <IconButton
-                              size="sm"
-                              onClick={() => setArchiving(plan)}
-                              disabled={lifecycleBusy}
-                              aria-label={`Archive ${plan.name}`}
-                              title="Archive"
-                            >
-                              <Archive className="w-4 h-4" aria-hidden />
-                            </IconButton>
-                          </>
-                        )}
-                        {(plan.liveSubscribers ?? 0) === 0 && (
-                          <IconButton
-                            size="sm"
-                            onClick={() => setDeleting(plan)}
-                            disabled={lifecycleBusy}
-                            className="hover:text-error hover:bg-error/10"
-                            aria-label={`Delete ${plan.name}`}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" aria-hidden />
-                          </IconButton>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
 
       <Modal
         open={modal.open}

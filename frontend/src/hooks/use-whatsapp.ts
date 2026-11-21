@@ -3,11 +3,11 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
-import { whatsappApi, type WhatsAppSession } from "@/lib/api/whatsapp";
+import { whatsappApi, type SendingLimits, type WhatsAppSession } from "@/lib/api/whatsapp";
 import { useWhatsAppStore } from "@/stores/whatsapp-store";
 import { useAuthStore } from "@/stores/auth-store";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws";
+import { WS_URL } from "@/lib/env-urls";
 
 // ─── Session Query ───────────────────────────────────────
 export function useWhatsAppSession() {
@@ -34,7 +34,8 @@ export function useWhatsAppSession() {
         throw err;
       }
     },
-    refetchInterval: 30_000,
+    // Right after a QR scan, check often so "Connected" shows the moment the login finishes
+    refetchInterval: () => (useWhatsAppStore.getState().qrScanned ? 2_000 : 30_000),
     retry: 1,
   });
 }
@@ -85,8 +86,20 @@ export function useDisconnectSession() {
 
 // ─── Refresh QR ──────────────────────────────────────────
 export function useRefreshQr() {
+  const queryClient = useQueryClient();
+  const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const markQrScanned = useWhatsAppStore((s) => s.markQrScanned);
+
   return useMutation({
     mutationFn: (sessionId: string) => whatsappApi.refreshQr(sessionId),
+    onMutate: () => clearQr(),
+    onSuccess: (data) => {
+      // Already scanned — the server is finishing the login, so don't show a new QR
+      if (data.linking) {
+        markQrScanned();
+        queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+      }
+    },
   });
 }
 
@@ -142,6 +155,16 @@ export function useResumeSending() {
   });
 }
 
+export function useUpdateSendingLimits() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (limits: SendingLimits) => whatsappApi.updateMySendingLimits(limits),
+    onSuccess: (health) => {
+      queryClient.setQueryData(["whatsapp", "send-health"], health);
+    },
+  });
+}
+
 // ─── Admin: List Sessions ────────────────────────────────
 export function useAdminSessions(params?: {
   status?: string;
@@ -191,6 +214,8 @@ export function useWhatsAppSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const setQr = useWhatsAppStore((s) => s.setQr);
   const clearQr = useWhatsAppStore((s) => s.clearQr);
+  const markQrScanned = useWhatsAppStore((s) => s.markQrScanned);
+  const markQrStopped = useWhatsAppStore((s) => s.markQrStopped);
   const setPairingCode = useWhatsAppStore((s) => s.setPairingCode);
   const setSession = useWhatsAppStore((s) => s.setSession);
   const setStatus = useWhatsAppStore((s) => s.setStatus);
@@ -215,6 +240,15 @@ export function useWhatsAppSocket() {
       setQr(data.qrCode, expiresAtMs);
     });
 
+    // Phone scanned the QR — show "finishing login" instead of the countdown
+    socket.on("whatsapp:qr-scanned", () => {
+      markQrScanned();
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
+    });
+
+    // No scan for several minutes — the server stopped making codes
+    socket.on("whatsapp:qr-expired", () => markQrStopped());
+
     // A new code is issued whenever the previous one expired unused
     socket.on("whatsapp:pairing-code", (data: { sessionId: string; pairingCode: string }) => {
       setPairingCode(data.pairingCode);
@@ -236,7 +270,9 @@ export function useWhatsAppSocket() {
     );
 
     socket.on("whatsapp:session:reconnecting", () => {
-      setStatus("reconnecting");
+      // Re-read server state instead of applying an event that may arrive late,
+      // after a newer connected event has already been persisted.
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "session"] });
     });
 
     socket.on("whatsapp:sending:paused", () => {
@@ -247,7 +283,7 @@ export function useWhatsAppSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, setQr, clearQr, setPairingCode, setSession, setStatus, setError, queryClient]);
+  }, [accessToken, setQr, clearQr, markQrScanned, markQrStopped, setPairingCode, setSession, setStatus, setError, queryClient]);
 
   return socketRef;
 }

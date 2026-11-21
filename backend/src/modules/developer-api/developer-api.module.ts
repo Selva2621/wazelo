@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ApiKeysModule } from '@/modules/api-keys/api-keys.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
+import { ContactsModule } from '@/modules/contacts/contacts.module';
+import { DealsModule } from '@/modules/deals/deals.module';
 import { ApiKeysRepository } from '@/modules/api-keys/infrastructure/repositories/api-keys.repository';
 import { DeveloperApiRepository } from './infrastructure/repositories/developer-api.repository';
 import { DevSendMessageUseCase } from './application/use-cases/send-message.use-case';
@@ -14,7 +16,9 @@ import { GetDeveloperDashboardUseCase } from './application/use-cases/get-develo
 import { ApiRequestLogInterceptor } from './interfaces/interceptors/api-request-log.interceptor';
 
 @Module({
-  imports: [ApiKeysModule, BillingModule, MessagesModule],
+  // ContactsModule: notes, tags and lead status go through its use-cases so
+  // audit logs, automations and outgoing webhooks fire as they do in the app
+  imports: [ApiKeysModule, BillingModule, MessagesModule, ContactsModule, DealsModule],
   controllers: [DeveloperDocsController, DeveloperApiController, DeveloperPortalController],
   providers: [
     DeveloperApiRepository,

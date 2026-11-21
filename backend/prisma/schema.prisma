@@ -43,6 +43,12 @@ enum WhatsAppSessionStatus {
   RECONNECTING
 }
 
+/// How a WhatsApp number is connected
+enum WhatsAppProvider {
+  QR
+  CLOUD_API
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -98,6 +104,8 @@ enum ContactSource {
   SHOPIFY
   // Lead Scraper
   WEB_SCRAPE
+  // Website chat widget visitor who left a phone number
+  WEBSITE
 }
 
 // ─────────────────────────────────────────────
@@ -157,6 +165,13 @@ enum SequenceRecipientStatus {
   COMPLETED     // finished all steps
   EXITED        // left via exit condition (replied, etc.)
   PAUSED        // sequence paused
+}
+
+/// What enrolls a contact into an always-on sequence (null = one-time audience)
+enum SequenceTriggerType {
+  DEAL_STAGE_CHANGED
+  LEAD_STATUS_CHANGED
+  CONTACT_CREATED
 }
 
 enum AuditAction {
@@ -286,6 +301,33 @@ enum AuditAction {
 
   // Chat Widget actions (Phase 4)
   WIDGET_CONFIG_UPDATED
+  // Website chat: consent, handover to a person, lead decision
+  WIDGET_CONSENT_GIVEN
+  WIDGET_CHAT_ACCEPTED
+  WIDGET_CHAT_DECLINED
+  WIDGET_CHAT_ASSIGNED
+  WIDGET_CHAT_ENDED
+  WIDGET_LEAD_SAVED
+  WIDGET_LEAD_DISMISSED
+
+  // Chatbot & knowledge base (what the AI assistant says)
+  CHATBOT_FLOW_CREATED
+  CHATBOT_FLOW_UPDATED
+  CHATBOT_FLOW_ACTIVATED
+  CHATBOT_FLOW_DEACTIVATED
+  CHATBOT_FLOW_DELETED
+  CHATBOT_SETTINGS_UPDATED
+  KB_SOURCE_ADDED
+  KB_SOURCE_UPDATED
+  KB_SOURCE_DELETED
+  KB_DOCUMENT_UPLOADED
+  KB_DOCUMENT_DELETED
+  KB_ARTICLE_CREATED
+  KB_ARTICLE_UPDATED
+  KB_ARTICLE_DELETED
+  KB_FAQ_ADDED
+  // An org's automatic AI replies hit a safety limit (possible credit-draining abuse)
+  AI_REPLY_LIMIT_REACHED
 
   // Settings & Configuration actions (EPIC 12)
   SETTING_UPDATED
@@ -352,6 +394,7 @@ enum AutomationTriggerType {
   SHOPIFY_ORDER_FULFILLED
   SHOPIFY_CART_ABANDONED
   WIDGET_MESSAGE_RECEIVED
+  DEAL_STAGE_CHANGED
 }
 
 enum AutomationConditionOperator {
@@ -367,6 +410,15 @@ enum AutomationActionType {
   ASSIGN_CONTACT
   ADD_TAG
   UPDATE_STATUS
+  ENROLL_IN_SEQUENCE
+  /// Take the contact out of one sequence (or all) they're in
+  STOP_SEQUENCE
+  /// Give the contact's chat to a person (bots pause there, like a manual assign)
+  ASSIGN_CONVERSATION
+  /// Email the contact from the workspace's email account
+  SEND_EMAIL
+  /// Link the contact to a product (campaigns can target by product)
+  ADD_TO_PRODUCT
 }
 
 enum AutomationRuleStatus {
@@ -447,6 +499,10 @@ model Organization {
   name      String    @db.VarChar(255)
   slug      String    @unique @db.VarChar(255)
   timezone    String    @default("UTC") @db.VarChar(100)
+  /// ISO 3166-1 alpha-2 — phone numbers without a country code are read as this country's
+  country     String    @default("IN") @db.VarChar(2)
+  /// ISO 4217 — default for deals and products
+  currency    String    @default("INR") @db.VarChar(3)
   orgType     OrgType   @default(CRM) @map("org_type")
   /// For FREELANCER orgs: what they do (WEB_DEVELOPER, DESIGNER, …), one or more — shapes default templates
   freelancerTypes   String[] @default([]) @map("freelancer_types") @db.VarChar(30)
@@ -473,6 +529,7 @@ model Organization {
   whatsappSessions        WhatsAppSession[]
   messages                Message[]
   contacts                Contact[]
+  savedContactGroups      SavedContactGroup[]
   conversations           Conversation[]
   deadLetterMessages      DeadLetterMessage[]
   campaigns               Campaign[]
@@ -507,6 +564,7 @@ model Organization {
   csatSurveys              CsatSurvey[]
   pipelines                Pipeline[]
   deals                    Deal[]
+  proposals                Proposal[]
   aiConversationSummaries  AiConversationSummary[]
   chatbotFlows             ChatbotFlow[]
   chatbotSessions          ChatbotSession[]
@@ -522,11 +580,19 @@ model Organization {
   kbDocuments              KbDocument[]
   sequenceTemplates        SequenceTemplate[]
   products                 Product[]
+  brands                   Brand[]
   productCategories        ProductCategory[]
   helpTickets              HelpTicket[]
   aiMemory                 OrgAiMemory?
   creditEntries            OrgCreditEntry[]
   couponRedemptions        CouponRedemption[]
+  aiCreditBalance          OrgAiCreditBalance?
+  aiCreditEntries          AiCreditEntry[]
+  kbSources                KbSource[]
+  kbMisses                 KbMiss[]
+  aiReplyLogs              AiReplyLog[]
+  botSettings              BotSettings?
+  kbChunks                 KbChunk[]
 
   @@index([slug])
   @@index([deletedAt])
@@ -810,16 +876,35 @@ model WhatsAppSession {
   disconnectCode   Int?                 @map("disconnect_code")
   /// Why the session stopped: LOGGED_OUT | BANNED | REPLACED | BAD_SESSION | NETWORK
   disconnectReason String?              @map("disconnect_reason") @db.VarChar(30)
-  /// First time this number connected — drives send warm-up
-  linkedAt         DateTime?            @map("linked_at")
+  /// First time this number connected
+  linkedAt        DateTime?            @map("linked_at")
   /// Bulk sending (campaigns, sequences) held until this time by the safety governor
   sendingPausedUntil  DateTime?         @map("sending_paused_until")
   sendingPausedReason String?           @map("sending_paused_reason") @db.VarChar(300)
   /// Set when the user resumes early — health is judged only on data after this
   healthResetAt       DateTime?         @map("health_reset_at")
+  /// Admin-set sending limits for this number: { dailyBulkCap, dailyColdCap,
+  /// bulkGapMinMs, bulkGapMaxMs }. A missing cap = no daily cap (plan limit only). Null = defaults.
+  sendingLimits       Json?             @map("sending_limits") @db.JsonB
   /// Last sign the primary phone was online (a fresh link, or a message sent from it).
   /// WhatsApp unlinks companion devices after 14 days without the phone.
   lastPhoneActivityAt DateTime?         @map("last_phone_activity_at")
+  /// QR = linked device (Baileys), one per user. CLOUD_API = official Meta number, shared by the org.
+  provider            WhatsAppProvider  @default(QR)
+  /// CLOUD_API only: Meta phone number ID (webhooks are matched on it)
+  cloudPhoneNumberId  String?           @map("cloud_phone_number_id") @db.VarChar(64)
+  /// CLOUD_API only: WhatsApp Business Account ID (templates live here)
+  cloudWabaId         String?           @map("cloud_waba_id") @db.VarChar(64)
+  /// CLOUD_API only: encrypted permanent access token
+  encryptedCloudToken String?           @map("encrypted_cloud_token") @db.Text
+  /// CLOUD_API only: encrypted Meta App Secret, to check webhook signatures
+  encryptedCloudAppSecret String?       @map("encrypted_cloud_app_secret") @db.Text
+  /// CLOUD_API only: token Meta echoes back when the webhook is verified
+  cloudVerifyToken    String?           @map("cloud_verify_token") @db.VarChar(100)
+  /// CLOUD_API only: business name Meta shows, quality rating (GREEN/YELLOW/RED) and daily tier
+  cloudVerifiedName   String?           @map("cloud_verified_name") @db.VarChar(255)
+  cloudQualityRating  String?           @map("cloud_quality_rating") @db.VarChar(20)
+  cloudMessagingTier  String?           @map("cloud_messaging_tier") @db.VarChar(40)
   createdAt       DateTime              @default(now()) @map("created_at")
   updatedAt       DateTime              @updatedAt @map("updated_at")
   deletedAt       DateTime?             @map("deleted_at")
@@ -829,9 +914,12 @@ model WhatsAppSession {
   messages     Message[]
   authKeys     WhatsAppAuthKey[]
   campaigns    Campaign[]
+  campaignRecipients CampaignRecipient[]
   sequences    CampaignSequence[]
 
-  @@unique([userId, deletedAt], name: "unique_active_session_per_user")
+  /// One QR number per user; the admin who adds an official number can still have their own QR one
+  @@unique([userId, provider, deletedAt], name: "unique_active_session_per_user")
+  @@index([cloudPhoneNumberId])
   @@index([orgId])
   @@index([userId])
   @@index([status])
@@ -1034,10 +1122,16 @@ model Contact {
   mergedIntoId String?       @map("merged_into_id") @db.Uuid
   optedOut     Boolean       @default(false) @map("opted_out")
   optedOutAt   DateTime?     @map("opted_out_at")
+  /// Clicked "Unsubscribe" in an email: no more emails (WhatsApp is separate)
+  emailOptedOut   Boolean    @default(false) @map("email_opted_out")
+  emailOptedOutAt DateTime?  @map("email_opted_out_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   deletedAt    DateTime?     @map("deleted_at")
 
+  /// On WhatsApp? null = not checked or lookup failed. WhatsApp campaigns skip false.
+  waExists     Boolean?  @map("wa_exists")
+  waCheckedAt  DateTime? @map("wa_checked_at")
   organization       Organization           @relation(fields: [orgId], references: [id])
   owner              User                   @relation("ContactOwner", fields: [ownerId], references: [id])
   mergedInto         Contact?               @relation("ContactMerge", fields: [mergedIntoId], references: [id])
@@ -1045,14 +1139,17 @@ model Contact {
   statusHistory      ContactStatusHistory[]
   ownerHistory       ContactOwnerHistory[]
   contactTags        ContactTag[]
+  savedGroupMemberships SavedContactGroupMember[]
   notes              ContactNote[]
   campaignRecipients CampaignRecipient[]
   deals              Deal[]
+  proposals          Proposal[]
   scoreHistory       ContactScoreHistory[]
   sequenceRecipients SequenceRecipient[]
   consentRecords     ConsentRecord[]
   dataRequests       DataRequest[]
   contactProducts    ContactProduct[]
+  leadFollowUps      LeadFollowUp[]
 
   // Partial unique index managed via raw SQL migration:
   // CREATE UNIQUE INDEX contacts_org_phone_active_unique ON contacts (org_id, phone_number) WHERE deleted_at IS NULL
@@ -1159,6 +1256,38 @@ model ContactTag {
   @@map("contact_tags")
 }
 
+model SavedContactGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  /// Background "on WhatsApp?" check of the group's numbers
+  waCheck   Json?     @map("wa_check")
+
+  organization Organization                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members      SavedContactGroupMember[]
+
+  // Name is unique among non-deleted groups: partial unique index
+  // "saved_contact_groups_org_id_name_active_key" lives in migration SQL only.
+  @@index([orgId, createdAt])
+  @@index([orgId, deletedAt])
+  @@map("saved_contact_groups")
+}
+
+model SavedContactGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  contactId String   @unique(map: "saved_contact_group_members_contact_id_key") @map("contact_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group   SavedContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("saved_contact_group_members")
+}
+
 // ─────────────────────────────────────────────
 // CONTACT NOTE (EPIC 4)
 // ─────────────────────────────────────────────
@@ -1205,10 +1334,16 @@ model Conversation {
   channelType       ChannelType?       @map("channel_type")
   contactIdentifier String?            @map("contact_identifier") @db.VarChar(255)
 
+  // AI bot: quiet in this chat until then (a person replied, or it handed over)
+  botPausedUntil    DateTime?          @map("bot_paused_until")
+  // AI bot: questions in a row it couldn't answer (2 → hand over)
+  botMissStreak     Int                @default(0) @map("bot_miss_streak")
+
   organization Organization @relation(fields: [orgId], references: [id])
   channel      Channel?     @relation(fields: [channelId], references: [id])
   messages     Message[]
 
+  // The migration also adds a partial org + phone unique index for WhatsApp conversations.
   @@unique([orgId, sessionId, contactPhone], name: "unique_conversation_per_contact_session")
   @@unique([orgId, channelId, contactIdentifier], name: "unique_conversation_per_contact_channel")
   @@index([orgId])
@@ -1300,7 +1435,12 @@ model DeadLetterMessage {
 model Campaign {
   id              String               @id @default(uuid()) @db.Uuid
   orgId           String               @map("org_id") @db.Uuid
-  sessionId       String               @map("session_id") @db.Uuid
+  /// WHATSAPP (sent from sessionId) or EMAIL (sent from the workspace's email account)
+  channel         ChannelType          @default(WHATSAPP)
+  /// The WhatsApp number it sends from (null for email campaigns)
+  sessionId       String?              @map("session_id") @db.Uuid
+  /// Email campaigns: the subject line ({{name}} fields allowed)
+  emailSubject    String?              @map("email_subject") @db.VarChar(255)
   name            String               @db.VarChar(255)
   description     String?              @db.Text
   messageType     MessageType          @default(TEXT) @map("message_type")
@@ -1319,6 +1459,8 @@ model Campaign {
   deliveredCount  Int                  @default(0) @map("delivered_count")
   failedCount     Int                  @default(0) @map("failed_count")
   readCount       Int                  @default(0) @map("read_count")
+  /// Recipients who wrote back within a week of getting the campaign
+  repliedCount    Int                  @default(0) @map("replied_count")
   createdById     String               @map("created_by_id") @db.Uuid
   idempotencyKey  String?              @unique @map("idempotency_key") @db.VarChar(255)
   metadata        Json?                @db.JsonB
@@ -1329,7 +1471,7 @@ model Campaign {
   productId   String?   @map("product_id") @db.Uuid
 
   organization Organization        @relation(fields: [orgId], references: [id])
-  session      WhatsAppSession     @relation(fields: [sessionId], references: [id])
+  session      WhatsAppSession?    @relation(fields: [sessionId], references: [id])
   createdBy    User                @relation("CampaignCreator", fields: [createdById], references: [id])
   product      Product?            @relation("CampaignProduct", fields: [productId], references: [id])
   recipients   CampaignRecipient[]
@@ -1357,22 +1499,34 @@ model CampaignRecipient {
   contactId    String                  @map("contact_id") @db.Uuid
   contactPhone String                  @map("contact_phone") @db.VarChar(20)
   messageId    String?                 @unique @map("message_id") @db.Uuid
+  /// Email campaigns: the email sent to this recipient
+  emailMessageId String?               @unique @map("email_message_id") @db.Uuid
   status       CampaignRecipientStatus @default(PENDING)
   failedReason String?                 @map("failed_reason") @db.Text
   processedAt  DateTime?               @map("processed_at")
+  /// First message from the contact after this campaign reached them (within a week)
+  repliedAt    DateTime?               @map("replied_at")
   batchNumber  Int                     @map("batch_number")
+  sessionId    String?                 @map("session_id") @db.Uuid
+  /// When the recipient was handed to a sender (finds recipients stuck in QUEUED)
+  claimedAt    DateTime?               @map("claimed_at")
   createdAt    DateTime                @default(now()) @map("created_at")
 
   campaign Campaign @relation(fields: [campaignId], references: [id])
   contact  Contact  @relation(fields: [contactId], references: [id])
   message  Message? @relation(fields: [messageId], references: [id])
+  session  WhatsAppSession? @relation(fields: [sessionId], references: [id])
 
   @@unique([campaignId, contactId], name: "unique_recipient_per_campaign")
   @@index([campaignId])
   @@index([campaignId, status])
   @@index([campaignId, batchNumber])
+  @@index([campaignId, batchNumber, sessionId])
+  @@index([campaignId, status, claimedAt])
   @@index([messageId])
   @@index([orgId])
+  // "Did this person just answer one of our campaigns?" on every incoming message
+  @@index([orgId, contactPhone])
   @@map("campaign_recipients")
 }
 
@@ -1411,6 +1565,9 @@ model CampaignSequence {
   status          SequenceStatus @default(DRAFT)
   audienceType    CampaignAudienceType @default(FILTERED) @map("audience_type")
   audienceFilters Json?          @map("audience_filters") @db.JsonB
+  /// Set → contacts join one at a time when this happens; the audience is not used
+  triggerType     SequenceTriggerType? @map("trigger_type")
+  triggerConfig   Json?          @map("trigger_config") @db.JsonB
   exitOnReply     Boolean        @default(true) @map("exit_on_reply")
   createdById     String         @map("created_by_id") @db.Uuid
   startedAt       DateTime?      @map("started_at")
@@ -1440,6 +1597,10 @@ model CampaignSequenceStep {
   orgId         String      @map("org_id") @db.Uuid
   stepOrder     Int         @map("step_order")
   name          String?     @db.VarChar(255)
+  /// WHATSAPP (from the sequence's number) or EMAIL (from the workspace's email account)
+  channel       ChannelType @default(WHATSAPP)
+  /// Email steps: the subject line
+  emailSubject  String?     @map("email_subject") @db.VarChar(255)
   messageType   MessageType @default(TEXT) @map("message_type")
   messageBody   String?     @map("message_body") @db.Text
   mediaUrl      String?     @map("media_url") @db.VarChar(2048)
@@ -1984,8 +2145,18 @@ enum NotificationType {
   TICKET_RESOLVED
   DEAL_FOLLOW_UP_DUE
   DEAL_SCOPE_RESPONSE
+  PROPOSAL_VIEWED
+  PROPOSAL_RESPONSE
   WHATSAPP_SESSION_UNSTABLE
   WHATSAPP_PHONE_INACTIVE
+  /// A website visitor asked to talk to a person
+  WEBSITE_HANDOFF
+  /// A lead (e.g. Meta lead form) was given to you to contact
+  LEAD_ASSIGNED
+  /// A lead you were given still hasn't been contacted
+  LEAD_FOLLOW_UP_DUE
+  /// Brand manager's day-end summary of the brand's leads
+  LEAD_DAILY_SUMMARY
 }
 
 enum TicketStatus {
@@ -2095,6 +2266,27 @@ model NotificationDevice {
   @@map("notification_devices")
 }
 
+/// Product tours a user finished or skipped, per device (same device id as
+/// NotificationDevice: a random id the browser keeps). A new device shows tours again.
+model TourProgress {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  deviceId  String   @map("device_id") @db.VarChar(64)
+  /// e.g. "welcome", "inbox", "campaigns"
+  tourId    String   @map("tour_id") @db.VarChar(64)
+  /// Tour content version: raising it in the app shows the tour again
+  version   Int      @default(1)
+  /// completed | skipped
+  status    String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, deviceId, tourId], name: "unique_user_device_tour")
+  @@index([userId, deviceId])
+  @@map("tour_progress")
+}
+
 // ─────────────────────────────────────────────
 // EPIC 12 — Settings & Configuration (System Control Layer)
 // ─────────────────────────────────────────────
@@ -2127,6 +2319,14 @@ enum WebhookEventType {
   MESSAGE_FAILED
   CONTACT_CREATED
   CONTACT_UPDATED
+  CONTACT_ASSIGNED
+  LEAD_STATUS_CHANGED
+  CONTACT_TAG_ADDED
+  CONTACT_TAG_REMOVED
+  CONTACT_NOTE_ADDED
+  CONVERSATION_ASSIGNED
+  CONVERSATION_CLOSED
+  DEAL_STAGE_CHANGED
   CAMPAIGN_COMPLETED
   CAMPAIGN_FAILED
   PAYMENT_SUCCEEDED
@@ -2375,6 +2575,8 @@ model MessageTemplate {
   id                  String   @id @default(uuid()) @db.Uuid
   orgId               String   @map("org_id") @db.Uuid
   channelId           String?  @map("channel_id") @db.Uuid
+  /// Synced from this official (Cloud API) number's WhatsApp Business Account
+  cloudSessionId      String?  @map("cloud_session_id") @db.Uuid
   name                String   @db.VarChar(255)
   language            String   @default("en") @db.VarChar(10)
   category            String?  @db.VarChar(50)
@@ -2393,6 +2595,7 @@ model MessageTemplate {
   @@index([orgId])
   @@index([orgId, status])
   @@index([channelId])
+  @@index([cloudSessionId])
   @@index([deletedAt])
   @@map("message_templates")
 }
@@ -2469,6 +2672,7 @@ enum ScrapeSource {
   FREELANCER_IN
   TRUELANCER
   LINKEDIN_JOBS
+  INDIAMART
 }
 
 model ScrapeRun {
@@ -3021,6 +3225,7 @@ model Deal {
   productId     String?       @map("product_id") @db.Uuid
   assignedTo    User?         @relation("DealAssignee", fields: [assignedToId], references: [id])
   product       Product?      @relation(fields: [productId], references: [id])
+  proposals     Proposal[]
 
   @@index([orgId])
   @@index([orgId, pipelineId])
@@ -3029,6 +3234,65 @@ model Deal {
   @@index([orgId, status])
   @@index([orgId, nextFollowUpAt])
   @@map("deals")
+}
+
+// ─────────────────────────────────────────────
+// PROPOSALS
+// ─────────────────────────────────────────────
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  CHANGES_REQUESTED
+}
+
+// A quote sent to a client: opened from a public link (publicToken), where the
+// client accepts or asks for changes. Expiry is read from validUntil, not stored.
+model Proposal {
+  id           String         @id @default(uuid()) @db.Uuid
+  orgId        String         @map("org_id") @db.Uuid
+  // Per-org running number, shown as P-0001
+  number       Int
+  contactId    String         @map("contact_id") @db.Uuid
+  dealId       String?        @map("deal_id") @db.Uuid
+  title        String         @db.VarChar(300)
+  intro        String?        @db.Text
+  // string[]: what's included
+  scope        Json           @default("[]") @db.JsonB
+  // [{ name, description?, quantity, unitPrice }]
+  items        Json           @default("[]") @db.JsonB
+  taxPercent   Decimal        @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  discount     Decimal        @default(0) @db.Decimal(15, 2)
+  // Kept in sync with items/tax/discount on every save
+  subtotal     Decimal        @default(0) @db.Decimal(15, 2)
+  total        Decimal        @default(0) @db.Decimal(15, 2)
+  currency     String         @db.VarChar(3)
+  terms        String?        @db.Text
+  validUntil   DateTime?      @map("valid_until")
+  status       ProposalStatus @default(DRAFT)
+  publicToken  String         @unique @map("public_token") @db.VarChar(64)
+  sentAt       DateTime?      @map("sent_at")
+  viewedAt     DateTime?      @map("viewed_at")
+  respondedAt  DateTime?      @map("responded_at")
+  // Client's note when asking for changes; name typed when accepting
+  responseNote String?        @map("response_note") @db.Text
+  acceptedBy   String?        @map("accepted_by") @db.VarChar(200)
+  createdById  String         @map("created_by_id") @db.Uuid
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  deletedAt    DateTime?      @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  contact      Contact      @relation(fields: [contactId], references: [id])
+  deal         Deal?        @relation(fields: [dealId], references: [id])
+
+  @@unique([orgId, number])
+  @@index([orgId, status])
+  @@index([orgId, contactId])
+  @@index([dealId])
+  @@map("proposals")
 }
 
 // ─────────────────────────────────────────────
@@ -3073,12 +3337,20 @@ model Product {
   imageUrl    String?       @map("image_url") @db.VarChar(2048)
   categoryId  String?       @map("category_id") @db.Uuid
   status      ProductStatus @default(ACTIVE)
+  /// The brand this product belongs to (null = no brand)
+  brandId     String?       @map("brand_id") @db.Uuid
+  /// People who handle this product's leads; new leads are shared round-robin between them
+  leadHandlerIds      String[] @default([]) @map("lead_handler_ids") @db.Uuid
+  /// Remind the lead's owner when nobody has contacted it after this many minutes
+  leadReminderMinutes Int      @default(30) @map("lead_reminder_minutes")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
   deletedAt   DateTime?     @map("deleted_at")
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   category          ProductCategory?   @relation(fields: [categoryId], references: [id])
+  brand             Brand?             @relation(fields: [brandId], references: [id])
+  leadFollowUps     LeadFollowUp[]
   contactProducts   ContactProduct[]
   deals             Deal[]
   csatSurveys       CsatSurvey[]
@@ -3089,7 +3361,64 @@ model Product {
 
   @@unique([orgId, name, deletedAt])
   @@index([orgId])
+  @@index([brandId])
   @@map("products")
+}
+
+/// A brand groups products, e.g. one builder with four projects
+model Brand {
+  id        String    @id @default(uuid()) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  name      String    @db.VarChar(120)
+  /// Gets the brand's end-of-day lead summary
+  managerId String?   @map("manager_id") @db.Uuid
+  /// Default WhatsApp number for the brand's welcomes (official or QR)
+  sessionId String?   @map("session_id") @db.Uuid
+  /// Local date (YYYY-MM-DD, org time zone) the manager last got the day-end summary
+  lastSummaryDate String? @map("last_summary_date") @db.VarChar(10)
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  products     Product[]
+
+  @@unique([orgId, name, deletedAt])
+  @@index([orgId])
+  @@map("brands")
+}
+
+/// One lead someone must contact: who has it, by when, and whether they did
+model LeadFollowUp {
+  id           String    @id @default(uuid()) @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  contactId    String    @map("contact_id") @db.Uuid
+  productId    String?   @map("product_id") @db.Uuid
+  /// The team member who must contact the lead
+  assigneeId   String    @map("assignee_id") @db.Uuid
+  /// LEAD_AD for Meta lead forms
+  source       String    @default("LEAD_AD") @db.VarChar(30)
+  leadgenId    String?   @map("leadgen_id") @db.VarChar(100)
+  /// Remind the assignee at this time if still not contacted
+  dueAt        DateTime  @map("due_at")
+  /// First time anyone contacted the lead (message, status change, or "Called")
+  touchedAt    DateTime? @map("touched_at")
+  touchedById  String?   @map("touched_by_id") @db.Uuid
+  /// MESSAGE | STATUS | CALLED
+  touchedVia   String?   @map("touched_via") @db.VarChar(20)
+  remindedAt   DateTime? @map("reminded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  contact Contact  @relation(fields: [contactId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@unique([orgId, leadgenId, productId])
+  @@index([orgId, assigneeId, touchedAt])
+  @@index([contactId, touchedAt])
+  @@index([dueAt])
+  @@map("lead_follow_ups")
 }
 
 model ContactProduct {
@@ -3162,22 +3491,176 @@ model WidgetSession {
   pageUrl       String?  @map("page_url") @db.VarChar(2048)
   userAgent     String?  @map("user_agent") @db.VarChar(512)
   status        String   @default("open") @db.VarChar(20) // open | closed
+  /// Who is answering: AI | WAITING (asked for a person) | PERSON | ENDED
+  state         String   @default("AI") @db.VarChar(10)
+  /// The team member handling the chat (after accept / auto-assign)
+  assignedToId  String?  @map("assigned_to_id") @db.Uuid
+  handoffRequestedAt DateTime? @map("handoff_requested_at")
+  /// ASKED_FOR_PERSON | UNANSWERED | BUTTON
+  handoffReason String?  @map("handoff_reason") @db.VarChar(20)
+  acceptedAt    DateTime? @map("accepted_at")
+  /// AI questions in a row it couldn't answer (2 → hand over)
+  botMissStreak Int      @default(0) @map("bot_miss_streak")
+  /// Visitor agreed to be contacted: WHATSAPP | EMAIL
+  consentChannel String? @map("consent_channel") @db.VarChar(10)
+  consentAt     DateTime? @map("consent_at")
+  /// Contact created (or found) from this chat — only with consent or a member's "Save as lead"
+  contactId     String?  @map("contact_id") @db.Uuid
+  /// A new contact was saved from this chat: its welcome ("contact created" automations) waits until the chat ends
+  welcomePending Boolean @default(false) @map("welcome_pending")
+  welcomeAt     DateTime? @map("welcome_at")
+  /// LEAD | NOT_LEAD, chosen by the member who handled the chat
+  leadDecision  String?  @map("lead_decision") @db.VarChar(10)
+  endedAt       DateTime? @map("ended_at")
+  /// CONSENT | MEMBER | VISITOR | ...
+  endReason     String?  @map("end_reason") @db.VarChar(20)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   organization Organization   @relation(fields: [orgId], references: [id])
   messages     WidgetMessage[]
+  events       WidgetChatEvent[]
+  offers       WidgetHandoffOffer[]
 
   @@unique([orgId, visitorId], name: "unique_visitor_per_org")
   @@index([orgId])
+  @@index([orgId, state])
+  @@index([assignedToId])
   @@map("widget_sessions")
+}
+
+/// Everything that happened in a website chat, in order: nothing is left out
+model WidgetChatEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  /// e.g. AI_ANSWERED, AI_NOT_FOUND, HANDOFF_REQUESTED, TEAM_NOTIFIED, OFFERED, DECLINED, ACCEPTED,
+  /// OFFER_EXPIRED, NO_ONE_AVAILABLE, CONSENT_GIVEN, CONTACT_CREATED, LEAD_SAVED, ENDED, SEND_FAILED
+  type      String   @db.VarChar(30)
+  /// visitor | ai | user | system
+  actorType String   @map("actor_type") @db.VarChar(10)
+  actorId   String?  @map("actor_id") @db.Uuid
+  data      Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session WidgetSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, createdAt])
+  @@index([orgId, createdAt])
+  @@index([orgId, type])
+  @@map("widget_chat_events")
+}
+
+// ─────────────────────────────────────────────
+// Email: the workspace's own mailbox (SMTP), templates, and every email sent
+// ─────────────────────────────────────────────
+
+/// The workspace's business email, connected over SMTP. One per workspace.
+model EmailAccount {
+  id                String    @id @default(uuid()) @db.Uuid
+  orgId             String    @unique @map("org_id") @db.Uuid
+  /// GMAIL | OUTLOOK | ZOHO | CUSTOM (fills the server details in the setup form)
+  provider          String    @default("CUSTOM") @db.VarChar(10)
+  host              String    @db.VarChar(255)
+  port              Int       @default(587)
+  /// true = TLS from the start (port 465); false = STARTTLS (587)
+  secure            Boolean   @default(false)
+  username          String    @db.VarChar(320)
+  /// AES-256-GCM, never returned by the API
+  encryptedPassword String    @map("encrypted_password") @db.Text
+  fromName          String    @map("from_name") @db.VarChar(255)
+  fromAddress       String    @map("from_address") @db.VarChar(320)
+  replyTo           String?   @map("reply_to") @db.VarChar(320)
+  /// UNVERIFIED | ACTIVE | ERROR
+  status            String    @default("UNVERIFIED") @db.VarChar(12)
+  lastError         String?   @map("last_error") @db.VarChar(500)
+  verifiedAt        DateTime? @map("verified_at")
+  /// Mail providers cap sending per day (Gmail ~500): sending stops here, nothing gets the account blocked
+  dailyLimit        Int       @default(300) @map("daily_limit")
+  sentToday         Int       @default(0) @map("sent_today")
+  /// The day sentToday counts (UTC date)
+  sentDay           DateTime? @map("sent_day") @db.Date
+  createdById       String    @map("created_by_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_accounts")
+}
+
+/// A reusable email: subject + message with {{name}} style fields
+model EmailTemplate {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  subject     String    @db.VarChar(255)
+  /// Plain text with blank lines between paragraphs; links are made clickable
+  body        String    @db.Text
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([orgId, deletedAt])
+  @@map("email_templates")
+}
+
+/// Every email the workspace sends, and what happened to it
+model EmailMessage {
+  id                String    @id @default(uuid()) @db.Uuid
+  orgId             String    @map("org_id") @db.Uuid
+  contactId         String?   @map("contact_id") @db.Uuid
+  toAddress         String    @map("to_address") @db.VarChar(320)
+  subject           String    @db.VarChar(255)
+  body              String    @db.Text
+  /// QUEUED | SENT | FAILED | SKIPPED (opted out, no email, limit reached …)
+  status            String    @default("QUEUED") @db.VarChar(10)
+  error             String?   @db.VarChar(500)
+  /// CAMPAIGN | AUTOMATION | SEQUENCE | TEST
+  source            String    @db.VarChar(12)
+  /// The campaign / rule / sequence step it came from
+  sourceId          String?   @map("source_id") @db.Uuid
+  providerMessageId String?   @map("provider_message_id") @db.VarChar(255)
+  attempts          Int       @default(0)
+  /// One email per (source, recipient): a retried job never sends twice
+  idempotencyKey    String    @unique @map("idempotency_key") @db.VarChar(255)
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([orgId, createdAt])
+  @@index([orgId, status])
+  @@index([source, sourceId])
+  @@index([contactId])
+  @@map("email_messages")
+}
+
+/// A website chat offered to a team member: they accept or decline (or it times out)
+model WidgetHandoffOffer {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  sessionId   String    @map("session_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  /// OFFERED | ACCEPTED | DECLINED | EXPIRED | CANCELLED (someone else took it / chat ended)
+  status      String    @default("OFFERED") @db.VarChar(10)
+  offeredAt   DateTime  @default(now()) @map("offered_at")
+  expiresAt   DateTime? @map("expires_at")
+  respondedAt DateTime? @map("responded_at")
+
+  session WidgetSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, status])
+  @@index([userId, status])
+  @@index([orgId, status])
+  @@map("widget_handoff_offers")
 }
 
 model WidgetMessage {
   id        String   @id @default(uuid()) @db.Uuid
   sessionId String   @map("session_id") @db.Uuid
   orgId     String   @map("org_id") @db.Uuid
-  sender    String   @db.VarChar(10) // "visitor" | "agent"
+  sender    String   @db.VarChar(10) // "visitor" | "agent" | "bot" | "system"
+  /// The team member who wrote it (sender "agent")
+  senderUserId String? @map("sender_user_id") @db.Uuid
   body      String   @db.VarChar(4096)
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -3314,6 +3797,11 @@ model KbDocument {
   fileSize      Int       @map("file_size")
   extractedText String?   @map("extracted_text") @db.Text
   status        String    @default("PROCESSING") @db.VarChar(20) // PROCESSING, READY, FAILED
+  // UPLOAD (file), WEBSITE (crawled page), TEXT (pasted)
+  sourceType    String    @default("UPLOAD") @map("source_type") @db.VarChar(20)
+  // WEBSITE: the crawl this page came from, and the page's URL
+  sourceId      String?   @map("source_id") @db.Uuid
+  sourceUrl     String?   @map("source_url") @db.Text
   uploadedById  String    @map("uploaded_by_id") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -3321,11 +3809,166 @@ model KbDocument {
 
   organization Organization @relation(fields: [orgId], references: [id])
   uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  source       KbSource?    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  chunks       KbChunk[]
 
   @@index([orgId])
   @@index([orgId, flowId])
   @@index([orgId, status])
+  @@index([sourceId])
   @@map("kb_documents")
+}
+
+// A question customers asked that the bot couldn't answer from the knowledge base.
+// Repeats of the same question bump `count`; answering it publishes a FAQ.
+model KbMiss {
+  id                 String    @id @default(uuid()) @db.Uuid
+  orgId              String    @map("org_id") @db.Uuid
+  question           String    @db.Text
+  // Normalised question (lowercase, letters/digits only) used to group repeats
+  questionKey        String    @map("question_key") @db.VarChar(300)
+  count              Int       @default(1)
+  // WHATSAPP or WIDGET: where it was last asked
+  channel            String    @db.VarChar(20)
+  lastConversationId String?   @map("last_conversation_id") @db.Uuid
+  lastAskedAt        DateTime  @default(now()) @map("last_asked_at")
+  // Answered (became a FAQ) or dismissed; asked again after that reopens it
+  resolvedAt         DateTime? @map("resolved_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, questionKey])
+  @@index([orgId, resolvedAt])
+  @@map("kb_misses")
+}
+
+enum AiReplyOutcome {
+  // The bot replied from knowledge or the conversation
+  ANSWERED
+  // Not in the knowledge: the polite "I'll check with the team" reply
+  NOT_FOUND
+  // The reply check stopped the AI's reply (likely a prompt injection)
+  BLOCKED
+  // The chat went to a person (asked for one, or kept missing)
+  HANDED_OFF
+  // Over an AI reply limit (widget visitor / IP / org, or chat per day)
+  LIMITED
+  // No AI on the plan, switched off, or out of credits
+  NO_CREDITS
+  // The AI call failed or returned nothing
+  FAILED
+}
+
+/// One row per automatic bot decision (WhatsApp chatbot or website widget): what the
+/// bot did and what it cost. Never the message text. Feeds the bot health and
+/// suspicious-messages cards, and lets a complaint be traced. Append-only log.
+model AiReplyLog {
+  id              String         @id @default(uuid()) @db.Uuid
+  orgId           String         @map("org_id") @db.Uuid
+  /// WHATSAPP or WIDGET
+  channel         String         @db.VarChar(20)
+  conversationId  String?        @map("conversation_id") @db.Uuid
+  widgetSessionId String?        @map("widget_session_id") @db.Uuid
+  flowId          String?        @map("flow_id") @db.Uuid
+  outcome         AiReplyOutcome
+  /// Why: e.g. UNKNOWN_LINK, PROMPT_LEAK, ASKED_FOR_PERSON, UNANSWERED, chat, session, ip
+  reason          String?        @db.VarChar(40)
+  model           String?        @db.VarChar(100)
+  tokens          Int?
+  /// AI credits were charged for this reply
+  charged         Boolean        @default(false)
+  /// Knowledge passages the answer cited
+  sourcesUsed     Int            @default(0) @map("sources_used")
+  confidence      Float?
+  latencyMs       Int?           @map("latency_ms")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([orgId, outcome, createdAt])
+  @@map("ai_reply_logs")
+}
+
+// How the org's AI bot hands chats over to people, and its opening hours.
+model BotSettings {
+  id                String   @id @default(uuid()) @db.Uuid
+  orgId             String   @unique @map("org_id") @db.Uuid
+  // Sent when the bot hands over (customer asked for a person / 2 unanswered in a row)
+  handoffMessage    String   @default("Thanks! Someone from our team will reply to you here shortly.") @map("handoff_message") @db.VarChar(500)
+  // Hours in the org's timezone, as minutes from midnight; days 0 = Sunday … 6 = Saturday
+  hoursEnabled      Boolean  @default(false) @map("hours_enabled")
+  openMinute        Int      @default(540) @map("open_minute")
+  closeMinute       Int      @default(1200) @map("close_minute")
+  openDays          Int[]    @default([1, 2, 3, 4, 5, 6]) @map("open_days")
+  // Sent instead of the handoff message when the team is closed
+  afterHoursMessage String   @default("Thanks! Our team is offline right now and will reply when we're back.") @map("after_hours_message") @db.VarChar(500)
+  // How long the bot stays quiet in a chat after a person replies or it hands over
+  pauseHours        Int      @default(24) @map("pause_hours")
+  // Website chat handover: MANUAL = everyone online is alerted, first to accept takes it;
+  // AUTO = offered to one online member at a time, next one after acceptTimeoutSec
+  handoffMode       String   @default("MANUAL") @map("handoff_mode") @db.VarChar(10)
+  acceptTimeoutSec  Int      @default(120) @map("accept_timeout_sec")
+  // Nobody took the chat within this: the visitor is offered a WhatsApp/email follow-up
+  waitTimeoutMin    Int      @default(5) @map("wait_timeout_min")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("bot_settings")
+}
+
+// A website the org gave us to learn from. Crawled into KbDocuments (one per page).
+model KbSource {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  type        String    @default("WEBSITE") @db.VarChar(20)
+  url         String    @db.Text
+  // QUEUED, CRAWLING, READY, FAILED
+  status      String    @default("QUEUED") @db.VarChar(20)
+  pagesFound  Int       @default(0) @map("pages_found")
+  pagesDone   Int       @default(0) @map("pages_done")
+  error       String?   @db.VarChar(500)
+  lastSyncedAt DateTime? @map("last_synced_at")
+  // Read the site again every week (charges kb_build each time)
+  autoResync  Boolean   @default(false) @map("auto_resync")
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  documents    KbDocument[]
+
+  @@index([orgId])
+  @@map("kb_sources")
+}
+
+// Searchable passages of documents and articles. `search` is a generated tsvector
+// column (Postgres full-text, 'simple' config so any language works) queried raw.
+model KbChunk {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  documentId String?  @map("document_id") @db.Uuid
+  articleId  String?  @map("article_id") @db.Uuid
+  position   Int      @default(0)
+  // Page/article title, kept with the passage for context in AI prompts
+  title      String?  @db.VarChar(500)
+  content    String   @db.Text
+  search     Unsupported("tsvector")?
+  /// Meaning vector (pgvector) for search by meaning; filled by KbEmbeddingWorker
+  embedding  Unsupported("vector(768)")?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  document     KbDocument?  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([documentId])
+  @@index([articleId])
+  @@map("kb_chunks")
 }
 
 // ─────────────────────────────────────────────
@@ -3571,6 +4214,8 @@ enum PlatformAuditAction {
   COUPON_CREATED
   COUPON_DEACTIVATED
   PLATFORM_SETTING_CHANGED
+  AI_CREDIT_PACK_CREATED
+  AI_CREDIT_PACK_UPDATED
 }
 
 // ─────────────────────────────────────────────
@@ -3602,6 +4247,36 @@ model PlatformSetting {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("platform_settings")
+}
+
+/// A freelancer line of work that isn't built in, saved the first time someone
+/// types it under "Something else" (AI writes its pitch templates once). Shared by
+/// all orgs: the next person with the same service reuses it, and it shows as a
+/// setup card. Platform data like PlatformSetting, so no org_id.
+model FreelancerServiceProfile {
+  id             String    @id @default(uuid()) @db.Uuid
+  /// Stored in Organization.freelancerTypes, e.g. INTERIOR_DESIGN (max 30 chars, like the column)
+  key            String    @unique @db.VarChar(30)
+  /// Card title, e.g. "Interior Designer"
+  label          String    @db.VarChar(60)
+  /// Card subtitle
+  description    String    @db.VarChar(120)
+  /// Fills {{lead.service}}, e.g. "interior design"
+  serviceLabel   String    @map("service_label") @db.VarChar(120)
+  /// { intro, portfolio, followup, packages } template bodies
+  pitch          Json      @db.JsonB
+  /// Normalised texts people typed that mean this service
+  aliases        String[]  @default([])
+  /// A super admin can hide a card (orgs that have it keep their templates)
+  isActive       Boolean   @default(true) @map("is_active")
+  usageCount     Int       @default(1) @map("usage_count")
+  /// Org whose setup created it; no FK
+  createdByOrgId String?   @map("created_by_org_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  @@map("freelancer_service_profiles")
 }
 
 // ─────────────────────────────────────────────
@@ -3855,6 +4530,67 @@ model OrgCreditEntry {
   @@index([orgId, createdAt])
   @@index([invoiceId])
   @@map("org_credit_entries")
+}
+
+// ─────────────────────────────────────────────
+// AI CREDITS (on top of the plan's monthly aiCreditsPerMonth)
+// Packs are priced by a super admin and bought by orgs. Purchased credits never
+// expire and are spent only after the month's plan credits run out.
+// ─────────────────────────────────────────────
+
+model AiCreditPack {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  credits      Int
+  priceInCents Int      @map("price_in_cents")
+  currency     String   @db.VarChar(3)
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([currency, isActive])
+  @@map("ai_credit_packs")
+}
+
+// Purchased credits left. Kept in step with AiCreditEntry.purchasedCredits.
+model OrgAiCreditBalance {
+  orgId     String   @id @map("org_id") @db.Uuid
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_ai_credit_balances")
+}
+
+enum AiCreditEntryKind {
+  PURCHASE
+  USAGE
+}
+
+// Append-only: one row per pack bought and per AI action charged
+model AiCreditEntry {
+  id               String            @id @default(uuid()) @db.Uuid
+  orgId            String            @map("org_id") @db.Uuid
+  kind             AiCreditEntryKind
+  // USAGE: the AI action (smart_reply, chatbot_reply, ...)
+  action           String?           @db.VarChar(50)
+  // USAGE: credits taken from the month's plan allowance
+  planCredits      Int               @default(0) @map("plan_credits")
+  // Signed change to the purchased balance: + PURCHASE, − USAGE
+  purchasedCredits Int               @default(0) @map("purchased_credits")
+  packId           String?           @map("pack_id") @db.Uuid
+  paymentId        String?           @map("payment_id") @db.Uuid
+  // PURCHASE: one entry per Razorpay order, whether verify or the webhook lands first
+  idempotencyKey   String?           @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([createdAt])
+  @@map("ai_credit_entries")
 }
 
 // ─────────────────────────────────────────────

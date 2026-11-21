@@ -1,6 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws";
+import { WS_URL } from "@/lib/env-urls";
 
 let socket: Socket | null = null;
 
@@ -29,6 +29,14 @@ export function getSocket(accessToken: string): Socket {
   });
 
   return socket;
+}
+
+/**
+ * Reconnects the shared socket if it gave up (it stops after 10 attempts).
+ * Called when the network comes back or the installed app returns to the foreground.
+ */
+export function reconnectSocketIfNeeded(): void {
+  if (socket && !socket.connected) socket.connect();
 }
 
 export function disconnectSocket(): void {

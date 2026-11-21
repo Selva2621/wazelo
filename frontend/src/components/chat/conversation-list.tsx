@@ -35,6 +35,12 @@ function ConversationRowSkeleton() {
   );
 }
 
+const channelChip =
+  "inline-flex h-8 items-center rounded-full border px-3 text-label font-medium transition-colors duration-180 ease-standard outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface";
+const channelChipActive = "border-transparent bg-on-surface text-surface";
+const channelChipIdle =
+  "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-outline hover:text-on-surface";
+
 const filterTabs: TabItem[] = [
   { id: "all", label: "All" },
   { id: "unread", label: "Unread" },
@@ -72,11 +78,11 @@ export function ConversationList({
   const showChannelFilters = availableChannelTypes && availableChannelTypes.length > 1;
 
   return (
-    <div className="flex h-full flex-col bg-surface-container-lowest">
-      {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-2 space-y-3">
-        <h2 className="text-title-sm font-semibold text-on-surface">Inbox</h2>
+    <div className="flex h-full flex-col bg-surface-container-lowest max-lg:bg-surface">
+      {/* No "Inbox" heading: the header bar (desktop) and nav bar (mobile) already say it */}
+      <div className="shrink-0 px-4 pt-4 pb-2 space-y-3 max-lg:pt-1">
         <SearchInput
+          data-tour="chat-search"
           placeholder="Search conversations..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -85,30 +91,24 @@ export function ConversationList({
         {/* Channel filter pills */}
         {showChannelFilters && onChannelFilterChange && (
           <div className="flex items-center gap-1.5">
+            {/* Icon-only chips styled like the shared Tabs pills (Tabs takes text labels only) */}
             <button
+              type="button"
               onClick={() => onChannelFilterChange("all")}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-caption font-medium transition-colors",
-                channelFilter === "all"
-                  ? "bg-primary/15 text-primary"
-                  : "text-on-surface-variant hover:bg-surface-container",
-              )}
+              aria-pressed={channelFilter === "all"}
+              className={cn(channelChip, channelFilter === "all" ? channelChipActive : channelChipIdle)}
             >
               All
             </button>
             {availableChannelTypes.map((type) => (
               <button
                 key={type}
+                type="button"
                 onClick={() => onChannelFilterChange(type)}
                 title={CHANNEL_TYPE_LABELS[type]}
                 aria-label={CHANNEL_TYPE_LABELS[type]}
                 aria-pressed={channelFilter === type}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium transition-colors",
-                  channelFilter === type
-                    ? "bg-primary/15 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container",
-                )}
+                className={cn(channelChip, channelFilter === type ? channelChipActive : channelChipIdle)}
               >
                 <ChannelIcon type={type} className="h-3 w-3" />
               </button>
@@ -116,15 +116,18 @@ export function ConversationList({
           </div>
         )}
 
-        <Tabs
-          tabs={filterTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        {/* Plain block wrapper only so the product tour can point at the tabs (Tabs takes no extra props) */}
+        <div data-tour="chat-filters">
+          <Tabs
+            tabs={filterTabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        </div>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 max-lg:px-0 max-lg:space-y-0">
         {isLoading ? (
           <div aria-busy="true" aria-label="Loading conversations">
             {Array.from({ length: 7 }, (_, i) => (

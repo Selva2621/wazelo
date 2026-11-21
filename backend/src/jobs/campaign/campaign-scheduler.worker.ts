@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
+import { CampaignBatchDispatcher } from '@/modules/campaigns/application/services/campaign-batch-dispatcher.service';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
 import {
   QUEUE_NAMES,
@@ -25,6 +26,7 @@ export class CampaignSchedulerWorker implements OnModuleInit {
     private readonly queueService: QueueService,
     private readonly campaignRepo: CampaignRepository,
     private readonly killSwitches: KillSwitchService,
+    private readonly batchDispatcher: CampaignBatchDispatcher,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -63,40 +65,57 @@ export class CampaignSchedulerWorker implements OnModuleInit {
       const now = new Date();
       const campaigns = await this.campaignRepo.findScheduledCampaigns(now);
 
-      if (campaigns.length === 0) {
-        // Re-schedule next check
-        await this.scheduleNextCheck();
-        return;
-      }
+      if (campaigns.length > 0) {
+        this.logger.log(`Found ${campaigns.length} scheduled campaign(s) due for execution`);
 
-      this.logger.log(`Found ${campaigns.length} scheduled campaign(s) due for execution`);
+        for (const campaign of campaigns) {
+          try {
+            // Publish execution job — let the executor handle status transition
+            // Using publishOnce to prevent duplicate execution
+            await this.queueService.publishOnce(
+              QUEUE_NAMES.CAMPAIGN_EXECUTE,
+              {
+                campaignId: campaign.id,
+                orgId: campaign.orgId,
+                sessionId: campaign.sessionId,
+                scheduled: true,
+              },
+              `campaign-exec-${campaign.id}`,
+            );
 
-      for (const campaign of campaigns) {
-        try {
-          // Publish execution job — let the executor handle status transition
-          // Using publishOnce to prevent duplicate execution
-          await this.queueService.publishOnce(
-            QUEUE_NAMES.CAMPAIGN_EXECUTE,
-            {
-              campaignId: campaign.id,
-              orgId: campaign.orgId,
-              sessionId: campaign.sessionId,
-              scheduled: true,
-            },
-            `campaign-exec-${campaign.id}`,
-          );
-
-          this.logger.log(`Campaign ${campaign.id} triggered by scheduler safety net`);
-        } catch (error) {
-          this.logger.error(
-            `Failed to trigger campaign ${campaign.id}:`,
-            error instanceof Error ? error.stack : String(error),
-          );
+            this.logger.log(`Campaign ${campaign.id} triggered by scheduler safety net`);
+          } catch (error) {
+            this.logger.error(
+              `Failed to trigger campaign ${campaign.id}:`,
+              error instanceof Error ? error.stack : String(error),
+            );
+          }
         }
       }
+
+      await this.recoverRunningCampaigns();
     } finally {
       // Always re-schedule next check
       await this.scheduleNextCheck();
+    }
+  }
+
+  private async recoverRunningCampaigns(): Promise<void> {
+    const campaigns = await this.campaignRepo.findRunningCampaigns();
+
+    for (const campaign of campaigns) {
+      try {
+        // Repair recipients stuck QUEUED, then (re)start only batches that should be
+        // sending: one per number with PENDING work and nothing in flight. Batches
+        // waiting on a held message are left alone, so this is a no-op when healthy.
+        await this.batchDispatcher.repairStuckRecipients(campaign.id, campaign.orgId);
+        await this.batchDispatcher.dispatch(campaign.id, campaign.orgId, campaign.channel);
+      } catch (error) {
+        this.logger.error(
+          `Failed to recover pending batches for campaign ${campaign.id}:`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }
   }
 }

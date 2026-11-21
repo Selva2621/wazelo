@@ -1,9 +1,12 @@
+import type { RecordWhatsAppPermissionRequest } from "./contacts";
+
 export type ScrapeSource =
   | "GOOGLE_MAPS"
   | "UPWORK_JOBS"
   | "FREELANCER_IN"
   | "TRUELANCER"
-  | "LINKEDIN_JOBS";
+  | "LINKEDIN_JOBS"
+  | "INDIAMART";
 
 export type ScrapeRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
@@ -12,6 +15,8 @@ export type WebsiteIssue = "noSsl" | "notMobile" | "noPixel" | "noAnalytics";
 /** Chosen before a scrape. Mirrors the backend LeadFiltersDto. */
 export interface LeadFilters {
   // All sources
+  /** ISO country searched in — phones without a country code get its code. Not a filter. */
+  country?: string;
   newOnly?: boolean;
   skipExistingContacts?: boolean;
   // Google Maps
@@ -58,6 +63,15 @@ export interface ScrapeResultDetails {
   lng?: number;
   lastReviewAt?: string;
   site?: { https: boolean; mobileFriendly: boolean; hasPixel: boolean; hasAnalytics: boolean };
+  /** E.164 number from a WhatsApp chat link on the business's website */
+  websiteWhatsapp?: string;
+  // IndiaMART
+  yearsListed?: number;
+  trustSeal?: boolean;
+  responseRate?: number;
+  product?: string;
+  /** Google Maps place an IndiaMART supplier's phone came from */
+  mapsUrl?: string;
   budgetMin?: number;
   budgetMax?: number;
   budgetType?: "fixed" | "hourly";
@@ -125,6 +139,10 @@ export interface ScrapeResult {
   sourceUrl: string;
   imported: boolean;
   contactId?: string;
+  /** A contact already has this number (here or from anywhere else) */
+  existingContactId?: string | null;
+  /** When an earlier run first found this lead — null if it's new */
+  seenBeforeAt?: string | null;
   createdAt: string;
 }
 
@@ -155,6 +173,8 @@ export interface ScrapeResultsResponse {
 
 export interface ImportScrapeResultsRequest {
   resultIds?: string[]; // empty = import all
+  /** Set when the leads agreed to WhatsApp messages: recorded for every imported lead */
+  whatsappPermission?: RecordWhatsAppPermissionRequest;
 }
 
 export interface ImportScrapeResultsResponse {
@@ -162,4 +182,8 @@ export interface ImportScrapeResultsResponse {
   skipped: number;
   /** Results without a phone number — not imported; bid via their job link */
   noPhone: number;
+  /** Results that hit an error while importing (try again) */
+  failed?: number;
+  /** Imported leads WhatsApp permission was recorded for (0 when not asked) */
+  permissionRecorded?: number;
 }

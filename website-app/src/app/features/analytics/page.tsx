@@ -1,35 +1,20 @@
-import type { Metadata } from "next";
 import AnalyticsClient from "./client";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "WhatsApp CRM Analytics Dashboard",
-  description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
-  keywords: [
-    "WhatsApp analytics", "WhatsApp CRM dashboard", "WhatsApp response time tracking",
-    "WhatsApp agent performance", "WhatsApp CSAT analytics",
-    "WhatsApp business analytics", "WhatsApp message delivery analytics",
-    "WhatsApp team performance report", "WhatsApp conversation analytics",
-    "WhatsApp CRM reporting", "WhatsApp insights dashboard",
-    "WhatsApp agent leaderboard", "WhatsApp resolution rate",
-    "WhatsApp read rate analytics", "WhatsApp reply rate tracking",
-    "WhatsApp customer service analytics", "WhatsApp KPI dashboard",
-    "WhatsApp business intelligence", "WhatsApp metrics India",
-    "WhatsApp CRM reports India",
-  ],
-  alternates: { canonical: "https://wazelo.in/features/analytics" },
-  openGraph: {
-    title: "WhatsApp CRM Analytics Dashboard | Wazelo CRM",
-    description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
-    url: "https://wazelo.in/features/analytics",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "WhatsApp CRM Analytics Dashboard | Wazelo CRM",
-    description: "WhatsApp analytics for your team: messages, response time, delivery and conversion rate, plus peak hours and per-agent performance for managers.",
-  },
+const seo = {
+  path: "/features/analytics",
+  title: "WhatsApp Team Analytics & Response-Time Reports",
+  description: "See response times, delivery rates, agent performance and CSAT scores across every WhatsApp conversation, in reports your whole team can read.",
 };
 
+export const metadata = pageMetadata(seo);
+
 export default function Page() {
-  return <AnalyticsClient />;
+  return (
+    <>
+      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Analytics", path: seo.path }])]} />
+      <AnalyticsClient />
+    </>
+  );
 }

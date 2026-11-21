@@ -1,5 +1,10 @@
 import apiClient from "./client";
-import type { SmartRepliesResponse, ConversationSummary } from "@/lib/types/ai";
+import type {
+  SmartRepliesResponse,
+  SmartReplyOptions,
+  ConversationSummary,
+  ReadChatResult,
+} from "@/lib/types/ai";
 
 export interface SentimentResult {
   sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "URGENT";
@@ -62,8 +67,20 @@ export interface DealScoreResult {
 }
 
 export const aiApi = {
-  getSmartReplies: (conversationId: string) =>
-    apiClient.get<SmartRepliesResponse>(`/ai/smart-replies/${conversationId}`).then((r) => r.data),
+  /** Free: the saved read of a chat and whether the customer has written since */
+  peekChat: (conversationId: string) =>
+    apiClient.get<ReadChatResult>(`/ai/read-chat/${conversationId}`).then((r) => r.data),
+
+  /** One AI call (1 credit); free when the saved read is still current */
+  readChat: (conversationId: string) =>
+    apiClient.post<ReadChatResult>(`/ai/read-chat/${conversationId}`).then((r) => r.data),
+
+  getSmartReplies: (conversationId: string, options: SmartReplyOptions = {}) =>
+    apiClient
+      .get<SmartRepliesResponse>(`/ai/smart-replies/${conversationId}`, {
+        params: { tone: options.tone, goal: options.goal?.trim() || undefined },
+      })
+      .then((r) => r.data),
 
   summarize: (conversationId: string) =>
     apiClient.post<ConversationSummary>(`/ai/summarize/${conversationId}`).then((r) => r.data),
@@ -74,8 +91,14 @@ export const aiApi = {
   getCategorization: (conversationId: string) =>
     apiClient.get<CategorizationResult>(`/ai/categorize/${conversationId}`).then((r) => r.data),
 
-  applyCategorization: (conversationId: string) =>
-    apiClient.post<CategorizationResult>(`/ai/categorize/${conversationId}/apply`).then((r) => r.data),
+  /** Saves the shown tags (and language/intent/priority) onto the chat's contact. Free: no AI call. */
+  saveTagsToContact: (
+    conversationId: string,
+    body: { labels: string[]; language?: string; intent?: string; priority?: CategorizationResult["priority"] },
+  ) =>
+    apiClient
+      .post<{ added: string[]; alreadyHad: string[] }>(`/ai/categorize/${conversationId}/apply`, body)
+      .then((r) => r.data),
 
   kbSearch: (query: string) =>
     apiClient.get<KbRagResult>(`/ai/kb-search`, { params: { q: query } }).then((r) => r.data),

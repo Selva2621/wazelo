@@ -2,12 +2,29 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '@/modules/ai/domain/services/ai-provider.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
+import { AiCreditsService } from '@/modules/billing/domain/services/ai-credits.service';
+import { AiAction } from '@/modules/billing/domain/services/ai-actions';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
+import { KbAnswerService } from '@/modules/ai/application/services/kb-answer.service';
 import { ChatbotRepository } from '../../infrastructure/repositories/chatbot.repository';
 import { KbRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb.repository';
 import { DocumentProcessorService } from '@/modules/knowledge-base/domain/services/document-processor.service';
 import { OutboundMessageService } from '@/modules/messages/application/services/outbound-message.service';
 import { EVENT_NAMES } from '@/common/constants';
 import { ChatbotSessionStatus } from '@prisma/client';
+import { KbMissRepository } from '@/modules/knowledge-base/infrastructure/repositories/kb-miss.repository';
+import { BotBehaviorService, HandoffReason } from '../services/bot-behavior.service';
+import { wantsHuman } from '../../domain/services/handoff-intent';
+import { sanitizePromptInput, UNTRUSTED_DATA_RULE, wrapUntrusted } from '@/common/utils/prompt-sanitizer.util';
+import { checkReply } from '@/modules/ai/domain/services/reply-guard';
+import { AiReplyLimiterService, AI_REPLY_LIMITS } from '@/modules/ai/domain/services/ai-reply-limiter.service';
+import { AuditService } from '@/modules/audit/domain/services/audit.service';
+import { AiReplyOutcome, AuditAction } from '@prisma/client';
+import { AiReplyTrailService } from '@/modules/ai/application/services/ai-reply-trail.service';
+import { OrgContextService } from '@/modules/ai/domain/services/org-context.service';
+
+import { defaultBotPrompt, defaultReplyStepPrompt } from '../../domain/services/default-bot-prompt';
 
 interface FlowNode {
   id: string;
@@ -17,6 +34,20 @@ interface FlowNode {
 }
 
 const MAX_NODE_DEPTH = 20;
+/** A chat quiet this long counts as a new enquiry again (step-by-step "first message" flows restart) */
+const NEW_CHAT_QUIET_MS = 24 * 3_600_000;
+
+/** Safety stops in one chat within REPEAT_STOP_DAYS that pause the bot there for that long */
+const REPEAT_STOPS = 3;
+const REPEAT_STOP_DAYS = 7;
+
+/**
+ * The model's reply as the customer should see it: the transcript we send labels
+ * lines "Agent:" / "Customer:", and models often echo that label back.
+ */
+function cleanReply(text: string | undefined): string {
+  return (text ?? '').trim().replace(/^(agent|assistant|business)\s*:\s*/i, '').trim();
+}
 
 @Injectable()
 export class ExecuteChatbotFlowUseCase {
@@ -30,7 +61,36 @@ export class ExecuteChatbotFlowUseCase {
     private readonly aiProvider: AiProviderService,
     private readonly outboundMessage: OutboundMessageService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly usageTracking: UsageTrackingService,
+    private readonly aiCredits: AiCreditsService,
+    private readonly messageCrypto: MessageEncryptionService,
+    private readonly kbAnswer: KbAnswerService,
+    private readonly kbMisses: KbMissRepository,
+    private readonly botBehavior: BotBehaviorService,
+    private readonly limiter: AiReplyLimiterService,
+    private readonly audit: AuditService,
+    private readonly trail: AiReplyTrailService,
+    private readonly orgContext: OrgContextService,
   ) {}
+
+  /**
+   * Plan, super admin override and kill switch all decide — same check as the AI
+   * endpoints — and the org must have the AI credits for the action.
+   */
+  private async aiAllowed(orgId: string, action: AiAction): Promise<boolean> {
+    return (await this.usageTracking.isFeatureEnabled(orgId, 'ai')) && this.aiCredits.canAfford(orgId, action);
+  }
+
+  /**
+   * A new enquiry: nothing else in this chat (either way) in the last 24 hours besides
+   * the message that just came in. A reply to our campaign, or a link sent mid-chat, isn't one.
+   */
+  private async isNewChat(conversationId: string): Promise<boolean> {
+    const recent = await this.prisma.message.count({
+      where: { conversationId, deletedAt: null, createdAt: { gte: new Date(Date.now() - NEW_CHAT_QUIET_MS) } },
+    });
+    return recent <= 1;
+  }
 
   /**
    * Execute a chatbot flow for an incoming message.
@@ -52,8 +112,9 @@ export class ExecuteChatbotFlowUseCase {
     const session = await this.chatbotRepo.findActiveSession(orgId, conversationId);
 
     if (session) {
-      // Resume existing session
-      return this.resumeSession(session, payload);
+      // The message answers the running flow: handled, even when the flow just ends
+      await this.resumeSession(session, payload);
+      return { replied: true };
     }
 
     // 2. Find matching flow by trigger
@@ -63,11 +124,11 @@ export class ExecuteChatbotFlowUseCase {
       flow = await this.chatbotRepo.findActiveFlowByTrigger(orgId, 'BUTTON_REPLY', messageBody);
     }
     if (!flow) {
-      flow = await this.chatbotRepo.findActiveFlowByTrigger(orgId, 'FIRST_MESSAGE');
+      flow = await this.chatbotRepo.findFirstMessageFlow(orgId, await this.isNewChat(conversationId));
     }
 
     if (!flow) {
-      this.logger.debug(`No chatbot flow matched for org ${orgId}, message: "${messageBody}"`);
+      this.logger.debug(`No chatbot flow matched for org ${orgId} (conversation ${conversationId})`);
       return null;
     }
 
@@ -95,6 +156,8 @@ export class ExecuteChatbotFlowUseCase {
 
     // Execute the start node
     await this.executeNode(startNode, nodes, newSession.id, payload, 0);
+    // Tells the message pipeline the chatbot handled it, so automations don't reply too
+    return { replied: true };
   }
 
   /**
@@ -106,75 +169,119 @@ export class ExecuteChatbotFlowUseCase {
   ) {
     const { orgId, conversationId, contactPhone, sessionId, messageBody } = payload;
 
-    // Build conversation context from last 20 messages
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: { direction: true, body: true, type: true, createdAt: true },
-    });
-
-    const context = messages
-      .reverse()
-      .map((m) => `${m.direction === 'INBOUND' ? 'Customer' : 'Agent'}: ${m.body || `[${m.type}]`}`)
-      .join('\n');
-
-    // Build knowledge base context if enabled
-    let kbContext = '';
-    if (flow.useKnowledgeBase) {
-      try {
-        // Get ALL org documents (flow-linked + general)
-        const [flowDocs, allDocs] = await Promise.all([
-          this.kbRepo.findReadyDocuments(orgId, flow.id),
-          this.kbRepo.findReadyDocuments(orgId),
-        ]);
-
-        // Merge & deduplicate
-        const docsMap = new Map<string, { id: string; title: string; extractedText: string }>();
-        for (const d of [...flowDocs, ...allDocs]) {
-          if (d.extractedText) docsMap.set(d.id, { id: d.id, title: d.title, extractedText: d.extractedText });
-        }
-        const uniqueDocs = Array.from(docsMap.values());
-
-        if (uniqueDocs.length > 0) {
-          const relevantChunks = this.docProcessor.searchDocuments(uniqueDocs, messageBody, 5, 2000);
-
-          if (relevantChunks.length > 0) {
-            kbContext = '\n\n--- PRODUCT DOCUMENTATION ---\n' +
-              relevantChunks.map((c) => `[Document: ${c.title}]\n${c.content}`).join('\n\n---\n\n');
-          } else {
-            // No keyword match — send first 1500 chars of each doc as general context
-            kbContext = '\n\n--- PRODUCT DOCUMENTATION ---\n' +
-              uniqueDocs.slice(0, 3).map((d) => `[Document: ${d.title}]\n${d.extractedText.slice(0, 1500)}`).join('\n\n---\n\n');
-          }
-        }
-
-        // Also include KB articles
-        const articles = await this.kbRepo.searchPublicArticles(orgId, messageBody, 3);
-        if (articles.length > 0) {
-          kbContext += '\n\n--- KNOWLEDGE BASE ARTICLES ---\n' +
-            articles.map((a) => `[Article: ${a.title}]\n${a.body?.slice(0, 1000)}`).join('\n\n---\n\n');
-        }
-      } catch (error) {
-        this.logger.warn(`KB context fetch failed: ${error.message}`);
-      }
+    // Someone on the team is handling this chat (they replied, or the bot handed over)
+    if (await this.botBehavior.isPaused(conversationId, orgId)) {
+      this.logger.debug(`AI flow ${flow.id} quiet: conversation ${conversationId} is with the team`);
+      return null;
     }
 
-    const defaultSystemPrompt = `You are a helpful, professional customer support agent. You have access to product documentation that may cover multiple products.
+    // One trail row for whatever the bot decides below (no message text)
+    const done = this.trail.start({ orgId, channel: 'WHATSAPP', conversationId, flowId: flow.id });
 
-IMPORTANT RULES:
-- Identify which product the customer is asking about from their message.
-- Answer ONLY using information from the product documentation provided. Do not make up information.
-- If the documentation covers multiple products, use only the relevant product's information.
-- If you cannot find the answer in the documentation, say: "I don't have specific information about that. Let me connect you with a human agent who can help."
-- Keep responses concise (under 150 words), friendly, and professional.
-- If the customer hasn't specified a product and you have docs for multiple products, ask which product they need help with.`;
+    // Customer asked for a person: hand over (no AI needed, so no credits)
+    if (wantsHuman(messageBody)) {
+      done({ outcome: AiReplyOutcome.HANDED_OFF, reason: 'ASKED_FOR_PERSON' });
+      return this.handOff(orgId, conversationId, contactPhone, sessionId, 'ASKED_FOR_PERSON');
+    }
 
-    const systemPrompt = flow.aiSystemPrompt || defaultSystemPrompt;
+    // No AI on the plan, switched off, or out of credits: stay quiet so a person replies
+    if (!(await this.aiAllowed(orgId, 'chatbot_reply'))) {
+      this.logger.log(`AI flow ${flow.id} skipped — AI not enabled or no AI credits left for org ${orgId}`);
+      done({ outcome: AiReplyOutcome.NO_CREDITS });
+      return null;
+    }
 
-    const userPrompt = kbContext
-      ? `${kbContext}\n\n--- CONVERSATION ---\n${context}\n\nBased on the product documentation above, reply to the customer's latest message:`
-      : `Conversation so far:\n${context}\n\nReply to the customer's latest message as the agent:`;
+    // Too many bot replies in this chat today (a loop, or someone draining credits): a person takes over
+    const limit = this.limiter.tryTake([AI_REPLY_LIMITS.chat(conversationId)]);
+    if (!limit.ok) {
+      if (limit.firstBlock) {
+        this.logger.warn(`AI reply limit reached in conversation ${conversationId}; handing over`);
+        void this.audit.log({
+          orgId,
+          action: AuditAction.AI_REPLY_LIMIT_REACHED,
+          targetType: 'Conversation',
+          targetId: conversationId,
+          metadata: { channel: 'WHATSAPP', limit: 'chat' },
+        });
+      }
+      done({ outcome: AiReplyOutcome.LIMITED, reason: 'chat' });
+      return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_LIMIT');
+    }
+
+    // Build conversation context from last 20 messages (bodies are encrypted at rest)
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { direction: true, body: true, type: true, createdAt: true },
+      }),
+    );
+
+    // Each message is cleaned on its own, so "ignore previous instructions" is caught
+    // at the start of a message, not hidden behind the "Customer:" label
+    const chat = messages.reverse().map((m) => ({
+      inbound: m.direction === 'INBOUND',
+      body: m.body ? sanitizePromptInput(m.body, 1000) : `[${m.type}]`,
+    }));
+    const context = chat.map((m) => `${m.inbound ? 'Customer' : 'Agent'}: ${m.body}`).join('\n');
+    const teamText = chat.filter((m) => !m.inbound).map((m) => m.body).join('\n');
+    const customerText = [contactPhone, ...chat.filter((m) => m.inbound).map((m) => m.body)].join('\n');
+
+    // Knowledge on: answer from the org's website pages, documents, articles and profile
+    // (the same answers the widget and inbox KB search give)
+    if (flow.useKnowledgeBase) {
+      const kb = await this.kbAnswer.answer({
+        orgId,
+        question: messageBody,
+        conversation: context,
+        flowId: flow.id,
+        instructions: flow.aiSystemPrompt,
+        teamText,
+      });
+      const usage = { model: kb.usage?.model, tokens: kb.usage?.tokens };
+      if (kb.blocked) {
+        done({ outcome: AiReplyOutcome.BLOCKED, reason: kb.blocked, ...usage });
+        return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+      }
+      if (kb.answer && kb.found) {
+        await this.botBehavior.answered(conversationId);
+        const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        done({
+          outcome: sent ? AiReplyOutcome.ANSWERED : AiReplyOutcome.FAILED,
+          charged: !!sent,
+          sourcesUsed: kb.sources.length,
+          confidence: kb.confidence,
+          ...usage,
+        });
+        return sent;
+      }
+
+      // Not in the knowledge: log it for the owner, and after two in a row let a person take over
+      await this.kbMisses
+        .record(orgId, messageBody, 'WHATSAPP', conversationId)
+        .catch((err) => this.logger.warn(`Couldn't log unanswered question: ${(err as Error).message}`));
+      if (await this.botBehavior.missed(conversationId)) {
+        done({ outcome: AiReplyOutcome.HANDED_OFF, reason: 'UNANSWERED', ...usage });
+        return this.handOff(orgId, conversationId, contactPhone, sessionId, 'UNANSWERED');
+      }
+      if (kb.answer) {
+        // The polite "I'll check with the team" reply
+        const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, kb.answer);
+        done({ outcome: sent ? AiReplyOutcome.NOT_FOUND : AiReplyOutcome.FAILED, charged: !!sent, ...usage });
+        return sent;
+      }
+      // Nothing to answer from: fall through to a conversation-only reply
+    }
+
+    // Same business profile and "Rules & tone" the website chat answers with
+    const profile = await this.orgContext.getContext(orgId, { forCustomers: true });
+    // No prompt of its own: a default written for this kind of workspace (freelancer or team)
+    const defaultPrompt = flow.aiSystemPrompt ? '' : defaultBotPrompt(await this.orgContext.getVoice(orgId));
+    const systemPrompt = [profile ? `${profile}\n\n---` : '', flow.aiSystemPrompt || defaultPrompt, UNTRUSTED_DATA_RULE]
+      .filter(Boolean)
+      .join('\n\n');
+    const userPrompt = `Conversation so far:\n${wrapUntrusted('conversation', context)}\n\nReply to the customer's latest message as the agent:`;
 
     const result = await this.aiProvider.complete({
       systemPrompt,
@@ -182,11 +289,80 @@ IMPORTANT RULES:
       maxTokens: 500,
     });
 
-    const replyText = result.text?.trim();
+    const reply = cleanReply(result.text);
+    if (reply) {
+      const check = checkReply({
+        reply,
+        // The business's own prompt may hold facts the bot should repeat, so only our fixed text counts as a leak
+        ownInstructions: `${defaultPrompt}\n${UNTRUSTED_DATA_RULE}`,
+        trustedText: `${profile}\n${flow.aiSystemPrompt ?? ''}\n${teamText}`,
+        customerText,
+      });
+      if (!check.ok) {
+        this.logger.warn(`AI reply blocked in conversation ${conversationId}: ${check.reason}`);
+        done({ outcome: AiReplyOutcome.BLOCKED, reason: check.reason, model: result.model, tokens: result.tokens });
+        return this.safetyHandOff(orgId, conversationId, contactPhone, sessionId, 'REPLY_BLOCKED');
+      }
+    }
+
+    const sent = await this.sendAiReply(orgId, conversationId, contactPhone, sessionId, reply);
+    done({
+      outcome: sent ? AiReplyOutcome.ANSWERED : AiReplyOutcome.FAILED,
+      charged: !!sent,
+      model: result.model,
+      tokens: result.tokens,
+    });
+    return sent;
+  }
+
+  /**
+   * A safety stop (blocked reply or reply limit) hands the chat over like any other.
+   * The 3rd one in a chat within a week pauses the bot there for a week, so someone
+   * probing the bot can't simply retry every day.
+   */
+  private async safetyHandOff(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    reason: 'REPLY_BLOCKED' | 'REPLY_LIMIT',
+  ) {
+    const earlier = await this.trail.recentSafetyStops(orgId, conversationId, REPEAT_STOP_DAYS);
+    if (earlier + 1 < REPEAT_STOPS) return this.handOff(orgId, conversationId, contactPhone, sessionId, reason);
+    this.logger.warn(`Repeat safety stops in conversation ${conversationId}: bot paused there for ${REPEAT_STOP_DAYS} days`);
+    return this.handOff(orgId, conversationId, contactPhone, sessionId, reason, { pauseHours: REPEAT_STOP_DAYS * 24 });
+  }
+
+  /** Tells the customer a person will reply (or when, after hours) and pauses the bot in the chat. */
+  private async handOff(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    reason: HandoffReason,
+    options?: { pauseHours?: number },
+  ) {
+    const text = options
+      ? await this.botBehavior.handOff(orgId, conversationId, reason, options)
+      : await this.botBehavior.handOff(orgId, conversationId, reason);
+    await this.sendReply(orgId, conversationId, contactPhone, sessionId, text);
+    return { replied: true, text };
+  }
+
+  /** Cleans, charges and sends an AI reply; null when the AI produced nothing. */
+  private async sendAiReply(
+    orgId: string,
+    conversationId: string,
+    contactPhone: string,
+    sessionId: string,
+    text: string | undefined,
+  ) {
+    const replyText = cleanReply(text);
     if (!replyText) {
       this.logger.warn(`AI returned empty reply for conversation ${conversationId}`);
       return null;
     }
+    await this.aiCredits.charge(orgId, 'chatbot_reply');
 
     // Send the AI reply as a WhatsApp message
     const { messageId } = await this.sendReply(orgId, conversationId, contactPhone, sessionId, replyText);
@@ -197,7 +373,7 @@ IMPORTANT RULES:
       messageId,
     });
 
-    this.logger.log(`AI chatbot replied in conversation ${conversationId}: "${replyText.slice(0, 50)}..."`);
+    this.logger.log(`AI chatbot replied in conversation ${conversationId} (${replyText.length} chars)`);
     return { replied: true, text: replyText };
   }
 
@@ -303,16 +479,23 @@ IMPORTANT RULES:
       }
 
       case 'AI_REPLY': {
-        const systemPrompt = (node.data.systemPrompt as string) ||
-          'You are a helpful customer support agent. Reply concisely.';
+        // Without AI on the plan (or credits) the step is skipped and the flow carries on
+        if (!(await this.aiAllowed(orgId, 'chatbot_reply'))) {
+          await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
+          break;
+        }
+        const systemPrompt =
+          (node.data.systemPrompt as string) || defaultReplyStepPrompt(await this.orgContext.getVoice(orgId));
         const maxTokens = (node.data.maxTokens as number) || 500;
 
-        const messages = await this.prisma.message.findMany({
-          where: { conversationId, orgId },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          select: { direction: true, body: true, type: true },
-        });
+        const messages = this.messageCrypto.decryptBodies(
+          await this.prisma.message.findMany({
+            where: { conversationId, orgId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { direction: true, body: true, type: true },
+          }),
+        );
 
         const context = messages
           .reverse()
@@ -325,8 +508,10 @@ IMPORTANT RULES:
           maxTokens,
         });
 
-        if (result.text?.trim()) {
-          await this.sendReply(orgId, conversationId, contactPhone, waSessionId, result.text.trim());
+        const nodeReply = cleanReply(result.text);
+        if (nodeReply) {
+          await this.aiCredits.charge(orgId, 'chatbot_reply');
+          await this.sendReply(orgId, conversationId, contactPhone, waSessionId, nodeReply);
         }
         await this.advanceToNext(node, allNodes, sessionId, payload, depth + 1);
         break;
@@ -343,11 +528,13 @@ IMPORTANT RULES:
       }
 
       case 'ASSIGN_AGENT': {
-        // Hand off to human agent
+        // Hand off to human agent: the session ends, and bots and automations stay
+        // quiet in the chat so the next message waits for a person instead of restarting a flow
         await this.chatbotRepo.updateSession(sessionId, {
           status: ChatbotSessionStatus.HANDED_OFF,
           completedAt: new Date(),
         });
+        await this.botBehavior.pauseFor(conversationId, orgId);
         break;
       }
 
@@ -445,7 +632,8 @@ IMPORTANT RULES:
         const intents = (node.data.intents as string[]) || [];
         const defaultNextRef = node.nextNodes.find((nn) => nn.condition === 'default') || node.nextNodes[0];
 
-        if (intents.length === 0 || !payload.messageBody) {
+        // Without AI on the plan (or credits) every message takes the default branch
+        if (intents.length === 0 || !payload.messageBody || !(await this.aiAllowed(orgId, 'intent'))) {
           if (defaultNextRef) {
             const nextNode = allNodes.find((n) => n.id === defaultNextRef.nodeId);
             if (nextNode) {
@@ -464,6 +652,7 @@ IMPORTANT RULES:
         });
 
         const detectedIntent = result.text?.trim().toLowerCase() || '';
+        if (detectedIntent) await this.aiCredits.charge(orgId, 'intent');
         // Find the branch matching detected intent
         const matchingBranch =
           node.nextNodes.find((nn) => nn.condition && detectedIntent.includes(nn.condition.toLowerCase())) ||

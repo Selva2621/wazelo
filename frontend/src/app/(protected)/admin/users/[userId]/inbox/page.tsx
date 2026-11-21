@@ -33,8 +33,8 @@ export default function AdminUserInboxPage({
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
-      {/* Breadcrumb */}
-      <div className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 border-b border-outline-variant/15 bg-surface-container/30">
+      {/* Breadcrumb (phones/tablets use the iOS nav bar's Back and title) */}
+      <div className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 border-b border-outline-variant/15 bg-surface-container/30 max-lg:hidden">
         <button
           onClick={() => router.push("/admin/users")}
           className="text-body text-primary hover:text-primary/80 transition-colors"

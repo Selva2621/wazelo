@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { notificationsApi } from "@/lib/api/notifications";
 import { getDeviceId } from "@/lib/device";
+import { clearServiceWorkerCaches } from "@/lib/pwa/register-sw";
 import { useAuthStore } from "@/stores/auth-store";
 import { homePathFor } from "@/lib/utils";
 import type {
@@ -90,6 +91,7 @@ export function useLogout() {
       // effect then navigates to /auth/login when isAuthenticated becomes false.
       clearAuth();
       queryClient.clear();
+      clearServiceWorkerCaches();
     },
   });
 }

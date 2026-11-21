@@ -22,6 +22,7 @@ import { FeatureFlagGuard, FEATURE_FLAG_KEY } from '@/modules/billing/interfaces
 import { PlatformFeature } from '@/modules/billing/interfaces/guards/platform-feature.guard';
 import { UsageLimitGuard, USAGE_LIMIT_KEY } from '@/modules/billing/interfaces/guards/usage-limit.guard';
 import { UsageMetricType } from '@prisma/client';
+import { AiCredits } from '@/modules/billing/interfaces/guards/ai-credit.guard';
 import { CreateCampaignDto, AudienceFiltersDto } from '../../application/dto/create-campaign.dto';
 import { UpdateCampaignDto } from '../../application/dto/update-campaign.dto';
 import {
@@ -31,9 +32,13 @@ import {
 import { CreateCampaignUseCase } from '../../application/use-cases/create-campaign.use-case';
 import { UpdateCampaignUseCase } from '../../application/use-cases/update-campaign.use-case';
 import { ExecuteCampaignUseCase } from '../../application/use-cases/execute-campaign.use-case';
+import { RerunCampaignUseCase } from '../../application/use-cases/rerun-campaign.use-case';
 import { ScheduleCampaignUseCase } from '../../application/use-cases/schedule-campaign.use-case';
 import { PauseCampaignUseCase } from '../../application/use-cases/pause-campaign.use-case';
 import { ResumeCampaignUseCase } from '../../application/use-cases/resume-campaign.use-case';
+import { RetryFailedRecipientsUseCase } from '../../application/use-cases/retry-failed-recipients.use-case';
+import { ReplaceCampaignMediaUseCase } from '../../application/use-cases/replace-campaign-media.use-case';
+import { ReplaceCampaignMediaDto } from '../../application/dto/replace-campaign-media.dto';
 import { CancelCampaignUseCase } from '../../application/use-cases/cancel-campaign.use-case';
 import { GetCampaignUseCase } from '../../application/use-cases/get-campaign.use-case';
 import { ListCampaignsUseCase } from '../../application/use-cases/list-campaigns.use-case';
@@ -48,9 +53,12 @@ export class CampaignController {
     private readonly createCampaignUseCase: CreateCampaignUseCase,
     private readonly updateCampaignUseCase: UpdateCampaignUseCase,
     private readonly executeCampaignUseCase: ExecuteCampaignUseCase,
+    private readonly rerunCampaignUseCase: RerunCampaignUseCase,
     private readonly scheduleCampaignUseCase: ScheduleCampaignUseCase,
     private readonly pauseCampaignUseCase: PauseCampaignUseCase,
     private readonly resumeCampaignUseCase: ResumeCampaignUseCase,
+    private readonly retryFailedRecipientsUseCase: RetryFailedRecipientsUseCase,
+    private readonly replaceCampaignMediaUseCase: ReplaceCampaignMediaUseCase,
     private readonly cancelCampaignUseCase: CancelCampaignUseCase,
     private readonly getCampaignUseCase: GetCampaignUseCase,
     private readonly listCampaignsUseCase: ListCampaignsUseCase,
@@ -140,6 +148,28 @@ export class CampaignController {
     );
   }
 
+  /** Run a finished campaign again as a new campaign; returns the new one */
+  @Post(':id/rerun')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CAMPAIGNS_CREATE, PERMISSIONS.CAMPAIGNS_EXECUTE)
+  @UseGuards(FeatureFlagGuard, UsageLimitGuard)
+  @SetMetadata(FEATURE_FLAG_KEY, 'campaigns')
+  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.CAMPAIGN_EXECUTIONS)
+  @HttpCode(HttpStatus.CREATED)
+  async rerunCampaign(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.rerunCampaignUseCase.execute(
+      id,
+      user.orgId,
+      user.sub,
+      this.extractIp(req),
+      this.extractUserAgent(req),
+    );
+  }
+
   @Post(':id/schedule')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
@@ -199,6 +229,45 @@ export class CampaignController {
     );
   }
 
+  /** Replace the media of a paused or scheduled campaign (e.g. cleared by a server restart). */
+  @Patch(':id/media')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
+  async replaceCampaignMedia(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReplaceCampaignMediaDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.replaceCampaignMediaUseCase.execute(
+      id,
+      user.orgId,
+      user.sub,
+      dto,
+      this.extractIp(req),
+      this.extractUserAgent(req),
+    );
+  }
+
+  /** Send again to recipients that failed only because the WhatsApp connection was down. */
+  @Post(':id/retry-failed')
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions(PERMISSIONS.CAMPAIGNS_EXECUTE)
+  @HttpCode(HttpStatus.OK)
+  async retryFailedRecipients(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.retryFailedRecipientsUseCase.execute(
+      id,
+      user.orgId,
+      user.sub,
+      this.extractIp(req),
+      this.extractUserAgent(req),
+    );
+  }
+
   @Post(':id/cancel')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.CAMPAIGNS_CANCEL)
@@ -223,12 +292,15 @@ export class CampaignController {
   async listRecipients(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListRecipientsQueryDto,
+    @CurrentUser() user: JwtPayload,
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
 
+    // Scoped to the caller's org — a campaign id alone must not expose another org's recipients
     const { recipients, total } = await this.recipientRepo.findByCampaignPaginated(
       id,
+      user.orgId,
       {
         take: limit,
         skip: (page - 1) * limit,
@@ -258,10 +330,10 @@ export class CampaignController {
   @Post('generate-copy')
   @Roles('ADMIN', 'MANAGER')
   @Permissions(PERMISSIONS.CAMPAIGNS_CREATE)
-  @UseGuards(FeatureFlagGuard, UsageLimitGuard)
+  @UseGuards(FeatureFlagGuard)
   @SetMetadata(FEATURE_FLAG_KEY, 'campaigns')
-  @SetMetadata(USAGE_LIMIT_KEY, UsageMetricType.AI_CREDITS)
   @PlatformFeature('ai')
+  @AiCredits('campaign_copy')
   @HttpCode(HttpStatus.OK)
   async generateCopy(
     @Body() dto: GenerateCampaignCopyDto,
@@ -275,13 +347,14 @@ export class CampaignController {
   @Permissions(PERMISSIONS.CAMPAIGNS_READ)
   @HttpCode(HttpStatus.OK)
   async previewAudience(
-    @Body() body: { audienceType: string; audienceFilters?: AudienceFiltersDto },
+    @Body() body: { audienceType: string; audienceFilters?: AudienceFiltersDto; channel?: string },
     @CurrentUser() user: JwtPayload,
   ) {
     return this.previewAudienceUseCase.execute(
       user.orgId,
       body.audienceType as any,
       body.audienceFilters,
+      body.channel === 'EMAIL' ? 'EMAIL' : 'WHATSAPP',
     );
   }
 

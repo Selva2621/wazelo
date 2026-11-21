@@ -46,6 +46,14 @@ export function useCampaignAnalytics(campaignId: string | null) {
     queryKey: campaignKeys.analytics(campaignId!),
     queryFn: () => campaignsApi.getAnalytics(campaignId!),
     enabled: !!campaignId,
+    // A scheduled or paused campaign can start / resume on the server with no
+    // action in this tab, so keep polling until the campaign is finished.
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "RUNNING") return 5_000;
+      if (status === "SCHEDULED" || status === "PAUSED") return 30_000;
+      return false;
+    },
   });
 }
 
@@ -101,6 +109,19 @@ export function useExecuteCampaign() {
   });
 }
 
+/** Copies a finished campaign and starts the copy */
+export function useRerunCampaign() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => campaignsApi.rerun(campaignId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.all });
+      toast.success("Campaign started again");
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to run the campaign again"),
+  });
+}
+
 export function useScheduleCampaign() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -144,6 +165,32 @@ export function useResumeCampaign() {
   });
 }
 
+export function useReplaceCampaignMedia() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ campaignId, ...data }: { campaignId: string; mediaUrl: string; mediaMimeType?: string }) =>
+      campaignsApi.replaceMedia(campaignId, data),
+    onSuccess: (_data, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
+      toast.success("Media replaced");
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't replace the media"),
+  });
+}
+
+export function useRetryFailedRecipients() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => campaignsApi.retryFailed(campaignId),
+    onSuccess: ({ retried }, campaignId) => {
+      queryClient.invalidateQueries({ queryKey: campaignKeys.all });
+      queryClient.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
+      toast.success(`Sending again to ${retried} recipient${retried === 1 ? "" : "s"}`);
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't retry the failed messages"),
+  });
+}
+
 export function useCancelCampaign() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -162,6 +209,7 @@ export function usePreviewAudience() {
     mutationFn: (data: {
       audienceType: string;
       audienceFilters?: Record<string, unknown>;
+      channel?: "WHATSAPP" | "EMAIL";
     }) => campaignsApi.previewAudience(data),
   });
 }

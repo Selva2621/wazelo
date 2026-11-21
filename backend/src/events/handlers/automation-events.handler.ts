@@ -1,13 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { AutomationTriggerType } from '@prisma/client';
+import { AutomationTriggerType, AutomationActionType } from '@prisma/client';
+import { AutomationRepository } from '@/modules/automation/infrastructure/repositories/automation.repository';
+import { TriggerMatcherService } from '@/modules/automation/domain/services/trigger-matcher.service';
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
+import { ScheduleNoReplyChecksUseCase } from '@/modules/automation/application/use-cases/no-reply.use-cases';
 import { EVENT_NAMES } from '@/common/constants';
+import { ChatbotRepository } from '@/modules/chatbot/infrastructure/repositories/chatbot.repository';
 import {
   ContactCreatedEvent,
   ContactAutoCreatedEvent,
   ContactStatusChangedEvent,
+  DealStageChangedEvent,
   AutomationExecutedEvent,
   AutomationFailedEvent,
   ScheduledMessageExecutedEvent,
@@ -19,7 +24,28 @@ import {
   FollowUpCancelledEvent,
   FollowUpExecutedEvent,
   WidgetMessageReceivedAutomationEvent,
+  WhatsAppMessageSentEvent,
+  LeadAdReceivedEvent,
 } from '../event-bus';
+
+const NO_LEAD_WELCOME = { welcomeByLeadAdRule: false, emailByLeadAdRule: false };
+
+/**
+ * Message variables for a lead: {{lead.campaign}}, {{lead.ad}}, {{lead.form}}, {{lead.platform}}
+ * and one per form answer, keyed by the question's slug — "What's your city?" → {{lead.what_s_your_city}}
+ */
+export function buildLeadVars(payload: Pick<LeadAdReceivedEvent, 'leadData' | 'campaignName' | 'adName' | 'formId' | 'platform'>): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload.leadData ?? {})) {
+    const slug = key.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (slug && value != null && value !== '') vars[slug] = String(value);
+  }
+  if (payload.campaignName) vars.campaign = payload.campaignName;
+  if (payload.adName) vars.ad = payload.adName;
+  if (payload.formId) vars.form = payload.formId;
+  if (payload.platform) vars.platform = payload.platform;
+  return vars;
+}
 
 @Injectable()
 export class AutomationEventsHandler {
@@ -28,6 +54,10 @@ export class AutomationEventsHandler {
   constructor(
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
     private readonly wsGateway: AppWebSocketGateway,
+    private readonly scheduleNoReplyChecks: ScheduleNoReplyChecksUseCase,
+    private readonly chatbotRepo: ChatbotRepository,
+    private readonly automationRepo: AutomationRepository,
+    private readonly triggerMatcher: TriggerMatcherService,
   ) {}
 
   // ─── Trigger Evaluation Handlers ──────────────────
@@ -51,6 +81,10 @@ export class AutomationEventsHandler {
           phoneNumber: payload.phoneNumber,
           source: payload.source,
           ownerId: payload.ownerId,
+          // One welcome per channel: a "Lead ad received" rule that messages / emails this
+          // lead wins, so this rule's matching send steps skip (tags, assignment etc. still run)
+          ...(payload.leadAd &&
+            (await this.leadAdRuleWelcomes(payload.orgId, payload.leadAd).catch(() => NO_LEAD_WELCOME))),
         },
         context: {
           contact: {
@@ -83,6 +117,9 @@ export class AutomationEventsHandler {
           source: 'WHATSAPP',
           ownerId: payload.ownerId,
           auto: true,
+          // One welcome only: the chatbot greets people who write first, so the
+          // rule's "send message" steps skip (tags, assignment etc. still run)
+          welcomeByChatbot: await this.chatbotRepo.hasGreetingFlow(payload.orgId).catch(() => false),
         },
         context: {
           contact: {
@@ -97,6 +134,62 @@ export class AutomationEventsHandler {
     } catch (error) {
       this.logger.error(
         `Error evaluating CONTACT_AUTO_CREATED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
+
+  /** Which channels an active "Lead ad received" rule already welcomes this (new) lead on */
+  private async leadAdRuleWelcomes(
+    orgId: string,
+    leadAd: { platform: string; pageId?: string; formId: string | null },
+  ): Promise<typeof NO_LEAD_WELCOME> {
+    const rules = await this.automationRepo.findActiveRulesByTriggerType(orgId, AutomationTriggerType.LEAD_AD_RECEIVED);
+    const matching = rules.filter((rule) =>
+      this.triggerMatcher.matches({
+        triggerType: AutomationTriggerType.LEAD_AD_RECEIVED,
+        triggerConfig: (rule.triggerConfig ?? {}) as Record<string, unknown>,
+        eventPayload: { platform: leadAd.platform, pageId: leadAd.pageId, formId: leadAd.formId, isNewContact: true },
+      }),
+    );
+    const sends = (type: AutomationActionType) => matching.some((r) => r.actions.some((a) => a.actionType === type));
+    return {
+      welcomeByLeadAdRule: sends(AutomationActionType.SEND_MESSAGE),
+      emailByLeadAdRule: sends(AutomationActionType.SEND_EMAIL),
+    };
+  }
+
+  /** Every lead form submission — new or repeat contact — is its own LEAD_AD_RECEIVED event */
+  @OnEvent(EVENT_NAMES.LEAD_AD_RECEIVED)
+  async handleLeadAdReceived(payload: LeadAdReceivedEvent): Promise<void> {
+    try {
+      await this.evaluateTrigger.execute({
+        orgId: payload.orgId,
+        triggerType: AutomationTriggerType.LEAD_AD_RECEIVED,
+        // No contactId here: the dedupe key prefers it over eventId, and a repeat lead is a new event
+        eventPayload: {
+          eventId: payload.leadgenId,
+          leadgenId: payload.leadgenId,
+          platform: payload.platform,
+          pageId: payload.pageId,
+          formId: payload.formId,
+          isNewContact: payload.isNewContact,
+          leadVars: buildLeadVars(payload),
+        },
+        context: {
+          contact: { id: payload.contactId, phoneNumber: payload.contactPhone },
+          trigger: {
+            platform: payload.platform,
+            formId: payload.formId,
+            campaignName: payload.campaignName,
+            adName: payload.adName,
+            isNewContact: payload.isNewContact,
+          },
+        },
+        contactId: payload.contactId,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error evaluating LEAD_AD_RECEIVED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
       );
     }
   }
@@ -131,6 +224,45 @@ export class AutomationEventsHandler {
     } catch (error) {
       this.logger.error(
         `Error evaluating LEAD_STATUS_CHANGED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
+
+  /** Every message we send may start a NO_REPLY countdown for the contact */
+  @OnEvent(EVENT_NAMES.WHATSAPP_MESSAGE_SENT)
+  async handleMessageSent(payload: WhatsAppMessageSentEvent): Promise<void> {
+    try {
+      await this.scheduleNoReplyChecks.execute(payload.orgId, payload.messageId);
+    } catch (error) {
+      this.logger.error(
+        `Error scheduling no-reply checks for message ${payload.messageId}: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
+
+  @OnEvent(EVENT_NAMES.DEAL_STAGE_CHANGED)
+  async handleDealStageChanged(payload: DealStageChangedEvent): Promise<void> {
+    try {
+      await this.evaluateTrigger.execute({
+        orgId: payload.orgId,
+        triggerType: AutomationTriggerType.DEAL_STAGE_CHANGED,
+        // No contactId here: the dedupe key prefers it over eventId, and each move is its own event
+        eventPayload: {
+          eventId: `${payload.dealId}:${payload.stageId}:${Date.now()}`,
+          dealId: payload.dealId,
+          pipelineId: payload.pipelineId,
+          stageId: payload.stageId,
+          previousStageId: payload.previousStageId,
+        },
+        context: {
+          contact: { id: payload.contactId },
+          trigger: { dealId: payload.dealId, stageId: payload.stageId, pipelineId: payload.pipelineId },
+        },
+        contactId: payload.contactId,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error evaluating DEAL_STAGE_CHANGED trigger: ${error instanceof Error ? error.message : 'Unknown'}`,
       );
     }
   }

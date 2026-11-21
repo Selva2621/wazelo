@@ -5,7 +5,7 @@ import {
   type SuperAdminInfo,
 } from "@/stores/super-admin-auth-store";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+import { API_BASE_URL as baseURL } from "@/lib/env-urls";
 
 const superAdminClient = axios.create({
   baseURL,

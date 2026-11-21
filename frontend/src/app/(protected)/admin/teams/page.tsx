@@ -7,25 +7,21 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useTeams, useCreateTeam, useDeleteTeam } from "@/hooks/use-teams";
 import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchInput } from "@/components/ui/search-input";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Team } from "@/lib/types/teams";
 import { PAGE_SIZE } from "@/lib/constants";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { PageHeader } from "@/components/layout/page-header";
+
+/** "MANAGER" → "Manager" */
+const sentenceCase = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replace(/_/g, " ");
 
 export default function AdminTeamsPage() {
   usePageTitle("Teams");
@@ -57,7 +53,6 @@ export default function AdminTeamsPage() {
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       `${t.manager.firstName} ${t.manager.lastName}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pagedTeams = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSearchChange = (value: string) => {
@@ -103,35 +98,113 @@ export default function AdminTeamsPage() {
     setNewTeamManagerId("");
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-var(--header-height))] items-center justify-center">
-        <Spinner size="lg" className="text-primary" />
-      </div>
-    );
-  }
+  const columns: DataTableColumn<Team>[] = [
+    {
+      id: "team",
+      header: "Team",
+      cell: (team) => (
+        <span className="text-body-lg font-medium text-on-surface">
+          {team.name}
+        </span>
+      ),
+    },
+    {
+      id: "manager",
+      header: "Manager",
+      skeleton: "avatar",
+      cell: (team) => (
+        <div className="flex items-center gap-2">
+          <Avatar
+            name={`${team.manager.firstName} ${team.manager.lastName}`}
+            size="sm"
+          />
+          <div>
+            <p className="text-body text-on-surface">
+              {team.manager.firstName} {team.manager.lastName}
+            </p>
+            <p className="text-caption text-on-surface-variant">{sentenceCase(team.manager.role)}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "members",
+      header: "Members",
+      skeleton: "badge",
+      cell: (team) => (
+        <Badge variant="info">
+          {team.members.length} member{team.members.length !== 1 ? "s" : ""}
+        </Badge>
+      ),
+    },
+    {
+      id: "created",
+      header: "Created",
+      skeleton: "short",
+      cell: (team) => (
+        <span className="text-label text-on-surface-variant">
+          {new Date(team.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (team) => (
+        <div
+          className="flex items-center justify-end gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <IconButton size="xs"
+            onClick={() => router.push(`/admin/teams/${team.id}`)}
+            className="hover:text-primary hover:bg-primary/10 max-lg:size-10"
+            title="View team" aria-label="View team">
+            <Eye className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="xs" variant="danger"
+            onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
+            className="max-lg:size-10"
+            title="Delete team" aria-label="Delete team">
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface">Teams</h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage your organization&apos;s teams and members
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Create Team
-        </Button>
-      </div>
+      {/* Phones/tablets: the iOS nav bar carries the title and the + button */}
+      <MobilePageActions primary={{ label: "Create team", onClick: () => setShowCreate(true) }} />
+      <PageHeader
+        className="max-lg:hidden"
+        title="Teams"
+        count={allTeams.length}
+        actions={
+          <>
+            {allTeams.length > 0 && (
+              <SearchInput
+                placeholder="Search teams or managers"
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-64"
+              />
+            )}
+            <Button onClick={() => setShowCreate(true)} disabled={showCreate}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Create team
+            </Button>
+          </>
+        }
+      />
 
       {/* Create team form */}
       {showCreate && (
-        <div className="rounded-xl border border-outline-variant/15 p-5 space-y-4 bg-surface-container/30">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-body-lg font-semibold text-on-surface">New Team</h3>
+            <h2 className="text-body-lg font-semibold text-on-surface">New team</h2>
             <IconButton size="xs"
               onClick={closeCreate} aria-label="Close">
               <X className="h-4 w-4" />
@@ -144,38 +217,37 @@ export default function AdminTeamsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1.5">
-              <label className="text-label font-medium text-on-surface-variant">Team Name</label>
+              <label className="text-label font-medium text-on-surface-variant">Team name</label>
               <input
                 type="text"
                 placeholder="e.g. Support Team"
                 value={newTeamName}
                 onChange={(e) => { setNewTeamName(e.target.value); setCreateError(""); }}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-label font-medium text-on-surface-variant">Manager</label>
-              <select
+              <Select
                 value={newTeamManagerId}
                 onChange={(e) => { setNewTeamManagerId(e.target.value); setCreateError(""); }}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface px-3 py-2 text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">Select manager</option>
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName} ({u.role})
+                    {u.firstName} {u.lastName} ({sentenceCase(u.role)})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
           <div className="flex gap-2 pt-1">
             <Button size="sm" onClick={handleCreateTeam} disabled={createTeam.isPending}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              {createTeam.isPending ? "Creating..." : "Create Team"}
+              {createTeam.isPending ? "Creating..." : "Create team"}
             </Button>
             <Button variant="secondary" size="sm" onClick={closeCreate}>
               Cancel
@@ -184,25 +256,26 @@ export default function AdminTeamsPage() {
         </div>
       )}
 
-      {/* Search */}
+      {/* Phones/tablets: search sits under the nav bar; desktop has it in the header */}
       {allTeams.length > 0 && (
         <SearchInput
-          placeholder="Search by team name or manager..."
+          placeholder="Search teams or managers"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full lg:hidden"
         />
       )}
 
       {/* Empty states */}
-      {allTeams.length === 0 ? (
+      {!isLoading && allTeams.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No teams yet"
           description="Create your first team to organize your employees."
-          actionLabel="Create Team"
+          actionLabel="Create team"
           onAction={() => setShowCreate(true)}
         />
-      ) : filtered.length === 0 ? (
+      ) : !isLoading && filtered.length === 0 ? (
         <EmptyState
           icon={<Users className="h-16 w-16" />}
           title="No teams match your search"
@@ -211,92 +284,30 @@ export default function AdminTeamsPage() {
           onAction={() => handleSearchChange("")}
         />
       ) : (
-        <>
-          <div className="rounded-xl border border-outline-variant/15 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableHeaderRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead align="right">Actions</TableHead>
-                </TableHeaderRow>
-              </TableHeader>
-              <TableBody>
-                {pagedTeams.map((team) => (
-                  <TableRow
-                    key={team.id}
-                    onClick={() => router.push(`/admin/teams/${team.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <TableCell>
-                      <span className="text-body-lg font-medium text-on-surface">
-                        {team.name}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar
-                          name={`${team.manager.firstName} ${team.manager.lastName}`}
-                          size="sm"
-                        />
-                        <div>
-                          <p className="text-body text-on-surface">
-                            {team.manager.firstName} {team.manager.lastName}
-                          </p>
-                          <p className="text-caption text-on-surface-variant">{team.manager.role}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="info">
-                        {team.members.length} member{team.members.length !== 1 ? "s" : ""}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-label text-on-surface-variant">
-                        {new Date(team.createdAt).toLocaleDateString()}
-                      </span>
-                    </TableCell>
-                    <TableCell align="right">
-                      <div
-                        className="flex items-center justify-end gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <IconButton size="xs"
-                          onClick={() => router.push(`/admin/teams/${team.id}`)}
-                          className="hover:text-primary hover:bg-primary/10"
-                          title="View / Edit team" aria-label="View / Edit team">
-                          <Eye className="h-3.5 w-3.5" />
-                        </IconButton>
-                        <IconButton size="xs" variant="danger"
-                          onClick={() => setDeleteTarget({ id: team.id, name: team.name })}
-                         
-                          title="Delete team" aria-label="Delete team">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </IconButton>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={filtered.length}
-            onPageChange={setPage}
+        <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+          <DataTable
+            label="Teams"
+            columns={columns}
+            rows={pagedTeams}
+            rowKey={(t) => t.id}
+            rowLabel={(t) => t.name}
+            loading={isLoading}
+            skeletonRows={6}
+            onRowClick={(t) => router.push(`/admin/teams/${t.id}`)}
+            pagination={{
+              page: page - 1,
+              pageSize: PAGE_SIZE,
+              total: filtered.length,
+              onPageChange: (p) => setPage(p + 1),
+            }}
           />
-        </>
+        </div>
       )}
 
       {/* Delete confirmation */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete Team"
+        title="Delete team"
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"

@@ -103,7 +103,7 @@ export function MergeContactsModal({ open, onClose }: MergeContactsModalProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={`Search for ${selecting} contact...`}
-            className="w-full h-9 pl-9 pr-3 rounded-xl bg-surface-container-low text-body text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:ring-1 focus:ring-primary/40"
+            className="w-full h-9 pl-9 pr-3 rounded-xl bg-surface-container-low text-body text-on-surface placeholder:text-placeholder outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>
 

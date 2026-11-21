@@ -3,19 +3,20 @@
 import { useState } from "react";
 import { SlidersHorizontal, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Modal } from "@/components/ui/modal";
-import {
-  Table, TableHeader, TableHeaderRow, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listFieldDefinitions, createFieldDefinition, updateFieldDefinition, deleteFieldDefinition,
   CustomFieldDefinition,
 } from "@/lib/api/custom-fields";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { IconButton } from "@/components/ui/icon-button";
 
 const FIELD_TYPES = ["text", "number", "date", "select", "multiselect", "boolean", "url", "email", "phone"];
@@ -77,108 +78,100 @@ export default function CustomFieldsPage() {
     setShowCreate(true);
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <SlidersHorizontal className="h-6 w-6 text-primary" />
-            Custom Fields
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">Define custom fields for contacts, deals, and conversations</p>
+  const columns: DataTableColumn<CustomFieldDefinition>[] = [
+    { id: "label", header: "Label", cellClassName: "text-body font-medium text-on-surface", cell: (f) => f.fieldLabel },
+    { id: "name", header: "Field name", cellClassName: "text-label text-on-surface-variant font-mono", cell: (f) => f.fieldName },
+    { id: "type", header: "Type", skeleton: "badge", cell: (f) => <Badge variant="muted" className="text-caption">{f.fieldType.charAt(0).toUpperCase() + f.fieldType.slice(1)}</Badge> },
+    { id: "required", header: "Required", skeleton: "short", cellClassName: "text-label", cell: (f) => (f.isRequired ? "Yes" : "—") },
+    { id: "default", header: "Default", cellClassName: "text-label text-on-surface-variant", cell: (f) => f.defaultValue || "—" },
+    {
+      id: "actions",
+      header: "Actions",
+      skeleton: "none",
+      cell: (f) => (
+        <div className="flex items-center gap-1">
+          <IconButton size="xs" onClick={() => startEdit(f)} className="hover:text-primary" aria-label="Edit field" title="Edit field"><Pencil className="h-3.5 w-3.5" /></IconButton>
+          <IconButton size="xs" variant="danger" onClick={() => deleteMut.mutate(f.id)} aria-label="Delete field" title="Delete field"><Trash2 className="h-3.5 w-3.5" /></IconButton>
         </div>
-        <Button onClick={() => { resetForm(); setEditId(null); setShowCreate(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> New Field
-        </Button>
-      </div>
+      ),
+    },
+  ];
 
-      {/* Entity filter tabs */}
-      <div className="flex gap-1 bg-surface-container rounded-xl p-1 w-fit">
-        {ENTITIES.map((e) => (
-          <button
-            key={e}
-            onClick={() => setEntityFilter(e)}
-            className={`px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${entityFilter === e ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"}`}
-          >
-            {e.charAt(0).toUpperCase() + e.slice(1)}s
-          </button>
-        ))}
-      </div>
+  return (
+    // Desktop: room around the page, like the other list pages
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
+      <MobilePageActions primary={{ label: "New field", onClick: () => { resetForm(); setEditId(null); setShowCreate(true); } }} />
+      <PageHeader
+        title="Custom fields"
+        count={fields?.length}
+        className="max-lg:hidden"
+        actions={
+          <Button onClick={() => { resetForm(); setEditId(null); setShowCreate(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> New field
+          </Button>
+        }
+      />
 
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" className="text-primary" /></div>
-      ) : !fields?.length ? (
-        <EmptyState
-          icon={<SlidersHorizontal className="h-12 w-12" />}
-          title={`No custom fields for ${entityFilter}s`}
-          description="Create custom fields to capture additional data."
-          actionLabel="New Field"
-          onAction={() => setShowCreate(true)}
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableHeaderRow>
-              <TableHead>Label</TableHead>
-              <TableHead>Field Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Required</TableHead>
-              <TableHead>Default</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableHeaderRow>
-          </TableHeader>
-          <TableBody>
-            {fields.map((f) => (
-              <TableRow key={f.id}>
-                <TableCell className="text-body font-medium text-on-surface">{f.fieldLabel}</TableCell>
-                <TableCell className="text-label text-on-surface-variant font-mono">{f.fieldName}</TableCell>
-                <TableCell><Badge variant="muted" className="text-caption">{f.fieldType}</Badge></TableCell>
-                <TableCell className="text-label">{f.isRequired ? "Yes" : "—"}</TableCell>
-                <TableCell className="text-label text-on-surface-variant">{f.defaultValue || "—"}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <IconButton size="xs" onClick={() => startEdit(f)} className="hover:text-primary" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></IconButton>
-                    <IconButton size="xs" variant="danger" onClick={() => deleteMut.mutate(f.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></IconButton>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {/* Entity filter chips */}
+      <FilterBar className="mobile-scroll-x">
+        <div data-tour="custom-field-tabs">
+          <Tabs
+            tabs={ENTITIES.map((e) => ({ id: e, label: `${e.charAt(0).toUpperCase() + e.slice(1)}s` }))}
+            activeTab={entityFilter}
+            onTabChange={setEntityFilter}
+          />
+        </div>
+      </FilterBar>
+
+      <DataTable
+        label="Custom fields"
+        columns={columns}
+        rows={fields ?? []}
+        rowKey={(f) => f.id}
+        rowLabel={(f) => f.fieldLabel}
+        loading={isLoading}
+        skeletonRows={5}
+        empty={{
+          icon: <SlidersHorizontal className="h-12 w-12" />,
+          title: `No custom fields for ${entityFilter}s`,
+          description: "Create custom fields to capture additional data.",
+          actionLabel: "New field",
+          onAction: () => setShowCreate(true),
+        }}
+      />
 
       {/* Create/Edit Modal */}
       <Modal
         open={showCreate}
         onClose={() => { setShowCreate(false); setEditId(null); resetForm(); }}
         aria-labelledby="custom-field-modal-title"
-        className="max-w-md rounded-3xl bg-surface"
+        className="max-w-md rounded-2xl bg-surface"
       >
         {() => (
           <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/15">
-              <h2 id="custom-field-modal-title" className="text-title font-semibold text-on-surface">{editId ? "Edit Field" : "New Custom Field"}</h2>
-              <button aria-label="Close" onClick={() => { setShowCreate(false); setEditId(null); resetForm(); }} className="p-1 rounded-lg text-on-surface-variant hover:text-error">✕</button>
+              <h2 id="custom-field-modal-title" className="text-title font-semibold text-on-surface">{editId ? "Edit field" : "New custom field"}</h2>
+              <button type="button" aria-label="Close" title="Close" onClick={() => { setShowCreate(false); setEditId(null); resetForm(); }} className="p-1 rounded-lg text-on-surface-variant hover:text-error outline-none focus-visible:ring-2 focus-visible:ring-focus">✕</button>
             </div>
             <div className="px-6 py-4 space-y-3">
               {!editId && (
                 <>
-                  <select value={form.entity} onChange={(e) => setForm((f) => ({ ...f, entity: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body">
+                  <Select aria-label="Entity" value={form.entity} onChange={(e) => setForm((f) => ({ ...f, entity: e.target.value }))}>
                     {ENTITIES.map((e) => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
-                  </select>
-                  <input value={form.fieldName} onChange={(e) => setForm((f) => ({ ...f, fieldName: e.target.value.replace(/[^a-z0-9_]/g, "") }))} placeholder="field_name (snake_case)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body font-mono" />
+                  </Select>
+                  <input aria-label="Field name" value={form.fieldName} onChange={(e) => setForm((f) => ({ ...f, fieldName: e.target.value.replace(/[^a-z0-9_]/g, "") }))} placeholder="field_name (snake_case)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body font-mono" />
                 </>
               )}
-              <input value={form.fieldLabel} onChange={(e) => setForm((f) => ({ ...f, fieldLabel: e.target.value }))} placeholder="Display Label" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
+              <input aria-label="Display label" value={form.fieldLabel} onChange={(e) => setForm((f) => ({ ...f, fieldLabel: e.target.value }))} placeholder="Display label" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
               {!editId && (
-                <select value={form.fieldType} onChange={(e) => setForm((f) => ({ ...f, fieldType: e.target.value }))} className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body">
+                <Select aria-label="Field type" value={form.fieldType} onChange={(e) => setForm((f) => ({ ...f, fieldType: e.target.value }))}>
                   {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </Select>
               )}
               {(form.fieldType === "select" || form.fieldType === "multiselect") && (
-                <input value={form.options} onChange={(e) => setForm((f) => ({ ...f, options: e.target.value }))} placeholder="Options (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
+                <input aria-label="Options" value={form.options} onChange={(e) => setForm((f) => ({ ...f, options: e.target.value }))} placeholder="Options (comma-separated)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
               )}
-              <input value={form.defaultValue} onChange={(e) => setForm((f) => ({ ...f, defaultValue: e.target.value }))} placeholder="Default value (optional)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
+              <input aria-label="Default value" value={form.defaultValue} onChange={(e) => setForm((f) => ({ ...f, defaultValue: e.target.value }))} placeholder="Default value (optional)" className="w-full rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 text-body" />
               <label className="flex items-center gap-2 text-body cursor-pointer">
                 <input type="checkbox" checked={form.isRequired} onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))} className="rounded" />
                 Required field

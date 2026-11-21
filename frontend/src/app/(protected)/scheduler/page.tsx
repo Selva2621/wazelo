@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Clock } from "lucide-react";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useScheduledMessages, useCancelScheduledMessage } from "@/hooks/use-scheduler";
 import { useAutomationSocket } from "@/hooks/use-automation-socket";
@@ -10,6 +12,7 @@ import { useWhatsAppSession } from "@/hooks/use-whatsapp";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { ScheduledMessagesTable } from "@/components/scheduler/scheduled-messages-table";
 import { CreateScheduledMessageModal } from "@/components/scheduler/create-scheduled-message-modal";
 import type {
@@ -87,42 +90,45 @@ export default function SchedulerPage() {
     <div className="flex flex-col h-[calc(100vh-var(--header-height))]">
       {/* Header */}
       <div className="shrink-0 px-6 pt-5 pb-0 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-on-surface-variant" />
-            <h1 className="text-title font-semibold text-on-surface">
-              Scheduled Messages
-            </h1>
-            {data && (
-              <span className="text-body text-on-surface-variant/60">
-                {data.total} total
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchInput
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search messages..."
-              className="w-64"
-            />
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Schedule Message
-            </Button>
-          </div>
-        </div>
-
-        {/* Status tabs */}
-        <Tabs
-          tabs={tabsWithCounts}
-          activeTab={statusTab}
-          onTabChange={handleStatusTabChange}
+        <MobilePageActions primary={{ label: "Schedule message", onClick: () => setShowCreateModal(true) }} />
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search messages"
+          className="w-full lg:hidden"
         />
+        <PageHeader
+          className="max-lg:hidden"
+          title="Scheduled messages"
+          count={data?.total}
+          actions={
+            <>
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search messages"
+                className="w-64"
+              />
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Schedule message
+              </Button>
+            </>
+          }
+        />
+
+        <FilterBar className="mobile-scroll-x">
+          <Tabs
+            tabs={tabsWithCounts}
+            activeTab={statusTab}
+            onTabChange={handleStatusTabChange}
+          />
+        </FilterBar>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Desktop: room around the table card */}
+      <div className="flex-1 overflow-y-auto lg:px-6 lg:pb-6 lg:pt-4">
         <ScheduledMessagesTable
           messages={data?.data ?? []}
           total={data?.total ?? 0}

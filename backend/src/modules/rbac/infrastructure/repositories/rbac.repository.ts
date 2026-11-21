@@ -162,34 +162,34 @@ export class RbacRepository {
     orgId: string,
     permissionMap: Record<string, string[]>,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      for (const [role, permissionStrings] of Object.entries(permissionMap)) {
-        for (const permStr of permissionStrings) {
-          const [resource, action] = permStr.split(':');
-          const permission = await tx.permission.findUnique({
-            where: { unique_permission: { resource, action } },
-          });
+    // Two round trips instead of two per permission per role: the old loop ran hundreds
+    // of queries in one interactive transaction and expired Prisma's 5s limit on a remote
+    // database, failing onboarding. createMany is atomic on its own; skipDuplicates keeps
+    // existing grants untouched (what upsert with update:{} did). Unknown permission
+    // strings are skipped, as before.
+    const wanted = Object.values(permissionMap)
+      .flat()
+      .map((p) => {
+        const [resource, action] = p.split(':');
+        return { resource, action };
+      });
+    if (wanted.length === 0) return;
 
-          if (permission) {
-            await tx.rolePermission.upsert({
-              where: {
-                unique_role_permission_per_org: {
-                  orgId,
-                  role: role as UserRole,
-                  permissionId: permission.id,
-                },
-              },
-              update: {},
-              create: {
-                orgId,
-                role: role as UserRole,
-                permissionId: permission.id,
-              },
-            });
-          }
-        }
-      }
+    const permissions = await this.prisma.permission.findMany({
+      where: { OR: wanted },
+      select: { id: true, resource: true, action: true },
     });
+    const idOf = new Map(permissions.map((p) => [`${p.resource}:${p.action}`, p.id]));
+
+    const rows = Object.entries(permissionMap).flatMap(([role, permissionStrings]) =>
+      permissionStrings
+        .map((permStr) => idOf.get(permStr))
+        .filter((id): id is string => !!id)
+        .map((permissionId) => ({ orgId, role: role as UserRole, permissionId })),
+    );
+    if (rows.length === 0) return;
+
+    await this.prisma.rolePermission.createMany({ data: rows, skipDuplicates: true });
   }
 
   /**

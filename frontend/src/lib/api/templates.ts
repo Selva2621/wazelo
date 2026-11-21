@@ -38,4 +38,8 @@ export const templatesApi = {
     apiClient
       .post<{ name: string; body: string }>("/messaging/templates/generate", data)
       .then((r) => r.data),
+
+  /** AI rewrite of a message for the user's service (uses AI credits; nothing is saved) */
+  rewrite: (data: { body: string; service: string }) =>
+    apiClient.post<{ body: string }>("/messaging/templates/rewrite", data).then((r) => r.data),
 };

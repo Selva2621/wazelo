@@ -1,11 +1,20 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ScheduledMessageStatus, WhatsAppSessionStatus } from '@prisma/client';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import {
+  MessageDirection,
+  MessageStatus,
+  MessageType,
+  ScheduledMessageStatus,
+  WhatsAppSessionStatus,
+} from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { SchedulerRepository } from '@/modules/scheduler/infrastructure/repositories/scheduler.repository';
 import { WhatsAppSessionRepository } from '@/modules/whatsapp/infrastructure/repositories/whatsapp-session.repository';
-import { QUEUE_NAMES, EVENT_NAMES, SCHEDULER_CONFIG } from '@/common/constants';
+import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
+import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
+import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
+import { QUEUE_NAMES, EVENT_NAMES, SCHEDULER_CONFIG, MESSAGING_CONFIG } from '@/common/constants';
 
 export interface ScheduledMessageExecuteJobData {
   scheduledMessageId: string;
@@ -24,7 +33,56 @@ export class ScheduledMessageWorker implements OnModuleInit {
     private readonly schedulerRepo: SchedulerRepository,
     private readonly sessionRepo: WhatsAppSessionRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly messageRepo: MessageRepository,
+    private readonly conversationRepo: ConversationRepository,
+    private readonly messageEventRepo: MessageEventRepository,
   ) {}
+
+  /** The outbound Message the send worker delivers, in the contact's conversation. */
+  private async createOutbound(
+    data: ScheduledMessageExecuteJobData,
+    scheduled: {
+      messageType: MessageType;
+      messageBody: string | null;
+      mediaUrl: string | null;
+      mediaMimeType: string | null;
+      metadata: unknown;
+    },
+    idempotencyKey: string,
+  ) {
+    const conversation = await this.conversationRepo.findOrCreate({
+      orgId: data.orgId,
+      sessionId: data.sessionId,
+      contactPhone: data.contactPhone,
+    });
+
+    const message = await this.messageRepo.create({
+      orgId: data.orgId,
+      sessionId: data.sessionId,
+      conversationId: conversation.id,
+      direction: MessageDirection.OUTBOUND,
+      type: scheduled.messageType,
+      contactPhone: data.contactPhone,
+      body: scheduled.messageBody ?? undefined,
+      mediaUrl: scheduled.mediaUrl ?? undefined,
+      mediaMimeType: scheduled.mediaMimeType ?? undefined,
+      idempotencyKey,
+      maxRetries: MESSAGING_CONFIG.MAX_RETRY_COUNT,
+      metadata: {
+        ...((scheduled.metadata as Record<string, unknown> | null) ?? {}),
+        scheduledMessageId: data.scheduledMessageId,
+      },
+    });
+
+    await this.messageEventRepo.record({
+      messageId: message.id,
+      orgId: data.orgId,
+      status: MessageStatus.QUEUED,
+      metadata: { scheduledMessageId: data.scheduledMessageId },
+    });
+    await this.conversationRepo.updateLastMessage(conversation.id, scheduled.messageBody, false);
+    return message;
+  }
 
   async onModuleInit(): Promise<void> {
     await this.queueService.subscribe<ScheduledMessageExecuteJobData>(
@@ -171,26 +229,22 @@ export class ScheduledMessageWorker implements OnModuleInit {
         return;
       }
 
-      // 3. Queue the actual WhatsApp message via the messaging engine
+      // 3. Create the message record, then queue it. The send worker only takes
+      // {messageId, sessionId, orgId}; it loads everything else from the record.
       const idempotencyKey = `sched-msg-${data.scheduledMessageId}`;
+      const outbound =
+        (await this.messageRepo.findByIdempotencyKey(idempotencyKey)) ??
+        (await this.createOutbound(data, message, idempotencyKey));
 
       await this.queueService.publishOnce(
         QUEUE_NAMES.SEND_WHATSAPP_MESSAGE,
+        { messageId: outbound.id, sessionId: data.sessionId, orgId: data.orgId },
+        `msg-${outbound.id}`,
         {
-          orgId: data.orgId,
-          sessionId: data.sessionId,
-          contactPhone: data.contactPhone,
-          type: message.messageType,
-          body: message.messageBody,
-          mediaUrl: message.mediaUrl,
-          mediaMimeType: message.mediaMimeType,
-          metadata: {
-            scheduledMessageId: data.scheduledMessageId,
-            ...(message.metadata as Record<string, unknown> || {}),
-          },
-          idempotencyKey,
+          retryLimit: MESSAGING_CONFIG.MAX_RETRY_COUNT,
+          retryDelay: MESSAGING_CONFIG.RETRY_BASE_DELAY_SECONDS,
+          retryBackoff: true,
         },
-        idempotencyKey,
       );
 
       // 4. Mark as SENT

@@ -3,6 +3,8 @@ import { AutomationTriggerType } from '@prisma/client';
 import { ExecuteChatbotFlowUseCase } from '@/modules/chatbot/application/use-cases/execute-chatbot-flow.use-case';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
+import { isOptOutReply } from '@/modules/messages/domain/services/send-safety.policy';
+import { BotBehaviorService } from '@/modules/chatbot/application/services/bot-behavior.service';
 
 export interface IncomingWhatsAppMessage {
   messageId: string;
@@ -33,6 +35,7 @@ export class MessagePipelineService {
     private readonly executeChatbotFlow: ExecuteChatbotFlowUseCase,
     private readonly evaluateTrigger: EvaluateTriggerUseCase,
     private readonly orgStatus: OrgStatusService,
+    private readonly botBehavior: BotBehaviorService,
   ) {}
 
   async processIncoming(payload: IncomingWhatsAppMessage): Promise<void> {
@@ -42,8 +45,25 @@ export class MessagePipelineService {
       return;
     }
 
-    // Only text messages are eligible for chatbot flows
-    if (!payload.type || payload.type === 'TEXT') {
+    // "STOP" / "unsubscribe": the contact is opted out by the incoming worker. Answering
+    // it with a bot greeting or an automation would be exactly what they asked us not to do.
+    if (isOptOutReply(payload.body)) {
+      this.logger.debug(`Message ${payload.messageId} is an opt-out — no chatbot/automation reply`);
+      return;
+    }
+
+    // A person owns the chat (replied in the app or on the phone, or it's assigned):
+    // no chatbot flow and no automation reply until they hand it back or the pause ends
+    if (payload.conversationId && (await this.botBehavior.isPaused(payload.conversationId, payload.orgId))) {
+      this.logger.debug(`Conversation ${payload.conversationId} is with a person — no auto-reply`);
+      return;
+    }
+
+    // Only text messages from a known contact are eligible for chatbot flows
+    // (a chatbot session belongs to a contact)
+    if (!payload.contactId) {
+      this.logger.warn(`Message ${payload.messageId} has no contact — skipping chatbot`);
+    } else if (!payload.type || payload.type === 'TEXT') {
       const chatbotResult = await this.runChatbot(payload);
       if (chatbotResult?.replied) {
         this.logger.debug(
@@ -91,15 +111,22 @@ export class MessagePipelineService {
           contactPhone: payload.contactPhone,
           type: payload.type,
           conversationId: payload.conversationId,
+          // Keyword rules match on the text
+          body: payload.body,
+          // A reply to the contact's own message: send it on the number they wrote to
+          inbound: true,
         },
         context: {
           message: {
             id: payload.messageId,
             type: payload.type,
+            body: payload.body,
             contactPhone: payload.contactPhone,
           },
+          contact: { id: payload.contactId, phoneNumber: payload.contactPhone },
         },
-        contactId: undefined,
+        // Without it, per-contact limits and cooldowns are skipped and contact actions can't run
+        contactId: payload.contactId,
       });
     } catch (error) {
       this.logger.error(

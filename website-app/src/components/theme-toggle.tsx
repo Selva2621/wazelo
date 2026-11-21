@@ -8,13 +8,13 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
-const KEY = "wazelo-theme";
+export const THEME_KEY = "wazelo-theme";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   // Unknown until mounted (the server can't see the visitor's choice).
   const [theme, setTheme] = useState<Theme | null>(null);
 
-  // Follow <html data-theme>, so every toggle on the page (navbar, footer dock)
+  // Follow <html data-theme>, so every toggle on the page (navbar, mobile menu)
   // shows the same icon whichever one was clicked.
   useEffect(() => {
     const root = document.documentElement;
@@ -29,7 +29,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem(KEY, next);
+      localStorage.setItem(THEME_KEY, next);
     } catch {
       /* private mode: the choice just isn't remembered */
     }
@@ -43,7 +43,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className={`grid size-10 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-ink/5 hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container ${className}`}
+      className={`grid size-10 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container ${className}`}
     >
       {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
     </button>

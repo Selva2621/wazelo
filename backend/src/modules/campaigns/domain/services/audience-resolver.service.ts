@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { CampaignAudienceType, Prisma } from '@prisma/client';
+import { WhatsAppPermissionService } from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 export interface AudienceFilters {
+  contactIds?: string[];
+  contactGroupIds?: string[];
   leadStatuses?: string[];
   tagIds?: string[];
   ownerIds?: string[];
@@ -26,19 +29,32 @@ export interface AudienceResult {
   total: number;
 }
 
+/** Append a condition to a where clause's AND list (keeps the existing ones) */
+function andWhere(where: Prisma.ContactWhereInput, clause: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+  return {
+    ...where,
+    AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), clause],
+  };
+}
+
 const E164_REGEX = /^\+?[1-9]\d{6,14}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 @Injectable()
 export class AudienceResolverService {
   private readonly logger = new Logger(AudienceResolverService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
+  ) {}
 
   /**
    * Resolves the target audience for a campaign.
    *
    * 1. Builds query from audience type + filters
-   * 2. Excludes: deleted, merged, opted-out contacts
+   * 2. Excludes: deleted, merged, opted-out contacts, numbers known not to be on
+   *    WhatsApp, and lead finder contacts without WhatsApp permission
    * 3. Validates phone numbers (E.164)
    * 4. Deduplicates by phone number (keeps first contact per phone)
    * 5. Uses cursor-based pagination for large datasets
@@ -49,7 +65,7 @@ export class AudienceResolverService {
     filters?: AudienceFilters,
   ): Promise<AudienceResult> {
     if (filters) await this.resolveTeamIds(filters);
-    const where = await this.buildWhereClause(orgId, audienceType, filters);
+    const where = await this.forWhatsAppPermitted(orgId, await this.buildWhereClause(orgId, audienceType, filters));
 
     const contacts: ResolvedContact[] = [];
     const seenPhones = new Set<string>();
@@ -104,37 +120,45 @@ export class AudienceResolverService {
   }
 
   /**
-   * Keep only "warm" contacts — ones who have messaged this org before.
-   * Bulk messages to people who never wrote first get a WhatsApp number
-   * reported and banned, so Baileys campaigns only go to warm contacts.
+   * Email campaigns: contacts with a valid email who haven't unsubscribed from
+   * email (the WhatsApp opt-out doesn't apply), one per address.
    */
-  async keepWarmContacts(orgId: string, contacts: ResolvedContact[]): Promise<ResolvedContact[]> {
-    const warm: ResolvedContact[] = [];
-    const chunkSize = 1000;
-
-    for (let i = 0; i < contacts.length; i += chunkSize) {
-      const chunk = contacts.slice(i, i + chunkSize);
-      const variants = chunk.flatMap((c) => {
-        const digits = c.phoneNumber.replace(/^\+/, '');
-        return [digits, `+${digits}`];
+  async resolveEmailAudience(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<{ contacts: (ResolvedContact & { email: string })[]; total: number }> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forEmail(await this.buildWhereClause(orgId, audienceType, filters));
+    const contacts: (ResolvedContact & { email: string })[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    while (true) {
+      const batch = await this.prisma.contact.findMany({
+        where,
+        select: { id: true, phoneNumber: true, email: true },
+        orderBy: { id: 'asc' },
+        take: 1000,
+        ...(cursor && { skip: 1, cursor: { id: cursor } }),
       });
-
-      const inbound = await this.prisma.message.findMany({
-        where: {
-          orgId,
-          direction: 'INBOUND',
-          deletedAt: null,
-          contactPhone: { in: variants },
-        },
-        select: { contactPhone: true },
-        distinct: ['contactPhone'],
-      });
-      const warmPhones = new Set(inbound.map((m) => m.contactPhone.replace(/^\+/, '')));
-
-      warm.push(...chunk.filter((c) => warmPhones.has(c.phoneNumber.replace(/^\+/, ''))));
+      if (batch.length === 0) break;
+      for (const c of batch) {
+        const email = c.email?.trim().toLowerCase();
+        if (!email || !EMAIL_REGEX.test(email) || seen.has(email)) continue;
+        seen.add(email);
+        contacts.push({ id: c.id, phoneNumber: c.phoneNumber, email });
+      }
+      cursor = batch[batch.length - 1].id;
+      if (batch.length < 1000) break;
     }
+    this.logger.log(`Resolved ${contacts.length} email recipients for org ${orgId} (audience: ${audienceType})`);
+    return { contacts, total: contacts.length };
+  }
 
-    return warm;
+  /** Same audience, for email: has an email, not unsubscribed from email (WhatsApp opt-out doesn't apply) */
+  private forEmail(where: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+    const { optedOut: _whatsAppOptOut, ...rest } = where;
+    return { ...rest, emailOptedOut: false, email: { not: null } };
   }
 
   /**
@@ -145,10 +169,82 @@ export class AudienceResolverService {
     orgId: string,
     audienceType: CampaignAudienceType,
     filters?: AudienceFilters,
+    channel: 'WHATSAPP' | 'EMAIL' = 'WHATSAPP',
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
     const where = await this.buildWhereClause(orgId, audienceType, filters);
-    return this.prisma.contact.count({ where });
+    return this.prisma.contact.count({
+      where: channel === 'EMAIL' ? this.forEmail(where) : await this.forWhatsAppPermitted(orgId, where),
+    });
+  }
+
+  /** How many of the (WhatsApp) audience a check found are not on WhatsApp, so they'll be skipped. */
+  async countNotOnWhatsApp(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<number> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = await this.buildWhereClause(orgId, audienceType, filters);
+    return this.prisma.contact.count({ where: andWhere(where, { waExists: false }) });
+  }
+
+  /**
+   * How many of the WhatsApp audience are lead finder contacts without WhatsApp
+   * permission (they haven't messaged the org or agreed), so they are left out.
+   * Counted on top of the not-on-WhatsApp exclusion so the two notes don't overlap.
+   */
+  async countWithoutWhatsAppPermission(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<number> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
+    return this.prisma.contact.count({
+      where: andWhere(where, await this.whatsAppPermission.notPermittedWhere(orgId)),
+    });
+  }
+
+  /**
+   * Before a WhatsApp send starts (lead finder outreach): how many of the
+   * audience it would otherwise reach, and how many of those have WhatsApp
+   * permission and will actually be messaged. Both counts skip numbers a check
+   * found are not on WhatsApp, so the gap is only the permission rule. Three
+   * queries regardless of audience size (inbound ids + two counts).
+   */
+  async countWhatsAppPermission(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<{ total: number; withPermission: number }> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
+    const permitted = await this.whatsAppPermission.permittedWhere(orgId);
+    const [total, withPermission] = await Promise.all([
+      this.prisma.contact.count({ where }),
+      this.prisma.contact.count({ where: andWhere(where, permitted) }),
+    ]);
+    return { total, withPermission };
+  }
+
+  /** WhatsApp audience, minus lead finder contacts without WhatsApp permission */
+  private async forWhatsAppPermitted(
+    orgId: string,
+    where: Prisma.ContactWhereInput,
+  ): Promise<Prisma.ContactWhereInput> {
+    return andWhere(this.forWhatsApp(where), await this.whatsAppPermission.permittedWhere(orgId));
+  }
+
+  /**
+   * Same audience, for WhatsApp: skip numbers a check found are not on WhatsApp
+   * (unchecked ones still go). Undelivered sends lower the number's delivery rate,
+   * which auto-pauses it and is a ban signal. Explicit null branch: a plain
+   * `not: false` would also drop unchecked contacts.
+   */
+  private forWhatsApp(where: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+    const notOffWhatsApp: Prisma.ContactWhereInput = { OR: [{ waExists: null }, { waExists: true }] };
+    return andWhere(where, notOffWhatsApp);
   }
 
   private async buildWhereClause(
@@ -162,8 +258,37 @@ export class AudienceResolverService {
       mergedIntoId: null,
       optedOut: false,
     };
+    const intersectIds = (ids: string[]) => {
+      const currentIds =
+        where.id && typeof where.id === 'object' && 'in' in where.id
+          ? (where.id.in as string[])
+          : undefined;
+      where.id = { in: currentIds ? currentIds.filter((id) => ids.includes(id)) : ids };
+    };
 
     if (audienceType === CampaignAudienceType.FILTERED && filters) {
+      if (filters.contactIds?.length && !filters.contactGroupIds?.length) {
+        intersectIds(filters.contactIds);
+      }
+
+      const selectedContactConditions: Prisma.ContactWhereInput[] = [];
+      if (filters.contactIds?.length && filters.contactGroupIds?.length) {
+        selectedContactConditions.push({ id: { in: filters.contactIds } });
+      }
+      if (filters.contactGroupIds?.length) {
+        selectedContactConditions.push({
+          savedGroupMemberships: {
+            some: {
+              groupId: { in: filters.contactGroupIds },
+              group: { orgId, deletedAt: null },
+            },
+          },
+        });
+      }
+      if (selectedContactConditions.length > 0) {
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: selectedContactConditions }];
+      }
+
       if (filters.leadStatuses && filters.leadStatuses.length > 0) {
         where.leadStatus = { in: filters.leadStatuses as any };
       }
@@ -195,7 +320,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const contactIds = imported.map((r) => r.contactId as string);
-        where.id = { in: contactIds };
+        intersectIds(contactIds);
       }
 
       // hasPhone filter
@@ -215,11 +340,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const websiteContactIds = websiteResults.map((r) => r.contactId as string);
-        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
-          where.id = { in: (where.id.in as string[]).filter((id) => websiteContactIds.includes(id)) };
-        } else {
-          where.id = { in: websiteContactIds };
-        }
+        intersectIds(websiteContactIds);
       }
 
       // dateAdded filter
@@ -239,12 +360,7 @@ export class AudienceResolverService {
           select: { contactId: true },
         });
         const ratedContactIds = ratedResults.map((r) => r.contactId as string);
-        // Intersect with existing id filter if present
-        if (where.id && typeof where.id === 'object' && 'in' in where.id) {
-          where.id = { in: (where.id.in as string[]).filter((id) => ratedContactIds.includes(id)) };
-        } else {
-          where.id = { in: ratedContactIds };
-        }
+        intersectIds(ratedContactIds);
       }
     }
 

@@ -37,7 +37,9 @@ export default function WhatsAppLinkPage() {
   const actionError = (reconnect.error ?? pairing.error)?.message;
 
   return (
-    <Card className="w-full max-w-[400px] p-6 text-center shadow-sm">
+    // Phones: full-width 48px buttons, easy to hit with a thumb
+    <Card className="w-full max-w-[400px] p-6 text-center shadow-sm max-lg:rounded-2xl max-lg:px-5 max-lg:[&_button.w-full]:h-12 max-lg:[&_button.w-full]:text-body-lg">
+
       {status.isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner size="lg" className="text-primary" />
@@ -150,7 +152,7 @@ function LinkState({
             <div className="mt-6">
               <PairingCodeDisplay code={pairingCode} />
               <PairingSteps className="mt-6 text-left" />
-              <Button variant="ghost" size="sm" className="mt-4" onClick={onPair} loading={pairingPending}>
+              <Button variant="ghost" size="sm" className="mt-4 max-lg:h-11" onClick={onPair} loading={pairingPending}>
                 Get a new code
               </Button>
             </div>

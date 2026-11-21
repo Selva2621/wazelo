@@ -68,7 +68,7 @@ export function ChannelForm({
           Select a channel type to get started
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           {CHANNEL_TYPES.map((type) => (
             <button
               key={type}

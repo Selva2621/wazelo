@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { AiProviderService } from '../../domain/services/ai-provider.service';
 import { OrgContextService } from '../../domain/services/org-context.service';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 
 export interface RoutingSuggestion {
   suggestedTeam: string | null;
@@ -16,6 +17,7 @@ export class SuggestRoutingUseCase {
     private readonly aiProvider: AiProviderService,
     private readonly orgContext: OrgContextService,
     private readonly prisma: PrismaService,
+    private readonly messageCrypto: MessageEncryptionService,
   ) {}
 
   async execute(conversationId: string, orgId: string): Promise<RoutingSuggestion> {
@@ -29,12 +31,15 @@ export class SuggestRoutingUseCase {
     }
 
     // Fetch last 10 messages separately (Conversation has messages[] relation)
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId, orgId },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: { body: true, direction: true },
-    });
+    // Bodies are encrypted at rest
+    const messages = this.messageCrypto.decryptBodies(
+      await this.prisma.message.findMany({
+        where: { conversationId, orgId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { body: true, direction: true },
+      }),
+    );
 
     // Fetch available teams for this org
     const teams = await this.prisma.team.findMany({

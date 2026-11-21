@@ -5,8 +5,8 @@ import type { AnalyticsPeriod } from "@/lib/types/analytics";
 
 const PERIOD_TABS = [
   { id: "day", label: "Today" },
-  { id: "week", label: "This Week" },
-  { id: "month", label: "This Month" },
+  { id: "week", label: "This week" },
+  { id: "month", label: "This month" },
 ];
 
 interface PeriodSelectorProps {

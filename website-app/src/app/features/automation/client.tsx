@@ -10,40 +10,40 @@ const nodes = [
     label: "Message Received",
     sub: "Contains 'price' or 'cost'",
     icon: "notifications_active",
-    color: "var(--c-success)",
-    bg: "color-mix(in srgb, var(--c-success) 10%, transparent)",
-    border: "color-mix(in srgb, var(--c-success) 30%, transparent)",
+    color: "#22c55e",
+    bg: "rgba(34,197,94,0.1)",
+    border: "rgba(34,197,94,0.3)",
     typeLabel: "TRIGGER",
   },
   {
     id: "condition",
     type: "condition",
-    label: "Only if Lead Status is New",
-    sub: "All conditions must match",
+    label: "Is Tagged as Lead?",
+    sub: "Check contact tag",
     icon: "call_split",
-    color: "var(--c-primary-container)",
-    bg: "rgb(var(--fx-accent) / 0.1)",
-    border: "rgb(var(--fx-accent) / 0.3)",
+    color: "#f59e0b",
+    bg: "rgba(245,158,11,0.1)",
+    border: "rgba(245,158,11,0.3)",
     typeLabel: "CONDITION",
   },
   {
     id: "yes",
     type: "action",
-    label: "Send WhatsApp Message",
-    sub: "\"Hi {{contact.name}}, here is our price list...\"",
+    label: "Send Auto-Reply",
+    sub: "\"Let me share our pricing...\"",
     icon: "send",
-    color: "var(--c-primary-container)",
-    bg: "rgb(var(--fx-accent) / 0.1)",
-    border: "rgb(var(--fx-accent) / 0.3)",
+    color: "#ffb77d",
+    bg: "rgba(255,183,125,0.1)",
+    border: "rgba(255,183,125,0.3)",
     typeLabel: "ACTION",
   },
   {
     id: "no",
     type: "action",
-    label: "Rule skipped",
-    sub: "Recorded in Execution Logs",
-    icon: "block",
-    color: "var(--c-code-cyan)",
+    label: "Assign to Sales Team",
+    sub: "Round-robin assignment",
+    icon: "person_add",
+    color: "#0ea5e9",
     bg: "rgba(14,165,233,0.1)",
     border: "rgba(14,165,233,0.3)",
     typeLabel: "ACTION",
@@ -94,15 +94,15 @@ function NodeCard({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 18, color: node.color }}>{node.icon}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>{node.label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>{node.label}</span>
       </div>
-      <div style={{ fontSize: 12, color: "var(--c-on-surface-variant)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 4 }}>{node.sub}</div>
+      <div style={{ fontSize: 12, color: "rgba(219,194,176,0.55)", fontFamily: "var(--font-geist-sans), sans-serif", marginTop: 4 }}>{node.sub}</div>
     </div>
   );
 }
 
 // ─── Connector line ───────────────────────────────────────────────────────────
-function Connector({ color = "rgb(var(--fx-ink) / 0.1)", height = 28 }: { color?: string; height?: number }) {
+function Connector({ color = "rgba(255,255,255,0.1)", height = 28 }: { color?: string; height?: number }) {
   return (
     <div style={{ width: 2, height, background: color, margin: "0 auto" }} />
   );
@@ -133,25 +133,25 @@ function AutomationMockup() {
       <div style={{ textAlign: "center", marginBottom: 0 }}>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "var(--c-primary-container)",
+          textTransform: "uppercase", color: "#f59e0b",
           fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
-          letterSpacing: "-0.04em", color: "var(--c-on-surface)",
+          letterSpacing: "-0.04em", color: "#e5e2e1",
           fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
-          Trigger, condition, reply.
+          Visual automations, zero code.
         </h2>
       </div>
 
       {/* Mockup container */}
       <div style={{
-        background: "var(--c-surface-container-lowest)",
+        background: "#1c1b1b",
         borderRadius: 16,
-        boxShadow: "0 24px 80px rgb(var(--fx-shadow) / 0.35)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         padding: "28px 40px",
         marginTop: 32,
       }}>
@@ -163,13 +163,13 @@ function AutomationMockup() {
           alignItems: "center",
           marginBottom: 28,
         }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--c-on-surface)", fontFamily: "var(--font-geist-sans), sans-serif" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif" }}>
             Automation: Price Inquiry Flow
           </span>
           <span style={{
-            background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
-            color: "var(--c-success)",
-            border: "1px solid color-mix(in srgb, var(--c-success) 30%, transparent)",
+            background: "rgba(34,197,94,0.1)",
+            color: "#22c55e",
+            border: "1px solid rgba(34,197,94,0.3)",
             borderRadius: 20,
             padding: "4px 12px",
             fontSize: 12,
@@ -214,12 +214,12 @@ function AutomationMockup() {
               flexDirection: "column",
               alignItems: "flex-end",
               paddingRight: 20,
-              borderRight: "1px dashed rgb(var(--fx-ink) / 0.08)",
+              borderRight: "1px dashed rgba(255,255,255,0.08)",
             }}>
-              <div style={{ height: 20, width: 2, background: "color-mix(in srgb, var(--c-success) 30%, transparent)", margin: "0 0 0 auto" }} />
+              <div style={{ height: 20, width: 2, background: "rgba(34,197,94,0.3)", margin: "0 0 0 auto" }} />
               <span style={{
-                background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
-                color: "var(--c-success)",
+                background: "rgba(34,197,94,0.1)",
+                color: "#22c55e",
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
@@ -229,9 +229,9 @@ function AutomationMockup() {
                 marginRight: 0,
                 alignSelf: "flex-end",
               }}>
-                MATCH
+                YES
               </span>
-              <div style={{ height: 12, width: 2, background: "color-mix(in srgb, var(--c-success) 30%, transparent)", marginLeft: "auto" }} />
+              <div style={{ height: 12, width: 2, background: "rgba(34,197,94,0.3)", marginLeft: "auto" }} />
               <div style={{ width: "100%" }}>
                 <NodeCard
                   node={yesNode}
@@ -253,7 +253,7 @@ function AutomationMockup() {
               <div style={{ height: 20, width: 2, background: "rgba(14,165,233,0.3)", margin: "0 auto 0 0" }} />
               <span style={{
                 background: "rgba(14,165,233,0.1)",
-                color: "var(--c-code-cyan)",
+                color: "#0ea5e9",
                 borderRadius: 10,
                 padding: "2px 10px",
                 fontSize: 11,
@@ -262,7 +262,7 @@ function AutomationMockup() {
                 marginBottom: 8,
                 alignSelf: "flex-start",
               }}>
-                NO MATCH
+                NO
               </span>
               <div style={{ height: 12, width: 2, background: "rgba(14,165,233,0.3)", marginRight: "auto" }} />
               <div style={{ width: "100%" }}>
@@ -281,7 +281,7 @@ function AutomationMockup() {
             textAlign: "center",
             marginTop: 24,
             fontSize: 12,
-            color: "var(--c-placeholder)",
+            color: "rgba(219,194,176,0.3)",
             fontStyle: "italic",
             fontFamily: "var(--font-geist-sans), sans-serif",
           }}>
@@ -297,35 +297,26 @@ function AutomationMockup() {
 const data: FeatureDetailData = {
   slug: "automation",
   tag: "Automation",
-  heroTitle: "Build flows.<br /><span style=\"color:var(--c-primary-container)\">Not busywork.</span>",
-  heroSubtitle: "Reply instantly when a message arrives, a contact is created, or a Shopify order or abandoned cart comes in.",
-  overviewTitle: "Instant replies, set up once.",
-  overviewDesc: "An automation rule watches for an event and sends a WhatsApp message straight away. Pick a trigger, add conditions such as a keyword or lead status, and write the reply with variables like the contact's name or a Shopify order number. Describe a rule in plain words and Wazelo can draft it for you. Every run is recorded in Execution Logs.",
+  heroTitle: "Build flows.<br /><span style=\"color:#ffb77d\">Not busywork.</span>",
+  heroSubtitle: "Visual workflow builder for WhatsApp automation — follow-up sequences, lead qualification, smart routing, and more. No code, no limits.",
+  heroScreen: "/screens/03-automation-workflow.png",
+  overviewTitle: "Your best agent works 24/7 and never sleeps.",
+  overviewDesc: "Manual follow-ups, repetitive answers, and missed triggers cost your team hours every day. Wazelo's automation engine lets you build visual workflows that run on autopilot — from a new lead's first message to a resolved ticket's CSAT survey — so your team focuses only on conversations that need a human touch.",
   capabilities: [
-    { icon: "bolt", title: "Event triggers", desc: "Message Received (with an optional keyword), Contact Created, Lead Status Changed and Widget Message Received." },
-    { icon: "shopping_cart", title: "Shopify triggers", desc: "Order Created, Order Fulfilled and Cart Abandoned, with an optional minimum order or cart value." },
-    { icon: "filter_alt", title: "Conditions", desc: "Run only when fields like Lead Status, Contact Tags or Message Body match. Every condition must be true." },
-    { icon: "data_object", title: "Variables in replies", desc: "Insert {{contact.name}}, or Shopify values like the order name, total and cart recovery link." },
-    { icon: "auto_awesome", title: "Generate with AI", desc: "Describe the rule in plain words and AI drafts it for you to review. Uses AI credits." },
-    { icon: "receipt_long", title: "Execution Logs", desc: "Every run with its trigger, status, duration, retries and the result of each action." },
-  ],
-  details: [
-    { title: "Triggers", items: ["Message Received", "Contact Created", "Lead Status Changed", "Shopify Order Created", "Shopify Order Fulfilled", "Shopify Cart Abandoned", "Widget Message Received"] },
-    { title: "Condition fields", items: ["Contact Name", "Contact Phone", "Lead Status", "Contact Tags", "Message Body", "Conversation Status", "Trigger Keyword"] },
-    { title: "Safeguards", items: ["Priority", "Max runs per contact", "Cooldown", "Loop protection", "Up to 100 rules"] },
+    { icon: "bolt", title: "Trigger-based workflows", desc: "Start automations on any event: new message received, contact tag added, campaign replied, time elapsed, and more." },
+    { icon: "account_tree", title: "Visual flow builder", desc: "Drag-and-drop conditions, delays, actions, and branches. Build complex flows without a single line of code." },
+    { icon: "reply", title: "Auto-replies", desc: "Respond instantly to common queries — outside hours, on weekends, or while your team is busy." },
+    { icon: "label", title: "Auto-tagging & routing", desc: "Classify and route conversations automatically based on message content, contact fields, or intent." },
+    { icon: "timer", title: "Delay steps", desc: "Add time delays between steps — send a follow-up 2 hours after no reply, or a reminder 24 hours before an appointment." },
+    { icon: "hub", title: "Webhook integrations", desc: "Connect to any external system. Trigger a webhook on any workflow step to sync with your CRM, ERP, or custom API." },
   ],
   howItWorks: [
-    { step: "01", title: "Pick a trigger", desc: "Create a rule, or describe what you want and use Generate with AI." },
-    { step: "02", title: "Add conditions", desc: "Narrow it down by keyword, lead status, tags or message text." },
-    { step: "03", title: "Write the reply", desc: "Compose the WhatsApp message, with variables for the contact or the Shopify order." },
-    { step: "04", title: "Turn it on", desc: "Enable the rule and check Execution Logs to see each run." },
+    { step: "01", title: "Choose a trigger", desc: "Select what starts the workflow — an inbound message, a tag, a form submission, a time condition, or a campaign interaction." },
+    { step: "02", title: "Build your flow", desc: "Add conditions, actions, delays, and branches using the visual builder. Preview the flow before activating." },
+    { step: "03", title: "Test it", desc: "Run the workflow on a test contact to verify every step fires correctly before going live." },
+    { step: "04", title: "Activate and monitor", desc: "Switch it on. Monitor run counts, errors, and conversion metrics from the automation dashboard." },
   ],
-  faqs: [
-    { q: "Is there a drag-and-drop builder?", a: "No. Rules are set up in a short form: one trigger, optional conditions, then the reply. Most take about a minute." },
-    { q: "Can it recover abandoned Shopify carts?", a: "Yes. Connect your store and use the Cart Abandoned trigger to send {{shopify.recovery_url}}, with a minimum cart value if you like. Shopify is included from the Starter plan." },
-    { q: "Does Generate with AI cost credits?", a: "Yes, it uses AI credits: 50 a month on Starter, 200 on Growth and 500 on Pro." },
-    { q: "How many rules can I create?", a: "Up to 100 per workspace." },
-  ],
+  screens: [],
   relatedFeatures: [
     { label: "Shared Inbox", href: "/features/shared-inbox", icon: "forum" },
     { label: "Chatbot Builder", href: "/features/chatbot", icon: "smart_toy" },

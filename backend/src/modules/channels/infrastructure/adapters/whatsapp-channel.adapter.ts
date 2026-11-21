@@ -11,9 +11,13 @@ import {
   WebhookRegistrationResult,
   ChannelCapabilities,
 } from '../../domain/interfaces/channel-adapter.interface';
-import { CHANNEL_CONFIG } from '@/common/constants';
+import { CHANNEL_CONFIG, META_GRAPH_API_BASE } from '@/common/constants';
+import {
+  resolveTestRecipient,
+  TEST_RECIPIENT_BLOCKED_ERROR,
+} from '@/common/utils/test-recipient-guard.util';
 
-const META_API_BASE = 'https://graph.facebook.com/v19.0';
+const META_API_BASE = META_GRAPH_API_BASE;
 
 const NON_RETRYABLE_ERRORS = [
   'invalid_phone_number',
@@ -64,10 +68,16 @@ export class WhatsAppChannelAdapter implements ChannelAdapter {
     message: OutboundMessage,
     config: Record<string, unknown>,
   ): Promise<OutboundResult> {
+    // Test mode: anyone but a test number gets redirected to one
+    const to = resolveTestRecipient(message.recipientIdentifier);
+    if (!to) {
+      return { success: false, error: `Test mode: ${TEST_RECIPIENT_BLOCKED_ERROR}`, retryable: false };
+    }
+
     const phoneNumberId = config.phoneNumberId as string;
     const accessToken = config.accessToken as string;
     const url = `${META_API_BASE}/${phoneNumberId}/messages`;
-    const payload = this.buildOutboundPayload(message);
+    const payload = this.buildOutboundPayload({ ...message, recipientIdentifier: to });
 
     try {
       const response = await fetch(url, {

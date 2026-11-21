@@ -6,6 +6,8 @@
 
 const E164 = '^\\+?[1-9]\\d{6,14}$';
 
+const LEAD_STATUSES = ['NEW', 'CONTACTED', 'INTERESTED', 'CONVERTED', 'CLOSED'];
+
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 
 /** Success responses are wrapped by the global TransformInterceptor. */
@@ -91,6 +93,8 @@ export function buildDeveloperOpenApiSpec(serverUrl: string) {
       { name: 'Messages' },
       { name: 'Templates' },
       { name: 'Contacts' },
+      { name: 'Conversations' },
+      { name: 'Deals' },
       { name: 'Session' },
       { name: 'API keys' },
     ],
@@ -191,10 +195,15 @@ export function buildDeveloperOpenApiSpec(serverUrl: string) {
       '/developer/contacts': {
         get: {
           tags: ['Contacts'],
-          summary: 'List contacts',
-          description: 'Cursor pagination. Scopes: read, contacts.',
+          summary: 'List or search contacts',
+          description: 'Newest first, cursor pagination. Scopes: read, contacts.',
           ...scopes('read', 'contacts'),
-          parameters: cursorParams,
+          parameters: [
+            ...cursorParams,
+            { name: 'search', in: 'query', description: 'Part of a name, phone or email', schema: { type: 'string', maxLength: 100 } },
+            { name: 'phone', in: 'query', description: 'Exact phone number', schema: { type: 'string', pattern: E164 } },
+            { name: 'leadStatus', in: 'query', schema: { type: 'string', enum: LEAD_STATUSES } },
+          ],
           responses: { 200: ok('A page of contacts', page('Contact')), ...errors },
         },
         post: {
@@ -235,6 +244,195 @@ export function buildDeveloperOpenApiSpec(serverUrl: string) {
           requestBody: body(ref('UpdateContactRequest')),
           responses: {
             200: ok('The updated contact', ref('Contact')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/contacts/{id}/lead-status': {
+        put: {
+          tags: ['Contacts'],
+          summary: "Change a contact's lead status",
+          description: 'Runs the same automations as changing it in the app. Scopes: write, contacts.',
+          ...scopes('write', 'contacts'),
+          parameters: [idParam('Contact')],
+          requestBody: body({
+            type: 'object',
+            required: ['status'],
+            properties: {
+              status: { type: 'string', enum: LEAD_STATUSES },
+              reason: { type: 'string', maxLength: 500 },
+            },
+          }),
+          responses: {
+            200: ok('The updated contact', ref('Contact')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/contacts/{id}/notes': {
+        get: {
+          tags: ['Contacts'],
+          summary: "List a contact's notes",
+          description: 'Newest first. Scopes: read, contacts.',
+          ...scopes('read', 'contacts'),
+          parameters: [idParam('Contact'), cursorParams[0]],
+          responses: {
+            200: ok('Notes', { type: 'array', items: ref('Note') }),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+        post: {
+          tags: ['Contacts'],
+          summary: 'Add a note to a contact',
+          description: "Written as the API key's creator. Scopes: write, contacts.",
+          ...scopes('write', 'contacts'),
+          parameters: [idParam('Contact')],
+          requestBody: body({
+            type: 'object',
+            required: ['content'],
+            properties: { content: { type: 'string', maxLength: 10000 } },
+          }),
+          responses: {
+            201: ok('The note', ref('Note')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/contacts/{id}/tags': {
+        post: {
+          tags: ['Contacts'],
+          summary: 'Tag a contact',
+          description: 'Creates the tag if it does not exist yet. Scopes: write, contacts.',
+          ...scopes('write', 'contacts'),
+          parameters: [idParam('Contact')],
+          requestBody: body({
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', maxLength: 100, example: 'vip' },
+              color: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
+            },
+          }),
+          responses: {
+            200: ok('The tag', ref('Tag')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/contacts/{id}/tags/{tagId}': {
+        delete: {
+          tags: ['Contacts'],
+          summary: 'Remove a tag from a contact',
+          description: 'Scopes: write, contacts.',
+          ...scopes('write', 'contacts'),
+          parameters: [
+            idParam('Contact'),
+            { name: 'tagId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: ok('Removed', { type: 'object', properties: { removed: { type: 'boolean' } } }),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/tags': {
+        get: {
+          tags: ['Contacts'],
+          summary: 'List tags',
+          description: 'Scopes: read, contacts.',
+          ...scopes('read', 'contacts'),
+          responses: { 200: ok('Tags', { type: 'array', items: ref('Tag') }), ...errors },
+        },
+      },
+      '/developer/conversations': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'List conversations',
+          description: 'Most recent activity first, cursor pagination. Scopes: read, messages.',
+          ...scopes('read', 'messages'),
+          parameters: [
+            ...cursorParams,
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'CLOSED', 'ARCHIVED'] } },
+            { name: 'contactPhone', in: 'query', schema: { type: 'string', pattern: E164 } },
+            { name: 'contactId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: { 200: ok('A page of conversations', page('Conversation')), ...errors },
+        },
+      },
+      '/developer/conversations/{id}/messages': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'Messages in a conversation',
+          description: 'Newest first, cursor pagination. Scopes: read, messages.',
+          ...scopes('read', 'messages'),
+          parameters: [idParam('Conversation'), ...cursorParams],
+          responses: {
+            200: ok('A page of messages', page('Message')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/pipelines': {
+        get: {
+          tags: ['Deals'],
+          summary: 'List pipelines and their stages',
+          description: 'Scopes: read, contacts.',
+          ...scopes('read', 'contacts'),
+          responses: { 200: ok('Pipelines', { type: 'array', items: ref('Pipeline') }), ...errors },
+        },
+      },
+      '/developer/deals': {
+        get: {
+          tags: ['Deals'],
+          summary: 'List deals',
+          description: 'Recently updated first, cursor pagination. Scopes: read, contacts.',
+          ...scopes('read', 'contacts'),
+          parameters: [
+            ...cursorParams,
+            { name: 'contactId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'pipelineId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'stageId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'WON', 'LOST'] } },
+          ],
+          responses: { 200: ok('A page of deals', page('Deal')), ...errors },
+        },
+      },
+      '/developer/deals/{id}': {
+        get: {
+          tags: ['Deals'],
+          summary: 'Get a deal',
+          description: 'Includes notes and the follow-up note. Scopes: read, contacts.',
+          ...scopes('read', 'contacts'),
+          parameters: [idParam('Deal')],
+          responses: {
+            200: ok('The deal', ref('Deal')),
+            404: { $ref: '#/components/responses/NotFound' },
+            ...errors,
+          },
+        },
+      },
+      '/developer/deals/{id}/stage': {
+        put: {
+          tags: ['Deals'],
+          summary: 'Move a deal to another stage',
+          description:
+            "The stage must be in the deal's pipeline. Moving to a won or lost stage marks the deal won or lost, the same as dragging it on the board. Scopes: write, contacts.",
+          ...scopes('write', 'contacts'),
+          parameters: [idParam('Deal')],
+          requestBody: body({
+            type: 'object',
+            required: ['stageId'],
+            properties: { stageId: { type: 'string', format: 'uuid' } },
+          }),
+          responses: {
+            200: ok('The moved deal', ref('Deal')),
             404: { $ref: '#/components/responses/NotFound' },
             ...errors,
           },
@@ -467,8 +665,91 @@ export function buildDeveloperOpenApiSpec(serverUrl: string) {
             name: { type: 'string' },
             phoneNumber: { type: 'string' },
             email: { type: 'string', nullable: true },
-            leadStatus: { type: 'string' },
+            leadStatus: { type: 'string', enum: LEAD_STATUSES },
             source: { type: 'string' },
+            leadScore: { type: 'integer', description: 'Only on single-contact responses' },
+            optedOut: { type: 'boolean', description: 'Only on single-contact responses' },
+            owner: {
+              type: 'object',
+              description: 'Only on single-contact responses',
+              properties: { id: { type: 'string' }, firstName: { type: 'string' }, lastName: { type: 'string' } },
+            },
+            tags: { type: 'array', items: ref('Tag'), description: 'Only on single-contact responses' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        Tag: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string' },
+            color: { type: 'string', nullable: true },
+          },
+        },
+        Note: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            content: { type: 'string' },
+            authorId: { type: 'string', format: 'uuid' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        Conversation: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            contactId: { type: 'string', format: 'uuid', nullable: true },
+            contactPhone: { type: 'string' },
+            channelType: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['OPEN', 'CLOSED', 'ARCHIVED'] },
+            lastMessageAt: { type: 'string', format: 'date-time', nullable: true },
+            lastMessageBody: { type: 'string', nullable: true },
+            unreadCount: { type: 'integer' },
+            assignedToId: { type: 'string', format: 'uuid', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        Pipeline: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string' },
+            isDefault: { type: 'boolean' },
+            stages: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  name: { type: 'string' },
+                  order: { type: 'integer' },
+                  isWonStage: { type: 'boolean' },
+                  isLostStage: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        Deal: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            title: { type: 'string' },
+            value: { type: 'number', nullable: true },
+            currency: { type: 'string' },
+            status: { type: 'string', enum: ['OPEN', 'WON', 'LOST'] },
+            expectedClose: { type: 'string', format: 'date-time', nullable: true },
+            closedAt: { type: 'string', format: 'date-time', nullable: true },
+            nextFollowUpAt: { type: 'string', format: 'date-time', nullable: true },
+            assignedToId: { type: 'string', format: 'uuid', nullable: true },
+            pipeline: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } },
+            stage: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } },
+            contact: {
+              type: 'object',
+              properties: { id: { type: 'string' }, name: { type: 'string' }, phoneNumber: { type: 'string' } },
+            },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
           },

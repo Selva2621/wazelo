@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useSAPlatformSettings, useSAUpdatePlatformSettings } from "@/hooks/use-super-admin";
-import type { PlatformSettings, UpdatePlatformSettingsBody } from "@/lib/api/super-admin";
+import type { PlatformSettings, SetupOrgType, UpdatePlatformSettingsBody } from "@/lib/api/super-admin";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
 
-const sectionClass = "bg-surface-container-low border border-outline-variant rounded-xl p-5";
+const sectionClass = "bg-surface-container-lowest border border-outline-variant rounded-2xl p-5";
 const CONSOLE_URL = "https://console.cloud.google.com/apis/credentials";
 
 /** Server message from an API error (Nest sends a string or an array of strings). */
@@ -23,6 +25,135 @@ function errorMessage(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
   if (Array.isArray(message)) return message.join(", ");
   return typeof message === "string" && message ? message : fallback;
+}
+
+function Switch({
+  on,
+  disabled,
+  onClick,
+  ...aria
+}: {
+  on: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      {...aria}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "relative h-5 w-9 shrink-0 rounded-full transition-colors outline-none",
+        "focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 disabled:cursor-not-allowed",
+        on ? "bg-primary" : "bg-outline",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-0.5 left-0 h-4 w-4 rounded-full bg-on-primary shadow-sm transition-transform",
+          on ? "translate-x-4" : "translate-x-0.5",
+        )}
+      />
+    </button>
+  );
+}
+
+const ORG_TYPE_ROWS: { type: SetupOrgType; label: string; field: "teamSetupEnabled" | "freelancerSetupEnabled" }[] = [
+  { type: "TEAM", label: "Team / Company", field: "teamSetupEnabled" },
+  { type: "FREELANCER", label: "Solo / Freelancer", field: "freelancerSetupEnabled" },
+];
+
+/** Which org types new workspaces may pick on the "How will you use Wazelo?" screen. */
+function WorkspaceTypesCard({ settings }: { settings: PlatformSettings }) {
+  const update = useSAUpdatePlatformSettings();
+  const [pending, setPending] = useState<{ row: (typeof ORG_TYPE_ROWS)[number]; next: boolean } | null>(null);
+
+  const confirm = () => {
+    if (!pending) return;
+    const { row, next } = pending;
+    update.mutate(
+      { [row.field]: next },
+      {
+        onSuccess: () => {
+          toast.success(`${row.label} setup is ${next ? "on" : "off"}`);
+          setPending(null);
+        },
+        onError: (err) => {
+          toast.error(errorMessage(err, "Could not update the setting"));
+          setPending(null);
+        },
+      },
+    );
+  };
+
+  return (
+    <section aria-labelledby="org-types-heading" className="space-y-3">
+      <h2 id="org-types-heading" className="text-title-sm font-semibold text-on-surface">
+        Workspace types
+      </h2>
+
+      <div className={cn(sectionClass, "p-0 overflow-hidden")}>
+        <DataTable
+          label="Workspace types"
+          rows={ORG_TYPE_ROWS}
+          rowKey={(row) => row.type}
+          columns={[
+            { id: "type", header: "Type", cellClassName: "font-medium text-on-surface", cell: (row) => row.label },
+            {
+              id: "workspaces",
+              header: "Workspaces",
+              align: "right",
+              cellClassName: "tabular-nums text-on-surface-variant",
+              cell: (row) => settings.orgTypes[row.type].orgCount,
+            },
+            {
+              id: "setup",
+              header: "New setup",
+              align: "right",
+              cell: (row) => {
+                const { setupEnabled } = settings.orgTypes[row.type];
+                return (
+                  <div className="flex justify-end">
+                    <Switch
+                      on={setupEnabled}
+                      disabled={update.isPending}
+                      onClick={() => setPending({ row, next: !setupEnabled })}
+                      aria-label={`Allow new ${row.label} workspaces`}
+                    />
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
+      </div>
+      <p className="text-label text-on-surface-variant">
+        Off hides the type when a new workspace is set up. Existing workspaces aren&apos;t affected.
+      </p>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.next ? `Allow new ${pending.row.label} workspaces?` : `Stop new ${pending?.row.label} workspaces?`}
+        message={
+          pending?.next
+            ? "New workspaces can choose this type during setup."
+            : "New workspaces can't choose this type during setup. Existing ones keep working."
+        }
+        confirmLabel={pending?.next ? "Turn on" : "Turn off"}
+        variant={pending?.next ? "default" : "warning"}
+        loading={update.isPending}
+        onConfirm={confirm}
+        onCancel={() => setPending(null)}
+      />
+    </section>
+  );
 }
 
 /** Client ID / secret / redirect URI form. Re-mounted (keyed) whenever the saved values change. */
@@ -85,7 +216,7 @@ function GoogleCredentialsCard({ settings }: { settings: PlatformSettings }) {
     <div className={cn(sectionClass, "space-y-5")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-body-lg font-medium text-on-surface">Google sign-in</h3>
-        {google.configured ? <Badge variant="success">Configured</Badge> : <Badge variant="muted">Not configured</Badge>}
+        {google.configured ? <Badge dot variant="success">Configured</Badge> : <Badge dot variant="muted">Not configured</Badge>}
       </div>
 
       <ol className="list-decimal space-y-1 pl-5 text-body text-on-surface-variant">
@@ -164,7 +295,7 @@ function GoogleCredentialsCard({ settings }: { settings: PlatformSettings }) {
               className="font-mono"
               aria-describedby="google-redirect-uri-hint"
             />
-            <IconButton type="button" aria-label="Copy redirect URI" onClick={copyRedirect}>
+            <IconButton type="button" aria-label="Copy redirect URI" title="Copy redirect URI" onClick={copyRedirect}>
               {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </IconButton>
           </div>
@@ -249,8 +380,8 @@ export default function SuperAdminSettingsPage() {
   const switchDisabled = !google.configured || update.isPending;
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
-      <h1 className="text-title font-semibold text-on-surface">Settings</h1>
+    <div className="p-4 lg:p-6 space-y-5 max-w-2xl">
+      <PageHeader title="Settings" />
 
       <section aria-labelledby="sign-in-heading" className="space-y-3">
         <h2 id="sign-in-heading" className="text-title-sm font-semibold text-on-surface">
@@ -274,7 +405,7 @@ export default function SuperAdminSettingsPage() {
               <span id="google-signup-label" className="text-body-lg font-medium text-on-surface">
                 Allow sign-up with Google
               </span>
-              {on ? <Badge variant="success">On</Badge> : <Badge variant="muted">Off</Badge>}
+              {on ? <Badge dot variant="success">On</Badge> : <Badge dot variant="muted">Off</Badge>}
             </div>
             <p id="google-signup-desc" className="mt-0.5 text-body text-on-surface-variant">
               New users can create a workspace with “Continue with Google”. When off, the button is hidden on the
@@ -282,30 +413,19 @@ export default function SuperAdminSettingsPage() {
               {!google.configured && " Available once Google sign-in is configured."}
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={on}
-            aria-labelledby="google-signup-label"
-            aria-describedby="google-signup-desc"
-            disabled={switchDisabled}
-            onClick={() => setPending(!on)}
-            className={cn(
-              "relative mt-1 h-5 w-9 shrink-0 rounded-full transition-colors outline-none",
-              "focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 disabled:cursor-not-allowed",
-              on ? "bg-primary" : "bg-outline",
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "absolute top-0.5 h-4 w-4 rounded-full bg-on-primary shadow-sm transition-transform",
-                on ? "translate-x-4" : "translate-x-0.5",
-              )}
+          <div className="mt-1">
+            <Switch
+              on={on}
+              disabled={switchDisabled}
+              onClick={() => setPending(!on)}
+              aria-labelledby="google-signup-label"
+              aria-describedby="google-signup-desc"
             />
-          </button>
+          </div>
         </div>
       </section>
+
+      <WorkspaceTypesCard settings={settings} />
 
       <ConfirmDialog
         open={pending !== null}

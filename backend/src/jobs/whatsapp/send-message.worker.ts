@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { WhatsAppApiService } from '@/infrastructure/external/whatsapp/whatsapp-api.service';
+import { CloudApiError } from '@/infrastructure/external/whatsapp/cloud-api.client';
+import { cloudTemplateFromMetadata } from '@/shared/utils/cloud-template';
 import { MessageRepository } from '@/modules/messages/infrastructure/repositories/message.repository';
 import { ConversationRepository } from '@/modules/messages/infrastructure/repositories/conversation.repository';
 import { MessageEventRepository } from '@/modules/messages/infrastructure/repositories/message-event.repository';
@@ -12,6 +14,7 @@ import { AccountSafetyService } from '@/modules/messages/domain/services/account
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
 import { OrgStatusService } from '@/modules/org/domain/services/org-status.service';
 import { KillSwitchService } from '@/modules/billing/domain/services/kill-switch.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   QUEUE_NAMES,
@@ -19,7 +22,13 @@ import {
   MESSAGING_CONFIG,
   SEND_SAFETY_CONFIG,
 } from '@/common/constants';
-import { AuditAction, MessageStatus, MessageType } from '@prisma/client';
+import { TEST_RECIPIENT_BLOCKED_ERROR, isTestModeOn } from '@/common/utils/test-recipient-guard.util';
+import { AuditAction, CampaignRecipientStatus, MessageStatus, MessageType, UsageMetricType } from '@prisma/client';
+import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositories/campaign.repository';
+import { pauseCampaignSystem } from '@/jobs/campaign/kill-switch-pause';
+import { maskPhone, sentBy } from './send-log';
+import { isConnectionFailure } from '@/shared/utils/connection-failure';
+import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
 const KILL_SWITCH_DEFER_SECONDS = 300;
@@ -46,6 +55,7 @@ const NON_RETRYABLE_ERRORS = [
   'blocked by user',
   'account banned',
   'invalid session',
+  TEST_RECIPIENT_BLOCKED_ERROR.toLowerCase(),
 ];
 
 function isRetryableError(error: string): boolean {
@@ -85,6 +95,8 @@ export class SendMessageWorker implements OnModuleInit {
     private readonly eventEmitter: EventEmitter2,
     private readonly orgStatus: OrgStatusService,
     private readonly killSwitches: KillSwitchService,
+    private readonly usageTracking: UsageTrackingService,
+    private readonly campaignRepo: CampaignRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -105,6 +117,11 @@ export class SendMessageWorker implements OnModuleInit {
     const message = await this.messageRepo.findById(messageId);
     if (!message) {
       this.logger.warn(`Message ${messageId} not found, skipping job ${jobId}`);
+      return;
+    }
+    // A job must only ever send its own org's message
+    if (message.orgId !== orgId) {
+      this.logger.error(`Message ${messageId} belongs to another org, skipping job ${jobId}`);
       return;
     }
 
@@ -129,6 +146,14 @@ export class SendMessageWorker implements OnModuleInit {
         error: 'Organization suspended',
         metadata: { jobId },
       });
+      // Lets a campaign close this recipient and move on instead of waiting on it
+      this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_FAILED, {
+        messageId,
+        sessionId,
+        orgId,
+        reason: 'Organization suspended',
+        retryCount: message.retryCount,
+      });
       this.logger.warn(`Message ${messageId} not sent — org ${orgId} is suspended`);
       return;
     }
@@ -146,7 +171,79 @@ export class SendMessageWorker implements OnModuleInit {
       return;
     }
 
+    // Plan's monthly message limit, and no sending once the plan (or trial) has ended.
+    // Every channel (inbox, campaigns, automation, chatbot, API) sends through here,
+    // so this is the one place it is enforced. Orgs that never had a plan are left alone.
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    const blockReason = usage.allowed
+      ? null
+      : usage.limitValue > 0
+        ? `Monthly message limit reached (${usage.currentValue}/${usage.limitValue}). Upgrade your plan to send more.`
+        : (await this.usageTracking.hasEndedSubscription(orgId))
+          ? 'Your plan has ended. Choose a plan in Billing to keep sending.'
+          : null;
+    if (blockReason && typeof campaignId === 'string') {
+      // A campaign that runs out of plan messages is paused, not failed: every
+      // unsent recipient stays PENDING and a resume (after an upgrade or the
+      // monthly reset) continues where it stopped. Nothing was sent, so nothing
+      // can be sent twice: the message's idempotency key is released.
+      await pauseCampaignSystem(this.campaignRepo, campaignId, orgId, blockReason, 'plan-message-limit', this.eventEmitter);
+      await this.accountSafety.dropBulkMessage(messageId, blockReason, CampaignRecipientStatus.PENDING);
+      await this.messageEventRepo.record({
+        messageId,
+        orgId,
+        status: MessageStatus.FAILED,
+        error: blockReason,
+        metadata: { jobId, usageLimit: true, campaignPaused: true },
+      });
+      this.logger.warn(`Campaign ${campaignId} paused for org ${orgId}: ${blockReason}`);
+      return;
+    }
+    if (blockReason) {
+      const reason = blockReason;
+      await this.messageRepo.markFailed(messageId, reason);
+      await this.messageEventRepo.record({
+        messageId,
+        orgId,
+        status: MessageStatus.FAILED,
+        error: reason,
+        metadata: { jobId, usageLimit: true },
+      });
+      this.eventEmitter.emit(EVENT_NAMES.WHATSAPP_MESSAGE_FAILED, {
+        messageId,
+        sessionId,
+        orgId,
+        reason,
+        retryCount: message.retryCount,
+      });
+      this.logger.warn(`Message ${messageId} not sent for org ${orgId}: ${reason}`);
+      return;
+    }
+
+    // Uploaded media lives on local disk, which a restart/deploy can wipe. Sending
+    // would fail the same way for every recipient, so a campaign pauses instead
+    // (recipients back to PENDING) until the media is replaced and it is resumed.
+    if (message.type !== 'TEXT' && message.type !== 'INTERACTIVE' && isLocalMediaMissing(message.mediaUrl)) {
+      if (typeof campaignId === 'string') {
+        await pauseCampaignSystem(this.campaignRepo, campaignId, orgId, MEDIA_MISSING_REASON, 'media-missing', this.eventEmitter);
+        await this.accountSafety.dropBulkMessage(messageId, MEDIA_MISSING_REASON, CampaignRecipientStatus.PENDING);
+        await this.messageEventRepo.record({
+          messageId,
+          orgId,
+          status: MessageStatus.FAILED,
+          error: MEDIA_MISSING_REASON,
+          metadata: { jobId, mediaMissing: true, campaignPaused: true },
+        });
+        this.logger.warn(`Campaign ${campaignId} paused: media file missing for message ${messageId}`);
+        return;
+      }
+      await this.handleFailure(message, jobId, MEDIA_MISSING_REASON, false);
+      return;
+    }
+
     const lane = this.pacer.laneFor(message.priority);
+    // Official (Cloud API) numbers: Meta enforces its own limits, so no daily caps or human pacing
+    const official = this.whatsappApi.isCloudSession(sessionId);
 
     if (lane === 'bulk') {
       // Paced/held bulk messages can wait hours: drop them if the campaign was
@@ -170,12 +267,22 @@ export class SendMessageWorker implements OnModuleInit {
       }
 
       // Safety governor (bulk only — inbox replies are never held): auto-pause,
-      // sending hours and warm-up daily caps for this number. Re-checked when a
+      // sending hours and admin-set daily caps for this number. Re-checked when a
       // paced message comes back for its slot, so a batch can't overshoot a cap.
-      const decision = await this.accountSafety.checkBulkSend(orgId, sessionId, message.contactPhone);
-      if (!decision.allowed) {
-        await this.holdMessage(data, decision.retryAt, decision.reason);
-        return;
+      // Skipped in WhatsApp test mode: everything goes to a test number, and a
+      // campaign tested at night shouldn't sit held until morning.
+      if (!isTestModeOn() && !official) {
+        const decision = await this.accountSafety.checkBulkSend(
+          orgId,
+          sessionId,
+          message.contactPhone,
+          new Date(),
+          typeof campaignId === 'string' ? campaignId : undefined,
+        );
+        if (!decision.allowed) {
+          await this.holdMessage(data, decision.retryAt, decision.reason);
+          return;
+        }
       }
     }
 
@@ -186,11 +293,14 @@ export class SendMessageWorker implements OnModuleInit {
     const holdsSlot =
       data.slotAt !== undefined &&
       Math.abs(Date.now() - data.slotAt) <= SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS;
-    if (holdsSlot) {
+    if (official) {
+      // No pacing: send now
+    } else if (holdsSlot) {
       const remaining = data.slotAt! - Date.now();
       if (remaining > 0) await sleep(remaining);
     } else {
-      const { sendAt, waitMs } = this.pacer.reserve(sessionId, lane);
+      const bulkGap = lane === 'bulk' ? await this.accountSafety.getBulkGap(sessionId) : undefined;
+      const { sendAt, waitMs } = this.pacer.reserve(sessionId, lane, Date.now(), bulkGap);
       if (waitMs > SEND_SAFETY_CONFIG.MAX_INLINE_WAIT_MS) {
         // nextRetryAt keeps the stale-queue recovery from re-publishing it early
         await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, {
@@ -261,15 +371,37 @@ export class SendMessageWorker implements OnModuleInit {
     // 5. Verify session is connected
     if (!this.whatsappApi.isSessionConnected(sessionId)) {
       const session = await this.sessionRepo.findById(sessionId);
-      if (!session || session.status !== 'CONNECTED') {
-        await this.handleFailure(
-          message,
-          jobId,
-          'Session not connected',
-          false, // not retryable — session must be reconnected first
-        );
+      // A short drop is retried automatically: wait for it instead of failing the
+      // message for good. If reconnecting gives up, the session-lost handler pauses
+      // the campaign and puts its recipients back, so nothing is lost.
+      // CONNECTED with no live socket = the server just restarted (or woke from
+      // sleep) and the socket is still being restored. The health check notices
+      // within ~2 minutes and reconnects or marks it disconnected, so this wait
+      // is bounded. Treat it like reconnecting instead of failing the message.
+      if (session?.status === 'RECONNECTING' || session?.status === 'CONNECTED') {
+        // A one-to-one reply retries quickly but gives up after a few minutes, so
+        // the agent sees it failed instead of it sitting queued for hours.
+        // Bulk messages keep waiting: if reconnecting gives up, the session-lost
+        // handler pauses the campaign and puts its recipients back.
+        if (lane === 'direct') {
+          const waitingMs = Date.now() - new Date(message.createdAt).getTime();
+          if (waitingMs > MESSAGING_CONFIG.DIRECT_RECONNECT_WAIT_MS) {
+            await this.handleFailure(message, jobId, 'WhatsApp is still reconnecting', false);
+            return;
+          }
+          await this.holdMessage(data, new Date(Date.now() + 10_000), 'Waiting for WhatsApp to reconnect', 10);
+          return;
+        }
+        await this.holdMessage(data, new Date(Date.now() + 60_000), 'Waiting for WhatsApp to reconnect');
         return;
       }
+      await this.handleFailure(
+        message,
+        jobId,
+        'Session not connected',
+        false, // not retryable — session must be reconnected first
+      );
+      return;
     }
 
     // 6. Send via WhatsApp API
@@ -285,7 +417,18 @@ export class SendMessageWorker implements OnModuleInit {
         );
       }
 
-      if (message.type === 'TEXT') {
+      // Official numbers send a chosen Meta template as a template (works outside the 24h window).
+      // A QR number sends the same message as its filled-in text below.
+      const cloudTemplate = official ? cloudTemplateFromMetadata(message.metadata) : null;
+
+      if (cloudTemplate) {
+        result = await this.whatsappApi.sendTemplateMessage(sessionId, message.contactPhone, {
+          name: cloudTemplate.name,
+          language: cloudTemplate.language,
+          bodyParams: cloudTemplate.params,
+          ...(cloudTemplate.headerImageUrl && { headerMedia: { type: 'image' as const, link: cloudTemplate.headerImageUrl } }),
+        });
+      } else if (message.type === 'TEXT') {
         result = await this.whatsappApi.sendTextMessage(
           sessionId,
           message.contactPhone,
@@ -334,6 +477,14 @@ export class SendMessageWorker implements OnModuleInit {
         whatsappMessageId: result.whatsappMessageId,
       });
 
+      // Count it against the plan. The message is already out, so a counting
+      // error must not reach the catch below and trigger a resend.
+      try {
+        await this.usageTracking.incrementUsage(orgId, UsageMetricType.MESSAGES_SENT);
+      } catch (err) {
+        this.logger.error(`Could not count message ${messageId} toward usage: ${(err as Error).message}`);
+      }
+
       // Enqueue SLA evaluation for outbound reply
       if (message.conversationId) {
         const conversation = await this.conversationRepo.findById(message.conversationId);
@@ -351,19 +502,38 @@ export class SendMessageWorker implements OnModuleInit {
         );
       }
 
-      this.logger.log(`Message ${messageId} sent successfully (waId=${result.whatsappMessageId})`);
+      // Which feature sent it, so "why did this go out?" has an answer in the logs
+      this.logger.log(
+        `Message ${messageId} sent by ${sentBy(message.metadata)} to ${maskPhone(message.contactPhone)} ` +
+          `(org=${orgId}, waId=${result.whatsappMessageId})`,
+      );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to send message ${messageId}: ${reason}`);
 
-      await this.handleFailure(message, jobId, reason, isRetryableError(reason));
+      // The socket dropped under a campaign/sequence message: nothing was sent, so
+      // wait for the number instead of burning the 3 quick retries and failing it.
+      // If the number never comes back, the session-lost handler releases it.
+      if (lane === 'bulk' && isConnectionFailure(reason)) {
+        await this.holdMessage(data, new Date(Date.now() + 60_000), `Connection dropped: ${reason}`);
+        return;
+      }
+
+      // Meta tells us itself whether a retry can work (closed 24h window, bad number… can't)
+      const retryable = error instanceof CloudApiError ? error.retryable : isRetryableError(reason);
+      await this.handleFailure(message, jobId, reason, retryable);
     }
   }
 
   /** Keep a bulk message QUEUED and re-check it at `retryAt`. */
-  private async holdMessage(data: SendMessageJobData, retryAt: Date, reason: string): Promise<void> {
+  private async holdMessage(
+    data: SendMessageJobData,
+    retryAt: Date,
+    reason: string,
+    minDelaySeconds = 60,
+  ): Promise<void> {
     const { messageId, sessionId, orgId } = data;
-    const delaySeconds = Math.max(60, Math.ceil((retryAt.getTime() - Date.now()) / 1000));
+    const delaySeconds = Math.max(minDelaySeconds, Math.ceil((retryAt.getTime() - Date.now()) / 1000));
 
     // nextRetryAt keeps the stale-queue recovery from re-publishing it early
     await this.messageRepo.updateStatus(messageId, MessageStatus.QUEUED, { nextRetryAt: retryAt });
@@ -373,7 +543,7 @@ export class SendMessageWorker implements OnModuleInit {
       delaySeconds,
       { singletonKey: `msg-held-${messageId}-${retryAt.getTime()}` },
     );
-    this.logger.log(`Bulk message ${messageId} held until ${retryAt.toISOString()}: ${reason}`);
+    this.logger.log(`Message ${messageId} held until ${retryAt.toISOString()}: ${reason}`);
   }
 
   /**

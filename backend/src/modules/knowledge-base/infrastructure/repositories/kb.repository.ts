@@ -1,5 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+
+export const FAQ_TAG = 'faq';
+
+/** "Do you deliver?" → "faq-do-you-deliver-3f9a1c" (unique per org, also for non-Latin questions) */
+function faqSlug(question: string): string {
+  const base = question
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  return `faq-${base ? `${base}-` : ''}${randomBytes(3).toString('hex')}`;
+}
 
 @Injectable()
 export class KbRepository {
@@ -112,6 +126,34 @@ export class KbRepository {
     return this.prisma.kbArticle.update({ where: { id }, data: { helpfulCount: { increment: 1 } } });
   }
 
+  /* ─── FAQs (articles tagged "faq") ─── */
+
+  async findFaqs(orgId: string) {
+    return this.prisma.kbArticle.findMany({
+      where: { orgId, deletedAt: null, tags: { has: FAQ_TAG } },
+      select: { id: true, title: true, body: true, isPublished: true, updatedAt: true },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+  }
+
+  /** Published FAQ articles, one per item; returns their ids. */
+  async createFaqs(orgId: string, authorId: string, items: { question: string; answer: string }[]) {
+    const rows = items.map((item) => ({
+      orgId,
+      authorId,
+      title: item.question,
+      body: item.answer,
+      slug: faqSlug(item.question),
+      isPublished: true,
+      tags: [FAQ_TAG],
+    }));
+    const created = await this.prisma.$transaction(
+      rows.map((data) => this.prisma.kbArticle.create({ data, select: { id: true } })),
+    );
+    return created.map((r) => r.id);
+  }
+
   /* ─── Public Search (for widget/bot integration) ─── */
 
   async searchPublicArticles(orgId: string, query: string, take = 5, productIds?: string[]) {
@@ -165,7 +207,7 @@ export class KbRepository {
       where,
       select: {
         id: true, title: true, filename: true, contentType: true, fileSize: true,
-        status: true, flowId: true, createdAt: true,
+        status: true, flowId: true, createdAt: true, sourceType: true, sourceUrl: true,
         uploadedBy: { select: { id: true, firstName: true, lastName: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -178,6 +220,16 @@ export class KbRepository {
     return this.prisma.kbDocument.findMany({
       where,
       select: { id: true, title: true, extractedText: true },
+    });
+  }
+
+  /** Text of every ready org-wide document (website pages first), for FAQ suggestions. */
+  async findOrgWideTexts(orgId: string, take = 40) {
+    return this.prisma.kbDocument.findMany({
+      where: { orgId, status: 'READY', deletedAt: null, flowId: null, extractedText: { not: null } },
+      select: { title: true, extractedText: true, sourceType: true },
+      orderBy: [{ sourceType: 'desc' }, { createdAt: 'asc' }],
+      take,
     });
   }
 

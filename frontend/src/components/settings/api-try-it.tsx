@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Play, Loader2, AlertTriangle } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 
 /** Absolute base URL of the public API, for code samples and the console. */
 export function publicApiBase(): string {
@@ -125,25 +126,25 @@ export function ApiTryIt() {
   }
 
   const inputCls =
-    "w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30";
+    "w-full px-3 py-2 rounded-lg border border-outline-variant/30 bg-surface text-body text-on-surface placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <label htmlFor="try-endpoint" className="text-label font-medium text-on-surface-variant">Endpoint</label>
-          <select
+          <Select
             id="try-endpoint"
             value={endpointIdx}
             onChange={(e) => selectEndpoint(Number(e.target.value))}
-            className={`mt-1 ${inputCls}`}
+            className="mt-1"
           >
             {ENDPOINTS.map((ep, i) => (
               <option key={ep.path + ep.method} value={i}>
                 {ep.method} {ep.path.split("?")[0]} ({ep.label})
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor="try-key" className="text-label font-medium text-on-surface-variant">API key</label>

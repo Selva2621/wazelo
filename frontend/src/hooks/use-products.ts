@@ -8,6 +8,7 @@ import type {
   UpdateProductRequest,
   CreateProductCategoryRequest,
   UpdateProductCategoryRequest,
+  BrandRequest,
 } from "@/lib/types/products";
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -74,6 +75,39 @@ export function useUnassignProduct() {
     onSuccess: (_, { contactId }) => {
       qc.invalidateQueries({ queryKey: ["contact-products", contactId] });
     },
+  });
+}
+
+// ─── Brands ───────────────────────────────────────────────────────────────────
+
+export function useBrands() {
+  return useQuery({ queryKey: ["brands"], queryFn: () => productsApi.listBrands() });
+}
+
+export function useSaveBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: BrandRequest & { id?: string; name: string }) =>
+      id ? productsApi.updateBrand(id, data) : productsApi.createBrand(data),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ["brands"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success(v.id ? "Brand updated" : "Brand created");
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to save brand"),
+  });
+}
+
+export function useDeleteBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => productsApi.deleteBrand(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["brands"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Brand removed");
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to remove brand"),
   });
 }
 

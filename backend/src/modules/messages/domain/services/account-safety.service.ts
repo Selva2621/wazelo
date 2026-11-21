@@ -4,23 +4,34 @@ import {
   CampaignStatus,
   MessageDirection,
   MessageStatus,
+  Prisma,
+  SequenceRecipientStatus,
   SequenceStatus,
+  UsageMetricType,
 } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
+import { UsageTrackingService } from '@/modules/billing/domain/services/usage-tracking.service';
 import { SEND_SAFETY_CONFIG } from '@/common/constants';
 import {
   BulkSendDecision,
   HealthVerdict,
   decideBulkSend,
   evaluateDeliveryHealth,
+  SendingLimits,
+  bulkGapRange,
   isWithinSendWindow,
   localDayStart,
-  warmupTier,
+  nextSendWindowStart,
+  readSendingLimits,
+  dailyCaps,
 } from './send-safety.policy';
 
 const TZ_CACHE_MS = 10 * 60 * 1000;
+const GAP_CACHE_MS = 60 * 1000;
 /** How often a message of a paused sequence re-checks whether it may go out */
 const SEQUENCE_PAUSE_RECHECK_MS = 15 * 60 * 1000;
+/** Rolling window for the per-contact limit on business-started messages */
+const CONTACT_BUDGET_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type BulkRelevance =
   | { action: 'send' }
@@ -29,12 +40,31 @@ export type BulkRelevance =
 
 export interface SendHealth {
   sessionId: string;
-  warmup: { stage: number; linkedDays: number; coldCap: number; bulkCap: number };
+  /** Admin-set daily caps on this number (null = no daily cap) */
+  caps: { coldCap: number | null; bulkCap: number | null };
   today: { bulkSent: number; coldSent: number };
+  /** What is left of today's caps on this number */
+  /** What is left of today's per-number caps (null = no daily cap on this number) */
+  remaining: { bulk: number | null; cold: number | null };
+  /** When today's counters reset (org midnight) */
+  resetsAt: string;
+  /** Admin-set limits for this number (empty = no daily cap, plan limit only) */
+  limits: SendingLimits;
+  /** plan | custom: what decides daily volume on this number */
+  limitMode: 'plan' | 'custom';
+  /**
+   * The org's plan message allowance this billing period (shared by all numbers and
+   * channels). limit null = unlimited plan. This is the volume limit by default.
+   */
+  plan: { used: number; limit: number | null; remaining: number | null };
+  /** Effective gap between bulk messages */
+  bulkGapMs: { min: number; max: number };
   delivery: { sampled: number; delivered: number; rate: number | null };
   optOuts24h: number;
   withinSendingHours: boolean;
   sendingHours: { start: number; end: number; timeZone: string };
+  /** Campaigns have their own window (in the campaign's time zone) */
+  campaignHours: { start: number; end: number };
   paused: { until: string; reason: string | null } | null;
   /** ok | warning (close to a cap or weak delivery) | paused */
   risk: 'ok' | 'warning' | 'paused';
@@ -42,24 +72,63 @@ export interface SendHealth {
 
 /**
  * Feeds the pure send-safety policy with real counts for one WhatsApp number:
- * warm-up caps, sending hours, delivery health and auto-pause.
+ * daily caps, sending hours, delivery health and auto-pause.
  */
+/** "Send any time" campaigns store `{ sendAnyTime: true }` in campaign.metadata. */
+export function readSendAnyTime(metadata: unknown): boolean {
+  return !!metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    && (metadata as Record<string, unknown>).sendAnyTime === true;
+}
+
+/** Local hours a campaign may send: its normal window, or all 24 hours. */
+export function campaignSendWindow(sendAnyTime: boolean): { startHour: number; endHour: number } {
+  return sendAnyTime
+    ? { startHour: 0, endHour: 24 }
+    : {
+        startHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
+        endHour: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
+      };
+}
+
 @Injectable()
 export class AccountSafetyService {
   private readonly tzCache = new Map<string, { timeZone: string; at: number }>();
+  private readonly gapCache = new Map<string, { gap: { min: number; max: number }; at: number }>();
+  private readonly campaignTzCache = new Map<
+    string,
+    { settings: { timeZone: string; sendAnyTime: boolean }; at: number }
+  >();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usageTracking: UsageTrackingService,
+  ) {}
 
   /** Should this bulk message go out now? */
-  async checkBulkSend(orgId: string, sessionId: string, contactPhone: string, now = new Date()): Promise<BulkSendDecision> {
+  async checkBulkSend(
+    orgId: string,
+    sessionId: string,
+    contactPhone: string,
+    now = new Date(),
+    campaignId?: string,
+  ): Promise<BulkSendDecision> {
     const session = await this.prisma.whatsAppSession.findUnique({
       where: { id: sessionId },
-      select: { linkedAt: true, createdAt: true, sendingPausedUntil: true, sendingPausedReason: true },
+      select: {
+        sendingPausedUntil: true,
+        sendingPausedReason: true,
+        sendingLimits: true,
+      },
     });
     if (!session) return { allowed: true };
 
-    const timeZone = await this.orgTimeZone(orgId);
-    const dayStart = localDayStart(now, timeZone);
+    // The daily cap is per number, so "today" is always the org's day: campaigns in
+    // other time zones and sequences on the same number share one budget. The
+    // campaign's own time zone only decides its sending window.
+    const orgTimeZone = await this.orgTimeZone(orgId);
+    const campaignSettings = campaignId ? await this.campaignSendSettings(campaignId, orgId) : null;
+    const timeZone = campaignSettings?.timeZone ?? orgTimeZone;
+    const dayStart = localDayStart(now, orgTimeZone);
     const [bulkSentToday, coldSentToday, recipientIsCold] = await Promise.all([
       this.countBulkSentSince(sessionId, dayStart),
       this.countColdBulkSentSince(sessionId, dayStart),
@@ -69,13 +138,27 @@ export class AccountSafetyService {
     const decision = decideBulkSend({
       now,
       timeZone,
-      linkedAt: session.linkedAt ?? session.createdAt,
       pausedUntil: session.sendingPausedUntil,
       pausedReason: session.sendingPausedReason,
       bulkSentToday,
       coldSentToday,
       recipientIsCold,
+      // Counters reset at the org's midnight, whatever zone the campaign sends in
+      budgetTimeZone: orgTimeZone,
+      limits: readSendingLimits(session.sendingLimits),
+      // Campaigns use their own window; "send any time" campaigns run round the
+      // clock (the daily per-number caps still apply and roll over each day)
+      ...(campaignSettings && {
+        sendWindow: campaignSendWindow(campaignSettings.sendAnyTime),
+      }),
     });
+
+    if (decision.allowed) {
+      // One person, many features: campaigns, sequences and automations together
+      // may only start this many conversations with a contact per rolling 24h
+      const contactHold = await this.contactBudgetHold(orgId, contactPhone, now);
+      if (contactHold) return contactHold;
+    }
 
     // Spread the restart so held messages don't all fire at the same minute
     if (!decision.allowed && decision.retryAt.getTime() > now.getTime() + 60_000) {
@@ -83,6 +166,38 @@ export class AccountSafetyService {
       return { ...decision, retryAt: new Date(decision.retryAt.getTime() + jitter) };
     }
     return decision;
+  }
+
+  /**
+   * Held when the contact already got the daily number of business-started messages
+   * (campaign, sequence, automation) in the last 24h; retried once the oldest one ages out.
+   */
+  private async contactBudgetHold(
+    orgId: string,
+    contactPhone: string,
+    now: Date,
+  ): Promise<BulkSendDecision | null> {
+    const digits = contactPhone.replace(/^\+/, '');
+    const recent = await this.prisma.message.findMany({
+      where: {
+        orgId,
+        direction: MessageDirection.OUTBOUND,
+        deletedAt: null,
+        priority: { lt: 0 },
+        contactPhone: { in: [digits, `+${digits}`] },
+        sentAt: { gte: new Date(now.getTime() - CONTACT_BUDGET_WINDOW_MS) },
+      },
+      select: { sentAt: true },
+      orderBy: { sentAt: 'asc' },
+      take: SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY,
+    });
+    if (recent.length < SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY) return null;
+    const oldest = recent[0].sentAt!;
+    return {
+      allowed: false,
+      reason: `Contact already got ${SEND_SAFETY_CONFIG.MAX_BULK_PER_CONTACT_PER_DAY} messages from campaigns, sequences or automations today`,
+      retryAt: new Date(oldest.getTime() + CONTACT_BUDGET_WINDOW_MS + 60_000),
+    };
   }
 
   /**
@@ -168,6 +283,14 @@ export class AccountSafetyService {
       if (sequence?.status === SequenceStatus.PAUSED) {
         return { action: 'hold', reason: 'Sequence paused', retryAt: new Date(now.getTime() + SEQUENCE_PAUSE_RECHECK_MS) };
       }
+      // The contact replied (or was removed) after this step was queued: don't send it
+      const recipient = await this.prisma.sequenceRecipient.findFirst({
+        where: { sequenceId: metadata.sequenceId, contactPhone: { in: [digits, `+${digits}`] } },
+        select: { status: true },
+      });
+      if (recipient?.status === SequenceRecipientStatus.EXITED) {
+        return { action: 'drop', reason: 'Contact left the sequence', recipientStatus: CampaignRecipientStatus.SKIPPED };
+      }
     }
 
     return { action: 'send' };
@@ -201,7 +324,37 @@ export class AccountSafetyService {
           ? { status: CampaignRecipientStatus.PENDING, messageId: null }
           : { status: recipientStatus, failedReason: reason, processedAt: new Date() },
       }),
+      // A sequence step's record shows why it never went out
+      this.prisma.sequenceRecipientStep.updateMany({
+        where: { messageId, status: CampaignRecipientStatus.QUEUED },
+        data: { status: CampaignRecipientStatus.SKIPPED, failedReason: reason, processedAt: new Date() },
+      }),
     ]);
+  }
+
+  /** Gap between bulk sends on this number; read for every paced message, so cached briefly. */
+  async getBulkGap(sessionId: string): Promise<{ min: number; max: number }> {
+    const hit = this.gapCache.get(sessionId);
+    if (hit && Date.now() - hit.at < GAP_CACHE_MS) return hit.gap;
+    const session = await this.prisma.whatsAppSession.findUnique({
+      where: { id: sessionId },
+      select: { sendingLimits: true },
+    });
+    const gap = bulkGapRange(readSendingLimits(session?.sendingLimits));
+    if (this.gapCache.size > 1_000) this.gapCache.clear();
+    this.gapCache.set(sessionId, { gap, at: Date.now() });
+    return gap;
+  }
+
+  /** Replace this number's sending limits ({} = no daily cap, plan limit only). */
+  async setSendingLimits(sessionId: string, limits: SendingLimits): Promise<SendingLimits> {
+    const clean = readSendingLimits(limits);
+    await this.prisma.whatsAppSession.update({
+      where: { id: sessionId },
+      data: { sendingLimits: Object.keys(clean).length > 0 ? (clean as object) : Prisma.DbNull },
+    });
+    this.gapCache.delete(sessionId);
+    return clean;
   }
 
   async pauseBulkSending(sessionId: string, reason: string, now = new Date()): Promise<Date> {
@@ -224,13 +377,18 @@ export class AccountSafetyService {
   async getHealth(orgId: string, sessionId: string, now = new Date()): Promise<SendHealth | null> {
     const session = await this.prisma.whatsAppSession.findFirst({
       where: { id: sessionId, orgId, deletedAt: null },
-      select: { id: true, linkedAt: true, createdAt: true, sendingPausedUntil: true, sendingPausedReason: true },
+      select: {
+        id: true,
+        sendingPausedUntil: true,
+        sendingPausedReason: true,
+        sendingLimits: true,
+      },
     });
     if (!session) return null;
 
     const timeZone = await this.orgTimeZone(orgId);
-    const linkedAt = session.linkedAt ?? session.createdAt;
-    const tier = warmupTier(linkedAt, now);
+    const limits = readSendingLimits(session.sendingLimits);
+    const tier = dailyCaps(limits);
     const dayStart = localDayStart(now, timeZone);
 
     const [bulkSent, coldSent, health] = await Promise.all([
@@ -244,7 +402,14 @@ export class AccountSafetyService {
         ? { until: session.sendingPausedUntil.toISOString(), reason: session.sendingPausedReason }
         : null;
 
-    const nearCap = bulkSent >= tier.bulkCap * 0.8 || coldSent >= tier.coldCap * 0.8;
+    const usage = await this.usageTracking.checkUsage(orgId, UsageMetricType.MESSAGES_SENT);
+    const planLimit = usage.limitValue > 0 ? usage.limitValue : null;
+    const planRemaining = planLimit === null ? null : Math.max(0, planLimit - usage.currentValue);
+
+    const nearCap =
+      (tier.bulkCap !== null && bulkSent >= tier.bulkCap * 0.8) ||
+      (tier.coldCap !== null && coldSent >= tier.coldCap * 0.8) ||
+      (planLimit !== null && usage.currentValue >= planLimit * 0.8);
     const weakDelivery =
       health.sampled >= SEND_SAFETY_CONFIG.HEALTH_MIN_SAMPLE &&
       health.deliveryRate !== null &&
@@ -252,13 +417,20 @@ export class AccountSafetyService {
 
     return {
       sessionId: session.id,
-      warmup: {
-        stage: tier.stage,
-        linkedDays: Math.floor((now.getTime() - linkedAt.getTime()) / (24 * 60 * 60 * 1000)),
-        coldCap: tier.coldCap,
-        bulkCap: tier.bulkCap,
-      },
+      caps: { coldCap: tier.coldCap, bulkCap: tier.bulkCap },
       today: { bulkSent, coldSent },
+      remaining: (() => {
+        const bulk = tier.bulkCap === null ? null : Math.max(0, tier.bulkCap - bulkSent);
+        // New contacts also use up bulk allowance
+        const coldLeft = tier.coldCap === null ? null : Math.max(0, tier.coldCap - coldSent);
+        const cold = coldLeft === null ? bulk : bulk === null ? coldLeft : Math.min(coldLeft, bulk);
+        return { bulk, cold };
+      })(),
+      resetsAt: nextSendWindowStart(now, timeZone, 0).toISOString(),
+      limits,
+      limitMode: tier.mode,
+      plan: { used: usage.currentValue, limit: planLimit, remaining: planRemaining },
+      bulkGapMs: bulkGapRange(limits),
       delivery: { sampled: health.sampled, delivered: health.delivered, rate: health.deliveryRate },
       optOuts24h: health.optOuts,
       withinSendingHours: isWithinSendWindow(now, timeZone),
@@ -266,6 +438,10 @@ export class AccountSafetyService {
         start: SEND_SAFETY_CONFIG.BULK_SEND_START_HOUR,
         end: SEND_SAFETY_CONFIG.BULK_SEND_END_HOUR,
         timeZone,
+      },
+      campaignHours: {
+        start: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_START_HOUR,
+        end: SEND_SAFETY_CONFIG.CAMPAIGN_SEND_END_HOUR,
       },
       paused,
       risk: paused ? 'paused' : nearCap || weakDelivery || !health.healthy ? 'warning' : 'ok',
@@ -333,5 +509,26 @@ export class AccountSafetyService {
     const timeZone = org?.timezone || 'UTC';
     this.tzCache.set(orgId, { timeZone, at: Date.now() });
     return timeZone;
+  }
+
+  /** Campaign time zone + "send any time", cached briefly: read for every campaign message. */
+  private async campaignSendSettings(
+    campaignId: string,
+    orgId: string,
+  ): Promise<{ timeZone: string; sendAnyTime: boolean }> {
+    const cached = this.campaignTzCache.get(campaignId);
+    if (cached && Date.now() - cached.at < 5 * 60 * 1000) return cached.settings;
+
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id: campaignId, orgId, deletedAt: null },
+      select: { timezone: true, metadata: true },
+    });
+    const settings = {
+      timeZone: campaign?.timezone || (await this.orgTimeZone(orgId)),
+      sendAnyTime: readSendAnyTime(campaign?.metadata),
+    };
+    if (this.campaignTzCache.size > 1_000) this.campaignTzCache.clear();
+    this.campaignTzCache.set(campaignId, { settings, at: Date.now() });
+    return settings;
   }
 }

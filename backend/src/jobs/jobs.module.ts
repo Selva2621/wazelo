@@ -12,6 +12,7 @@ import { IncomingMessageWorker } from './messaging/incoming-message.worker';
 import { MessageRecoveryWorker } from './messaging/message-recovery.worker';
 import { WhatsAppModule } from '@/modules/whatsapp/whatsapp.module';
 import { MessagesModule } from '@/modules/messages/messages.module';
+import { ContactsModule } from '@/modules/contacts/contacts.module';
 import { AuditModule } from '@/modules/audit/audit.module';
 import { CampaignsModule } from '@/modules/campaigns/campaigns.module';
 import { AutomationModule } from '@/modules/automation/automation.module';
@@ -24,6 +25,8 @@ import { CampaignBatchWorker } from './campaign/campaign-batch.worker';
 import { CampaignSchedulerWorker } from './campaign/campaign-scheduler.worker';
 // EPIC 7 — Scheduling & Automation workers
 import { AutomationEvaluatorWorker } from './automation/automation-evaluator.worker';
+import { NoReplyWorker } from './automation/no-reply.worker';
+import { AutomationActionWorker } from './automation/automation-action.worker';
 import { FollowUpWorker } from './automation/follow-up.worker';
 import { ScheduledMessageWorker } from './scheduler/scheduled-message.worker';
 // EPIC 9 — Billing & Subscription workers
@@ -67,7 +70,12 @@ import { ShopifyWebhookWorker } from './shopify/shopify-webhook.worker';
 import { ShopifyModule } from '@/modules/shopify/shopify.module';
 // Lead Scraper workers
 import { LeadScraperWorker } from './lead-scraper/lead-scraper.worker';
+import { CrawlWebsiteWorker } from './knowledge/crawl-website.worker';
+import { KbEmbeddingWorker } from './knowledge/kb-embedding.worker';
+import { AiModule } from '@/modules/ai/ai.module';
+import { KnowledgeBaseModule } from '@/modules/knowledge-base/knowledge-base.module';
 import { ScrapeWaCheckWorker } from './lead-scraper/scrape-wa-check.worker';
+import { GroupWaCheckWorker } from './lead-scraper/group-wa-check.worker';
 import { LeadScraperModule } from '@/modules/lead-scraper/lead-scraper.module';
 // Org onboarding workers
 import { OrgOnboardingWorker } from './org/org-onboarding.worker';
@@ -75,11 +83,26 @@ import { OrgModule } from '@/modules/org/org.module';
 // Deal follow-up reminders
 import { DealFollowUpWorker } from './deals/deal-follow-up.worker';
 import { DealsModule } from '@/modules/deals/deals.module';
+// Website chat handover timers
+import { WebsiteHandoffWorker } from './widget/website-handoff.worker';
+import { WidgetModule } from '@/modules/widget/widget.module';
+// Email from each workspace's own mailbox
+import { SendOrgEmailWorker } from './email/send-org-email.worker';
+import { EmailModule } from '@/modules/email/email.module';
+// Lead routing reminders
+import { LeadFollowUpReminderWorker } from './lead/lead-follow-up-reminder.worker';
+import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.module';
 
 @Module({
   imports: [
     WhatsAppModule,
     MessagesModule,
+    // IncomingMessageWorker resolves the sender's contact before emitting the event
+    ContactsModule,
+    // CrawlWebsiteWorker reads org websites into the knowledge base
+    KnowledgeBaseModule,
+    // KbEmbeddingWorker: meaning vectors for knowledge passages
+    AiModule,
     AuditModule,
     CampaignsModule,
     AutomationModule,
@@ -100,9 +123,14 @@ import { DealsModule } from '@/modules/deals/deals.module';
     LeadScraperModule,
     OrgModule,
     DealsModule,
+    WidgetModule,
+    EmailModule,
+    LeadFollowUpsModule,
   ],
   providers: [
     DealFollowUpWorker,
+    // Reminds people about leads not contacted in time
+    LeadFollowUpReminderWorker,
     SendEmailWorker,
     SendInviteEmailWorker,
     SessionCleanupWorker,
@@ -122,6 +150,9 @@ import { DealsModule } from '@/modules/deals/deals.module';
     CampaignSchedulerWorker,
     // EPIC 7 — Scheduling & Automation workers
     AutomationEvaluatorWorker,
+    NoReplyWorker,
+    // Runs automation steps that have a delay ("wait 2 hours, then …")
+    AutomationActionWorker,
     FollowUpWorker,
     ScheduledMessageWorker,
     // EPIC 9 — Billing & Subscription workers
@@ -154,9 +185,16 @@ import { DealsModule } from '@/modules/deals/deals.module';
     ShopifyWebhookWorker,
     // Lead Scraper workers
     LeadScraperWorker,
+    CrawlWebsiteWorker,
+    KbEmbeddingWorker,
     ScrapeWaCheckWorker,
+    GroupWaCheckWorker,
     // Org onboarding workers
     OrgOnboardingWorker,
+    // Website chat handover: offer ran out → next member; nobody took it → follow-up
+    WebsiteHandoffWorker,
+    // Email from each workspace's own mailbox (retries, daily limit, log)
+    SendOrgEmailWorker,
   ],
 })
 export class JobsModule {}

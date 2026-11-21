@@ -7,7 +7,8 @@
  *   - whatsappTemplateId: null   (no Meta template ID yet)
  *
  * Shopify templates go to every org; freelancer templates only to
- * orgs with orgType = FREELANCER.
+ * orgs with orgType = FREELANCER; business templates to orgType = TEAM.
+ * System templates don't count toward the plan's template limit.
  */
 
 export interface SystemTemplate {
@@ -66,6 +67,111 @@ export const SHOPIFY_SYSTEM_TEMPLATES: SystemTemplate[] = [
     'shopify_order_cancelled',
     'order_cancelled',
     'Hi {{contact.name}}, your order {{shopify.order_name}} has been cancelled. Your refund of ₹{{shopify.total_price}} will be processed within 5-7 business days.',
+  ),
+];
+
+const business = (
+  name: string,
+  category: 'MARKETING' | 'UTILITY',
+  businessType: string,
+  description: string,
+  body: string,
+): SystemTemplate => ({
+  name,
+  category,
+  language: 'en',
+  body,
+  meta: { businessType, description },
+});
+
+/**
+ * Starter templates for team / business workspaces (orgType TEAM). Only contact and org
+ * fields, so each one can be sent as is; members edit the wording to suit their business.
+ */
+export const BUSINESS_SYSTEM_TEMPLATES: SystemTemplate[] = [
+  business(
+    'business_welcome',
+    'UTILITY',
+    'welcome',
+    'First reply to a new customer',
+    'Hi {{contact.name}}, welcome to {{org.name}}! Thanks for reaching out. Reply here anytime and our team will be happy to help.',
+  ),
+  business(
+    'business_enquiry_thanks',
+    'UTILITY',
+    'enquiry_thanks',
+    'Acknowledge a new enquiry',
+    'Hi {{contact.name}}, thanks for your enquiry! Someone from {{org.name}} will get back to you shortly with the details.',
+  ),
+  business(
+    'business_away_message',
+    'UTILITY',
+    'away_message',
+    'Outside working hours',
+    "Hi {{contact.name}}, thanks for your message! Our team is away right now and will reply as soon as we're back.",
+  ),
+  business(
+    'business_follow_up',
+    'MARKETING',
+    'follow_up',
+    'Nudge after an enquiry goes quiet',
+    'Hi {{contact.name}}, just checking in on your enquiry with {{org.name}}. Do you have any questions we can help with?',
+  ),
+  business(
+    'business_special_offer',
+    'MARKETING',
+    'special_offer',
+    'Announce an offer',
+    "Hi {{contact.name}}, we have a special offer for you this week at {{org.name}}. Reply YES and we'll share the details.",
+  ),
+  business(
+    'business_appointment_confirmed',
+    'UTILITY',
+    'appointment_confirmed',
+    'Confirm a booking or appointment',
+    'Hi {{contact.name}}, your appointment with {{org.name}} is confirmed. Reply here if you need to change the time.',
+  ),
+  business(
+    'business_appointment_reminder',
+    'UTILITY',
+    'appointment_reminder',
+    'Remind before an appointment',
+    'Hi {{contact.name}}, a quick reminder about your appointment with {{org.name}}. See you soon! Reply here if you need to reschedule.',
+  ),
+  business(
+    'business_order_confirmed',
+    'UTILITY',
+    'order_confirmed',
+    'Confirm an order',
+    "Hi {{contact.name}}, thank you! Your order with {{org.name}} is confirmed. We'll update you when it's on the way.",
+  ),
+  business(
+    'business_payment_reminder',
+    'UTILITY',
+    'payment_reminder',
+    'Friendly payment reminder',
+    'Hi {{contact.name}}, a friendly reminder that a payment to {{org.name}} is due. Reply here if you have any questions.',
+  ),
+  business(
+    'business_payment_received',
+    'UTILITY',
+    'payment_received',
+    'Thank for a payment',
+    "Hi {{contact.name}}, we've received your payment. Thank you for choosing {{org.name}}!",
+  ),
+  business(
+    'business_feedback_request',
+    'MARKETING',
+    'feedback_request',
+    'Ask how it went',
+    'Hi {{contact.name}}, thanks for choosing {{org.name}}! How was your experience? A quick reply helps us a lot.',
+  ),
+  business(
+    'business_we_miss_you',
+    'MARKETING',
+    'we_miss_you',
+    'Win back a quiet customer',
+    "Hi {{contact.name}}, it's been a while! We'd love to see you again at {{org.name}}. Reply to hear what's new.",
   ),
 ];
 

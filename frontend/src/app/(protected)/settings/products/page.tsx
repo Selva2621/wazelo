@@ -6,25 +6,21 @@ import {
   Package,
   Trash2,
   Pencil,
-  Search,
-  ToggleLeft,
-  ToggleRight,
   Tag,
+  Building2,
 } from "lucide-react";
+import { BrandFormModal } from "@/components/products/brand-form-modal";
+import { useOrgMembers } from "@/hooks/use-contacts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterBar, FilterBarDivider } from "@/components/ui/filter-bar";
+import { SearchInput } from "@/components/ui/search-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Table,
-  TableHeader,
-  TableHeaderRow,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   useProducts,
@@ -32,11 +28,15 @@ import {
   useDeleteProduct,
   useProductCategories,
   useDeleteProductCategory,
+  useBrands,
+  useDeleteBrand,
 } from "@/hooks/use-products";
 import { ProductFormModal } from "@/components/products/product-form-modal";
 import { CategoryFormModal } from "@/components/products/category-form-modal";
-import type { Product, ProductCategory } from "@/lib/types/products";
+import type { Brand, Product, ProductCategory } from "@/lib/types/products";
 import { IconButton } from "@/components/ui/icon-button";
+import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
+import { useProductTerms } from "@/lib/product-terms";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -55,7 +55,8 @@ function formatPrice(price: string | null, currency: string | null) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
-  usePageTitle("Products");
+  const terms = useProductTerms();
+  usePageTitle(terms.Plural);
 
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories, isLoading: catsLoading } = useProductCategories();
@@ -73,6 +74,18 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [deleteCatTarget, setDeleteCatTarget] = useState<ProductCategory | null>(null);
+
+  // Brands group the products; each product names who handles its leads
+  const { data: brands } = useBrands();
+  const { data: members } = useOrgMembers();
+  const deleteBrand = useDeleteBrand();
+  const [brandModal, setBrandModal] = useState<{ open: boolean; brand?: Brand }>({ open: false });
+  const [deleteBrandTarget, setDeleteBrandTarget] = useState<Brand | null>(null);
+  const [newProductBrandId, setNewProductBrandId] = useState<string | undefined>(undefined);
+  const memberName = (id: string | null | undefined) => {
+    const m = (members ?? []).find((x) => x.id === id);
+    return m ? (`${m.firstName} ${m.lastName}`.trim() || m.email) : null;
+  };
 
   const filtered = useMemo(() => {
     if (!products) return [];
@@ -99,8 +112,9 @@ export default function ProductsPage() {
     [products]
   );
 
-  function openCreate() {
+  function openCreate(brandId?: string) {
     setEditProduct(undefined);
+    setNewProductBrandId(brandId);
     setModalOpen(true);
   }
 
@@ -113,209 +127,299 @@ export default function ProductsPage() {
     updateProduct.mutate({ id: p.id, status: p.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" });
   }
 
+  const columns: DataTableColumn<Product>[] = [
+    {
+      id: "product",
+      header: terms.Singular,
+      skeleton: "avatar",
+      cell: (product) => (
+        <div className="flex items-center gap-2.5">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-8 h-8 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Package className="h-4 w-4 text-primary" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-body font-medium text-on-surface truncate">{product.name}</p>
+            {product.description && (
+              <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
+                {product.description}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "sku",
+      header: "SKU",
+      cellClassName: "text-label text-on-surface-variant font-mono",
+      cell: (product) => product.sku || "—",
+    },
+    {
+      id: "category",
+      header: "Category",
+      skeleton: "badge",
+      cell: (product) =>
+        product.category ? (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container">
+            {product.category.color && (
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
+            )}
+            {product.category.name}
+          </span>
+        ) : (
+          <span className="text-label text-on-surface-variant/40">—</span>
+        ),
+    },
+    {
+      id: "leads",
+      header: "Lead team",
+      skeleton: "short",
+      cell: (product) => {
+        const names = (product.leadHandlerIds ?? []).map(memberName).filter(Boolean) as string[];
+        if (names.length === 0) {
+          return (
+            <button type="button" onClick={() => openEdit(product)} className="text-label text-primary hover:underline">
+              Set team
+            </button>
+          );
+        }
+        return (
+          <span className="text-label text-on-surface-variant" title={names.join(", ")}>
+            {names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", ")}
+            <span className="text-on-surface-variant/60"> · {product.leadReminderMinutes ?? 30} min</span>
+          </span>
+        );
+      },
+    },
+    {
+      id: "price",
+      header: "Price",
+      skeleton: "short",
+      cellClassName: "text-body font-medium text-on-surface",
+      cell: (product) => formatPrice(product.price, product.currency),
+    },
+    {
+      id: "status",
+      header: "Status",
+      skeleton: "badge",
+      cell: (product) => (
+        <button
+          type="button"
+          onClick={() => toggleStatus(product)}
+          title="Toggle status"
+          aria-label={`${product.name}: ${product.status === "ACTIVE" ? "active" : "inactive"}. Toggle status`}
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <Badge variant={product.status === "ACTIVE" ? "success" : "muted"} dot>
+            {product.status === "ACTIVE" ? "Active" : "Inactive"}
+          </Badge>
+        </button>
+      ),
+    },
+    {
+      id: "created",
+      header: "Created",
+      skeleton: "short",
+      cellClassName: "text-label text-on-surface-variant",
+      cell: (product) =>
+        new Date(product.createdAt).toLocaleDateString("en-IN", {
+          day: "numeric", month: "short", year: "numeric",
+        }),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      skeleton: "none",
+      cell: (product) => (
+        <div className="flex items-center justify-end gap-1">
+          <IconButton size="xs"
+            onClick={() => openEdit(product)}
+            className="hover:text-primary hover:bg-primary/10"
+            title={`Edit ${terms.singular}`} aria-label={`Edit ${terms.singular}`}>
+            <Pencil className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="xs" variant="danger"
+            onClick={() => setDeleteTarget(product)}
+            title={`Delete ${terms.singular}`} aria-label={`Delete ${terms.singular}`}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
+
   if (productsLoading || catsLoading) {
     return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
   }
 
+  // Mobile: category edit/delete live in the "…" sheet (no hover on touch)
+  const activeCategory = (categories ?? []).find((c) => c.id === activeCategoryTab);
+
   return (
-    <div className="space-y-4">
+    // Desktop: room around the page, like the other list pages
+    <div className="space-y-4 max-lg:px-4 max-lg:pb-4 lg:p-6">
+      <MobilePageActions
+        primary={{ label: `New ${terms.singular}`, onClick: () => openCreate() }}
+        more={[
+          { label: "New brand", onSelect: () => setBrandModal({ open: true }) },
+          { label: "New Category", onSelect: () => { setEditCategory(undefined); setCategoryModalOpen(true); } },
+          activeCategory && { label: `Edit "${activeCategory.name}"`, onSelect: () => { setEditCategory(activeCategory); setCategoryModalOpen(true); } },
+          activeCategory && { label: `Delete "${activeCategory.name}"`, destructive: true, onSelect: () => setDeleteCatTarget(activeCategory) },
+        ]}
+      />
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title font-semibold text-on-surface flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            Products
-          </h1>
-          <p className="text-body text-on-surface-variant mt-0.5">
-            Manage products and assign them to contacts, deals, and sequences
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
-            <Tag className="h-4 w-4 mr-1" /> New Category
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" /> New Product
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={terms.Plural}
+        count={products?.length}
+        className="max-lg:hidden"
+        actions={
+          <>
+            {(products ?? []).length > 0 && (
+              <SearchInput
+                aria-label={`Search ${terms.plural}`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`Search ${terms.plural}`}
+                className="w-64"
+              />
+            )}
+            <Button variant="secondary" onClick={() => setBrandModal({ open: true })} data-tour="products-new-brand">
+              <Building2 className="h-4 w-4 mr-1" /> New brand
+            </Button>
+            <Button variant="secondary" onClick={() => { setEditCategory(undefined); setCategoryModalOpen(true); }}>
+              <Tag className="h-4 w-4 mr-1" /> New category
+            </Button>
+            <Button onClick={() => openCreate()}>
+              <Plus className="h-4 w-4 mr-1" /> New {terms.singular}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Category filter tabs */}
-      {(categories ?? []).length > 0 && (
-        <div className="flex items-center gap-1 flex-wrap">
-          {[
-            { id: "ALL", label: "All", count: (products ?? []).length, color: null },
-            ...(categories ?? []).map((c) => ({
-              id: c.id,
-              label: c.name,
-              count: (products ?? []).filter((p) => p.categoryId === c.id).length,
-              color: c.color,
-            })),
-            ...(uncategorizedCount > 0
-              ? [{ id: "NONE", label: "Uncategorized", count: uncategorizedCount, color: null }]
-              : []),
-          ].map((tab) => (
-            <div key={tab.id} className="flex items-center gap-0.5 group">
-              <button
-                onClick={() => setActiveCategoryTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label font-medium transition-colors ${
-                  activeCategoryTab === tab.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              >
-                {tab.color && (
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: tab.color }} />
-                )}
-                {tab.label}
-                <span className="text-caption opacity-60">({tab.count})</span>
-              </button>
-              {tab.id !== "ALL" && tab.id !== "NONE" && (
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                  <IconButton size="xs"
-                    onClick={() => { setEditCategory((categories ?? []).find((c) => c.id === tab.id)); setCategoryModalOpen(true); }}
-                    className="hover:text-primary"
-                    title="Edit category" aria-label="Edit category">
-                    <Pencil className="h-3 w-3" />
-                  </IconButton>
-                  <IconButton size="xs" variant="danger"
-                    onClick={() => setDeleteCatTarget((categories ?? []).find((c) => c.id === tab.id) ?? null)}
-                   
-                    title="Delete category" aria-label="Delete category">
-                    <Trash2 className="h-3 w-3" />
-                  </IconButton>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Search */}
+      {/* Search on phones (desktop: in the header) */}
       {(products ?? []).length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/10 max-w-sm">
-          <Search className="h-4 w-4 text-on-surface-variant/40" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products…"
-            className="flex-1 bg-transparent text-body text-on-surface outline-none placeholder:text-on-surface-variant/40"
-          />
-        </div>
+        <SearchInput
+          aria-label={`Search ${terms.plural}`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${terms.plural}`}
+          className="w-full lg:hidden"
+        />
       )}
 
-      {/* Table */}
-      {filtered.length > 0 ? (
-        <div className="rounded-2xl border border-outline-variant/10 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableHeaderRow>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead align="right">Actions</TableHead>
-              </TableHeaderRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-8 h-8 rounded-lg object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Package className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-body font-medium text-on-surface truncate">{product.name}</p>
-                        {product.description && (
-                          <p className="text-caption text-on-surface-variant/60 truncate max-w-[200px]">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
+      {/* Category chips; the chosen category's edit/delete sit beside them (phones: "…" sheet) */}
+      {(categories ?? []).length > 0 && (
+        <FilterBar className="mobile-scroll-x">
+          <Tabs
+            tabs={[
+              { id: "ALL", label: "All", count: (products ?? []).length },
+              ...(categories ?? []).map((c) => ({
+                id: c.id,
+                label: c.name,
+                count: (products ?? []).filter((p) => p.categoryId === c.id).length,
+              })),
+              ...(uncategorizedCount > 0
+                ? [{ id: "NONE", label: "Uncategorized", count: uncategorizedCount }]
+                : []),
+            ]}
+            activeTab={activeCategoryTab}
+            onTabChange={setActiveCategoryTab}
+          />
+          {activeCategory && (
+            <>
+              <FilterBarDivider />
+              <div className="flex items-center gap-0.5 max-lg:hidden">
+                <IconButton size="xs"
+                  onClick={() => { setEditCategory(activeCategory); setCategoryModalOpen(true); }}
+                  className="hover:text-primary"
+                  title={`Edit "${activeCategory.name}"`} aria-label={`Edit category ${activeCategory.name}`}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </IconButton>
+                <IconButton size="xs" variant="danger"
+                  onClick={() => setDeleteCatTarget(activeCategory)}
+                  title={`Delete "${activeCategory.name}"`} aria-label={`Delete category ${activeCategory.name}`}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </IconButton>
+              </div>
+            </>
+          )}
+        </FilterBar>
+      )}
 
-                  <TableCell className="text-label text-on-surface-variant font-mono">
-                    {product.sku || "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    {product.category ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-medium bg-surface-container border border-outline-variant/10">
-                        {product.category.color && (
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: product.category.color }} />
-                        )}
-                        {product.category.name}
-                      </span>
-                    ) : (
-                      <span className="text-label text-on-surface-variant/40">—</span>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="text-body font-medium text-on-surface">
-                    {formatPrice(product.price, product.currency)}
-                  </TableCell>
-
-                  <TableCell>
-                    <button onClick={() => toggleStatus(product)} title="Toggle status">
-                      <Badge variant={product.status === "ACTIVE" ? "success" : "muted"}>
-                        {product.status === "ACTIVE"
-                          ? <ToggleRight className="h-3 w-3 mr-1" />
-                          : <ToggleLeft className="h-3 w-3 mr-1" />}
-                        {product.status}
-                      </Badge>
-                    </button>
-                  </TableCell>
-
-                  <TableCell className="text-label text-on-surface-variant">
-                    {new Date(product.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "short", year: "numeric",
-                    })}
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton size="xs"
-                        onClick={() => openEdit(product)}
-                        className="hover:text-primary hover:bg-primary/10"
-                        title="Edit" aria-label="Edit">
+      {/* Table: one group per brand when there are brands */}
+      {(brands ?? []).length > 0 && (products ?? []).length > 0 ? (
+        <div className="space-y-6" data-tour="products-brands">
+          {[...(brands ?? []), null].map((brand) => {
+            const rows = filtered.filter((p) => (brand ? p.brandId === brand.id : !p.brandId));
+            if (!brand && rows.length === 0) return null;
+            const manager = brand ? memberName(brand.managerId) : null;
+            return (
+              <section key={brand?.id ?? "none"} className="space-y-2">
+                <div className="flex items-center gap-2 max-sm:flex-wrap">
+                  <h2 className="text-title-sm font-semibold text-on-surface">{brand?.name ?? "No brand"}</h2>
+                  <span className="text-caption text-on-surface-variant">
+                    {rows.length} {rows.length === 1 ? terms.singular : terms.plural}
+                    {manager ? ` · Manager: ${manager}` : ""}
+                  </span>
+                  {brand && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openCreate(brand.id)}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> {terms.Singular}
+                      </Button>
+                      <IconButton size="xs" onClick={() => setBrandModal({ open: true, brand })} title={`Edit ${brand.name}`} aria-label={`Edit brand ${brand.name}`}>
                         <Pencil className="h-3.5 w-3.5" />
                       </IconButton>
-                      <IconButton size="xs" variant="danger"
-                        onClick={() => setDeleteTarget(product)}
-                       
-                        title="Delete" aria-label="Delete">
+                      <IconButton size="xs" variant="danger" onClick={() => setDeleteBrandTarget(brand)} title={`Remove ${brand.name}`} aria-label={`Remove brand ${brand.name}`}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </IconButton>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  )}
+                </div>
+                {rows.length > 0 ? (
+                  <DataTable
+                    label={brand?.name ?? terms.Plural}
+                    columns={columns}
+                    rows={rows}
+                    rowKey={(product) => product.id}
+                    rowLabel={(product) => product.name}
+                  />
+                ) : (
+                  <p className="rounded-xl border border-dashed border-outline-variant/30 px-4 py-3 text-body text-on-surface-variant">
+                    No {terms.plural} in this brand yet.
+                  </p>
+                )}
+              </section>
+            );
+          })}
         </div>
+      ) : filtered.length > 0 ? (
+        <DataTable
+          label={terms.Plural}
+          columns={columns}
+          rows={filtered}
+          rowKey={(product) => product.id}
+          rowLabel={(product) => product.name}
+        />
       ) : (products ?? []).length > 0 ? (
         <p className="text-body text-on-surface-variant/50 text-center py-8">
-          No products match your filters
+          No {terms.plural} match your filters
         </p>
       ) : (
         <EmptyState
           icon={<Package className="h-8 w-8" />}
-          title="No products yet"
-          description="Create products to assign to contacts, deals, chatbot flows, and sequences"
-          actionLabel="Create Product"
-          onAction={openCreate}
+          title={`No ${terms.plural} yet`}
+          description={`Create ${terms.plural} to assign to contacts, deals, chatbot flows, and sequences`}
+          actionLabel={`New ${terms.singular}`}
+          onAction={() => openCreate()}
         />
       )}
 
@@ -324,6 +428,26 @@ export default function ProductsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         product={editProduct}
+        defaultBrandId={newProductBrandId}
+      />
+
+      <BrandFormModal
+        open={brandModal.open}
+        brand={brandModal.brand}
+        onClose={() => setBrandModal({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={!!deleteBrandTarget}
+        title="Remove brand"
+        message={`Remove "${deleteBrandTarget?.name}"? Its ${terms.plural} stay, without a brand.`}
+        confirmLabel="Remove"
+        variant="danger"
+        loading={deleteBrand.isPending}
+        onConfirm={() => {
+          if (deleteBrandTarget) deleteBrand.mutate(deleteBrandTarget.id, { onSuccess: () => setDeleteBrandTarget(null) });
+        }}
+        onCancel={() => setDeleteBrandTarget(null)}
       />
 
       {/* Category form modal */}
@@ -336,7 +460,7 @@ export default function ProductsPage() {
       {/* Delete product */}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete Product"
+        title={`Delete ${terms.singular}`}
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This will remove it from all contacts and deals.`}
         confirmLabel="Delete"
         variant="danger"
@@ -350,8 +474,8 @@ export default function ProductsPage() {
       {/* Delete category */}
       <ConfirmDialog
         open={!!deleteCatTarget}
-        title="Delete Category"
-        message={`Delete "${deleteCatTarget?.name}"? Products in this category will become uncategorized.`}
+        title="Delete category"
+        message={`Delete "${deleteCatTarget?.name}"? ${terms.Plural} in this category will become uncategorized.`}
         confirmLabel="Delete"
         variant="danger"
         loading={deleteCategory.isPending}

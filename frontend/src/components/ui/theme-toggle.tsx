@@ -1,6 +1,7 @@
 "use client";
 
 import { Sun, Moon, Leaf, Sparkles } from "lucide-react";
+import { motion } from "motion/react";
 import { useThemeStore, THEMES, type Theme } from "@/stores/theme-store";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,7 @@ export function ThemeCycleButton({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      onClick={toggleTheme}
+      onClick={(e) => toggleTheme(e.currentTarget)}
       aria-label={`Theme: ${THEMES[index]?.label}. Switch to ${next.label}`}
       title={`Switch to ${next.label}`}
       className={cn(
@@ -57,17 +58,24 @@ export function ThemeToggle({ className }: { className?: string }) {
             type="button"
             role="radio"
             aria-checked={active}
-            onClick={() => setTheme(id)}
+            onClick={(e) => setTheme(id, e.currentTarget)}
             className={cn(
-              "flex h-8 items-center justify-center gap-1.5 rounded-md text-label transition-colors duration-120 ease-standard",
+              "relative flex h-8 items-center justify-center gap-1.5 rounded-md text-label transition-colors duration-120 ease-standard",
               "outline-none focus-visible:ring-2 focus-visible:ring-focus",
-              active
-                ? "bg-surface-container-lowest text-on-surface shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface",
+              active ? "text-on-surface" : "text-on-surface-variant hover:text-on-surface",
             )}
           >
-            <Icon className={cn("h-3.5 w-3.5", active && "text-primary-container")} />
-            {label}
+            {/* Highlight slides to the picked theme */}
+            {active && (
+              <motion.span
+                layoutId="theme-toggle-pill"
+                aria-hidden
+                className="absolute inset-0 rounded-md bg-surface-container-lowest shadow-sm"
+                transition={{ type: "spring", stiffness: 420, damping: 36 }}
+              />
+            )}
+            <Icon className={cn("relative h-3.5 w-3.5", active && "text-primary-container")} />
+            <span className="relative">{label}</span>
           </button>
         );
       })}

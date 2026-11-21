@@ -1,0 +1,49 @@
+import { campaignSendWindow, readSendAnyTime } from './account-safety.service';
+import { decideBulkSend } from './send-safety.policy';
+
+describe('campaign send window', () => {
+  // 02:00 in Asia/Kolkata (20:30 UTC the day before)
+  const twoAmIst = new Date('2026-11-06T20:30:00.000Z');
+  const base = {
+    now: twoAmIst,
+    timeZone: 'Asia/Kolkata',
+    pausedUntil: null,
+    pausedReason: null,
+    bulkSentToday: 0,
+    coldSentToday: 0,
+    recipientIsCold: true,
+  };
+
+  it('reads the flag from campaign metadata', () => {
+    expect(readSendAnyTime({ sendAnyTime: true })).toBe(true);
+    expect(readSendAnyTime({ sendAnyTime: 'yes' })).toBe(false);
+    expect(readSendAnyTime(null)).toBe(false);
+    expect(readSendAnyTime([])).toBe(false);
+  });
+
+  it('a normal campaign waits outside 9 AM - 9 PM, a send-any-time one goes at night', () => {
+    const elevenPm = new Date('2026-11-06T17:30:00.000Z'); // 23:00 IST
+    expect(decideBulkSend({ ...base, now: elevenPm, sendWindow: campaignSendWindow(false) }).allowed).toBe(false);
+    expect(decideBulkSend({ ...base, now: elevenPm, sendWindow: campaignSendWindow(true) }).allowed).toBe(true);
+    expect(decideBulkSend({ ...base, sendWindow: campaignSendWindow(true) }).allowed).toBe(true);
+  });
+
+  it('holds a normal campaign at 2 AM until 9 AM, not midnight', () => {
+    expect(decideBulkSend({ ...base, sendWindow: campaignSendWindow(false) })).toMatchObject({
+      allowed: false,
+      retryAt: new Date('2026-11-07T03:30:00.000Z'), // 09:00 IST
+    });
+  });
+
+  it('still stops at a daily cold cap set on the number, and resumes the next day', () => {
+    const decision = decideBulkSend({
+      ...base,
+      coldSentToday: 10_000,
+      limits: { dailyColdCap: 200 },
+      bulkSentToday: 10_000,
+      sendWindow: campaignSendWindow(true),
+    });
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) expect(decision.retryAt.getTime()).toBeGreaterThan(twoAmIst.getTime());
+  });
+});

@@ -7,22 +7,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QUEUE_NAMES, EVENT_NAMES } from '@/common/constants';
 import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus } from '@prisma/client';
 
-/**
- * Fill {{name}} / {{phone}} / {{email}} (and contact.* forms) for one recipient.
- * A contact without a name gets "there" so "Hi {{name}}" still reads naturally.
- */
-export function fillContactPlaceholders(
-  body: string,
-  contact: { name: string | null; phoneNumber: string; email: string | null } | null,
-): string {
-  const firstName = contact?.name?.trim().split(/\s+/)[0];
-  const values: Record<string, string> = {
-    name: firstName || 'there',
-    phone: contact?.phoneNumber ?? '',
-    email: contact?.email ?? '',
-  };
-  return body.replace(/\{\{\s*(?:contact\.)?(name|phone|email)\s*\}\}/g, (_, key: string) => values[key]);
-}
+import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
+import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
+import {
+  NO_WHATSAPP_PERMISSION_REASON,
+  WhatsAppPermissionService,
+} from '@/modules/contacts/domain/services/whatsapp-permission.service';
+
+// Same filling as campaigns and automations (one shared helper)
+export { fillContactPlaceholders };
 
 /**
  * Periodic worker that checks for sequence recipients whose next step is due,
@@ -38,6 +31,8 @@ export class SequenceStepWorker implements OnModuleInit {
     private readonly messageRepo: MessageRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
+    private readonly orgEmail: OrgEmailService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -48,15 +43,7 @@ export class SequenceStepWorker implements OnModuleInit {
     );
 
     // Schedule periodic check
-    await this.queueService.publishOnce(
-      QUEUE_NAMES.SEQUENCE_STEP_CHECK,
-      {},
-      'sequence-step-check-singleton',
-      {
-        retryLimit: 0,
-        singletonSeconds: 30,
-      },
-    );
+    await this.scheduleNextCheck();
 
     // Subscribe to individual step sends
     await this.queueService.subscribeConcurrent<{
@@ -74,31 +61,12 @@ export class SequenceStepWorker implements OnModuleInit {
     this.logger.log('SequenceStepWorker subscribed');
   }
 
-  private async checkDueSteps(): Promise<void> {
-    const now = new Date();
-    const dueRecipients = await this.sequenceRepo.getActiveRecipientsForStep(undefined, now, 100);
-
-    // Filter: only those whose parent sequence is still ACTIVE
-    const eligible = dueRecipients.filter(
-      (r) => r.sequence.status === SequenceStatus.ACTIVE,
-    );
-
-    for (const recipient of eligible) {
-      await this.queueService.publishOnce(
-        QUEUE_NAMES.SEQUENCE_SEND_STEP,
-        {
-          recipientId: recipient.id,
-          stepId: '', // resolved in sendStep
-          orgId: recipient.orgId,
-          sequenceId: recipient.sequenceId,
-          sessionId: recipient.sequence.sessionId,
-        },
-        `seq-step-${recipient.id}-${recipient.currentStep}`,
-        { retryLimit: 2, retryBackoff: true },
-      );
-    }
-
-    // Re-schedule self
+  /**
+   * One check per 30s slot. This runs inside the current slot's job, so without
+   * singletonNextSlot the insert collides with that job and pg-boss silently
+   * drops it — the loop would stop after one run.
+   */
+  private async scheduleNextCheck(): Promise<void> {
     await this.queueService.publishOnce(
       QUEUE_NAMES.SEQUENCE_STEP_CHECK,
       {},
@@ -106,8 +74,39 @@ export class SequenceStepWorker implements OnModuleInit {
       {
         retryLimit: 0,
         singletonSeconds: 30,
+        singletonNextSlot: true,
       },
     );
+  }
+
+  private async checkDueSteps(): Promise<void> {
+    try {
+      const now = new Date();
+      const dueRecipients = await this.sequenceRepo.getActiveRecipientsForStep(undefined, now, 100);
+
+      // Filter: only those whose parent sequence is still ACTIVE
+      const eligible = dueRecipients.filter(
+        (r) => r.sequence.status === SequenceStatus.ACTIVE,
+      );
+
+      for (const recipient of eligible) {
+        await this.queueService.publishOnce(
+          QUEUE_NAMES.SEQUENCE_SEND_STEP,
+          {
+            recipientId: recipient.id,
+            stepId: '', // resolved in sendStep
+            orgId: recipient.orgId,
+            sequenceId: recipient.sequenceId,
+            sessionId: recipient.sequence.sessionId,
+          },
+          `seq-step-${recipient.id}-${recipient.currentStep}`,
+          { retryLimit: 2, retryBackoff: true },
+        );
+      }
+    } finally {
+      // Re-schedule self even when this run failed, or the loop dies
+      await this.scheduleNextCheck();
+    }
   }
 
   private async sendStep(data: {
@@ -122,10 +121,9 @@ export class SequenceStepWorker implements OnModuleInit {
     const steps = await this.sequenceRepo.getStepsBySequence(sequenceId);
     if (!steps.length) return;
 
-    // Re-fetch recipient (freshest state)
-    const recipients = await this.sequenceRepo.getActiveRecipientsForStep(orgId, new Date(), 1);
-    const recipient = recipients.find((r) => r.id === recipientId);
-    if (!recipient || recipient.status !== 'ACTIVE') return;
+    // Re-fetch this recipient (freshest state) — still active and still due
+    const recipient = await this.sequenceRepo.findDueRecipient(recipientId, orgId, new Date());
+    if (!recipient) return;
 
     // Step jobs published before a pause must not send; and use the sequence's
     // current number — it may have moved off a logged-out or banned one
@@ -142,6 +140,12 @@ export class SequenceStepWorker implements OnModuleInit {
 
     const step = steps[nextStepIndex];
 
+    // Email step: from the workspace's mailbox (its own unsubscribe applies, not the WhatsApp opt-out)
+    if (step.channel === 'EMAIL') {
+      await this.sendEmailStep(recipient, step, steps, nextStepIndex, sequenceId, orgId);
+      return;
+    }
+
     // Never send to someone who replied STOP / unsubscribe
     const digits = recipient.contactPhone.replace(/^\+/, '');
     const optedOut = await this.prisma.contact.findFirst({
@@ -150,11 +154,27 @@ export class SequenceStepWorker implements OnModuleInit {
     });
     const contact = await this.prisma.contact.findUnique({
       where: { id: recipient.contactId },
-      select: { name: true, phoneNumber: true, email: true },
+      select: {
+        id: true, name: true, phoneNumber: true, email: true, leadStatus: true, deletedAt: true, mergedIntoId: true, source: true,
+      },
     });
     if (optedOut) {
       await this.sequenceRepo.exitRecipient(recipientId, 'Contact opted out');
       await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      return;
+    }
+    // Deleted (or merged into another contact) since they joined: stop here
+    if (!contact || contact.deletedAt || contact.mergedIntoId) {
+      await this.sequenceRepo.exitRecipient(recipientId, 'Contact deleted');
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      return;
+    }
+    // Lead finder contact without WhatsApp permission (never had it, or it was
+    // revoked since they joined): skip only this step, recorded SKIPPED with the
+    // reason, and move on so later email steps still go out. Checked again at
+    // every WhatsApp step, so a step after they agree does send.
+    if (!(await this.whatsAppPermission.isPermitted(orgId, contact))) {
+      await this.skipWhatsAppStep(recipientId, step, steps, nextStepIndex, sequenceId, orgId);
       return;
     }
 
@@ -222,6 +242,90 @@ export class SequenceStepWorker implements OnModuleInit {
       this.logger.error(
         `Failed to send sequence step for recipient ${recipientId}: ${error}`,
       );
+    }
+  }
+
+  /**
+   * A WhatsApp step the contact has no permission for: recorded on the
+   * recipient's steps as SKIPPED with the reason (like an email step that can't
+   * go), then the recipient moves on to the next step on its normal delay, or
+   * finishes when this was the last step.
+   */
+  private async skipWhatsAppStep(
+    recipientId: string,
+    step: { id: string; stepOrder: number },
+    steps: { delayMinutes: number }[],
+    stepIndex: number,
+    sequenceId: string,
+    orgId: string,
+  ): Promise<void> {
+    try {
+      const now = new Date();
+      const recipientStep = await this.sequenceRepo.createRecipientStep({
+        recipientId,
+        stepId: step.id,
+        orgId,
+        scheduledAt: now,
+      });
+      await this.sequenceRepo.updateRecipientStepStatus(recipientStep.id, CampaignRecipientStatus.SKIPPED, {
+        processedAt: now,
+        failedReason: NO_WHATSAPP_PERMISSION_REASON,
+      });
+
+      const nextIndex = stepIndex + 1;
+      const nextStepAt = nextIndex < steps.length ? new Date(Date.now() + steps[nextIndex].delayMinutes * 60_000) : null;
+      await this.sequenceRepo.advanceRecipient(recipientId, nextIndex, nextStepAt);
+      if (nextIndex >= steps.length) await this.sequenceRepo.completeRecipient(recipientId);
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      this.logger.debug(`Sequence ${sequenceId}: WhatsApp step ${step.stepOrder} skipped for ${recipientId} (no WhatsApp permission)`);
+    } catch (error) {
+      this.logger.error(`Failed to skip sequence WhatsApp step for recipient ${recipientId}: ${error}`);
+    }
+  }
+
+  /**
+   * An email step: queued from the workspace's mailbox, recorded on the recipient's
+   * steps (SKIPPED with the reason when it can't go — no email, unsubscribed, no
+   * account), then the recipient moves on like after a WhatsApp step.
+   */
+  private async sendEmailStep(
+    recipient: { id: string; contactId: string },
+    step: { id: string; stepOrder: number; emailSubject: string | null; messageBody: string | null },
+    steps: { delayMinutes: number }[],
+    stepIndex: number,
+    sequenceId: string,
+    orgId: string,
+  ): Promise<void> {
+    try {
+      const recipientStep = await this.sequenceRepo.createRecipientStep({
+        recipientId: recipient.id,
+        stepId: step.id,
+        orgId,
+        scheduledAt: new Date(),
+      });
+      const result = await this.orgEmail.queue({
+        orgId,
+        contactId: recipient.contactId,
+        subject: step.emailSubject || 'A message for you',
+        body: step.messageBody ?? '',
+        source: 'SEQUENCE',
+        sourceId: recipientStep.id,
+        idempotencyKey: `seq-email-${sequenceId}-${recipient.id}-step-${step.stepOrder}`,
+      });
+      await this.sequenceRepo.updateRecipientStepStatus(
+        recipientStep.id,
+        result.status === 'SKIPPED' ? CampaignRecipientStatus.SKIPPED : result.status === 'SENT' ? CampaignRecipientStatus.SENT : CampaignRecipientStatus.QUEUED,
+        { processedAt: new Date(), ...(result.reason ? { failedReason: result.reason } : {}) },
+      );
+
+      const nextIndex = stepIndex + 1;
+      const nextStepAt = nextIndex < steps.length ? new Date(Date.now() + steps[nextIndex].delayMinutes * 60_000) : null;
+      await this.sequenceRepo.advanceRecipient(recipient.id, nextIndex, nextStepAt);
+      if (nextIndex >= steps.length) await this.sequenceRepo.completeRecipient(recipient.id);
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      this.logger.debug(`Sequence ${sequenceId}: email step ${step.stepOrder} → ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
+    } catch (error) {
+      this.logger.error(`Failed to send sequence email step for recipient ${recipient.id}: ${error}`);
     }
   }
 }

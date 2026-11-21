@@ -1,34 +1,20 @@
-import type { Metadata } from "next";
 import DeveloperApiClient from "./client";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "WhatsApp CRM REST API & Webhooks",
-  description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
-  keywords: [
-    "WhatsApp CRM API", "WhatsApp REST API", "WhatsApp webhook", "WhatsApp API integration",
-    "Wazelo API", "WhatsApp API developer",
-    "WhatsApp send message API", "WhatsApp API documentation",
-    "WhatsApp CRM webhook", "WhatsApp API key management",
-    "WhatsApp API for business India", "custom WhatsApp integration",
-    "WhatsApp API endpoint", "WhatsApp API platform",
-    "WhatsApp developer tools India", "WhatsApp API software",
-    "integrate WhatsApp API", "WhatsApp CRM developer API",
-    "WhatsApp API automation",
-  ],
-  alternates: { canonical: "https://wazelo.in/features/developer-api" },
-  openGraph: {
-    title: "WhatsApp CRM REST API & Webhooks | Wazelo CRM",
-    description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
-    url: "https://wazelo.in/features/developer-api",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "WhatsApp CRM REST API & Webhooks | Wazelo CRM",
-    description: "Wazelo REST API for WhatsApp: send messages, bulk send to 100 numbers, manage contacts and templates, and get signed webhooks for 11 events.",
-  },
+const seo = {
+  path: "/features/developer-api",
+  title: "WhatsApp CRM API, Webhooks & MCP Server",
+  description: "Connect Wazelo to your stack with a REST API, webhooks and an MCP server. Search contacts, add notes and tags, read chats, move deals and plug in AI.",
 };
 
+export const metadata = pageMetadata(seo);
+
 export default function Page() {
-  return <DeveloperApiClient />;
+  return (
+    <>
+      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Developer API", path: seo.path }])]} />
+      <DeveloperApiClient />
+    </>
+  );
 }

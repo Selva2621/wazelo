@@ -4,7 +4,7 @@ import {
   isOptOutReply,
   localDayStart,
   nextSendWindowStart,
-  warmupTier,
+  dailyCaps,
   BulkSendInput,
 } from './send-safety.policy';
 
@@ -16,7 +16,6 @@ function input(overrides: Partial<BulkSendInput> = {}): BulkSendInput {
   return {
     now: morningIst,
     timeZone: 'Asia/Kolkata',
-    linkedAt: new Date(morningIst.getTime() - 60 * DAY),
     pausedUntil: null,
     pausedReason: null,
     bulkSentToday: 0,
@@ -26,17 +25,13 @@ function input(overrides: Partial<BulkSendInput> = {}): BulkSendInput {
   };
 }
 
-describe('warmupTier', () => {
-  it('starts new numbers on the lowest caps', () => {
-    expect(warmupTier(new Date(morningIst.getTime() - 2 * DAY), morningIst)).toEqual({ stage: 1, coldCap: 20, bulkCap: 50 });
+describe('dailyCaps', () => {
+  it('has no daily cap by default', () => {
+    expect(dailyCaps()).toEqual({ coldCap: null, bulkCap: null, mode: 'plan' });
   });
 
-  it('treats an unknown link date as brand new', () => {
-    expect(warmupTier(null, morningIst).stage).toBe(1);
-  });
-
-  it('reaches full caps after three weeks', () => {
-    expect(warmupTier(new Date(morningIst.getTime() - 30 * DAY), morningIst)).toEqual({ stage: 4, coldCap: 200, bulkCap: 500 });
+  it('uses only the caps an admin set', () => {
+    expect(dailyCaps({ dailyBulkCap: 300, dailyColdCap: 100 })).toEqual({ coldCap: 100, bulkCap: 300, mode: 'custom' });
   });
 });
 
@@ -88,14 +83,31 @@ describe('decideBulkSend', () => {
     expect(decision.allowed).toBe(false);
   });
 
+  it('uses the campaign window through 10 PM and reopens at midnight', () => {
+    const campaignWindow = { startHour: 0, endHour: 22 };
+    const atNineteenIst = new Date('2026-10-12T13:30:00.000Z');
+    expect(decideBulkSend(input({ now: atNineteenIst, sendWindow: campaignWindow }))).toEqual({ allowed: true });
+
+    const afterTenIst = new Date('2026-10-12T16:30:00.000Z');
+    expect(decideBulkSend(input({ now: afterTenIst, sendWindow: campaignWindow }))).toMatchObject({
+      allowed: false,
+      retryAt: new Date('2026-10-12T18:30:00.000Z'),
+      reason: 'Outside sending hours',
+    });
+  });
+
   it('holds once the daily bulk cap is reached', () => {
-    const decision = decideBulkSend(input({ bulkSentToday: 500 }));
+    const decision = decideBulkSend(input({ bulkSentToday: 500, limits: { dailyBulkCap: 500 } }));
     expect(decision).toMatchObject({ allowed: false, reason: expect.stringContaining('Daily limit') });
   });
 
+  it('has no daily cap by default: only the plan message limit governs volume', () => {
+    expect(decideBulkSend(input({ bulkSentToday: 10_000, coldSentToday: 10_000, recipientIsCold: true })).allowed).toBe(true);
+  });
+
   it('caps cold recipients separately from warm ones', () => {
-    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: false })).allowed).toBe(true);
-    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: true })).allowed).toBe(false);
+    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: false, limits: { dailyColdCap: 200 } })).allowed).toBe(true);
+    expect(decideBulkSend(input({ coldSentToday: 200, recipientIsCold: true, limits: { dailyColdCap: 200 } })).allowed).toBe(false);
   });
 });
 
