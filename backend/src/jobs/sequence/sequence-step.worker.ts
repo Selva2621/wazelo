@@ -9,6 +9,10 @@ import { MessageDirection, MessageType, SequenceStatus, CampaignRecipientStatus 
 
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
 import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
+import {
+  NO_WHATSAPP_PERMISSION_REASON,
+  WhatsAppPermissionService,
+} from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 // Same filling as campaigns and automations (one shared helper)
 export { fillContactPlaceholders };
@@ -28,6 +32,7 @@ export class SequenceStepWorker implements OnModuleInit {
     private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
     private readonly orgEmail: OrgEmailService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -149,7 +154,9 @@ export class SequenceStepWorker implements OnModuleInit {
     });
     const contact = await this.prisma.contact.findUnique({
       where: { id: recipient.contactId },
-      select: { name: true, phoneNumber: true, email: true, leadStatus: true, deletedAt: true, mergedIntoId: true },
+      select: {
+        id: true, name: true, phoneNumber: true, email: true, leadStatus: true, deletedAt: true, mergedIntoId: true, source: true,
+      },
     });
     if (optedOut) {
       await this.sequenceRepo.exitRecipient(recipientId, 'Contact opted out');
@@ -160,6 +167,14 @@ export class SequenceStepWorker implements OnModuleInit {
     if (!contact || contact.deletedAt || contact.mergedIntoId) {
       await this.sequenceRepo.exitRecipient(recipientId, 'Contact deleted');
       await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      return;
+    }
+    // Lead finder contact without WhatsApp permission (never had it, or it was
+    // revoked since they joined): skip only this step, recorded SKIPPED with the
+    // reason, and move on so later email steps still go out. Checked again at
+    // every WhatsApp step, so a step after they agree does send.
+    if (!(await this.whatsAppPermission.isPermitted(orgId, contact))) {
+      await this.skipWhatsAppStep(recipientId, step, steps, nextStepIndex, sequenceId, orgId);
       return;
     }
 
@@ -227,6 +242,44 @@ export class SequenceStepWorker implements OnModuleInit {
       this.logger.error(
         `Failed to send sequence step for recipient ${recipientId}: ${error}`,
       );
+    }
+  }
+
+  /**
+   * A WhatsApp step the contact has no permission for: recorded on the
+   * recipient's steps as SKIPPED with the reason (like an email step that can't
+   * go), then the recipient moves on to the next step on its normal delay, or
+   * finishes when this was the last step.
+   */
+  private async skipWhatsAppStep(
+    recipientId: string,
+    step: { id: string; stepOrder: number },
+    steps: { delayMinutes: number }[],
+    stepIndex: number,
+    sequenceId: string,
+    orgId: string,
+  ): Promise<void> {
+    try {
+      const now = new Date();
+      const recipientStep = await this.sequenceRepo.createRecipientStep({
+        recipientId,
+        stepId: step.id,
+        orgId,
+        scheduledAt: now,
+      });
+      await this.sequenceRepo.updateRecipientStepStatus(recipientStep.id, CampaignRecipientStatus.SKIPPED, {
+        processedAt: now,
+        failedReason: NO_WHATSAPP_PERMISSION_REASON,
+      });
+
+      const nextIndex = stepIndex + 1;
+      const nextStepAt = nextIndex < steps.length ? new Date(Date.now() + steps[nextIndex].delayMinutes * 60_000) : null;
+      await this.sequenceRepo.advanceRecipient(recipientId, nextIndex, nextStepAt);
+      if (nextIndex >= steps.length) await this.sequenceRepo.completeRecipient(recipientId);
+      await this.sequenceRepo.updateSequenceCounters(sequenceId);
+      this.logger.debug(`Sequence ${sequenceId}: WhatsApp step ${step.stepOrder} skipped for ${recipientId} (no WhatsApp permission)`);
+    } catch (error) {
+      this.logger.error(`Failed to skip sequence WhatsApp step for recipient ${recipientId}: ${error}`);
     }
   }
 

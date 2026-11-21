@@ -200,6 +200,9 @@ export class SequenceRepository {
         id: true,
         status: true,
         steps: { orderBy: { stepOrder: 'asc' }, take: 1, select: { delayMinutes: true } },
+        // Lead finder contacts without WhatsApp permission can only join a sequence
+        // that has at least one email step (their WhatsApp steps are skipped)
+        _count: { select: { steps: { where: { channel: 'EMAIL' } } } },
       },
     });
   }

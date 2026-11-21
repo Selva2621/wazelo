@@ -16,7 +16,10 @@ import type {
   BulkContactAction,
   CreateSavedGroupsRequest,
   SplitSavedGroupsRequest,
+  RecordWhatsAppPermissionRequest,
+  BulkRecordWhatsAppPermissionRequest,
 } from "@/lib/types/contacts";
+import { BULK_CONTACTS_MAX } from "@/lib/types/contacts";
 
 // ─── Query Key Factory ───
 
@@ -31,6 +34,8 @@ export const contactKeys = {
     ["contacts", contactId, "status-history"] as const,
   ownerHistory: (contactId: string) =>
     ["contacts", contactId, "owner-history"] as const,
+  whatsappPermission: (contactId: string) =>
+    ["contacts", contactId, "whatsapp-permission"] as const,
   orgTags: ["contacts", "org-tags"] as const,
   orgMembers: ["contacts", "org-members"] as const,
   groups: ["contacts", "groups"] as const,
@@ -151,6 +156,89 @@ export function useOrgMembers() {
     queryKey: contactKeys.orgMembers,
     queryFn: () => contactsApi.listOrgMembers(),
     enabled: role === "ADMIN" || role === "MANAGER",
+  });
+}
+
+/** Lead finder WhatsApp permission. `required: false` means not a lead finder contact. */
+export function useWhatsAppPermission(contactId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: contactKeys.whatsappPermission(contactId!),
+    queryFn: () => contactsApi.getWhatsAppPermission(contactId!),
+    enabled: enabled && !!contactId,
+    staleTime: 30_000,
+  });
+}
+
+export function useRecordWhatsAppPermission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, ...data }: { contactId: string } & RecordWhatsAppPermissionRequest) =>
+      contactsApi.recordWhatsAppPermission(contactId, data),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(contactKeys.whatsappPermission(variables.contactId), data);
+      queryClient.invalidateQueries({ queryKey: contactKeys.whatsappPermission(variables.contactId) });
+      toast.success("Permission recorded");
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't record permission"),
+  });
+}
+
+/**
+ * Refresh everything that shows lead finder WhatsApp permission: each contact's
+ * permission and the scraper run outreach "who can be messaged" count.
+ */
+export function invalidateWhatsAppPermissionQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({
+    predicate: (q) => q.queryKey[0] === "contacts" && q.queryKey[2] === "whatsapp-permission",
+  });
+  queryClient.invalidateQueries({ queryKey: ["sequences", "outreach-permission-count"] });
+}
+
+/** Record the same agreement for many contacts (sent BULK_CONTACTS_MAX at a time) */
+export function useBulkRecordWhatsAppPermission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ contactIds, ...data }: BulkRecordWhatsAppPermissionRequest) => {
+      const total = { recorded: 0, skipped: 0 };
+      for (let i = 0; i < contactIds.length; i += BULK_CONTACTS_MAX) {
+        const res = await contactsApi.bulkRecordWhatsAppPermission({
+          ...data,
+          contactIds: contactIds.slice(i, i + BULK_CONTACTS_MAX),
+        });
+        total.recorded += res.recorded;
+        total.skipped += res.skipped;
+      }
+      return total;
+    },
+    onSuccess: ({ recorded, skipped }) => {
+      invalidateWhatsAppPermissionQueries(queryClient);
+      const lead = (n: number) => `${n} lead${n !== 1 ? "s" : ""}`;
+      if (recorded === 0) {
+        toast.info(
+          skipped === 1
+            ? "No change: this lead already has WhatsApp permission or isn't from the lead finder."
+            : `No change: these ${skipped} leads already have WhatsApp permission or aren't from the lead finder.`,
+        );
+        return;
+      }
+      toast.success(
+        `WhatsApp permission recorded for ${lead(recorded)}${skipped > 0 ? `, ${skipped} skipped (already had it or not from the lead finder)` : ""}.`,
+      );
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't record permission"),
+  });
+}
+
+export function useRevokeWhatsAppPermission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) => contactsApi.revokeWhatsAppPermission(contactId),
+    onSuccess: (data, contactId) => {
+      queryClient.setQueryData(contactKeys.whatsappPermission(contactId), data);
+      queryClient.invalidateQueries({ queryKey: contactKeys.whatsappPermission(contactId) });
+      toast.success("Permission revoked");
+    },
+    onError: (err: Error) => toast.error(err.message || "Couldn't revoke permission"),
   });
 }
 

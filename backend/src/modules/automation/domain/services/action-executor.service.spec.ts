@@ -1,8 +1,11 @@
 import { AutomationActionType } from '@prisma/client';
 import { ActionExecutorService } from './action-executor.service';
 import { CAMPAIGN_CONFIG } from '@/common/constants';
+import { NO_WHATSAPP_PERMISSION_REASON } from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 const baseContact = {
+  id: 'ct1',
+  source: 'MANUAL',
   phoneNumber: '+919000000001',
   name: null,
   email: null,
@@ -13,7 +16,7 @@ const baseContact = {
   mergedIntoId: null,
 };
 
-function setup(contact: Record<string, unknown> | null = baseContact) {
+function setup(contact: Record<string, unknown> | null = baseContact, permitted = true) {
   const prisma = {
     contact: { findFirst: jest.fn(async () => contact) },
     automationRule: { findFirst: jest.fn(async () => ({ createdById: 'creator' })) },
@@ -44,6 +47,8 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
   };
   const messageEventRepo = { record: jest.fn(async () => undefined) };
   const sessionRepo = { findAnyActiveByOrgId: jest.fn(async () => ({ id: 'any-session' })) };
+  const whatsAppPermission = { isPermitted: jest.fn(async () => permitted) };
+  const enrollContact = { execute: jest.fn(async (): Promise<Record<string, unknown>> => ({ enrolled: true, recipientId: 'sr9' })) };
   const orgEmail = { queue: jest.fn(async (): Promise<Record<string, unknown>> => ({ emailMessageId: 'em1', status: 'QUEUED' })) };
   const service = new ActionExecutorService(
     queueService as never,
@@ -52,15 +57,16 @@ function setup(contact: Record<string, unknown> | null = baseContact) {
     conversationRepo as never,
     messageEventRepo as never,
     sessionRepo as never,
-    {} as never,
+    enrollContact as never,
     assignContact as never,
     addTag as never,
     changeLeadStatus as never,
     sequenceRepo as never,
     events as never,
     orgEmail as never,
+    whatsAppPermission as never,
   );
-  return { service, messageRepo, queueService, assignContact, addTag, changeLeadStatus, sequenceRepo, events, conversationRepo, prisma, orgEmail };
+  return { service, messageRepo, queueService, assignContact, addTag, changeLeadStatus, sequenceRepo, events, conversationRepo, prisma, orgEmail, whatsAppPermission, enrollContact };
 }
 
 const send = (eventPayload?: Record<string, unknown>) => ({
@@ -260,5 +266,44 @@ describe('ActionExecutorService SEND_MESSAGE', () => {
       await service.execute(send({ inbound: true, sessionId: 's' }));
       expect(messageRepo.create).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe('ActionExecutorService lead finder WhatsApp permission', () => {
+  const leadFinder = { ...baseContact, source: 'WEB_SCRAPE' };
+
+  it('skips a message we start to a lead finder contact without permission, with the reason', async () => {
+    const { service, messageRepo, whatsAppPermission } = setup(leadFinder, false);
+    const result = await service.execute(send({ contactId: 'ct1' }));
+    expect(whatsAppPermission.isPermitted).toHaveBeenCalledWith('o1', expect.objectContaining({ id: 'ct1', source: 'WEB_SCRAPE' }));
+    expect(result).toEqual({
+      actionType: AutomationActionType.SEND_MESSAGE,
+      success: true,
+      result: { skipped: true, reason: NO_WHATSAPP_PERMISSION_REASON },
+    });
+    expect(messageRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('sends once the contact is permitted', async () => {
+    const { service, messageRepo } = setup(leadFinder, true);
+    await service.execute(send({ contactId: 'ct1' }));
+    expect(messageRepo.create).toHaveBeenCalled();
+  });
+
+  it('still replies to a lead finder contact who wrote to us (writing first is permission)', async () => {
+    const { service, messageRepo, whatsAppPermission } = setup(leadFinder, false);
+    await service.execute(send({ inbound: true, sessionId: 'inbound-session' }));
+    expect(whatsAppPermission.isPermitted).not.toHaveBeenCalled();
+    expect(messageRepo.create).toHaveBeenCalled();
+  });
+
+  it('reports a refused sequence enroll as skipped, not failed', async () => {
+    const { service, enrollContact } = setup();
+    enrollContact.execute.mockResolvedValueOnce({ enrolled: false, reason: 'NO_WHATSAPP_PERMISSION' });
+    const r = await service.execute({
+      orgId: 'o1', contactId: 'ct1', actionType: AutomationActionType.ENROLL_IN_SEQUENCE,
+      actionConfig: { sequenceId: 'seq1' }, executionId: 'e1', ruleId: 'r1',
+    });
+    expect(r).toMatchObject({ success: true, result: { sequenceId: 'seq1', skipped: 'NO_WHATSAPP_PERMISSION' } });
   });
 });

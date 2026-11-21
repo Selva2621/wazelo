@@ -1043,6 +1043,13 @@ export function CreateCampaignModal({ open, onClose, sessions, initialAudienceFi
                   )}
                 </span>
               </div>
+              {!isEmail && (preview?.noWhatsAppPermission ?? 0) > 0 && (
+                <p data-tour="campaign-wa-permission" className="mt-1.5 text-caption text-on-surface-variant">
+                  {preview!.noWhatsAppPermission!.toLocaleString()} lead finder{" "}
+                  {preview!.noWhatsAppPermission === 1 ? "contact doesn't" : "contacts don't"} have WhatsApp permission
+                  yet and {preview!.noWhatsAppPermission === 1 ? "was" : "were"} left out.
+                </p>
+              )}
               {isEmail && (
                 <p className="mt-1.5 text-caption text-on-surface-variant">
                   Only contacts with an email who haven&apos;t unsubscribed

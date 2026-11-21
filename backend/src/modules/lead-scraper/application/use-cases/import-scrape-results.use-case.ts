@@ -6,6 +6,8 @@ import { ContactRepository } from '@/modules/contacts/infrastructure/repositorie
 import { EVENT_NAMES } from '@/common/constants';
 import { OrgLocaleService } from '@/modules/org/domain/services/org-locale.service';
 import { toE164 } from '@/shared/utils/phone.util';
+import { WhatsAppPermissionUseCase } from '@/modules/contacts/application/use-cases/whatsapp-permission.use-case';
+import { RecordWhatsAppPermissionDto } from '@/modules/contacts/application/dto/whatsapp-permission.dto';
 
 /** Phone numbers imported at once */
 const IMPORT_CONCURRENCY = 8;
@@ -17,6 +19,8 @@ export interface ImportScrapeResultsOutcome {
   noPhone: number;
   /** Results that hit an error while importing (counted apart from duplicates) */
   failed: number;
+  /** Imported lead finder contacts that "they agreed" was recorded for (0 when not asked) */
+  permissionRecorded: number;
 }
 
 @Injectable()
@@ -28,6 +32,7 @@ export class ImportScrapeResultsUseCase {
     private readonly contactRepository: ContactRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly orgLocale: OrgLocaleService,
+    private readonly whatsAppPermission: WhatsAppPermissionUseCase,
   ) {}
 
   async execute(
@@ -35,6 +40,7 @@ export class ImportScrapeResultsUseCase {
     userId: string,
     scrapeRunId: string,
     resultIds: string[] = [],
+    whatsappPermission?: RecordWhatsAppPermissionDto,
   ): Promise<ImportScrapeResultsOutcome> {
     const run = await this.prisma.scrapeRun.findFirst({
       where: { id: scrapeRunId, orgId },
@@ -65,6 +71,8 @@ export class ImportScrapeResultsUseCase {
     let noPhone = 0;
     // Real errors, reported separately so they aren't mistaken for duplicates
     let failed = 0;
+    // Contacts this import created or linked, for recording WhatsApp permission
+    const contactIds: string[] = [];
 
     // A contact must be reachable on WhatsApp. Job-board leads (Freelancer,
     // Truelancer, Upwork) have no phone — bid on them via their link instead
@@ -117,6 +125,7 @@ export class ImportScrapeResultsUseCase {
           where: { id: result.id },
           data: { imported: true, contactId: contact.id },
         });
+        contactIds.push(contact.id);
         // Keep a known "on WhatsApp?" answer so campaigns can skip dead numbers
         // without checking them again
         if (result.waExists !== null && result.waCheckedAt) {
@@ -162,6 +171,17 @@ export class ImportScrapeResultsUseCase {
       data: { importedCount: totalImported },
     });
 
-    return { imported, skipped, noPhone, failed };
+    // "They agreed": recorded in one batch for the lead finder contacts among
+    // them that don't have an active agreement yet
+    const permissionRecorded = whatsappPermission
+      ? (
+          await this.whatsAppPermission.recordForContacts(orgId, userId, contactIds, whatsappPermission, {
+            via: 'lead_finder_import',
+            scrapeRunId,
+          })
+        ).recorded
+      : 0;
+
+    return { imported, skipped, noPhone, failed, permissionRecorded };
   }
 }

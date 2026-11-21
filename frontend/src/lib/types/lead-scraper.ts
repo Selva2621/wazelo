@@ -1,3 +1,5 @@
+import type { RecordWhatsAppPermissionRequest } from "./contacts";
+
 export type ScrapeSource =
   | "GOOGLE_MAPS"
   | "UPWORK_JOBS"
@@ -171,6 +173,8 @@ export interface ScrapeResultsResponse {
 
 export interface ImportScrapeResultsRequest {
   resultIds?: string[]; // empty = import all
+  /** Set when the leads agreed to WhatsApp messages: recorded for every imported lead */
+  whatsappPermission?: RecordWhatsAppPermissionRequest;
 }
 
 export interface ImportScrapeResultsResponse {
@@ -180,4 +184,6 @@ export interface ImportScrapeResultsResponse {
   noPhone: number;
   /** Results that hit an error while importing (try again) */
   failed?: number;
+  /** Imported leads WhatsApp permission was recorded for (0 when not asked) */
+  permissionRecorded?: number;
 }

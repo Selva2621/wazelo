@@ -141,7 +141,13 @@ export class LeadScraperController {
   ) {
     const run = await this.scrapeRunRepository.findById(id);
     if (!run || run.orgId !== user.orgId) throw new NotFoundException('Scrape run not found');
-    return this.importScrapeResultsUseCase.execute(user.orgId, user.sub, id, dto.resultIds ?? []);
+    return this.importScrapeResultsUseCase.execute(
+      user.orgId,
+      user.sub,
+      id,
+      dto.resultIds ?? [],
+      dto.whatsappPermission,
+    );
   }
 
   /** Start a background WhatsApp check of this run's numbers (all, or only `resultIds`) */

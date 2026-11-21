@@ -87,6 +87,17 @@ export interface SequenceRecipient {
   enrolledAt: string;
   completedAt: string | null;
   contact: { id: string; name: string | null; phoneNumber: string };
+  /** Per-step history (oldest first). A skipped step has status SKIPPED and failedReason. */
+  steps?: SequenceRecipientStep[];
+}
+
+export interface SequenceRecipientStep {
+  id: string;
+  stepId: string;
+  status: string;
+  failedReason: string | null;
+  scheduledAt: string;
+  processedAt: string | null;
 }
 
 export interface SequenceRecipientsResponse {

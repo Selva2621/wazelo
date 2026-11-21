@@ -230,6 +230,8 @@ export interface AudiencePreview {
   estimatedRecipients: number;
   /** WhatsApp: audience members a number check found aren't on WhatsApp (skipped) */
   notOnWhatsApp?: number;
+  /** WhatsApp: lead finder contacts left out because they haven't messaged you or agreed (0 for email) */
+  noWhatsAppPermission?: number;
   batchSize: number;
   maxRecipients: number;
 }

@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { SequenceRecipient, SequenceRecipientStatus } from "@/lib/types/sequences";
+import Link from "next/link";
+import {
+  NO_WHATSAPP_PERMISSION_SHORT,
+  isNoWhatsAppPermissionReason,
+} from "@/lib/whatsapp-permission";
 
 interface SequenceAnalyticsProps {
   sequenceId: string;
@@ -47,7 +52,29 @@ const recipientColumns: DataTableColumn<SequenceRecipient>[] = [
     id: "status",
     header: "Status",
     skeleton: "badge",
-    cell: (r) => <Badge dot variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{RECIPIENT_STATUS_LABELS[r.status]}</Badge>,
+    cell: (r) => {
+      // WhatsApp steps skipped for a lead finder contact without permission (email steps still go)
+      const skippedWhatsApp = (r.steps ?? []).filter(
+        (s) => s.status === "SKIPPED" && isNoWhatsAppPermissionReason(s.failedReason),
+      ).length;
+      // Older runs removed the contact from the sequence instead of skipping the step
+      const exitedForPermission = r.status === "EXITED" && isNoWhatsAppPermissionReason(r.exitReason);
+      return (
+        <div className="space-y-1">
+          <Badge dot variant={RECIPIENT_STATUS_VARIANTS[r.status]}>{RECIPIENT_STATUS_LABELS[r.status]}</Badge>
+          {(skippedWhatsApp > 0 || exitedForPermission) && (
+            <p data-tour="sequence-wa-permission" className="max-w-xs text-caption text-on-surface-variant">
+              {exitedForPermission
+                ? "Stopped: this lead finder contact hasn't agreed to WhatsApp messages yet."
+                : `${skippedWhatsApp} WhatsApp ${skippedWhatsApp === 1 ? "step" : "steps"} skipped: this lead finder contact hasn't agreed to WhatsApp messages yet. Email steps still go out.`}{" "}
+              <Link href={`/contacts/${r.contactId}`} className="font-medium text-primary hover:underline">
+                Record their permission
+              </Link>
+            </p>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: "currentStep",
@@ -160,7 +187,9 @@ export function SequenceAnalytics({ sequenceId, show }: SequenceAnalyticsProps) 
             <ul className="divide-y divide-outline-variant">
               {data.exitReasons.map((er) => (
                 <li key={er.reason} className="flex items-center justify-between gap-3 py-2.5 text-body">
-                  <span className="text-on-surface">{sentenceCase(er.reason)}</span>
+                  <span className="text-on-surface">
+                    {isNoWhatsAppPermissionReason(er.reason) ? NO_WHATSAPP_PERMISSION_SHORT : sentenceCase(er.reason)}
+                  </span>
                   <span className="font-semibold tabular-nums text-on-surface">{er.count}</span>
                 </li>
               ))}

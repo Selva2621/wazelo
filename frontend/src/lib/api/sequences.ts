@@ -116,6 +116,20 @@ export async function startOutreach(req: {
   return data;
 }
 
+/**
+ * Before starting outreach: `total` leads in the run it would reach, and
+ * `withPermission` of them who have agreed to WhatsApp messages (only those are messaged).
+ */
+export async function getOutreachPermissionCount(params: {
+  scrapeRunId: string;
+  onlyNew: boolean;
+}): Promise<{ total: number; withPermission: number }> {
+  const { data } = await apiClient.get("/sequences/outreach/permission-count", {
+    params: { scrapeRunId: params.scrapeRunId, onlyNew: String(params.onlyNew) },
+  });
+  return data;
+}
+
 export async function pauseSequence(id: string): Promise<CampaignSequence> {
   const { data } = await apiClient.post(`/sequences/${id}/pause`);
   return data;

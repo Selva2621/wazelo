@@ -50,7 +50,7 @@ export const messagingTours: TourDef[] = [
   },
   {
     id: "inbox",
-    version: 2,
+    version: 3,
     title: "Inbox",
     summary: "Reply to WhatsApp and website chats with AI help, quick replies and the contact panel.",
     section: "Messaging",
@@ -116,6 +116,12 @@ export const messagingTours: TourDef[] = [
             { from: "you", text: "Yes! Size M is in stock. Shall I share the payment link? 😊" },
           ],
         },
+      },
+      {
+        target: "chat-wa-permission",
+        ifMissing: "skip",
+        title: "Lead finder contacts",
+        body: "This contact came from the lead finder and hasn't agreed to WhatsApp messages yet. You can still reply, but only if they asked you to. Record permission once they agree.",
       },
       {
         target: ["chat-quick-replies", "chat-more"],

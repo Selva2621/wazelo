@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Rocket, Clock, Info } from "lucide-react";
+import { X, Rocket, Clock, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
-import { useStartOutreach } from "@/hooks/use-sequences";
+import { useOutreachPermissionCount, useStartOutreach } from "@/hooks/use-sequences";
 import { useSendHealth } from "@/hooks/use-whatsapp";
 import { getOutreachStepsFor, hasOutreachBlanks } from "@/lib/constants/outreach";
 import { useOrgSettings } from "@/hooks/use-settings";
@@ -44,13 +45,17 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
     getOutreachStepsFor({ ...orgSettings, orgType: orgSettings?.orgType ?? userOrgType }),
   );
   const [onlyNew, setOnlyNew] = useState(true);
+  // Lead finder contacts get WhatsApp outreach only after they messaged you or agreed
+  const { data: permission, isLoading: permissionLoading } = useOutreachPermissionCount(run.id, onlyNew);
+  const nobodyPermitted = permission ? permission.withPermission === 0 : false;
 
   const blanks = steps.some((s) => hasOutreachBlanks(s.messageBody));
-  const canStart = name.trim() && steps.every((s) => s.messageBody.trim()) && !blanks;
+  const canStart = name.trim() && steps.every((s) => s.messageBody.trim()) && !blanks && !nobodyPermitted && !permissionLoading;
 
-  // New-contact cap per day for this number → rough number of days to reach everyone
+  // New-contact cap per day for this number → rough number of days to reach the permitted leads
   const perDay = health?.caps.coldCap;
-  const days = perDay ? Math.ceil(run.importedCount / perDay) : null;
+  const reach = permission?.withPermission ?? run.importedCount;
+  const days = perDay ? Math.ceil(reach / perDay) : null;
 
   const handleStart = () => {
     if (!canStart) return;
@@ -67,8 +72,15 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
           onClose();
           router.push("/sequences");
         },
-        onError: (err: Error & { response?: { data?: { message?: string } } }) =>
-          toast.error(err.response?.data?.message || "Could not start outreach"),
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
+          const message = err.response?.data?.message;
+          // Lead finder contacts need WhatsApp permission first, so a run often has nobody eligible yet
+          toast.error(
+            message === "No eligible contacts found for this audience"
+              ? "No one to message yet. Lead finder contacts need to message you first, or you can record their WhatsApp permission on the contact."
+              : message || "Could not start outreach",
+          );
+        },
       },
     );
   };
@@ -86,15 +98,57 @@ function OutreachForm({ run, onClose }: Omit<StartOutreachModalProps, "open">) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* WhatsApp permission: how many of the run's leads will actually get messages */}
+        <div
+          aria-live="polite"
+          className={
+            nobodyPermitted
+              ? "flex gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-label text-on-surface"
+              : "flex gap-2 rounded-xl bg-surface-container px-3 py-2.5 text-label text-on-surface-variant"
+          }
+        >
+          <ShieldCheck className={nobodyPermitted ? "mt-0.5 h-4 w-4 shrink-0 text-warning" : "mt-0.5 h-4 w-4 shrink-0 text-primary"} />
+          {permissionLoading || !permission ? (
+            <p>{permissionLoading ? "Checking which leads have agreed to WhatsApp messages." : "Only leads who have agreed to WhatsApp messages get outreach."}</p>
+          ) : nobodyPermitted && permission.total === 0 ? (
+            <p>No leads from this run to message with these settings.</p>
+          ) : nobodyPermitted ? (
+            <div className="space-y-1.5">
+              <p>
+                <strong>0 of {permission.total} leads</strong> have agreed to WhatsApp messages, so outreach can&apos;t start yet.
+              </p>
+              <p className="text-on-surface-variant">
+                Call or email them first and ask if you can send details on WhatsApp. When they agree, open the contact
+                and record their permission. Leads who message you first count too.
+              </p>
+              <p className="flex flex-wrap gap-x-3 gap-y-1">
+                <button type="button" onClick={onClose} className="font-medium text-primary hover:underline">
+                  Back to the lead list
+                </button>
+                <Link href="/contacts" className="font-medium text-primary hover:underline">
+                  Open contacts
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <p>
+              <strong className="text-on-surface">
+                {permission.withPermission} of {permission.total} lead{permission.total !== 1 ? "s" : ""}
+              </strong>{" "}
+              {permission.withPermission === 1 ? "has" : "have"} agreed to WhatsApp messages. Outreach will go to{" "}
+              {permission.withPermission === 1 ? "that 1 lead" : `those ${permission.withPermission}`}.
+            </p>
+          )}
+        </div>
+
         <div className="flex gap-2 rounded-xl bg-surface-container px-3 py-2.5 text-label text-on-surface-variant">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p>
-            Messages go to the <strong className="text-on-surface">{run.importedCount} imported lead{run.importedCount !== 1 ? "s" : ""}</strong> from
-            this run, from your WhatsApp number, between 9:00 and 20:00.
+            Messages go from your WhatsApp number, between 9:00 and 20:00.
             {perDay && (
               <>
                 {" "}Your number can message <strong className="text-on-surface">{perDay} new contacts a day</strong>
-                {days && days > 1 ? ` — about ${days} days to reach everyone.` : "."}
+                {days && days > 1 ? `, about ${days} days to reach everyone.` : "."}
               </>
             )}
             {" "}Anyone who replies leaves the sequence so you can take over in the inbox.

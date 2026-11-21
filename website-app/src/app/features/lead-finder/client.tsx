@@ -21,7 +21,7 @@ const data: FeatureDetailData = {
     { step: "01", title: "Choose a source", desc: "Google Maps or IndiaMART." },
     { step: "02", title: "Search", desc: "Enter a business type and a location." },
     { step: "03", title: "Review", desc: "Look through the results and pick the ones you want." },
-    { step: "04", title: "Import", desc: "Add them as contacts and start your follow-up." },
+    { step: "04", title: "Import", desc: "Add them as contacts. WhatsApp campaigns and sequences reach only those who agreed or messaged you first." },
   ],
   relatedFeatures: [
     { label: "Contacts", href: "/features/contacts", icon: "group" },

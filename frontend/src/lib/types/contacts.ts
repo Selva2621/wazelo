@@ -293,3 +293,46 @@ export interface OrgMember {
   email: string;
   role: string;
 }
+
+// ─── WhatsApp permission (lead finder contacts) ───
+
+/** How a team member got the contact's agreement */
+export type WhatsAppPermissionHow = "call" | "email" | "in_person" | "other";
+
+/**
+ * messaged_first: the contact wrote to you on WhatsApp
+ * agreed: a team member recorded their agreement
+ * not_yet: lead finder contact with neither (campaigns, sequences, automations skip them)
+ * not_required: not a lead finder contact
+ */
+export type WhatsAppPermissionStatus = "messaged_first" | "agreed" | "not_yet" | "not_required";
+
+export interface WhatsAppPermission {
+  contactId: string;
+  /** Only lead finder contacts need permission */
+  required: boolean;
+  status: WhatsAppPermissionStatus;
+  agreement: {
+    id: string;
+    how: string;
+    note: string | null;
+    recordedBy: string | null;
+    grantedAt: string;
+  } | null;
+}
+
+export interface RecordWhatsAppPermissionRequest {
+  how: WhatsAppPermissionHow;
+  note?: string;
+}
+
+/** POST /contacts/whatsapp-permission/bulk (max BULK_CONTACTS_MAX ids per request) */
+export interface BulkRecordWhatsAppPermissionRequest extends RecordWhatsAppPermissionRequest {
+  contactIds: string[];
+}
+
+/** skipped: not lead finder contacts, or already had permission */
+export interface BulkRecordWhatsAppPermissionResponse {
+  recorded: number;
+  skipped: number;
+}

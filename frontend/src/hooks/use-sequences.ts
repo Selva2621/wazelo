@@ -11,6 +11,7 @@ import {
   getSequenceRecipients,
   getSequenceAnalytics,
   startOutreach,
+  getOutreachPermissionCount,
   generateSequence,
   rewriteSequenceStep,
   updateSequence,
@@ -128,6 +129,15 @@ export function useStartOutreach() {
   return useMutation({
     mutationFn: (req: Parameters<typeof startOutreach>[0]) => startOutreach(req),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sequences"] }),
+  });
+}
+
+/** How many of a scrape run's leads have WhatsApp permission, before starting outreach */
+export function useOutreachPermissionCount(scrapeRunId: string, onlyNew: boolean) {
+  return useQuery({
+    queryKey: ["sequences", "outreach-permission-count", scrapeRunId, onlyNew],
+    queryFn: () => getOutreachPermissionCount({ scrapeRunId, onlyNew }),
+    enabled: !!scrapeRunId,
   });
 }
 

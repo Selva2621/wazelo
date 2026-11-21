@@ -353,6 +353,35 @@ export class SequencesController {
     }
   }
 
+  /** The audience an outreach for a scrape run targets (shared by the count and the start) */
+  private outreachFilters(scrapeRunId: string, onlyNew: boolean) {
+    return {
+      scrapeRunId,
+      // Only leads nobody has talked to yet
+      ...(onlyNew && { leadStatuses: ['NEW'] }),
+    };
+  }
+
+  /**
+   * Before starting outreach: how many of the run's leads it would reach
+   * (`total`) and how many of those have WhatsApp permission (`withPermission`).
+   * Only the permitted ones are messaged; lead finder contacts need to have
+   * messaged the org first or have their agreement recorded.
+   */
+  @Get('outreach/permission-count')
+  @Permissions(PERMISSIONS.CAMPAIGNS_READ)
+  async outreachPermissionCount(
+    @CurrentUser('orgId') orgId: string,
+    @Query('scrapeRunId', ParseUUIDPipe) scrapeRunId: string,
+    @Query('onlyNew') onlyNew?: string,
+  ): Promise<{ total: number; withPermission: number }> {
+    return this.audienceResolver.countWhatsAppPermission(
+      orgId,
+      CampaignAudienceType.FILTERED,
+      this.outreachFilters(scrapeRunId, onlyNew !== 'false'),
+    );
+  }
+
   /**
    * One click from the lead scraper: create an outreach sequence for a scrape
    * run's imported leads and start it. Sends ride the bulk lane, so the
@@ -374,11 +403,8 @@ export class SequencesController {
       name: dto.name,
       description: 'Outreach to scraped leads',
       audienceType: CampaignAudienceType.FILTERED,
-      audienceFilters: {
-        scrapeRunId: dto.scrapeRunId,
-        // Only leads nobody has talked to yet
-        ...(dto.onlyNew !== false && { leadStatuses: ['NEW'] }),
-      },
+      // resolveAudience leaves out lead finder contacts without WhatsApp permission
+      audienceFilters: this.outreachFilters(dto.scrapeRunId, dto.onlyNew !== false),
       exitOnReply: true,
       createdById: userId,
     });

@@ -7,6 +7,7 @@ export { AssignContactDto } from './assign-contact.dto';
 export { MergeContactsDto } from './merge-contacts.dto';
 export { AddNoteDto } from './add-note.dto';
 export { AddTagDto } from './manage-tag.dto';
+export { RecordWhatsAppPermissionDto, BulkRecordWhatsAppPermissionDto } from './whatsapp-permission.dto';
 export {
   CreateSavedContactGroupsDto,
   SplitSavedContactGroupsDto,

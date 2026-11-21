@@ -27,6 +27,10 @@ import type {
   SplitSavedGroupsResult,
   SavedGroupMoveImpact,
   PipelineMeta,
+  WhatsAppPermission,
+  RecordWhatsAppPermissionRequest,
+  BulkRecordWhatsAppPermissionRequest,
+  BulkRecordWhatsAppPermissionResponse,
 } from "@/lib/types/contacts";
 
 export const contactsApi = {
@@ -111,6 +115,29 @@ export const contactsApi = {
 
   delete: (contactId: string) =>
     apiClient.delete(`/contacts/${contactId}`).then((r) => r.data),
+
+  // ─── WhatsApp permission (lead finder contacts) ───
+
+  getWhatsAppPermission: (contactId: string) =>
+    apiClient
+      .get<WhatsAppPermission>(`/contacts/${contactId}/whatsapp-permission`)
+      .then((r) => r.data),
+
+  recordWhatsAppPermission: (contactId: string, data: RecordWhatsAppPermissionRequest) =>
+    apiClient
+      .post<WhatsAppPermission>(`/contacts/${contactId}/whatsapp-permission`, data)
+      .then((r) => r.data),
+
+  /** Same agreement for many contacts; non lead finder / already permitted ones are skipped */
+  bulkRecordWhatsAppPermission: (data: BulkRecordWhatsAppPermissionRequest) =>
+    apiClient
+      .post<BulkRecordWhatsAppPermissionResponse>("/contacts/whatsapp-permission/bulk", data)
+      .then((r) => r.data),
+
+  revokeWhatsAppPermission: (contactId: string) =>
+    apiClient
+      .delete<WhatsAppPermission>(`/contacts/${contactId}/whatsapp-permission`)
+      .then((r) => r.data),
 
   // ─── Lead Status ───
 

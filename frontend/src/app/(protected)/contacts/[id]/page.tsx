@@ -33,6 +33,7 @@ import { ContactTags } from "@/components/contacts/contact-tags";
 import { ContactNotes } from "@/components/contacts/contact-notes";
 import { ContactHistory } from "@/components/contacts/contact-history";
 import { AssignOwnerModal } from "@/components/contacts/assign-owner-modal";
+import { WhatsAppPermissionChip } from "@/components/contacts/whatsapp-permission-chip";
 import { CreateDealModal } from "@/components/deals/create-deal-modal";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
@@ -241,9 +242,13 @@ export default function ContactDetailPage() {
               </div>
             ) : (
               <>
-                <h1 className="text-headline font-semibold text-on-surface truncate max-lg:text-title">
-                  {contact.name || "Unknown"}
-                </h1>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <h1 className="text-headline font-semibold text-on-surface truncate max-lg:text-title">
+                    {contact.name || "Unknown"}
+                  </h1>
+                  {/* Lead finder contacts only: WhatsApp permission status + record / revoke */}
+                  {contact.source === "WEB_SCRAPE" && <WhatsAppPermissionChip contactId={contact.id} />}
+                </div>
                 <div className="flex items-center gap-4 flex-wrap text-body text-on-surface-variant max-lg:gap-x-3 max-lg:gap-y-1">
                   <span className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> {contact.phoneNumber}

@@ -248,6 +248,48 @@ export class ContactRepository {
     });
   }
 
+  // ───── Consent records ─────
+
+  async createConsentRecord(data: {
+    orgId: string;
+    contactId: string;
+    consentType: string;
+    source: string;
+    ipAddress?: string;
+    metadata?: Prisma.InputJsonValue;
+  }) {
+    return this.prisma.consentRecord.create({
+      data: { ...data, granted: true },
+    });
+  }
+
+  /** Insert many granted consent records in one statement; returns how many */
+  async createConsentRecords(
+    rows: Array<{
+      orgId: string;
+      contactId: string;
+      consentType: string;
+      source: string;
+      ipAddress?: string;
+      metadata?: Prisma.InputJsonValue;
+    }>,
+  ): Promise<number> {
+    if (!rows.length) return 0;
+    const result = await this.prisma.consentRecord.createMany({
+      data: rows.map((row) => ({ ...row, granted: true })),
+    });
+    return result.count;
+  }
+
+  /** Revoke every active record of this type for the contact; returns how many */
+  async revokeConsentRecords(orgId: string, contactId: string, consentType: string): Promise<number> {
+    const result = await this.prisma.consentRecord.updateMany({
+      where: { orgId, contactId, consentType, granted: true, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
+  }
+
   async findByIdWithRelations(
     id: string,
     orgId: string,

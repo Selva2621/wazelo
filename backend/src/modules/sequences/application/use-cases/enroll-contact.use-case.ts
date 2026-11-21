@@ -4,10 +4,14 @@ import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { QueueService } from '@/infrastructure/queue/queue.service';
 import { QUEUE_NAMES } from '@/common/constants';
 import { SequenceRepository } from '../../infrastructure/repositories/sequence.repository';
+import { WhatsAppPermissionService } from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 export type EnrollResult =
   | { enrolled: true; recipientId: string }
-  | { enrolled: false; reason: 'SEQUENCE_NOT_ACTIVE' | 'CONTACT_NOT_FOUND' | 'OPTED_OUT' | 'ALREADY_ACTIVE' };
+  | {
+      enrolled: false;
+      reason: 'SEQUENCE_NOT_ACTIVE' | 'CONTACT_NOT_FOUND' | 'OPTED_OUT' | 'NO_WHATSAPP_PERMISSION' | 'ALREADY_ACTIVE';
+    };
 
 /**
  * Add one contact to a running sequence. Shared by always-on sequence triggers
@@ -21,6 +25,7 @@ export class EnrollContactUseCase {
     private readonly repo: SequenceRepository,
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
   ) {}
 
   async execute(orgId: string, sequenceId: string, contactId: string): Promise<EnrollResult> {
@@ -32,10 +37,18 @@ export class EnrollContactUseCase {
 
     const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, orgId, deletedAt: null },
-      select: { phoneNumber: true, optedOut: true },
+      select: { id: true, phoneNumber: true, optedOut: true, source: true },
     });
     if (!contact) return { enrolled: false, reason: 'CONTACT_NOT_FOUND' };
     if (contact.optedOut) return { enrolled: false, reason: 'OPTED_OUT' };
+    // Lead finder contacts that haven't messaged the org or agreed get no WhatsApp
+    // steps: the step worker skips those and still sends the email steps. Only a
+    // sequence with no email step at all (every step WhatsApp) would send them
+    // nothing, so refuse that one.
+    const emailSteps = sequence._count.steps;
+    if (emailSteps === 0 && !(await this.whatsAppPermission.isPermitted(orgId, contact))) {
+      return { enrolled: false, reason: 'NO_WHATSAPP_PERMISSION' };
+    }
 
     // Someone mid-sequence keeps their place rather than starting over
     const existing = await this.repo.findRecipient(sequenceId, contactId);

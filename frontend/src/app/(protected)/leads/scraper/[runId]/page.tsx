@@ -6,8 +6,10 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2,
   Phone, Mail, MapPin, ExternalLink, Star, Import, Users, Download, Send,
-  Filter, X, Rocket, Globe, ChevronRight,
+  Filter, X, Rocket, Globe, ChevronRight, ShieldCheck,
 } from "lucide-react";
+import { ImportLeadsModal } from "@/components/lead-scraper/import-leads-modal";
+import { RecordWhatsAppPermissionModal } from "@/components/contacts/record-whatsapp-permission-modal";
 import { MobilePageActions } from "@/components/mobile/mobile-page-actions";
 import { BottomSheet } from "@/components/ios/bottom-sheet";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,7 @@ import { PitchTemplateModal } from "@/components/lead-scraper/pitch-template-mod
 import { TypeFilter } from "@/components/lead-scraper/type-filter";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
 import type { ScrapeResult, ScrapeRunStatus, ScrapeSource } from "@/lib/types/lead-scraper";
+import type { RecordWhatsAppPermissionRequest } from "@/lib/types/contacts";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 
@@ -706,6 +709,8 @@ export default function ScrapeRunResultsPage() {
   const [pitchOpen, setPitchOpen] = useState(false);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [messageChoiceOpen, setMessageChoiceOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [permissionOpen, setPermissionOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
   // Phones: the result whose details sheet is open
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -833,10 +838,29 @@ export default function ScrapeRunResultsPage() {
   // Selection is kept after import so the same leads can be pitched next
   const unimportedSelectedIds = results.filter((r) => selected.has(r.id) && !r.imported).map((r) => r.id);
 
+  // Asks "have they agreed to WhatsApp messages?" before importing
   const handleImport = () => {
     if (unimportedSelectedIds.length === 0) return;
-    importMutation.mutate(unimportedSelectedIds);
+    setImportOpen(true);
   };
+
+  const runImport = (whatsappPermission?: RecordWhatsAppPermissionRequest) => {
+    importMutation.mutate(
+      { resultIds: unimportedSelectedIds, whatsappPermission },
+      { onSuccess: () => setImportOpen(false) },
+    );
+  };
+
+  // Contacts of the selected imported rows, for "WhatsApp OK" (the server skips
+  // ones not from the lead finder or that already have permission)
+  const permissionContactIds = [
+    ...new Set(
+      results
+        .filter((r) => selected.has(r.id) && r.imported)
+        .map((r) => r.contactId ?? r.existingContactId)
+        .filter((id): id is string => !!id),
+    ),
+  ];
 
   if (runLoading) {
     return <div className="flex items-center justify-center py-24"><Spinner /></div>;
@@ -976,6 +1000,10 @@ export default function ScrapeRunResultsPage() {
                   },
                   run.importedCount > 0 && { label: "Message leads", onSelect: () => setMessageChoiceOpen(true) },
                   { label: exportLabel, onSelect: exportCsv },
+                  permissionContactIds.length > 0 && {
+                    label: `WhatsApp OK (${permissionContactIds.length})`,
+                    onSelect: () => setPermissionOpen(true),
+                  },
                   unimportedSelectedIds.length > 0 && {
                     label: `Import ${unimportedSelectedIds.length}`,
                     onSelect: handleImport,
@@ -1041,6 +1069,17 @@ export default function ScrapeRunResultsPage() {
                     <Download className="w-4 h-4" />
                     {exportLabel}
                   </Button>
+
+                  {permissionContactIds.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPermissionOpen(true)}
+                      title="Record that these leads agreed to WhatsApp messages"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      WhatsApp OK ({permissionContactIds.length})
+                    </Button>
+                  )}
 
                   {unimportedSelectedIds.length > 0 && (
                     <Button variant="secondary"
@@ -1116,6 +1155,17 @@ export default function ScrapeRunResultsPage() {
                           Message
                         </Button>
                       )}
+                      {permissionContactIds.length > 0 && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPermissionOpen(true)}
+                          aria-label={`WhatsApp OK for ${permissionContactIds.length} leads`}
+                          className="h-11 shrink-0"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          OK ({permissionContactIds.length})
+                        </Button>
+                      )}
                       {unimportedSelectedIds.length > 0 && (
                         <Button onClick={handleImport} disabled={importMutation.isPending} className="h-11 shrink-0">
                           {importMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
@@ -1166,7 +1216,7 @@ export default function ScrapeRunResultsPage() {
                     Follow-up sequence <span className="text-label text-primary">(recommended)</span>
                   </span>
                   <span className="block text-label text-on-surface-variant mt-0.5">
-                    First message plus automatic follow-ups to all {run.importedCount} imported leads. Stops when they reply.
+                    First message plus automatic follow-ups to the imported leads who agreed to WhatsApp messages. Stops when they reply.
                   </span>
                 </span>
               </button>
@@ -1198,6 +1248,20 @@ export default function ScrapeRunResultsPage() {
           run={{ id: run.id, keywords: run.keywords, location: run.location, importedCount: run.importedCount }}
         />
       )}
+
+      <ImportLeadsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        count={unimportedSelectedIds.length}
+        pending={importMutation.isPending}
+        onImport={runImport}
+      />
+
+      <RecordWhatsAppPermissionModal
+        open={permissionOpen}
+        onClose={() => setPermissionOpen(false)}
+        contactIds={permissionContactIds}
+      />
 
       <PitchTemplateModal
         open={pitchOpen}

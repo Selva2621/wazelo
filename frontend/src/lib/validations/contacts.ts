@@ -81,3 +81,27 @@ export type AssignContactFormData = z.infer<typeof assignContactSchema>;
 export type MergeContactsFormData = z.infer<typeof mergeContactsSchema>;
 export type AddNoteFormData = z.infer<typeof addNoteSchema>;
 export type AddTagFormData = z.infer<typeof addTagSchema>;
+
+// ─── Record WhatsApp permission ───
+
+export const recordWhatsAppPermissionSchema = z.object({
+  how: z.enum(["call", "email", "in_person", "other"], { message: "Pick how they agreed" }),
+  note: z.string().trim().max(500, "Keep the note under 500 characters").optional(),
+});
+
+export type RecordWhatsAppPermissionFormData = z.infer<typeof recordWhatsAppPermissionSchema>;
+
+// Lead finder import: "Have they agreed to WhatsApp messages?" (how only needed for yes)
+export const importLeadsPermissionSchema = z
+  .object({
+    agreed: z.enum(["no", "yes"]),
+    how: recordWhatsAppPermissionSchema.shape.how.optional(),
+    note: recordWhatsAppPermissionSchema.shape.note,
+  })
+  .superRefine((data, ctx) => {
+    if (data.agreed === "yes" && !data.how) {
+      ctx.addIssue({ code: "custom", path: ["how"], message: "Pick how they agreed" });
+    }
+  });
+
+export type ImportLeadsPermissionFormData = z.infer<typeof importLeadsPermissionSchema>;

@@ -1,6 +1,6 @@
 # Lead finder: WhatsApp permission (plan)
 
-**Date:** 2026-11-21 · **Status:** planned, not built
+**Date:** 2026-11-21 · **Status:** built, not committed, not browser-tested
 
 ## Why
 
@@ -41,6 +41,11 @@ Every other contact source counts as permitted (no change).
 - **Inbox:** warning banner when composing to an unpermitted lead finder contact, with a "Record permission" shortcut.
 - **Layout chosen (user, 2026-11-21):** a header chip next to the contact name ("Not yet on WhatsApp ▾") whose menu has "Record permission" / "Revoke" / "Why is this needed?"; a simple record dialog: how they agreed as chips (Call / Email / In person / Other), optional note, Cancel / Save. No confirmation checkbox.
 - Product tour: anchors and TourDef steps for the new chip and action.
+
+## Follow-up decisions (user, 2026-11-21)
+
+- **Sequences:** skip only the WhatsApp step for an unpermitted lead finder contact; later email steps still go out. Enroll is refused only when every step is WhatsApp.
+- **Lead finder "Start outreach" (option B):** before starting, show "X of Y leads have agreed to WhatsApp messages"; outreach goes only to those X. With X = 0 the WhatsApp start is disabled and a call/email-first guide is shown.
 
 ## Tests
 

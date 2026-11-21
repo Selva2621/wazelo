@@ -23,6 +23,10 @@ import { QUEUE_NAMES, MESSAGING_CONFIG, CAMPAIGN_CONFIG, EVENT_NAMES } from '@/c
 import { fillContactPlaceholders } from '@/shared/utils/contact-placeholders';
 import { renderCloudTemplate, type CloudTemplateRef } from '@/shared/utils/cloud-template';
 import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
+import {
+  NO_WHATSAPP_PERMISSION_REASON,
+  WhatsAppPermissionService,
+} from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 export interface ActionExecutionInput {
   orgId: string;
@@ -60,6 +64,7 @@ export class ActionExecutorService {
     private readonly sequenceRepo: SequenceRepository,
     private readonly events: EventEmitter2,
     private readonly orgEmail: OrgEmailService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
   ) {}
 
   async execute(input: ActionExecutionInput): Promise<ActionResult> {
@@ -181,8 +186,8 @@ export class ActionExecutorService {
     const contact = await this.prisma.contact.findFirst({
       where: { id: input.contactId, orgId: input.orgId },
       select: {
-        phoneNumber: true, name: true, email: true, leadStatus: true, sessionId: true,
-        optedOut: true, deletedAt: true, mergedIntoId: true,
+        id: true, phoneNumber: true, name: true, email: true, leadStatus: true, sessionId: true,
+        optedOut: true, deletedAt: true, mergedIntoId: true, source: true,
       },
     });
 
@@ -208,6 +213,11 @@ export class ActionExecutorService {
     if (input.eventPayload?.welcomeByLeadAdRule === true) return skip('A "Lead ad received" rule greets this lead');
     // Opted out: no messages we start. A reply to something they just wrote is still fine.
     if (contact.optedOut && !inbound) return skip('Contact opted out');
+    // Lead finder contacts need WhatsApp permission for messages we start. A reply to
+    // their own message is fine: writing first is permission.
+    if (!inbound && !(await this.whatsAppPermission.isPermitted(input.orgId, contact))) {
+      return skip(NO_WHATSAPP_PERMISSION_REASON);
+    }
 
     // Resolve sessionId: replies go out on the number the contact wrote to;
     // otherwise actionConfig → input → contact's session → any org session
@@ -541,6 +551,11 @@ export class ActionExecutorService {
       if (result.enrolled) return { actionType, success: true, result: { sequenceId, recipientId: result.recipientId } };
       // Already in the sequence is the outcome the rule wanted, not a failure
       if (result.reason === 'ALREADY_ACTIVE') return { actionType, success: true, result: { sequenceId, skipped: result.reason } };
+      // Skipped, not failed: lead finder contact without WhatsApp permission
+      if (result.reason === 'NO_WHATSAPP_PERMISSION') {
+        this.logger.debug(`ENROLL_IN_SEQUENCE skipped (${NO_WHATSAPP_PERMISSION_REASON}): execution=${input.executionId}`);
+        return { actionType, success: true, result: { sequenceId, skipped: result.reason, reason: NO_WHATSAPP_PERMISSION_REASON } };
+      }
       return { actionType, success: false, error: `Not added to sequence: ${result.reason}` };
     } catch (error) {
       return { actionType, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
