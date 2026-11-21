@@ -16,7 +16,7 @@ function MultiChannelMockup() {
     return () => clearInterval(id);
   }, []);
 
-  const FONT = "'Inter', sans-serif";
+  const FONT = "var(--font-geist-sans), sans-serif";
 
   const channels: { id: "all" | "whatsapp" | "instagram" | "messenger" | "email"; label: string; color: string; bg: string }[] = [
     { id: "all",       label: "All",       color: "#e5e2e1",  bg: "rgba(255,255,255,0.1)" },
@@ -188,7 +188,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Manage WhatsApp, Instagram DMs, Facebook Messenger, and Email conversations from a single shared inbox — with the same automations, routing, and analytics across all channels.",
   heroScreen: "",
   overviewTitle: "Your customers don't stay on one channel.",
-  overviewDesc: "A lead might find you on Instagram, message on WhatsApp, and follow up by email. Without a unified inbox, your team handles each channel in a different tool — missing context, duplicating work, and delivering inconsistent experiences. Wazelo CRM brings WhatsApp, Instagram DMs, Facebook Messenger, and Email into a single workspace where every conversation is managed, routed, and tracked the same way.",
+  overviewDesc: "A lead might find you on Instagram, message on WhatsApp, and follow up by email. Without a unified inbox, your team handles each channel in a different tool — missing context, duplicating work, and delivering inconsistent experiences. Wazelo brings WhatsApp, Instagram DMs, Facebook Messenger, and Email into a single workspace where every conversation is managed, routed, and tracked the same way.",
   capabilities: [
     { icon: "devices", title: "Unified multi-channel inbox", desc: "WhatsApp, Instagram DMs, Facebook Messenger, and Email — all in one shared queue. One workflow, all channels." },
     { icon: "account_tree", title: "Cross-channel routing", desc: "Apply the same assignment rules and automation workflows across all channels. No duplicate setup." },

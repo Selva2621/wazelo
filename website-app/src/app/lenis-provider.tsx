@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Lenis from "@studio-freight/lenis";
+import { gsap, ScrollTrigger } from "@/lib/gsap";
 
 // ── Context ────────────────────────────────────────────────────────────────────
 export const LenisContext = createContext<React.RefObject<Lenis | null>>({ current: null });
@@ -12,7 +13,6 @@ export function useLenis() { return useContext(LenisContext).current; }
 export default function LenisProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const lenisRef = useRef<Lenis | null>(null);
-  const rafIdRef = useRef<number>(0);
 
   // Create Lenis once on mount, destroy on unmount
   useEffect(() => {
@@ -22,14 +22,15 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
     const lenis = new Lenis({ lerp: 0.08, smoothWheel: true, syncTouch: false });
     lenisRef.current = lenis;
 
-    function raf(time: number) {
-      lenis.raf(time);
-      rafIdRef.current = requestAnimationFrame(raf);
-    }
-    rafIdRef.current = requestAnimationFrame(raf);
+    // Lenis runs on GSAP's ticker and tells ScrollTrigger about every scroll,
+    // so pins and scrubs stay in step with the smoothed position.
+    lenis.on("scroll", ScrollTrigger.update);
+    const tick = (time: number) => lenis.raf(time * 1000);
+    gsap.ticker.add(tick);
+    gsap.ticker.lagSmoothing(0);
 
     return () => {
-      cancelAnimationFrame(rafIdRef.current);
+      gsap.ticker.remove(tick);
       lenis.destroy();
       lenisRef.current = null;
     };

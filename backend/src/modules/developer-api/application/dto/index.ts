@@ -257,6 +257,116 @@ export class DevUpdateContactDto {
   metadata?: Record<string, unknown>;
 }
 
+// ── Shared cursor paging ──
+
+export class DevPageQueryDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  limit?: number = 20;
+
+  @IsOptional()
+  @IsUUID()
+  cursor?: string;
+}
+
+// ── List Contacts Query DTO ──
+
+export class DevListContactsQueryDto extends DevPageQueryDto {
+  /** Matches name, phone or email (partial, case-insensitive). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  /** Exact phone number, e.g. +919876543210. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+?[1-9]\d{6,14}$/, { message: 'phone must be a valid E.164 phone number' })
+  phone?: string;
+
+  @IsOptional()
+  @IsEnum(['NEW', 'CONTACTED', 'INTERESTED', 'CONVERTED', 'CLOSED'])
+  leadStatus?: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'CONVERTED' | 'CLOSED';
+}
+
+// ── Contact notes / tags / lead status ──
+
+export class DevAddNoteDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(10000)
+  content: string;
+}
+
+export class DevAddTagDto {
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-zA-Z0-9\s\-_]+$/, {
+    message: 'Tag name must only contain letters, numbers, spaces, hyphens, and underscores',
+  })
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'color must be a hex color like #FF5733' })
+  color?: string;
+}
+
+export class DevChangeLeadStatusDto {
+  @IsEnum(['NEW', 'CONTACTED', 'INTERESTED', 'CONVERTED', 'CLOSED'])
+  status: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'CONVERTED' | 'CLOSED';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+// ── Conversations ──
+
+export class DevListConversationsQueryDto extends DevPageQueryDto {
+  @IsOptional()
+  @IsEnum(['OPEN', 'CLOSED', 'ARCHIVED'])
+  status?: 'OPEN' | 'CLOSED' | 'ARCHIVED';
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+?[1-9]\d{6,14}$/, { message: 'contactPhone must be a valid E.164 phone number' })
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsUUID()
+  contactId?: string;
+}
+
+// ── Deals ──
+
+export class DevListDealsQueryDto extends DevPageQueryDto {
+  @IsOptional()
+  @IsUUID()
+  contactId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  pipelineId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  stageId?: string;
+
+  @IsOptional()
+  @IsEnum(['OPEN', 'WON', 'LOST'])
+  status?: 'OPEN' | 'WON' | 'LOST';
+}
+
+export class DevMoveDealDto {
+  @IsUUID()
+  stageId: string;
+}
+
 // ── List Messages Query DTO ──
 
 export class DevListMessagesQueryDto {

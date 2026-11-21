@@ -27,6 +27,10 @@ import {
 import { OrgEmailService } from '@/modules/email/application/services/org-email.service';
 import { CampaignBatchDispatcher } from '@/modules/campaigns/application/services/campaign-batch-dispatcher.service';
 import {
+  NO_WHATSAPP_PERMISSION_REASON,
+  WhatsAppPermissionService,
+} from '@/modules/contacts/domain/services/whatsapp-permission.service';
+import {
   CampaignRecipientStatus,
   CampaignStatus,
   MessageDirection,
@@ -57,6 +61,7 @@ export class CampaignBatchWorker implements OnModuleInit {
     private readonly eventEmitter: EventEmitter2,
     private readonly orgEmail: OrgEmailService,
     private readonly batchDispatcher: CampaignBatchDispatcher,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -215,7 +220,7 @@ export class CampaignBatchWorker implements OnModuleInit {
         orgId,
         deletedAt: null,
       },
-      select: { id: true, optedOut: true, phoneNumber: true, name: true, email: true, leadStatus: true },
+      select: { id: true, optedOut: true, phoneNumber: true, name: true, email: true, leadStatus: true, source: true },
     });
 
     if (!contact) {
@@ -236,6 +241,20 @@ export class CampaignBatchWorker implements OnModuleInit {
         CampaignRecipientStatus.SKIPPED,
         {
           failedReason: 'Contact opted out',
+          processedAt: new Date(),
+        },
+      );
+      return false;
+    }
+
+    // Lead finder contacts need WhatsApp permission; it may have been revoked
+    // since the audience was resolved
+    if (!(await this.whatsAppPermission.isPermitted(orgId, contact))) {
+      await this.recipientRepo.updateStatus(
+        recipient.id,
+        CampaignRecipientStatus.SKIPPED,
+        {
+          failedReason: NO_WHATSAPP_PERMISSION_REASON,
           processedAt: new Date(),
         },
       );

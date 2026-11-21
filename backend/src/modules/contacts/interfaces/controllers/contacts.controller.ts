@@ -31,6 +31,8 @@ import {
   MergeContactsDto,
   AddNoteDto,
   AddTagDto,
+  RecordWhatsAppPermissionDto,
+  BulkRecordWhatsAppPermissionDto,
   BulkContactIdsDto,
   BulkChangeLeadStatusDto,
   BulkAssignContactsDto,
@@ -57,6 +59,7 @@ import {
   GetContactHistoryUseCase,
   BulkContactsUseCase,
   SavedContactGroupsUseCase,
+  WhatsAppPermissionUseCase,
 } from '../../application/use-cases';
 import { ExportContactsUseCase } from '../../application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from '../../application/use-cases/import-contacts.use-case';
@@ -83,6 +86,7 @@ export class ContactsController {
     private readonly importContactsUseCase: ImportContactsUseCase,
     private readonly bulkContactsUseCase: BulkContactsUseCase,
     private readonly savedContactGroupsUseCase: SavedContactGroupsUseCase,
+    private readonly whatsAppPermissionUseCase: WhatsAppPermissionUseCase,
   ) {}
 
   // ───── Contact CRUD ─────
@@ -276,6 +280,24 @@ export class ContactsController {
     return this.bulkContactsUseCase.delete(dto, this.bulkMeta(user, req));
   }
 
+  /** Record "they agreed" for many lead finder contacts; others / already permitted are skipped */
+  @Post('whatsapp-permission/bulk')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  async bulkRecordWhatsAppPermission(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: BulkRecordWhatsAppPermissionDto,
+    @Req() req: Request,
+  ) {
+    return this.whatsAppPermissionUseCase.recordForContacts(
+      user.orgId,
+      user.sub,
+      dto.contactIds,
+      { how: dto.how, note: dto.note },
+      { via: 'bulk', ipAddress: req.ip, userAgent: req.headers['user-agent'] },
+    );
+  }
+
   private bulkMeta(user: JwtPayload, req: Request) {
     return {
       orgId: user.orgId,
@@ -447,6 +469,52 @@ export class ContactsController {
       take: take ? parseInt(take, 10) : undefined,
       skip: skip ? parseInt(skip, 10) : undefined,
     });
+  }
+
+  // ───── WhatsApp permission (lead finder contacts) ─────
+
+  @Get(':contactId/whatsapp-permission')
+  @Permissions(PERMISSIONS.CONTACTS_READ)
+  async getWhatsAppPermission(
+    @CurrentUser() user: JwtPayload,
+    @Param('contactId', ParseUUIDPipe) contactId: string,
+  ) {
+    return this.whatsAppPermissionUseCase.getStatus(contactId, user.orgId);
+  }
+
+  @Post(':contactId/whatsapp-permission')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  async recordWhatsAppPermission(
+    @CurrentUser() user: JwtPayload,
+    @Param('contactId', ParseUUIDPipe) contactId: string,
+    @Body() dto: RecordWhatsAppPermissionDto,
+    @Req() req: Request,
+  ) {
+    return this.whatsAppPermissionUseCase.record(
+      contactId,
+      user.orgId,
+      user.sub,
+      dto,
+      req.ip,
+      req.headers['user-agent'],
+    );
+  }
+
+  @Delete(':contactId/whatsapp-permission')
+  @Permissions(PERMISSIONS.CONTACTS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  async revokeWhatsAppPermission(
+    @CurrentUser() user: JwtPayload,
+    @Param('contactId', ParseUUIDPipe) contactId: string,
+    @Req() req: Request,
+  ) {
+    return this.whatsAppPermissionUseCase.revoke(
+      contactId,
+      user.orgId,
+      user.sub,
+      req.ip,
+      req.headers['user-agent'],
+    );
   }
 
   // ───── Tags ─────

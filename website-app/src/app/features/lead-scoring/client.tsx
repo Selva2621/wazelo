@@ -253,7 +253,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Automatic lead scoring based on engagement, profile completeness, and behaviour — so your team focuses on the hottest leads, not the longest queue.",
   heroScreen: "",
   overviewTitle: "Not every lead deserves equal attention.",
-  overviewDesc: "When 300 contacts message you in a day, your team can't treat them all equally. Wazelo CRM's lead scoring engine assigns a score to every contact based on their WhatsApp engagement, how complete their profile is, which campaigns they responded to, and whether they've been tagged as qualified. High-score leads rise to the top. Low-score leads wait their turn.",
+  overviewDesc: "When 300 contacts message you in a day, your team can't treat them all equally. Wazelo's lead scoring engine assigns a score to every contact based on their WhatsApp engagement, how complete their profile is, which campaigns they responded to, and whether they've been tagged as qualified. High-score leads rise to the top. Low-score leads wait their turn.",
   capabilities: [
     { icon: "query_stats", title: "Automatic score calculation", desc: "Scores are calculated continuously based on engagement signals — no manual input required." },
     { icon: "tune", title: "Configurable scoring rules", desc: "Set which actions add or subtract score points: replied to campaign, opened chatbot, tag added, field filled." },

@@ -218,7 +218,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Tag, segment, search, and manage all your WhatsApp contacts and customers in one place. Full conversation history. Zero spreadsheets.",
   heroScreen: "/screens/05-contacts-management.png",
   overviewTitle: "Your contacts are your business.",
-  overviewDesc: "Every WhatsApp number that messages you is a potential customer. Wazelo CRM automatically creates a contact profile for every conversation — with their name, number, tags, custom fields, and full message history — so your team always has context and your marketing always hits the right segment.",
+  overviewDesc: "Every WhatsApp number that messages you is a potential customer. Wazelo automatically creates a contact profile for every conversation — with their name, number, tags, custom fields, and full message history — so your team always has context and your marketing always hits the right segment.",
   capabilities: [
     { icon: "group", title: "Unified contact profiles", desc: "Each contact has a profile with name, WhatsApp number, email, tags, custom fields, and full conversation history." },
     { icon: "label", title: "Tags & custom fields", desc: "Create your own tags and fields to capture anything — lead source, city, product interest, deal stage." },
@@ -234,7 +234,7 @@ const data: FeatureDetailData = {
     { step: "04", title: "Act on your data", desc: "Launch a campaign to a segment, assign conversations to the right agent, or export a list for use outside Wazelo." },
   ],
   screens: [
-    { src: "/screens/01-inbox-shared-team.png", caption: "Contact profiles visible in every conversation" },
+    { src: "/screens/01-inbox-shared-team.jpeg", caption: "Contact profiles visible in every conversation" },
   ],
   relatedFeatures: [
     { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },

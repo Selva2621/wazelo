@@ -2,10 +2,15 @@
 
 import { ScrollText, ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ExecutionStatusBadge } from "./execution-status-badge";
 import { TriggerTypeLabel } from "./trigger-type-label";
 import type { AutomationExecutionLog } from "@/lib/types/automation";
+import {
+  NO_WHATSAPP_PERMISSION_MESSAGE,
+  isNoWhatsAppPermissionReason,
+} from "@/lib/whatsapp-permission";
 
 interface ExecutionLogsTableProps {
   logs: AutomationExecutionLog[];
@@ -47,9 +52,22 @@ const OUTCOME_CLASS = {
 } as const;
 
 /** One action's outcome in words: done, skipped (with why) or failed (with the error) */
-function describeResult(r: Record<string, unknown>): { kind: keyof typeof OUTCOME_CLASS; text: string } {
+function describeResult(r: Record<string, unknown>): {
+  kind: keyof typeof OUTCOME_CLASS;
+  text: string;
+  /** Lead finder contact without WhatsApp permission: offer a link to the contact */
+  needsPermission?: boolean;
+} {
   const result = (r.result ?? {}) as Record<string, unknown>;
   if (r.success === false) return { kind: "failed", text: `Failed${r.error ? ` — ${String(r.error)}` : ""}` };
+  // Message skipped (reason text) or sequence enroll refused (skipped: NO_WHATSAPP_PERMISSION)
+  if (isNoWhatsAppPermissionReason(result.skipped) || isNoWhatsAppPermissionReason(result.reason)) {
+    const text =
+      r.actionType === "ENROLL_IN_SEQUENCE"
+        ? NO_WHATSAPP_PERMISSION_MESSAGE
+        : "Skipped: this lead finder contact hasn't agreed to WhatsApp messages yet. Record their permission first.";
+    return { kind: "skipped", text, needsPermission: true };
+  }
   if (result.skipped) {
     const reason =
       typeof result.reason === "string" ? result.reason
@@ -86,6 +104,15 @@ function LogDetail({ log }: { log: AutomationExecutionLog }) {
                 <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-caption">
                   <span className="font-medium text-on-surface">{actionLabel(r.actionType)}</span>
                   <span className={OUTCOME_CLASS[outcome.kind]}>{outcome.text}</span>
+                  {outcome.needsPermission && log.contactId && (
+                    <Link
+                      href={`/contacts/${log.contactId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Open contact
+                    </Link>
+                  )}
                 </li>
               );
             })}

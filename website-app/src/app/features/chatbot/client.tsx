@@ -87,7 +87,7 @@ function QuickReplyBtn({ label, onClick }: { label: string; onClick: () => void 
         padding: "6px 12px",
         fontSize: 11,
         cursor: "pointer",
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--font-geist-sans), sans-serif",
       }}
     >
       {label}
@@ -146,14 +146,14 @@ function ChatbotMockup() {
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "#ffb77d",
-          fontFamily: "'Inter', sans-serif", display: "block", marginBottom: 10,
+          fontFamily: "var(--font-geist-sans), sans-serif", display: "block", marginBottom: 10,
         }}>
           See it in action
         </span>
         <h2 style={{
           fontSize: "clamp(22px,2.8vw,36px)", fontWeight: 800,
           letterSpacing: "-0.04em", color: "#e5e2e1",
-          fontFamily: "'Inter', sans-serif", marginBottom: 0,
+          fontFamily: "var(--font-geist-sans), sans-serif", marginBottom: 0,
         }}>
           Your 24/7 WhatsApp chatbot.
         </h2>
@@ -193,8 +193,8 @@ function ChatbotMockup() {
               <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#fff" }}>smart_toy</span>
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Inter', sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
-              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "'Inter', sans-serif" }}>Online</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "var(--font-geist-sans), sans-serif", lineHeight: 1.2 }}>Wazelo Bot</div>
+              <div style={{ fontSize: 10, color: "#ffb77d", fontFamily: "var(--font-geist-sans), sans-serif" }}>Online</div>
             </div>
           </div>
 
@@ -277,7 +277,7 @@ function ChatbotMockup() {
               padding: "8px 12px",
               fontSize: 12,
               color: "#9ca3af",
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "var(--font-geist-sans), sans-serif",
               lineHeight: 1,
             }}>
               Type a message...
@@ -299,13 +299,13 @@ const data: FeatureDetailData = {
   heroSubtitle: "Create WhatsApp chatbots that qualify leads, answer FAQs, capture data, and hand off to your team — all without writing a single line of code.",
   heroScreen: "/screens/06-chatbot-builder.png",
   overviewTitle: "Automate the first conversation.",
-  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo CRM's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent — or resolve entirely on their own — 24 hours a day, 7 days a week.",
+  overviewDesc: "The first message a customer sends tells you everything about their intent. Wazelo's chatbot builder lets you design response flows that ask the right questions, capture key information, and route to the right agent — or resolve entirely on their own — 24 hours a day, 7 days a week.",
   capabilities: [
     { icon: "smart_toy", title: "No-code flow builder", desc: "Build chatbot flows visually using a drag-and-drop canvas. No developer required." },
     { icon: "quiz", title: "Question & answer flows", desc: "Ask a sequence of questions, capture responses, and store answers as contact fields automatically." },
     { icon: "call_split", title: "Conditional branching", desc: "Route the conversation based on what the user says — keyword match, button selection, or numeric input." },
     { icon: "transfer_within_a_station", title: "Agent handoff", desc: "At any point, hand the conversation to a human agent — with the full chatbot transcript already in the inbox." },
-    { icon: "quick_replies", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
+    { icon: "quickreply", title: "Quick reply buttons", desc: "Add tap-to-reply buttons so users don't have to type. Faster for them, cleaner data for you." },
     { icon: "schedule_send", title: "24/7 availability", desc: "Your chatbot handles incoming messages even when your whole team is offline. Nothing slips through after hours." },
   ],
   howItWorks: [

@@ -1,18 +1,20 @@
-import type { Metadata } from "next";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
+// page.tsx is a client component, so its metadata lives here.
+const seo = {
+  path: "/privacy",
   title: "Privacy Policy",
-  description:
-    "Wazelo CRM Privacy Policy. How we collect, use, and protect your personal data. GDPR and Indian IT Act compliant data handling practices.",
-  alternates: {
-    canonical: "https://wazelo.in/privacy",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  description: "How Wazelo collects, uses and protects personal data, including WhatsApp conversations and contact details, and how to request access or deletion.",
 };
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+export const metadata = pageMetadata(seo);
+
+export default function PrivacyLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Privacy policy", path: seo.path }])]} />
+      {children}
+    </>
+  );
 }

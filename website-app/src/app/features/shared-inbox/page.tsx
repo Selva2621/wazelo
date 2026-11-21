@@ -1,32 +1,20 @@
-import type { Metadata } from "next";
 import SharedInboxClient from "./client";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Shared WhatsApp Inbox for Teams",
-  description: "Manage all WhatsApp conversations in one shared team inbox. Assign, route, resolve, and track every message — together.",
-  keywords: [
-    "shared WhatsApp inbox", "WhatsApp team inbox", "WhatsApp CRM shared inbox",
-    "multi-agent WhatsApp", "WhatsApp helpdesk", "team WhatsApp management",
-    "Wazelo CRM inbox", "WhatsApp business inbox", "WhatsApp conversation management",
-    "WhatsApp customer support team", "assign WhatsApp conversations",
-    "WhatsApp agent routing", "WhatsApp ticket management", "shared inbox India",
-    "WhatsApp support software", "WhatsApp CRM India", "best WhatsApp CRM",
-    "WhatsApp team collaboration", "WhatsApp inbox for business",
-  ],
-  alternates: { canonical: "https://wazelo.in/features/shared-inbox" },
-  openGraph: {
-    title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
-    description: "Manage all WhatsApp conversations in one shared team inbox. Assign, route, resolve, and track every message — together.",
-    url: "https://wazelo.in/features/shared-inbox",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Shared WhatsApp Inbox for Teams | Wazelo CRM",
-    description: "Manage all WhatsApp conversations in one shared team inbox. Assign, route, resolve, and track every message — together.",
-  },
+const seo = {
+  path: "/features/shared-inbox",
+  title: "Shared WhatsApp Inbox for Sales & Support Teams",
+  description: "Give your whole team one WhatsApp number. Assign chats, add notes, track response times and resolve every conversation from one shared inbox.",
 };
 
+export const metadata = pageMetadata(seo);
+
 export default function Page() {
-  return <SharedInboxClient />;
+  return (
+    <>
+      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Shared inbox", path: seo.path }])]} />
+      <SharedInboxClient />
+    </>
+  );
 }

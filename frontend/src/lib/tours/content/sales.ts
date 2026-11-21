@@ -116,7 +116,7 @@ export const salesTours: TourDef[] = [
 
   {
     id: "contact-detail",
-    version: 1,
+    version: 2,
     title: "Contact profile",
     summary: "One contact's status, tags, deals, products, notes and history.",
     section: "Sales",
@@ -129,6 +129,13 @@ export const salesTours: TourDef[] = [
         target: "contact-profile",
         title: "Profile",
         body: "Name, phone, email, owner and lead score. The score rises as the contact replies, opens proposals and moves through your pipeline.",
+      },
+      {
+        target: "contact-wa-permission",
+        ifMissing: "skip",
+        title: "WhatsApp permission",
+        body: "Lead finder contacts need to agree before campaigns, sequences and automations message them on WhatsApp. If they agreed on a call, by email or in person, open this chip and record it. Manual messages still work.",
+        example: { kind: "chips", items: ["Not yet on WhatsApp", "Agreed to WhatsApp", "Messaged you first"] },
       },
       {
         target: ["contact-actions", "m-primary"],
@@ -175,7 +182,7 @@ export const salesTours: TourDef[] = [
 
   {
     id: "scraper-run",
-    version: 1,
+    version: 3,
     title: "Scraper results",
     summary: "Check WhatsApp, import and message the leads a run found.",
     section: "Sales",
@@ -197,7 +204,7 @@ export const salesTours: TourDef[] = [
       {
         target: ["run-toolbar", "m-more"],
         title: "Check, import, message",
-        body: "Check WhatsApp tells you which numbers are on WhatsApp. Import adds the selected rows as contacts. Message leads starts an outreach with a pitch template.",
+        body: "Check WhatsApp tells you which numbers are on WhatsApp. Import adds the selected rows as contacts and asks if they agreed to WhatsApp messages. WhatsApp OK records that for leads you already imported. Message leads starts an outreach with a pitch template.",
         example: {
           kind: "template",
           name: "Pitch",
@@ -209,6 +216,11 @@ export const salesTours: TourDef[] = [
         target: listOrEmpty,
         title: "Results",
         body: "Each row shows the business, phone, rating, address and website. Open a row for full details.",
+      },
+      {
+        title: "WhatsApp permission",
+        body: "Imported leads haven't agreed to hear from you yet, so WhatsApp campaigns, sequence steps and automations skip them until they message you first or you record their permission on the contact. Message leads shows how many have agreed and only messages those.",
+        example: { kind: "flow", nodes: ["Import", "Call or email them", "Record permission", "Campaigns can reach them"] },
       },
     ],
   },

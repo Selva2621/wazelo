@@ -13,6 +13,8 @@ import { CampaignRecipientRepository } from './infrastructure/repositories/campa
 // Domain services
 import { AudienceResolverService } from './domain/services/audience-resolver.service';
 import { CampaignStateMachineService } from './domain/services/campaign-state-machine.service';
+// Stateless (Prisma only): provided here rather than importing all of ContactsModule
+import { WhatsAppPermissionService } from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 // Use cases
 import { CreateCampaignUseCase } from './application/use-cases/create-campaign.use-case';
@@ -56,6 +58,8 @@ import { CampaignBatchDispatcher } from './application/services/campaign-batch-d
     // Domain services
     AudienceResolverService,
     CampaignStateMachineService,
+    // Lead finder contacts need WhatsApp permission (audience + send-time checks)
+    WhatsAppPermissionService,
     // Marks campaign recipients who write back ("Replied")
     CampaignRepliesService,
     // Starts batches per number in order; repairs stuck recipients
@@ -84,6 +88,8 @@ import { CampaignBatchDispatcher } from './application/services/campaign-batch-d
     AudienceResolverService,
     CampaignStateMachineService,
     CampaignBatchDispatcher,
+    // Sequences (enroll) use the same rule
+    WhatsAppPermissionService,
   ],
 })
 export class CampaignsModule {}

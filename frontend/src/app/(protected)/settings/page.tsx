@@ -110,8 +110,8 @@ import type {
   WebhookDeliveryStatus,
   IntegrationConfig,
   IntegrationProvider,
-  WEBHOOK_EVENT_TYPES,
 } from "@/lib/types/settings";
+import { WEBHOOK_EVENT_TYPES } from "@/lib/types/settings";
 import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
 import { COUNTRIES, CURRENCY_CODES, DEFAULT_COUNTRY_CODE, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
@@ -1473,19 +1473,8 @@ function NotificationsSection() {
 
 // ─── Webhooks Section (EPIC 12 Enhanced) ─────────
 
-const WEBHOOK_EVENTS = [
-  "MESSAGE_RECEIVED",
-  "MESSAGE_SENT",
-  "MESSAGE_DELIVERED",
-  "MESSAGE_FAILED",
-  "CONTACT_CREATED",
-  "CONTACT_UPDATED",
-  "CAMPAIGN_COMPLETED",
-  "CAMPAIGN_FAILED",
-  "PAYMENT_SUCCEEDED",
-  "PAYMENT_FAILED",
-  "SUBSCRIPTION_CHANGED",
-] as const;
+// One list shared with the API types, so a new event shows up here automatically
+const WEBHOOK_EVENTS = WEBHOOK_EVENT_TYPES;
 
 function WebhooksSection() {
   const { data, isLoading } = useWebhooks();

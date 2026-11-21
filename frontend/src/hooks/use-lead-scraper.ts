@@ -5,7 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { leadScraperApi } from "@/lib/api/lead-scraper";
 import type { CheckWhatsAppResult } from "@/lib/api/lead-scraper";
-import type { ListScrapeRunsParams, ScrapeResult, WaCheckState } from "@/lib/types/lead-scraper";
+import type {
+  ImportScrapeResultsRequest,
+  ListScrapeRunsParams,
+  ScrapeResult,
+  WaCheckState,
+} from "@/lib/types/lead-scraper";
+import { invalidateWhatsAppPermissionQueries } from "./use-contacts";
 
 export const scrapeRunKeys = {
   all: ["scrape-runs"] as const,
@@ -145,12 +151,14 @@ export function useReRunScrape() {
 export function useImportScrapeResults(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (resultIds: string[]) =>
-      leadScraperApi.importResults(runId, { resultIds }),
+    mutationFn: (data: ImportScrapeResultsRequest) => leadScraperApi.importResults(runId, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.results(runId) });
       queryClient.invalidateQueries({ queryKey: scrapeRunKeys.all });
-      toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} already saved` : ""}.`);
+      if (data.permissionRecorded) invalidateWhatsAppPermissionQueries(queryClient);
+      toast.success(
+        `Imported ${data.imported} contact${data.imported !== 1 ? "s" : ""}${data.skipped ? `, ${data.skipped} already saved` : ""}${data.permissionRecorded ? ". WhatsApp permission recorded" : ""}.`,
+      );
       if (data.failed) {
         toast.error(`${data.failed} lead${data.failed !== 1 ? "s" : ""} couldn't be imported. Try again.`);
       }

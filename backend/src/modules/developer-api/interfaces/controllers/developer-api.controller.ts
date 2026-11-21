@@ -41,7 +41,25 @@ import {
   DevUpdateContactDto,
   DevCreateTemplateDto,
   DevListMessagesQueryDto,
+  DevListContactsQueryDto,
+  DevPageQueryDto,
+  DevAddNoteDto,
+  DevAddTagDto,
+  DevChangeLeadStatusDto,
+  DevListConversationsQueryDto,
+  DevListDealsQueryDto,
+  DevMoveDealDto,
 } from '../../application/dto';
+import { DealRepository } from '@/modules/deals/infrastructure/repositories/deal.repository';
+import { DealLifecycleUseCase } from '@/modules/deals/application/use-cases/deal-lifecycle.use-case';
+import { AddNoteUseCase } from '@/modules/contacts/application/use-cases/add-note.use-case';
+import { AddTagUseCase, RemoveTagUseCase } from '@/modules/contacts/application/use-cases/manage-tags.use-case';
+import { ChangeLeadStatusUseCase } from '@/modules/contacts/application/use-cases/change-lead-status.use-case';
+
+/** Org and acting user (the key's creator) set by ApiKeyGuard. */
+function auth(req: Request): { orgId: string; userId: string } {
+  return (req as any).apiKeyAuth;
+}
 
 /**
  * The standard Idempotency-Key header works the same as the idempotencyKey
@@ -74,6 +92,12 @@ export class DeveloperApiController {
     private readonly sendTemplateMessageUseCase: DevSendTemplateMessageUseCase,
     private readonly apiKeysRepo: ApiKeysRepository,
     private readonly orgLocale: OrgLocaleService,
+    private readonly addNoteUseCase: AddNoteUseCase,
+    private readonly addTagUseCase: AddTagUseCase,
+    private readonly removeTagUseCase: RemoveTagUseCase,
+    private readonly changeLeadStatusUseCase: ChangeLeadStatusUseCase,
+    private readonly dealRepo: DealRepository,
+    private readonly dealLifecycle: DealLifecycleUseCase,
   ) {}
 
   // ── Messages ──
@@ -147,13 +171,16 @@ export class DeveloperApiController {
 
   @Get('contacts')
   @ApiKeyResourceScope('contacts')
-  async listContacts(
-    @Req() req: Request,
-    @Query('limit') limit?: string,
-    @Query('cursor') cursor?: string,
-  ) {
-    const orgId = (req as any).apiKeyAuth.orgId;
-    return this.repo.listContacts(orgId, Number(limit) || 20, cursor);
+  async listContacts(@Req() req: Request, @Query() query: DevListContactsQueryDto) {
+    const { orgId } = auth(req);
+    const phone = query.phone
+      ? ((await this.orgLocale.normalizePhone(orgId, query.phone)) ?? query.phone)
+      : undefined;
+    return this.repo.listContacts(orgId, query.limit ?? 20, query.cursor, {
+      search: query.search,
+      phone,
+      leadStatus: query.leadStatus,
+    });
   }
 
   @Post('contacts')
@@ -201,6 +228,151 @@ export class DeveloperApiController {
       metadata: dto.metadata,
     });
     return this.repo.getContactById(id, orgId);
+  }
+
+  @Put('contacts/:id/lead-status')
+  @ApiKeyResourceScope('contacts')
+  async changeLeadStatus(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DevChangeLeadStatusDto,
+  ) {
+    const { orgId, userId } = auth(req);
+    await this.changeLeadStatusUseCase.execute(id, orgId, userId, dto, req.ip, req.headers['user-agent']);
+    return this.repo.getContactById(id, orgId);
+  }
+
+  @Get('contacts/:id/notes')
+  @ApiKeyResourceScope('contacts')
+  async listNotes(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DevPageQueryDto,
+  ) {
+    const { orgId } = auth(req);
+    const contact = await this.repo.getContactById(id, orgId);
+    if (!contact) throw new NotFoundException('Contact not found');
+    return this.repo.listContactNotes(id, orgId, query.limit ?? 20);
+  }
+
+  @Post('contacts/:id/notes')
+  @ApiKeyResourceScope('contacts')
+  @HttpCode(HttpStatus.CREATED)
+  async addNote(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DevAddNoteDto,
+  ) {
+    const { orgId, userId } = auth(req);
+    const note = await this.addNoteUseCase.execute(id, orgId, userId, dto, req.ip, req.headers['user-agent']);
+    return { id: note.id, content: note.content, authorId: note.authorId, createdAt: note.createdAt };
+  }
+
+  @Post('contacts/:id/tags')
+  @ApiKeyResourceScope('contacts')
+  @HttpCode(HttpStatus.OK)
+  async addTag(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DevAddTagDto,
+  ) {
+    const { orgId, userId } = auth(req);
+    const tag = await this.addTagUseCase.execute(id, orgId, userId, dto, req.ip, req.headers['user-agent']);
+    return { id: tag.id, name: tag.name, color: tag.color };
+  }
+
+  @Delete('contacts/:id/tags/:tagId')
+  @ApiKeyResourceScope('contacts')
+  @HttpCode(HttpStatus.OK)
+  async removeTag(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('tagId', ParseUUIDPipe) tagId: string,
+  ) {
+    const { orgId, userId } = auth(req);
+    await this.removeTagUseCase.execute(id, tagId, orgId, userId, req.ip, req.headers['user-agent']);
+    return { removed: true };
+  }
+
+  @Get('tags')
+  @ApiKeyResourceScope('contacts')
+  async listTags(@Req() req: Request) {
+    return this.repo.listTags(auth(req).orgId);
+  }
+
+  // ── Conversations ──
+
+  @Get('conversations')
+  @ApiKeyResourceScope('messages')
+  async listConversations(@Req() req: Request, @Query() query: DevListConversationsQueryDto) {
+    const { orgId } = auth(req);
+    const contactPhone = query.contactPhone
+      ? ((await this.orgLocale.normalizePhone(orgId, query.contactPhone)) ?? query.contactPhone)
+      : undefined;
+    return this.repo.listConversations(orgId, {
+      limit: query.limit ?? 20,
+      cursor: query.cursor,
+      status: query.status,
+      contactPhone,
+      contactId: query.contactId,
+    });
+  }
+
+  @Get('conversations/:id/messages')
+  @ApiKeyResourceScope('messages')
+  async listConversationMessages(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DevPageQueryDto,
+  ) {
+    const { orgId } = auth(req);
+    const conversation = await this.repo.getConversation(id, orgId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    return this.repo.listConversationMessages(id, orgId, query.limit ?? 20, query.cursor);
+  }
+
+  // ── Pipelines & deals ──
+
+  @Get('pipelines')
+  @ApiKeyResourceScope('contacts')
+  async listPipelines(@Req() req: Request) {
+    return this.repo.listPipelines(auth(req).orgId);
+  }
+
+  @Get('deals')
+  @ApiKeyResourceScope('contacts')
+  async listDeals(@Req() req: Request, @Query() query: DevListDealsQueryDto) {
+    return this.repo.listDeals(auth(req).orgId, {
+      limit: query.limit ?? 20,
+      cursor: query.cursor,
+      contactId: query.contactId,
+      pipelineId: query.pipelineId,
+      stageId: query.stageId,
+      status: query.status,
+    });
+  }
+
+  @Get('deals/:id')
+  @ApiKeyResourceScope('contacts')
+  async getDeal(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
+    const deal = await this.repo.getDeal(id, auth(req).orgId);
+    if (!deal) throw new NotFoundException('Deal not found');
+    return deal;
+  }
+
+  /** Same path as dragging the card on the board: status follows the stage's won/lost flag. */
+  @Put('deals/:id/stage')
+  @ApiKeyResourceScope('contacts')
+  async moveDeal(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DevMoveDealDto,
+  ) {
+    const { orgId } = auth(req);
+    const deal = await this.dealRepo.findByIdAndOrg(id, orgId);
+    if (!deal) throw new NotFoundException('Deal not found');
+    await this.dealLifecycle.moveToStage(deal, dto.stageId);
+    return this.repo.getDeal(id, orgId);
   }
 
   // ── Templates ──

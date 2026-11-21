@@ -51,6 +51,7 @@ import { MessageThread, MessageThreadSkeleton } from "@/components/chat/message-
 import { Drawer } from "@/components/ui/modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChatInput, type MediaAttachment } from "@/components/chat/chat-input";
+import { WhatsAppPermissionBanner } from "@/components/chat/whatsapp-permission-banner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { uploadApi } from "@/lib/api/messages";
 import { ContactPanel } from "@/components/chat/contact-panel";
@@ -856,6 +857,11 @@ export function InboxView({
                 </div>
               </div>
             ) : (
+              <>
+              {/* Lead finder contact without WhatsApp permission: warn, don't block */}
+              {contactData?.source === "WEB_SCRAPE" && (selectedChannelType === "WHATSAPP" || !selectedChannelType) && (
+                <WhatsAppPermissionBanner contactId={contactData.id} />
+              )}
               <ChatInput
                 onSend={handleSend}
                 onSendInteractive={handleSendInteractive}
@@ -873,6 +879,7 @@ export function InboxView({
                     : undefined
                 }
               />
+              </>
             )}
             {/* Mobile: clear the home indicator (the keyboard covers it when open) */}
             {!viewport?.keyboardOpen && (

@@ -53,7 +53,7 @@ function sequencesTour(o: {
 export const marketingTours: TourDef[] = [
   {
     id: "campaigns",
-    version: 3,
+    version: 4,
     title: "Campaigns",
     summary: "Send one WhatsApp message or email to many contacts, now or on a schedule.",
     section: "Marketing",
@@ -89,6 +89,11 @@ export const marketingTours: TourDef[] = [
           body: "Hi {{name}}, Diwali greetings from {{business}}! 🎉 Enjoy 20% off till 31 Oct. Reply YES for the catalogue.",
           preview: "Hi Priya, Diwali greetings from Kavya Boutique! 🎉 Enjoy 20% off till 31 Oct. Reply YES for the catalogue.",
         },
+      },
+      {
+        title: "Lead finder contacts",
+        body: "WhatsApp campaigns leave out lead finder contacts until they message you first or you record their permission. Preview audience shows how many were left out.",
+        example: { kind: "tip", text: "Record permission on the contact page after they agree on a call or by email." },
       },
       {
         target: "filter-bar",
@@ -208,7 +213,7 @@ export const marketingTours: TourDef[] = [
 
   {
     id: "sequence-detail",
-    version: 1,
+    version: 2,
     title: "Sequence report",
     summary: "Messages, settings and the drop-off funnel of one sequence.",
     section: "Marketing",
@@ -237,6 +242,12 @@ export const marketingTours: TourDef[] = [
         title: "Funnel and exits",
         body: "How many people reach each step and why they left: replied, unsubscribed or failed.",
         example: { kind: "flow", nodes: ["Step 1: 200", "Step 2: 164", "Step 3: 120", "Replied: 38"] },
+      },
+      {
+        target: "sequence-wa-permission",
+        ifMissing: "skip",
+        title: "Skipped for permission",
+        body: "WhatsApp steps are skipped for lead finder contacts who haven't agreed to WhatsApp messages. Email steps still go out. Record their permission on the contact and later WhatsApp steps will send.",
       },
     ],
   },

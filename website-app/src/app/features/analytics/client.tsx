@@ -188,7 +188,7 @@ const data: FeatureDetailData = {
   heroSubtitle: "Track response times, delivery rates, agent performance, and CSAT scores — all in one real-time dashboard.",
   heroScreen: "/screens/04-analytics-dashboard.png",
   overviewTitle: "You can't improve what you can't measure.",
-  overviewDesc: "Gut feel doesn't scale. Wazelo CRM gives you a live analytics layer across your entire WhatsApp operation — from message delivery rates and campaign performance to individual agent response times and customer satisfaction scores. Export raw data or integrate via API into your BI tool of choice.",
+  overviewDesc: "Gut feel doesn't scale. Wazelo gives you a live analytics layer across your entire WhatsApp operation — from message delivery rates and campaign performance to individual agent response times and customer satisfaction scores. Export raw data or integrate via API into your BI tool of choice.",
   capabilities: [
     { icon: "bar_chart", title: "Message delivery analytics", desc: "Track sent, delivered, read, and failed counts per campaign, channel, or time period." },
     { icon: "speed", title: "Response time tracking", desc: "Measure first response time and average resolution time per agent, team, or conversation type." },

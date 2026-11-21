@@ -49,11 +49,13 @@ export class ApiKeyGuard implements CanActivate {
       throw new ForbiddenException(`This API key needs the '${resource}' scope`);
     }
 
-    // Attach org context to request (similar to JWT auth)
+    // Attach org context to request (similar to JWT auth). Changes made with
+    // the key (notes, tags, status) are recorded as the person who created it.
     request.apiKeyAuth = {
       orgId: keyData.orgId,
       keyId: keyData.id,
       scopes: keyData.scopes,
+      userId: keyData.createdById,
     };
 
     // Update last used IP

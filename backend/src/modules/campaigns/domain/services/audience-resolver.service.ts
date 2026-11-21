@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { CampaignAudienceType, Prisma } from '@prisma/client';
+import { WhatsAppPermissionService } from '@/modules/contacts/domain/services/whatsapp-permission.service';
 
 export interface AudienceFilters {
   contactIds?: string[];
@@ -28,6 +29,14 @@ export interface AudienceResult {
   total: number;
 }
 
+/** Append a condition to a where clause's AND list (keeps the existing ones) */
+function andWhere(where: Prisma.ContactWhereInput, clause: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
+  return {
+    ...where,
+    AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), clause],
+  };
+}
+
 const E164_REGEX = /^\+?[1-9]\d{6,14}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -35,13 +44,17 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export class AudienceResolverService {
   private readonly logger = new Logger(AudienceResolverService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly whatsAppPermission: WhatsAppPermissionService,
+  ) {}
 
   /**
    * Resolves the target audience for a campaign.
    *
    * 1. Builds query from audience type + filters
-   * 2. Excludes: deleted, merged, opted-out contacts
+   * 2. Excludes: deleted, merged, opted-out contacts, numbers known not to be on
+   *    WhatsApp, and lead finder contacts without WhatsApp permission
    * 3. Validates phone numbers (E.164)
    * 4. Deduplicates by phone number (keeps first contact per phone)
    * 5. Uses cursor-based pagination for large datasets
@@ -52,7 +65,7 @@ export class AudienceResolverService {
     filters?: AudienceFilters,
   ): Promise<AudienceResult> {
     if (filters) await this.resolveTeamIds(filters);
-    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
+    const where = await this.forWhatsAppPermitted(orgId, await this.buildWhereClause(orgId, audienceType, filters));
 
     const contacts: ResolvedContact[] = [];
     const seenPhones = new Set<string>();
@@ -160,7 +173,9 @@ export class AudienceResolverService {
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
     const where = await this.buildWhereClause(orgId, audienceType, filters);
-    return this.prisma.contact.count({ where: channel === 'EMAIL' ? this.forEmail(where) : this.forWhatsApp(where) });
+    return this.prisma.contact.count({
+      where: channel === 'EMAIL' ? this.forEmail(where) : await this.forWhatsAppPermitted(orgId, where),
+    });
   }
 
   /** How many of the (WhatsApp) audience a check found are not on WhatsApp, so they'll be skipped. */
@@ -171,9 +186,54 @@ export class AudienceResolverService {
   ): Promise<number> {
     if (filters) await this.resolveTeamIds(filters);
     const where = await this.buildWhereClause(orgId, audienceType, filters);
+    return this.prisma.contact.count({ where: andWhere(where, { waExists: false }) });
+  }
+
+  /**
+   * How many of the WhatsApp audience are lead finder contacts without WhatsApp
+   * permission (they haven't messaged the org or agreed), so they are left out.
+   * Counted on top of the not-on-WhatsApp exclusion so the two notes don't overlap.
+   */
+  async countWithoutWhatsAppPermission(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<number> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
     return this.prisma.contact.count({
-      where: { ...where, AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { waExists: false }] },
+      where: andWhere(where, await this.whatsAppPermission.notPermittedWhere(orgId)),
     });
+  }
+
+  /**
+   * Before a WhatsApp send starts (lead finder outreach): how many of the
+   * audience it would otherwise reach, and how many of those have WhatsApp
+   * permission and will actually be messaged. Both counts skip numbers a check
+   * found are not on WhatsApp, so the gap is only the permission rule. Three
+   * queries regardless of audience size (inbound ids + two counts).
+   */
+  async countWhatsAppPermission(
+    orgId: string,
+    audienceType: CampaignAudienceType,
+    filters?: AudienceFilters,
+  ): Promise<{ total: number; withPermission: number }> {
+    if (filters) await this.resolveTeamIds(filters);
+    const where = this.forWhatsApp(await this.buildWhereClause(orgId, audienceType, filters));
+    const permitted = await this.whatsAppPermission.permittedWhere(orgId);
+    const [total, withPermission] = await Promise.all([
+      this.prisma.contact.count({ where }),
+      this.prisma.contact.count({ where: andWhere(where, permitted) }),
+    ]);
+    return { total, withPermission };
+  }
+
+  /** WhatsApp audience, minus lead finder contacts without WhatsApp permission */
+  private async forWhatsAppPermitted(
+    orgId: string,
+    where: Prisma.ContactWhereInput,
+  ): Promise<Prisma.ContactWhereInput> {
+    return andWhere(this.forWhatsApp(where), await this.whatsAppPermission.permittedWhere(orgId));
   }
 
   /**
@@ -184,10 +244,7 @@ export class AudienceResolverService {
    */
   private forWhatsApp(where: Prisma.ContactWhereInput): Prisma.ContactWhereInput {
     const notOffWhatsApp: Prisma.ContactWhereInput = { OR: [{ waExists: null }, { waExists: true }] };
-    return {
-      ...where,
-      AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), notOffWhatsApp],
-    };
+    return andWhere(where, notOffWhatsApp);
   }
 
   private async buildWhereClause(

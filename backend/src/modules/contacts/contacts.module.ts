@@ -24,7 +24,9 @@ import {
   GetContactHistoryUseCase,
   BulkContactsUseCase,
   SavedContactGroupsUseCase,
+  WhatsAppPermissionUseCase,
 } from './application/use-cases';
+import { WhatsAppPermissionService } from './domain/services/whatsapp-permission.service';
 import { ExportContactsUseCase } from './application/use-cases/export-contacts.use-case';
 import { ImportContactsUseCase } from './application/use-cases/import-contacts.use-case';
 
@@ -66,8 +68,24 @@ import { TeamsModule } from '../teams/teams.module';
     SavedContactGroupsUseCase,
     ExportContactsUseCase,
     ImportContactsUseCase,
+    WhatsAppPermissionUseCase,
+
+    // Domain services
+    WhatsAppPermissionService,
   ],
   // The contact use-cases are also run by automation actions (assign, tag, lead status)
-  exports: [ContactRepository, AutoCreateContactUseCase, AssignContactUseCase, AddTagUseCase, ChangeLeadStatusUseCase],
+  exports: [
+    ContactRepository,
+    // Lead finder WhatsApp permission: checked by automations and the campaign / sequence workers
+    WhatsAppPermissionService,
+    // Lead finder import records "they agreed" for the imported contacts
+    WhatsAppPermissionUseCase,
+    AutoCreateContactUseCase,
+    AssignContactUseCase,
+    AddTagUseCase,
+    RemoveTagUseCase,
+    AddNoteUseCase,
+    ChangeLeadStatusUseCase,
+  ],
 })
 export class ContactsModule {}

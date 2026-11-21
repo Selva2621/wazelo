@@ -5,91 +5,73 @@ import FeatureDetailPage, { type FeatureDetailData } from "@/components/FeatureD
 const endpoints = [
   {
     method: "POST",
-    path: "/v1/messages/send",
+    path: "/api/v1/developer/messages/send",
     request: `{
-  "to": "+91987654321",
+  "to": "+919876543210",
   "type": "text",
-  "text": {
-    "body": "Hello {{name}}, your order is confirmed!"
-  },
-  "context": {
-    "contact_id": "cnt_01HXYZ",
-    "org_id": "org_01ABCD"
-  }
+  "body": "Hi Priya, thanks for your enquiry."
 }`,
     response: `{
-  "id": "msg_01HXYZ9876",
-  "status": "queued",
-  "to": "+91987654321",
-  "timestamp": "2025-05-05T10:23:41Z",
-  "wamid": "wamid.HBgMOTE5ODc2..."
+  "success": true,
+  "data": {
+    "message": {
+      "id": "3f9c…",
+      "to": "+919876543210",
+      "type": "text",
+      "status": "QUEUED"
+    }
+  }
 }`,
   },
   {
     method: "GET",
-    path: "/v1/contacts",
-    request: `{
-  "filter": {
-    "tag": "hot_lead",
-    "score_min": 70
-  },
-  "pagination": {
-    "page": 1,
-    "limit": 25
-  }
-}`,
+    path: "/api/v1/developer/contacts?search=priya",
+    request: `// Matches name, phone or email
+// Filter by leadStatus, page with cursor`,
     response: `{
-  "contacts": [
-    {
-      "id": "cnt_01HXYZ",
-      "name": "Ananya Sharma",
-      "phone": "+91987654321",
-      "score": 91,
-      "tags": ["hot_lead"]
-    }
-  ],
-  "total": 47,
-  "page": 1
+  "success": true,
+  "data": {
+    "data": [
+      {
+        "id": "7a1e…",
+        "name": "Priya",
+        "phoneNumber": "+919876543210",
+        "leadStatus": "INTERESTED"
+      }
+    ],
+    "nextCursor": null,
+    "hasMore": false
+  }
 }`,
   },
   {
     method: "POST",
-    path: "/v1/webhooks",
+    path: "/api/v1/developer/contacts/:id/notes",
     request: `{
-  "url": "https://your-app.com/webhooks",
-  "events": [
-    "message.received",
-    "message.delivered",
-    "conversation.resolved"
-  ],
-  "secret": "whsec_xxxxxxxx"
+  "content": "Asked for a quote. Call back Monday."
 }`,
     response: `{
-  "id": "whk_01HXYZ1234",
-  "url": "https://your-app.com/webhooks",
-  "events": ["message.received"],
-  "status": "active",
-  "created_at": "2025-05-05T10:23:41Z"
+  "success": true,
+  "data": {
+    "id": "c4d2…",
+    "content": "Asked for a quote. Call back Monday.",
+    "createdAt": "…"
+  }
 }`,
   },
   {
-    method: "GET",
-    path: "/v1/analytics/summary",
+    method: "PUT",
+    path: "/api/v1/developer/deals/:id/stage",
     request: `{
-  "period": "last_30_days",
-  "metrics": [
-    "messages_sent",
-    "response_time_avg",
-    "csat_score",
-    "resolution_rate"
-  ]
+  "stageId": "b81f…"
 }`,
     response: `{
-  "period": "last_30_days",
-  "messages_sent": 48500,
-  "response_time_avg": 252,
-  "csat_score": 4.3,
-  "resolution_rate": 0.87
+  "success": true,
+  "data": {
+    "id": "9e07…",
+    "title": "Website redesign",
+    "stage": { "name": "Proposal sent" }
+  }
 }`,
   },
 ];
@@ -147,7 +129,7 @@ function ApiMockup() {
         </span>
       </div>
       <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 700, color: "#e5e2e1", marginBottom: 0 }}>
-        REST API built for developers.
+        A REST API for your leads.
       </h2>
 
       <div style={{ background: "#0e0e0e", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.5)", overflow: "hidden", marginTop: 32 }}>
@@ -181,7 +163,7 @@ function ApiMockup() {
                 }}
               >
                 <span style={methodStyle(ep.method)}>{ep.method}</span>
-                <span style={{ fontSize: 12, fontFamily: "monospace" }}>{ep.path}</span>
+                <span style={{ fontSize: 12, fontFamily: "monospace" }}>{ep.path.replace("/api/v1/developer", "")}</span>
               </div>
             );
           })}
@@ -290,32 +272,34 @@ function ApiMockup() {
 const data: FeatureDetailData = {
   slug: "developer-api",
   tag: "Developer API",
-  heroTitle: "Build anything<br /><span style=\"color:#ffb77d\">on top of Wazelo.</span>",
-  heroSubtitle: "Full REST API, webhook system, and API key management for teams that need to integrate Wazelo CRM with their own systems, automations, or data pipelines.",
+  heroTitle: "Build on<br /><span style=\"color:#ffb77d\">your Wazelo data.</span>",
+  heroSubtitle: "A REST API, webhooks and an MCP server. Connect Wazelo to your own tools or to an AI agent.",
   heroScreen: "",
-  overviewTitle: "Your data, your way.",
-  overviewDesc: "Not every workflow fits inside a SaaS interface. Wazelo CRM's Developer API gives you programmatic access to contacts, conversations, campaigns, and analytics — so your engineering team can build custom integrations, sync data to internal systems, and trigger Wazelo actions from external events. Generate API keys, subscribe to webhooks, and explore the full reference in the docs.",
+  overviewTitle: "Your leads, in your tools.",
+  overviewDesc: "Search contacts, add notes and tags, read conversations and move deals from your own code. Webhooks tell your systems the moment something changes.",
   capabilities: [
-    { icon: "code", title: "Full REST API", desc: "Read and write contacts, conversations, campaigns, messages, and analytics data via a documented REST API." },
-    { icon: "key", title: "API key management", desc: "Generate, rotate, and revoke API keys from the dashboard. Scoped keys available for read-only or write access." },
-    { icon: "webhook", title: "Webhook subscriptions", desc: "Subscribe to real-time events: new message, conversation assigned, deal stage changed, CSAT received, and more." },
-    { icon: "data_object", title: "JSON response format", desc: "Clean, consistent JSON responses. Pagination, filtering, and sorting built into every list endpoint." },
-    { icon: "book", title: "Full API reference docs", desc: "Every endpoint documented with request/response examples, authentication instructions, and rate limit info." },
-    { icon: "speed", title: "Rate limits and reliability", desc: "Generous rate limits for Pro and Enterprise plans. Retry headers and idempotency keys supported." },
+    { icon: "search", title: "Contacts and search", desc: "Find contacts by name, phone or email, and create or update them." },
+    { icon: "sticky_note_2", title: "Notes and tags", desc: "Read and add notes, and tag or untag contacts." },
+    { icon: "forum", title: "Conversations", desc: "List conversations and read their messages." },
+    { icon: "view_kanban", title: "Deals", desc: "List pipelines and deals, and move a deal to another stage." },
+    { icon: "send", title: "Send messages", desc: "Send WhatsApp text and approved templates from your code." },
+    { icon: "webhook", title: "Webhooks", desc: "Get events for messages, contacts, lead status, tags, notes, assignments, conversations and deals." },
+    { icon: "smart_toy", title: "MCP server", desc: "Let Claude and other AI agents search, update and message your contacts." },
+    { icon: "key", title: "Scoped API keys", desc: "Each key gets only the scopes you choose, and you can revoke it any time." },
   ],
   howItWorks: [
-    { step: "01", title: "Generate an API key", desc: "Go to Settings → Developer → API Keys. Click 'Create Key', name it, choose its scope, and copy the key. It only shows once." },
-    { step: "02", title: "Authenticate your requests", desc: "Pass your API key in the Authorization header: Bearer <your-api-key>. All requests require HTTPS." },
-    { step: "03", title: "Call any endpoint", desc: "Use our REST API to fetch contacts, send messages, create deals, tag contacts, or pull analytics. Full reference at /api-reference." },
-    { step: "04", title: "Subscribe to webhooks", desc: "Register a webhook URL to receive real-time POST events for any action in Wazelo — new message, resolved conversation, CSAT score received, and more." },
+    { step: "01", title: "Create an API key", desc: "Open Settings → API keys, pick its scopes and copy the key." },
+    { step: "02", title: "Call the API", desc: "Send the key as a Bearer token. The full reference is at /api-reference." },
+    { step: "03", title: "Add a webhook", desc: "Choose the events you want and we post them to your URL." },
+    { step: "04", title: "Or connect an AI agent", desc: "Add the Wazelo MCP server to Claude, Cursor or any MCP client with the same key." },
   ],
   screens: [],
   interactiveSection: <ApiMockup />,
   relatedFeatures: [
     { label: "Automation", href: "/features/automation", icon: "bolt" },
-    { label: "Analytics", href: "/features/analytics", icon: "bar_chart" },
-    { label: "Contacts CRM", href: "/features/contacts", icon: "group" },
-    { label: "Bulk Campaigns", href: "/features/campaigns", icon: "campaign" },
+    { label: "Contacts", href: "/features/contacts", icon: "group" },
+    { label: "Deals", href: "/features/deals", icon: "view_kanban" },
+    { label: "AI assistant", href: "/features/ai-assistant", icon: "auto_awesome" },
   ],
 };
 
