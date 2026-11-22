@@ -127,7 +127,6 @@ export const COMPETITORS: Competitor[] = [
     },
     chooseThem: [
       "You only send broadcasts and want a free plan to start.",
-      "You want Meta's message rates passed through with nothing added, as AiSensy states.",
     ],
     seoTitle: "Wazelo vs AiSensy: An AiSensy Alternative with Chatbot and AI Included",
     seoDescription:

@@ -66,3 +66,10 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
 
 /** One card level (Quiet Ops). */
 export const billingCard = "rounded-2xl border border-outline-variant bg-surface-container-lowest";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days until a date, rounded up (0 = today or already past) */
+export function daysUntil(iso: string, now = Date.now()): number {
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - now) / DAY_MS));
+}

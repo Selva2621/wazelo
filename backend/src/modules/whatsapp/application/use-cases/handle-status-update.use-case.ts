@@ -13,6 +13,9 @@ export interface StatusUpdatePayload {
   errorMessage?: string;
 }
 
+/** Waits before re-checking an update for a message id not saved yet (~15s in all) */
+export const UNKNOWN_MESSAGE_RETRY_MS = [1000, 2000, 4000, 8000];
+
 @Injectable()
 export class HandleStatusUpdateUseCase {
   private readonly logger = new Logger(HandleStatusUpdateUseCase.name);
@@ -23,14 +26,30 @@ export class HandleStatusUpdateUseCase {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async execute(payload: StatusUpdatePayload): Promise<void> {
+  /**
+   * WhatsApp can confirm delivery before the send worker has saved the message's
+   * WhatsApp id. An update for an unknown id is retried a few times in the
+   * background (not awaited, so other updates aren't held up) before it is dropped.
+   */
+  async execute(payload: StatusUpdatePayload, attempt = 0): Promise<void> {
     const message = await this.messageRepo.findByWhatsAppMessageId(
       payload.whatsappMessageId,
     );
     if (!message) {
-      this.logger.warn(
-        `Status update for unknown message: ${payload.whatsappMessageId}`,
-      );
+      const delay = UNKNOWN_MESSAGE_RETRY_MS[attempt];
+      if (delay === undefined) {
+        this.logger.warn(
+          `Status update for unknown message: ${payload.whatsappMessageId}`,
+        );
+        return;
+      }
+      setTimeout(() => {
+        this.execute(payload, attempt + 1).catch((err) =>
+          this.logger.error(
+            `Status update retry failed for ${payload.whatsappMessageId}: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+        );
+      }, delay).unref?.();
       return;
     }
 

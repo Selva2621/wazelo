@@ -26,6 +26,10 @@ import { SuperAdminAiController } from './interfaces/controllers/super-admin-ai.
 import { OrgModule } from '@/modules/org/org.module';
 import { FreelancerTypesUseCases } from './application/use-cases/freelancer-types.use-cases';
 import { SuperAdminFreelancerTypesController } from './interfaces/controllers/super-admin-freelancer-types.controller';
+import { SuperAdminHqController } from './interfaces/controllers/super-admin-hq.controller';
+import { CreateWazeloHqUseCase, GetWazeloHqUseCase, OpenWazeloHqUseCase } from './application/use-cases/wazelo-hq.use-cases';
+import { WazeloHqRepository } from './infrastructure/repositories/wazelo-hq.repository';
+import { HqModule } from '@/modules/hq/hq.module';
 
 // Repositories
 import { SuperAdminRepository } from './infrastructure/repositories/super-admin.repository';
@@ -171,7 +175,8 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
 
 @Module({
   // OrgModule: the freelancer type catalog
-  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule, AiModule, OrgModule],
+  // HqModule: Wazelo HQ setup status (WhatsApp number, alert templates)
+  imports: [JwtModule.register({}), ConfigModule, BillingModule, ObservabilityModule, PlatformSettingsModule, GoogleOAuthModule, AiModule, OrgModule, HqModule],
   controllers: [
     SuperAdminAuthController,
     SuperAdminAccountsController,
@@ -189,10 +194,15 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     SuperAdminSettingsController,
     SuperAdminAiController,
     SuperAdminFreelancerTypesController,
+    SuperAdminHqController,
   ],
   providers: [
     FreelancerTypesUseCases,
+    GetWazeloHqUseCase,
+    CreateWazeloHqUseCase,
+    OpenWazeloHqUseCase,
     // Repositories
+    WazeloHqRepository,
     SuperAdminRepository,
     SuperAdminSessionRepository,
     HelpTicketRepository,

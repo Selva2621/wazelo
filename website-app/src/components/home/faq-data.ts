@@ -43,6 +43,6 @@ export const FAQ = [
   },
   {
     q: "Is my data secure?",
-    a: "Wazelo runs on Meta's official API infrastructure, with role-based access, audit logs and GDPR tools for data requests.",
+    a: "Each workspace's data is kept separate, with role-based access, audit logs and GDPR tools for data requests. Official Cloud API numbers send through Meta's own API.",
   },
 ];

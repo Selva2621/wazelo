@@ -27,6 +27,8 @@ enum UserRole {
 enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  /// One-time code: a super admin opens Wazelo HQ (token column holds its SHA-256, never the code)
+  HQ_HANDOFF
 }
 
 enum InvitationStatus {
@@ -106,6 +108,8 @@ enum ContactSource {
   WEB_SCRAPE
   // Website chat widget visitor who left a phone number
   WEBSITE
+  // Wazelo HQ only: someone who signed up for Wazelo
+  SIGNUP
 }
 
 // ─────────────────────────────────────────────
@@ -518,6 +522,9 @@ model Organization {
   status        OrgStatus @default(ACTIVE)
   suspendedAt   DateTime? @map("suspended_at")
   suspendReason String?   @map("suspend_reason") @db.VarChar(500)
+  /// Wazelo HQ: the platform's own workspace (at most one). Every feature on, no billing,
+  /// can't be deleted, suspended or re-planned by a super admin
+  isInternal  Boolean   @default(false) @map("is_internal")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
@@ -618,6 +625,14 @@ model User {
   emailVerifiedAt     DateTime?  @map("email_verified_at")
   isOnline            Boolean    @default(false) @map("is_online")
   lastSeenAt          DateTime?  @map("last_seen_at")
+  /// Wazelo HQ only: the super admin this user stands for (opened from the super admin portal)
+  superAdminId        String?    @unique @map("super_admin_id") @db.Uuid
+  /// E.164 WhatsApp number given at sign-up (or onboarding, for Google sign-ups)
+  phone               String?    @db.VarChar(20)
+  /// Agreed to account updates from Wazelo on WhatsApp; null = not agreed
+  whatsappOptInAt     DateTime?  @map("whatsapp_opt_in_at")
+  /// The phone was confirmed with a WhatsApp code from Wazelo HQ; cleared when the phone changes
+  phoneVerifiedAt     DateTime?  @map("phone_verified_at")
   createdAt           DateTime   @default(now()) @map("created_at")
   updatedAt           DateTime   @updatedAt @map("updated_at")
   deletedAt           DateTime?  @map("deleted_at")
@@ -644,6 +659,8 @@ model User {
   ticketReplies           TicketReply[]            @relation("TicketReplyUser")
   scrapeRuns              ScrapeRun[]              @relation("ScrapeRunCreatedBy")
   identities              UserIdentity[]
+  phoneVerifications      PhoneVerification[]
+  loginCodes              LoginCode[]
 
   @@unique([email, deletedAt], name: "unique_email_active")
   @@index([orgId])
@@ -739,6 +756,41 @@ model Session {
 // ─────────────────────────────────────────────
 // VERIFICATION TOKEN (Email Verify + Password Reset)
 // ─────────────────────────────────────────────
+
+// One WhatsApp code sent to a user's own number (from Wazelo HQ). Only a hash of the code
+// is kept; a code dies after 10 minutes or 5 wrong tries.
+model PhoneVerification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  phone      String    @db.VarChar(20)
+  codeHash   String    @map("code_hash") @db.VarChar(64)
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @map("expires_at")
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("phone_verifications")
+}
+
+// A sign-in code sent to the user's verified WhatsApp number (from Wazelo HQ). Only a
+// hash is kept; a code is single use and dies after 10 minutes or 5 wrong tries.
+model LoginCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash") @db.VarChar(64)
+  attempts  Int       @default(0)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("login_codes")
+}
 
 model VerificationToken {
   id        String    @id @default(uuid()) @db.Uuid
@@ -4216,6 +4268,8 @@ enum PlatformAuditAction {
   PLATFORM_SETTING_CHANGED
   AI_CREDIT_PACK_CREATED
   AI_CREDIT_PACK_UPDATED
+  HQ_CREATED
+  HQ_OPENED
 }
 
 // ─────────────────────────────────────────────

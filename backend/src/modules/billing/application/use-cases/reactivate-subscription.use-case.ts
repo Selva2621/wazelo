@@ -33,73 +33,49 @@ export class ReactivateSubscriptionUseCase {
       throw new NotFoundException('No subscription found to reactivate');
     }
 
-    const allowedStatuses: SubscriptionStatus[] = [
-      SubscriptionStatus.CANCELLED,
-      SubscriptionStatus.EXPIRED,
-      SubscriptionStatus.GRACE_PERIOD,
-      SubscriptionStatus.PAST_DUE,
-    ];
-
-    if (!allowedStatuses.includes(subscription.status as SubscriptionStatus)) {
-      throw new BadRequestException(
-        `Cannot reactivate subscription with status: ${subscription.status}`,
-      );
-    }
-
-    // Reactivate with a new period
-    const now = new Date();
-    const periodEnd = new Date(now);
-    if (subscription.billingCycle === 'YEARLY') {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    } else {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-    }
-
-    const updated = await this.subscriptionRepo.transitionStatus(
-      subscription.id,
-      allowedStatuses,
-      SubscriptionStatus.ACTIVE,
-      {
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
+    // Cancelled but the paid period hasn't ended: just undo the cancel (no new period, no charge)
+    if (
+      subscription.cancelledAt &&
+      (subscription.status === SubscriptionStatus.ACTIVE || subscription.status === SubscriptionStatus.TRIAL)
+    ) {
+      const kept = await this.subscriptionRepo.transitionStatus(subscription.id, subscription.status, subscription.status, {
         cancelledAt: null,
         cancelReason: null,
-        graceEndsAt: null,
-      },
-    );
-
-    if (!updated) {
-      throw new BadRequestException('Failed to reactivate — concurrent modification');
+      });
+      if (!kept) throw new BadRequestException('Failed to reactivate — concurrent modification');
+      await this.subscriptionRepo.recordEvent({
+        orgId,
+        subscriptionId: subscription.id,
+        previousStatus: subscription.status,
+        newStatus: subscription.status,
+        triggeredById: userId,
+        reason: 'Cancellation undone before the period ended',
+        metadata: { type: 'cancel_undone' },
+      });
+      this.eventEmitter.emit(EVENT_NAMES.SUBSCRIPTION_REACTIVATED, { subscriptionId: subscription.id, orgId, userId });
+      await this.auditService.log({
+        orgId,
+        userId,
+        action: AuditAction.SUBSCRIPTION_REACTIVATED,
+        targetType: 'Subscription',
+        targetId: subscription.id,
+        metadata: { previousStatus: subscription.status, undoCancel: true },
+        ipAddress,
+        userAgent,
+      });
+      return { subscription: kept };
     }
 
-    await this.subscriptionRepo.recordEvent({
-      orgId,
-      subscriptionId: subscription.id,
-      previousStatus: subscription.status as SubscriptionStatus,
-      newStatus: SubscriptionStatus.ACTIVE,
-      triggeredById: userId,
-      reason: 'Subscription reactivated',
-    });
-
-    this.eventEmitter.emit(EVENT_NAMES.SUBSCRIPTION_REACTIVATED, {
-      subscriptionId: subscription.id,
-      orgId,
-      userId,
-    });
-
-    await this.auditService.log({
-      orgId,
-      userId,
-      action: AuditAction.SUBSCRIPTION_REACTIVATED,
-      targetType: 'Subscription',
-      targetId: subscription.id,
-      metadata: { previousStatus: subscription.status },
-      ipAddress,
-      userAgent,
-    });
-
-    this.logger.log(`Subscription ${subscription.id} reactivated by user ${userId}`);
-
-    return { subscription: updated };
+    // Anything else (unpaid GRACE_PERIOD / PAST_DUE, or a plan that has ended) comes back
+    // only by paying — reactivating never hands out a free period
+    if (
+      subscription.status === SubscriptionStatus.GRACE_PERIOD ||
+      subscription.status === SubscriptionStatus.PAST_DUE
+    ) {
+      throw new BadRequestException('Your plan is unpaid. Pay to renew from Billing.');
+    }
+    throw new BadRequestException(
+      `Cannot reactivate subscription with status: ${subscription.status}. Pay to renew from Billing.`,
+    );
   }
 }

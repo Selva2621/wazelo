@@ -9,6 +9,16 @@ export const loginSchema = z.object({
   rememberMe: z.boolean(),
 });
 
+/** A WhatsApp number as typed ("+91 98765 43210"); the server checks it properly */
+export const whatsappNumberSchema = z
+  .string()
+  .trim()
+  .min(1, "WhatsApp number is required")
+  .max(30, "That number is too long")
+  .refine((v) => /^\+?[\d\s()-]+$/.test(v) && v.replace(/\D/g, "").length >= 8 && v.replace(/\D/g, "").length <= 15, {
+    message: "Enter a valid WhatsApp number, with the country code",
+  });
+
 export const registerSchema = z.object({
   firstName: z
     .string()
@@ -34,6 +44,8 @@ export const registerSchema = z.object({
     .string()
     .min(1, "Organization name is required")
     .max(255, "Organization name must be 255 characters or less"),
+  phone: whatsappNumberSchema,
+  whatsappOptIn: z.boolean(),
 });
 
 export const forgotPasswordSchema = z.object({

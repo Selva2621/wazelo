@@ -177,14 +177,14 @@ export default function DocsPage() {
               <H3>2. Set up your organisation</H3>
               <P>After signup, you'll be prompted to name your organisation and invite team members. You can skip invitations and do this later from Settings → Team.</P>
               <H3>3. Connect WhatsApp</H3>
-              <P>Go to <B>Settings → WhatsApp</B> and follow the guided flow to connect your WhatsApp Business API number via Meta. See the <a href="#whatsapp-setup" className={link}>WhatsApp Setup</a> section for full details.</P>
-              <Callout icon="info">You need a WhatsApp Business API account (via Meta Business Manager) to use Wazelo. Personal WhatsApp numbers are not supported.</Callout>
+              <P>Go to <B>Settings → WhatsApp</B> and connect a number: scan a QR code with WhatsApp on your phone, or connect an official WhatsApp Cloud API number through Meta. See the <a href="#whatsapp-setup" className={link}>WhatsApp Setup</a> section for full details.</P>
+              <Callout icon="info">A QR-linked number works with your existing WhatsApp or WhatsApp Business app. An official Cloud API number needs a Meta Business account, and has no ban risk.</Callout>
             </DocSection>
 
             {/* ── WhatsApp Setup ── */}
             <DocSection id="whatsapp-setup" title="WhatsApp Setup">
-              <P>Wazelo uses the official Meta WhatsApp Business API. You'll need a Meta Business Manager account and a verified phone number.</P>
-              <H3>Prerequisites</H3>
+              <P>There are two ways to connect. <B>QR code:</B> in WhatsApp on your phone go to Settings → Linked Devices → Link a Device and scan the QR code in Wazelo. <B>Official Cloud API number:</B> connect a number through Meta; the steps below are for this option.</P>
+              <H3>Prerequisites (official Cloud API number)</H3>
               <Ul>
                 <Li>A Facebook Business Manager account (business.facebook.com)</Li>
                 <Li>A phone number not previously registered on WhatsApp (or one that's been fully deleted)</Li>
@@ -349,7 +349,9 @@ export default function DocsPage() {
               <H3>Upgrading or downgrading</H3>
               <P>Upgrades take effect immediately and are prorated. Downgrades apply at the end of the current billing period. Manage your plan from <B>Settings → Billing</B>.</P>
               <H3>Cancellation</H3>
-              <P>Cancel anytime from Settings → Billing. Your account remains active until the end of the current billing period. No refunds are issued for partial months.</P>
+              <P>Cancel anytime from Settings → Billing. Your account remains active until the end of the current billing period, and you can reactivate before then. Payments already made are not refunded; an extra or duplicate payment adds another prepaid period. A payment that was taken but not added to your plan is fixed by our support team, or refunded if it can't be added.</P>
+              <H3>Renewing</H3>
+              <P>Plans are prepaid and never charged automatically. Wazelo reminds you 3 days and 1 day before your plan ends (in the app, by email and on WhatsApp). Renew with <B>Renew now</B> in Settings → Billing; paying early adds the new period after the current one, so you don't lose days, and you can pay several periods ahead. If the period ends unpaid, your plan pauses that day and your data is kept: pay to continue straight away.</P>
             </DocSection>
 
           </main>

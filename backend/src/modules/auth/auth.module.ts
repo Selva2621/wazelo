@@ -26,6 +26,7 @@ import {
   LogoutUseCase,
   SessionManagementUseCase,
   ChangePasswordUseCase,
+  ExchangeHqHandoffUseCase,
 } from './application/use-cases';
 import {
   GetAuthProvidersUseCase,
@@ -45,6 +46,8 @@ import { UsersModule } from '../users/users.module';
 import { AuditModule } from '../audit/audit.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { GoogleOAuthModule } from '@/infrastructure/external/google/google-oauth.module';
+import { WhatsappLoginUseCase } from './application/use-cases/whatsapp-login.use-case';
+import { LoginCodeRepository } from './infrastructure/repositories/login-code.repository';
 
 @Module({
   imports: [
@@ -84,6 +87,9 @@ import { GoogleOAuthModule } from '@/infrastructure/external/google/google-oauth
     GetAuthProvidersUseCase,
     StartGoogleAuthUseCase,
     CompleteGoogleAuthUseCase,
+    ExchangeHqHandoffUseCase,
+    WhatsappLoginUseCase,
+    LoginCodeRepository,
 
     // Guard
     JwtAuthGuard,

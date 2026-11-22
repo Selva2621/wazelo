@@ -29,7 +29,7 @@ const isEmbeddingProvider = (p: string | undefined): p is EmbeddingProvider =>
 /**
  * Turns text into meaning vectors for knowledge search ("cost" finds the
  * "pricing" page). Uses EMBEDDINGS_PROVIDER / EMBEDDINGS_API_KEY / EMBEDDINGS_MODEL,
- * or reuses the super admin's AI key when that provider is OpenAI or Gemini.
+ * or reuses the super admin's AI key when that provider is OpenAI, OpenRouter or Gemini.
  * Without either, `embed` returns null and search stays keyword-only.
  */
 @Injectable()

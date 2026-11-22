@@ -9,6 +9,7 @@ import {
   SubscriptionUpgradedEvent,
   SubscriptionCancelledEvent,
   SubscriptionExpiredEvent,
+  SubscriptionRenewalDueEvent,
   SubscriptionGracePeriodEvent,
   PaymentSucceededEvent,
   PaymentFailedEvent,
@@ -123,10 +124,41 @@ export class BillingEventsHandler {
         adminIds,
         'SUBSCRIPTION_EXPIRING',
         'HIGH',
-        'Subscription Expired',
-        'Your subscription has expired. Reactivate now to restore access to all features.',
+        'Your plan has ended',
+        event.paidPeriodEnded
+          ? 'Your plan has ended — renew in Billing to continue. Your data is kept.'
+          : 'Your plan has ended — choose a plan in Billing to continue. Your data is kept.',
         { subscriptionId: event.subscriptionId },
+        `sub-expired:${event.subscriptionId}`,
       );
+    }
+  }
+
+  /** Paid plans are not auto-renewed: tell the admins (in-app + email) to pay before the end */
+  @OnEvent(EVENT_NAMES.SUBSCRIPTION_RENEWAL_DUE)
+  async onRenewalDue(event: SubscriptionRenewalDueEvent) {
+    const adminIds = await this.getOrgAdminIds(event.orgId);
+    if (adminIds.length === 0) return;
+    const ends = new Date(event.periodEnd).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+    const when = event.daysLeft === 1 ? 'tomorrow' : `in ${event.daysLeft} days`;
+    try {
+      await this.notificationService.dispatchToOrg(
+        event.orgId,
+        adminIds,
+        'SUBSCRIPTION_EXPIRING',
+        'HIGH',
+        `Your plan renews ${when}`,
+        `Your ${event.planName} plan ends on ${ends} and is not charged automatically. Renew now in Billing to keep it running.`,
+        { subscriptionId: event.subscriptionId, periodEnd: event.periodEnd, daysLeft: event.daysLeft },
+        `renewal-due:${event.reminderKey}`,
+      );
+    } catch (error) {
+      this.logger.error(`Renewal reminder notification failed for org ${event.orgId}: ${error}`);
     }
   }
 

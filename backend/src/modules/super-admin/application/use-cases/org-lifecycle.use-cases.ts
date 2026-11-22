@@ -31,6 +31,10 @@ export class AdminUpdateOrgUseCase {
     if (input.timezone !== undefined && !isValidTimeZone(input.timezone)) {
       throw new BadRequestException('Unknown time zone — use an IANA name such as Asia/Kolkata');
     }
+    // The website chat widget is served at /widgets/<slug>/embed.js — HQ's slug must not move
+    if (org.isInternal && input.slug !== undefined && input.slug !== org.slug) {
+      throw new BadRequestException("Wazelo HQ's slug can't be changed — the website chat widget depends on it");
+    }
     if (input.slug !== undefined && input.slug !== org.slug && (await this.platformRepo.slugTaken(input.slug, orgId))) {
       throw new ConflictException('That slug is already used by another organization');
     }

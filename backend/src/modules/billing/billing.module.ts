@@ -46,6 +46,8 @@ import { CreateCheckoutOrderUseCase, ResolveCheckoutOrderUseCase } from './appli
 import { ActivateTrialPaymentUseCase } from './application/use-cases/activate-trial-payment.use-case';
 import { ValidateCouponUseCase } from './application/use-cases/validate-coupon.use-case';
 import { AlignTrialPlanUseCase } from './application/use-cases/align-trial-plan.use-case';
+import { RenewSubscriptionPaymentUseCase } from './application/use-cases/renew-subscription-payment.use-case';
+import { SendRenewalRemindersUseCase } from './application/use-cases/send-renewal-reminders.use-case';
 import { CouponCheckoutService } from './application/services/coupon-checkout.service';
 
 // Guards
@@ -111,6 +113,8 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     ActivateTrialPaymentUseCase,
     ValidateCouponUseCase,
     AlignTrialPlanUseCase,
+    RenewSubscriptionPaymentUseCase,
+    SendRenewalRemindersUseCase,
 
     // Guards
     UsageLimitGuard,
@@ -153,6 +157,8 @@ import { RazorpayWebhookController } from './interfaces/controllers/razorpay-web
     CreditRepository,
     CouponRepository,
     ApplyRenewalCreditUseCase,
+    // Daily "your plan ends in N days" reminders (renewal reminder worker)
+    SendRenewalRemindersUseCase,
   ],
 })
 export class BillingModule {}

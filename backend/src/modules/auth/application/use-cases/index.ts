@@ -8,3 +8,4 @@ export { RefreshTokenUseCase } from './refresh-token.use-case';
 export { LogoutUseCase } from './logout.use-case';
 export { SessionManagementUseCase } from './session-management.use-case';
 export { ChangePasswordUseCase } from './change-password.use-case';
+export { ExchangeHqHandoffUseCase } from './hq-handoff.use-case';

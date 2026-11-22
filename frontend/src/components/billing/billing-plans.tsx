@@ -5,31 +5,24 @@ import { Check, Minus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useCreateOrder, usePlans, useSubscribeToPlan, useVerifyPayment } from "@/hooks/use-billing";
+import { usePlans, useSubscribeToPlan } from "@/hooks/use-billing";
+import { checkoutErrorMessage, usePlanCheckout } from "@/hooks/use-plan-checkout";
 import { useAuthStore } from "@/stores/auth-store";
-import { loadRazorpayScript, openRazorpayCheckout, RAZORPAY_THEME_COLOR, type RazorpayResponse } from "@/lib/razorpay";
 import { formatPlanPrice, isTrialPlan, type BillingCycle, type Plan, type Subscription } from "@/lib/types/billing";
 import { cn } from "@/lib/utils";
 import { billingCard, cycleSuffix, formatLimit } from "./billing-format";
 
-/** Statuses where a plan can be bought straight away (others reactivate first). */
-const CAN_BUY = new Set(["TRIAL", "ACTIVE"]);
-
-function errorMessage(err: unknown, fallback: string): string {
-  const e = err as { response?: { data?: { message?: unknown } }; message?: string };
-  const msg = e?.response?.data?.message ?? e?.message;
-  return typeof msg === "string" && msg ? msg : fallback;
-}
+/** Statuses where a plan can be bought straight away. Unpaid plans (grace / past due) pay to come back. */
+const CAN_BUY = new Set(["TRIAL", "ACTIVE", "GRACE_PERIOD", "PAST_DUE"]);
+const UNPAID = new Set(["GRACE_PERIOD", "PAST_DUE"]);
 
 export function BillingPlans({ subscription }: { subscription: Subscription | null }) {
   const user = useAuthStore((s) => s.user);
   const { data: plans, isLoading } = usePlans();
   const subscribe = useSubscribeToPlan();
-  const createOrder = useCreateOrder();
-  const verifyPayment = useVerifyPayment();
+  const checkout = usePlanCheckout();
+  const { pendingId, setPendingId, error, setError } = checkout;
   const [cycle, setCycle] = useState<BillingCycle>(subscription?.plan.billingCycle ?? "MONTHLY");
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const forOrg = useMemo(() => {
     const freelancer = user?.orgType === "FREELANCER";
@@ -53,58 +46,18 @@ export function BillingPlans({ subscription }: { subscription: Subscription | nu
     return best;
   }, [forOrg]);
 
-  const busy = subscribe.isPending || createOrder.isPending || verifyPayment.isPending;
+  const busy = subscribe.isPending || checkout.busy;
   const canBuy = !subscription || CAN_BUY.has(subscription.status);
+  const unpaid = !!subscription && UNPAID.has(subscription.status);
   const currentPrice = subscription?.plan.priceInCents ?? 0;
+  // Plans aren't charged automatically: the current paid plan is renewed by paying for it again
+  const isCurrentPlan = (plan: Plan) => subscription?.plan.id === plan.id;
+  const canRenew = (plan: Plan) =>
+    isCurrentPlan(plan) &&
+    plan.priceInCents > 0 &&
+    (subscription?.status === "ACTIVE" || unpaid);
 
-  const pay = async (plan: Plan) => {
-    setError(null);
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!key) {
-      setError("Payments aren't set up yet. Contact support.");
-      return;
-    }
-    setPendingId(plan.id);
-    if (!(await loadRazorpayScript())) {
-      setError("Couldn't load the payment gateway. Check your connection.");
-      setPendingId(null);
-      return;
-    }
-    createOrder.mutate(plan.id, {
-      onSuccess: (order) => {
-        openRazorpayCheckout({
-          key,
-          amount: order.amount,
-          currency: order.currency,
-          name: "Wazelo CRM",
-          description: `Subscribe to ${order.planName}`,
-          order_id: order.orderId,
-          prefill: { name: user ? `${user.firstName} ${user.lastName}` : "", email: user?.email ?? "" },
-          theme: { color: RAZORPAY_THEME_COLOR },
-          handler: (res: RazorpayResponse) => {
-            verifyPayment.mutate(
-              {
-                planId: plan.id,
-                orderId: res.razorpay_order_id,
-                razorpayPaymentId: res.razorpay_payment_id,
-                signature: res.razorpay_signature,
-                idempotencyKey: `billing-${user?.orgId ?? ""}-${plan.id}-${Date.now()}`,
-              },
-              {
-                onError: (err) => setError(errorMessage(err, "Payment received but not confirmed yet. Refresh in a minute.")),
-                onSettled: () => setPendingId(null),
-              },
-            );
-          },
-          modal: { ondismiss: () => setPendingId(null) },
-        });
-      },
-      onError: (err) => {
-        setError(errorMessage(err, "Couldn't start the payment."));
-        setPendingId(null);
-      },
-    });
-  };
+  const pay = (plan: Plan) => checkout.pay(plan.id, isCurrentPlan(plan) ? "Renew" : "Subscribe to");
 
   const select = (plan: Plan) => {
     if (!canBuy) return;
@@ -116,7 +69,7 @@ export function BillingPlans({ subscription }: { subscription: Subscription | nu
     if (!subscription) {
       setPendingId(plan.id);
       subscribe.mutate(plan.id, {
-        onError: (err) => setError(errorMessage(err, "Couldn't start the plan.")),
+        onError: (err) => setError(checkoutErrorMessage(err, "Couldn't start the plan.")),
         onSettled: () => setPendingId(null),
       });
     }
@@ -124,7 +77,9 @@ export function BillingPlans({ subscription }: { subscription: Subscription | nu
 
   const actionLabel = (plan: Plan): string => {
     if (!subscription) return "Choose plan";
+    if (isCurrentPlan(plan)) return unpaid ? "Pay now" : "Renew now";
     if (subscription.status === "TRIAL") return "Pay and upgrade";
+    if (unpaid) return "Choose plan";
     return plan.priceInCents > currentPrice ? "Upgrade" : "Downgrade";
   };
 
@@ -149,9 +104,7 @@ export function BillingPlans({ subscription }: { subscription: Subscription | nu
           </button>
         </Alert>
       )}
-      {subscription && !canBuy && (
-        <Alert variant="warning">Reactivate your plan from the Overview tab before changing it.</Alert>
-      )}
+      {unpaid && <Alert variant="warning">Your plan is unpaid. Pay for a plan to keep using Wazelo.</Alert>}
 
       {isLoading ? (
         <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" aria-hidden>
@@ -176,7 +129,7 @@ export function BillingPlans({ subscription }: { subscription: Subscription | nu
                   isCurrent={isCurrent}
                   popular={popular}
                   action={
-                    isCurrent ? (
+                    isCurrent && !canRenew(plan) ? (
                       <Button className="w-full" size="sm" variant="secondary" disabled>
                         Current plan
                       </Button>

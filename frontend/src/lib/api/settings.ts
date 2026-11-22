@@ -42,6 +42,7 @@ export const settingsApi = {
         description: d.description ?? "",
         website: d.website ?? "",
         orgType: d.orgType,
+        isInternal: d.isInternal === true,
         freelancerTypes: d.freelancerTypes,
         freelancerService: d.freelancerService,
         freelancerServiceLabel: d.freelancerServiceLabel ?? null,

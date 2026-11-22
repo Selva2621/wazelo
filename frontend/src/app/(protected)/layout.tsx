@@ -10,6 +10,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
 import { PushPromptBanner } from "@/components/notifications/push-prompt-banner";
+import { RenewalBanner } from "@/components/billing/renewal-banner";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { useSubscription } from "@/hooks/use-billing";
 import { useOrgSettings } from "@/hooks/use-settings";
@@ -109,8 +110,10 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, orgLoading, orgSettings, pathname, router]);
 
-  // Subscription gate: redirect to onboarding if no active/trial subscription.
-  // Skip on query error (e.g. backend down) — don't penalise user for infra issues.
+  // Subscription gate: no active/trial plan. A workspace whose plan or trial ended
+  // already finished onboarding, so it goes to Billing to renew; one that never had a
+  // plan goes to onboarding. Skip on query error (e.g. backend down) — don't penalise
+  // the user for infra issues.
   useEffect(() => {
     if (!isAuthenticated || subLoading || subError || subscriptionData === undefined) return;
     const exempt = SUBSCRIPTION_EXEMPT.some((p) => pathname.startsWith(p));
@@ -122,7 +125,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
       status === "GRACE_PERIOD" ||
       status === "PAST_DUE";
     if (!hasActive) {
-      router.push("/onboarding");
+      router.push(subscriptionData?.hadPlan ? "/settings/billing" : "/onboarding");
     }
   }, [isAuthenticated, subLoading, subError, subscriptionData, pathname, router]);
 
@@ -192,6 +195,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell>
       <AnnouncementBanner />
+      <RenewalBanner />
       <PushPromptBanner />
       {children}
       <InstallPrompt />

@@ -6,6 +6,7 @@ import { SubscriptionRepository } from '../../infrastructure/repositories/subscr
 import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
 import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
 import { UsageMetricType } from '@prisma/client';
+import { readPrepaid } from '../../domain/services/prepaid-period';
 
 @Injectable()
 export class GetSubscriptionUseCase {
@@ -18,7 +19,8 @@ export class GetSubscriptionUseCase {
   async execute(orgId: string) {
     const subscription = await this.subscriptionRepo.findByOrgWithPlan(orgId);
     if (!subscription) {
-      return { subscription: null, usage: null };
+      // hadPlan: an ended plan/trial sends the user to Billing to renew, not to onboarding
+      return { subscription: null, usage: null, hadPlan: await this.subscriptionRepo.hasHadPlan(orgId) };
     }
 
     // Get current usage for all metrics
@@ -100,6 +102,8 @@ export class GetSubscriptionUseCase {
       }
     }
 
+    const prepaid = readPrepaid(subscription.metadata);
+
     return {
       subscription: {
         id: subscription.id,
@@ -132,6 +136,10 @@ export class GetSubscriptionUseCase {
         scheduledPlanId: subscription.scheduledPlanId,
         scheduledChangeAt: subscription.scheduledChangeAt,
         scheduledPlan,
+        // "Renew now" paid before the end: future periods paid (the first starts at currentPeriodEnd)
+        nextPeriodPaid: !!prepaid,
+        prepaidPeriods: prepaid?.periods ?? 0,
+        paidUntil: prepaid?.paidUntil ?? null,
       },
       usage,
     };

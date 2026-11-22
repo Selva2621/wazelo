@@ -45,6 +45,20 @@ export class SubscriptionRepository {
     });
   }
 
+  /**
+   * Locks the subscription row for the rest of `tx` (SELECT … FOR UPDATE) and reads it,
+   * so a read-modify-write (e.g. metadata.prepaid) can't lose a concurrent update.
+   */
+  async lockForUpdate(id: string, tx: Prisma.TransactionClient): Promise<Subscription | null> {
+    await tx.$queryRaw`SELECT id FROM subscriptions WHERE id = ${id}::uuid FOR UPDATE`;
+    return tx.subscription.findUnique({ where: { id } });
+  }
+
+  /** Runs `work` in a transaction holding the subscription row lock (row passed in, null if gone) */
+  async withLock<T>(id: string, work: (sub: Subscription | null, tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx) => work(await this.lockForUpdate(id, tx), tx));
+  }
+
   async findById(id: string): Promise<Subscription | null> {
     return this.prisma.subscription.findUnique({ where: { id }, include: { plan: true } });
   }
@@ -82,6 +96,11 @@ export class SubscriptionRepository {
   /** The org's newest subscription in any status. */
   async findLatestByOrg(orgId: string): Promise<Subscription | null> {
     return this.prisma.subscription.findFirst({ where: { orgId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  /** The org ever had a plan or trial (so it finished onboarding), even if it has ended */
+  async hasHadPlan(orgId: string): Promise<boolean> {
+    return (await this.prisma.subscription.count({ where: { orgId } })) > 0;
   }
 
   async findByOrgWithPlan(orgId: string): Promise<(Subscription & { plan: any }) | null> {
@@ -168,14 +187,46 @@ export class SubscriptionRepository {
     });
   }
 
+  /**
+   * Periods that have run out. PAST_DUE (left over from the retired auto-charge retries)
+   * is included so those subscriptions end too instead of staying stuck.
+   */
   async findSubscriptionsDueForRenewal(beforeTime: Date): Promise<Subscription[]> {
     return this.prisma.subscription.findMany({
       where: {
-        status: SubscriptionStatus.ACTIVE,
+        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE] },
         currentPeriodEnd: { lte: beforeTime },
       },
       include: { plan: true },
     });
+  }
+
+  /** ACTIVE paid plans, not cancelled, whose period ends in [from, to) — renewal reminders */
+  async findPaidRenewalsEndingBetween(from: Date, to: Date) {
+    return this.prisma.subscription.findMany({
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        priceInCents: { gt: 0 },
+        cancelledAt: null,
+        currentPeriodEnd: { gte: from, lt: to },
+      },
+      include: { plan: { select: { name: true } } },
+    });
+  }
+
+  /** Has a subscription event with this metadata `type` + `key` been recorded? (once-only markers) */
+  async hasEventWithKey(subscriptionId: string, type: string, key: string): Promise<boolean> {
+    const found = await this.prisma.subscriptionEvent.findFirst({
+      where: {
+        subscriptionId,
+        AND: [
+          { metadata: { path: ['type'], equals: type } },
+          { metadata: { path: ['key'], equals: key } },
+        ],
+      },
+      select: { id: true },
+    });
+    return !!found;
   }
 
   async findExpiredTrials(beforeTime: Date): Promise<Subscription[]> {

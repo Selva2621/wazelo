@@ -36,6 +36,10 @@ export interface RegisterRequest {
   email: string;
   password: string;
   organizationName: string;
+  /** WhatsApp number */
+  phone: string;
+  /** Ticked "Send me account updates on WhatsApp" */
+  whatsappOptIn: boolean;
 }
 
 export interface LoginRequest {

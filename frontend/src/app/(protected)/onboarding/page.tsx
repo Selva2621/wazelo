@@ -15,6 +15,7 @@ import { isTrialPlan, type Plan, type BillingCycle, type SubscriptionPlanSummary
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
+import { WhatsappVerifyCard } from "@/components/onboarding/whatsapp-verify-card";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -677,6 +678,8 @@ export default function OnboardingPage() {
         </div>
 
         <Steps current={step} labels={["Welcome", "Choose Plan", "Confirm"]} />
+
+        <WhatsappVerifyCard />
 
         <div className="bg-surface-container-low rounded-2xl shadow-xl border border-outline-variant p-8 max-lg:p-5">
           {(subLoading || plansLoading) ? (

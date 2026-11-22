@@ -13,6 +13,7 @@ import { superAdminApi } from "@/lib/api/super-admin";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/super-admin/global-search";
 import { NotificationBell } from "@/components/super-admin/notification-bell";
+import { HqSidebarButton } from "@/components/super-admin/hq-sidebar-button";
 
 const navItems = [
   { href: "/super-admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -125,6 +126,8 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
+
+        <HqSidebarButton focusRing={focusRing} />
 
         <nav aria-label="Super admin" className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
           {navItems.map(({ href, icon: Icon, label }) => {

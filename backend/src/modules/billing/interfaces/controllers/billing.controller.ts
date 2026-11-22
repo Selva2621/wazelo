@@ -11,7 +11,9 @@ import {
   HttpStatus,
   BadRequestException,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
+import { HqProtected, NotWazeloHqGuard } from '@/modules/org/interfaces/guards/not-wazelo-hq.guard';
 import { SubscriptionStatus, PaymentStatus, InvoiceStatus } from '@prisma/client';
 import { Request } from 'express';
 import { Roles } from '@/common/decorators/roles.decorator';
@@ -26,6 +28,7 @@ import {
   ResolveCheckoutOrderUseCase,
 } from '../../application/use-cases/checkout-order.use-cases';
 import { ActivateTrialPaymentUseCase } from '../../application/use-cases/activate-trial-payment.use-case';
+import { RenewSubscriptionPaymentUseCase } from '../../application/use-cases/renew-subscription-payment.use-case';
 import { ValidateCouponUseCase } from '../../application/use-cases/validate-coupon.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { SubscribeUseCase } from '../../application/use-cases/subscribe.use-case';
@@ -38,8 +41,6 @@ import { RazorpayPaymentService } from '../../domain/services/razorpay-payment.s
 import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
 import { SubscriptionRepository } from '../../infrastructure/repositories/subscription.repository';
 import { PaymentRepository } from '../../infrastructure/repositories/payment.repository';
-import { UsageRepository } from '../../infrastructure/repositories/usage.repository';
-import { UsageMetricType } from '@prisma/client';
 
 @Controller('billing')
 export class BillingController {
@@ -56,11 +57,11 @@ export class BillingController {
     private readonly planRepo: PlanRepository,
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly paymentRepo: PaymentRepository,
-    private readonly usageRepo: UsageRepository,
     private readonly createCheckoutOrderUseCase: CreateCheckoutOrderUseCase,
     private readonly resolveCheckoutOrderUseCase: ResolveCheckoutOrderUseCase,
     private readonly activateTrialPaymentUseCase: ActivateTrialPaymentUseCase,
     private readonly validateCouponUseCase: ValidateCouponUseCase,
+    private readonly renewSubscriptionPaymentUseCase: RenewSubscriptionPaymentUseCase,
   ) {}
 
   // Plans are platform-wide: create/update live only under /super-admin/plans.
@@ -84,6 +85,8 @@ export class BillingController {
   @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
   @Permissions(PERMISSIONS.BILLING_READ)
   @HttpCode(HttpStatus.OK)
+  @HqProtected('buy a plan for', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async createOrder(
     @Body() dto: CreateOrderDto,
     @CurrentUser() user: JwtPayload,
@@ -106,12 +109,14 @@ export class BillingController {
   /**
    * Step 2: Verify the Razorpay payment signature after checkout, then subscribe.
    * Frontend calls this after the Razorpay widget fires onSuccess.
-   * Handles both: new subscription and TRIAL → ACTIVE upgrade.
+   * Handles: renewal (same plan / unpaid plan), plan change, TRIAL → ACTIVE, new subscription.
    */
   @Post('verify-payment')
   @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
   @Permissions(PERMISSIONS.BILLING_READ)
   @HttpCode(HttpStatus.CREATED)
+  @HqProtected('buy a plan for', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async verifyPayment(
     @Body() dto: VerifyPaymentDto,
     @CurrentUser() user: JwtPayload,
@@ -130,85 +135,27 @@ export class BillingController {
     // price; it also carries any coupon priced into it
     const { coupon } = await this.resolveCheckoutOrderUseCase.execute(user.orgId, dto.orderId, dto.planId);
 
-    // Check if the org already has an existing subscription
+    // Check if the org already has a live subscription
     const existing = await this.subscriptionRepo.findActiveByOrg(user.orgId);
 
-    // If an ACTIVE subscription exists, handle renewal or plan change
+    // Paying to renew: the same plan while ACTIVE (extends, no lost days), or any plan
+    // while unpaid (GRACE_PERIOD / PAST_DUE → ACTIVE). EXPIRED / CANCELLED are not live,
+    // so they fall through to a fresh subscription below.
+    if (existing && RenewSubscriptionPaymentUseCase.handles(existing, dto.planId)) {
+      if (coupon) throw new BadRequestException('Coupons apply to a first payment only');
+      return this.renewSubscriptionPaymentUseCase.execute(user.orgId, user.sub, existing, {
+        planId: dto.planId,
+        orderId: dto.orderId,
+        razorpayPaymentId: dto.razorpayPaymentId,
+        idempotencyKey: dto.idempotencyKey,
+      });
+    }
+
+    // If an ACTIVE subscription exists on another plan, handle the plan change
     if (existing && existing.status === SubscriptionStatus.ACTIVE) {
       const plan = await this.planRepo.findById(dto.planId);
       if (!plan) throw new NotFoundException('Plan not found');
       if (coupon) throw new BadRequestException('Coupons apply to a first payment only');
-
-      if (existing.planId === dto.planId) {
-        // Same plan — treat as manual renewal: extend billing period by one cycle
-        const now = new Date();
-        const newPeriodStart = now;
-        const newPeriodEnd = new Date(now);
-        if (plan.billingCycle === 'YEARLY') {
-          newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
-        } else {
-          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
-        }
-
-        const renewed = await this.subscriptionRepo.transitionStatus(
-          existing.id,
-          SubscriptionStatus.ACTIVE,
-          SubscriptionStatus.ACTIVE,
-          { currentPeriodStart: newPeriodStart, currentPeriodEnd: newPeriodEnd },
-        );
-
-        await this.subscriptionRepo.recordEvent({
-          orgId: user.orgId,
-          subscriptionId: existing.id,
-          previousStatus: SubscriptionStatus.ACTIVE,
-          newStatus: SubscriptionStatus.ACTIVE,
-          triggeredById: user.sub,
-          metadata: { type: 'renewal', razorpayPaymentId: dto.razorpayPaymentId, orderId: dto.orderId },
-        });
-
-        const payment = await this.paymentRepo.createPayment({
-          orgId: user.orgId,
-          subscriptionId: existing.id,
-          amountInCents: plan.priceInCents,
-          currency: plan.currency,
-          externalId: dto.razorpayPaymentId,
-          paymentMethod: 'razorpay',
-          idempotencyKey: dto.idempotencyKey || `rzp-renew-${dto.razorpayPaymentId}`,
-        });
-        await this.paymentRepo.transitionPaymentStatus(payment.id, PaymentStatus.PENDING, PaymentStatus.SUCCEEDED);
-
-        const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
-        const invoice = await this.paymentRepo.createInvoice({
-          orgId: user.orgId,
-          subscriptionId: existing.id,
-          paymentId: payment.id,
-          invoiceNumber,
-          amountInCents: plan.priceInCents,
-          currency: plan.currency,
-          periodStart: newPeriodStart,
-          periodEnd: newPeriodEnd,
-          lineItems: [{ description: `${plan.name} — ${plan.billingCycle} (Renewal)`, amount: plan.priceInCents, currency: plan.currency }],
-          dueDate: now,
-        });
-        await this.paymentRepo.transitionInvoiceStatus(invoice.id, InvoiceStatus.DRAFT, InvoiceStatus.PAID);
-
-        await this.usageRepo.resetUsageForOrg(
-          user.orgId,
-          newPeriodStart,
-          newPeriodEnd,
-          {
-            [UsageMetricType.MESSAGES_SENT]: plan.maxMessagesPerMonth,
-            [UsageMetricType.ACTIVE_USERS]: plan.maxUsers,
-            [UsageMetricType.WHATSAPP_SESSIONS]: plan.maxWhatsappSessions,
-            [UsageMetricType.CAMPAIGN_EXECUTIONS]: plan.maxCampaignsPerMonth,
-            [UsageMetricType.API_CALLS]: plan.maxApiCallsPerMonth,
-            [UsageMetricType.AI_CREDITS]: plan.aiCreditsPerMonth,
-            [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
-          },
-        );
-
-        return { subscription: renewed, type: 'renewal', deduplicated: false };
-      }
 
       // Different plan — upgrade or downgrade, both go through Razorpay payment
       const isUpgrade = plan.priceInCents > existing.priceInCents;
@@ -282,6 +229,8 @@ export class BillingController {
   @Roles('ADMIN')
   @Permissions(PERMISSIONS.BILLING_MANAGE)
   @HttpCode(HttpStatus.CREATED)
+  @HqProtected('buy a plan for', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async subscribe(
     @Body() dto: SubscribeDto,
     @CurrentUser() user: JwtPayload,
@@ -300,6 +249,8 @@ export class BillingController {
   @Roles('ADMIN')
   @Permissions(PERMISSIONS.BILLING_MANAGE)
   @HttpCode(HttpStatus.OK)
+  @HqProtected('change the plan of', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async changePlan(
     @Body() dto: ChangePlanDto,
     @CurrentUser() user: JwtPayload,
@@ -318,6 +269,8 @@ export class BillingController {
   @Roles('ADMIN')
   @Permissions(PERMISSIONS.BILLING_MANAGE)
   @HttpCode(HttpStatus.OK)
+  @HqProtected('cancel the subscription of', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async cancelSubscription(
     @Body() dto: CancelSubscriptionDto,
     @CurrentUser() user: JwtPayload,
@@ -336,6 +289,8 @@ export class BillingController {
   @Roles('ADMIN')
   @Permissions(PERMISSIONS.BILLING_MANAGE)
   @HttpCode(HttpStatus.OK)
+  @HqProtected('change the subscription of', 'self')
+  @UseGuards(NotWazeloHqGuard)
   async reactivateSubscription(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,

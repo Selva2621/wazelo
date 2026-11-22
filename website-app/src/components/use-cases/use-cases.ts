@@ -92,7 +92,7 @@ export const USE_CASES: UseCase[] = [
       body: "Create a brand for every client and link its lead forms to it. Leads, teams and campaign audiences stay separate per brand inside one Wazelo account.",
     },
     features: ["/features/lead-ads", "/features/campaigns", "/features/sequences", "/features/automation", "/features/analytics", "/features/ai-assistant"],
-    plan: { slugs: ["growth", "pro"], note: "Growth includes 15 WhatsApp numbers, Pro 50. Enterprise adds white-label options." },
+    plan: { slugs: ["growth", "pro"], note: "Growth includes 15 WhatsApp numbers, Pro 50, Enterprise 200." },
     guide: {
       title: "How agencies report WhatsApp lead results to clients",
       blurb: "The definitions to agree, where each number comes from, and a five-page monthly report template.",

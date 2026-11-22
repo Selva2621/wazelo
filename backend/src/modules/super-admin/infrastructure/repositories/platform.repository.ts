@@ -275,7 +275,7 @@ export class PlatformRepository {
   findOrgAnyState(orgId: string) {
     return this.prisma.organization.findUnique({
       where: { id: orgId },
-      select: { id: true, name: true, slug: true, timezone: true, status: true, deletedAt: true },
+      select: { id: true, name: true, slug: true, timezone: true, status: true, deletedAt: true, isInternal: true },
     });
   }
 

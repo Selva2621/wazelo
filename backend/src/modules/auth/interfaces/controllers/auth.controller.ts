@@ -25,6 +25,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  HqHandoffDto,
 } from '../../application/dto';
 import {
   RegisterUseCase,
@@ -37,6 +38,7 @@ import {
   LogoutUseCase,
   SessionManagementUseCase,
   ChangePasswordUseCase,
+  ExchangeHqHandoffUseCase,
 } from '../../application/use-cases';
 import {
   CompleteGoogleAuthUseCase,
@@ -45,6 +47,8 @@ import {
 } from '../../application/use-cases/google-auth.use-cases';
 import { GOOGLE_STATE_TTL_SECONDS } from '../../application/services/google-oauth-state.service';
 import { publicFrontendUrl } from '@/config/public-urls';
+import { WhatsappLoginUseCase } from '../../application/use-cases/whatsapp-login.use-case';
+import { WhatsappCodeSendDto, WhatsappCodeVerifyDto } from '../../application/dto/whatsapp-code.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -62,6 +66,8 @@ export class AuthController {
     private readonly getAuthProvidersUseCase: GetAuthProvidersUseCase,
     private readonly startGoogleAuthUseCase: StartGoogleAuthUseCase,
     private readonly completeGoogleAuthUseCase: CompleteGoogleAuthUseCase,
+    private readonly exchangeHqHandoffUseCase: ExchangeHqHandoffUseCase,
+    private readonly whatsappLoginUseCase: WhatsappLoginUseCase,
     private readonly configService: ConfigService,
   ) {}
 
@@ -180,6 +186,51 @@ export class AuthController {
     }
     // Return only accessToken + expiresIn — never expose refreshToken or rememberMe
     const { refreshToken: _, rememberMe: __, ...jsonBody } = result;
+    return jsonBody;
+  }
+
+  /**
+   * "Open Wazelo HQ" from the super admin portal: trades the one-time code for a normal
+   * session (refresh cookie). The page then calls /auth/refresh like after Google sign-in.
+   */
+  @Public()
+  @CsrfProtected()
+  @Post('hq/exchange')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  async exchangeHqHandoff(
+    @Body() dto: HqHandoffDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken } = await this.exchangeHqHandoffUseCase.execute(dto.code, this.getIp(req), this.getUa(req));
+    this.setRefreshCookie(res, refreshToken, false);
+    res.setHeader('Cache-Control', 'no-store');
+    return { ok: true };
+  }
+
+  /** "Sign in with WhatsApp code", step 1: a code to the account's verified WhatsApp number */
+  @Public()
+  @Post('whatsapp-code/send')
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  @HttpCode(HttpStatus.OK)
+  async sendWhatsappLoginCode(@Body() dto: WhatsappCodeSendDto) {
+    return this.whatsappLoginUseCase.send(dto.email);
+  }
+
+  /** Step 2: the code for a session — same response and cookie as password sign-in */
+  @Public()
+  @Post('whatsapp-code/verify')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  async verifyWhatsappLoginCode(
+    @Body() dto: WhatsappCodeVerifyDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.whatsappLoginUseCase.verify(dto.email, dto.code, dto.rememberMe ?? false, this.getIp(req), this.getUa(req));
+    this.setRefreshCookie(res, result.refreshToken, dto.rememberMe ?? false);
+    const { refreshToken: _, ...jsonBody } = result;
     return jsonBody;
   }
 

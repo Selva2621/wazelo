@@ -25,6 +25,7 @@ import { UsersController } from './interfaces/controllers/users.controller';
 
 // Dependent modules
 import { AuditModule } from '../audit/audit.module';
+import { MyWhatsappUseCase } from './application/use-cases/my-whatsapp.use-case';
 import { AuthModule } from '../auth/auth.module';
 import { BillingModule } from '../billing/billing.module';
 
@@ -36,6 +37,7 @@ import { BillingModule } from '../billing/billing.module';
   ],
   controllers: [UsersController],
   providers: [
+    MyWhatsappUseCase,
     // Repositories
     UserRepository,
     InvitationRepository,

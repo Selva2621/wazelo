@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
 import { DEFAULT_COUNTRY_CODE, browserTimezone, detectCountryCode, getCountry } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { usersApi } from "@/lib/api/users";
+import { whatsappNumberSchema } from "@/lib/validations/auth";
 
 type Mode = "TEAM" | "FREELANCER";
 
@@ -106,9 +109,28 @@ export default function OrgTypePage() {
   const [error, setError] = useState<string | null>(null);
   const updateOrgSettings = useUpdateOrgSettings();
 
-  const save = () => {
+  // Google sign-ups never typed a WhatsApp number: ask for it here (password sign-ups gave it already)
+  const myWhatsapp = useQuery({ queryKey: ["users", "me", "whatsapp"], queryFn: usersApi.getMyWhatsapp });
+  const needsPhone = myWhatsapp.isSuccess && !myWhatsapp.data.phone;
+  const [phone, setPhone] = useState("");
+  const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+  const phoneValid = whatsappNumberSchema.safeParse(phone).success;
+  const saveWhatsapp = useMutation({ mutationFn: usersApi.setMyWhatsapp });
+
+  const save = async () => {
     if (!mode) return;
     setError(null);
+    if (needsPhone) {
+      const typed = phone.trim();
+      // No "+": a national number in the picked country
+      const full = typed.startsWith("+") ? typed : `+${getCountry(country).dialCode}${typed.replace(/\D/g, "").replace(/^0+/, "")}`;
+      try {
+        await saveWhatsapp.mutateAsync({ phone: full, whatsappOptIn });
+      } catch (err: any) {
+        setError(err?.response?.data?.message ?? "Couldn't save your WhatsApp number. Please check it and try again.");
+        return;
+      }
+    }
     const picked = getCountry(country);
     const locale = {
       country: picked.code,
@@ -142,8 +164,9 @@ export default function OrgTypePage() {
 
   const canContinue =
     step === 1
-      ? !!mode
+      ? !!mode && (!needsPhone || phoneValid)
       : freelancerTypes.length > 0 && (!hasOther || otherService.trim().length >= 2);
+  const saving = updateOrgSettings.isPending || saveWhatsapp.isPending;
 
   return (
     <div className="min-h-screen bg-surface flex items-start justify-center pt-12 px-4 pb-12 max-lg:min-h-dvh max-lg:pt-[calc(24px+var(--safe-top))] max-lg:pb-0 max-lg:pl-[max(16px,var(--safe-left))] max-lg:pr-[max(16px,var(--safe-right))]">
@@ -201,6 +224,32 @@ export default function OrgTypePage() {
                 Sets your phone code, currency ({getCountry(country).currency}) and timezone. You can change it later in Settings.
               </p>
             </div>
+            {needsPhone && (
+              <div className="mb-6 space-y-1.5">
+                <label htmlFor="my-whatsapp" className="text-label font-medium text-on-surface-variant">
+                  Your WhatsApp number
+                </label>
+                <Input
+                  id="my-whatsapp"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={`+${getCountry(country).dialCode} 98765 43210`}
+                  maxLength={30}
+                />
+                <label className="flex cursor-pointer select-none items-start gap-2 pt-1 text-body text-on-surface-variant">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-outline accent-primary"
+                    checked={whatsappOptIn}
+                    onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                  />
+                  Send me account updates on WhatsApp
+                </label>
+              </div>
+            )}
           </>
         ) : (
           <div className="mb-6 space-y-4">
@@ -264,7 +313,7 @@ export default function OrgTypePage() {
         {/* Phones/tablets: the buttons stay pinned above the home indicator */}
         <div className="flex gap-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:bg-surface/90 max-lg:px-4 max-lg:pt-3 max-lg:pb-[calc(12px+var(--safe-bottom))] max-lg:backdrop-blur-md max-lg:[&>button]:h-12">
           {step === 2 && (
-            <Button size="lg" variant="secondary" type="button" onClick={() => setStep(1)} disabled={updateOrgSettings.isPending}>
+            <Button size="lg" variant="secondary" type="button" onClick={() => setStep(1)} disabled={saving}>
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
@@ -272,11 +321,11 @@ export default function OrgTypePage() {
           <Button
             size="lg"
             type="button"
-            disabled={!canContinue || updateOrgSettings.isPending}
+            disabled={!canContinue || saving}
             onClick={handleContinue}
             className="flex-1"
           >
-            {updateOrgSettings.isPending ? (
+            {saving ? (
               <>
                 <Spinner className="w-4 h-4" />
                 Saving...

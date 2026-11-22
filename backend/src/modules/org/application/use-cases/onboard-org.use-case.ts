@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrgType, UsageMetricType } from '@prisma/client';
+import { EVENT_NAMES } from '@/common/constants';
 import { OrgRepository } from '../../infrastructure/repositories/org.repository';
 import { OrgOnboardingRepository } from '../../infrastructure/repositories/org-onboarding.repository';
 import { RbacService } from '@/modules/rbac/domain/services/rbac.service';
@@ -50,6 +52,7 @@ export class OnboardOrgUseCase {
     private readonly rbacService: RbacService,
     private readonly orgAiMemory: OrgAiMemoryService,
     private readonly freelancerProfiles: FreelancerProfileResolverService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async execute(orgId: string, mode: OnboardingMode): Promise<void> {
@@ -125,6 +128,7 @@ export class OnboardOrgUseCase {
       } as Record<UsageMetricType, number>,
     });
     this.logger.log(`Assigned ${plan.trialDays}-day trial to org ${orgId}`);
+    this.events.emit(EVENT_NAMES.SUBSCRIPTION_TRIAL_STARTED, { orgId, planId: plan.id, trialEndsAt: endsAt });
   }
 
   /** Only when missing — rebuild() may call the AI provider. */

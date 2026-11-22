@@ -99,7 +99,8 @@ const navGroups: NavGroup[] = [
       { href: "/contacts", icon: <Users className="h-5 w-5" />, label: "Contacts", countKey: "contacts" },
       { href: "/leads/scraper", icon: <ScanSearch className="h-5 w-5" />, label: "Lead scraper", parent: "leads", childLabel: "Scraper" },
       { href: "/leads/pipeline", icon: <Kanban className="h-5 w-5" />, label: "Lead pipeline", parent: "leads", childLabel: "Pipeline" },
-      { href: "/deals", icon: <Briefcase className="h-5 w-5" />, label: "Deals", freelancerOnly: true },
+      // Every workspace: freelancers, teams and Wazelo HQ (its "Wazelo customers" board)
+      { href: "/deals", icon: <Briefcase className="h-5 w-5" />, label: "Deals" },
       { href: "/proposals", icon: <ScrollText className="h-5 w-5" />, label: "Proposals" },
       { href: "/settings/products", icon: <Package className="h-5 w-5" />, label: "Products", roles: ["ADMIN"] },
       // { href: "/deals", icon: <Kanban className="h-5 w-5" />, label: "Deals", roles: ["ADMIN", "MANAGER"] },

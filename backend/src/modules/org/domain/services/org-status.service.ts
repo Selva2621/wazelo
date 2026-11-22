@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OrgStatus } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 
@@ -16,6 +16,7 @@ const CACHE_TTL_MS = 30_000;
 @Injectable()
 export class OrgStatusService {
   private readonly cache = new Map<string, { suspended: boolean; expiresAt: number }>();
+  private readonly internal = new Map<string, boolean>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -37,5 +38,28 @@ export class OrgStatusService {
 
   invalidate(orgId: string): void {
     this.cache.delete(orgId);
+  }
+
+  /** Wazelo HQ (the platform's own workspace). Set once at creation and never changes, so cached for good. */
+  async isInternal(orgId: string | null | undefined): Promise<boolean> {
+    if (!orgId) return false;
+    const cached = this.internal.get(orgId);
+    if (cached !== undefined) return cached;
+
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { isInternal: true } });
+    const internal = org?.isInternal ?? false;
+    if (org) this.internal.set(orgId, internal);
+    return internal;
+  }
+
+  /** Refuses lifecycle and billing changes on Wazelo HQ. */
+  async assertNotInternal(orgId: string, action: string): Promise<void> {
+    if (await this.isInternal(orgId)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'WAZELO_HQ_PROTECTED',
+        message: `Wazelo HQ is the platform's own workspace — you can't ${action} Wazelo HQ.`,
+      });
+    }
   }
 }

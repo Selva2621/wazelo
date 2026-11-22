@@ -1,8 +1,10 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { INVALID_SIGNUP_PHONE, normalizeSignupPhone } from '@/shared/utils/signup-phone';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserRole, UserStatus, TokenType } from '@prisma/client';
@@ -45,6 +47,9 @@ export class RegisterUseCase {
     userAgent?: string,
   ): Promise<RegisterResult> {
     const email = dto.email.toLowerCase().trim();
+    // Checked before anything else, so a bad number never reveals whether the email exists
+    const phone = normalizeSignupPhone(dto.phone);
+    if (!phone) throw new BadRequestException(INVALID_SIGNUP_PHONE);
 
     // Check email uniqueness — return safe message to prevent enumeration
     const existingUser = await this.userRepository.findByEmail(email);
@@ -78,6 +83,8 @@ export class RegisterUseCase {
             lastName: dto.lastName.trim(),
             role: UserRole.ADMIN,
             status: UserStatus.PENDING_VERIFICATION,
+            phone,
+            whatsappOptInAt: dto.whatsappOptIn ? new Date() : null,
           },
         });
 

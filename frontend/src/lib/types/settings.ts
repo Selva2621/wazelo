@@ -17,6 +17,8 @@ export interface OrgSettings {
   description?: string;
   website?: string;
   orgType?: OrgType;
+  /** Wazelo HQ: the platform's own workspace */
+  isInternal?: boolean;
   /** For freelancers, one or more of: WEB_DEVELOPER, DESIGNER, DIGITAL_MARKETER, VIDEO_PHOTO, CONTENT_WRITER, OTHER */
   freelancerTypes?: string[];
   /** Their own description of the service, when freelancerTypes includes OTHER */

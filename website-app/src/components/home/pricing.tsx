@@ -161,7 +161,7 @@ export function Pricing() {
             <div>
               <h3 className="font-display text-3xl">Enterprise</h3>
               <p className="mt-2 max-w-[60ch] text-[15px] text-ink-soft">
-                <span className={currency ? "" : "invisible"}>From {money(ENTERPRISE.price[c], c)} a month</span> for {ENTERPRISE.users} users and {ENTERPRISE.numbers} numbers, with unlimited messages and campaigns, a custom SLA and white-label options.
+                <span className={currency ? "" : "invisible"}>From {money(ENTERPRISE.price[c], c)} a month</span> for {ENTERPRISE.users} users and {ENTERPRISE.numbers} numbers, with unlimited messages and campaigns, and {num(ENTERPRISE.aiCredits, c)} AI credits a month.
               </p>
             </div>
             <Link href="/contact" className={`inline-flex shrink-0 justify-center rounded-full border border-ink/20 px-6 py-3.5 text-sm font-semibold transition-colors hover:border-ink/50 active:scale-[0.98] ${focusInk}`}>
