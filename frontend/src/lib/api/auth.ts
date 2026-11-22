@@ -31,6 +31,14 @@ export const authApi = {
   login: (data: LoginRequest) =>
     apiClient.post<LoginResponse>("/auth/login", data).then((r) => r.data),
 
+  /** "Sign in with WhatsApp code": a code to the account's verified WhatsApp number */
+  sendWhatsappCode: (email: string) =>
+    apiClient.post<{ message: string }>("/auth/whatsapp-code/send", { email }).then((r) => r.data),
+
+  /** Same response as password sign-in */
+  verifyWhatsappCode: (data: { email: string; code: string; rememberMe?: boolean }) =>
+    apiClient.post<LoginResponse>("/auth/whatsapp-code/verify", data).then((r) => r.data),
+
   verifyEmail: (data: VerifyEmailRequest) =>
     apiClient
       .post<MessageResponse>("/auth/verify-email", data)

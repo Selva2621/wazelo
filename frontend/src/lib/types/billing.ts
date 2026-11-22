@@ -140,6 +140,12 @@ export interface Subscription {
   scheduledPlanId?: string | null;
   scheduledChangeAt?: string | null;
   scheduledPlan?: ScheduledPlanSummary | null;
+  /** Future periods were paid early ("Renew now"); the first starts at currentPeriodEnd */
+  nextPeriodPaid?: boolean;
+  /** How many future periods are paid */
+  prepaidPeriods?: number;
+  /** End of the last prepaid period */
+  paidUntil?: string | null;
 }
 
 // ─── Usage ───
@@ -163,6 +169,8 @@ export interface UsageMetrics {
 export interface SubscriptionWithUsage {
   subscription: Subscription | null;
   usage: UsageMetrics | null;
+  /** With no current plan: the workspace had a plan or trial before (it ended) */
+  hadPlan?: boolean;
 }
 
 // ─── Change Plan Response ───

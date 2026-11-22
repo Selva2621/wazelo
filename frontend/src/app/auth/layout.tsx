@@ -49,7 +49,7 @@ function Logo({ className }: { className?: string }) {
         className,
       )}
     >
-      <img src="/logo/logo.png" alt="" className="size-9 object-contain" />
+      <img src="/logo/wazelo-mark.svg" alt="" className="size-9 object-contain" />
       <span className="text-title font-semibold tracking-tight">
         Waze<span className="text-primary-container">lo</span>
       </span>

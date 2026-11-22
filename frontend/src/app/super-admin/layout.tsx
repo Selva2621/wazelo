@@ -13,6 +13,7 @@ import { superAdminApi } from "@/lib/api/super-admin";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/super-admin/global-search";
 import { NotificationBell } from "@/components/super-admin/notification-bell";
+import { HqSidebarButton } from "@/components/super-admin/hq-sidebar-button";
 
 const navItems = [
   { href: "/super-admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -112,7 +113,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
         )}
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b border-outline-variant">
-          <img src="/logo/logo.png" alt="Wazelo" className="h-6 w-6 object-contain shrink-0" />
+          <img src="/logo/wazelo-mark-small.svg" alt="Wazelo" className="h-6 w-6 object-contain shrink-0" />
           <span className="font-semibold text-body-lg text-on-surface">
             Wazelo <span className="text-primary">Admin</span>
           </span>
@@ -125,6 +126,8 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
+
+        <HqSidebarButton focusRing={focusRing} />
 
         <nav aria-label="Super admin" className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
           {navItems.map(({ href, icon: Icon, label }) => {
@@ -181,7 +184,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           >
             <Menu className="h-5 w-5" aria-hidden />
           </button>
-          <img src="/logo/logo.png" alt="" className="md:hidden h-6 w-6 object-contain shrink-0" />
+          <img src="/logo/wazelo-mark-small.svg" alt="" className="md:hidden h-6 w-6 object-contain shrink-0" />
           <span className="hidden sm:inline md:hidden font-semibold text-body-lg text-on-surface shrink-0">
             Wazelo <span className="text-primary">Admin</span>
           </span>

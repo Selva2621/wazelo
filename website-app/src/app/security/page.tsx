@@ -36,7 +36,7 @@ export default function SecurityPage() {
 
   const pillars = [
     { icon: "lock", title: "Data encryption", desc: "All your data — in transit and at rest — is encrypted. Your conversations and contact information are never stored in plain text." },
-    { icon: "shield", title: "Meta-approved platform", desc: "Wazelo uses the official WhatsApp Business API via Meta's Cloud API. All message handling complies with Meta's policies." },
+    { icon: "shield", title: "Official or QR-linked numbers", desc: "Connect an official WhatsApp Cloud API number, which sends through Meta's own API, or link a number by QR code. Account health and send pacing help keep QR-linked numbers safe." },
     { icon: "manage_accounts", title: "Role-based access control", desc: "Admins, managers, and agents each have scoped permissions. Agents see only their assigned conversations — nothing more." },
     { icon: "corporate_fare", title: "Multi-tenant isolation", desc: "Each organisation's data is completely isolated. No other customer can ever see your conversations, contacts, or settings." },
     { icon: "history", title: "Full audit logs", desc: "Every user action — login, message sent, contact edited, settings changed — is logged for compliance review." },

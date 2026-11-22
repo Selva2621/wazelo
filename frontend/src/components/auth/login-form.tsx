@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { ArrowRight, Lock, Mail, MessageCircle, Phone, TriangleAlert } from "lucide-react";
+import { ArrowRight, Lock, Mail, MessageCircle, TriangleAlert } from "lucide-react";
+import { WhatsappCodeSignin } from "@/components/auth/whatsapp-code-signin";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { useLogin } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api/client";
@@ -21,9 +22,30 @@ type Method = "email" | "whatsapp";
 
 const METHODS: { id: Method; label: string; icon: typeof Mail; soon?: boolean }[] = [
   { id: "email", label: "Email", icon: Mail },
-  // No backend for WhatsApp OTP yet: the tab previews it and points back to email.
-  { id: "whatsapp", label: "WhatsApp code", icon: MessageCircle, soon: true },
+  // A code to the WhatsApp number the user verified at onboarding (sent from Wazelo HQ)
+  { id: "whatsapp", label: "WhatsApp code", icon: MessageCircle },
 ];
+
+const noopSubscribe = () => () => {};
+
+interface LandingNotice {
+  suspended: boolean;
+  sso: string | null;
+}
+const NO_NOTICE: LandingNotice = { suspended: false, sso: null };
+
+/** Read once per visit, so it stays put after ?ssoError is removed from the address bar */
+let landingNotice: LandingNotice | null = null;
+function readLandingNotice(): LandingNotice {
+  if (!landingNotice) {
+    const params = new URLSearchParams(window.location.search);
+    landingNotice = { suspended: params.get("suspended") === "1", sso: params.get("ssoError") };
+  }
+  return landingNotice;
+}
+function clearLandingNotice() {
+  landingNotice = null;
+}
 
 export function LoginForm() {
   const {
@@ -40,26 +62,26 @@ export function LoginForm() {
   const rememberMe = useWatch({ control, name: "rememberMe" }) ?? false;
   const [method, setMethod] = useState<Method>("email");
   const [capsLock, setCapsLock] = useState(false);
-  // Set by the API client when a session ends because the org was suspended
-  const [suspended, setSuspended] = useState(false);
-  // Set by the backend when "Continue with Google" fails (?ssoError=<code>)
-  const [ssoError, setSsoError] = useState<string | null>(null);
+  // ?suspended=1 (API client: the org was suspended) and ?ssoError=<code> (backend: "Continue
+  // with Google" failed), read from the URL this page was opened with
+  const notice = useSyncExternalStore(noopSubscribe, readLandingNotice, () => NO_NOTICE);
+  const suspended = notice.suspended;
+  const [ssoDismissed, setSsoDismissed] = useState(false);
+  const ssoError = notice.sso && !ssoDismissed ? ssoErrorMessage(notice.sso) : null;
   useEffect(() => {
+    if (!notice.sso) return;
+    // Don't show it again on reload
     const params = new URLSearchParams(window.location.search);
-    setSuspended(params.get("suspended") === "1");
-    const sso = params.get("ssoError");
-    if (sso) {
-      setSsoError(ssoErrorMessage(sso));
-      // Don't show it again on reload
-      params.delete("ssoError");
-      const query = params.toString();
-      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
-    }
-  }, []);
+    params.delete("ssoError");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }, [notice.sso]);
+  // A later visit (client-side navigation) reads its own URL
+  useEffect(() => () => clearLandingNotice(), []);
   const tabRefs = useRef<Record<Method, HTMLButtonElement | null>>({ email: null, whatsapp: null });
 
   const onSubmit = (data: LoginFormData) => {
-    setSsoError(null);
+    setSsoDismissed(true);
     login.mutate(data);
   };
 
@@ -246,46 +268,9 @@ export function LoginForm() {
         </form>
       </div>
 
-      {/* WhatsApp panel: preview until the OTP API exists */}
-      <div
-        role="tabpanel"
-        id="panel-whatsapp"
-        aria-labelledby="tab-whatsapp"
-        hidden={method !== "whatsapp"}
-        className="space-y-5"
-      >
-        <div className="space-y-1.5">
-          <Label htmlFor="phone">WhatsApp number</Label>
-          <Input
-            id="phone"
-            type="tel"
-            placeholder="+91 98765 43210"
-            leadingIcon={<Phone />}
-            className="h-11"
-            disabled
-            aria-describedby="whatsapp-soon"
-          />
-        </div>
-
-        <div
-          id="whatsapp-soon"
-          className="flex gap-3 rounded-xl border border-primary/25 bg-primary/8 p-4"
-        >
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary-container">
-            <MessageCircle className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-body font-medium text-on-surface">Sign in with a WhatsApp code is coming soon</p>
-            <p className="mt-0.5 text-label text-on-surface-variant">
-              We&apos;ll send a one-time code to your WhatsApp. No password needed.
-            </p>
-          </div>
-        </div>
-
-        <Button type="button" size="lg" className="w-full" onClick={() => selectMethod("email")}>
-          <Mail className="h-4 w-4" />
-          Sign in with email instead
-        </Button>
+      {/* WhatsApp panel: a code to the verified WhatsApp number */}
+      <div role="tabpanel" id="panel-whatsapp" aria-labelledby="tab-whatsapp" hidden={method !== "whatsapp"}>
+        <WhatsappCodeSignin onUsePassword={() => selectMethod("email")} />
       </div>
 
       {/* Register: a quiet text link so it never competes with Sign in */}

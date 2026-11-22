@@ -109,6 +109,9 @@ const NO_REFRESH_PATHS = [
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/providers",
+  "/auth/hq/exchange",
+  "/auth/whatsapp-code/send",
+  "/auth/whatsapp-code/verify",
 ];
 
 // Response interceptor: unwrap envelope + handle 401 refresh

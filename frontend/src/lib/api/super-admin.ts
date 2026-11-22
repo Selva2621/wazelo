@@ -274,6 +274,16 @@ export interface UpdatePlatformSettingsBody {
   freelancerSetupEnabled?: boolean;
 }
 
+export interface WazeloHqState {
+  exists: boolean;
+  org: { id: string; name: string; slug: string; createdAt: string } | null;
+  /** What HQ still needs to WhatsApp customers (null before HQ exists) */
+  setup: {
+    whatsappConnected: boolean;
+    alerts: { key: string; label: string; template: string; ready: boolean }[];
+  } | null;
+}
+
 export const superAdminApi = {
   login: (email: string, password: string) =>
     superAdminClient
@@ -383,6 +393,15 @@ export const superAdminApi = {
 
   getStats: () =>
     superAdminClient.get<{ data: PlatformStats }>("/super-admin/stats").then((r) => r.data.data),
+
+  // ── Wazelo HQ (the platform's own workspace) ──
+  getHq: () => superAdminClient.get<{ data: WazeloHqState }>("/super-admin/hq").then((r) => r.data.data),
+  createHq: () => superAdminClient.post<{ data: WazeloHqState }>("/super-admin/hq").then((r) => r.data.data),
+  /** One-time link (60s) that signs the caller in to HQ in the tenant app, landing on `next` */
+  openHq: (next?: string) =>
+    superAdminClient
+      .post<{ data: { url: string; expiresInSeconds: number } }>("/super-admin/hq/open", next ? { next } : {})
+      .then((r) => r.data.data),
 
   listAuditLogs: (params: AuditLogQuery) =>
     superAdminClient

@@ -14,6 +14,11 @@ export interface RenewalCreditInput {
   /** Stable per renewal (e.g. subscription id + the period end being renewed) */
   renewalKey: string;
   planLine: InvoiceLine;
+  /**
+   * Only apply credit when it covers the whole price (renewals are never charged, so a
+   * partial credit would be consumed for nothing). Default: apply whatever is available.
+   */
+  requireFullCover?: boolean;
 }
 
 export interface RenewalCreditResult {
@@ -48,7 +53,13 @@ export class ApplyRenewalCreditUseCase {
     // Fast path: nothing to do for orgs without credit (no lock taken) — unless an
     // earlier run already applied credit to this renewal
     const earlier = await this.creditRepo.findByIdempotencyKey(key);
-    if (!earlier && !(await this.creditRepo.hasPositiveBalance(input.orgId, input.currency))) return null;
+    if (!earlier) {
+      if (input.requireFullCover) {
+        if ((await this.creditRepo.balance(input.orgId, input.currency)) < input.priceInCents) return null;
+      } else if (!(await this.creditRepo.hasPositiveBalance(input.orgId, input.currency))) {
+        return null;
+      }
+    }
 
     return this.creditRepo.withOrgLock(input.orgId, async (tx) => {
       const existing = await this.creditRepo.findByIdempotencyKey(key, tx);
@@ -63,6 +74,7 @@ export class ApplyRenewalCreditUseCase {
       }
 
       const balance = await this.creditRepo.balance(input.orgId, input.currency, tx);
+      if (input.requireFullCover && balance < input.priceInCents) return null;
       const { appliedInCents, remainderInCents } = applyCredit(balance, input.priceInCents);
       if (appliedInCents <= 0) return null;
 

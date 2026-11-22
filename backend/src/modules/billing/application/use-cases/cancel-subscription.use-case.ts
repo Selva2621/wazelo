@@ -33,28 +33,23 @@ export class CancelSubscriptionUseCase {
       throw new NotFoundException('No active subscription found');
     }
 
-    if (subscription.status === SubscriptionStatus.CANCELLED) {
+    if (subscription.status === SubscriptionStatus.CANCELLED || subscription.cancelledAt) {
       throw new BadRequestException('Subscription is already cancelled');
     }
 
-    // Cancel = mark as cancelled, effective at end of current period
-    // Data is NOT deleted (per AC3: No data loss)
-    const updated = await this.subscriptionRepo.transitionStatus(
-      subscription.id,
-      [
-        SubscriptionStatus.ACTIVE,
-        SubscriptionStatus.TRIAL,
-        SubscriptionStatus.PAST_DUE,
-        SubscriptionStatus.GRACE_PERIOD,
-      ],
-      SubscriptionStatus.CANCELLED,
-      {
-        cancelledAt: new Date(),
-        cancelReason: dto.reason || null,
-        scheduledPlanId: null,
-        scheduledChangeAt: null,
-      },
-    );
+    const cancel = { cancelledAt: new Date(), cancelReason: dto.reason || null, scheduledPlanId: null, scheduledChangeAt: null };
+    // A paid-up plan (or a trial) stays usable until its period ends: only the renewal is
+    // cancelled, and the billing job ends it then (Reactivate before that undoes it).
+    // Unpaid (past due / grace) has nothing paid ahead, so it ends now. Data is NOT deleted.
+    const atPeriodEnd = subscription.status === SubscriptionStatus.ACTIVE || subscription.status === SubscriptionStatus.TRIAL;
+    const updated = atPeriodEnd
+      ? await this.subscriptionRepo.transitionStatus(subscription.id, subscription.status, subscription.status, cancel)
+      : await this.subscriptionRepo.transitionStatus(
+          subscription.id,
+          [SubscriptionStatus.PAST_DUE, SubscriptionStatus.GRACE_PERIOD],
+          SubscriptionStatus.CANCELLED,
+          cancel,
+        );
 
     if (!updated) {
       throw new BadRequestException('Failed to cancel subscription — concurrent modification');
@@ -65,9 +60,10 @@ export class CancelSubscriptionUseCase {
       orgId,
       subscriptionId: subscription.id,
       previousStatus: subscription.status,
-      newStatus: SubscriptionStatus.CANCELLED,
+      newStatus: updated.status,
       triggeredById: userId,
       reason: dto.reason,
+      metadata: atPeriodEnd ? { type: 'cancel_at_period_end', endsAt: subscription.currentPeriodEnd.toISOString() } : undefined,
     });
 
     // Emit event
@@ -90,8 +86,10 @@ export class CancelSubscriptionUseCase {
       userAgent,
     });
 
-    this.logger.log(`Subscription ${subscription.id} cancelled by user ${userId}`);
+    this.logger.log(
+      `Subscription ${subscription.id} cancelled by user ${userId}${atPeriodEnd ? ` (ends ${subscription.currentPeriodEnd.toISOString()})` : ''}`,
+    );
 
-    return { subscription: updated };
+    return { subscription: updated, endsAt: atPeriodEnd ? subscription.currentPeriodEnd : new Date() };
   }
 }

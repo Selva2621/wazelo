@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SubscriptionRepository } from '@/modules/billing/infrastructure/repositories/subscription.repository';
@@ -6,15 +6,15 @@ import { UsageRepository } from '@/modules/billing/infrastructure/repositories/u
 import { PlanRepository } from '@/modules/billing/infrastructure/repositories/plan.repository';
 import { PaymentRepository } from '@/modules/billing/infrastructure/repositories/payment.repository';
 import { AuditService } from '@/modules/audit/domain/services/audit.service';
-import { StripePaymentService } from '@/modules/billing/domain/services/stripe-payment.service';
 import { ApplyRenewalCreditUseCase } from '@/modules/billing/application/use-cases/apply-renewal-credit.use-case';
 import { EVENT_NAMES } from '@/common/constants';
 import { isTrialPlanSlug } from '@/shared/constants/trial-plans';
+import { addBillingCycle, consumePrepaidPeriod, readPrepaid } from '@/modules/billing/domain/services/prepaid-period';
 import {
   AuditAction,
   SubscriptionStatus,
   UsageMetricType,
-  InvoiceStatus,
+  Prisma,
 } from '@prisma/client';
 
 @Injectable()
@@ -26,14 +26,14 @@ export class BillingCycleWorker {
     private readonly usageRepo: UsageRepository,
     private readonly planRepo: PlanRepository,
     private readonly paymentRepo: PaymentRepository,
-    private readonly stripePayment: StripePaymentService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly applyRenewalCredit: ApplyRenewalCreditUseCase,
   ) {}
 
   /**
-   * Runs every 5 minutes to check for subscriptions that need renewal.
+   * Runs every 5 minutes for subscriptions whose period has run out. No gateway charge
+   * here — customers pay each period themselves (Billing → Razorpay checkout).
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleCycleRenewal() {
@@ -136,7 +136,19 @@ export class BillingCycleWorker {
     }
   }
 
-  private async renewSubscription(subscription: any) {
+  /**
+   * A period has run out. Nothing is ever charged automatically: free plans renew,
+   * paid plans renew only when account credit covers the whole price, otherwise the
+   * plan EXPIRES right away (no grace) until the customer pays from Billing.
+   * @internal exposed for specs
+   */
+  async renewSubscription(subscription: any) {
+    // Cancelled during the period: it ends now instead of renewing (no charge)
+    if (subscription.cancelledAt) {
+      await this.endCancelled(subscription);
+      return;
+    }
+
     const plan = subscription.plan;
     const now = new Date();
 
@@ -149,15 +161,51 @@ export class BillingCycleWorker {
       newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
     }
 
+    // Periods paid in advance (Renew now before the end): the next one starts exactly where
+    // the old one ended, usage resets, one prepaid period is used up. No credit, no charge.
+    // Moved under the row lock so a payment landing now can't lose its period.
+    if (readPrepaid(subscription.metadata)) {
+      const moved = await this.subscriptionRepo.withLock(subscription.id, async (locked, tx) => {
+        if (
+          !locked ||
+          !readPrepaid(locked.metadata) ||
+          locked.status !== SubscriptionStatus.ACTIVE ||
+          new Date(locked.currentPeriodEnd).getTime() !== new Date(subscription.currentPeriodEnd).getTime()
+        ) {
+          return null; // changed meanwhile: the next run looks again
+        }
+        const start = new Date(locked.currentPeriodEnd);
+        const end = addBillingCycle(start, locked.billingCycle);
+        await this.subscriptionRepo.transitionStatus(
+          locked.id,
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.ACTIVE,
+          {
+            currentPeriodStart: start,
+            currentPeriodEnd: end,
+            metadata: consumePrepaidPeriod(locked.metadata, end, locked.billingCycle) as Prisma.InputJsonValue,
+          },
+          tx,
+        );
+        return { start, end };
+      });
+      if (moved) {
+        // Its PAID invoice was created with the payment
+        await this.completeRenewal(subscription, moved.start, moved.end, plan, { invoiceExists: true, alreadyMoved: true });
+        this.logger.log(`Subscription ${subscription.id} renewed from a prepaid period`);
+      }
+      return;
+    }
+
     // For free plans, just renew
     if (subscription.priceInCents === 0) {
       await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan);
       return;
     }
 
-    // Account credit in the subscription currency is applied BEFORE charging. It creates the
-    // renewal invoice up front (OPEN, with an "Account credit" line); idempotent per renewal —
-    // keyed on the period being renewed, which only moves once the renewal completes
+    // Account credit in the subscription currency renews the plan only when it covers the
+    // whole price (partial credit is left untouched). Idempotent per renewal — keyed on the
+    // period being renewed, which only moves once the renewal completes
     const credit = await this.applyRenewalCredit.execute({
       orgId: subscription.orgId,
       subscriptionId: subscription.id,
@@ -167,73 +215,61 @@ export class BillingCycleWorker {
       periodEnd: newPeriodEnd,
       renewalKey: `${subscription.id}:${new Date(subscription.currentPeriodEnd).toISOString()}`,
       planLine: this.planLine(subscription, plan),
+      requireFullCover: true,
     });
 
-    // Fully covered by credit: no gateway charge, like a free renewal
     if (credit && credit.amountDueInCents === 0) {
       await this.paymentRepo.markInvoicePaid(credit.invoiceId, {});
-      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan, credit.invoiceId);
+      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan, { invoiceExists: true });
       this.logger.log(
         `Subscription ${subscription.id} renewal covered by account credit (${credit.appliedInCents} ${subscription.currency})`,
       );
       return;
     }
-    const amountDue = credit ? credit.amountDueInCents : subscription.priceInCents;
 
-    // For paid plans, create payment record
-    // In production, this would call the payment gateway
-    const payment = await this.paymentRepo.createPayment({
+    // Not paid for the next period: the plan ends now (data kept; paying restores it)
+    await this.expireUnpaid(subscription);
+  }
+
+  /** Paid period ended without a payment → EXPIRED immediately (no grace for paid renewals) */
+  private async expireUnpaid(subscription: any) {
+    const previousStatus = subscription.status as SubscriptionStatus;
+    const expired = await this.subscriptionRepo.transitionStatus(
+      subscription.id,
+      [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE],
+      SubscriptionStatus.EXPIRED,
+    );
+    if (!expired) return;
+
+    await this.subscriptionRepo.recordEvent({
       orgId: subscription.orgId,
       subscriptionId: subscription.id,
-      amountInCents: amountDue,
-      currency: subscription.currency,
-      idempotencyKey: `renewal-${subscription.id}-${newPeriodStart.toISOString().slice(0, 10)}`,
+      previousStatus,
+      newStatus: SubscriptionStatus.EXPIRED,
+      reason: 'Paid period ended without a renewal payment',
+      metadata: {
+        type: 'period_ended_unpaid',
+        periodEnd: new Date(subscription.currentPeriodEnd).toISOString(),
+      },
     });
 
-    // Process payment through Stripe
-    await this.paymentRepo.transitionPaymentStatus(payment.id, 'PENDING', 'PROCESSING');
+    this.eventEmitter.emit(EVENT_NAMES.SUBSCRIPTION_EXPIRED, {
+      subscriptionId: subscription.id,
+      orgId: subscription.orgId,
+      planId: subscription.planId,
+      paidPeriodEnded: true,
+    });
 
-    const result = await this.stripePayment.chargePayment(
-      amountDue,
-      subscription.currency,
-      subscription.externalCustomerId || '',
-      subscription.externalCustomerId || '', // Stripe uses default payment method from customer
-      payment.idempotencyKey || payment.id,
-      `Wazelo CRM subscription renewal: ${plan?.name || subscription.id}`,
-    );
+    await this.auditService.log({
+      orgId: subscription.orgId,
+      action: AuditAction.SUBSCRIPTION_EXPIRED,
+      targetType: 'Subscription',
+      targetId: subscription.id,
+      metadata: { reason: 'period_ended_unpaid' },
+      source: 'worker',
+    });
 
-    if (result.success) {
-      await this.paymentRepo.transitionPaymentStatus(payment.id, 'PROCESSING', 'SUCCEEDED');
-      if (credit) {
-        await this.paymentRepo.markInvoicePaid(credit.invoiceId, { paymentId: payment.id });
-      }
-      await this.completeRenewal(subscription, newPeriodStart, newPeriodEnd, plan, credit?.invoiceId);
-
-      this.eventEmitter.emit(EVENT_NAMES.PAYMENT_SUCCEEDED, {
-        paymentId: payment.id,
-        orgId: subscription.orgId,
-        subscriptionId: subscription.id,
-        amountInCents: amountDue,
-      });
-
-      this.logger.log(`Payment ${payment.id} succeeded for subscription ${subscription.id} renewal`);
-    } else {
-      await this.paymentRepo.transitionPaymentStatus(payment.id, 'PROCESSING', 'FAILED');
-
-      // Schedule retry
-      const nextRetryAt = new Date(Date.now() + 3600_000); // 1 hour
-      await this.paymentRepo.schedulePaymentRetry(payment.id, nextRetryAt);
-
-      this.eventEmitter.emit(EVENT_NAMES.PAYMENT_FAILED, {
-        paymentId: payment.id,
-        orgId: subscription.orgId,
-        subscriptionId: subscription.id,
-        reason: result.error || 'Payment processing failed',
-        retryCount: 0,
-      });
-
-      this.logger.warn(`Payment ${payment.id} failed for subscription ${subscription.id}: ${result.error}`);
-    }
+    this.logger.log(`Subscription ${subscription.id} expired: paid period ended unpaid`);
   }
 
   private planLine(subscription: any, plan: any) {
@@ -244,24 +280,31 @@ export class BillingCycleWorker {
     };
   }
 
-  /** @param existingInvoiceId the renewal invoice already created when credit was applied */
+  /**
+   * @param opts.invoiceExists the renewal invoice was already created (credit applied / prepaid)
+   * @param opts.alreadyMoved the subscription already carries the new period (prepaid path)
+   */
   private async completeRenewal(
     subscription: any,
     newPeriodStart: Date,
     newPeriodEnd: Date,
     plan: any,
-    existingInvoiceId?: string,
+    opts: { invoiceExists?: boolean; alreadyMoved?: boolean } = {},
   ) {
     // Update subscription period
-    await this.subscriptionRepo.transitionStatus(
-      subscription.id,
-      SubscriptionStatus.ACTIVE,
-      SubscriptionStatus.ACTIVE,
-      {
-        currentPeriodStart: newPeriodStart,
-        currentPeriodEnd: newPeriodEnd,
-      },
-    );
+    const previousStatus = subscription.status as SubscriptionStatus;
+    if (!opts.alreadyMoved) {
+      const renewed = await this.subscriptionRepo.transitionStatus(
+        subscription.id,
+        [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE],
+        SubscriptionStatus.ACTIVE,
+        {
+          currentPeriodStart: newPeriodStart,
+          currentPeriodEnd: newPeriodEnd,
+        },
+      );
+      if (!renewed) return;
+    }
 
     // Reset usage counters
     const limits: Record<UsageMetricType, number> = {
@@ -282,7 +325,7 @@ export class BillingCycleWorker {
     );
 
     // Generate invoice (unless credit application already created this renewal's invoice)
-    if (!existingInvoiceId) {
+    if (!opts.invoiceExists) {
       const invoiceNumber = await this.paymentRepo.getNextInvoiceNumber();
       await this.paymentRepo.createInvoice({
         orgId: subscription.orgId,
@@ -301,7 +344,7 @@ export class BillingCycleWorker {
     await this.subscriptionRepo.recordEvent({
       orgId: subscription.orgId,
       subscriptionId: subscription.id,
-      previousStatus: SubscriptionStatus.ACTIVE,
+      previousStatus,
       newStatus: SubscriptionStatus.ACTIVE,
       reason: 'Subscription renewed',
       metadata: {
@@ -338,7 +381,43 @@ export class BillingCycleWorker {
     this.logger.log(`Subscription ${subscription.id} renewed successfully`);
   }
 
+  /**
+   * The customer cancelled during the period; now that it has run out the plan ends
+   * (CANCELLED, never charged again). "Expired" tells the org and Wazelo HQ access ended.
+   */
+  private async endCancelled(subscription: any) {
+    const ended = await this.subscriptionRepo.transitionStatus(
+      subscription.id,
+      [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL],
+      SubscriptionStatus.CANCELLED,
+    );
+    if (!ended) return;
+
+    await this.subscriptionRepo.recordEvent({
+      orgId: subscription.orgId,
+      subscriptionId: subscription.id,
+      previousStatus: subscription.status,
+      newStatus: SubscriptionStatus.CANCELLED,
+      reason: 'Cancelled plan reached the end of its period',
+      metadata: { type: 'cancel_at_period_end_applied' },
+    });
+
+    this.eventEmitter.emit(EVENT_NAMES.SUBSCRIPTION_EXPIRED, {
+      subscriptionId: subscription.id,
+      orgId: subscription.orgId,
+      planId: subscription.planId,
+    });
+
+    this.logger.log(`Subscription ${subscription.id} ended at period end (cancelled earlier)`);
+  }
+
   private async handleTrialExpiry(subscription: any) {
+    // Trial cancelled earlier: it ends with the trial, no grace period
+    if (subscription.cancelledAt) {
+      await this.endCancelled(subscription);
+      return;
+    }
+
     const plan = subscription.plan;
 
     // A genuinely free plan stays ACTIVE. The free *trial* plans don't: the trial ends,

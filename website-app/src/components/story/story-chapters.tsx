@@ -7,23 +7,24 @@ import { useLenis } from "@/app/lenis-provider";
 import { LoopVideo } from "@/components/home/loop-video";
 import { PhoneFrame } from "./phone-frame";
 import { LiveTime } from "./live-time";
+import { useStoryClip } from "./story-media";
 
 const CHAPTERS = [
   {
-    id: "ch1-find",
+    id: "ch1-ads",
     day: "Monday",
     time: "10:00 AM",
-    title: "You find her before anyone else does.",
-    body: "The lead finder pulls bakeries, clinics and shops from Google Maps and business directories, ready to contact.",
-    path: "app.wazelo.in/leads/finder",
-    link: { label: "Lead finder", href: "/features/lead-finder" },
+    title: "She taps your property ad. Wazelo has her in seconds.",
+    body: "Leads from Facebook and Instagram ads land in Wazelo and go straight to the right person on your team.",
+    path: "app.wazelo.in/lead-ads",
+    link: { label: "Lead ads", href: "/features/lead-ads" },
   },
   {
     id: "ch2-reply",
     day: "Today",
     time: "now",
-    title: "She writes back. AI has the answer in seconds.",
-    body: "It reads the chat, knows your prices and suggests the reply. Send it, or let it send itself.",
+    title: "She asks the price on WhatsApp. AI has the answer in seconds.",
+    body: "It reads the chat, knows your projects and prices and suggests the reply. Send it, or let it send itself.",
     path: "app.wazelo.in/inbox",
     link: { label: "AI assistant", href: "/features/ai-assistant" },
   },
@@ -31,7 +32,7 @@ const CHAPTERS = [
     id: "ch3-follow",
     day: "Wednesday",
     time: "10:00 AM",
-    title: "Quiet for two days? Wazelo follows up.",
+    title: "Quiet after the site visit? Wazelo follows up.",
     body: "Write a sequence once. It stops the moment she replies.",
     path: "app.wazelo.in/sequences",
     link: { label: "Sequences", href: "/features/sequences" },
@@ -40,7 +41,7 @@ const CHAPTERS = [
     id: "ch4-close",
     day: "Friday",
     time: "11:20 AM",
-    title: "The proposal goes out. She says yes.",
+    title: "The offer goes out. She says yes.",
     body: "AI drafts it from the chat. She opens it on WhatsApp and accepts from the link.",
     path: "app.wazelo.in/proposals",
     link: { label: "Proposals", href: "/features/proposals" },
@@ -72,6 +73,7 @@ export function StoryChapters() {
   const [pinMode, setPinMode] = useState(false);
   const [step, setStep] = useState(0);
   const prev = useRef(0);
+  const clip = useStoryClip(); // ₹ (Mumbai) or $ (London) recordings, like the pricing
 
   useGSAP(
     () => {
@@ -180,7 +182,7 @@ export function StoryChapters() {
                 <BrowserFrame path={c.path}>
                   {CHAPTERS.map((ch, i) => (
                     <div key={ch.id} data-c-clip={i} aria-hidden={i !== step} className={`absolute inset-0 ${i === step ? "z-10" : "z-0 opacity-0"}`}>
-                      <LoopVideo src={`/media/story/${ch.id}.mp4`} poster={`/media/story/${ch.id}.jpg`} label={ch.title} active={i === step} className="!aspect-auto h-full" />
+                      <LoopVideo {...clip(ch.id)} label={ch.title} active={i === step} className="!aspect-auto h-full" />
                     </div>
                   ))}
                 </BrowserFrame>
@@ -193,7 +195,7 @@ export function StoryChapters() {
           <div className="mx-auto max-w-xl px-4 py-24 sm:px-6">
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink-faint">Her week with Wazelo</p>
             <p className="mt-4 max-w-[34ch] text-lg leading-snug text-ink-soft">
-              Follow one lead, Meera from a bakery, from her first message to a signed deal.
+              Follow one lead, Meera, a home buyer, from her first message to a signed deal.
             </p>
             <div className="mt-14 flex flex-col gap-20">
               {CHAPTERS.map((ch, i) => (
@@ -207,7 +209,7 @@ export function StoryChapters() {
                   <p className="mt-2 text-base leading-relaxed text-ink-soft">{ch.body}</p>
                   <div className="mt-8">
                     <PhoneFrame>
-                      <LoopVideo src={`/media/story/${ch.id}-m.mp4`} poster={`/media/story/${ch.id}-m.jpg`} label={ch.title} className="!aspect-auto h-full" />
+                      <LoopVideo {...clip(ch.id, true)} label={ch.title} className="!aspect-auto h-full" />
                     </PhoneFrame>
                   </div>
                   <Link href={ch.link.href} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-rust underline-offset-4 hover:underline">

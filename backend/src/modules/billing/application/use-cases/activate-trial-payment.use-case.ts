@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EVENT_NAMES } from '@/common/constants';
 import { InvoiceStatus, PaymentStatus, Subscription, SubscriptionStatus, UsageMetricType } from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { PlanRepository } from '../../infrastructure/repositories/plan.repository';
@@ -31,6 +33,7 @@ export class ActivateTrialPaymentUseCase {
     private readonly usageRepo: UsageRepository,
     private readonly couponCheckout: CouponCheckoutService,
     private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async execute(orgId: string, userId: string, existing: Subscription, input: ActivateTrialPaymentInput) {
@@ -145,6 +148,7 @@ export class ActivateTrialPaymentUseCase {
       [UsageMetricType.MESSAGE_TEMPLATES]: plan.maxMessageTemplates,
     });
 
+    this.events.emit(EVENT_NAMES.SUBSCRIPTION_TRIAL_CONVERTED, { orgId, subscriptionId: existing.id, planId: plan.id });
     return { subscription: activated, deduplicated: false };
   }
 }

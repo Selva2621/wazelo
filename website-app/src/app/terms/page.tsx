@@ -108,7 +108,7 @@ export default function TermsPage() {
             Terms of <em className="text-rust">Service</em>
           </h1>
           <p className="mt-6 font-mono text-xs text-ink-faint">
-            Last updated: November 19, 2026 · Effective for all Wazelo users
+            Last updated: November 22, 2026 · Effective for all Wazelo users
           </p>
         </div>
       </header>
@@ -204,17 +204,17 @@ export default function TermsPage() {
             </Section>
 
             <Section id="billing">
-              <P>Wazelo is offered on a subscription basis. By subscribing to a paid plan, you authorise us to charge the applicable fees to your chosen payment method at the start of each billing cycle.</P>
+              <P>Wazelo plans are prepaid, monthly or yearly. We never charge you automatically: to continue for another period, you pay for it yourself from your billing settings. We remind you before your plan ends.</P>
               <Ul>
                 <Li>All prices are in Indian Rupees (INR) unless stated otherwise</Li>
-                <Li>Subscription fees are non-refundable except as required by law or as stated in our Refund Policy</Li>
+                <Li>Payments already made are non-refundable. If you pay more than once, each extra payment adds another prepaid period to your plan. We refund a payment only if it was taken but not added to your plan and our support team cannot add it, or where the law requires it</Li>
                 <Li>We may change subscription prices with 30 days' written notice to active subscribers</Li>
-                <Li>Failure to pay may result in suspension of your account after a 7-day grace period</Li>
+                <Li>If a paid period ends without payment for the next one, your plan pauses on that day; your data is kept and paying restores access right away</Li>
               </Ul>
             </Section>
 
             <Section id="trial">
-              <P>We may offer a free trial period. At the end of the trial, your account will be converted to a paid subscription unless you cancel before the trial expires. No credit card is required during the trial unless explicitly stated.</P>
+              <P>We offer a 14-day free trial. No credit card is required, and you are not charged when the trial ends. To keep using the Service after the trial, choose a paid plan. If you don't, your account is paused after a short grace period and your data is kept.</P>
             </Section>
 
             <Section id="ip">
@@ -236,8 +236,8 @@ export default function TermsPage() {
             </Section>
 
             <Section id="termination">
-              <P>You may cancel your account at any time from your billing settings. We may suspend or terminate your access immediately if you violate these Terms or if we are required to do so by law.</P>
-              <P>Upon termination, your right to use the Service ceases immediately. We will retain your data for 30 days after termination to allow for any disputes, after which it will be permanently deleted.</P>
+              <P>You may cancel your subscription at any time from your billing settings. Cancelling stops renewal reminders: you can keep using the Service until the end of the period you have already paid for, and you can reactivate before then. We may suspend or terminate your access immediately if you violate these Terms or if we are required to do so by law.</P>
+              <P>When your plan ends, your data is kept so you can pick up where you left off if you choose a plan again. You can ask us to delete your data at any time by writing to privacy@wazelo.in.</P>
             </Section>
 
             <Section id="law">

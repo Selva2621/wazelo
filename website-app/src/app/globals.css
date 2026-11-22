@@ -94,7 +94,22 @@ body {
   to   { transform: scaleX(1); }
 }
 
-/* ── Marquee ─────────────────────────────────────────────────────────────────── */
+/* Hero preloader: hidden before first paint when the head script (app/layout.tsx) says skip */
+[data-preloader="skip"] .hero-preloader { display: none !important; }
+
+/* Hero preloader brand: the W opens out from its centre like wings; the big wordmark fills with
+   colour as loading climbs, its wave surface sliding sideways. No overshoot: a business site. */
+@keyframes pl-wings {
+  from { clip-path: inset(0 50% 0 50%); transform: scale(0.92); }
+  to   { clip-path: inset(0 0 0 0); transform: scale(1); }
+}
+@keyframes pl-wave {
+  from { mask-position: 0 0, 0 100%; }
+  to   { mask-position: 160px 0, 0 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-preloader * { animation: none !important; }
+}/* ── Marquee ─────────────────────────────────────────────────────────────────── */
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }

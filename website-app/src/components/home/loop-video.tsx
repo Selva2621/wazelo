@@ -16,8 +16,9 @@ export function LoopVideo({
   priority = false,
   className = "",
 }: {
-  src: string;
-  poster: string;
+  /** Optional: left empty until the visitor's version (₹ or $) is known, so only one loads. */
+  src?: string;
+  poster?: string;
   label: string;
   active?: boolean;
   priority?: boolean;
@@ -47,7 +48,7 @@ export function LoopVideo({
       obs.disconnect();
       document.removeEventListener("visibilitychange", sync);
     };
-  }, [active, reduce]);
+  }, [active, reduce, src]);
 
   return (
     <video

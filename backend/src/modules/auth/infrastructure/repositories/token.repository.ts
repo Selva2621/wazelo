@@ -29,6 +29,21 @@ export class TokenRepository {
     });
   }
 
+  /**
+   * Uses up a live token in one statement — two requests racing with the same code can't
+   * both win. Returns its userId, or null when unknown, expired or already used.
+   */
+  async consume(token: string, type: TokenType): Promise<string | null> {
+    const now = new Date();
+    const { count } = await this.prisma.verificationToken.updateMany({
+      where: { token, type, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now },
+    });
+    if (count !== 1) return null;
+    const row = await this.prisma.verificationToken.findUnique({ where: { token }, select: { userId: true } });
+    return row?.userId ?? null;
+  }
+
   async markUsed(tokenId: string): Promise<VerificationToken> {
     return this.prisma.verificationToken.update({
       where: { id: tokenId },

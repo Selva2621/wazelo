@@ -91,7 +91,12 @@ export function BillingWorkspace({ route }: { route: "billing" | "ai-credits" })
           ) : active === "history" ? (
             <BillingHistory />
           ) : (
-            <BillingOverview subscription={subscription} usage={data?.usage ?? null} onGoTo={goTo} />
+            <BillingOverview
+              subscription={subscription}
+              usage={data?.usage ?? null}
+              onGoTo={goTo}
+              hadPlan={data?.hadPlan}
+            />
           )}
         </div>
       </div>

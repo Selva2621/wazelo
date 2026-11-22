@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Body,
   Param,
@@ -13,6 +14,8 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { MyWhatsappUseCase } from '../../application/use-cases/my-whatsapp.use-case';
+import { SetMyWhatsappDto } from '../../application/dto/my-whatsapp.dto';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { Public } from '@/common/decorators/public.decorator';
@@ -58,6 +61,7 @@ export class UsersController {
     private readonly deleteUserUseCase: DeleteUserUseCase,
     private readonly revokeInviteUseCase: RevokeInviteUseCase,
     private readonly listInvitationsUseCase: ListInvitationsUseCase,
+    private readonly myWhatsappUseCase: MyWhatsappUseCase,
   ) {}
 
   // ───── Invitation endpoints ─────
@@ -116,6 +120,17 @@ export class UsersController {
   }
 
   // ───── Self-service profile ─────
+
+  /** Your own WhatsApp number and "account updates on WhatsApp" consent (onboarding) */
+  @Get('me/whatsapp')
+  async getMyWhatsapp(@CurrentUser() user: JwtPayload) {
+    return this.myWhatsappUseCase.get(user.sub);
+  }
+
+  @Put('me/whatsapp')
+  async setMyWhatsapp(@CurrentUser() user: JwtPayload, @Body() dto: SetMyWhatsappDto) {
+    return this.myWhatsappUseCase.set(user.sub, user.orgId, dto);
+  }
 
   @Patch('me')
   async updateMyProfile(

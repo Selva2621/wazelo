@@ -34,6 +34,22 @@ export function useLogin() {
   });
 }
 
+/** "Sign in with WhatsApp code", step 2 — lands exactly like a password sign-in */
+export function useWhatsappCodeLogin() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  return useMutation({
+    mutationFn: (data: { email: string; code: string; rememberMe?: boolean }) => authApi.verifyWhatsappCode(data),
+    onSuccess: (data, variables) => {
+      queryClient.clear();
+      setAuth({ ...data, rememberMe: variables.rememberMe ?? false });
+      router.push(homePathFor(data.user.orgType));
+    },
+  });
+}
+
 /** External sign-in options for the auth pages. Hidden (not an error) when the call fails. */
 export function useAuthProviders() {
   return useQuery({

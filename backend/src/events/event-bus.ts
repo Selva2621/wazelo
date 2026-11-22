@@ -841,6 +841,20 @@ export interface SubscriptionExpiredEvent {
   subscriptionId: string;
   orgId: string;
   planId: string;
+  /** A paid period ran out without a payment (not a trial / cancelled plan) */
+  paidPeriodEnded?: boolean;
+}
+
+/** A paid plan ends in `daysLeft` days; there is no auto-charge, the customer pays to renew */
+export interface SubscriptionRenewalDueEvent {
+  subscriptionId: string;
+  orgId: string;
+  planName: string;
+  daysLeft: number;
+  /** ISO date-time the paid period ends */
+  periodEnd: string;
+  /** Stable per (subscription, period, days) — idempotency for every channel */
+  reminderKey: string;
 }
 
 export interface SubscriptionGracePeriodEvent {

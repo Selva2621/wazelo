@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownCircle, ArrowRight, Clock, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowRight, CheckCircle2, Clock, CreditCard, RefreshCw } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useCancelSubscription, usePayments, useReactivateSubscription } from "@/hooks/use-billing";
 import { useAiCredits } from "@/hooks/use-ai-credits";
+import { usePlanCheckout } from "@/hooks/use-plan-checkout";
 import type { Subscription, UsageMetrics } from "@/lib/types/billing";
 import { cn, formatMoney } from "@/lib/utils";
 import {
   billingCard,
   cycleSuffix,
+  daysUntil,
   formatBillingDate,
   PaymentStatusBadge,
   SubscriptionStatusBadge,
@@ -18,15 +21,18 @@ import {
 import { UsageMeter } from "./usage-meter";
 import type { BillingTab } from "./billing-workspace";
 
-const REACTIVATABLE = ["CANCELLED", "EXPIRED", "GRACE_PERIOD", "PAST_DUE"];
+/** Unpaid plans: brought back only by paying (Pay now). A plan that already ended needs a new one (See plans). */
+const UNPAID = ["GRACE_PERIOD", "PAST_DUE"];
 
 interface BillingOverviewProps {
   subscription: Subscription | null;
   usage: UsageMetrics | null;
   onGoTo: (tab: BillingTab) => void;
+  /** No current plan, but the workspace had one (it ended): worded as a renewal */
+  hadPlan?: boolean;
 }
 
-export function BillingOverview({ subscription, usage, onGoTo }: BillingOverviewProps) {
+export function BillingOverview({ subscription, usage, onGoTo, hadPlan }: BillingOverviewProps) {
   return (
     <div className="space-y-4">
       {subscription ? (
@@ -34,9 +40,13 @@ export function BillingOverview({ subscription, usage, onGoTo }: BillingOverview
       ) : (
         <section aria-labelledby="no-plan-heading" className={cn(billingCard, "p-6")}>
           <h2 id="no-plan-heading" className="text-title-sm font-semibold text-on-surface">
-            No active plan
+            {hadPlan ? "Your plan has ended" : "No active plan"}
           </h2>
-          <p className="mt-1 text-body text-on-surface-variant">Pick a plan to start sending.</p>
+          <p className="mt-1 text-body text-on-surface-variant">
+            {hadPlan
+              ? "Your data is safe. Pick a plan to start sending again."
+              : "Pick a plan to start sending."}
+          </p>
           <Button className="mt-4" size="sm" onClick={() => onGoTo("plans")}>
             See plans
           </Button>
@@ -56,9 +66,21 @@ export function BillingOverview({ subscription, usage, onGoTo }: BillingOverview
 function PlanSummary({ subscription, onGoTo }: { subscription: Subscription; onGoTo: (tab: BillingTab) => void }) {
   const cancel = useCancelSubscription();
   const reactivate = useReactivateSubscription();
+  const checkout = usePlanCheckout();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const { plan, status } = subscription;
   const isTrial = status === "TRIAL";
+  // Cancelled, but usable until the paid period ends (Keep my plan undoes it)
+  const endingSoon = !!subscription.cancelledAt && (status === "ACTIVE" || isTrial);
+  const unpaid = UNPAID.includes(status);
+  // Paid plans are never charged automatically: the admin pays each period (Renew now)
+  const prepaid = status === "ACTIVE" && !!subscription.nextPeriodPaid;
+  const prepaidPeriods = subscription.prepaidPeriods ?? (prepaid ? 1 : 0);
+  // Renew now stays available when prepaid: each payment adds one more period ahead
+  const renewable = status === "ACTIVE" && plan.priceInCents > 0 && !endingSoon;
+  const daysLeft = daysUntil(subscription.currentPeriodEnd);
+  const renewSoon = renewable && !prepaid && daysLeft <= 3;
+  const cycleWord = plan.billingCycle === "YEARLY" ? "year" : "month";
 
   return (
     <section aria-labelledby="plan-heading" className={cn(billingCard, "p-6")}>
@@ -92,13 +114,25 @@ function PlanSummary({ subscription, onGoTo }: { subscription: Subscription; onG
         </div>
 
         <div className="flex flex-wrap items-center gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
-          {REACTIVATABLE.includes(status) && (
+          {endingSoon && (
             <Button size="sm" onClick={() => reactivate.mutate()} loading={reactivate.isPending}>
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-              Reactivate
+              Keep my plan
             </Button>
           )}
-          {status === "ACTIVE" && (
+          {(renewable || unpaid) && (
+            <Button
+              size="sm"
+              variant={renewSoon || unpaid ? "primary" : "secondary"}
+              loading={checkout.pendingId === plan.id}
+              disabled={checkout.busy && checkout.pendingId !== plan.id}
+              onClick={() => void checkout.pay(plan.id, "Renew")}
+            >
+              <CreditCard className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              {unpaid ? "Pay now" : "Renew now"}
+            </Button>
+          )}
+          {status === "ACTIVE" && !endingSoon && (
             <Button variant="ghost" size="sm" className="text-error hover:text-error" onClick={() => setConfirmCancel(true)}>
               Cancel plan
             </Button>
@@ -110,6 +144,64 @@ function PlanSummary({ subscription, onGoTo }: { subscription: Subscription; onG
           )}
         </div>
       </div>
+
+      {checkout.error && (
+        <Alert variant="error" className="mt-4">
+          {checkout.error}
+        </Alert>
+      )}
+
+      {renewable && !prepaid && (
+        <p
+          className={cn(
+            "mt-4 flex items-start gap-2 border-t border-outline-variant pt-4 text-body",
+            renewSoon ? "text-warning" : "text-on-surface-variant",
+          )}
+          role={renewSoon ? "status" : undefined}
+        >
+          {renewSoon ? (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          ) : (
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
+          )}
+          <span>
+            {renewSoon
+              ? `Your plan ends ${daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`} (${formatBillingDate(subscription.currentPeriodEnd)}). It isn't charged automatically — renew now to keep sending.`
+              : `Renews by paying before ${formatBillingDate(subscription.currentPeriodEnd)}. Nothing is charged automatically.`}
+          </span>
+        </p>
+      )}
+
+      {prepaid && (
+        <p className="mt-4 flex items-start gap-2 border-t border-outline-variant pt-4 text-body text-on-surface-variant">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+          <span>
+            Paid until{" "}
+            <span className="font-medium text-on-surface">
+              {formatBillingDate(subscription.paidUntil ?? subscription.currentPeriodEnd)}
+            </span>
+            {prepaidPeriods > 1 && ` · ${prepaidPeriods} more ${cycleWord}s paid`}
+            {prepaidPeriods === 1 && ` · next ${cycleWord} paid`}
+          </span>
+        </p>
+      )}
+
+      {unpaid && (
+        <p className="mt-4 flex items-start gap-2 border-t border-outline-variant pt-4 text-body text-warning" role="status">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>Your plan is unpaid. Pay now to keep using {plan.name}.</span>
+        </p>
+      )}
+
+      {endingSoon && (
+        <p className="mt-4 flex items-start gap-2 border-t border-outline-variant pt-4 text-body text-on-surface-variant" role="status">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+          <span>
+            Cancelled. You can keep using {plan.name} until{" "}
+            <span className="font-medium text-on-surface">{formatBillingDate(subscription.currentPeriodEnd)}</span>; it won&apos;t renew.
+          </span>
+        </p>
+      )}
 
       {subscription.scheduledPlan && subscription.scheduledChangeAt && (
         <p className="mt-4 flex items-start gap-2 border-t border-outline-variant pt-4 text-body text-on-surface-variant">

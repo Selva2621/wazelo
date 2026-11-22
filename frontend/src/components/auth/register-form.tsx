@@ -35,6 +35,8 @@ export function RegisterForm() {
       email: "",
       password: "",
       organizationName: "",
+      phone: "",
+      whatsappOptIn: false,
     },
   });
 
@@ -147,6 +149,27 @@ export function RegisterForm() {
             error={errors.email?.message}
             {...formRegister("email")}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="phone" required>WhatsApp number</Label>
+          <Input
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="+91 98765 43210"
+            autoComplete="tel"
+            error={errors.phone?.message}
+            {...formRegister("phone")}
+          />
+          <label className="flex cursor-pointer select-none items-start gap-2 pt-1 text-body text-on-surface-variant">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-outline accent-primary"
+              {...formRegister("whatsappOptIn")}
+            />
+            Send me account updates on WhatsApp
+          </label>
         </div>
 
         <div className="space-y-1.5">

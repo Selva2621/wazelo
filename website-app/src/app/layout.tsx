@@ -27,8 +27,8 @@ const siteGraph = {
       logo: {
         "@type": "ImageObject",
         url: `${SITE_URL}/logo/logo.png`,
-        width: 2048,
-        height: 2048,
+        width: 512,
+        height: 512,
       },
       email: "hello@wazelo.in",
       address: { "@type": "PostalAddress", addressCountry: "IN" },
@@ -81,6 +81,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/logo/wazelo-mark-small.svg", type: "image/svg+xml" },
       { url: "/icons/icon-48.png", sizes: "48x48", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
@@ -123,6 +124,15 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {`try{document.documentElement.dataset.theme=localStorage.getItem("wazelo-theme")==="dark"?"dark":"light"}catch(e){}`}
         </Script>
+        {/* Homepage preloader (story/hero-preloader.tsx) is in the server HTML so it is the first
+            paint on a 3D desktop. Skip it before that paint if already seen this session or not
+            a 3D desktop (same media query as story-hero.tsx DESKTOP_3D). */}
+        <Script id="preloader-init" strategy="beforeInteractive">
+          {`try{if(sessionStorage.getItem("wz-hero-preloaded")==="1"||!matchMedia("(min-width: 1024px) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches)document.documentElement.dataset.preloader="skip"}catch(e){document.documentElement.dataset.preloader="skip"}`}
+        </Script>
+        <noscript>
+          <style>{`.hero-preloader{display:none!important}`}</style>
+        </noscript>
         {/* Text fonts are self-hosted via next/font. The icon font loads only on the
             routes that use it (components/icon-font.tsx). */}
         <JsonLd data={siteGraph} />

@@ -1,6 +1,8 @@
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -38,4 +40,15 @@ export class RegisterDto {
   @MinLength(1)
   @MaxLength(255)
   organizationName: string;
+
+  /** WhatsApp number; checked and stored as E.164 by the use case */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  phone: string;
+
+  /** Ticked "Send me account updates on WhatsApp" */
+  @IsOptional()
+  @IsBoolean()
+  whatsappOptIn?: boolean;
 }

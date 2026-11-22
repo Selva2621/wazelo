@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { SendEmailWorker } from './email/send-email.worker';
 import { SendInviteEmailWorker } from './invitation/send-invite-email.worker';
 import { SessionCleanupWorker } from './auth/session-cleanup.worker';
+import { HqTrialReminderWorker } from './hq/hq-trial-reminder.worker';
+import { HqModule } from '@/modules/hq/hq.module';
 import { SessionRepository } from '@/modules/auth/infrastructure/repositories/session.repository';
 import { SuperAdminSessionRepository } from '@/modules/super-admin/infrastructure/repositories/super-admin-session.repository';
 import { SendMessageWorker } from './whatsapp/send-message.worker';
@@ -31,7 +33,7 @@ import { FollowUpWorker } from './automation/follow-up.worker';
 import { ScheduledMessageWorker } from './scheduler/scheduled-message.worker';
 // EPIC 9 — Billing & Subscription workers
 import { BillingCycleWorker } from './billing/billing-cycle.worker';
-import { PaymentRetryWorker } from './billing/payment-retry.worker';
+import { RenewalReminderWorker } from './billing/renewal-reminder.worker';
 // EPIC 10 — Observability workers
 import { MetricCleanupWorker } from './observability/metric-cleanup.worker';
 import { QueueMetricsWorker } from './observability/queue-metrics.worker';
@@ -95,6 +97,8 @@ import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.m
 
 @Module({
   imports: [
+    // Wazelo HQ: daily trial-ending WhatsApp reminders to customers
+    HqModule,
     WhatsAppModule,
     MessagesModule,
     // IncomingMessageWorker resolves the sender's contact before emitting the event
@@ -134,6 +138,7 @@ import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.m
     SendEmailWorker,
     SendInviteEmailWorker,
     SessionCleanupWorker,
+    HqTrialReminderWorker,
     SessionRepository,
     SuperAdminSessionRepository,
     // WhatsApp workers
@@ -156,8 +161,10 @@ import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.m
     FollowUpWorker,
     ScheduledMessageWorker,
     // EPIC 9 — Billing & Subscription workers
+    // No auto-charge (customers pay each period themselves): the Stripe payment-retry
+    // worker was retired. Daily "your plan ends in N days" reminders instead.
     BillingCycleWorker,
-    PaymentRetryWorker,
+    RenewalReminderWorker,
     // EPIC 10 — Observability workers
     MetricCleanupWorker,
     QueueMetricsWorker,

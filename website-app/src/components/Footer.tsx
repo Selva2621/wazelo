@@ -76,7 +76,7 @@ export default function Footer({ showCta = true }: { showCta?: boolean }) {
         <div className={`grid gap-12 lg:grid-cols-12 ${showCta ? "pt-14" : ""}`}>
           <div className="lg:col-span-4">
             <Link href="/" className={`flex w-max items-center gap-2.5 rounded-md ${focusPaper}`}>
-              <Image src="/logo/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
+              <Image src="/logo/wazelo-mark.svg" alt="" width={32} height={32} className="size-8" />
               <span className="text-lg font-semibold tracking-tight">Wazelo</span>
             </Link>
             <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-paper/60">

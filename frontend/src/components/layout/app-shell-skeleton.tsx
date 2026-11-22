@@ -23,7 +23,7 @@ export function AppShellSkeleton() {
         className="app-sidebar fixed left-0 top-0 z-40 flex h-dvh w-[var(--sidebar-width)] flex-col overflow-hidden bg-sidebar max-lg:hidden"
       >
         <div className="flex h-[var(--header-height)] shrink-0 items-center gap-2.5 px-[22px]">
-          <img src="/logo/logo.png" alt="" className="size-7 shrink-0 object-contain" />
+          <img src="/logo/wazelo-mark-small.svg" alt="" className="size-7 shrink-0 object-contain" />
           <span className="side-label text-title-sm font-semibold tracking-tight text-on-surface">
             Waze<span className="text-primary-container">lo</span>
           </span>

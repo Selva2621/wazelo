@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Environment, Html, Lightformer, RoundedBox, useGLTF, useTexture, useVideoTexture } from "@react-three/drei";
-import { DepthOfField, EffectComposer, Noise, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
-import { BlendFunction, ToneMappingMode, type DepthOfFieldEffect } from "postprocessing";
+import { Environment, Html, Lightformer, RoundedBox, useGLTF, useProgress, useTexture, useVideoTexture } from "@react-three/drei";
+import { DepthOfField, EffectComposer, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { ToneMappingMode, type DepthOfFieldEffect } from "postprocessing";
 import * as THREE from "three";
 import { HERO_STEPS, type HeroDevice } from "./hero-steps";
+import { useMediaSuffix, useStoryPrice } from "./story-media";
 
 /**
  * Real-time version of the Blender hero (demo/blender-hero/build_scene.py), desktop only.
@@ -39,7 +40,9 @@ const PUSH_OFF: Record<HeroDevice, number> = { phone: 0.14, laptop: 0.2, monitor
 // How far right of centre each device sits (fraction of distance), clear of the headline.
 const OFF: Record<HeroDevice, number> = { phone: 0.12, laptop: 0.12, monitor: 0.13 };
 // Depth (metres) kept sharp around the focused device: enough for its whole screen.
-const RANGE: Record<HeroDevice, number> = { phone: 0.14, laptop: 0.34, monitor: 0.5 };
+// Wide enough that the whole active screen (angled away from the camera) stays sharp; only
+// the desk and room behind fall out of focus.
+const RANGE: Record<HeroDevice, number> = { phone: 0.3, laptop: 0.7, monitor: 1.0 };
 const LIFT: Record<HeroDevice, number> = { phone: 0.0, laptop: 0.06, monitor: 0.02 };
 const TAG_Y: Record<HeroDevice, number> = { phone: 0.1, laptop: 0.12, monitor: 0.21 };
 
@@ -64,14 +67,36 @@ function Screen({
     // Mipmaps + anisotropy: app text shrinks cleanly at an angle instead of shimmering.
     tex.generateMipmaps = true;
     tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.anisotropy = 8;
+    tex.anisotropy = 16;
     tex.needsUpdate = true;
     onVideo?.(tex.image as HTMLVideoElement);
   }, [tex, onVideo]);
   return (
     <mesh>
       <planeGeometry args={[w, h]} />
-      <meshBasicMaterial map={tex} toneMapped={false} color={[dim, dim, dim]} />
+      <meshBasicMaterial map={tex} toneMapped={false} color={[dim, dim, dim]} onBeforeCompile={sharpenMap} />
+    </mesh>
+  );
+}
+
+/**
+ * App text on the screens is drawn much smaller than it was recorded, so the GPU samples a
+ * pre-shrunk (blurrier) mip level. A -1 LOD bias picks the next sharper level: crisp text,
+ * still filtered (no shimmer).
+ */
+function sharpenMap(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "vec4 sampledDiffuseColor = texture2D( map, vMapUv );",
+    "vec4 sampledDiffuseColor = texture2D( map, vMapUv, -1.0 );",
+  );
+}
+
+/** Placeholder screen while a recording streams in: the app's light background, softly lit. */
+function BlankScreen({ w, h }: { w: number; h: number }) {
+  return (
+    <mesh>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial color="#e6eaef" toneMapped={false} />
     </mesh>
   );
 }
@@ -87,6 +112,7 @@ function Laptop({
   still,
   onVideo,
   detail,
+  live = false,
 }: {
   position: [number, number, number];
   rotY: number;
@@ -94,6 +120,8 @@ function Laptop({
   still?: string;
   onVideo?: (v: HTMLVideoElement) => void;
   detail?: React.Ref<THREE.Group>;
+  /** Load the screen content (after the first frame is up). */
+  live?: boolean;
 }) {
   return (
     <group position={position} rotation={[0, rotY, 0]}>
@@ -118,10 +146,16 @@ function Laptop({
           <meshStandardMaterial {...black} />
         </mesh>
         <group position={[0, 0.111, 0.0042]}>
-          {still ? (
-            <StillScreen src={still} w={0.292} h={(0.292 * 9) / 16} />
+          {live ? (
+            <Suspense fallback={<BlankScreen w={0.292} h={(0.292 * 9) / 16} />}>
+              {still ? (
+                <StillScreen src={still} w={0.292} h={(0.292 * 9) / 16} />
+              ) : (
+                <Screen src={src!} w={0.292} h={(0.292 * 9) / 16} dim={1} onVideo={onVideo} />
+              )}
+            </Suspense>
           ) : (
-            <Screen src={src!} w={0.292} h={(0.292 * 9) / 16} dim={1} onVideo={onVideo} />
+            <BlankScreen w={0.292} h={(0.292 * 9) / 16} />
           )}
           {/* Push-in target: the AI reply suggestions in the inbox */}
           <group ref={detail} position={[0.023, -0.036, 0]} />
@@ -137,12 +171,14 @@ function Monitor({
   src,
   onVideo,
   detail,
+  live = false,
 }: {
   position: [number, number, number];
   rotY: number;
   src: string;
   onVideo?: (v: HTMLVideoElement) => void;
   detail?: React.Ref<THREE.Group>;
+  live?: boolean;
 }) {
   return (
     <group position={position} rotation={[0, rotY, 0]}>
@@ -160,7 +196,13 @@ function Monitor({
         <meshStandardMaterial {...black} />
       </mesh>
       <group position={[0, 0.32, -0.0298]}>
-        <Screen src={src} w={0.58} h={(0.58 * 9) / 16} dim={0.95} onVideo={onVideo} />
+        {live ? (
+          <Suspense fallback={<BlankScreen w={0.58} h={(0.58 * 9) / 16} />}>
+            <Screen src={src} w={0.58} h={(0.58 * 9) / 16} dim={0.95} onVideo={onVideo} />
+          </Suspense>
+        ) : (
+          <BlankScreen w={0.58} h={(0.58 * 9) / 16} />
+        )}
         {/* Push-in target: the phone preview with the AI-written follow-ups */}
         <group ref={detail} position={[0.12, -0.03, 0]} />
       </group>
@@ -168,7 +210,7 @@ function Monitor({
   );
 }
 
-function Phone({ onVideo, detail }: { onVideo: (v: HTMLVideoElement) => void; detail?: React.Ref<THREE.Group> }) {
+function Phone({ onVideo, detail, sfx = "" }: { onVideo: (v: HTMLVideoElement) => void; detail?: React.Ref<THREE.Group>; sfx?: string }) {
   const oak = { color: "#8a6a4a", roughness: 0.5 };
   return (
     <group position={PHONE.toArray()} rotation={[0, deg(-62), 0]}>
@@ -186,7 +228,7 @@ function Phone({ onVideo, detail }: { onVideo: (v: HTMLVideoElement) => void; de
           <meshStandardMaterial {...dark} />
         </RoundedBox>
         <group position={[0, 0.0813, 0.0043]}>
-          <Screen src={`${M}/phone-screen.mp4`} w={0.0656} h={0.1485} dim={1.3} loop={false} onVideo={onVideo} />
+          <Screen src={`${M}/phone-screen${sfx}.mp4`} w={0.0656} h={0.1485} dim={1.3} loop={false} onVideo={onVideo} />
           {/* Push-in target: the chat */}
           <group ref={detail} position={[0, -0.01, 0]} />
         </group>
@@ -244,7 +286,7 @@ function Table() {
   );
 }
 
-function Props() {
+function Props({ late }: { late: boolean }) {
   return (
     <group>
       {/* Rust notebook */}
@@ -258,8 +300,11 @@ function Props() {
         </mesh>
       </group>
       <Mug position={[0.5, TOP, 0.22]} />
-      <Model url={`${M}/potted_plant_01.glb`} position={[1.85, TOP, -0.62]} rotY={0.4} scale={0.8} />
-      <Model url={`${M}/desk_lamp_arm_01.glb`} position={[-0.5, TOP, -0.42]} rotY={deg(70)} />
+      {late && (
+        <Suspense fallback={null}>
+          <Model url={`${M}/potted_plant_01.glb`} position={[1.85, TOP, -0.62]} rotY={0.4} scale={0.8} />
+        </Suspense>
+      )}
     </group>
   );
 }
@@ -455,11 +500,12 @@ function StillScreen({ src, w, h }: { src: string; w: number; h: number }) {
   const tex = useTexture(src);
   useMemo(() => {
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 16;
   }, [tex]);
   return (
     <mesh>
       <planeGeometry args={[w, h]} />
-      <meshBasicMaterial map={tex} toneMapped={false} />
+      <meshBasicMaterial map={tex} toneMapped={false} onBeforeCompile={sharpenMap} />
     </mesh>
   );
 }
@@ -504,15 +550,28 @@ function FocusPull({ effect, focus, device }: { effect: React.RefObject<DepthOfF
   return null;
 }
 
+/**
+ * Reports three.js loader progress (0-100: textures, models) for the hero preloader's counter.
+ * Lives outside the Canvas: drei's useProgress reads the global loading manager.
+ */
+function ReportProgress({ onProgress }: { onProgress: (p: number) => void }) {
+  const progress = useProgress((s) => s.progress);
+  useEffect(() => onProgress(progress), [progress, onProgress]);
+  return null;
+}
+
 export function Hero3D({
   step,
   onStep,
   onReady,
+  onProgress,
   className = "",
 }: {
   step: number;
   onStep: (i: number) => void;
   onReady: () => void;
+  /** Asset loading progress 0-100 until the first frame is up (the scene module has loaded). */
+  onProgress?: (p: number) => void;
   className?: string;
 }) {
   const mouse = useRef({ x: 0, y: 0 });
@@ -528,9 +587,20 @@ export function Hero3D({
   const details = useMemo(() => ({ phone: phoneDetail, laptop: laptopDetail, monitor: monitorDetail }), []);
   const wrap = useRef<HTMLDivElement>(null);
   const [onScreen, setOnScreen] = useState(true);
+  // False until the first frame is on screen; then the laptop/monitor recordings and the
+  // plant start loading, so they never delay the first paint.
+  const [late, setLate] = useState(false);
+  const ready = useCallback(() => {
+    onReady();
+    setLate(true);
+  }, [onReady]);
   // Full device pixel density (up to 2x) so text on the screens stays crisp.
   const dpr = Math.min(2, typeof window === "undefined" ? 1 : window.devicePixelRatio);
   const device = HERO_STEPS[step].device;
+  // ₹ (Mumbai) or $ (Dubai) recordings, like the pricing.
+  // Client-only scene, so the currency is already known here.
+  const sfx = useMediaSuffix() ?? "";
+  const price = useStoryPrice();
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -575,9 +645,14 @@ export function Hero3D({
 
   return (
     <div ref={wrap} className={className}>
+      {/* Only the first-view load counts: late assets (laptop/monitor clips, plant) stream after. */}
+      {onProgress && !late && <ReportProgress onProgress={onProgress} />}
       <Canvas
         shadows="percentage"
         dpr={dpr}
+        // Size from the layout box, not the on-screen box: the hero's intro zoom (scale 1.1 -> 1)
+        // would otherwise freeze the canvas ~5% too large, cropped and off-centre.
+        resize={{ offsetSize: true }}
         camera={{ fov: 26, near: 0.05, far: 30, position: [-0.77, 0.94, 0.31] }}
         gl={{ antialias: false, toneMapping: THREE.AgXToneMapping, toneMappingExposure: 1.0, powerPreference: "high-performance" }}
         frameloop={onScreen ? "always" : "never"}
@@ -585,37 +660,37 @@ export function Hero3D({
         <color attach="background" args={["#120e0b"]} />
         <fog attach="fog" args={["#120e0b", 3.2, 9]} />
         <Suspense fallback={null}>
-          <Environment resolution={128} environmentIntensity={0.35}>
+          <Environment resolution={256} environmentIntensity={0.35}>
             <Lightformer form="rect" intensity={2} color="#ffe2c4" position={[3, 2, 2]} scale={[3, 2, 1]} target={[0, 0.8, 0]} />
             <Lightformer form="rect" intensity={0.8} color="#c8d4ff" position={[-3, 2, -2]} scale={[2, 2, 1]} target={[0, 0.8, 0]} />
             <Lightformer form="ring" intensity={1.2} color="#ffc690" position={[-0.35, 1.6, -0.25]} scale={0.6} target={[0, 0.8, 0]} />
           </Environment>
           <Room />
           <Table />
-          <Props />
+          <Props late={late} />
           <Pick onPick={() => onStep(1)}>
-            <Laptop position={[0.25, TOP, -0.05]} rotY={deg(-58)} src={`${M}/app-inbox-meera.mp4`} onVideo={(v) => (laptopVideo.current = v)} detail={laptopDetail} />
+            <Laptop position={[0.25, TOP, -0.05]} rotY={deg(-58)} src={`${M}/app-inbox-meera${sfx}.mp4`} onVideo={(v) => (laptopVideo.current = v)} detail={laptopDetail} live={late} />
           </Pick>
           <Pick onPick={() => onStep(2)}>
-            <Monitor position={[1.25, TOP, -0.3]} rotY={deg(-50)} src={`${M}/app-followup.mp4`} onVideo={(v) => (monitorVideo.current = v)} detail={monitorDetail} />
+            <Monitor position={[1.25, TOP, -0.3]} rotY={deg(-50)} src={`${M}/app-followup${sfx}.mp4`} onVideo={(v) => (monitorVideo.current = v)} detail={monitorDetail} live={late} />
           </Pick>
-          <Laptop position={[2.25, TOP, -0.2]} rotY={deg(-46)} still={`${M}/app-proposal.jpg`} />
+          <Laptop position={[2.25, TOP, -0.2]} rotY={deg(-46)} still={`${M}/app-proposal${sfx}.jpg`} live={late} />
           <Pick onPick={() => onStep(step === 0 ? 3 : 0)}>
-            <Phone onVideo={(v) => (phoneVideo.current = v)} detail={phoneDetail} />
+            <Phone onVideo={(v) => (phoneVideo.current = v)} detail={phoneDetail} sfx={sfx} />
           </Pick>
           <Lights phoneVideo={phoneVideo} step={step} />
           <PhoneHold phoneVideo={phoneVideo} stepRef={stepRef} />
           <Rig step={step} device={device} details={details} mouse={mouse} scroll={scroll} focus={focus} />
           <FocusPull effect={dof} focus={focus} device={device} />
-          <Tag key={step} device={device} text={HERO_STEPS[step].tag} />
-          <Ready onReady={onReady} />
+          <Tag key={step} device={device} text={HERO_STEPS[step].tag.replace("{price}", price)} />
+          <Ready onReady={ready} />
         </Suspense>
         <FreezeShadows />
         <EffectComposer multisampling={0} enableNormalPass={false}>
-          <DepthOfField ref={dof} target={focus} focusRange={0.12} bokehScale={4} resolutionScale={0.5} />
+          {/* Full-resolution blur, and no film grain: both softened the small app text. */}
+          <DepthOfField ref={dof} target={focus} focusRange={0.12} bokehScale={4} resolutionScale={1} />
           <ToneMapping mode={ToneMappingMode.NEUTRAL} />
           <Vignette offset={0.28} darkness={0.62} />
-          <Noise opacity={0.035} blendFunction={BlendFunction.SOFT_LIGHT} />
           <SMAA />
         </EffectComposer>
       </Canvas>

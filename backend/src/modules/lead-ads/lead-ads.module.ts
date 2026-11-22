@@ -36,6 +36,8 @@ import { ChannelsModule } from '@/modules/channels/channels.module';
     SimulateLeadAdUseCase,
   ],
   exports: [
+    // Round-robin owner for Wazelo HQ sign-up leads too
+    LeadAssignmentService,
     LeadAdRepository,
     ProcessLeadAdUseCase,
     MetaGraphApiService,

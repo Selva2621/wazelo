@@ -77,6 +77,7 @@ function setup(
     rbacService as never,
     orgAiMemory as never,
     freelancerProfiles as never,
+    { emit: jest.fn() } as never,
   );
   return { useCase, repo, rbacService, orgAiMemory, freelancerProfiles };
 }

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { useStoryClip } from "@/components/story/story-media";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
@@ -126,6 +127,7 @@ function scrollToIndustry(id: string) {
 function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
   const reverse = index % 2 === 1;
   const clipLabel = `${ind.tag} follow-up in the Wazelo app`;
+  const clip = useStoryClip(); // ₹ or $ recordings, like the pricing
 
   return (
     <section id={ind.id} data-uc="section" className={`scroll-mt-32 border-t border-ink/10 px-4 py-24 sm:px-6 lg:px-8 lg:py-32 ${index % 2 === 1 ? "bg-paper-deep/60" : ""}`}>
@@ -178,17 +180,17 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
                 data-uc="clip"
                 className={`absolute bottom-0 hidden w-[68%] overflow-hidden lg:block rounded-xl bg-white shadow-[0_40px_80px_-30px_rgba(60,40,20,0.55),0_0_0_1px_rgba(23,19,15,0.08)] ${reverse ? "right-4 sm:right-8" : "left-4 sm:left-8"}`}
               >
-                <LoopVideo src={`/media/story/${ind.clip}.mp4`} poster={`/media/story/${ind.clip}.jpg`} label={clipLabel} />
+                <LoopVideo {...clip(ind.clip)} label={clipLabel} />
               </div>
               {/* Phones: the app's own phone screen, readable, under the photo. */}
               <PhoneFrame className="mt-10 lg:hidden">
-                <LoopVideo src={`/media/story/${ind.clip}-m.mp4`} poster={`/media/story/${ind.clip}-m.jpg`} label={clipLabel} className="!aspect-auto h-full" />
+                <LoopVideo {...clip(ind.clip, true)} label={clipLabel} className="!aspect-auto h-full" />
               </PhoneFrame>
             </div>
           ) : (
             <>
             <PhoneFrame className="lg:hidden">
-              <LoopVideo src={`/media/story/${ind.clip}-m.mp4`} poster={`/media/story/${ind.clip}-m.jpg`} label={clipLabel} className="!aspect-auto h-full" />
+              <LoopVideo {...clip(ind.clip, true)} label={clipLabel} className="!aspect-auto h-full" />
             </PhoneFrame>
             <div className="hidden overflow-hidden rounded-[1.25rem] bg-white lg:block shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5),0_0_0_1px_rgba(23,19,15,0.08)]">
               <div className="flex items-center gap-2 border-b border-ink/[0.07] bg-[#faf8f5] px-4 py-3">
@@ -197,7 +199,7 @@ function IndustrySection({ ind, index }: { ind: Industry; index: number }) {
                 <span className="size-2.5 rounded-full bg-[#5fc454]" />
                 <span className="ml-3 truncate rounded-md bg-ink/[0.05] px-3 py-1 font-mono text-[11px] text-ink-soft">app.wazelo.in</span>
               </div>
-              <LoopVideo src={`/media/story/${ind.clip}.mp4`} poster={`/media/story/${ind.clip}.jpg`} label={clipLabel} />
+              <LoopVideo {...clip(ind.clip)} label={clipLabel} />
             </div>
             </>
           )}

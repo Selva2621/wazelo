@@ -63,9 +63,14 @@ import { OrgModule } from '@/modules/org/org.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { LeadFollowUpsModule } from '@/modules/lead-follow-ups/lead-follow-ups.module';
 import { LeadFollowUpEventsHandler } from './handlers/lead-follow-up-events.handler';
+// Wazelo HQ: sign-ups become HQ leads
+import { HqModule } from '@/modules/hq/hq.module';
+import { HqSignupLeadHandler } from './handlers/hq-signup-lead.handler';
+import { HqPlatformAlertsHandler } from './handlers/hq-platform-alerts.handler';
 
 @Module({
   imports: [
+    HqModule,
     BillingModule,
     WhatsAppModule,
     AuditModule,
@@ -88,6 +93,8 @@ import { LeadFollowUpEventsHandler } from './handlers/lead-follow-up-events.hand
     LeadFollowUpsModule,
   ],
   providers: [
+    HqSignupLeadHandler,
+    HqPlatformAlertsHandler,
     // Lead routing: product team gets the lead; manual message / status = contacted
     LeadFollowUpEventsHandler,
     AuthEventsHandler,

@@ -8,9 +8,10 @@ const publicPaths = [
   "/auth/reset-password",
 ];
 
-// Session hand-off after "Continue with Google": reachable with or without a session hint
-// (it creates the session, and must not be bounced to /dashboard by a stale hint).
-const sessionHandoffPaths = ["/auth/google/complete"];
+// Session hand-offs after "Continue with Google" and the super admin's "Open Wazelo HQ":
+// reachable with or without a session hint (they create the session, and must not be
+// bounced to /dashboard by a stale hint).
+const sessionHandoffPaths = ["/auth/google/complete", "/auth/hq"];
 
 // Login-free token pages: /wa/<token> (reconnect WhatsApp from the phone), /p/<token> (a client's proposal),
 // /csat/<conversationId> (the satisfaction survey a customer opens from WhatsApp)

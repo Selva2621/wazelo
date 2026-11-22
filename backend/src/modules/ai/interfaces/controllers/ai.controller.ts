@@ -162,11 +162,13 @@ export class AiController {
   @Get('kb-search')
   @Permissions(PERMISSIONS.MESSAGES_READ)
   @AiCredits('kb_search')
-  kbSearch(
+  async kbSearch(
     @CurrentUser() user: JwtPayload,
     @Query(new ValidationPipe({ transform: true, whitelist: true })) dto: KbSearchQueryDto,
   ) {
-    return this.kbRagSearch.execute(dto.q, user.orgId);
+    // Which AI model/provider answered is for the super admin only: never sent to tenants
+    const { usage: _usage, ...result } = await this.kbRagSearch.execute(dto.q, user.orgId);
+    return result;
   }
 
   @Get('kb-suggest/:conversationId')

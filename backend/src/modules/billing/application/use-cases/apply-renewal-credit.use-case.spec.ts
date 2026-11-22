@@ -104,3 +104,19 @@ describe('ApplyRenewalCreditUseCase', () => {
     expect(creditRepo.findByIdempotencyKey).not.toHaveBeenCalled();
   });
 });
+
+describe('ApplyRenewalCreditUseCase requireFullCover', () => {
+  it('leaves a partial balance untouched (no invoice, no ledger entry)', async () => {
+    const { useCase, ledger, invoices } = setup(300);
+    expect(await useCase.execute({ ...input, requireFullCover: true })).toBeNull();
+    expect(ledger).toHaveLength(1);
+    expect(invoices).toHaveLength(0);
+  });
+
+  it('applies when the balance covers the whole price', async () => {
+    const { useCase, invoices } = setup(1500);
+    const res = await useCase.execute({ ...input, requireFullCover: true });
+    expect(res).toMatchObject({ appliedInCents: 1000, amountDueInCents: 0 });
+    expect(invoices).toHaveLength(1);
+  });
+});

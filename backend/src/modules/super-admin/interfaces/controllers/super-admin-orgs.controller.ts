@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { sendCsv } from '../csv-response';
 import { SuperAdminOnly } from '../guards/super-admin-only.decorator';
+import { HqProtected, NotWazeloHqGuard } from '@/modules/org/interfaces/guards/not-wazelo-hq.guard';
 import { CurrentUser, JwtPayload } from '@/common/decorators/current-user.decorator';
 import { requestMeta } from '../request-meta';
 import { GetOrgMessagingHealthUseCase } from '../../application/use-cases/get-org-messaging-health.use-case';
@@ -95,6 +96,8 @@ export class SuperAdminOrgsController {
   /** Soft delete; restorable for 30 days. Body must repeat the org name. */
   @Post('organizations/:id/delete')
   @HttpCode(HttpStatus.OK)
+  @HqProtected('delete')
+  @UseGuards(NotWazeloHqGuard)
   async deleteOrg(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminDeleteOrgDto,
@@ -120,6 +123,8 @@ export class SuperAdminOrgsController {
 
   @Post('organizations/:id/suspend')
   @HttpCode(HttpStatus.OK)
+  @HqProtected('suspend')
+  @UseGuards(NotWazeloHqGuard)
   async suspendOrg(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SuspendOrgDto,
@@ -137,6 +142,8 @@ export class SuperAdminOrgsController {
 
   @Post('organizations/:id/subscription/cancel')
   @HttpCode(HttpStatus.OK)
+  @HqProtected('cancel the subscription of')
+  @UseGuards(NotWazeloHqGuard)
   async cancelSubscription(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminCancelSubscriptionDto,
@@ -148,6 +155,8 @@ export class SuperAdminOrgsController {
 
   @Post('organizations/:id/subscription/change-plan')
   @HttpCode(HttpStatus.OK)
+  @HqProtected('change the plan of')
+  @UseGuards(NotWazeloHqGuard)
   async changePlan(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminChangePlanDto,
@@ -159,6 +168,8 @@ export class SuperAdminOrgsController {
 
   @Post('organizations/:id/subscription/extend-trial')
   @HttpCode(HttpStatus.OK)
+  @HqProtected('extend a trial on')
+  @UseGuards(NotWazeloHqGuard)
   async extendTrial(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminExtendTrialDto,

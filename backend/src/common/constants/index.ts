@@ -105,6 +105,10 @@ export const QUEUE_NAMES = {
 export const EVENT_NAMES = {
   // Auth events
   USER_REGISTERED: 'user.registered',
+  /** A sign-up added their WhatsApp number later (Google sign-ups, at onboarding) */
+  USER_PHONE_ADDED: 'user.phone_added',
+  /** "Sign in with WhatsApp code": send this code from Wazelo HQ (payload holds the code — never persist it) */
+  LOGIN_CODE_REQUESTED: 'auth.login_code_requested',
   EMAIL_VERIFIED: 'user.email_verified',
   LOGIN_SUCCESS: 'auth.login_success',
   LOGIN_FAILED: 'auth.login_failed',
@@ -229,6 +233,12 @@ export const EVENT_NAMES = {
   SUBSCRIPTION_EXPIRED: 'billing.subscription_expired',
   SUBSCRIPTION_GRACE_PERIOD: 'billing.subscription_grace_period',
   SUBSCRIPTION_REACTIVATED: 'billing.subscription_reactivated',
+  /** A paid plan ends in N days and is not auto-renewed: the customer pays to renew */
+  SUBSCRIPTION_RENEWAL_DUE: 'billing.subscription_renewal_due',
+  /** A new org got its free trial (onboarding) */
+  SUBSCRIPTION_TRIAL_STARTED: 'billing.subscription_trial_started',
+  /** A trial was paid for and is now ACTIVE */
+  SUBSCRIPTION_TRIAL_CONVERTED: 'billing.subscription_trial_converted',
   PAYMENT_SUCCEEDED: 'billing.payment_succeeded',
   PAYMENT_FAILED: 'billing.payment_failed',
   PAYMENT_RETRY_SCHEDULED: 'billing.payment_retry_scheduled',

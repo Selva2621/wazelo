@@ -93,6 +93,35 @@ export const usersApi = {
   updateProfile: (data: UpdateProfileRequest) =>
     apiClient.patch<OrgUser>("/users/me", data).then((r) => r.data),
 
+  /** Your own WhatsApp number and "account updates on WhatsApp" consent */
+  getMyWhatsapp: () =>
+    apiClient.get<MyWhatsapp>("/users/me/whatsapp").then((r) => r.data),
+
+  setMyWhatsapp: (data: { phone: string; whatsappOptIn: boolean }) =>
+    apiClient.put<MyWhatsapp>("/users/me/whatsapp", data).then((r) => r.data),
+
+  /** Confirming your own WhatsApp number with a code from Wazelo (optional) */
+  getWhatsappVerification: () =>
+    apiClient.get<WhatsappVerification>("/users/me/whatsapp/verification").then((r) => r.data),
+
+  sendWhatsappCode: () =>
+    apiClient.post<{ sent: true; expiresInSeconds: number }>("/users/me/whatsapp/verification/send").then((r) => r.data),
+
+  confirmWhatsappCode: (code: string) =>
+    apiClient.post<{ verified: true }>("/users/me/whatsapp/verification/confirm", { code }).then((r) => r.data),
+
   changePassword: (data: ChangePasswordRequest) =>
     apiClient.patch("/auth/change-password", data).then((r) => r.data),
 };
+
+export interface WhatsappVerification {
+  phone: string | null;
+  verified: boolean;
+  /** Wazelo can send codes right now (otherwise the step is hidden) */
+  available: boolean;
+}
+
+export interface MyWhatsapp {
+  phone: string | null;
+  whatsappOptIn: boolean;
+}
