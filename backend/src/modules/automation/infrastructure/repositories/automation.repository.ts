@@ -313,4 +313,31 @@ export class AutomationRepository {
     });
     return (log?.triggerPayload as Record<string, unknown> | null) ?? null;
   }
+
+  async findExecutionActionResults(executionId: string): Promise<unknown[]> {
+    const log = await this.prisma.automationExecutionLog.findUnique({
+      where: { id: executionId },
+      select: { actionResults: true },
+    });
+    return Array.isArray(log?.actionResults) ? (log!.actionResults as unknown[]) : [];
+  }
+
+  /** The org's failed runs since `since` that were never resent (the caller checks why they failed) */
+  findFailedNotResent(orgId: string, since: Date) {
+    return this.prisma.automationExecutionLog.findMany({
+      where: { orgId, status: AutomationExecutionStatus.FAILED, retryCount: 0, completedAt: { gte: since } },
+      select: { id: true, ruleId: true, contactId: true, actionResults: true },
+      orderBy: { completedAt: 'asc' },
+      take: 500,
+    });
+  }
+
+  /** Takes a failed run for its one resend; false if another reconnect already took it */
+  async claimForResend(executionId: string): Promise<boolean> {
+    const { count } = await this.prisma.automationExecutionLog.updateMany({
+      where: { id: executionId, status: AutomationExecutionStatus.FAILED, retryCount: 0 },
+      data: { status: AutomationExecutionStatus.PENDING, retryCount: 1, error: null, completedAt: null },
+    });
+    return count === 1;
+  }
 }

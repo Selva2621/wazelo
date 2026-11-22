@@ -6,6 +6,7 @@ import { TriggerMatcherService } from '@/modules/automation/domain/services/trig
 import { AppWebSocketGateway } from '@/infrastructure/websocket/websocket.gateway';
 import { EvaluateTriggerUseCase } from '@/modules/automation/application/use-cases/evaluate-trigger.use-case';
 import { ScheduleNoReplyChecksUseCase } from '@/modules/automation/application/use-cases/no-reply.use-cases';
+import { ResendAfterReconnectUseCase } from '@/modules/automation/application/use-cases/resend-after-reconnect.use-case';
 import { EVENT_NAMES } from '@/common/constants';
 import { ChatbotRepository } from '@/modules/chatbot/infrastructure/repositories/chatbot.repository';
 import {
@@ -58,7 +59,21 @@ export class AutomationEventsHandler {
     private readonly chatbotRepo: ChatbotRepository,
     private readonly automationRepo: AutomationRepository,
     private readonly triggerMatcher: TriggerMatcherService,
+    private readonly resendAfterReconnect: ResendAfterReconnectUseCase,
   ) {}
+
+  /** A number connected: messages that failed for want of one (last 24h) go out now */
+  @OnEvent(EVENT_NAMES.WHATSAPP_SESSION_CONNECTED, { async: true })
+  async handleSessionConnected(payload: { orgId: string; sessionId: string }): Promise<void> {
+    if (!payload?.orgId) return;
+    try {
+      await this.resendAfterReconnect.execute(payload.orgId);
+    } catch (error) {
+      this.logger.error(
+        `Resending automation messages after reconnect failed: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+    }
+  }
 
   // ─── Trigger Evaluation Handlers ──────────────────
   // NOTE: WHATSAPP_MESSAGE_RECEIVED is handled by MessagePipelineHandler

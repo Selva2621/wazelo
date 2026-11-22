@@ -15,6 +15,8 @@ export interface AutomationEvaluateJobData {
   orgId: string;
   contactId?: string;
   depth: number;
+  /** A resend after a number reconnected: steps before this one already ran */
+  startAtAction?: number;
 }
 
 @Injectable()
@@ -104,10 +106,15 @@ export class AutomationEvaluatorWorker implements OnModuleInit {
       const triggerPayload = await this.automationRepo.findExecutionTriggerPayload(data.executionId);
       const eventPayload = triggerPayload ?? undefined;
 
-      // 5. Execute actions in order
-      const actionResults: Record<string, unknown>[] = [];
+      // 5. Execute actions in order. A resend keeps the steps that already ran and
+      // starts at the one that failed.
+      const startAt = data.startAtAction ?? 0;
+      const actionResults: Record<string, unknown>[] =
+        startAt > 0
+          ? ((await this.automationRepo.findExecutionActionResults(data.executionId)).slice(0, startAt) as Record<string, unknown>[])
+          : [];
 
-      for (const action of rule.actions) {
+      for (const action of rule.actions.slice(startAt)) {
         // Handle delayed actions
         if (action.delaySeconds > 0) {
           await this.queueService.publishDelayed(
