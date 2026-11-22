@@ -151,7 +151,7 @@ export default function OrgTypePage() {
         {/* Logo */}
         <div className="text-center mb-10 max-lg:mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/logo/logo.png" alt="Wazelo" className="h-8 w-8 object-contain" />
+            <img src="/logo/wazelo-mark.svg" alt="Wazelo" className="h-8 w-8 object-contain" />
             <span className="text-title font-semibold text-on-surface">
               Waze<span className="text-primary">lo</span>
             </span>

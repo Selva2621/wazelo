@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Wazelo">
+  <defs>
+    <linearGradient id="wzs-front" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="0.45" stop-color="#f59e0b"/><stop offset="1" stop-color="#d97706"/></linearGradient>
+  </defs>
+  <path fill="#7c3a06" d="M40 2h42a16 16 0 0 1 16 16v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16V18A16 16 0 0 1 40 2z"/>
+  <path fill="url(#wzs-front)" d="M16 20h52a16 16 0 0 1 16 16v34a16 16 0 0 1-16 16H32L14 98V84.4A16 16 0 0 1 0 70V36A16 16 0 0 1 16 20z"/>
+  <path fill="none" stroke="#3b1d03" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" d="M11 42l7 24 7-17 7 17 7-24M48 42h15l-8 24h15"/>
+</svg>

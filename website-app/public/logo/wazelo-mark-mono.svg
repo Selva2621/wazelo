@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Wazelo">
+  <path fill="#b9b2a9" d="M44 6h34a16 16 0 0 1 16 16v20a16 16 0 0 1-16 16h-2v10l-12-10H44a16 16 0 0 1-16-16V22A16 16 0 0 1 44 6z"/>
+  <path fill="#6b635a" d="M34 18h34a16 16 0 0 1 16 16v20a16 16 0 0 1-16 16H34a16 16 0 0 1-16-16V34a16 16 0 0 1 16-16z"/>
+  <path fill="#17130f" d="M22 32h40a16 16 0 0 1 16 16v22a16 16 0 0 1-16 16H30L14 96V84.6A16 16 0 0 1 6 70V48a16 16 0 0 1 16-16z"/>
+  <path fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" d="M20 50l6 20 6-14 6 14 6-20M50 50h12l-7 20h12"/>
+</svg>

@@ -12,6 +12,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   compress: true,
+  experimental: {
+    // Turbopack's dev filesystem cache (beta, on by default in Next 16) grew .next to 5 GB
+    // across sessions and made `next dev` thrash disk and RAM. A cold compile is only ~6 s.
+    turbopackFileSystemCacheForDev: false,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],

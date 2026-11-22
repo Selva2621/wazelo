@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Wazelo">
+  <defs>
+    <filter id="wz-soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#3b1d03" flood-opacity="0.35"/>
+    </filter>
+    <linearGradient id="wz-back" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3a06"/><stop offset="1" stop-color="#4a2203"/></linearGradient>
+    <linearGradient id="wz-mid" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c2650a"/><stop offset="1" stop-color="#8a4207"/></linearGradient>
+    <linearGradient id="wz-front" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="0.45" stop-color="#f59e0b"/><stop offset="1" stop-color="#d97706"/></linearGradient>
+  </defs>
+  <path fill="url(#wz-back)" d="M44 6h34a16 16 0 0 1 16 16v20a16 16 0 0 1-16 16h-2v10l-12-10H44a16 16 0 0 1-16-16V22A16 16 0 0 1 44 6z"/>
+  <path fill="url(#wz-mid)" filter="url(#wz-soft)" d="M34 18h34a16 16 0 0 1 16 16v20a16 16 0 0 1-16 16H34a16 16 0 0 1-16-16V34a16 16 0 0 1 16-16z"/>
+  <g filter="url(#wz-soft)">
+    <path fill="url(#wz-front)" d="M22 32h40a16 16 0 0 1 16 16v22a16 16 0 0 1-16 16H30L14 96V84.6A16 16 0 0 1 6 70V48a16 16 0 0 1 16-16z"/>
+    <path fill="#fff" opacity="0.28" d="M22 34h40a14 14 0 0 1 14 14v1H8v-1a14 14 0 0 1 14-14z"/>
+    <path fill="none" stroke="#3b1d03" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" d="M20 50l6 20 6-14 6 14 6-20M50 50h12l-7 20h12"/>
+  </g>
+</svg>

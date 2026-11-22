@@ -10,6 +10,7 @@ import SiteFooter from "@/components/Footer";
 import { PhoneFrame } from "@/components/story/phone-frame";
 import SiteNavbar from "@/components/Navbar";
 import { LoopVideo } from "@/components/home/loop-video";
+import { useStoryClip } from "@/components/story/story-media";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FeatureDetailData {
@@ -32,6 +33,7 @@ const HERO_CLIPS: Record<string, { clip: string; path: string }> = {
   "shared-inbox": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
   "ai-assistant": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
   "lead-finder": { clip: "ch1-find", path: "app.wazelo.in/leads/finder" },
+  "lead-ads": { clip: "ch1-ads", path: "app.wazelo.in/lead-ads" },
   sequences: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
   automation: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
   proposals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
@@ -58,6 +60,7 @@ function Frame({ path, children }: { path: string; children: React.ReactNode }) 
 export default function FeatureDetailPage({ data }: { data: FeatureDetailData }) {
   const root = useRef<HTMLDivElement>(null);
   const clip = HERO_CLIPS[data.slug];
+  const storyClip = useStoryClip(); // ₹ or $ recordings, like the pricing
 
   useGSAP(
     () => {
@@ -135,11 +138,11 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
                 {clip ? (
                   <>
                     <PhoneFrame className="lg:hidden">
-                      <LoopVideo src={`/media/story/${clip.clip}-m.mp4`} poster={`/media/story/${clip.clip}-m.jpg`} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
+                      <LoopVideo {...storyClip(clip.clip, true)} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
                     </PhoneFrame>
                     <div className="mx-auto hidden max-w-5xl lg:block">
                       <Frame path={clip.path}>
-                        <LoopVideo src={`/media/story/${clip.clip}.mp4`} poster={`/media/story/${clip.clip}.jpg`} label={`${data.tag} in the Wazelo app`} />
+                        <LoopVideo {...storyClip(clip.clip)} label={`${data.tag} in the Wazelo app`} />
                       </Frame>
                     </div>
                   </>

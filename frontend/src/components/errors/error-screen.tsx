@@ -63,7 +63,7 @@ export function ErrorScreen({ code, title, message, primary, secondary, digest, 
       <div className="w-full max-w-md">
         {!inline && (
           <Link href="/" className="mb-4 inline-flex items-center gap-2 text-title-sm font-semibold text-on-surface">
-            <img src="/logo/logo.png" alt="" className="size-7 object-contain" />
+            <img src="/logo/wazelo-mark-small.svg" alt="" className="size-7 object-contain" />
             Wazelo
           </Link>
         )}

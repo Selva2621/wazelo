@@ -112,7 +112,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
         )}
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b border-outline-variant">
-          <img src="/logo/logo.png" alt="Wazelo" className="h-6 w-6 object-contain shrink-0" />
+          <img src="/logo/wazelo-mark-small.svg" alt="Wazelo" className="h-6 w-6 object-contain shrink-0" />
           <span className="font-semibold text-body-lg text-on-surface">
             Wazelo <span className="text-primary">Admin</span>
           </span>
@@ -181,7 +181,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           >
             <Menu className="h-5 w-5" aria-hidden />
           </button>
-          <img src="/logo/logo.png" alt="" className="md:hidden h-6 w-6 object-contain shrink-0" />
+          <img src="/logo/wazelo-mark-small.svg" alt="" className="md:hidden h-6 w-6 object-contain shrink-0" />
           <span className="hidden sm:inline md:hidden font-semibold text-body-lg text-on-surface shrink-0">
             Wazelo <span className="text-primary">Admin</span>
           </span>

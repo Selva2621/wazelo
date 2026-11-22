@@ -295,7 +295,7 @@ export function Sidebar() {
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1 outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--side-tile)]">
-            <img src="/logo/logo.png" alt="" className="size-6 object-contain" />
+            <img src="/logo/wazelo-mark-small.svg" alt="" className="size-6 object-contain" />
           </span>
           <span className="side-label min-w-0">
             <span className="block text-title-sm font-semibold tracking-tight text-[var(--side-text)]">Wazelo</span>
