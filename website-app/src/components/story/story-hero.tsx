@@ -100,7 +100,9 @@ export function StoryHero() {
       mm.add(MQ_MOTION, () => {
         intro.current = gsap
           .timeline({ defaults: { ease: "expo.out", duration: 1.2 } })
-          .from("[data-h=film]", { scale: 1.1, duration: 2.4, ease: "power2.out" }, 0)
+          // A fade, not a zoom: scaling the rendered 3D canvas with CSS stretched it and blurred
+          // every screen for the first ~2.5 s. The 3D camera's own push-in gives the motion.
+          .from("[data-h=film]", { opacity: 0, duration: 1.2, ease: "power2.out" }, 0)
           .from("[data-h=kicker]", { y: 14, autoAlpha: 0, duration: 0.8 }, 0.3)
           .from("[data-h=line]", { yPercent: 105, stagger: 0.12 }, 0.4)
           .from("[data-h=sub]", { y: 18, autoAlpha: 0 }, 0.9)

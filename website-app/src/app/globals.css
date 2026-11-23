@@ -858,3 +858,101 @@ body {
 :root[data-theme="dark"] .tone-fixed.bg-ink {
   background-color: #1a1612;
 }
+
+/* ── Tutorial video player (Media Chrome, components/tutorial-video.tsx) ──
+   Always dark in both themes, so it uses fixed colours rather than the theme tokens. */
+.wz-player {
+  display: block;
+  background: #17130f;
+  --media-font-family: var(--font-sans);
+  --media-primary-color: #f3eee6;
+  --media-secondary-color: transparent;
+  --media-control-background: transparent;
+  --media-control-hover-background: rgb(243 238 230 / 0.12);
+  --media-range-bar-color: #f0b483;
+  --media-range-track-background: rgb(243 238 230 / 0.22);
+  --media-time-range-buffered-color: rgb(243 238 230 / 0.38);
+  --media-range-thumb-background: #f0b483;
+  --media-preview-time-background: rgb(23 19 15 / 0.9);
+  --media-preview-chapter-background: rgb(23 19 15 / 0.9);
+  --media-tooltip-background: rgb(23 19 15 / 0.9);
+  --media-text-color: #f3eee6;
+  --media-icon-color: #f3eee6;
+  --media-button-icon-width: 22px;
+  --media-control-padding: 8px;
+}
+.wz-player video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* One soft gradient behind both bars: the controls read on any frame, and the film's
+   burned-in captions still show through. */
+.wz-player .wz-bar {
+  width: 100%;
+  background: linear-gradient(to top, rgb(23 19 15 / 0.4), rgb(23 19 15 / 0));
+}
+.wz-player .wz-bar + .wz-bar {
+  background: linear-gradient(to top, rgb(23 19 15 / 0.62), rgb(23 19 15 / 0.4));
+  padding: 0 6px 4px;
+}
+/* Seek-bar hover: the chapter name above the time, each kept on one line. */
+.wz-player media-preview-chapter-display,
+.wz-player media-preview-time-display {
+  white-space: nowrap;
+  width: max-content;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wz-player .wz-range {
+  width: 100%;
+  padding: 0 14px;
+  --media-range-track-height: 4px;
+  --media-range-track-border-radius: 2px;
+}
+.wz-player .wz-volume {
+  width: 90px;
+}
+/* The spinner overlays the centre rather than stacking above the play button (which pushed
+   the button down onto the seek bar on small players). */
+.wz-player .wz-loading {
+  position: absolute;
+}
+/* Big centre play button: an amber disc, only while paused. */
+.wz-player .wz-big-play {
+  width: 76px;
+  height: 76px;
+  padding: 22px;
+  border-radius: 999px;
+  background: #f0b483;
+  --media-icon-color: #17130f;
+  --media-primary-color: #17130f;
+  box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.6);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.wz-player .wz-big-play:hover {
+  transform: scale(1.06);
+}
+.wz-player:not([mediapaused]) .wz-big-play {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (max-width: 639px) {
+  .wz-player .wz-volume,
+  .wz-player media-seek-backward-button,
+  .wz-player media-seek-forward-button {
+    display: none;
+  }
+  /* Smaller on phones, so it stays clear of the seek bar's touch area. */
+  .wz-player .wz-big-play {
+    width: 48px;
+    height: 48px;
+    padding: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wz-player .wz-big-play {
+    transition: none;
+  }
+}
