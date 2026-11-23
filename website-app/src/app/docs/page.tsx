@@ -206,7 +206,7 @@ export default function DocsPage() {
             {/* ── Full demo ── */}
             <DocSection id="full-demo" title="Full Demo">
               <P>A 40-minute walkthrough of all of Wazelo, from the first ad lead to a signed offer. Jump to any chapter from the list below the video.</P>
-              <TutorialVideo id="full-demo" title="Wazelo full demo" />
+              <TutorialVideo id="full-demo" title="Wazelo full demo" unit="chapters" />
             </DocSection>
 
             {/* ── Getting Started ── */}

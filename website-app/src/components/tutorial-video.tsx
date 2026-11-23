@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  MediaControlBar,
+  MediaController,
+  MediaFullscreenButton,
+  MediaLoadingIndicator,
+  MediaMuteButton,
+  MediaPlayButton,
+  MediaPlaybackRateButton,
+  MediaPreviewChapterDisplay,
+  MediaPreviewTimeDisplay,
+  MediaSeekBackwardButton,
+  MediaSeekForwardButton,
+  MediaTimeDisplay,
+  MediaTimeRange,
+  MediaVolumeRange,
+} from "media-chrome/react";
 
 /**
  * A narrated feature tutorial (demo/tutorials), streamed as adaptive HLS (1080p/720p) from
  * Wazelo's object storage. Nothing but the poster and the small step list loads until the
- * reader presses play. Safari plays HLS natively; other browsers use hls.js, loaded on demand.
+ * reader presses play. Plays through hls.js (loaded on demand); native HLS only where hls.js cannot run.
+ * Controls are Media Chrome, themed in globals.css (.wz-player); the seek bar shows the steps as chapters.
  */
 export const TUTORIALS_URL =
   process.env.NEXT_PUBLIC_TUTORIALS_URL ??
@@ -17,10 +34,12 @@ const PREVIEW = 4; // steps shown on phones before "Show all steps"
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-export function TutorialVideo({ id, title }: { id: string; title: string }) {
+/** unit: "chapters" for the full demo (its list also ends with the outro, so no count). */
+export function TutorialVideo({ id, title, unit = "steps" }: { id: string; title: string; unit?: "steps" | "chapters" }) {
   const video = useRef<HTMLVideoElement>(null);
   const started = useRef(false);
   const [steps, setSteps] = useState<Step[]>([]);
+  const [all, setAll] = useState<Step[]>([]); // steps plus the intro, for the seek bar's chapters
   const [length, setLength] = useState<number | null>(null);
   const [now, setNow] = useState(0);
   const [open, setOpen] = useState(false);
@@ -33,6 +52,7 @@ export function TutorialVideo({ id, title }: { id: string; title: string }) {
       .then((j: { duration: number; chapters: Step[] } | null) => {
         if (off || !j) return;
         setSteps(j.chapters.filter((c) => c.id !== "intro"));
+        setAll(j.chapters);
         setLength(j.duration);
       })
       .catch(() => {});
@@ -50,14 +70,19 @@ export function TutorialVideo({ id, title }: { id: string; title: string }) {
       if (started.current) return;
       started.current = true;
       const src = `${base}/master.m3u8`;
-      if (el.canPlayType("application/vnd.apple.mpegurl")) {
-        el.src = src;
-        el.play().catch(() => {});
+      // hls.js first: newer Chrome also says it plays HLS natively, but its native player stops
+      // with "Parsed buffers not in DTS sequence" when it switches 720p -> 1080p. Native HLS only
+      // where hls.js can't run (older iPhones without Media Source).
+      const { default: Hls } = await import("hls.js");
+      if (!Hls.isSupported()) {
+        if (el.canPlayType("application/vnd.apple.mpegurl")) {
+          el.src = src;
+          el.play().catch(() => {});
+        }
         return;
       }
-      const { default: Hls } = await import("hls.js");
-      if (!Hls.isSupported()) return;
-      const h = new Hls({ capLevelToPlayerSize: true });
+      // No HLS subtitles: the captions are burned into the picture.
+      const h = new Hls({ capLevelToPlayerSize: true, enableWebVTT: false, enableIMSC1: false, enableCEA708Captions: false });
       h.loadSource(src);
       h.attachMedia(el);
       h.on(Hls.Events.MANIFEST_PARSED, () => el.play().catch(() => {}));
@@ -68,7 +93,7 @@ export function TutorialVideo({ id, title }: { id: string; title: string }) {
       el.removeEventListener("play", start);
       hls?.destroy();
     };
-  }, [base]);
+  }, [base, length]); // length: the player (and its <video>) is re-created when it arrives
 
   const seek = (t: number) => {
     const el = video.current;
@@ -84,25 +109,74 @@ export function TutorialVideo({ id, title }: { id: string; title: string }) {
     }
   };
 
+  // Steps as a chapters text track, so the seek bar splits into steps and names them on hover.
+  // Added from code, not a <track>: Chrome empties a <track>'s cues when hls.js swaps the source,
+  // so the cues go back in on every load, and a mode flip tells Media Chrome to re-read them.
+  useEffect(() => {
+    const el = video.current;
+    if (!el || !all.length || !length) return;
+    const fill = () => {
+      const tt = Array.from(el.textTracks).find((t) => t.kind === "chapters") ?? el.addTextTrack("chapters", "Chapters");
+      tt.mode = "hidden";
+      if (tt.cues?.length) return;
+      all.forEach((c, i) => tt.addCue(new VTTCue(c.start, all[i + 1]?.start ?? length, c.title)));
+      tt.mode = "disabled";
+      tt.mode = "hidden";
+    };
+    fill();
+    el.addEventListener("loadedmetadata", fill);
+    return () => el.removeEventListener("loadedmetadata", fill);
+  }, [all, length]);
+
   const current = steps.reduce((acc, s, i) => (now >= s.start ? i : acc), -1);
 
   return (
     <figure className="mb-8">
-      <video
-        ref={video}
-        poster={`${base}/poster.jpg`}
-        controls
-        preload="none"
-        playsInline
-        onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
-        aria-label={`${title}: narrated tutorial`}
-        className="aspect-video w-full rounded-xl bg-ink shadow-[0_30px_60px_-30px_rgba(60,40,20,0.45),0_0_0_1px_rgba(23,19,15,0.08)]"
-      />
+      {/* Media Chrome reads defaultDuration only when the player is created, so it is re-created once
+          chapters.json gives the length (before anyone presses play). */}
+      <MediaController
+        key={length ? "timed" : "untimed"}
+        className="wz-player aspect-video w-full overflow-hidden rounded-xl shadow-[0_30px_60px_-30px_rgba(60,40,20,0.45),0_0_0_1px_rgba(23,19,15,0.08)]"
+        defaultDuration={length ?? undefined}
+      >
+        <video
+          slot="media"
+          ref={video}
+          // Media Chrome sets this on the media element; matching it keeps hydration clean.
+          tabIndex={-1}
+          // CORS-mode for every request, so a cached copy always carries the CORS headers hls.js needs.
+          crossOrigin="anonymous"
+          poster={`${base}/poster.jpg`}
+          preload="none"
+          playsInline
+          onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+          aria-label={`${title}: narrated tutorial`}
+        />
+        <MediaLoadingIndicator slot="centered-chrome" noAutohide className="wz-loading" />
+        <MediaPlayButton slot="centered-chrome" className="wz-big-play" />
+        <MediaControlBar className="wz-bar">
+          <MediaTimeRange className="wz-range">
+            <MediaPreviewChapterDisplay slot="preview" />
+            <MediaPreviewTimeDisplay slot="preview" />
+          </MediaTimeRange>
+        </MediaControlBar>
+        <MediaControlBar className="wz-bar">
+          <MediaPlayButton />
+          <MediaSeekBackwardButton seekOffset={10} />
+          <MediaSeekForwardButton seekOffset={10} />
+          <MediaMuteButton />
+          <MediaVolumeRange className="wz-volume" />
+          <MediaTimeDisplay showDuration />
+          <span className="flex-1" />
+          <MediaPlaybackRateButton rates={[1, 1.25, 1.5, 2]} />
+          <MediaFullscreenButton />
+        </MediaControlBar>
+      </MediaController>
       <figcaption className="mt-2 text-sm text-ink-faint">
-        {title} · step-by-step tutorial with voice-over and captions{length ? ` · ${clock(length)}` : ""}
+        {title} · {unit === "chapters" ? "full walkthrough" : "step-by-step tutorial"} with voice-over and captions{length ? ` · ${clock(length)}` : ""}
       </figcaption>
       {steps.length > 0 && (
-        <ol id={`${id}-steps`} aria-label={`${title}: steps`} className="mt-4 grid gap-x-6 gap-y-0.5 sm:grid-cols-2">
+        <ol id={`${id}-steps`} aria-label={`${title}: ${unit}`} className="mt-4 grid gap-x-6 gap-y-0.5 sm:grid-cols-2">
           {steps.map((s, i) => (
             // On phones only the first steps (and the one playing) show until "Show all steps".
             <li key={s.id} className={open || i < PREVIEW || i === current ? undefined : "hidden sm:block"}>
@@ -129,7 +203,7 @@ export function TutorialVideo({ id, title }: { id: string; title: string }) {
           aria-controls={`${id}-steps`}
           className="mt-2 inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-sm font-medium text-rust transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:hidden"
         >
-          {open ? "Show fewer steps" : `Show all ${steps.length} steps`}
+          {open ? `Show fewer ${unit}` : unit === "chapters" ? "Show all chapters" : `Show all ${steps.length} steps`}
           <svg aria-hidden viewBox="0 0 20 20" className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 8l5 5 5-5" />
           </svg>
