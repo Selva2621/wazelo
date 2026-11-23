@@ -22,6 +22,7 @@ const navLinks: [string, string][] = [
   [FEATURES, "/features"],
   ["Pricing", "/pricing"],
   ["Use Cases", "/use-cases"],
+  ["Docs", "/docs"],
   ["About", "/about"],
 ];
 

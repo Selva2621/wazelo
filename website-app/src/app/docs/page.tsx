@@ -5,19 +5,30 @@ import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_MOTION } from "@/lib/gsap";
 import SiteFooter from "@/components/Footer";
 import { MobileToc } from "@/components/mobile-toc";
+import { TutorialVideo } from "@/components/tutorial-video";
 import SiteNavbar from "@/components/Navbar";
 import { PLANS, money, num } from "@/components/pricing/plans";
 
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
 const sections = [
+  { id: "full-demo",         label: "Full Demo" },
   { id: "getting-started",   label: "Getting Started" },
   { id: "whatsapp-setup",    label: "WhatsApp Setup" },
-  { id: "shared-inbox",      label: "Shared Inbox" },
-  { id: "contacts",          label: "Contacts & Tags" },
+  { id: "shared-inbox",      label: "Shared Inbox & AI" },
+  { id: "website-chat",      label: "Website Chat" },
+  { id: "lead-ads",          label: "Lead Ads" },
+  { id: "lead-finder",       label: "Lead Finder" },
+  { id: "contacts",          label: "Contacts & Scoring" },
+  { id: "deals",             label: "Deals Pipeline" },
+  { id: "offers",            label: "Offers" },
   { id: "campaigns",         label: "Campaigns" },
+  { id: "sequences",         label: "Sequences" },
   { id: "automation",        label: "Automation" },
   { id: "chatbot",           label: "Chatbot Builder" },
+  { id: "csat",              label: "CSAT Surveys" },
   { id: "analytics",         label: "Analytics" },
+  { id: "mobile-app",        label: "Mobile App" },
+  { id: "developer-api",     label: "Developer API" },
   { id: "team-roles",        label: "Team & Roles" },
   { id: "billing",           label: "Billing & Plans" },
 ];
@@ -76,6 +87,29 @@ function Callout({ icon, children }: { icon: string; children: React.ReactNode }
   );
 }
 
+/**
+ * A short silent screen recording from the live app (features without a full tutorial yet).
+ * It loads nothing until the reader presses play.
+ */
+function QuickClip({ clip, title, phone = false }: { clip: string; title: string; phone?: boolean }) {
+  return (
+    <figure className={phone ? "mb-8 max-w-[300px]" : "mb-8"}>
+      <video
+        src={`/media/story/${clip}.mp4`}
+        poster={`/media/story/${clip}.jpg`}
+        controls
+        muted
+        loop
+        preload="none"
+        playsInline
+        aria-label={`${title}: screen recording`}
+        className={`w-full rounded-xl bg-ink shadow-[0_30px_60px_-30px_rgba(60,40,20,0.45),0_0_0_1px_rgba(23,19,15,0.08)] ${phone ? "aspect-[390/844]" : "aspect-video"}`}
+      />
+      <figcaption className="mt-2 text-sm text-ink-faint">{title} · a quick look at the live app</figcaption>
+    </figure>
+  );
+}
+
 function Rows({ children }: { children: React.ReactNode }) {
   return <div className="mb-6 divide-y divide-ink/10 border-y border-ink/15">{children}</div>;
 }
@@ -83,7 +117,7 @@ function Rows({ children }: { children: React.ReactNode }) {
 // ─── Docs Page ────────────────────────────────────────────────────────────────
 export default function DocsPage() {
   const root = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState("getting-started");
+  const [active, setActive] = useState("full-demo");
 
   useGSAP(
     () => {
@@ -169,9 +203,16 @@ export default function DocsPage() {
           <div className="lg:hidden"><MobileToc items={sections} /></div>
           <main data-rd="body" className="max-w-[68ch] text-[17px] leading-relaxed text-ink-soft">
 
+            {/* ── Full demo ── */}
+            <DocSection id="full-demo" title="Full Demo">
+              <P>A 40-minute walkthrough of all of Wazelo, from the first ad lead to a signed offer. Jump to any chapter from the list below the video.</P>
+              <TutorialVideo id="full-demo" title="Wazelo full demo" />
+            </DocSection>
+
             {/* ── Getting Started ── */}
             <DocSection id="getting-started" title="Getting Started">
               <P>Welcome to Wazelo. This guide walks you through creating your account, connecting your WhatsApp Business number, and sending your first message — all in under 15 minutes.</P>
+              <TutorialVideo id="00-getting-started" title="Getting started" />
               <H3>1. Create your account</H3>
               <P>Sign up at <a href={APP_REGISTER_URL} className={link}>wazelo.in/register</a>. You'll need a valid business email. No credit card is required for the 14-day free trial.</P>
               <H3>2. Set up your organisation</H3>
@@ -203,8 +244,11 @@ export default function DocsPage() {
             </DocSection>
 
             {/* ── Shared Inbox ── */}
-            <DocSection id="shared-inbox" title="Shared Inbox">
+            <DocSection id="shared-inbox" title="Shared Inbox & AI">
               <P>The Shared Inbox is the core of Wazelo. Every inbound WhatsApp message from any contact lands here, visible to your whole team.</P>
+              <TutorialVideo id="04-inbox-ai" title="Inbox and AI replies" />
+              <H3>AI replies</H3>
+              <P>Open a chat and use <B>Read this chat</B> to see the customer's mood, what they want, anything they mentioned (like a budget or date) and the suggested next step. <B>Suggest a reply</B> writes three answers using your own prices and knowledge base; pick one, edit it, and send. You can change the tone (friendly, formal or short) or tell the AI what the reply should do.</P>
               <H3>Conversation assignment</H3>
               <P>Conversations can be assigned manually or automatically via routing rules. To assign manually, open a conversation and click <B>Assign</B> in the top-right panel. To set up auto-routing, go to <B>Settings → Routing</B>.</P>
               <H3>Conversation statuses</H3>
@@ -220,9 +264,48 @@ export default function DocsPage() {
               <P>Save frequently used messages as Quick Replies under <B>Settings → Quick Replies</B>. Access them in any conversation by typing <C>/</C> in the reply box.</P>
             </DocSection>
 
+            {/* ── Website Chat ── */}
+            <DocSection id="website-chat" title="Website Chat">
+              <P>Add a chat widget to your website and answer visitors in the same inbox as WhatsApp, under the <B>Website</B> tab.</P>
+              <TutorialVideo id="05-website-chat" title="Website chat" />
+              <H3>Setting up the widget</H3>
+              <P>Go to <B>Settings → Chat widget</B>, choose the colour, position and welcome message, and copy the install snippet into your site. The live preview shows exactly what visitors will see.</P>
+              <H3>AI first, people when needed</H3>
+              <Ul>
+                <Li>Visitors give their name, mobile and email before chatting; they become a contact only if they tick the consent box</Li>
+                <Li>AI replies from your services and knowledge base, around the clock</Li>
+                <Li>When a visitor asks for a person, your team is notified and can take over the chat with its full history</Li>
+                <Li>Each chat shows the page it came from, so you know what the visitor was looking at</Li>
+              </Ul>
+            </DocSection>
+
+            {/* ── Lead Ads ── */}
+            <DocSection id="lead-ads" title="Lead Ads">
+              <P>Leads from your Facebook and Instagram lead ads arrive in Wazelo the moment someone submits the form, straight from Meta.</P>
+              <TutorialVideo id="02-lead-ads" title="Lead ads" />
+              <H3>Connecting Meta</H3>
+              <P>In <B>Lead Ads</B>, open <B>Webhook configuration</B>, copy your webhook URL into your Meta app, and add your app secret. New leads then appear in the lead entries list with their platform, campaign and ad.</P>
+              <H3>What happens to each lead</H3>
+              <Ul>
+                <Li>The lead becomes a contact with its source (Facebook or Instagram lead ad)</Li>
+                <Li>Link a lead form to a service, and the lead goes to that service's team</Li>
+                <Li>Automations and sequences can greet the lead on WhatsApp right away</Li>
+              </Ul>
+            </DocSection>
+
+            {/* ── Lead Finder ── */}
+            <DocSection id="lead-finder" title="Lead Finder">
+              <P>The lead finder searches Google Maps, IndiaMART, Upwork, Freelancer.in, Truelancer and LinkedIn Jobs for prospects that match your keywords and location.</P>
+              <TutorialVideo id="03-lead-finder" title="Lead finder" />
+              <H3>Reviewing results</H3>
+              <P>Every result shows its phone, email, address, website, rating and a lead score from 0 to 10. Sort by <B>Best leads first</B>, filter by score, website or WhatsApp, check which numbers are on WhatsApp, then import the ones you want or export them as CSV.</P>
+              <Callout icon="verified_user">Imported leads can't be added to campaigns, sequences or automations until they've messaged you first or you've recorded their consent.</Callout>
+            </DocSection>
+
             {/* ── Contacts ── */}
-            <DocSection id="contacts" title="Contacts & Tags">
+            <DocSection id="contacts" title="Contacts & Scoring">
               <P>Every phone number that messages you creates a contact profile automatically. You can also import contacts via CSV.</P>
+              <TutorialVideo id="06-contacts" title="Contacts and lead scoring" />
               <H3>Importing contacts</H3>
               <P>Go to <B>Contacts → Import</B> and upload a CSV file. Required columns: <C>phone</C>. Optional: <C>name</C>, <C>email</C>, <C>tags</C>.</P>
               <Code>{`phone,name,email,tags
@@ -232,11 +315,38 @@ export default function DocsPage() {
               <P>Tags let you segment contacts for campaigns, filtering, and automation triggers. Apply tags manually from the contact profile, or automatically via automation rules.</P>
               <H3>Custom fields</H3>
               <P>Add custom data fields to contacts under <B>Settings → Custom Fields</B>. Supported types: text, number, date, dropdown. Custom fields can be used in message personalisation using <C>{`{{field_name}}`}</C>.</P>
+              <H3>Lead scoring</H3>
+              <P>In <B>Lead Scoring</B>, rules add points when something happens: a customer replies, comes from a lead ad, is marked interested, gets a tag or a note. Each rule has a limit per contact, and scores run from 0 to 100, so your team always knows who to call first.</P>
+            </DocSection>
+
+            {/* ── Deals ── */}
+            <DocSection id="deals" title="Deals Pipeline">
+              <P>Deals track the money. Each deal belongs to a contact, has a value and moves through the stages of a pipeline until it's won or lost.</P>
+              <TutorialVideo id="07-deals" title="Deals pipeline" />
+              <Ul>
+                <Li>Drag a deal between stages on the board, or change its stage from the deal panel</Li>
+                <Li>Set the next follow-up date; due follow-ups show on your dashboard</Li>
+                <Li>See the number of deals, total value and deals won at the top of the board</Li>
+                <Li>Create more pipelines and rename the stages to fit how you sell</Li>
+              </Ul>
+            </DocSection>
+
+            {/* ── Offers ── */}
+            <DocSection id="offers" title="Offers">
+              <P>Send a proper offer (proposal) from a deal or a chat. Add items with quantity and price, tax and discount, what's included, terms and a valid-until date.</P>
+              <TutorialVideo id="08-offers" title="Offers" />
+              <Ul>
+                <Li><B>Write with AI</B> drafts the offer from the conversation; check the prices before sending</Li>
+                <Li><B>Send on WhatsApp</B> shares a link to a clean page the customer can open on their phone</Li>
+                <Li>You see when it was viewed, and the customer can accept it or ask for changes from the link</Li>
+                <Li>Accepting marks the deal as won</Li>
+              </Ul>
             </DocSection>
 
             {/* ── Campaigns ── */}
             <DocSection id="campaigns" title="Campaigns">
               <P>Campaigns let you send bulk WhatsApp messages to a segment of your contacts. All outbound campaign messages use approved Meta templates.</P>
+              <TutorialVideo id="09-campaigns" title="Campaigns" />
               <H3>Creating a campaign</H3>
               <Ul>
                 <Li>Go to <B>Campaigns → New Campaign</B></Li>
@@ -250,9 +360,22 @@ export default function DocsPage() {
               <Callout icon="warning">Meta enforces rate limits on campaign messages. Wazelo handles queuing and retry automatically — do not send the same campaign twice.</Callout>
             </DocSection>
 
+            {/* ── Sequences ── */}
+            <DocSection id="sequences" title="Sequences">
+              <P>Sequences are follow-ups that run themselves: a series of messages with a wait between each one, sent until the contact replies.</P>
+              <TutorialVideo id="10-sequences" title="Sequences" />
+              <Ul>
+                <Li>Start blank, from a template, or with <B>Write with AI</B>: describe the goal and choose 3, 4 or 5 messages</Li>
+                <Li>Run it automatically for each new contact that matches a trigger, or once for an audience</Li>
+                <Li><B>Stop when the contact replies</B> keeps people from being chased after they answer</Li>
+                <Li>Each step can go on WhatsApp or email, with its own wait</Li>
+              </Ul>
+            </DocSection>
+
             {/* ── Automation ── */}
             <DocSection id="automation" title="Automation">
               <P>Automation workflows let you send messages, update contact data, assign conversations, and more — automatically, based on triggers and conditions.</P>
+              <TutorialVideo id="11-automation" title="Automation" />
               <H3>Triggers</H3>
               <Ul>
                 <Li><B>Inbound message</B> — fires when a contact sends a message matching a keyword or pattern</Li>
@@ -281,6 +404,7 @@ export default function DocsPage() {
             {/* ── Chatbot ── */}
             <DocSection id="chatbot" title="Chatbot Builder">
               <P>Build no-code WhatsApp chatbot flows using the visual builder. Chatbots can qualify leads, answer FAQs, collect information, and hand off to a human agent.</P>
+              <TutorialVideo id="12-chatbot" title="Chatbot" />
               <H3>Flow structure</H3>
               <Ul>
                 <Li><B>Start node</B> — defines when the bot activates (first message, keyword, outside hours)</Li>
@@ -294,9 +418,17 @@ export default function DocsPage() {
               <Callout icon="smart_toy">Chatbots only run within the 24-hour messaging window. For re-engagement after 24 hours, use Campaigns with approved templates instead.</Callout>
             </DocSection>
 
+            {/* ── CSAT ── */}
+            <DocSection id="csat" title="CSAT Surveys">
+              <P>After a conversation is resolved, Wazelo can ask the customer to rate it from 1 to 5 and leave a comment.</P>
+              <QuickClip clip="feat-csat" title="Customer satisfaction" />
+              <P>The <B>Customer satisfaction</B> page shows your average rating, how many responses were satisfied or dissatisfied, the rating distribution, every recent response with its comment, and a score for each team member. Filter by service and date.</P>
+            </DocSection>
+
             {/* ── Analytics ── */}
             <DocSection id="analytics" title="Analytics">
               <P>The Analytics dashboard gives you a real-time view of team performance, conversation volumes, response times, and campaign results.</P>
+              <QuickClip clip="feat-analytics" title="Dashboard and analytics" />
               <H3>Key metrics</H3>
               <Ul>
                 <Li><B>First response time</B> — average time from inbound message to first agent reply</Li>
@@ -307,6 +439,29 @@ export default function DocsPage() {
               </Ul>
               <H3>Date filters</H3>
               <P>All reports support date range filtering: today, last 7 days, last 30 days, or a custom range. Filter by agent, team, or conversation tag using the filter bar.</P>
+            </DocSection>
+
+            {/* ── Mobile App ── */}
+            <DocSection id="mobile-app" title="Mobile App">
+              <P>Wazelo works on your phone as an installable app, with your inbox, contacts, deals and notifications.</P>
+              <QuickClip clip="feat-mobile-app-m" title="Mobile app" phone />
+              <Ul>
+                <Li><B>iPhone:</B> open the app in Safari, tap Share, then <B>Add to Home Screen</B></Li>
+                <Li><B>Android:</B> open the app in Chrome and tap <B>Install app</B> from the menu</Li>
+                <Li>Turn on notifications to hear about new chats and WhatsApp disconnects, even when Wazelo is closed</Li>
+              </Ul>
+            </DocSection>
+
+            {/* ── Developer API ── */}
+            <DocSection id="developer-api" title="Developer API">
+              <P>Connect your website forms, booking tools or your own systems with the Wazelo REST API.</P>
+              <QuickClip clip="feat-developer-api" title="Developer API" />
+              <Ul>
+                <Li>Create API keys in <B>Settings → API keys &amp; docs</B>, each with only the permissions it needs (read, write, contacts, messages)</Li>
+                <Li>A key is shown once when you create it; store it safely and revoke it any time</Li>
+                <Li><B>API Logs</B> lists every request with its method, path, status and duration</Li>
+              </Ul>
+              <P>Endpoints, request examples and webhooks are in the <a href="/api-reference" className={link}>API Reference</a>.</P>
             </DocSection>
 
             {/* ── Team & Roles ── */}

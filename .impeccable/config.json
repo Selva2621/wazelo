@@ -1,0 +1,46 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "demo/seed/campaigns/build-media-re.js"
+        ],
+        "createdAt": "2026-11-22T17:37:09.656Z",
+        "reason": "Claude: demo-data fixture (fictional brochure/banner for seeded campaigns), not product UI"
+      },
+      {
+        "rule": "overused-font",
+        "value": "fraunces",
+        "files": [
+          "demo/seed/campaigns/build-media-re.js"
+        ],
+        "createdAt": "2026-11-22T17:37:11.198Z",
+        "reason": "Claude: demo-data fixture (fictional brochure/banner for seeded campaigns), not product UI"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "demo/tutorials/build-tut.js"
+        ],
+        "createdAt": "2026-11-23T01:00:00.000Z",
+        "reason": "Claude: video title cards must match the existing narrated-film cards (Inter + Playfair), not product UI"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "demo/tutorials/build-full.js",
+          "demo/film/src/lib.ts",
+          "demo/film/src/Film.tsx"
+        ],
+        "createdAt": "2026-11-23T05:30:00.000Z",
+        "reason": "Claude: video title cards/film match the existing tutorial cards (Inter + Playfair), not product UI"
+      }
+    ]
+  }
+}
