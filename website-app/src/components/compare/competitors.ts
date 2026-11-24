@@ -3,7 +3,7 @@
 // not that they can't do it. Re-check the sources before changing a claim.
 // Wazelo values must match components/pricing/plans.ts.
 
-export const CHECKED_ON = "20 November 2026";
+export const CHECKED_ON = "23 November 2026";
 
 export interface CompareRow {
   label: string;
@@ -46,7 +46,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Wati",
     sources: [{ label: "wati.io/pricing", url: "https://www.wati.io/pricing" }],
     billingNote: "Wati prices are per month, billed quarterly, as shown on its pricing page.",
-    summary: "Both run on the official WhatsApp API. Wazelo adds follow-up sequences, a deals pipeline and proposals to every plan, from ₹499 a month.",
+    summary: "Both run on the official WhatsApp API. Wazelo adds follow-up sequences, a deals pipeline and proposals to every plan; team plans start at ₹499 a month.",
     rows: [
       { label: "Entry team plan", them: "Growth, ₹2,699 a month for 3 users, no extra users", us: US.entry },
       { label: "Extra users", them: "₹1,299 a user a month on Pro, ₹2,199 on Business", us: "Higher plans include more users: 15 on Growth, 50 on Pro" },
@@ -67,16 +67,19 @@ export const COMPETITORS: Competitor[] = [
       "You need TikTok and several Instagram and Facebook accounts in one inbox (Business plan).",
       "You need Salesforce or HubSpot integrations built in.",
     ],
-    seoTitle: "Wazelo vs Wati: A Wati Alternative for Lead Follow-up",
+    seoTitle: "Wazelo vs Wati: Wati Alternative for Lead Follow-up",
     seoDescription:
       "Compare Wazelo and Wati on price, users, follow-up sequences, AI replies and sales pipeline. A 15-person team pays ₹999 a month on Wazelo Growth.",
   },
   {
     slug: "interakt",
     name: "Interakt",
-    sources: [{ label: "interakt.shop/pricing", url: "https://www.interakt.shop/pricing" }],
+    sources: [
+      { label: "interakt.shop/pricing", url: "https://www.interakt.shop/pricing" },
+      { label: "Interakt Shopify integration", url: "https://www.interakt.shop/integrations/integrating-whatsapp-business-api-with-shopify/" },
+    ],
     billingNote: "Interakt prices are per month plus taxes, as shown on its pricing page.",
-    summary: "Interakt splits marketing, sales CRM and AI agents into separate products. Wazelo includes all three in one plan, from ₹499 a month.",
+    summary: "Interakt splits marketing, sales CRM and AI agents into separate products. Wazelo includes all three in every team plan, from ₹499 a month.",
     rows: [
       { label: "Entry team plan", them: "Growth, ₹2,799 a month, unlimited agents (WhatsApp and Instagram)", us: US.entry },
       { label: "Follow-up sequences", them: "Not listed on the pricing page (campaigns are)", us: US.sequences },
@@ -94,41 +97,37 @@ export const COMPETITORS: Competitor[] = [
     },
     chooseThem: [
       "You have a large support team and want unlimited agents on one marketing plan.",
-      "You run a Shopify store and want its ready-made abandoned-checkout and winback flows.",
+      "You run a Shopify store and want abandoned-checkout recovery built in.",
     ],
-    seoTitle: "Wazelo vs Interakt: An Interakt Alternative with AI and CRM Included",
+    seoTitle: "Wazelo vs Interakt: Interakt Alternative with AI",
     seoDescription:
-      "Compare Wazelo and Interakt on price, AI replies, chatbot, follow-up and sales CRM. Wazelo includes AI credits and a deals pipeline from ₹499 a month.",
+      "Compare Wazelo and Interakt on price, AI replies, chatbot, follow-up and sales CRM. Wazelo team plans include AI credits and a deals pipeline from ₹499.",
   },
   {
     slug: "aisensy",
     name: "AiSensy",
-    sources: [
-      { label: "aisensy.com/pricing (add-ons)", url: "https://aisensy.com/pricing" },
-      { label: "AiSensy blog, Basic vs Pro", url: "https://m.aisensy.com/blog/aisensy-basic-vs-pro-plan-which-ones-best-for-you/" },
-      { label: "AiSensy blog, July 2026 plan list", url: "https://m.aisensy.com/blog/aisensy-alternative/" },
-    ],
-    billingNote: "AiSensy plan prices are per month, from AiSensy's own blog. Its pricing page loads the plan cards in a way we could not read, so check it before buying.",
+    sources: [{ label: "aisensy.com/pricing", url: "https://www.aisensy.com/pricing" }],
+    billingNote: "AiSensy prices are per month, billed monthly, as shown on its pricing page.",
     summary: "AiSensy sells the chatbot builder and AI agent as paid add-ons. Wazelo includes the chatbot, AI credits and follow-up sequences in every team plan.",
     rows: [
       { label: "Entry team plan", them: "Basic, ₹1,500 a month, 1 owner and 5 agents", us: US.entry },
       { label: "Extra agents", them: "₹750 an agent a month", us: "Higher plans include more users: 15 on Growth, 50 on Pro" },
       { label: "Follow-up sequences", them: "Not listed (campaign scheduler on Pro)", us: US.sequences },
       { label: "AI replies", them: "AI Agent add-on, ₹1,350 a month for 1,000 AI messages", us: US.ai },
-      { label: "Chatbot builder", them: "Add-on, ₹2,500 a month for 5 chatbots", us: US.chatbot },
+      { label: "Chatbot builder", them: "Chatbot Flows add-on, ₹2,500 a month", us: US.chatbot },
       { label: "Sales pipeline", them: "Not listed", us: US.pipeline },
-      { label: "Free plan or trial", them: "Free Forever plan and a 14-day trial", us: US.trial },
+      { label: "Free plan or trial", them: "Free Forever plan (no broadcasts on it); no trial listed", us: US.trial },
     ],
     teamOf15: {
-      them: "₹14,550",
-      themMath: "Pro ₹3,200 with 5 agents, plus 10 agents at ₹750, plus chatbot ₹2,500 and AI agent ₹1,350",
+      them: "₹10,800",
+      themMath: "Pro ₹3,200 with 1 owner and 9 agents, plus 5 agents at ₹750, plus chatbot ₹2,500 and AI agent ₹1,350",
       us: "₹999",
       usMath: "Growth, 15 users, chatbot and AI credits included",
     },
     chooseThem: [
-      "You only send broadcasts and want a free plan to start.",
+      "You mainly send broadcasts and want a free plan to get your WhatsApp API number first (broadcasts start on Basic).",
     ],
-    seoTitle: "Wazelo vs AiSensy: An AiSensy Alternative with Chatbot and AI Included",
+    seoTitle: "Wazelo vs AiSensy: AiSensy Alternative with AI",
     seoDescription:
       "Compare Wazelo and AiSensy on price, agents, chatbot, AI replies and follow-up. Wazelo includes the chatbot and AI credits in every team plan.",
   },

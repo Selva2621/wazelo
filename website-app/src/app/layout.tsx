@@ -124,15 +124,6 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {`try{document.documentElement.dataset.theme=localStorage.getItem("wazelo-theme")==="dark"?"dark":"light"}catch(e){}`}
         </Script>
-        {/* Homepage preloader (story/hero-preloader.tsx) is in the server HTML so it is the first
-            paint on a 3D desktop. Skip it before that paint if already seen this session or not
-            a 3D desktop (same media query as story-hero.tsx DESKTOP_3D). */}
-        <Script id="preloader-init" strategy="beforeInteractive">
-          {`try{if(sessionStorage.getItem("wz-hero-preloaded")==="1"||!matchMedia("(min-width: 1024px) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches)document.documentElement.dataset.preloader="skip"}catch(e){document.documentElement.dataset.preloader="skip"}`}
-        </Script>
-        <noscript>
-          <style>{`.hero-preloader{display:none!important}`}</style>
-        </noscript>
         {/* Text fonts are self-hosted via next/font. The icon font loads only on the
             routes that use it (components/icon-font.tsx). */}
         <JsonLd data={siteGraph} />

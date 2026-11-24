@@ -22,7 +22,7 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: Props) {
   const p = postBySlug((await params).slug);
   if (!p) return {};
-  const meta = pageMetadata({ path: `/blog/${p.slug}`, title: p.title, description: p.description, noindex: p.hasPlaceholders });
+  const meta = pageMetadata({ path: `/blog/${p.slug}`, title: p.seoTitle ?? p.title, description: p.description, noindex: p.hasPlaceholders });
   return { ...meta, openGraph: { ...meta.openGraph, type: "article", publishedTime: p.published, modifiedTime: p.updated } };
 }
 

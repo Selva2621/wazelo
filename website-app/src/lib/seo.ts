@@ -90,3 +90,45 @@ export function webPageJsonLd({ path, title, description }: { path: string; titl
     publisher: { "@id": ORG_ID },
   };
 }
+
+// ── Tutorial videos ────────────────────────────────────────────────────────────
+
+/** Where the narrated tutorials are streamed from (HLS, posters, chapters.json). */
+export const TUTORIALS_URL =
+  process.env.NEXT_PUBLIC_TUTORIALS_URL ??
+  "https://br-sparkling-resonance-aoz6332e.storage.c-2.ap-southeast-1.aws.neon.tech/tutorials";
+
+/** seconds -> ISO 8601 duration, e.g. 203 -> "PT3M23S". */
+const isoDuration = (s: number) => `PT${Math.floor(s / 60) ? `${Math.floor(s / 60)}M` : ""}${s % 60}S`;
+
+/**
+ * VideoObject for a tutorial on a page. Each chapter becomes a Clip ("key moments" in Google),
+ * linking to `?v=<id>&t=<seconds>#<section>`, which the player starts from (TutorialVideo).
+ */
+export function videoJsonLd(
+  v: { id: string; section: string; title: string; description: string; uploadDate: string; duration: number; chapters: { title: string; start: number }[] },
+  pagePath: string,
+) {
+  const page = absoluteUrl(pagePath);
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "@id": `${page}#video-${v.id}`,
+    name: v.title,
+    description: v.description,
+    thumbnailUrl: [`${TUTORIALS_URL}/${v.id}/poster.jpg`],
+    uploadDate: v.uploadDate,
+    duration: isoDuration(Math.round(v.duration)),
+    contentUrl: `${TUTORIALS_URL}/${v.id}/master.m3u8`,
+    inLanguage: "en",
+    isFamilyFriendly: true,
+    publisher: { "@id": ORG_ID },
+    hasPart: v.chapters.map((c, i) => ({
+      "@type": "Clip",
+      name: c.title,
+      startOffset: Math.round(c.start),
+      endOffset: Math.round(v.chapters[i + 1]?.start ?? v.duration),
+      url: `${page}?v=${v.id}&t=${Math.round(c.start)}#${v.section}`,
+    })),
+  };
+}

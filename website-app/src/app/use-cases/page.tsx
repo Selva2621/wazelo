@@ -83,7 +83,7 @@ const industries: Industry[] = [
       "Exam schedule and result notifications",
       "Bulk broadcast for events and announcements",
     ],
-    photo: "coaching-desk",
+    photo: "coaching-office",
     clip: "ch1-find",
   },
   {
