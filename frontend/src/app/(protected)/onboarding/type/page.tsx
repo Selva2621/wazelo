@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { freelancerTypeOptions, visibleFreelancerOptions } from "@/lib/constants/outreach";
-import { DEFAULT_COUNTRY_CODE, browserTimezone, detectCountryCode, getCountry } from "@/lib/constants/countries";
+import { DEFAULT_COUNTRY_CODE, browserTimezone, detectCountryCode, getCountry, withDialCode } from "@/lib/constants/countries";
 import { CountrySelect } from "@/components/ui/country-select";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api/users";
@@ -121,9 +121,7 @@ export default function OrgTypePage() {
     if (!mode) return;
     setError(null);
     if (needsPhone) {
-      const typed = phone.trim();
-      // No "+": a national number in the picked country
-      const full = typed.startsWith("+") ? typed : `+${getCountry(country).dialCode}${typed.replace(/\D/g, "").replace(/^0+/, "")}`;
+      const full = withDialCode(phone, country);
       try {
         await saveWhatsapp.mutateAsync({ phone: full, whatsappOptIn });
       } catch (err: any) {
@@ -236,7 +234,10 @@ export default function OrgTypePage() {
                   autoComplete="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder={`+${getCountry(country).dialCode} 98765 43210`}
+                  // The picked country's code is added on save, so it's shown fixed in the field
+                  leadingIcon={<span className="text-body-lg">+{getCountry(country).dialCode}</span>}
+                  style={{ paddingLeft: `calc(1.25rem + ${getCountry(country).dialCode.length + 1}ch)` }}
+                  placeholder="98765 43210"
                   maxLength={30}
                 />
                 <label className="flex cursor-pointer select-none items-start gap-2 pt-1 text-body text-on-surface-variant">

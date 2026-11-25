@@ -74,6 +74,30 @@ export function getCountry(code: string | null | undefined): CountryInfo {
   );
 }
 
+/** Longest national mobile number (no trunk "0", no country code) per country */
+const MAX_NATIONAL_DIGITS: Record<string, number> = {
+  IN: 10, AE: 9, SA: 9, QA: 8, KW: 8, OM: 8, BH: 8, LK: 9, BD: 10, NP: 10, PK: 10,
+  SG: 8, MY: 10, ID: 12, PH: 10, TH: 9, VN: 9, HK: 8, JP: 10, AU: 9, NZ: 10,
+  GB: 10, IE: 9, DE: 11, FR: 9, NL: 9, ES: 9, IT: 10, CH: 9, US: 10, CA: 10,
+  MX: 10, BR: 11, ZA: 9, NG: 10, KE: 9, EG: 10,
+};
+
+/**
+ * "+<code><number>" from what someone typed for the picked country.
+ * A leading "+" is kept as is. Without one, the country code is added unless
+ * it's already there: the digits start with it and are too long to be a national number.
+ */
+export function withDialCode(typed: string, countryCode: string): string {
+  const raw = typed.trim();
+  if (raw.startsWith("+")) return raw;
+  const { code, dialCode } = getCountry(countryCode);
+  let digits = raw.replace(/\D/g, "").replace(/^0+/, "");
+  if (digits.startsWith(dialCode) && digits.length > (MAX_NATIONAL_DIGITS[code] ?? 10)) {
+    digits = digits.slice(dialCode.length).replace(/^0+/, "");
+  }
+  return `+${dialCode}${digits}`;
+}
+
 /** 🇮🇳 from "IN" */
 export function countryFlag(code: string): string {
   return code

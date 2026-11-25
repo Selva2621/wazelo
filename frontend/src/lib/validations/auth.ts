@@ -16,7 +16,7 @@ export const whatsappNumberSchema = z
   .min(1, "WhatsApp number is required")
   .max(30, "That number is too long")
   .refine((v) => /^\+?[\d\s()-]+$/.test(v) && v.replace(/\D/g, "").length >= 8 && v.replace(/\D/g, "").length <= 15, {
-    message: "Enter a valid WhatsApp number, with the country code",
+    message: "Enter a valid WhatsApp number",
   });
 
 export const registerSchema = z.object({
