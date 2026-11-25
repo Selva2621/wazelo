@@ -23,7 +23,6 @@ const navLinks: [string, string][] = [
   ["Pricing", "/pricing"],
   ["Use Cases", "/use-cases"],
   ["Docs", "/docs"],
-  ["About", "/about"],
 ];
 
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container";

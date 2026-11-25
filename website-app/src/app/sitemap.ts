@@ -42,7 +42,6 @@ const ROUTES: [path: string, lastModified: string][] = [
   ["/use-cases/real-estate", "2026-11-20"],
   ["/use-cases/agencies", "2026-11-20"],
   ["/use-cases/freelancers", "2026-11-20"],
-  ["/about", "2026-11-20"],
   ["/security", "2026-11-20"],
   ["/docs", "2026-11-20"],
   ["/api-reference", "2026-11-20"],

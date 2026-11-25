@@ -39,7 +39,7 @@ export default async function BlogPost({ params }: Props) {
     description: p.description,
     datePublished: p.published,
     dateModified: p.updated,
-    author: { "@type": "Organization", name: p.author, url: absoluteUrl("/about") },
+    author: { "@type": "Organization", name: p.author, url: absoluteUrl("/") },
     publisher: { "@id": ORG_ID },
     mainEntityOfPage: absoluteUrl(path),
     inLanguage: "en",

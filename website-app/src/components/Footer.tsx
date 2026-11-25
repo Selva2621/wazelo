@@ -44,7 +44,6 @@ const cols: { title: string; links: [string, string][] }[] = [
   {
     title: "Company",
     links: [
-      ["About", "/about"],
       ["Contact", "/contact"],
       ["Privacy policy", "/privacy"],
       ["Terms of service", "/terms"],

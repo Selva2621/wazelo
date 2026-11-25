@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
         destination: "https://wazelo.in/:path*",
         permanent: true,
       },
+      // The About page was removed; old links land on the homepage
+      { source: "/about", destination: "/", permanent: true },
     ];
   },
 };
