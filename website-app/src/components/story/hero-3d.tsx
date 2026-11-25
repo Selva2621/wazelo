@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Environment, Html, Lightformer, RoundedBox, useGLTF, useProgress, useTexture, useVideoTexture } from "@react-three/drei";
+import { Environment, Html, Lightformer, RoundedBox, useGLTF, useTexture, useVideoTexture } from "@react-three/drei";
 import { DepthOfField, EffectComposer, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { ToneMappingMode, type DepthOfFieldEffect } from "postprocessing";
 import * as THREE from "three";
@@ -550,28 +550,15 @@ function FocusPull({ effect, focus, device }: { effect: React.RefObject<DepthOfF
   return null;
 }
 
-/**
- * Reports three.js loader progress (0-100: textures, models) for the hero preloader's counter.
- * Lives outside the Canvas: drei's useProgress reads the global loading manager.
- */
-function ReportProgress({ onProgress }: { onProgress: (p: number) => void }) {
-  const progress = useProgress((s) => s.progress);
-  useEffect(() => onProgress(progress), [progress, onProgress]);
-  return null;
-}
-
 export function Hero3D({
   step,
   onStep,
   onReady,
-  onProgress,
   className = "",
 }: {
   step: number;
   onStep: (i: number) => void;
   onReady: () => void;
-  /** Asset loading progress 0-100 until the first frame is up (the scene module has loaded). */
-  onProgress?: (p: number) => void;
   className?: string;
 }) {
   const mouse = useRef({ x: 0, y: 0 });
@@ -645,8 +632,6 @@ export function Hero3D({
 
   return (
     <div ref={wrap} className={className}>
-      {/* Only the first-view load counts: late assets (laptop/monitor clips, plant) stream after. */}
-      {onProgress && !late && <ReportProgress onProgress={onProgress} />}
       <Canvas
         shadows="percentage"
         dpr={dpr}

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { TUTORIAL_VIDEOS } from "@/components/tutorial-videos";
+import { TUTORIALS_URL } from "@/lib/seo";
 import {
   MediaControlBar,
   MediaController,
@@ -23,11 +25,9 @@ import {
  * Wazelo's object storage. Nothing but the poster and the small step list loads until the
  * reader presses play. Plays through hls.js (loaded on demand); native HLS only where hls.js cannot run.
  * Controls are Media Chrome, themed in globals.css (.wz-player); the seek bar shows the steps as chapters.
+ * `?v=<id>&t=<seconds>` in the page URL (the docs page's key-moment links) makes that video
+ * start from that second when it's played.
  */
-export const TUTORIALS_URL =
-  process.env.NEXT_PUBLIC_TUTORIALS_URL ??
-  "https://br-sparkling-resonance-aoz6332e.storage.c-2.ap-southeast-1.aws.neon.tech/tutorials";
-
 type Step = { id: string; title: string; start: number };
 
 const PREVIEW = 4; // steps shown on phones before "Show all steps"
@@ -38,28 +38,22 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
 export function TutorialVideo({ id, title, unit = "steps" }: { id: string; title: string; unit?: "steps" | "chapters" }) {
   const video = useRef<HTMLVideoElement>(null);
   const started = useRef(false);
-  const [steps, setSteps] = useState<Step[]>([]);
-  const [all, setAll] = useState<Step[]>([]); // steps plus the intro, for the seek bar's chapters
-  const [length, setLength] = useState<number | null>(null);
+  const startAt = useRef<number | null>(null); // from ?v=<id>&t=<seconds>
+  // Steps come from the generated data (tutorial-videos.ts), so they're in the HTML on first paint.
+  const data = TUTORIAL_VIDEOS.find((v) => v.id === id);
+  const all: Step[] = useMemo(() => data?.chapters ?? [], [data]); // steps plus the intro, for the seek bar
+  const steps = useMemo(() => all.filter((c) => c.id !== "intro"), [all]);
+  const length = data?.duration ?? null;
   const [now, setNow] = useState(0);
   const [open, setOpen] = useState(false);
   const base = `${TUTORIALS_URL}/${id}`;
 
+  // Key-moment link: ?v=<this id>&t=<seconds> starts this video there on its first play.
   useEffect(() => {
-    let off = false;
-    fetch(`${base}/chapters.json`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: { duration: number; chapters: Step[] } | null) => {
-        if (off || !j) return;
-        setSteps(j.chapters.filter((c) => c.id !== "intro"));
-        setAll(j.chapters);
-        setLength(j.duration);
-      })
-      .catch(() => {});
-    return () => {
-      off = true;
-    };
-  }, [base]);
+    const q = new URLSearchParams(window.location.search);
+    const t = Number(q.get("t"));
+    if (q.get("v") === id && Number.isFinite(t) && t > 0) startAt.current = t;
+  }, [id]);
 
   // Attach the stream on first play only.
   useEffect(() => {
@@ -70,6 +64,11 @@ export function TutorialVideo({ id, title, unit = "steps" }: { id: string; title
       if (started.current) return;
       started.current = true;
       const src = `${base}/master.m3u8`;
+      if (startAt.current !== null) {
+        const t = startAt.current;
+        startAt.current = null;
+        el.addEventListener("loadedmetadata", () => { el.currentTime = t; }, { once: true });
+      }
       // hls.js first: newer Chrome also says it plays HLS natively, but its native player stops
       // with "Parsed buffers not in DTS sequence" when it switches 720p -> 1080p. Native HLS only
       // where hls.js can't run (older iPhones without Media Source).
@@ -93,11 +92,12 @@ export function TutorialVideo({ id, title, unit = "steps" }: { id: string; title
       el.removeEventListener("play", start);
       hls?.destroy();
     };
-  }, [base, length]); // length: the player (and its <video>) is re-created when it arrives
+  }, [base]);
 
   const seek = (t: number) => {
     const el = video.current;
     if (!el) return;
+    startAt.current = null; // a chapter picked in the list wins over a ?t= link
     const go = () => {
       el.currentTime = t;
       el.play().catch(() => {});
@@ -132,10 +132,7 @@ export function TutorialVideo({ id, title, unit = "steps" }: { id: string; title
 
   return (
     <figure className="mb-8">
-      {/* Media Chrome reads defaultDuration only when the player is created, so it is re-created once
-          chapters.json gives the length (before anyone presses play). */}
       <MediaController
-        key={length ? "timed" : "untimed"}
         className="wz-player aspect-video w-full overflow-hidden rounded-xl shadow-[0_30px_60px_-30px_rgba(60,40,20,0.45),0_0_0_1px_rgba(23,19,15,0.08)]"
         defaultDuration={length ?? undefined}
       >

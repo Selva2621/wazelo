@@ -7,6 +7,8 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { APP_REGISTER_URL } from "@/lib/wazelo";
 import { gsap, ScrollTrigger, useGSAP, MQ_FULL, MQ_MOTION } from "@/lib/gsap";
 import { LiveTime } from "./live-time";
+import { PhonePeek, PHONE_PEEKS } from "./phone-peek";
+import { useCurrency } from "@/components/pricing/use-currency";
 import { FEATURE_GROUPS } from "@/components/features/feature-groups";
 
 /* ─── "Paid." ────────────────────────────────────────────────────────────── */
@@ -44,14 +46,17 @@ export function PaidBand() {
 
 /* ─── People ─────────────────────────────────────────────────────────────── */
 
+// India visitors see Indian sellers; everyone else a global set (same India check as pricing).
 const PEOPLE = [
-  { img: "realty", who: "Realtors", line: "Every site-visit request answered, even at midnight." },
-  { img: "coaching-desk", who: "Coaching institutes", line: "Enquiries become admissions with follow-ups that never forget." },
-  { img: "boutique", who: "Shops and boutiques", line: "Reply to every “price?” while you serve the customer in front of you." },
+  { india: "realty", global: "intl-realty", who: "Realtors", line: "Every site-visit request answered, even at midnight." },
+  { india: "coaching-office", global: "intl-school", who: "Coaching institutes", line: "Enquiries become admissions with follow-ups that never forget." },
+  { india: "boutique", global: "intl-boutique", who: "Shops and boutiques", line: "Reply to every “price?” while you serve the customer in front of you." },
 ];
 
 export function People() {
   const root = useRef<HTMLElement>(null);
+  // null until the browser's region is known: show an empty frame instead of a wrong photo.
+  const currency = useCurrency();
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
@@ -60,7 +65,16 @@ export function People() {
         ScrollTrigger.batch("[data-pp=card]", {
           start: "top 85%",
           once: true,
-          onEnter: (els) => gsap.from(els, { y: 80, autoAlpha: 0, stagger: 0.12, duration: 1.2, ease: "expo.out" }),
+          onEnter: (els) => {
+            gsap.from(els, { y: 80, autoAlpha: 0, stagger: 0.12, duration: 1.2, ease: "expo.out" });
+            // Then the phone screen pops in and the arrow draws to the phone in hand.
+            els.forEach((el, i) => {
+              const at = 0.6 + i * 0.12;
+              gsap.from(el.querySelector("[data-pk=phone]"), { scale: 0.8, y: 16, autoAlpha: 0, transformOrigin: "50% 100%", duration: 0.7, delay: at, ease: "back.out(1.6)" });
+              gsap.from(el.querySelector("[data-pk=arrow]"), { autoAlpha: 0, y: -14, duration: 0.5, delay: at + 0.45, ease: "power2.out" });
+              gsap.from(el.querySelector("[data-pk=ring]"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.5, delay: at + 0.95, ease: "back.out(2)" });
+            });
+          },
         });
       });
       // Photo cards drift a little as the section scrolls past.
@@ -85,18 +99,26 @@ export function People() {
         </div>
 
         <div className="mt-16 grid gap-6 md:grid-cols-3 lg:mt-24">
-          {PEOPLE.map((p, i) => (
-            <figure key={p.img} data-pp="card" className={i === 1 ? "md:mt-24" : ""}>
+          {PEOPLE.map((p, i) => {
+            const img = currency === null ? null : currency === "INR" ? p.india : p.global;
+            return (
+            <figure key={p.who} data-pp="card" className={i === 1 ? "md:mt-24" : ""}>
               {/* Whole photo at its own 4:5 shape; the card drifts, the photo is never cropped. */}
-              <div data-pp="photo" className="overflow-hidden rounded-[1.25rem] bg-paper-deep">
-                <Image src={`/media/story/${p.img}.jpg`} alt="" width={1024} height={1280} sizes="(min-width: 768px) 33vw, 100vw" className="h-auto w-full" />
+              <div data-pp="photo" className="relative aspect-[4/5] overflow-hidden rounded-[1.25rem] bg-paper-deep">
+                {img && (
+                  <>
+                    <Image key={img} src={`/media/story/${img}.jpg`} alt="" width={1024} height={1280} sizes="(min-width: 768px) 33vw, 100vw" className="h-auto w-full" />
+                    {PHONE_PEEKS[img] && <PhonePeek d={PHONE_PEEKS[img]} />}
+                  </>
+                )}
               </div>
               <figcaption className="mt-5">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rust">{p.who}</p>
                 <p className="mt-2 max-w-[30ch] text-lg leading-snug">{p.line}</p>
               </figcaption>
             </figure>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

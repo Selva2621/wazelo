@@ -1,6 +1,7 @@
 import { JsonLd } from "@/components/json-ld";
 import { IconFont } from "@/components/icon-font";
-import { breadcrumbJsonLd, pageMetadata, webPageJsonLd } from "@/lib/seo";
+import { TUTORIAL_VIDEOS } from "@/components/tutorial-videos";
+import { breadcrumbJsonLd, pageMetadata, videoJsonLd, webPageJsonLd } from "@/lib/seo";
 
 // page.tsx is a client component, so its metadata lives here.
 const seo = {
@@ -15,7 +16,14 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <IconFont />
-      <JsonLd data={[webPageJsonLd(seo), breadcrumbJsonLd([{ name: "Docs", path: seo.path }])]} />
+      <JsonLd
+        data={[
+          webPageJsonLd(seo),
+          breadcrumbJsonLd([{ name: "Docs", path: seo.path }]),
+          // The full demo and the 12 narrated tutorials, each with its chapters as key moments.
+          ...TUTORIAL_VIDEOS.map((v) => videoJsonLd(v, seo.path)),
+        ]}
+      />
       {children}
     </>
   );

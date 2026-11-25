@@ -27,7 +27,7 @@ const VALUES = [
 
 const PHOTOS = [
   { img: "realty", who: "Realtors" },
-  { img: "coaching-desk", who: "Coaching institutes" },
+  { img: "coaching-office", who: "Coaching institutes" },
   { img: "boutique", who: "Shops and boutiques" },
 ];
 

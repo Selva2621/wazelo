@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props) {
 const WHY_WAZELO = [
   "Every lead gets a reply in seconds and a follow-up sequence that stops when they answer.",
   "AI credits, the chatbot, website chat, a deals pipeline and proposals come with the plan.",
-  "Plans start at ₹499 a month for 5 users, with a 14-day free trial and no card.",
+  "Team plans start at ₹499 a month for 5 users, with a 14-day free trial and no card.",
 ];
 
 export default async function ComparePage({ params }: Props) {
