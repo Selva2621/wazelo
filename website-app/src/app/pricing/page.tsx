@@ -6,7 +6,7 @@ import { SITE_URL, SOFTWARE_ID, breadcrumbJsonLd, pageMetadata, webPageJsonLd } 
 
 const seo = {
   path: "/pricing",
-  title: "Pricing: WhatsApp CRM plans for freelancers and teams",
+  title: "WhatsApp CRM Pricing: Plans for Freelancers & Teams",
   description: `Wazelo plans for freelancers from ${bothPrices(planBySlug("solo").price)} and teams from ${bothPrices(planBySlug("starter").price)} a month. 14-day free trial, no card.`,
 };
 

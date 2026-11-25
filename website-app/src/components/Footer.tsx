@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import FooterWordmark from "@/components/FooterWordmark";
 import { USE_CASES } from "@/components/use-cases/use-cases";
 import { COMPETITORS } from "@/components/compare/competitors";
 
@@ -56,7 +57,7 @@ const focusPaper = "focus-visible:outline-2 focus-visible:outline-offset-2 focus
 export default function Footer({ showCta = true }: { showCta?: boolean }) {
   return (
     // The paper/10 top rule separates it from an ink section above; on paper the colour change does the work.
-    <footer className="tone-fixed border-t border-paper/10 bg-ink px-4 pb-10 pt-20 font-sans text-paper sm:px-6 lg:px-8 lg:pt-28">
+    <footer className="tone-fixed border-t border-paper/10 bg-ink px-4 pt-20 font-sans text-paper sm:px-6 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-7xl">
         {showCta && (
         <div className="flex flex-col gap-10 border-b border-paper/10 pb-16 lg:flex-row lg:items-end lg:justify-between lg:pb-20">
@@ -105,6 +106,8 @@ export default function Footer({ showCta = true }: { showCta?: boolean }) {
           <p>© {new Date().getFullYear()} Wazelo. All rights reserved.</p>
           <p>Made in India.</p>
         </div>
+
+        <FooterWordmark />
       </div>
     </footer>
   );

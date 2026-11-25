@@ -27,6 +27,7 @@ import {
   NO_WHATSAPP_PERMISSION_REASON,
   WhatsAppPermissionService,
 } from '@/modules/contacts/domain/services/whatsapp-permission.service';
+import { NO_WHATSAPP_SESSION } from './resend-after-reconnect';
 
 export interface ActionExecutionInput {
   orgId: string;
@@ -235,6 +236,8 @@ export class ActionExecutorService {
         actionType: AutomationActionType.SEND_MESSAGE,
         success: false,
         error: 'No active WhatsApp session found for this org. Connect a WhatsApp session first.',
+        // Picked up when a number reconnects: the run resumes from this step
+        result: { code: NO_WHATSAPP_SESSION },
       };
     }
 

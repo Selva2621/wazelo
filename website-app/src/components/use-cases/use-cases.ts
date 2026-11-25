@@ -67,7 +67,7 @@ export const USE_CASES: UseCase[] = [
       blurb: "Qualifying questions, visit reminders, no-shows and what to send after the visit, with templates.",
       href: "/blog/real-estate-whatsapp-follow-up",
     },
-    seoTitle: "WhatsApp CRM for Real Estate: Follow Up Every Property Lead",
+    seoTitle: "WhatsApp CRM for Real Estate: Follow Up Every Lead",
     seoDescription:
       "Answer Facebook and Instagram property leads on WhatsApp in seconds, route them to the right project team, remind agents and follow up until the site visit.",
   },
@@ -98,7 +98,7 @@ export const USE_CASES: UseCase[] = [
       blurb: "The definitions to agree, where each number comes from, and a five-page monthly report template.",
       href: "/blog/agency-whatsapp-lead-report",
     },
-    seoTitle: "WhatsApp CRM for Agencies: Follow Up Every Client's Leads",
+    seoTitle: "WhatsApp CRM for Agencies: Follow Up Client Leads",
     seoDescription:
       "Run your clients' Meta lead ads, WhatsApp replies, follow-ups and campaigns from one account, with a brand per client and CSV reports at month end.",
   },
@@ -129,7 +129,7 @@ export const USE_CASES: UseCase[] = [
       blurb: "Finding businesses that need you, contacting them the way WhatsApp allows, then pitching and following up.",
       href: "/blog/freelancers-find-clients-google-maps",
     },
-    seoTitle: "WhatsApp CRM for Freelancers: Find Clients and Follow Up",
+    seoTitle: "WhatsApp CRM for Freelancers: Find & Follow Up",
     seoDescription:
       "Find businesses to pitch on Google Maps, send proposals on WhatsApp and let follow-ups run on their own. Wazelo Solo is built for freelancers.",
   },

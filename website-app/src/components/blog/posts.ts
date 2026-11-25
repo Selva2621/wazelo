@@ -19,6 +19,8 @@ export type Pillar = "Speed to lead" | "WhatsApp follow-up" | "WhatsApp API expl
 export interface Post {
   slug: string;
   title: string;
+  /** Shorter title for search results (≤51 chars, so it fits ~60 with " | Wazelo"); the page heading keeps `title`. */
+  seoTitle?: string;
   /** 120–160 characters, for search results and the index card. */
   description: string;
   /** ISO dates (YYYY-MM-DD). Bump `updated` only when the content really changes. */
@@ -42,6 +44,7 @@ export const POSTS: Post[] = [
   {
     slug: "facebook-lead-ads-to-whatsapp",
     title: "How to Reply to Facebook Lead Ads on WhatsApp in Seconds (Without Google Sheets)",
+    seoTitle: "Reply to Facebook Lead Ads on WhatsApp in Seconds",
     description:
       "Send a WhatsApp welcome to every Facebook and Instagram lead within seconds, straight from Meta, then follow up until they reply. Setup steps and templates.",
     published: "2026-11-21",
@@ -61,6 +64,7 @@ export const POSTS: Post[] = [
   {
     slug: "whatsapp-follow-up-templates",
     title: "WhatsApp Follow-up Message Templates: 17 Copy-Ready Examples (With the Right Meta Category)",
+    seoTitle: "WhatsApp Follow-up Templates: 17 Ready Examples",
     description:
       "17 WhatsApp follow-up messages for real estate, coaching, agencies, freelancers and shops, labelled utility or marketing, with when to send each one.",
     published: "2026-11-21",
@@ -80,6 +84,7 @@ export const POSTS: Post[] = [
   {
     slug: "how-many-times-to-follow-up-a-lead",
     title: "How Many Times Should You Follow Up a Lead? A WhatsApp Schedule for 5 Situations",
+    seoTitle: "How Many Times to Follow Up a Lead on WhatsApp",
     description:
       "Day-by-day WhatsApp follow-up schedules for new leads, quiet leads, quotes, booked visits and cold pitches, with what to send at each step and when to stop.",
     published: "2026-11-21",
@@ -99,6 +104,7 @@ export const POSTS: Post[] = [
   {
     slug: "whatsapp-24-hour-rule",
     title: "The WhatsApp 24-Hour Rule: When You Can Message a Lead (and When You Need a Template)",
+    seoTitle: "WhatsApp 24-Hour Rule: When You Need a Template",
     description:
       "How WhatsApp's 24-hour customer service window works: what opens it, what you can send inside and outside it, what it costs, and the 7-day ad exception.",
     published: "2026-11-21",
@@ -118,6 +124,7 @@ export const POSTS: Post[] = [
   {
     slug: "whatsapp-business-api-pricing",
     title: "WhatsApp Business API Pricing in 2026: What Each Message Costs, in India and Abroad",
+    seoTitle: "WhatsApp Business API Pricing 2026: India & Abroad",
     description:
       "How Meta prices WhatsApp Business API messages from 1 October 2026: categories, free tiers, volume tiers, rates by country and a worked monthly cost.",
     published: "2026-11-21",
@@ -138,6 +145,7 @@ export const POSTS: Post[] = [
   {
     slug: "whatsapp-number-banned-or-limited",
     title: "Why WhatsApp Numbers Get Limited or Banned (and How to Avoid It)",
+    seoTitle: "Why WhatsApp Numbers Get Banned & How to Avoid It",
     description:
       "Messaging limits, template pausing, per-person marketing limits and policy bans on the WhatsApp Business API: what triggers each, and how to stay clear.",
     published: "2026-11-21",
@@ -157,6 +165,7 @@ export const POSTS: Post[] = [
   {
     slug: "real-estate-whatsapp-follow-up",
     title: "Real Estate WhatsApp Follow-up: A Site-Visit Playbook From Enquiry to Booking",
+    seoTitle: "Real Estate WhatsApp Follow-up: Site-Visit Playbook",
     description:
       "A step-by-step WhatsApp playbook for real estate teams: first reply, qualifying questions, site-visit reminders, no-shows and follow-up after the visit.",
     published: "2026-11-21",
@@ -176,6 +185,7 @@ export const POSTS: Post[] = [
   {
     slug: "freelancers-find-clients-google-maps",
     title: "How Freelancers Find Clients on Google Maps (and Follow Up on WhatsApp the Right Way)",
+    seoTitle: "Find Clients on Google Maps: A Freelancer's Guide",
     description:
       "Find local businesses that need your skills on Google Maps, contact them in a way WhatsApp allows, then pitch, send the proposal and follow up.",
     published: "2026-11-21",
@@ -195,6 +205,7 @@ export const POSTS: Post[] = [
   {
     slug: "speed-to-lead-statistics",
     title: "Speed-to-Lead Statistics: What the Research Actually Shows (and What It Doesn't)",
+    seoTitle: "Speed-to-Lead Statistics: What the Research Shows",
     description:
       "The lead response statistics everyone quotes, checked against the original studies: what they measured, their limits, and which numbers have no source.",
     published: "2026-11-21",
@@ -214,6 +225,7 @@ export const POSTS: Post[] = [
   {
     slug: "agency-whatsapp-lead-report",
     title: "How Agencies Report WhatsApp Lead Results to Clients (With a Monthly Report Template)",
+    seoTitle: "WhatsApp Lead Report for Clients: Agency Template",
     description:
       "A monthly report structure for agencies running WhatsApp lead follow-up: the definitions to agree, where each number comes from and what to leave out.",
     published: "2026-11-21",
@@ -233,6 +245,7 @@ export const POSTS: Post[] = [
   {
     slug: "whatsapp-business-glossary",
     title: "WhatsApp Business Glossary: 25 Terms Explained in Plain English",
+    seoTitle: "WhatsApp Business Glossary: 25 Terms Explained",
     description:
       "Templates, the 24-hour window, service messages, messaging limits, quality ratings, opt-in and more: 25 WhatsApp Business terms explained simply.",
     published: "2026-11-21",

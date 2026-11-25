@@ -28,16 +28,30 @@ export interface FeatureDetailData {
   interactiveSection?: React.ReactNode;
 }
 
-/** Real app recordings (public/media/story) shown instead of a still where one exists. */
-const HERO_CLIPS: Record<string, { clip: string; path: string }> = {
+/**
+ * Real app recordings (public/media/story) for every feature page: desktop "<clip>.mp4" and the
+ * phone cut "<clip>-m.mp4". Story clips (ch*) come in ₹ and $ versions; `shared` clips
+ * (demo/rec-features.js) have one version. `phoneOnly`: the phone recording on every screen.
+ */
+const HERO_CLIPS: Record<string, { clip: string; path: string; shared?: boolean; phoneOnly?: boolean }> = {
   "shared-inbox": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
   "ai-assistant": { clip: "ch2-reply", path: "app.wazelo.in/inbox" },
   "lead-finder": { clip: "ch1-find", path: "app.wazelo.in/leads/finder" },
   "lead-ads": { clip: "ch1-ads", path: "app.wazelo.in/lead-ads" },
   sequences: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
-  automation: { clip: "ch3-follow", path: "app.wazelo.in/sequences" },
   proposals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
-  deals: { clip: "ch4-close", path: "app.wazelo.in/proposals" },
+  automation: { clip: "feat-automation", path: "app.wazelo.in/automation", shared: true },
+  deals: { clip: "feat-deals", path: "app.wazelo.in/deals", shared: true },
+  analytics: { clip: "feat-analytics", path: "app.wazelo.in/dashboard", shared: true },
+  campaigns: { clip: "feat-campaigns", path: "app.wazelo.in/campaigns", shared: true },
+  chatbot: { clip: "feat-chatbot", path: "app.wazelo.in/chatbot", shared: true },
+  contacts: { clip: "feat-contacts", path: "app.wazelo.in/contacts", shared: true },
+  csat: { clip: "feat-csat", path: "app.wazelo.in/csat", shared: true },
+  "developer-api": { clip: "feat-developer-api", path: "app.wazelo.in/settings/api-keys", shared: true },
+  "lead-scoring": { clip: "feat-lead-scoring", path: "app.wazelo.in/lead-scoring", shared: true },
+  "multi-channel": { clip: "feat-multi-channel", path: "app.wazelo.in/inbox", shared: true },
+  "website-chat": { clip: "feat-website-chat", path: "app.wazelo.in/settings/chat-widget", shared: true },
+  "mobile-app": { clip: "feat-mobile-app", path: "app.wazelo.in", shared: true, phoneOnly: true },
 };
 
 const focusInk = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
@@ -61,6 +75,10 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
   const root = useRef<HTMLDivElement>(null);
   const clip = HERO_CLIPS[data.slug];
   const storyClip = useStoryClip(); // ₹ or $ recordings, like the pricing
+  const media = (mobile: boolean) =>
+    clip?.shared
+      ? { src: `/media/story/${clip.clip}${mobile ? "-m" : ""}.mp4`, poster: `/media/story/${clip.clip}${mobile ? "-m" : ""}.jpg` }
+      : storyClip(clip!.clip, mobile);
 
   useGSAP(
     () => {
@@ -137,14 +155,16 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
               <div data-fd="media-tilt" className="will-change-transform">
                 {clip ? (
                   <>
-                    <PhoneFrame className="lg:hidden">
-                      <LoopVideo {...storyClip(clip.clip, true)} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
+                    <PhoneFrame className={clip.phoneOnly ? "" : "lg:hidden"}>
+                      <LoopVideo {...media(true)} label={`${data.tag} in the Wazelo app`} className="!aspect-auto h-full" />
                     </PhoneFrame>
-                    <div className="mx-auto hidden max-w-5xl lg:block">
-                      <Frame path={clip.path}>
-                        <LoopVideo {...storyClip(clip.clip)} label={`${data.tag} in the Wazelo app`} />
-                      </Frame>
-                    </div>
+                    {!clip.phoneOnly && (
+                      <div className="mx-auto hidden max-w-5xl lg:block">
+                        <Frame path={clip.path}>
+                          <LoopVideo {...media(false)} label={`${data.tag} in the Wazelo app`} />
+                        </Frame>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="tone-fixed overflow-hidden rounded-[1.5rem] bg-ink shadow-[0_60px_120px_-40px_rgba(60,40,20,0.5)]">
@@ -213,7 +233,8 @@ export default function FeatureDetailPage({ data }: { data: FeatureDetailData })
       {/* ── Live demo (the older pages' interactive mock, shown as a screen) ── */}
       {/* Desktop only: the mock is a desktop app layout and is cut off at phone width; phones
           already get the readable phone recording at the top of the page. */}
-      {data.interactiveSection && (
+      {/* Pages with a real app recording don't show the old hand-built mock. */}
+      {data.interactiveSection && !clip && (
         <section className="hidden px-4 pb-24 sm:px-6 lg:block lg:px-8 lg:pb-32">
           <div data-fd="demo" className="mx-auto max-w-7xl tone-fixed overflow-hidden rounded-[2rem] bg-ink p-5 text-on-surface sm:p-8 lg:p-12">
             <p className="mb-8 text-xs font-medium uppercase tracking-[0.22em] text-paper/50">See it in action</p>
