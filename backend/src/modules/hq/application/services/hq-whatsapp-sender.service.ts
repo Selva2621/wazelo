@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MessageType } from '@prisma/client';
 import { renderCloudTemplate } from '@/shared/utils/cloud-template';
+import { REDACT_AFTER_SEND } from '@/shared/utils/message-redaction';
 import { OutboundMessageService } from '@/modules/messages/application/services/outbound-message.service';
 import { HqLeadsRepository } from '../../infrastructure/repositories/hq-leads.repository';
 import { OTP_TEMPLATE } from '../../domain/services/whatsapp-otp';
@@ -34,7 +35,8 @@ export class HqWhatsappSender {
       type: MessageType.TEXT,
       idempotencyKey,
       // Official numbers send the approved template; QR numbers send the text
-      metadata: { platformAlert: 'login_code', cloudTemplate: rendered.cloudTemplate },
+      // redactAfterSend: the code is wiped from the stored message once it is sent
+      metadata: { platformAlert: 'login_code', cloudTemplate: rendered.cloudTemplate, [REDACT_AFTER_SEND]: true },
     });
     return true;
   }

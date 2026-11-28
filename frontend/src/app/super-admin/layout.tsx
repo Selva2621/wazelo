@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Building2, CreditCard,
-  LifeBuoy, LogOut, Package, ShieldCheck, ScrollText, Receipt, Activity, Megaphone, Menu, X, BarChart3, Users, TicketPercent, Settings, Sparkles, Briefcase,
+  LifeBuoy, LogOut, Package, ShieldCheck, ScrollText, Receipt, Activity, Megaphone, Menu, X, BarChart3, Users, TicketPercent, Settings, Sparkles, Briefcase, MessagesSquare,
 } from "lucide-react";
 import { useSuperAdminAuthStore } from "@/stores/super-admin-auth-store";
 import { refreshSuperAdminSession } from "@/lib/api/super-admin-client";
@@ -13,6 +13,7 @@ import { superAdminApi } from "@/lib/api/super-admin";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/super-admin/global-search";
 import { NotificationBell } from "@/components/super-admin/notification-bell";
+import { ApiHealthCard } from "@/components/super-admin/api-health-card";
 import { HqSidebarButton } from "@/components/super-admin/hq-sidebar-button";
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/super-admin/tickets", icon: LifeBuoy, label: "Help Tickets" },
   { href: "/super-admin/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/super-admin/system", icon: Activity, label: "System Health" },
+  { href: "/super-admin/message-log", icon: MessagesSquare, label: "Message Log" },
   { href: "/super-admin/audit-log", icon: ScrollText, label: "Audit Log" },
   { href: "/super-admin/settings", icon: Settings, label: "Settings" },
   { href: "/super-admin/security", icon: ShieldCheck, label: "Security" },
@@ -191,7 +193,8 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           <div role="search" className="flex-1 min-w-0 md:max-w-md">
             <GlobalSearch />
           </div>
-          <div className="ml-auto shrink-0">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <ApiHealthCard />
             <NotificationBell />
           </div>
         </header>

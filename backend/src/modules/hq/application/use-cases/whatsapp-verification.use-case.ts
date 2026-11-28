@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { MessageType } from '@prisma/client';
 import { renderCloudTemplate } from '@/shared/utils/cloud-template';
+import { REDACT_AFTER_SEND } from '@/shared/utils/message-redaction';
 import { ContactRepository } from '@/modules/contacts/infrastructure/repositories/contact.repository';
 import { OutboundMessageService } from '@/modules/messages/application/services/outbound-message.service';
 import { HqLeadsRepository } from '../../infrastructure/repositories/hq-leads.repository';
@@ -84,7 +85,8 @@ export class WhatsappVerificationUseCase {
       body: rendered.body,
       type: MessageType.TEXT,
       idempotencyKey: `hq-otp:${record.id}`,
-      metadata: { platformAlert: 'verification_code', cloudTemplate: rendered.cloudTemplate },
+      // redactAfterSend: the code is wiped from the stored message once it is sent
+      metadata: { platformAlert: 'verification_code', cloudTemplate: rendered.cloudTemplate, [REDACT_AFTER_SEND]: true },
     });
     return { sent: true, expiresInSeconds: OTP_TTL_MS / 1000 };
   }

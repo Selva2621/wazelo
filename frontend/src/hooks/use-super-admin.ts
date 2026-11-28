@@ -33,6 +33,15 @@ export function useSAAuditLogs(params: Parameters<typeof superAdminApi.listAudit
   });
 }
 
+/** Messages sent from Wazelo HQ's number */
+export function useSAHqMessages(params: Parameters<typeof superAdminApi.listHqMessages>[0]) {
+  return useQuery({
+    queryKey: ["sa", "hq-messages", params],
+    queryFn: () => superAdminApi.listHqMessages(params),
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useSAAnnouncements() {
   return useQuery({ queryKey: ["sa", "announcements"], queryFn: superAdminApi.listAnnouncements });
 }

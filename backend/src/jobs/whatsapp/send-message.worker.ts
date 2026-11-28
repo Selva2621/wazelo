@@ -28,6 +28,7 @@ import { CampaignRepository } from '@/modules/campaigns/infrastructure/repositor
 import { pauseCampaignSystem } from '@/jobs/campaign/kill-switch-pause';
 import { maskPhone, sentBy } from './send-log';
 import { isConnectionFailure } from '@/shared/utils/connection-failure';
+import { redactedCopy } from '@/shared/utils/message-redaction';
 import { isLocalMediaMissing, MEDIA_MISSING_REASON } from '@/infrastructure/storage/local-media';
 
 /** How long a queued campaign message waits before re-checking the campaigns kill switch. */
@@ -458,6 +459,9 @@ export class SendMessageWorker implements OnModuleInit {
       // 7. Success — update message with WhatsApp ID + SENT status
       await this.messageRepo.setWhatsAppMessageId(messageId, result.whatsappMessageId);
 
+      // A sign-in / verification code doesn't stay readable in the database once it is out
+      await this.redactSecrets(message);
+
       await this.messageEventRepo.record({
         messageId,
         orgId,
@@ -551,6 +555,17 @@ export class SendMessageWorker implements OnModuleInit {
    * - Retryable errors: re-queue with exponential backoff
    * - Non-retryable errors or max retries exhausted: dead-letter
    */
+  private async redactSecrets(message: { id: string; body?: string | null; metadata?: unknown }): Promise<void> {
+    const redacted = redactedCopy(message.body, message.metadata);
+    if (!redacted) return;
+    try {
+      await this.messageRepo.redact(message.id, redacted.body, redacted.metadata);
+    } catch (err) {
+      // Never let this fail the send: the message is already out and must not be resent
+      this.logger.error(`Could not redact message ${message.id}: ${(err as Error).message}`);
+    }
+  }
+
   private async handleFailure(
     message: Record<string, any>,
     jobId: string,
@@ -627,6 +642,10 @@ export class SendMessageWorker implements OnModuleInit {
         },
       });
 
+      // A code that never went out is redacted too, here and in the dead-letter copy
+      const redacted = redactedCopy(message.body, message.metadata);
+      await this.redactSecrets({ id: messageId, body: message.body, metadata: message.metadata });
+
       // Create dead-letter record
       await this.deadLetterRepo.create({
         orgId,
@@ -634,12 +653,12 @@ export class SendMessageWorker implements OnModuleInit {
         sessionId: message.sessionId,
         contactPhone: message.contactPhone,
         type: message.type as MessageType,
-        body: message.body,
+        body: redacted ? redacted.body : message.body,
         mediaUrl: message.mediaUrl,
         failedReason: reason,
         retryCount: currentRetry,
         lastJobId: jobId,
-        metadata: message.metadata as Record<string, unknown> | undefined,
+        metadata: (redacted ? redacted.metadata : message.metadata) as Record<string, unknown> | undefined,
       });
 
       await this.auditService.log({

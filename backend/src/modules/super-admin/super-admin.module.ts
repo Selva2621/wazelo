@@ -29,6 +29,8 @@ import { SuperAdminFreelancerTypesController } from './interfaces/controllers/su
 import { SuperAdminHqController } from './interfaces/controllers/super-admin-hq.controller';
 import { CreateWazeloHqUseCase, GetWazeloHqUseCase, OpenWazeloHqUseCase } from './application/use-cases/wazelo-hq.use-cases';
 import { WazeloHqRepository } from './infrastructure/repositories/wazelo-hq.repository';
+import { ListHqMessageLogUseCase } from './application/use-cases/hq-message-log.use-case';
+import { MessageEncryptionService } from '@/modules/messages/domain/services/message-encryption.service';
 import { HqModule } from '@/modules/hq/hq.module';
 
 // Repositories
@@ -201,6 +203,9 @@ import { SuperAdminBillingOpsController } from './interfaces/controllers/super-a
     GetWazeloHqUseCase,
     CreateWazeloHqUseCase,
     OpenWazeloHqUseCase,
+    ListHqMessageLogUseCase,
+    // Decrypts stored message text for the message log (needs only EncryptionService, provided below)
+    MessageEncryptionService,
     // Repositories
     WazeloHqRepository,
     SuperAdminRepository,

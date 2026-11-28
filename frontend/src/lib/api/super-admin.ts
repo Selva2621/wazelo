@@ -149,6 +149,36 @@ export interface AuditLogQuery extends ListSortParams {
   search?: string;
 }
 
+/** One WhatsApp message sent from Wazelo HQ's number, as stored (codes are wiped in the database once sent). */
+export interface HqMessageLogEntry {
+  id: string;
+  /** login_code, verification_code, a customer alert key, or "other" */
+  kind: string;
+  status: "QUEUED" | "PROCESSING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+  to: string | null;
+  body: string | null;
+  failedReason: string | null;
+  retryCount: number;
+  via: "QR" | "CLOUD_API" | null;
+  from: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+}
+
+export interface HqMessageLogQuery {
+  page?: number;
+  limit?: number;
+  status?: string;
+  kind?: string;
+  provider?: string;
+  /** Digits of the recipient's number */
+  search?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface PlatformUsage {
   days: number;
   /** One per UTC day, oldest first; empty days are zeros */
@@ -407,6 +437,14 @@ export const superAdminApi = {
     superAdminClient
       .get<{ data: { items: PlatformAuditEntry[]; total: number; page: number; totalPages: number } }>(
         "/super-admin/audit-logs",
+        { params },
+      )
+      .then((r) => r.data.data),
+
+  listHqMessages: (params: HqMessageLogQuery) =>
+    superAdminClient
+      .get<{ data: { items: HqMessageLogEntry[]; total: number; page: number; totalPages: number } }>(
+        "/super-admin/hq/messages",
         { params },
       )
       .then((r) => r.data.data),

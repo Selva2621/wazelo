@@ -190,6 +190,24 @@ export class MessageRepository {
     });
   }
 
+  /**
+   * Overwrites a message's stored text and metadata with a redacted copy, and the copy
+   * of the metadata kept on its QUEUED event (see shared/utils/message-redaction).
+   */
+  async redact(id: string, body: string | null, metadata: Record<string, unknown>) {
+    const json = metadata as Prisma.InputJsonValue;
+    await this.prisma.$transaction([
+      this.prisma.message.update({
+        where: { id },
+        data: { body: this.enc.encryptIfPresent(body), metadata: json },
+      }),
+      this.prisma.messageEvent.updateMany({
+        where: { messageId: id, status: MessageStatus.QUEUED },
+        data: { metadata: json },
+      }),
+    ]);
+  }
+
   async setWhatsAppMessageId(id: string, whatsappMessageId: string) {
     return this.prisma.message.update({
       where: { id },

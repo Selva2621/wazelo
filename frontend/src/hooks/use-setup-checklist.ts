@@ -22,12 +22,14 @@ export interface ChecklistItem {
   description: string;
   href: string;
   /** Handled in place instead of navigating to href. */
-  action?: "connect-whatsapp";
+  action?: "connect-whatsapp" | "teach-ai";
   /** Button text; falls back to the per-step default in the checklist */
   actionLabel?: string;
   done: boolean;
   /** Nice to have: listed last, marked "Optional", never holds back "You're all set". */
   optional?: boolean;
+  /** Must be done: no "Skip for now", marked "Required", and the steps after it stay locked. */
+  mandatory?: boolean;
 }
 
 const DISMISSED_KEY = (orgId: string) => `setup_checklist_dismissed_${orgId}`;
@@ -106,6 +108,16 @@ export function useSetupChecklist() {
         action: "connect-whatsapp",
         done: hasWhatsApp,
       },
+      // Step 2 and a must: the assistant has nothing to answer from without it
+      canTeachBot && {
+        id: "knowledge",
+        label: "Teach your AI assistant",
+        description: "Add your website, files or FAQs so it can answer customers on WhatsApp and your website.",
+        href: "/ai-assistant",
+        action: "teach-ai",
+        done: hasKnowledge,
+        mandatory: true,
+      },
       canManageProducts && {
         id: "products",
         label: isFreelancer ? "Add your services" : "Add your products",
@@ -122,13 +134,6 @@ export function useSetupChecklist() {
         description: "Edit a starter template or write your own for campaigns and outreach.",
         href: "/settings/templates",
         done: hasTemplate,
-      },
-      canTeachBot && {
-        id: "knowledge",
-        label: "Teach your AI assistant",
-        description: "Add your website, files or FAQs so it can answer customers on WhatsApp and your website.",
-        href: "/ai-assistant",
-        done: hasKnowledge,
       },
       isFreelancer
         ? {

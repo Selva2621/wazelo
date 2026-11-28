@@ -26,6 +26,12 @@ const BASE = "/super-admin/system";
 export const observabilityApi = {
   // ─── Health ───
 
+  /** "Is the API up" for the top bar: the public ping (no login, no database work on the server). */
+  ping: () =>
+    superAdminClient
+      .get<{ data: { status: "ok" } }>("/health/ping", { timeout: 8000 })
+      .then((r) => r.data.data),
+
   getHealth: () =>
     superAdminClient.get<{ data: HealthCheck }>(`${BASE}/health`).then((r) => r.data.data),
 

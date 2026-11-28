@@ -160,10 +160,10 @@ export const coreTours: TourDef[] = [
       {
         target: "setup-checklist",
         title: "Get set up",
-        body: "Work down this checklist to go live. Each item opens the right screen and ticks itself once done.",
+        body: "Work down this checklist to go live. Teaching your AI assistant is a must: the steps after it stay locked until it's done. Each step ticks itself once done.",
         example: {
           kind: "steps",
-          items: ["Connect your WhatsApp number", "Import contacts from a CSV", "Create your first template", "Invite a teammate"],
+          items: ["Connect your WhatsApp number", "Teach your AI assistant", "Create your first template", "Import contacts from a CSV"],
         },
       },
       {

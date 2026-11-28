@@ -1,4 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req } from '@nestjs/common';
+import { ListHqMessageLogUseCase } from '../../application/use-cases/hq-message-log.use-case';
+import { ListHqMessageLogQueryDto } from '../../application/dto/hq-message-log.dto';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 /** Where to land inside HQ ("/inbox", "/campaigns"); anything not a plain app path is ignored */
@@ -27,11 +29,18 @@ export class SuperAdminHqController {
     private readonly getHq: GetWazeloHqUseCase,
     private readonly createHq: CreateWazeloHqUseCase,
     private readonly openHq: OpenWazeloHqUseCase,
+    private readonly messageLog: ListHqMessageLogUseCase,
   ) {}
 
   @Get()
   async get() {
     return this.getHq.execute();
+  }
+
+  /** Messages sent from HQ's number (QR session or Cloud API), as stored. */
+  @Get('messages')
+  async messages(@Query() query: ListHqMessageLogQueryDto) {
+    return this.messageLog.execute(query);
   }
 
   @Post()

@@ -30,6 +30,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
 import { WhatsAppConnectionPanel } from "@/components/whatsapp/whatsapp-connection-panel";
 import { AssistantSetup, useAssistantControls, useAssistantStatus } from "@/components/dashboard/assistant-setup";
+import { TeachAiModal } from "@/components/dashboard/teach-ai-modal";
 
 /** The spotlight's main button per step (the hook's actionLabel is the short fallback) */
 const STEP_CTA: Record<string, string> = {
@@ -309,6 +310,10 @@ type Spot = {
   description: ReactNode;
   done: boolean;
   optional: boolean;
+  /** Must be done: no "Skip for now" */
+  mandatory?: boolean;
+  /** Waits for the mandatory step: shown with a lock, can't be started yet */
+  locked?: boolean;
   doneDetail: string;
   cta: ReactNode;
 };
@@ -375,7 +380,7 @@ function StepPath({
               <button
                 type="button"
                 onClick={() => onPick(s)}
-                aria-label={`Step ${number}: ${s.title}${s.optional ? " (optional)" : ""}${s.done ? ", done" : ""}`}
+                aria-label={`Step ${number}: ${s.title}${s.optional ? " (optional)" : ""}${s.done ? ", done" : s.locked ? ", locked" : ""}`}
                 aria-current={isCurrent ? "step" : undefined}
                 className="group flex min-h-11 w-full flex-col items-center gap-1 rounded-lg px-0.5 outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
@@ -392,7 +397,7 @@ function StepPath({
                   animate={s.done && !still ? { scale: [1, 1.18, 1] } : { scale: 1 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
                 >
-                  {s.done ? <Check className="h-4 w-4" /> : number}
+                  {s.done ? <Check className="h-4 w-4" /> : s.locked ? <Lock className="h-3.5 w-3.5" /> : number}
                   {!s.done && isCurrent && !still && (
                     <motion.span
                       aria-hidden
@@ -479,7 +484,7 @@ function StepList({
                       <button
                         type="button"
                         onClick={() => onPick(s)}
-                        aria-label={`Step ${number}: ${s.title}${s.optional ? " (optional)" : ""}${s.done ? ", done" : ""}`}
+                        aria-label={`Step ${number}: ${s.title}${s.optional ? " (optional)" : ""}${s.done ? ", done" : s.locked ? ", locked" : ""}`}
                         aria-current={isCurrent ? "step" : undefined}
                         className={cn(
                           "group flex min-h-11 w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
@@ -497,7 +502,7 @@ function StepList({
                           animate={s.done && !still ? { scale: [1, 1.18, 1] } : { scale: 1 }}
                           transition={{ duration: 0.45, ease: "easeOut" }}
                         >
-                          {s.done ? <Check className="h-3.5 w-3.5" /> : number}
+                          {s.done ? <Check className="h-3.5 w-3.5" /> : s.locked ? <Lock className="h-3 w-3" /> : number}
                           {!s.done && isCurrent && !still && (
                             <motion.span
                               aria-hidden
@@ -510,7 +515,7 @@ function StepList({
                         <span
                           className={cn(
                             "min-w-0 flex-1 truncate text-label",
-                            isShown ? "font-semibold text-on-surface" : s.done ? "text-on-surface-variant" : "text-on-surface",
+                            isShown ? "font-semibold text-on-surface" : s.done || s.locked ? "text-on-surface-variant" : "text-on-surface",
                           )}
                         >
                           {s.title}
@@ -544,6 +549,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   const { data: session } = useWhatsAppSession();
   const [connectOpen, setConnectOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [teachOpen, setTeachOpen] = useState(false);
   const [turnedOn, setTurnedOn] = useState(false);
   // A step picked on the path (otherwise the first unfinished one is shown). wasDone: an
   // unfinished step that then gets done hands the spotlight back to the next step.
@@ -562,30 +568,59 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   const whatsappReady = items.find((i) => i.id === "whatsapp")?.done ?? false;
   const assistantDone = assistant.done || turnedOn;
 
-  const go = (item: ChecklistItem) => (item.action === "connect-whatsapp" ? setConnectOpen(true) : router.push(item.href));
+  const go = (item: ChecklistItem) =>
+    item.action === "connect-whatsapp"
+      ? setConnectOpen(true)
+      : item.action === "teach-ai"
+        ? setTeachOpen(true)
+        : router.push(item.href);
 
-  const toSpot = (item: ChecklistItem): Spot => ({
-    id: item.id,
-    title: item.label,
-    short:
-      STEP_SHORT[item.id] ??
-      (item.id === "contacts" ? (isFreelancer ? "Leads" : "Contacts") : item.id === "products" ? (isFreelancer ? "Services" : "Products") : item.label),
-    description: item.description,
-    done: item.done,
-    optional: !!item.optional,
-    doneDetail: item.id === "whatsapp" && session?.phoneNumber ? `Connected · ${session.phoneNumber}` : "Done",
-    cta: (
-      <Button size="lg" onClick={() => go(item)}>
-        {STEP_CTA[item.id] ??
-          (item.id === "contacts"
-            ? isFreelancer ? "Find leads" : "Import contacts"
-            : item.id === "products"
-              ? isFreelancer ? "Add services" : "Add products"
-              : item.actionLabel ?? "Open")}
-        <ArrowRight className="ml-1.5 h-4 w-4" />
-      </Button>
-    ),
-  });
+  // Hard block: until the mandatory step (teach the AI) is done, every step after it is locked
+  const mandatoryIndex = items.findIndex((i) => i.mandatory && !i.done);
+  const blocked = mandatoryIndex >= 0;
+  const lockedNote = (
+    <span className="inline-flex items-center gap-1">
+      <Lock className="h-3 w-3" /> Teach your AI assistant first
+    </span>
+  );
+  const lockedCta = (
+    <Button size="lg" onClick={() => setTeachOpen(true)}>
+      {STEP_CTA.knowledge}
+      <ArrowRight className="ml-1.5 h-4 w-4" />
+    </Button>
+  );
+
+  const toSpot = (item: ChecklistItem): Spot => {
+    const locked = blocked && !item.done && items.indexOf(item) > mandatoryIndex;
+    return {
+      id: item.id,
+      title: item.label,
+      short:
+        STEP_SHORT[item.id] ??
+        (item.id === "contacts" ? (isFreelancer ? "Leads" : "Contacts") : item.id === "products" ? (isFreelancer ? "Services" : "Products") : item.label),
+      description: locked ? lockedNote : item.description,
+      done: item.done,
+      optional: !!item.optional,
+      mandatory: !!item.mandatory,
+      locked,
+      doneDetail: item.id === "whatsapp" && session?.phoneNumber ? `Connected · ${session.phoneNumber}` : "Done",
+      cta: locked ? (
+        lockedCta
+      ) : (
+        <Button size="lg" onClick={() => go(item)}>
+          {STEP_CTA[item.id] ??
+            (item.id === "contacts"
+              ? isFreelancer ? "Find leads" : "Import contacts"
+              : item.id === "products"
+                ? isFreelancer ? "Add services" : "Add products"
+                : item.actionLabel ?? "Open")}
+          <ArrowRight className="ml-1.5 h-4 w-4" />
+        </Button>
+      ),
+    };
+  };
+
+  const assistantLocked = blocked && !assistantDone;
 
   const main: Spot[] = [
     ...items.filter((i) => !i.optional).map(toSpot),
@@ -595,7 +630,9 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
             id: "assistant",
             title: "Turn on your assistant",
             short: STEP_SHORT.assistant,
-            description: whatsappReady ? (
+            description: assistantLocked ? (
+              lockedNote
+            ) : whatsappReady ? (
               assistantPitch
             ) : (
               <span className="inline-flex items-center gap-1">
@@ -604,8 +641,11 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
             ),
             done: assistantDone,
             optional: false,
+            locked: assistantLocked,
             doneDetail: "Running",
-            cta: (
+            cta: assistantLocked ? (
+              lockedCta
+            ) : (
               <Button size="lg" disabled={!whatsappReady} onClick={() => setAssistantOpen(true)}>
                 <Sparkles className="mr-1.5 h-4 w-4" />
                 {STEP_CTA.assistant}
@@ -637,12 +677,12 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
   /** "Skip": look at the next unfinished step after this one (nothing is saved) */
   function skip() {
     if (shownIndex < 0) return;
-    const after = [...steps.slice(shownIndex + 1), ...steps.slice(0, shownIndex)].find((s) => !s.done);
+    const after = [...steps.slice(shownIndex + 1), ...steps.slice(0, shownIndex)].find((s) => !s.done && !s.locked);
     if (after) pick(after);
   }
 
   const eyebrow = shown
-    ? `${shown.done ? "Done" : shown.optional ? "Optional" : shown.id === currentId ? "Next step" : "Step"} · ${shownIndex + 1} of ${steps.length}`
+    ? `${shown.done ? "Done" : shown.locked ? "Locked" : shown.optional ? "Optional" : shown.mandatory ? "Required" : shown.id === currentId ? "Next step" : "Step"} ·${shownIndex + 1} of ${steps.length}`
     : "";
 
   return (
@@ -725,7 +765,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
                   transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                  className="grid items-center gap-4 p-4 sm:grid-cols-[200px_1fr] sm:p-5 lg:@min-[720px]:h-full lg:@min-[720px]:grid-cols-1 lg:@min-[720px]:content-center lg:@min-[720px]:justify-items-center lg:@min-[720px]:gap-6 lg:@min-[720px]:p-8 lg:@min-[720px]:text-center"
+                  className="grid items-center gap-4 p-4 @min-[480px]:grid-cols-[200px_1fr] sm:p-5lg:@min-[720px]:h-full lg:@min-[720px]:grid-cols-1 lg:@min-[720px]:content-center lg:@min-[720px]:justify-items-center lg:@min-[720px]:gap-6 lg:@min-[720px]:p-8 lg:@min-[720px]:text-center"
                 >
                   <div aria-hidden className="h-32 rounded-xl bg-primary/5 ring-1 ring-primary/10 max-sm:h-28 lg:@min-[720px]:h-48 lg:@min-[720px]:w-full lg:@min-[720px]:max-w-md">
                     <Scene id={shown.id} still={reduceMotion} />
@@ -751,7 +791,7 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
                       ) : (
                         <>
                           {shown.cta}
-                          {steps.filter((s) => !s.done).length > 1 && (
+                          {!shown.mandatory && !shown.locked && steps.filter((s) => !s.done && !s.locked).length > 1 && (
                             <button
                               type="button"
                               onClick={skip}
@@ -866,6 +906,12 @@ export function SetupChecklist({ className }: { className?: string } = {}) {
           </>
         )}
       </Modal>
+
+      <TeachAiModal
+        open={teachOpen}
+        onClose={() => setTeachOpen(false)}
+        done={items.find((i) => i.id === "knowledge")?.done ?? false}
+      />
 
       <Modal
         open={connectOpen}

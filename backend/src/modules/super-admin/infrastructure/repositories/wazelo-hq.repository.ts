@@ -1,5 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { OrgType, Prisma, SubscriptionStatus, TokenType, UserRole, UserStatus } from '@prisma/client';
+import {
+  MessageDirection,
+  MessageStatus,
+  OrgType,
+  Prisma,
+  SubscriptionStatus,
+  TokenType,
+  UserRole,
+  UserStatus,
+  WhatsAppProvider,
+} from '@prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { generateOrgSlugInTx } from '@/modules/auth/application/services/org-slug';
 import { HQ_DEFAULT_TEMPLATES, hqTemplateRows } from '@/modules/hq/domain/services/platform-alerts';
@@ -20,6 +30,18 @@ export interface CreateHqInput {
     lastName: string;
     passwordHash: string;
   };
+}
+
+export interface HqMessageLogQuery {
+  skip: number;
+  take: number;
+  status?: MessageStatus;
+  /** `metadata.platformAlert` */
+  kind?: string;
+  provider?: WhatsAppProvider;
+  phoneDigits?: string;
+  from?: Date;
+  to?: Date;
 }
 
 @Injectable()
@@ -60,6 +82,44 @@ export class WazeloHqRepository {
       data: { userId, token: tokenHash, type: TokenType.HQ_HANDOFF, expiresAt },
       select: { id: true },
     });
+  }
+
+  /** Messages HQ's numbers sent, newest first (super admin message log) */
+  async findOutboundMessages(hqId: string, query: HqMessageLogQuery) {
+    const where: Prisma.MessageWhereInput = {
+      orgId: hqId,
+      direction: MessageDirection.OUTBOUND,
+      deletedAt: null,
+      ...(query.status && { status: query.status }),
+      ...(query.kind && { metadata: { path: ['platformAlert'], equals: query.kind } }),
+      ...(query.provider && { session: { provider: query.provider } }),
+      ...(query.phoneDigits && { contactPhone: { contains: query.phoneDigits } }),
+      ...((query.from || query.to) && { createdAt: { gte: query.from, lte: query.to } }),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.message.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: query.skip,
+        take: query.take,
+        select: {
+          id: true,
+          status: true,
+          contactPhone: true,
+          body: true,
+          metadata: true,
+          failedReason: true,
+          retryCount: true,
+          createdAt: true,
+          sentAt: true,
+          deliveredAt: true,
+          readAt: true,
+          session: { select: { provider: true, phoneNumber: true } },
+        },
+      }),
+      this.prisma.message.count({ where }),
+    ]);
+    return { items, total };
   }
 
   async emailTaken(email: string): Promise<boolean> {
